@@ -1,0 +1,27 @@
+openapi: 3.2.0
+info: {title: Mutual TLS, version: "1"}
+paths:
+  /private:
+    get:
+      operationId: private
+      security: [{cert: []}]
+      responses:
+        "204": {description: Done.}
+  /token:
+    get:
+      operationId: token
+      security: [{bearer: []}]
+      responses:
+        "204": {description: Done.}
+  /keyed:
+    get:
+      operationId: keyed
+      security: [{api_key: [], basic-auth: []}]
+      responses:
+        "204": {description: Done.}
+components:
+  securitySchemes:
+    cert: {type: mutualTLS}
+    bearer: {type: http, scheme: bearer}
+    api_key: {type: apiKey, in: query, name: key}
+    basic-auth: {type: http, scheme: basic}

@@ -1,0 +1,89 @@
+openapi: 3.2.0
+info: {title: Multipart, version: "1"}
+paths:
+  /photos:
+    post:
+      operationId: upload
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [image, meta]
+              properties:
+                image: {type: string, format: binary}
+                meta:
+                  type: object
+                  required: [title]
+                  properties: {title: {type: string}, width: {type: integer}}
+                tags: {type: array, items: {type: string}}
+                bundle:
+                  type: object
+                  properties: {note: {type: string}, scan: {type: string, format: binary}}
+                pages: {type: array, items: {type: string}}
+            encoding:
+              image:
+                contentType: image/png
+                headers:
+                  X-Checksum: {required: true, schema: {type: string, minLength: 4}}
+                  Content-Type: {schema: {type: string}}
+              bundle:
+                contentType: multipart/mixed
+                encoding:
+                  note: {contentType: text/markdown}
+                  scan: {contentType: image/png}
+              pages:
+                contentType: multipart/mixed
+                prefixEncoding: [{contentType: text/markdown}]
+                itemEncoding: {contentType: text/plain}
+              meta:
+                contentType: application/json
+                headers:
+                  X-Revision: {schema: {type: integer}}
+      responses:
+        "201": {description: Stored.}
+  /icons:
+    put:
+      operationId: putIcon
+      requestBody:
+        required: true
+        description: 3.2 Encoding Object example; the caller picks the part's type through `Params::part_types`.
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [icon]
+              properties:
+                name: {type: string}
+                icon: {}
+            encoding:
+              icon:
+                contentType: image/png, image/jpeg
+      responses:
+        "204": {description: Stored.}
+  /scans:
+    post:
+      operationId: uploadScan
+      requestBody:
+        required: true
+        description: 3.2 `contentEncoding` on a multipart field means `Content-Transfer-Encoding`; the part travels base64.
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [scan]
+              properties:
+                label: {type: string}
+                scan: {type: string, contentEncoding: base64}
+      responses:
+        "204": {description: Stored.}
+  /deploy:
+    post:
+      operationId: deploy
+      requestBody:
+        description: Schemaless multipart, as utoipa emits for a hand-parsed form.
+        content:
+          multipart/form-data: {}
+      responses:
+        "204": {description: Deployed.}

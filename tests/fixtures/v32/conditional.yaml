@@ -1,0 +1,49 @@
+openapi: 3.2.0
+info: {title: Conditional, version: "1"}
+paths:
+  /a: {post: {operationId: a, requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/Discriminated'}}}}, responses: {'204': {description: ok}}}}
+  /b: {post: {operationId: b, requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/IfThen'}}}}, responses: {'204': {description: ok}}}}
+  /c: {post: {operationId: c, requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/ConstOneOf'}}}}, responses: {'204': {description: ok}}}}
+components:
+  schemas:
+    EmailRequest: {type: object, required: [type, email], properties: {type: {type: string, enum: [email]}, email: {type: string, format: email}}}
+    SmsRequest: {type: object, required: [type, phone], properties: {type: {type: string, enum: [sms]}, phone: {type: string}}}
+    Discriminated:
+      oneOf: [{$ref: '#/components/schemas/EmailRequest'}, {$ref: '#/components/schemas/SmsRequest'}]
+      discriminator: {propertyName: type, mapping: {email: '#/components/schemas/EmailRequest', sms: '#/components/schemas/SmsRequest'}}
+    IfThen:
+      type: object
+      properties: {type: {type: string}}
+      allOf:
+        - if: {properties: {type: {const: email}}}
+          then: {required: [email], properties: {email: {type: string, format: email}}}
+        - if: {properties: {type: {const: sms}}}
+          then: {required: [phone], properties: {phone: {type: string}}}
+    ConstOneOf:
+      oneOf:
+        - {type: object, required: [type, email], properties: {type: {type: string, enum: [email]}, email: {type: string}}}
+        - {type: object, required: [type, phone], properties: {type: {type: string, enum: [sms]}, phone: {type: string}}}
+    # `allOf` with a `oneOf` member: each value is one branch and has the order too (Garage's `NodeRoleChange`).
+    Delivery:
+      allOf:
+        - {$ref: '#/components/schemas/DeliveryMethod'}
+        - {type: object, required: [orderId], properties: {orderId: {type: string}}}
+    DeliveryMethod:
+      oneOf:
+        - {type: object, required: [pickup], properties: {pickup: {type: boolean}}}
+        - {$ref: '#/components/schemas/Address'}
+    Address: {type: object, required: [street], properties: {street: {type: string}}}
+    Shipping:
+      type: object
+      properties: {country: {type: string}, zip: {type: string}, postcode: {type: string}}
+      if: {properties: {country: {const: US}}}
+      then: {required: [zip]}
+      else: {required: [postcode]}
+    Contact:
+      type: object
+      properties: {via: {type: string}}
+      allOf:
+        - if: {properties: {via: {enum: [email, mail]}}}
+          then: {required: [address], properties: {address: {type: string}}}
+        - if: {properties: {via: {const: sms}}}
+          then: {required: [phone], properties: {phone: {type: string}}}

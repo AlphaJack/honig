@@ -1,0 +1,618 @@
+//! Spec rules whose violation is silent. The generated client and server
+//! agree with each other and compile but differ
+//! from what the `OpenAPI` specification says. Each test cites the rule.
+//! Fast because it generates in memory and compiles nothing.
+
+use super::common;
+
+use crate::emit::Options;
+use serde_json::{Value, json};
+
+fn doc(paths: &Value, components: &Value) -> Value {
+    common::spec("3.2.0", paths, components)
+}
+
+fn server_of(test: &str, d: &Value) -> String {
+    common::file(&common::generate(test, d, &Options::default()), "server.rs").to_owned()
+}
+
+fn operations_of(test: &str, d: &Value) -> String {
+    common::file(&common::generate(test, d, &Options::default()), "operations.rs").to_owned()
+}
+
+/// Generated text with all whitespace and trailing commas removed. So checks
+/// do not depend on where the printer breaks lines.
+fn squash(s: &str) -> String {
+    let s: String = s.chars().filter(|c| !c.is_whitespace()).collect();
+    s.replace(",]", "]").replace(",)", ")").replace(",}", "}")
+}
+
+/// The `security` of every `runtime::Op` of a generated server without whitespace. A shared `ops::SECURITY_<n>`
+/// is shown as `operations.rs` declares it.
+fn security_consts(files: &[(String, String)]) -> Vec<String> {
+    let (server, ops) = (squash(common::file(files, "server.rs")), squash(common::file(files, "operations.rs")));
+    let value = |name: &str| {
+        let decl = format!("pubconst{name}:&[&[runtime::Requirement]]=");
+        ops.split_once(&decl).and_then(|(_, rest)| rest.split_once(';')).expect("declared").0.to_owned()
+    };
+    server
+        .split("security:")
+        .skip(1)
+        .map(|rest| rest.split_once(",takes_body:").expect("field ends").0)
+        .map(|s| s.strip_prefix("ops::").map_or_else(|| s.to_owned(), value))
+        .collect()
+}
+
+/// Does a `security` value let a request without credentials through?
+/// That is the empty list or an empty alternative.
+fn is_public(security: &str) -> bool {
+    security == "&[]" || security.starts_with("&[&[]") || security.contains(",&[],") || security.contains(",&[]]")
+}
+
+fn bearer() -> Value {
+    json!({"securitySchemes": {"local": {"type": "http", "scheme": "bearer"}}})
+}
+
+fn secured_op(security: &Value) -> Value {
+    json!({"/a": {"get": {"operationId": "a", "security": security, "responses": {"204": {"description": "ok"}}}}})
+}
+
+// Security Requirement Object (3.2): keys are component names or URIs.
+
+#[test]
+fn security_scheme_named_by_local_uri_is_enforced() {
+    for key in ["#/components/securitySchemes/local", "https://example.com/api#/components/securitySchemes/local"] {
+        let mut d = doc(&secured_op(&json!([{key: []}])), &bearer());
+        d["$self"] = json!("https://example.com/api");
+        let consts = security_consts(&common::generate("sec-local-uri", &d, &Options::default()));
+        assert_eq!(consts, [r#"&[&[(runtime::Scheme::Bearer("local"),&[])]]"#], "{key}");
+    }
+}
+
+#[test]
+fn security_scheme_named_by_external_uri_is_bundled_and_enforced() {
+    let other =
+        json!({"components": {"securitySchemes": {"partner": {"type": "apiKey", "in": "header", "name": "X-Key"}}}});
+    let d = doc(&secured_op(&json!([{"other.json#/components/securitySchemes/partner": []}])), &json!({}));
+    let path = common::write("sec-external-uri", &d, &[("other.json", &other)]);
+    let files = crate::generate::generate(&path, &Options::default()).expect("generates").files;
+    let consts = security_consts(&files);
+    assert_eq!(consts, [r#"&[&[(runtime::Scheme::ApiKey("partner",runtime::KeyIn::Header,"X-Key"),&[])]]"#]);
+}
+
+#[test]
+fn unresolvable_security_scheme_refuses_a_server_but_not_a_client() {
+    let d = doc(&secured_op(&json!([{"missing.json#/components/securitySchemes/x": []}])), &bearer());
+    let path = common::write("sec-unresolvable", &d, &[]);
+    let err = crate::generate::generate(&path, &Options::default()).expect_err("must refuse");
+    assert!(err.iter().any(|d| d.message.contains("does not resolve")), "{:#?}", err.0);
+    let client_only = Options { server: false, tests: false, ..Options::default() };
+    crate::generate::generate(&path, &client_only).expect("a client sends no credential it cannot know");
+}
+
+/// Every combination of known names, URIs, unknown names, AND, OR and
+/// `{}`. An operation is public only when the description makes it public.
+#[test]
+fn no_security_shape_turns_a_secured_operation_public() {
+    let names = ["local", "#/components/securitySchemes/local", "ghost", "#/components/securitySchemes/ghost"];
+    let mut shapes: Vec<Value> = vec![];
+    for a in names {
+        shapes.push(json!([{a: []}]));
+        shapes.push(json!([{a: []}, {}]));
+        for b in names {
+            shapes.push(json!([{a: [], b: []}]));
+            shapes.push(json!([{a: []}, {b: []}]));
+        }
+    }
+    for (i, security) in shapes.iter().enumerate() {
+        let d = doc(&secured_op(security), &bearer());
+        let path = common::write(&format!("sec-shape-{i}"), &d, &[]);
+        let optional = security.as_array().unwrap().iter().any(|r| r.as_object().unwrap().is_empty());
+        match crate::generate::generate(&path, &Options::default()) {
+            Ok(g) => {
+                let consts = security_consts(&g.files);
+                assert_eq!(consts.len(), 1);
+                assert_eq!(is_public(&consts[0]), optional, "{security} generated {}", consts[0]);
+            }
+            Err(e) => assert!(security.to_string().contains("ghost"), "{security} refused: {:#?}", e.0),
+        }
+    }
+}
+
+// `content` (3.2 Request Body / Response): "For requests that match multiple
+// keys, only the most specific key is applicable."
+
+/// Media types in the order the generated code checks them.
+fn checked_media(code: &str, candidates: &[&str]) -> Vec<String> {
+    let s = squash(code);
+    let mut found: Vec<(usize, String)> = candidates
+        .iter()
+        .filter_map(|m| s.find(&format!("media_matches(req.content_type(),\"{m}\")")).map(|i| (i, (*m).to_owned())))
+        .collect();
+    found.sort();
+    found.into_iter().map(|(_, m)| m).collect()
+}
+
+#[test]
+fn most_specific_request_media_type_is_tried_first_in_any_order() {
+    let keys = ["*/*", "text/*", "text/plain", "text/plain; charset=utf-8"];
+    let orders = [[0, 1, 2, 3], [3, 2, 1, 0], [1, 0, 3, 2], [2, 0, 3, 1]];
+    for order in orders {
+        let content: serde_json::Map<String, Value> =
+            order.iter().map(|&i| (keys[i].to_owned(), json!({"schema": {"type": "string"}}))).collect();
+        let d = doc(
+            &json!({"/u": {"post": {
+                "operationId": "u",
+                "requestBody": {"required": true, "content": content},
+                "responses": {"204": {"description": "ok"}}
+            }}}),
+            &json!({}),
+        );
+        let seen = checked_media(&server_of("media-order", &d), &keys);
+        let mut sorted = seen.clone();
+        sorted.sort_by_key(|m| keys.iter().position(|k| k == m).map(std::cmp::Reverse));
+        assert_eq!(seen, sorted, "document order {order:?}");
+    }
+}
+
+// `pattern` (JSON Schema 2020-12 section 6.3.3): checked by the runtime's `regress` feature; one it cannot compile
+// is reported.
+
+#[test]
+fn a_pattern_regress_cannot_compile_is_reported() {
+    let (_, w) = common::build(
+        "pattern-bad",
+        &common::spec(
+            "3.1.0",
+            &json!({}),
+            &json!({"schemas": {
+                "Bad": {"type": "string", "pattern": "[z-a]"},
+                "Map": {"type": "object", "patternProperties": {"(unclosed": {"type": "string"}}},
+                "Good": {"type": "string", "pattern": "^\\p{Lu}[a-z]*$"}
+            }}),
+        ),
+        &[],
+    );
+    assert!(w.iter().any(|m| m.starts_with("/components/schemas/Bad/pattern:") && m.contains("[z-a]")), "{w:#?}");
+    assert!(w.iter().any(|m| m.contains("/patternProperties/(unclosed:")), "{w:#?}");
+    assert!(!w.iter().any(|m| m.contains("Good")), "a Unicode property escape is valid ECMA-262: {w:#?}");
+}
+
+/// 3.2 section 4.12.5 Style Values: "Combinations not represented in this table are
+/// not permitted."
+#[test]
+fn a_style_outside_its_locations_is_an_error() {
+    let param = |name: &str, at: &str, style: &str| json!({"name": name, "in": at, "style": style, "schema": {"type": "array", "items": {"type": "string"}}});
+    let (_, w) = common::build(
+        "style-location",
+        &doc(
+            &json!({"/a/{p}": {"get": {
+                "operationId": "a",
+                "parameters": [
+                    {"name": "p", "in": "path", "required": true, "style": "label", "schema": {"type": "string"}},
+                    param("m", "query", "matrix"),
+                    param("d", "header", "deepObject"),
+                    param("f", "query", "form"),
+                    param("c", "cookie", "cookie")
+                ],
+                "responses": {"204": {"description": "ok"}}
+            }}}),
+            &json!({}),
+        ),
+        &[],
+    );
+    let bad: Vec<&String> = w.iter().filter(|m| m.contains("is not allowed for `in:")).collect();
+    assert_eq!(bad.len(), 2, "{w:#?}");
+    assert!(
+        bad.iter().any(|m| m.contains("/parameters/1/style:") && m.contains("\"matrix\"") && m.contains("in: query"))
+    );
+    assert!(bad.iter().any(|m| m.contains("/parameters/2/style:") && m.contains("\"deepObject\"")));
+}
+
+// Parameter and Header Object `content` (3.2): "the media type ... and the
+// schema" describe the value whatever the media type.
+
+#[test]
+fn a_text_plain_response_header_keeps_its_schema() {
+    let (api, _) = common::build(
+        "header-text",
+        &doc(
+            &json!({"/a": {"get": {"operationId": "a", "responses": {"200": {
+                "description": "ok",
+                "headers": {
+                    "X-Count": {"required": true, "content": {"text/plain": {"schema": {"type": "integer"}}}},
+                    "X-Meta": {"content": {"application/json": {"schema": {"type": "object", "properties": {"n": {"type": "integer"}}}}}}
+                }
+            }}}}}),
+            &json!({}),
+        ),
+        &[],
+    );
+    let headers = &api.http.operations[0].responses[0].headers;
+    let count = headers.iter().find(|h| h.wire == "X-Count").expect("X-Count");
+    assert_eq!(count.ty, crate::ir::types::Ty::I64, "not untyped JSON");
+    assert!(!count.json, "text/plain carries the value's own text");
+    assert!(headers.iter().find(|h| h.wire == "X-Meta").expect("X-Meta").json);
+}
+
+/// 3.2 `components.mediaTypes`: a `content` entry may be a `$ref`.
+#[test]
+fn a_content_entry_may_reference_a_reusable_media_type() {
+    let (api, w) = common::build(
+        "media-ref",
+        &doc(
+            &json!({"/a": {"get": {
+                "operationId": "a",
+                "parameters": [{"name": "f", "in": "query", "content": {"application/json": {"$ref": "#/components/mediaTypes/Filter"}}}],
+                "responses": {"200": {
+                    "description": "ok",
+                    "headers": {"X-N": {"required": true, "content": {"text/plain": {"$ref": "#/components/mediaTypes/Count"}}}}
+                }}
+            }}}),
+            &json!({"mediaTypes": {
+                "Filter": {"schema": {"type": "string", "maxLength": 4}},
+                "Count": {"schema": {"type": "integer"}}
+            }}),
+        ),
+        &[],
+    );
+    assert!(w.iter().all(|m| !m.contains("does not resolve")), "{w:#?}");
+    let p = &api.http.operations[0].params[0];
+    assert_eq!((p.ty.clone(), p.constraints.max_length), (crate::ir::types::Ty::String.option(), Some(4)));
+    assert_eq!(api.http.operations[0].responses[0].headers[0].ty, crate::ir::types::Ty::I64);
+}
+
+#[test]
+fn a_content_parameter_is_validated_by_its_media_type_schema() {
+    let (api, _) = common::build(
+        "param-content",
+        &doc(
+            &json!({"/a": {"get": {
+                "operationId": "a",
+                "parameters": [{"name": "filter", "in": "query", "content": {"application/json": {"schema": {"type": "string", "maxLength": 8}}}}],
+                "responses": {"204": {"description": "ok"}}
+            }}}),
+            &json!({}),
+        ),
+        &[],
+    );
+    assert_eq!(api.http.operations[0].params[0].constraints.max_length, Some(8));
+}
+
+// JSON Schema drafts the generator claims to read (06, 07, 2019-09).
+
+fn types_of(test: &str, schemas: &Value) -> (String, Vec<String>) {
+    let d = common::spec("3.1.0", &json!({}), &json!({"schemas": schemas}));
+    let path = common::write(test, &d, &[]);
+    let g = crate::generate::generate(&path, &Options::default()).expect("generates");
+    let warnings = g.diagnostics.iter().map(|d| format!("{}: {}", d.pointer, d.message)).collect();
+    (squash(common::file(&g.files, "types.rs")), warnings)
+}
+
+#[test]
+fn draft_07_tuple_with_additional_items_false_is_a_closed_tuple() {
+    let (types, _) = types_of(
+        "draft07-tuple",
+        &json!({"T": {
+            "$schema": "http://json-schema.org/draft-07/schema#",
+            "type": "array",
+            "items": [{"type": "string"}, {"type": "integer"}],
+            "additionalItems": false,
+            "minItems": 2
+        }}),
+    );
+    assert!(types.contains("pubtypeT=(String,i64);"), "{types}");
+}
+
+#[test]
+fn draft_2019_09_recursive_ref_is_recursive() {
+    let (types, warnings) = types_of(
+        "recursive-ref",
+        &json!({"Tree": {
+            "$schema": "https://json-schema.org/draft/2019-09/schema",
+            "$recursiveAnchor": true,
+            "type": "object",
+            "properties": {"kids": {"type": "array", "items": {"$recursiveRef": "#"}}}
+        }}),
+    );
+    assert!(types.contains("pubkids:Option<Vec<Self>>"), "{types}");
+    assert!(warnings.is_empty(), "{warnings:#?}");
+}
+
+/// 2019-09 section 8.2.4.2: the outermost `$recursiveAnchor` of the dynamic scope
+/// wins. So the recursion of an extension stays in the extension.
+#[test]
+fn draft_2019_09_recursive_ref_follows_the_extending_schema() {
+    let (types, warnings) = types_of(
+        "recursive-extend",
+        &json!({
+            "Tree": {
+                "$schema": "https://json-schema.org/draft/2019-09/schema",
+                "$recursiveAnchor": true,
+                "type": "object",
+                "properties": {"kids": {"type": "array", "items": {"$recursiveRef": "#"}}}
+            },
+            "LabeledTree": {
+                "$recursiveAnchor": true,
+                "$ref": "#/components/schemas/Tree",
+                "properties": {"label": {"type": "string"}},
+                "required": ["label"]
+            },
+            "Forest": {"type": "array", "items": {"$ref": "#/components/schemas/Tree"}}
+        }),
+    );
+    assert!(warnings.is_empty(), "{warnings:#?}");
+    let body = |name: &str| {
+        types.split(&format!("pubstruct{name}{{")).nth(1).and_then(|r| r.split_once('}')).map(|(b, _)| b.to_owned())
+    };
+    let tree = body("Tree").expect("Tree");
+    assert!(tree.contains("pubkids:Option<Vec<Self>>"), "{tree}");
+    let labeled = body("LabeledTree").expect("LabeledTree");
+    assert!(labeled.contains("pubkids:Option<Vec<Self>>"), "an extension's children are extensions: {labeled}");
+    assert!(labeled.contains("publabel:String"), "{labeled}");
+    assert!(types.contains("pubtypeForest=Vec<Tree>;"), "no anchor outside: static: {types}");
+}
+
+#[test]
+fn draft_04_boolean_exclusive_bounds_still_bound_in_v31() {
+    let mut diags = crate::diag::Diagnostics::default();
+    let up = crate::upgrade::to_v32(
+        common::spec(
+            "3.1.0",
+            &json!({}),
+            &json!({"schemas": {"N": {"type": "integer", "minimum": 1, "exclusiveMinimum": true}}}),
+        ),
+        &mut diags,
+    )
+    .expect("upgrades");
+    assert_eq!(up["components"]["schemas"]["N"], json!({"type": "integer", "exclusiveMinimum": 1}));
+}
+
+// Runtime expressions (3.2 "Runtime Expressions"): every form of the ABNF.
+
+/// The grammar of the spec: `$url`, `$method`, `$statusCode` and `$request.` /
+/// `$response.` with `header.`, `query.`, `path.` or `body`.
+const EXPRESSIONS: &[&str] = &[
+    "$url",
+    "$method",
+    "$statusCode",
+    "$request.header.X-Trace",
+    "$request.query.q",
+    "$request.path.id",
+    "$request.body",
+    "$request.body#/user/uuid",
+    "$response.header.Location",
+    "$response.body",
+    "$response.body#/id",
+];
+
+fn linked(params: &Value) -> Value {
+    doc(
+        &json!({
+            "/things/{id}": {
+                "post": {
+                    "operationId": "make",
+                    "parameters": [
+                        {"name": "id", "in": "path", "required": true, "schema": {"type": "string"}},
+                        {"name": "q", "in": "query", "schema": {"type": "string"}},
+                        {"name": "X-Trace", "in": "header", "schema": {"type": "string"}}
+                    ],
+                    "requestBody": {"content": {"application/json": {"schema": {"type": "object"}}}},
+                    "responses": {"201": {"description": "made", "links": {"Next": {"operationId": "take", "parameters": params}}}}
+                }
+            },
+            "/take": {"get": {
+                "operationId": "take",
+                "parameters": [{"name": "v", "in": "query", "schema": {"type": "string"}}],
+                "responses": {"204": {"description": "ok"}}
+            }}
+        }),
+        &json!({}),
+    )
+}
+
+#[test]
+fn every_runtime_expression_form_reaches_a_value_source() {
+    for e in EXPRESSIONS {
+        let ops = squash(&operations_of("expr-forms", &linked(&json!({"v": e}))));
+        let init = ops.split("Self{v:").nth(1).map_or_default(|r| r.split_once("},").map_or(r, |(head, _)| head));
+        assert!(!init.starts_with("None"), "{e} is never evaluated: {init}");
+        let static_source = e.starts_with("$request.path.")
+            || e.starts_with("$request.query.")
+            || e.starts_with("$request.header.")
+            || e.starts_with("$response.body");
+        if !static_source {
+            assert!(init.contains(&format!("exchange.eval(\"{e}\")")), "{e}: {init}");
+            assert!(ops.contains("pubfnfrom_exchange("), "{e} needs the exchange");
+        }
+    }
+}
+
+#[test]
+fn embedded_expressions_in_a_template_are_each_evaluated() {
+    let ops = squash(&operations_of("expr-template", &linked(&json!({"v": "/x/{$request.path.id}?s={$statusCode}"}))));
+    assert!(ops.contains(r#"runtime::template(&["/x/","?s=",""],vec!["#), "{ops}");
+    assert!(ops.contains(r#"exchange.eval("$statusCode")"#), "{ops}");
+}
+
+#[test]
+fn callback_url_expression_is_evaluated() {
+    let d = doc(
+        &json!({"/subscribe": {"post": {
+            "operationId": "subscribe",
+            "parameters": [{"name": "tenant", "in": "query", "schema": {"type": "string"}}],
+            "requestBody": {"content": {"application/json": {"schema": {"type": "object"}}}},
+            "responses": {"201": {"description": "ok"}},
+            "callbacks": {"onEvent": {"{$request.body#/callbackUrl}/t/{$request.query.tenant}": {"post": {
+                "operationId": "onEvent",
+                "responses": {"204": {"description": "ok"}}
+            }}}}
+        }}}),
+        &json!({}),
+    );
+    let ops = squash(&operations_of("callback-url", &d));
+    assert!(ops.contains("pubmodcallbacks{"), "{ops}");
+    assert!(
+        ops.contains("pubfnon_event_url(request:&super::Params,exchange:&runtime::Exchange<'_>)->Option<String>"),
+        "{ops}"
+    );
+    assert!(ops.contains(r#"exchange.eval("$request.body#/callbackUrl")"#), "{ops}");
+    assert!(ops.contains("request.tenant"), "{ops}");
+}
+
+#[test]
+fn template_splitting_keeps_other_braces_literal() {
+    // Through a link: the literal parts appear verbatim.
+    let ops = squash(&operations_of("expr-braces", &linked(&json!({"v": "{a}{$method}{"}))));
+    assert!(ops.contains(r#"runtime::template(&["{a}","{"],vec![exchange.eval("$method")])"#), "{ops}");
+}
+
+// Security Requirement Object (3.1+): "For other security scheme types, the
+// array MAY contain a list of role names which are required for the
+// execution". Several requirements are alternatives (OR).
+
+fn fine_grained() -> Value {
+    doc(
+        &json!({"/issues": {
+            "get": {
+                "operationId": "listIssues",
+                "security": [{"pat": ["issues:read"]}, {"pat": ["issues:write"]}],
+                "responses": {"204": {"description": "ok"}}
+            },
+            "post": {
+                "operationId": "createIssue",
+                "security": [{"oauth": ["repo"]}],
+                "responses": {"204": {"description": "ok"}}
+            }
+        }}),
+        &json!({"securitySchemes": {
+            "pat": {"type": "http", "scheme": "bearer"},
+            "oauth": {"type": "oauth2", "flows": {"clientCredentials": {
+                "tokenUrl": "https://example.com/token",
+                "scopes": {"repo": "Full control of repositories", "read:org": "Read org membership"}
+            }}}
+        }}),
+    )
+}
+
+#[test]
+fn every_scope_and_role_is_a_typed_variant() {
+    let server = squash(&server_of("scope-enum", &fine_grained()));
+    let decl =
+        server.split("pubenumScope{").nth(1).and_then(|r| r.split_once('}')).map(|(d, _)| d).expect("Scope enum");
+    let variants: Vec<&str> = decl.split(',').map(|v| v.rsplit(char::is_whitespace).next().unwrap_or(v)).collect();
+    for v in ["IssuesRead", "IssuesWrite", "Repo", "ReadOrg"] {
+        assert!(variants.iter().any(|d| d.ends_with(v)), "missing {v} in {decl}");
+    }
+    assert!(decl.contains("///Fullcontrolofrepositories"), "OAuth2 descriptions become docs: {decl}");
+    for (name, v) in [("issues:read", "IssuesRead"), ("issues:write", "IssuesWrite"), ("read:org", "ReadOrg")] {
+        assert!(server.contains(&format!("Self::{v}=>\"{name}\"")), "{v} as_str");
+        assert!(server.contains(&format!("\"{name}\"=>Some(Self::{v})")), "{v} from_name");
+    }
+    assert!(server.contains("pubfnscopes_held(request:&implruntime::Secured,held:implFn(Scope)->bool)->bool"));
+}
+
+#[test]
+fn or_of_roles_on_one_scheme_keeps_both_alternatives() {
+    let consts = security_consts(&common::generate("scope-or", &fine_grained(), &Options::default()));
+    assert!(
+        consts.contains(
+            &r#"&[&[(runtime::Scheme::Bearer("pat"),&["issues:read"])],&[(runtime::Scheme::Bearer("pat"),&["issues:write"])]]"#
+                .to_owned()
+        ),
+        "{consts:#?}"
+    );
+}
+
+#[test]
+fn no_scopes_means_no_scope_enum() {
+    let server = squash(&server_of("scope-none", &doc(&secured_op(&json!([{"local": []}])), &bearer())));
+    assert!(!server.contains("pubenumScope"), "an empty enum would be uninhabited noise");
+}
+
+/// JSON Schema 2020-12 section 6.1.3: a `const` property is valid only at its value. The error body that the server
+/// writes for its own refusals gives each required `const` its value, also one named like a field it fills (`type`).
+/// An optional one stays out.
+#[test]
+fn a_required_const_of_an_error_schema_gets_its_value() {
+    let d = doc(
+        &json!({"/orders": {"post": {
+            "operationId": "createOrder",
+            "responses": {
+                "201": {"description": "Created"},
+                "4XX": {"description": "Refused", "content": {"application/json": {
+                    "schema": {"$ref": "#/components/schemas/Refusal"}}}}
+            }
+        }}}),
+        &json!({"schemas": {"Refusal": {
+            "type": "object",
+            "required": ["message", "object", "type"],
+            "properties": {
+                "message": {"type": "string"},
+                "object": {"type": "string", "const": "error"},
+                "type": {"type": "string", "const": "https://shop.example.com/errors/refused"},
+                "version": {"type": "integer", "const": 2}
+            }
+        }}}),
+    );
+    let server = squash(&server_of("error-const", &d));
+    let fields = server.split_once("fields:&[").and_then(|(_, rest)| rest.split_once(']')).expect("fields").0;
+    assert_eq!(
+        fields,
+        r#"("message",runtime::ErrorField::Detail),("object",runtime::ErrorField::Const("\"error\"")),("type",runtime::ErrorField::Const("\"https://shop.example.com/errors/refused\""))"#,
+    );
+}
+
+/// An error body that the server cannot fill for its own refusals (a required enum, as Vaultwarden's `token`
+/// declares) is named at generation. Those refusals get RFC 9457 and not another operation's error schema.
+#[test]
+fn an_unfillable_error_body_is_a_warning() {
+    let d = doc(
+        &json!({"/token": {"post": {
+            "operationId": "token",
+            "responses": {
+                "200": {"description": "Tokens"},
+                "400": {"description": "Refused", "content": {"application/json": {"schema": {
+                    "type": "object",
+                    "required": ["error", "error_description"],
+                    "properties": {
+                        "error": {"type": "string", "enum": ["invalid_grant", "invalid_request"]},
+                        "error_description": {"type": "string"}
+                    }
+                }}}}
+            }
+        }}}),
+        &json!({}),
+    );
+    let spec = common::write("error-unfillable", &d, &[]);
+    let generated = crate::generate::generate(&spec, &Options::default()).expect("generates");
+    let warnings: Vec<String> = generated.diagnostics.0.iter().map(|d| d.pointer.clone()).collect();
+    assert_eq!(warnings, ["/paths/~1token/post/responses/400"]);
+    let server = crate::generate::generate(&spec, &Options { server: false, ..Options::default() }).expect("generates");
+    assert!(server.diagnostics.is_empty(), "a client alone refuses nothing");
+}
+
+/// `allOf: [$ref: Base, {type: object, properties: ...}]` merges into one struct that holds every member: its fields
+/// are checked as typed and the body is never checked whole. Two members that both declare `name` are checked whole:
+/// one struct would keep only one of their schemas.
+#[test]
+fn only_an_all_of_that_one_struct_cannot_hold_is_checked_whole() {
+    let body = json!({"/products": {"post": {
+        "operationId": "createProduct",
+        "requestBody": {"required": true, "content": {"application/json": {
+            "schema": {"$ref": "#/components/schemas/Product"}}}},
+        "responses": {"201": {"description": "Created"}}
+    }}});
+    let generated = |test: &str, second: Value| {
+        let schemas = json!({"schemas": {
+            "Base": {"type": "object", "required": ["name"], "properties": {"name": {"type": "string", "maxLength": 9}}},
+            "Product": {"allOf": [{"$ref": "#/components/schemas/Base"}, second]}
+        }});
+        let files = common::generate(test, &doc(&body, &schemas), &Options::default());
+        [common::file(&files, "types.rs"), common::file(&files, "operations.rs")].concat()
+    };
+    let typed = generated("all-of-typed", json!({"type": "object", "properties": {"sku": {"type": "string"}}}));
+    assert!(!typed.contains("check_schema"), "{typed}");
+    let lossy = generated("all-of-lossy", json!({"type": "object", "properties": {"name": {"minLength": 2}}}));
+    assert!(lossy.contains("check_schema"), "{lossy}");
+}

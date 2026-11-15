@@ -1,0 +1,49 @@
+openapi: 3.2.0
+info: {title: Download, version: "1"}
+paths:
+  /exports/{id}:
+    get:
+      operationId: getExport
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200":
+          description: The export as a zip archive.
+          content:
+            application/zip: {}
+        "404": {description: No such export.}
+  /exports/{id}/thumbnail:
+    get:
+      operationId: getThumbnail
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        "200":
+          description: A preview in whatever image format the export has.
+          content:
+            image/*: {}
+  /exports/{id}/manifest:
+    parameters:
+      - {name: id, in: path, required: true, schema: {type: string}}
+    get:
+      operationId: getManifest
+      responses:
+        "200":
+          description: The files the export holds.
+          headers:
+            ETag: {schema: {type: string}}
+            Last-Modified: {schema: {type: string}}
+          content:
+            application/json: {schema: {type: array, items: {type: string}}}
+        "404": {description: No such export.}
+    put:
+      operationId: replaceManifest
+      parameters:
+        - {name: If-Match, in: header, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/json: {schema: {type: array, items: {type: string}}}
+      responses:
+        "204": {description: Replaced.}
+        "412": {description: The manifest changed since the client read it.}

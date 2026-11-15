@@ -1,0 +1,35 @@
+name: Bug
+description: Something does not work as the documentation says
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you ran, what you expected, and what happened instead.
+      placeholder: |
+        I ran `cargo honig generate`. I expected it to write `src/api`, but it failed with "...".
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: OpenAPI description
+      description: The smallest description that shows the problem. Remove anything private.
+      render: yaml
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: Output
+      description: Everything the command printed, or the compiler error in the generated code.
+      render: shell
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The output of `cargo honig --version`
+      placeholder: cargo-honig 0.0.1
+    validations:
+      required: true

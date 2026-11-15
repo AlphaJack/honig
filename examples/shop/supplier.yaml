@@ -1,0 +1,66 @@
+openapi: 3.2.0
+info: {title: XML, version: "1"}
+paths:
+  /books:
+    post:
+      operationId: addBook
+      requestBody:
+        required: true
+        content:
+          application/xml:
+            schema: {$ref: '#/components/schemas/Book'}
+      responses:
+        "201":
+          description: Created.
+          content:
+            application/xml:
+              schema: {$ref: '#/components/schemas/Book'}
+            application/json:
+              schema: {$ref: '#/components/schemas/Book'}
+components:
+  schemas:
+    Book:
+      type: object
+      xml: {name: book, namespace: 'https://example.com/books', prefix: bk}
+      required: [id, title, authors]
+      properties:
+        id: {type: integer, xml: {attribute: true}}
+        lang: {type: string, xml: {nodeType: attribute}}
+        title: {type: string}
+        subtitle: {type: [string, 'null']}
+        authors:
+          type: array
+          xml: {wrapped: true}
+          items: {$ref: '#/components/schemas/Author'}
+        tags:
+          type: array
+          items: {type: string, xml: {name: tag}}
+        price: {$ref: '#/components/schemas/Price'}
+        sequel: {$ref: '#/components/schemas/Book'}
+        blurb: {$ref: '#/components/schemas/Blurb'}
+        meta: {$ref: '#/components/schemas/Meta', xml: {nodeType: none}}
+    Author:
+      type: object
+      xml: {name: author}
+      required: [name]
+      properties:
+        name: {type: string}
+        born: {type: integer}
+    Price:
+      type: object
+      required: [amount]
+      properties:
+        currency: {type: string, xml: {attribute: true}}
+        amount: {type: string, xml: {nodeType: text}}
+    Blurb:
+      type: object
+      required: [text]
+      properties:
+        format: {type: string, xml: {attribute: true}}
+        text: {type: string, xml: {nodeType: cdata}}
+    Meta:
+      type: object
+      required: [isbn]
+      properties:
+        isbn: {type: string}
+        pages: {type: integer}

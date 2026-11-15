@@ -1,0 +1,230 @@
+openapi: 3.2.0
+info: {title: Validation, version: "1"}
+paths:
+  /users:
+    post:
+      operationId: createUser
+      parameters:
+        - {name: limit, in: query, schema: {type: integer, minimum: 1, maximum: 100}}
+        - {name: X-Team, in: header, schema: {type: string, pattern: '^[a-z]+$'}}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/User'}
+      responses:
+        "201":
+          description: Created.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/User'}
+        # A closed schema with a closed `code` list: the runtime cannot fill it, a handler's typed error can.
+        "4XX":
+          description: Refused.
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/Problem'}
+  /shipments:
+    post:
+      operationId: createShipment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/Shipment'}
+      responses:
+        "201":
+          description: Created.
+        # A schema the runtime can fill, with a `const` (Vaultwarden's error body). It is the API's most common one,
+        # and still not what `createUser` refuses in.
+        "400":
+          description: Refused.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Refusal'}
+  /logins:
+    post:
+      operationId: login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/Login'}
+      responses:
+        "201":
+          description: Created.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Login'}
+  # Several media types: the body is an enum, and each variant is checked.
+  /members:
+    post:
+      operationId: addMember
+      requestBody:
+        required: true
+        content:
+          application/json: {schema: {$ref: '#/components/schemas/User'}}
+          application/x-www-form-urlencoded: {schema: {$ref: '#/components/schemas/User'}}
+      responses:
+        "201":
+          description: Created.
+  /badges:
+    post:
+      operationId: addBadge
+      requestBody:
+        content:
+          application/json: {schema: {$ref: '#/components/schemas/Badge'}}
+          application/x-www-form-urlencoded: {schema: {$ref: '#/components/schemas/Badge'}}
+      responses:
+        "201":
+          description: Created.
+components:
+  schemas:
+    # Branches told apart only by the type of a field after a recursive one. Each branch that cannot fit is skipped
+    # before its nested trees are decoded: tried in turn, decoding took twice as long per level. The check of
+    # `oneOf` follows the recursion through `$defs`: inlined, it doubled the generated code per level.
+    Tree:
+      oneOf:
+        - type: object
+          required: [items, x]
+          properties:
+            items: {type: array, items: {$ref: '#/components/schemas/Tree'}}
+            x: {type: string}
+        - type: object
+          required: [items, x]
+          properties:
+            items: {type: array, items: {$ref: '#/components/schemas/Tree'}}
+            x: {type: integer}
+    # A list of `allOf` items with a nullable property nine levels down (Vaultwarden's `Sync.ciphers`). Both members
+    # declare `lines`: one merged struct would keep one of them, so the item is checked whole at run time, and every
+    # keyword is still there after the references are inlined.
+    Ledger:
+      type: object
+      properties:
+        entries: {type: array, items: {$ref: '#/components/schemas/Entry'}}
+    Entry:
+      allOf:
+        - $ref: '#/components/schemas/EntryFields'
+        - type: object
+          properties:
+            id: {type: integer}
+            lines: {maxItems: 2}
+    EntryFields:
+      type: object
+      properties:
+        lines: {type: array, items: {$ref: '#/components/schemas/Line'}}
+    Line:
+      type: object
+      properties:
+        note: {type: [string, 'null'], maxLength: 3}
+    Refusal:
+      type: object
+      required: [message, object]
+      properties:
+        message: {type: string}
+        object: {type: string, const: error}
+    Problem:
+      type: object
+      additionalProperties: false
+      required: [code, status, detail]
+      properties:
+        code: {type: string, enum: [INVALID, TAKEN]}
+        status: {type: integer, format: int32}
+        detail: {type: string}
+    # No property allowed: only `{}` is valid (Oxide's `SubnetCreateDefaults`).
+    NoOptions:
+      type: object
+      additionalProperties: false
+    # Untyped keywords (`contains`) with a required `readOnly` id a request leaves out.
+    Badge:
+      type: object
+      required: [id, label, holders]
+      properties:
+        id: {type: integer, readOnly: true}
+        label: {type: string, maxLength: 5}
+        holders: {type: array, items: {type: string}, contains: {const: owner}}
+    Login:
+      type: object
+      required: [user, password, token]
+      properties:
+        user: {type: string}
+        password: {type: string, writeOnly: true, minLength: 8}
+        token: {type: string, readOnly: true}
+    Shipment:
+      type: object
+      required: [kind, parcels]
+      properties:
+        kind: {type: string, enum: [domestic, international]}
+        customs: {type: string}
+        insured: {type: boolean}
+        insurer: {type: string}
+        options: {$ref: '#/components/schemas/NoOptions'}
+        # No `type`: `minimum` still holds for a number.
+        rating: {minimum: 1}
+        # No `type`: the properties hold for an object, and any other value is valid.
+        meta: {properties: {count: {type: integer}}}
+        # A default its own schema refuses is not filled in: leaving the field out stays valid.
+        label: {type: string, minLength: 4, default: bad}
+        parcels:
+          type: array
+          items: {type: object, properties: {fragile: {type: boolean}}}
+          contains: {properties: {fragile: {const: true}}, required: [fragile]}
+          maxContains: 2
+        scores:
+          type: object
+          patternProperties: {'^[a-z]+$': {type: integer, minimum: 0}}
+          additionalProperties: false
+        # Optional and nullable, with bounds (OpenAI's `temperature`): its sample keeps to them.
+        priority: {type: [number, 'null'], minimum: 0, maximum: 2}
+        weight: {type: [integer, 'null'], minimum: 256}
+        labels:
+          type: object
+          propertyNames: {pattern: '^[a-z]+$'}
+          patternProperties:
+            '^x': {type: string, maxLength: 3}
+          additionalProperties: {type: string}
+      dependentRequired:
+        insured: [insurer]
+      if: {properties: {kind: {const: international}}}
+      then: {required: [customs]}
+      not: {required: [customs, insurer], properties: {customs: {const: "none"}}}
+
+    Price:
+      type: object
+      properties:
+        # A multiple a binary float cannot hold exactly: 0.07 / 0.01 is 7.000000000000001.
+        amount: {type: number, multipleOf: 0.01}
+        # `null` alone: the only value it allows (Bitwarden's `signatureKeyPair` of a legacy account).
+        retired: {type: 'null'}
+
+    User:
+      type: object
+      required: [name, role]
+      properties:
+        name: {type: string, minLength: 2, maxLength: 10, pattern: '^\p{Lu}'}
+        # A pattern that backtracks: past `maxLength` it does not run.
+        handle: {type: string, maxLength: 20, pattern: '^(a+)+$'}
+        age: {type: integer, minimum: 0, exclusiveMaximum: 150}
+        score: {type: number, multipleOf: 0.5}
+        tags:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items: {type: string, maxLength: 3}
+        role: {type: string, enum: [admin, user]}
+        email: {type: string, format: email}
+        site: {type: string, format: idn-hostname}
+        meta:
+          type: object
+          maxProperties: 2
+          additionalProperties: {type: string}
+        # The bounds of a branch hold for the value that it takes: a loyalty level or a tier code.
+        loyalty:
+          oneOf:
+            - {type: integer, minimum: 1, maximum: 10}
+            - {type: string, maxLength: 3}
+        # The bounds of the one branch beside `null` hold too.
+        note:
+          anyOf:
+            - {type: string, maxLength: 5}
+            - {type: 'null'}

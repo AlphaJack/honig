@@ -1,0 +1,23 @@
+openapi: 3.2.0
+info: {title: Uploads, version: "1"}
+paths:
+  /files/{name}:
+    put:
+      operationId: putFile
+      parameters:
+        - {name: name, in: path, required: true, schema: {type: string}}
+      requestBody:
+        description: Reaches the handler as it arrives, never held whole.
+        required: true
+        content:
+          application/octet-stream:
+            schema: {type: string, format: binary}
+      responses:
+        '200':
+          description: What arrived.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [bytes, chunks]
+                properties: {bytes: {type: integer}, chunks: {type: integer}}

@@ -1,0 +1,216 @@
+openapi: 3.0.3
+info:
+  title: Edge cases
+  version: "1"
+  description: >
+    The shapes production APIs actually use, for comparing generators:
+    nullable vs optional, unions with and without discriminators, status
+    ranges and default responses, AND/OR security, readOnly/writeOnly,
+    maps, int64 beyond 2^53, dates, explode:false arrays, response headers.
+servers:
+  - url: http://localhost:8080
+security:
+  - bearer: []
+  - apiKey: []
+    tenant: []
+paths:
+  /orders:
+    get:
+      operationId: listOrders
+      parameters:
+        - name: status
+          in: query
+          style: form
+          explode: false
+          schema: {type: array, items: {$ref: '#/components/schemas/Status'}}
+        - name: createdAfter
+          in: query
+          schema: {type: string, format: date-time}
+        - name: limit
+          in: query
+          schema: {type: integer, format: int32, minimum: 1, maximum: 100, default: 20}
+        - name: sort
+          in: query
+          schema: {type: string, enum: [newest, oldest], default: newest}
+        - name: cursor
+          in: query
+          schema: {type: string, pattern: '^[A-Za-z0-9_-]+$'}
+      responses:
+        '200':
+          description: A page of orders.
+          headers:
+            X-Next-Cursor:
+              schema: {type: string}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/OrderPage'}
+        4XX:
+          $ref: '#/components/responses/Problem'
+    post:
+      operationId: createOrder
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/Order'}
+      responses:
+        '201':
+          description: Created.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Order'}
+        '422':
+          description: Invalid order.
+          content:
+            application/problem+json:
+              schema: {$ref: '#/components/schemas/Problem'}
+        default:
+          $ref: '#/components/responses/Problem'
+  /orders/{orderId}:
+    get:
+      operationId: getOrder
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: The order.
+          headers:
+            X-Request-Id:
+              required: true
+              schema: {type: string}
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Order'}
+          links:
+            Reorder:
+              operationId: createOrder
+              description: Place the same order again.
+              requestBody: '$response.body'
+        '404':
+          $ref: '#/components/responses/Problem'
+        default:
+          $ref: '#/components/responses/Problem'
+  /orders/{orderId}/documents:
+    post:
+      operationId: uploadDocument
+      parameters:
+        - name: orderId
+          in: path
+          required: true
+          schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file, kind]
+              properties:
+                file: {type: string, format: binary}
+                kind: {type: string, enum: [invoice, contract]}
+      responses:
+        '204':
+          description: Stored.
+components:
+  securitySchemes:
+    bearer: {type: http, scheme: bearer}
+    apiKey: {type: apiKey, in: header, name: X-Api-Key}
+    tenant: {type: apiKey, in: header, name: X-Tenant}
+  responses:
+    Problem:
+      description: A problem.
+      content:
+        application/problem+json:
+          schema: {$ref: '#/components/schemas/Problem'}
+  schemas:
+    Status:
+      type: string
+      enum: [draft, confirmed, delivered]
+    Money:
+      type: object
+      required: [amountCents, currency]
+      properties:
+        amountCents: {type: integer, format: int64}
+        currency: {type: string, pattern: '^[A-Z]{3}$'}
+    Customer:
+      type: object
+      additionalProperties: true
+      required: [name]
+      properties:
+        name: {type: string, minLength: 1}
+        email: {type: string, nullable: true}
+    Card:
+      type: object
+      required: [last4]
+      properties:
+        last4: {type: string, minLength: 4, maxLength: 4}
+    Sepa:
+      type: object
+      required: [iban]
+      properties:
+        iban: {type: string}
+    Car:
+      type: object
+      required: [kind, seats]
+      properties:
+        kind: {type: string}
+        seats: {type: integer}
+    Van:
+      type: object
+      required: [kind, cargoLitres]
+      properties:
+        kind: {type: string}
+        cargoLitres: {type: integer}
+    Vehicle:
+      oneOf:
+        - {$ref: '#/components/schemas/Car'}
+        - {$ref: '#/components/schemas/Van'}
+      discriminator:
+        propertyName: kind
+        mapping:
+          car: '#/components/schemas/Car'
+          van: '#/components/schemas/Van'
+    Order:
+      type: object
+      required: [status, total, vehicle]
+      properties:
+        id: {type: string, format: uuid, readOnly: true}
+        status: {$ref: '#/components/schemas/Status'}
+        total: {$ref: '#/components/schemas/Money'}
+        customer:
+          nullable: true
+          allOf:
+            - {$ref: '#/components/schemas/Customer'}
+        notes: {type: string, nullable: true}
+        secret: {type: string, writeOnly: true}
+        createdAt: {type: string, format: date-time, readOnly: true}
+        labels:
+          type: object
+          additionalProperties: {type: string}
+        payment:
+          oneOf:
+            - {$ref: '#/components/schemas/Card'}
+            - {$ref: '#/components/schemas/Sepa'}
+        vehicle: {$ref: '#/components/schemas/Vehicle'}
+        # schemars writes `Option<T>` as this pair. The second branch takes any value, `null` too.
+        discount:
+          anyOf:
+            - {$ref: '#/components/schemas/Money'}
+            - {nullable: true}
+    OrderPage:
+      type: object
+      required: [items]
+      properties:
+        items: {type: array, items: {$ref: '#/components/schemas/Order'}}
+        total: {type: integer, format: int64}
+    Problem:
+      type: object
+      required: [title, status]
+      properties:
+        type: {type: string, default: 'about:blank'}
+        title: {type: string}
+        status: {type: integer}
+        detail: {type: string, nullable: true}

@@ -1,0 +1,97 @@
+openapi: 3.2.0
+info: {title: Routing, version: "1"}
+servers:
+  - url: https://api.example.com/api/{version}
+    variables:
+      version: {default: v1, enum: [v1, v2]}
+  # A spec path may start like the base path: `/orders/...` below.
+  - url: /orders
+paths:
+  /orders/search:
+    get:
+      operationId: searchOrders
+      responses:
+        "204": {description: Done.}
+  /orders/{id}:
+    post:
+      operationId: updateOrder
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      responses:
+        "204": {description: Done.}
+  "/status/@":
+    get:
+      operationId: statusAt
+      responses:
+        "204": {description: Done.}
+  /status/{key}:
+    get:
+      operationId: statusByKey
+      parameters:
+        - {name: key, in: path, required: true, schema: {type: string}}
+      responses:
+        "200":
+          description: The key.
+          content:
+            application/json:
+              schema: {type: string}
+  # A literal segment that dead-ends falls back to the variable beside it.
+  /files/latest/meta:
+    get:
+      operationId: latestMeta
+      responses:
+        "204": {description: Done.}
+  /files/{dir}/raw:
+    get:
+      operationId: fileRaw
+      parameters:
+        - {name: dir, in: path, required: true, schema: {type: string}}
+      responses:
+        "200":
+          description: The directory.
+          content:
+            application/json:
+              schema: {type: string}
+  # Text and variables in one segment.
+  /files/{name}.{ext}:
+    get:
+      operationId: fileExt
+      parameters:
+        - {name: name, in: path, required: true, schema: {type: string}}
+        - {name: ext, in: path, required: true, schema: {type: string}}
+      responses:
+        "200":
+          description: Name and extension.
+          content:
+            application/json:
+              schema: {type: string}
+  # Mixed siblings `{a}.json` and `{a}.{b}` both match `f.json`; the most
+  # specific template lives under the second: `y-{c}` beats `{c}`.
+  /m/{a}.json/x:
+    get:
+      operationId: mixLiteralTail
+      parameters:
+        - {name: a, in: path, required: true, schema: {type: string}}
+      responses:
+        "204": {description: Done.}
+  /m/{a}.{b}/y-{c}:
+    get:
+      operationId: mixMixedTail
+      parameters:
+        - {name: a, in: path, required: true, schema: {type: string}}
+        - {name: b, in: path, required: true, schema: {type: string}}
+        - {name: c, in: path, required: true, schema: {type: string}}
+      responses:
+        "200":
+          description: The captures.
+          content:
+            application/json:
+              schema: {type: string}
+  /m/{a}.json/{c}:
+    get:
+      operationId: mixVarTail
+      parameters:
+        - {name: a, in: path, required: true, schema: {type: string}}
+        - {name: c, in: path, required: true, schema: {type: string}}
+      responses:
+        "202": {description: Accepted.}

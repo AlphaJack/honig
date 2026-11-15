@@ -1,0 +1,53 @@
+openapi: 3.2.0
+info: {title: SSE items, version: "1"}
+paths:
+  /tiles/stream:
+    get:
+      operationId: tileStream
+      responses:
+        "200":
+          description: One event per tile update (utoipa style, no itemSchema).
+          content:
+            text/event-stream:
+              schema: {$ref: "#/components/schemas/TileEvent"}
+  /tiles/lines:
+    get:
+      operationId: tileLines
+      responses:
+        "200":
+          description: One line per tile update.
+          content:
+            application/jsonl:
+              schema: {$ref: "#/components/schemas/TileEvent"}
+  /tiles/updates:
+    get:
+      operationId: tileUpdates
+      responses:
+        "200":
+          description: >-
+            learn.openapis.org Sequential Media Types: an event with an `id` and an object `data`,
+            both optional. It is written field by field even when `id` is absent.
+          content:
+            text/event-stream:
+              itemSchema:
+                type: object
+                properties:
+                  id: {type: string}
+                  data: {type: object}
+  /chat/stream:
+    post:
+      operationId: chatStream
+      responses:
+        "200":
+          description: "Untyped events (utoipa `schema: {}`)."
+          content:
+            text/event-stream:
+              schema: {}
+components:
+  schemas:
+    TileEvent:
+      type: object
+      required: [tile, rows]
+      properties:
+        tile: {type: string}
+        rows: {type: integer}

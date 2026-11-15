@@ -1,0 +1,180 @@
+[package]
+name = "cargo-honig"
+description = "A cargo subcommand that generates a Rust client and server from an OpenAPI description."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+readme = "README.md"
+documentation = "https://alphajack.github.io/honig"
+keywords = ["openapi", "codegen", "swagger", "cargo-subcommand", "api"]
+categories = ["development-tools::cargo-plugins", "web-programming::http-server", "web-programming::http-client"]
+# What `cargo install` needs: the sources of the generator with its README and license.
+include = ["/src/**/*.rs", "!/src/tests.rs", "!/src/tests/**", "/src/config.toml", "/README.md", "/LICENSE", "/Cargo.toml"]
+
+[features]
+default = ["remote-refs", "overlays"]
+# Fetch `http(s)://` refs at generation time. Without it `cargo install --no-default-features` builds no HTTPS client.
+remote-refs = ["dep:ureq", "dep:rustls"]
+# Apply `overlays`. Their JSONPath engine brings a second `syn`.
+overlays = ["dep:serde_json_path"]
+
+[workspace]
+members = ["runtime", "tests/e2e", "tests/bench-support", "examples/shop"]
+exclude = ["reference", "target"]
+
+[workspace.package]
+# Generated code pins `honig = "=<version>"`: both crates share it.
+version = "0.0.1"
+edition = "2024"
+rust-version = "1.100"
+license = "Apache-2.0"
+repository = "https://github.com/AlphaJack/honig"
+homepage = "https://alphajack.github.io/honig"
+
+[lib]
+name = "cargo_honig"
+path = "src/lib.rs"
+
+[[bin]]
+name = "cargo-honig"
+path = "src/main.rs"
+
+[dependencies]
+indexmap = { version = "2", features = ["serde"] }
+# What generated code and the generator must agree on: status phrases, percent escapes, the `multipleOf` tolerance.
+# Released together at one version: release-plz bumps the pin with it. `regress`: checking an example against its
+# schema checks its `pattern` too.
+runtime = { package = "honig", version = "=0.0.1", path = "runtime", features = ["regress"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = { version = "1", features = ["preserve_order"] }
+serde_path_to_error = "0.1"
+syn = { version = "3", default-features = false, features = ["full", "parsing", "printing", "visit-mut"] }
+prettyplease = "0.3"
+# The engine generated code uses: a `pattern` it cannot compile is reported.
+regress = "0.12"
+proc-macro2 = { version = "1", default-features = false }
+quote = { version = "1", default-features = false }
+serde-saphyr = { version = "2", default-features = false, features = ["deserialize", "serialize"] }
+toml_edit = "0.25"
+# HTTPS checks certificates against the store of the OS (`platform-verifier`). There are no bundled roots.
+ureq = { version = "3", optional = true, default-features = false, features = ["rustls-no-provider", "platform-verifier"] }
+rustls = { version = "0.23", optional = true, default-features = false, features = ["ring", "std", "tls12"] }
+serde_json_path = { version = "0.7", optional = true }
+clap = { version = "4", features = ["derive"] }
+cargo_metadata = "0.23.1"
+
+[[bench]]
+name = "scaling"
+harness = false
+
+# `cargo binstall cargo-honig` downloads the archive dist built for the release.
+[package.metadata.binstall]
+pkg-url = "{ repo }/releases/download/v{ version }/{ name }-{ target }{ archive-suffix }"
+bin-dir = "{ name }-{ target }/{ bin }{ binary-ext }"
+pkg-fmt = "txz"
+
+[package.metadata.binstall.overrides.x86_64-pc-windows-msvc]
+pkg-fmt = "zip"
+bin-dir = "{ bin }{ binary-ext }"
+
+[package.metadata.binstall.overrides.aarch64-pc-windows-msvc]
+pkg-fmt = "zip"
+bin-dir = "{ bin }{ binary-ext }"
+
+[dev-dependencies]
+anyhow = "1"
+# `benches/scaling.rs`: the callgrind check that the runtime's benches run too.
+bench-support = { path = "tests/bench-support" }
+# `src/tests/fuzz.rs`: random APIs. A failure shrinks to the smallest API that fails.
+proptest = { version = "1", default-features = false, features = ["std"] }
+# `tests/conventions`: where each item is. A failure names it.
+proc-macro2 = { version = "1", features = ["span-locations"] }
+syn = { version = "3", features = ["full", "visit"] }
+
+[profile.dev.package."*"]
+opt-level = 1
+
+# The binaries dist builds for a release.
+[profile.dist]
+inherits = "release"
+lto = "thin"
+strip = true
+
+[lints]
+workspace = true
+
+[workspace.lints.rust]
+unsafe_code = "deny"
+unsafe_op_in_unsafe_fn = "deny"
+unfulfilled_lint_expectations = "deny"
+rust_2018_idioms = { level = "warn", priority = -1 }
+unreachable_pub = "warn"
+unused_qualifications = "warn"
+trivial_casts = "warn"
+trivial_numeric_casts = "warn"
+missing_docs = "warn"
+missing_debug_implementations = "warn"
+
+[workspace.lints.cargo]
+# A dependency no target uses fails the build.
+unused_dependencies = "deny"
+
+[workspace.lints.rustdoc]
+broken_intra_doc_links = "deny"
+private_intra_doc_links = "deny"
+invalid_html_tags = "deny"
+bare_urls = "deny"
+redundant_explicit_links = "deny"
+
+[workspace.lints.clippy]
+pedantic = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }
+# Nursery lints that fight this code base's choices.
+# `pub(crate)` marks what other modules use. This is true inside a private module too.
+redundant_pub_crate = "allow"
+# Each `const fn` is a promise to callers. Here it gives nothing.
+missing_const_for_fn = "allow"
+# `map_or_else` chains read worse than `if let`.
+option_if_let_else = "allow"
+# It flags guards held on purpose across the work they protect.
+significant_drop_tightening = "allow"
+# Generated clients run on wasm32. There futures are not `Send`.
+future_not_send = "allow"
+redundant_clone = "warn"
+needless_collect = "warn"
+str_to_string = "warn"
+equatable_if_let = "warn"
+branches_sharing_code = "warn"
+map_err_ignore = "warn"
+allow_attributes_without_reason = "deny"
+allow_attributes = "deny"
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+todo = "deny"
+unimplemented = "deny"
+unreachable = "deny"
+dbg_macro = "deny"
+let_underscore_must_use = "deny"
+wildcard_enum_match_arm = "warn"
+string_slice = "warn"
+ref_option = "deny"
+manual_let_else = "deny"
+needless_for_each = "deny"
+return_self_not_must_use = "deny"
+must_use_candidate = "allow"
+# `write!` to a String returns a Result that every call would have to discard.
+format_push_string = "allow"
+format_collect = "allow"
+# A module with children is `foo.rs` next to `foo/`. It is never `foo/mod.rs`.
+mod_module_files = "deny"
+similar_names = "allow"
+# Options mirror the switches of `[package.metadata.honig]`.
+struct_excessive_bools = "allow"
+# Matches on booleans read as tables of cases.
+match_bool = "allow"
+single_match_else = "allow"
+missing_errors_doc = "allow"
+module_name_repetitions = "allow"

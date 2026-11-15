@@ -1,0 +1,29 @@
+openapi: 3.2.0
+info: {title: Scopes, version: "1"}
+components:
+  securitySchemes:
+    pat:
+      type: http
+      scheme: bearer
+      description: Fine-grained personal access token.
+paths:
+  /issues:
+    get:
+      operationId: listIssues
+      # Either permission is enough (OR).
+      security:
+        - pat: ["issues:read"]
+        - pat: ["issues:write"]
+      responses:
+        "204": {description: Listed.}
+    post:
+      operationId: createIssue
+      security:
+        - pat: ["issues:write"]
+      responses:
+        "204": {description: Created.}
+  /public:
+    get:
+      operationId: open
+      responses:
+        "204": {description: Open.}

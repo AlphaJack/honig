@@ -1,0 +1,34 @@
+name: PR title
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, synchronize]
+
+permissions:
+  pull-requests: read
+
+jobs:
+  conventional:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check conventional PR title
+        uses: amannn/action-semantic-pull-request@2252a14e810aa9b85c2d560bd7070c802206ecf6 # v6.1.2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat
+            fix
+            perf
+            refactor
+            docs
+            test
+            chore
+          scopes: |
+            cli
+            codegen
+            runtime
+          # An imperative verb first: not an article, not "adds", "added" or "adding".
+          subjectPattern: ^(?!(?:a|an|the|this|that|each|every|all|no|one)\s)(?![a-z]*[^su]s\s)(?![a-z]{3,}ing\s)(?![a-z]+[^eb]ed\s)[a-z]+\s.+$
+          subjectPatternError: |
+            The subject "{subject}" must start with a lowercase imperative verb, such as "add typed links".

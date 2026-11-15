@@ -1,0 +1,87 @@
+# OpenAPI 3.2 section 4.12.6 "Style Examples": one operation per row and value type
+# of the table, each with one parameter named `color`. `styles.rs` checks the
+# generated client writes exactly the spec's serialization and the generated
+# server reads it back.
+openapi: 3.2.0
+info: {title: Styles, version: "1"}
+components:
+  schemas:
+    Str: {type: string}
+    Arr: {type: array, items: {type: string}}
+    Obj:
+      type: object
+      properties: {R: {type: integer}, G: {type: integer}, B: {type: integer}}
+      required: [R, G, B]
+  responses:
+    Done: {description: Done.}
+paths:
+  # path: matrix, label, simple
+  /matrix-f-s/{color}:
+    get: {operationId: matrixFS, parameters: [{name: color, in: path, required: true, style: matrix, explode: false, schema: {$ref: "#/components/schemas/Str"}}], responses: {"204": {$ref: "#/components/responses/Done"}}}
+  /matrix-f-a/{color}:
+    get: {operationId: matrixFA, parameters: [{name: color, in: path, required: true, style: matrix, explode: false, schema: {$ref: "#/components/schemas/Arr"}}], responses: {"204": {$ref: "#/components/responses/Done"}}}
+  /matrix-f-o/{color}:
+    get: {operationId: matrixFO, parameters: [{name: color, in: path, required: true, style: matrix, explode: false, schema: {$ref: "#/components/schemas/Obj"}}], responses: {"204": {$ref: "#/components/responses/Done"}}}
+  /matrix-t-a/{color}:
+    get: {operationId: matrixTA, parameters: [{name: color, in: path, required: true, style: matrix, explode: true, schema: {$ref: "#/components/schemas/Arr"}}], responses: {"204": {$ref: "#/components/responses/Done"}}}
+  /matrix-t-o/{color}:
+    get: {operationId: matrixTO, parameters: [{name: color, in: path, required: true, style: matrix, explode: true, schema: {$ref: "#/components/schemas/Obj"}}], responses: {"204": {$ref: "#/components/responses/Done"}}}
+  /label-f-s/{color}:
+    get: {operationId: labelFS, parameters: [{name: color, in: path, required: true, style: label, explode: false, schema: {$ref: "#/components/schemas/Str"}}], responses: {"204": {$ref: "#/components/responses/Done"}}}
+  /label-f-a/{color}:
+    get: {operationId: labelFA, parameters: [{name: color, in: path, required: true, style: label, explode: false, schema: {$ref: "#/components/schemas/Arr"}}], responses: {"204": {$ref: "#/components/responses/Done"}}}
+  /label-f-o/{color}:
+    get: {operationId: labelFO, parameters: [{name: color, in: path, required: true, style: label, explode: false, schema: {$ref: "#/components/schemas/Obj"}}], responses: {"204": {$ref: "#/components/responses/Done"}}}
+  /label-t-a/{color}:
+    get: {operationId: labelTA, parameters: [{name: color, in: path, required: true, style: label, explode: true, schema: {$ref: "#/components/schemas/Arr"}}], responses: {"204": {$ref: "#/components/responses/Done"}}}
+  /label-t-o/{color}:
+    get: {operationId: labelTO, parameters: [{name: color, in: path, required: true, style: label, explode: true, schema: {$ref: "#/components/schemas/Obj"}}], responses: {"204": {$ref: "#/components/responses/Done"}}}
+  /simple-f-a/{color}:
+    get: {operationId: simpleFA, parameters: [{name: color, in: path, required: true, style: simple, explode: false, schema: {$ref: "#/components/schemas/Arr"}}], responses: {"204": {$ref: "#/components/responses/Done"}}}
+  /simple-f-o/{color}:
+    get: {operationId: simpleFO, parameters: [{name: color, in: path, required: true, style: simple, explode: false, schema: {$ref: "#/components/schemas/Obj"}}], responses: {"204": {$ref: "#/components/responses/Done"}}}
+  /simple-t-a/{color}:
+    get: {operationId: simpleTA, parameters: [{name: color, in: path, required: true, style: simple, explode: true, schema: {$ref: "#/components/schemas/Arr"}}], responses: {"204": {$ref: "#/components/responses/Done"}}}
+  /simple-t-o/{color}:
+    get: {operationId: simpleTO, parameters: [{name: color, in: path, required: true, style: simple, explode: true, schema: {$ref: "#/components/schemas/Obj"}}], responses: {"204": {$ref: "#/components/responses/Done"}}}
+  # query: form, spaceDelimited, pipeDelimited, deepObject
+  /form-f-a:
+    get: {operationId: formFA, parameters: [{name: color, in: query, required: true, style: form, explode: false, schema: {$ref: "#/components/schemas/Arr"}}], responses: {"204": {$ref: "#/components/responses/Done"}}}
+  /form-f-o:
+    get: {operationId: formFO, parameters: [{name: color, in: query, required: true, style: form, explode: false, schema: {$ref: "#/components/schemas/Obj"}}], responses: {"204": {$ref: "#/components/responses/Done"}}}
+  /form-t-a:
+    get: {operationId: formTA, parameters: [{name: color, in: query, required: true, style: form, explode: true, schema: {$ref: "#/components/schemas/Arr"}}], responses: {"204": {$ref: "#/components/responses/Done"}}}
+  /form-t-o:
+    get: {operationId: formTO, parameters: [{name: color, in: query, required: true, style: form, explode: true, schema: {$ref: "#/components/schemas/Obj"}}], responses: {"204": {$ref: "#/components/responses/Done"}}}
+  /space-f-a:
+    get: {operationId: spaceFA, parameters: [{name: color, in: query, required: true, style: spaceDelimited, explode: false, schema: {$ref: "#/components/schemas/Arr"}}], responses: {"204": {$ref: "#/components/responses/Done"}}}
+  /space-f-o:
+    get: {operationId: spaceFO, parameters: [{name: color, in: query, required: true, style: spaceDelimited, explode: false, schema: {$ref: "#/components/schemas/Obj"}}], responses: {"204": {$ref: "#/components/responses/Done"}}}
+  /pipe-f-a:
+    get: {operationId: pipeFA, parameters: [{name: color, in: query, required: true, style: pipeDelimited, explode: false, schema: {$ref: "#/components/schemas/Arr"}}], responses: {"204": {$ref: "#/components/responses/Done"}}}
+  /pipe-f-o:
+    get: {operationId: pipeFO, parameters: [{name: color, in: query, required: true, style: pipeDelimited, explode: false, schema: {$ref: "#/components/schemas/Obj"}}], responses: {"204": {$ref: "#/components/responses/Done"}}}
+  /deep-o:
+    get: {operationId: deepO, parameters: [{name: color, in: query, required: true, style: deepObject, explode: true, schema: {$ref: "#/components/schemas/Obj"}}], responses: {"204": {$ref: "#/components/responses/Done"}}}
+  # header: simple
+  /header-f-a:
+    get: {operationId: headerFA, parameters: [{name: color, in: header, required: true, style: simple, explode: false, schema: {$ref: "#/components/schemas/Arr"}}], responses: {"204": {$ref: "#/components/responses/Done"}}}
+  /header-f-o:
+    get: {operationId: headerFO, parameters: [{name: color, in: header, required: true, style: simple, explode: false, schema: {$ref: "#/components/schemas/Obj"}}], responses: {"204": {$ref: "#/components/responses/Done"}}}
+  /header-t-a:
+    get: {operationId: headerTA, parameters: [{name: color, in: header, required: true, style: simple, explode: true, schema: {$ref: "#/components/schemas/Arr"}}], responses: {"204": {$ref: "#/components/responses/Done"}}}
+  /header-t-o:
+    get: {operationId: headerTO, parameters: [{name: color, in: header, required: true, style: simple, explode: true, schema: {$ref: "#/components/schemas/Obj"}}], responses: {"204": {$ref: "#/components/responses/Done"}}}
+  # cookie: form (explode false) and 3.2 cookie
+  /cookie-form-f-a:
+    get: {operationId: cookieFormFA, parameters: [{name: color, in: cookie, required: true, style: form, explode: false, schema: {$ref: "#/components/schemas/Arr"}}], responses: {"204": {$ref: "#/components/responses/Done"}}}
+  /cookie-form-f-o:
+    get: {operationId: cookieFormFO, parameters: [{name: color, in: cookie, required: true, style: form, explode: false, schema: {$ref: "#/components/schemas/Obj"}}], responses: {"204": {$ref: "#/components/responses/Done"}}}
+  /cookie-f-a:
+    get: {operationId: cookieFA, parameters: [{name: color, in: cookie, required: true, style: cookie, explode: false, schema: {$ref: "#/components/schemas/Arr"}}], responses: {"204": {$ref: "#/components/responses/Done"}}}
+  /cookie-f-o:
+    get: {operationId: cookieFO, parameters: [{name: color, in: cookie, required: true, style: cookie, explode: false, schema: {$ref: "#/components/schemas/Obj"}}], responses: {"204": {$ref: "#/components/responses/Done"}}}
+  /cookie-t-a:
+    get: {operationId: cookieTA, parameters: [{name: color, in: cookie, required: true, style: cookie, explode: true, schema: {$ref: "#/components/schemas/Arr"}}], responses: {"204": {$ref: "#/components/responses/Done"}}}
+  /cookie-t-o:
+    get: {operationId: cookieTO, parameters: [{name: color, in: cookie, required: true, style: cookie, explode: true, schema: {$ref: "#/components/schemas/Obj"}}], responses: {"204": {$ref: "#/components/responses/Done"}}}

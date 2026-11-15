@@ -1,0 +1,62 @@
+[workspace]
+git_only = true
+git_tag_enable = false
+git_release_enable = false
+changelog_update = false
+# The library's API: a breaking change bumps the version accordingly.
+semver_check = true
+# Chores and docs alone open no release PR.
+release_commits = "^(feat|fix|perf)"
+# The default title has a scope that pr-title.yml rejects.
+pr_name = "chore: release v{{ version }}"
+# crates.yml publishes once dist has built every target.
+publish = false
+
+# Generated code pins the runtime to the generator's own version: they are released together.
+[[package]]
+name = "cargo-honig"
+version_group = "honig"
+git_tag_enable = true
+git_tag_name = "v{{ version }}"
+git_release_enable = true
+git_release_name = "v{{ version }}"
+# dist uploads the binaries to the draft and then publishes it.
+git_release_draft = true
+changelog_update = true
+changelog_path = "CHANGELOG.md"
+changelog_include = ["honig"]
+
+[[package]]
+name = "honig"
+version_group = "honig"
+
+[[package]]
+name = "e2e"
+release = false
+
+[[package]]
+name = "bench-support"
+release = false
+
+[changelog]
+header = """
+# Changelog
+
+"""
+body = """
+## [{{ version }}]{%- if release_link -%}({{ release_link }}){% endif %} - {{ timestamp | date(format="%Y-%m-%d") }}
+{% for group, commits in commits | group_by(attribute="group") %}
+### {{ group | upper_first }}
+{% for c in commits %}
+- {% if c.scope %}**{{ c.scope }}**: {% endif %}{% if c.breaking %}**breaking**: {% endif %}{{ c.message | upper_first }}
+{%- endfor %}
+{% endfor %}
+"""
+commit_parsers = [
+    { message = "^feat", group = "added" },
+    { message = "^fix", group = "fixed" },
+    { message = "^perf", group = "performance" },
+    # Users do not see other types unless they break something.
+    { message = "^[a-z]+(\\([^)]*\\))?!:", group = "changed" },
+    { message = ".*", skip = true },
+]

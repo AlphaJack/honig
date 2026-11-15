@@ -1,0 +1,109 @@
+//! A discriminated `oneOf` whose branches can all match one value. 3.2 says a discriminator "MUST NOT change the
+//! validation outcome": `oneOf` still means exactly one. Petstore-style `Cat` and `Dog` that share every property
+//! both match `{"petType": "cat", "name": "Tom"}`, and the value is invalid. A branch that pins the discriminating
+//! property with `const` (or a one-value `enum`) cannot match another branch's tag. A warning names the branches
+//! that do not.
+
+use serde_json::Value;
+
+use crate::diag::Diagnostics;
+use crate::json::{Doc, join};
+use crate::walk::{self, Obj, Visit};
+
+/// `$ref`s and `allOf` members followed to find a branch's tag. A cycle stops here.
+const MAX_DEPTH: usize = 16;
+
+/// Warns about each discriminated `oneOf` with a branch that does not pin its tag.
+pub(crate) fn check(doc: &Doc, diags: &mut Diagnostics) {
+    let mut found = Found { doc, out: vec![] };
+    walk::walk(&mut doc.root.clone(), &mut found);
+    for (ptr, message) in found.out {
+        diags.warning(&ptr, message);
+    }
+}
+
+struct Found<'a> {
+    doc: &'a Doc,
+    out: Vec<(String, String)>,
+}
+
+impl Found<'_> {
+    /// Returns whether the branch through `$ref`s and `allOf` members fixes `prop` to one value.
+    fn pins(&self, branch: &Value, prop: &str, depth: usize) -> bool {
+        if depth > MAX_DEPTH {
+            return false;
+        }
+        let branch = match branch.get("$ref").and_then(Value::as_str) {
+            Some(r) => match self.doc.get(r) {
+                Some(t) => t,
+                None => return false,
+            },
+            None => branch,
+        };
+        let own = branch.get("properties").and_then(|p| p.get(prop)).is_some_and(crate::json::fixes_one_value);
+        own || branch
+            .get("allOf")
+            .and_then(Value::as_array)
+            .is_some_and(|m| m.iter().any(|m| self.pins(m, prop, depth + 1)))
+    }
+}
+
+impl Visit for Found<'_> {
+    fn schema(&mut self, s: &mut Obj, ptr: &str) {
+        let Some(prop) = s.get("discriminator").and_then(|d| d.get("propertyName")).and_then(Value::as_str) else {
+            return;
+        };
+        let Some(branches) = s.get("oneOf").and_then(Value::as_array) else { return };
+        if branches.len() < 2 {
+            return;
+        }
+        let loose: Vec<String> = branches
+            .iter()
+            .enumerate()
+            .filter(|(_, b)| !self.pins(b, prop, 0))
+            .map(|(i, b)| b.get("$ref").and_then(Value::as_str).map_or_else(|| format!("#{i}"), String::from))
+            .collect();
+        if !loose.is_empty() {
+            self.out.push((
+                join(ptr, "oneOf"),
+                format!(
+                    "a value can match more than one branch: `{prop}` is not fixed with `const` in {}. `oneOf` needs \
+                     exactly one match and the discriminator does not change that (3.2), so such a value is refused",
+                    loose.join(", ")
+                ),
+            ));
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::json;
+
+    use super::*;
+
+    fn warnings(doc: Value) -> Vec<String> {
+        let mut d = Diagnostics::default();
+        check(&Doc::new(doc), &mut d);
+        d.iter().map(|x| x.message.clone()).collect()
+    }
+
+    #[test]
+    fn branches_that_do_not_pin_the_tag_are_named() {
+        let pet = |tag: Value| json!({"type": "object", "properties": {"petType": tag, "name": {"type": "string"}}});
+        let loose = json!({"openapi": "3.2.0", "components": {"schemas": {
+            "Pet": {"oneOf": [{"$ref": "#/components/schemas/Cat"}, {"$ref": "#/components/schemas/Dog"}],
+                    "discriminator": {"propertyName": "petType"}},
+            "Cat": pet(json!({"type": "string"})), "Dog": pet(json!({"const": "dog"}))
+        }}});
+        let w = warnings(loose);
+        assert_eq!(w.len(), 1, "{w:?}");
+        assert!(w[0].contains("#/components/schemas/Cat") && !w[0].contains("Dog"), "{w:?}");
+        let pinned = json!({"openapi": "3.2.0", "components": {"schemas": {
+            "Pet": {"oneOf": [{"$ref": "#/components/schemas/Cat"}, {"$ref": "#/components/schemas/Dog"}],
+                    "discriminator": {"propertyName": "petType"}},
+            "Cat": pet(json!({"enum": ["cat"]})), "Dog": pet(json!({"const": "dog"}))
+        }}});
+        assert_eq!(warnings(pinned), Vec::<String>::new());
+    }
+}

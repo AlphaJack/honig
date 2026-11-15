@@ -1,0 +1,106 @@
+//! The edge: every file the generator reads or writes goes through here. `clippy.toml` bans `std::fs` everywhere else.
+
+use std::path::Path;
+
+use crate::error::Error;
+
+/// Returns an I/O error on `path`.
+fn failed(path: &Path) -> impl Fn(std::io::Error) -> Error + '_ {
+    move |source| Error::Io { path: path.to_path_buf(), source }
+}
+
+/// Returns the text of the file at `path`.
+///
+/// # Errors
+/// The file cannot be read. The error has its path.
+#[expect(clippy::disallowed_methods, reason = "the edge reads files")]
+pub(crate) fn read(path: &Path) -> Result<String, Error> {
+    std::fs::read_to_string(path).map_err(failed(path))
+}
+
+/// Returns whether `path` is a file.
+#[expect(clippy::disallowed_methods, reason = "the edge reads files")]
+pub(crate) fn is_file(path: &Path) -> bool {
+    path.is_file()
+}
+
+/// Returns the files directly in `dir`, sorted by path.
+///
+/// # Errors
+/// The folder cannot be read. The error has its path.
+#[expect(clippy::disallowed_methods, reason = "the edge reads folders")]
+pub(crate) fn files_in(dir: &Path) -> Result<Vec<std::path::PathBuf>, Error> {
+    let mut out: Vec<_> = std::fs::read_dir(dir)
+        .map_err(failed(dir))?
+        .filter_map(Result::ok)
+        .map(|e| e.path())
+        .filter(|p| p.is_file())
+        .collect();
+    out.sort();
+    Ok(out)
+}
+
+/// Returns the folders directly in `dir`, sorted.
+///
+/// # Errors
+/// The folder cannot be read. The error has its path.
+#[expect(clippy::disallowed_methods, reason = "the edge reads folders")]
+pub(crate) fn dirs_in(dir: &Path) -> Result<Vec<std::path::PathBuf>, Error> {
+    let mut out: Vec<_> = std::fs::read_dir(dir)
+        .map_err(failed(dir))?
+        .filter_map(Result::ok)
+        .map(|e| e.path())
+        .filter(|p| p.is_dir())
+        .collect();
+    out.sort();
+    Ok(out)
+}
+
+/// Writes `text` to `path` and creates its folder.
+///
+/// # Errors
+/// The file or its folder cannot be written. The error has its path.
+#[expect(clippy::disallowed_methods, reason = "the edge writes files")]
+pub(crate) fn write(path: &Path, text: &str) -> Result<(), Error> {
+    if let Some(dir) = path.parent() {
+        std::fs::create_dir_all(dir).map_err(failed(path))?;
+    }
+    std::fs::write(path, text).map_err(failed(path))
+}
+
+/// Writes `files` named relative to `dir`. Removes the `.rs` files that an earlier run left in `dir`.
+///
+/// # Errors
+/// A file cannot be written or removed. The error has its path.
+#[expect(clippy::disallowed_methods, reason = "the edge writes files")]
+pub(crate) fn write_module(dir: &Path, files: &[(String, String)]) -> Result<(), Error> {
+    for (name, code) in files {
+        write(&dir.join(name), code)?;
+    }
+    let entries = std::fs::read_dir(dir).map_err(failed(dir))?;
+    for path in entries.filter_map(|e| Some(e.ok()?.path())) {
+        let name = path.file_name().and_then(|n| n.to_str()).unwrap_or_default();
+        if path.extension().is_some_and(|e| e == "rs") && !files.iter().any(|(f, _)| f == name) {
+            std::fs::remove_file(&path).map_err(failed(&path))?;
+        }
+    }
+    Ok(())
+}
+
+/// Returns `path` with links, `.` and `..` resolved. As given when it does not exist.
+#[expect(clippy::disallowed_methods, reason = "the edge asks the file system")]
+pub(crate) fn canonical(path: std::path::PathBuf) -> std::path::PathBuf {
+    std::fs::canonicalize(&path).unwrap_or(path)
+}
+
+/// Returns the workspace of the manifest at `path` as `cargo metadata --no-deps` resolves it.
+///
+/// # Errors
+/// Cargo cannot be run or rejects the manifest.
+pub(crate) fn cargo_metadata(path: &Path) -> Result<cargo_metadata::Metadata, Error> {
+    cargo_metadata::MetadataCommand::new()
+        .manifest_path(path)
+        .no_deps()
+        .exec()
+        .map_err(|e| Error::Metadata { path: path.to_path_buf(), problem: e.to_string() })
+}

@@ -1,0 +1,31 @@
+openapi: 3.1.0
+# What the 3.1 to 3.2 upgrade rewrites; everything else a 3.1 document can say is a v32 fixture.
+info: {title: Upgrade, version: "1"}
+tags:
+  - {name: files}
+  - {name: admin}
+x-tagGroups:
+  - {name: Storage, tags: [files]}
+paths:
+  /files/{path}:
+    get:
+      operationId: getFile
+      tags: [files]
+      parameters:
+        # Inactive outside the query in 3.1, so dropped: the path is percent-encoded.
+        - {name: path, in: path, required: true, allowReserved: true, schema: {type: string}}
+        # Kept: reserved characters go through as written.
+        - {name: filter, in: query, allowReserved: true, schema: {type: string}}
+        - {name: X-Trace, in: header, allowReserved: true, schema: {type: string}}
+      responses:
+        "200":
+          description: The file.
+          content:
+            application/json:
+              schema: {type: object, properties: {path: {type: string}, filter: {type: string}}}
+  /admin:
+    get:
+      operationId: admin
+      tags: [admin]
+      responses:
+        "204": {description: Done.}

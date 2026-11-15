@@ -1,0 +1,521 @@
+//! Hand-written checks for the `validation` fixture. They run against the module that `tests/regen.rs` keeps fresh.
+
+use std::assert_matches;
+use std::future::Future;
+
+use e2e::v32_validation::api::{self, operations as ops, types};
+use serde_json::json;
+
+/// A field that the handler adds to the wide event.
+const TENANT: api::EventKey = api::EventKey::new("tenant");
+
+struct Users;
+
+fn shipment(body: &serde_json::Value) -> api::Response {
+    let mut req = api::runtime::new_request("POST", "/shipments".to_owned(), vec![]).unwrap();
+    req.headers_mut()
+        .insert(honig::http::header::CONTENT_TYPE, honig::http::HeaderValue::from_static("application/json"));
+    *req.body_mut() = honig::Body::from(serde_json::to_vec(body).unwrap());
+    api::block_on(api::Server::new(Users).into_service().handle(req))
+}
+
+/// Paths of every violation in a 400 response.
+fn violations(r: &api::Response) -> Vec<String> {
+    let v: serde_json::Value = serde_json::from_slice(r.body().bytes()).unwrap_or_default();
+    v["violations"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .map(|x| format!("{} {}", x["path"].as_str().unwrap_or(""), x["message"].as_str().unwrap_or("")))
+        .collect()
+}
+
+#[test]
+fn untyped_keywords_pass_when_satisfied() {
+    let ok = shipment(
+        &json!({"kind":"domestic","parcels":[{"fragile":true},{"fragile":false}],"labels":{"xa":"ab","team":"core"}}),
+    );
+    assert_eq!(ok.status().as_u16(), 201, "{:?}", violations(&ok));
+}
+
+#[test]
+fn untyped_keywords_report_each_failure() {
+    let r = shipment(
+        &json!({"kind":"domestic","insured":true,"parcels":[{"fragile":false}],"labels":{"Bad":"x","xlong":"abcd"}}),
+    );
+    assert_eq!(r.status().as_u16(), 400);
+    let v = violations(&r).join("\n");
+    for expected in [
+        "/body/insurer is required when `insured` is present", // dependentRequired
+        "/body/parcels must contain at least 1 matching item(s), found 0", // contains
+        "/body/labels/Bad is not an allowed property name",    // propertyNames
+        "/body/labels/xlong at most 3 characters allowed, found 4", // patternProperties
+    ] {
+        assert!(v.contains(expected), "missing `{expected}` in:\n{v}");
+    }
+}
+
+/// `if kind == international then required: [customs]` is typed. `customs` is a
+/// `String` in the `International` variant. So a body without it does not decode.
+#[test]
+fn if_then_requirement_is_a_decode_error() {
+    let r = shipment(&json!({"kind": "international", "parcels": [{"fragile": true}]}));
+    assert_eq!(r.status().as_u16(), 400);
+    assert!(
+        String::from_utf8_lossy(r.body().bytes()).contains("customs"),
+        "{}",
+        String::from_utf8_lossy(r.body().bytes())
+    );
+}
+
+#[test]
+fn not_and_max_contains_reject() {
+    let r = shipment(
+        &json!({"kind":"domestic","customs":"none","insurer":"acme","parcels":[{"fragile":true},{"fragile":true},{"fragile":true}]}),
+    );
+    let v = violations(&r).join("\n");
+    assert!(v.contains("/body matches `not`"), "{v}");
+    assert!(v.contains("/body/parcels contains 3 matching items, more than allowed"), "{v}");
+}
+
+impl api::Api for Users {
+    type Principal = ();
+
+    fn login(
+        &self,
+        p: ops::login::Params,
+        _: &api::Context<'_>,
+    ) -> impl Future<Output = Result<ops::login::Response, api::ApiError>> + Send {
+        // The request type has the password and no token; the response type the reverse.
+        let types::LoginRequest { user, password: _ } = p.body;
+        let reply = types::Login { user, token: "t0k".to_owned() };
+        std::future::ready(Ok(ops::login::Response::Created(reply)))
+    }
+    fn create_shipment(
+        &self,
+        _: ops::create_shipment::Params,
+        _: &api::Context<'_>,
+    ) -> impl Future<Output = Result<ops::create_shipment::Response, api::ApiError>> + Send {
+        std::future::ready(Ok(ops::create_shipment::Response::Created))
+    }
+    fn create_user(
+        &self,
+        p: ops::create_user::Params,
+        _ctx: &api::Context<'_>,
+    ) -> impl Future<Output = Result<ops::create_user::Response, api::ApiError>> + Send {
+        std::future::ready(if p.body.name.as_str() == "Taken" {
+            let detail = "the name is taken".to_owned();
+            Err(types::Problem { code: types::ProblemCode::Taken, status: 409, detail }.into())
+        } else {
+            Ok(ops::create_user::Response::Created(Box::new(p.body)))
+        })
+    }
+    fn add_member(
+        &self,
+        _: ops::add_member::Params,
+        _: &api::Context<'_>,
+    ) -> impl Future<Output = Result<ops::add_member::Response, api::ApiError>> + Send {
+        std::future::ready(Ok(ops::add_member::Response::Created))
+    }
+    fn add_badge(
+        &self,
+        _: ops::add_badge::Params,
+        _: &api::Context<'_>,
+    ) -> impl Future<Output = Result<ops::add_badge::Response, api::ApiError>> + Send {
+        std::future::ready(Ok(ops::add_badge::Response::Created))
+    }
+}
+
+fn post(path: &str, media: &str, body: Vec<u8>) -> api::Response {
+    let mut req = api::runtime::new_request("POST", path.to_owned(), vec![]).unwrap();
+    req.headers_mut()
+        .insert(honig::http::header::CONTENT_TYPE, honig::http::HeaderValue::try_from(media.to_owned()).unwrap());
+    *req.body_mut() = honig::Body::from(body);
+    api::block_on(api::Server::new(Users).into_service().handle(req))
+}
+
+/// A body declared with several media types is checked whichever one arrives.
+#[test]
+fn every_media_type_of_a_body_is_validated() {
+    let ok = post("/members", "application/json", serde_json::to_vec(&json!({"name":"Ann","role":"admin"})).unwrap());
+    assert_eq!(ok.status().as_u16(), 201, "{}", String::from_utf8_lossy(ok.body().bytes()));
+    let json = post(
+        "/members",
+        "application/json",
+        serde_json::to_vec(&json!({"name":"Ann","role":"admin","age":150})).unwrap(),
+    );
+    assert_eq!(json.status().as_u16(), 400, "{}", String::from_utf8_lossy(json.body().bytes()));
+    assert!(violations(&json).join("\n").contains("/body/age"), "{:?}", violations(&json));
+    let form = post("/members", "application/x-www-form-urlencoded", b"name=Ann&role=admin&age=150".to_vec());
+    assert_eq!(form.status().as_u16(), 400, "{}", String::from_utf8_lossy(form.body().bytes()));
+    assert!(violations(&form).join("\n").contains("/body/age"), "{:?}", violations(&form));
+}
+
+/// Untyped keywords of a several-media-types body are checked too. The
+/// request leaves out the required `readOnly` id.
+#[test]
+fn untyped_keywords_of_a_body_enum_are_checked_without_read_only_fields() {
+    let body = |v: serde_json::Value| serde_json::to_vec(&v).unwrap();
+    let ok = post("/badges", "application/json", body(json!({"label":"gold","holders":["owner","ann"]})));
+    assert_eq!(ok.status().as_u16(), 201, "{:?}", violations(&ok));
+    let bad = post("/badges", "application/json", body(json!({"label":"gold","holders":["ann"]})));
+    assert_eq!(bad.status().as_u16(), 400, "{}", String::from_utf8_lossy(bad.body().bytes()));
+    let v = violations(&bad).join("\n");
+    assert!(v.contains("/body/holders must contain at least 1"), "{v}");
+    assert!(!v.contains("/body/id"), "a request has no readOnly id: {v}");
+}
+
+fn send(query: &str, team: &str, body: &serde_json::Value) -> api::Response {
+    let mut req = api::runtime::new_request("POST", "/users".to_owned(), vec![query.to_owned()]).unwrap();
+    req.headers_mut().append("x-team", honig::http::HeaderValue::try_from(team.to_owned()).unwrap());
+    req.headers_mut()
+        .insert(honig::http::header::CONTENT_TYPE, honig::http::HeaderValue::from_static("application/json"));
+    *req.body_mut() = honig::Body::from(serde_json::to_vec(body).unwrap());
+    api::block_on(api::Server::new(Users).into_service().handle(req))
+}
+
+#[test]
+fn valid_requests_reach_the_handler() {
+    let r = send("limit=5", "core", &json!({"name":"Ann","role":"admin","age":30,"score":4.5,"tags":["a","b"]}));
+    assert_eq!(r.status().as_u16(), 201, "{}", String::from_utf8_lossy(r.body().bytes()));
+}
+
+#[test]
+fn every_violation_is_reported_with_its_path() {
+    // `X-Team` and `name` have a `pattern`. They are checked types and valid here
+    // (see `pattern_fields_are_checked_types`).
+    let r = send(
+        "limit=0",
+        "core",
+        &json!({"name":"Ann","role":"root","age":150,"score":1.2,"tags":["abcd","x","x"],"meta":{"a":"1","b":"2","c":"3"}}),
+    );
+    assert_eq!(r.status().as_u16(), 400);
+    let v: serde_json::Value = serde_json::from_slice(r.body().bytes()).unwrap();
+    let paths: Vec<&str> = v["violations"].as_array().unwrap().iter().map(|x| x["path"].as_str().unwrap()).collect();
+    for want in ["/query/limit", "/body/age", "/body/score", "/body/tags", "/body/tags/0", "/body/role", "/body/meta"] {
+        assert!(paths.contains(&want), "missing {want} in {v:#}");
+    }
+}
+
+/// A string with a `pattern` is a type that only `TryFrom` (and decoding) builds.
+/// A bad value is refused where it is made. A request that carries one is a
+/// bad request and not a list of violations.
+#[test]
+fn pattern_fields_are_checked_types() {
+    assert_eq!(types::UserName::try_from("Ann").map(types::UserName::into_inner), Ok("Ann".to_owned()));
+    assert!(types::UserName::try_from("ann").is_err(), "must start with an uppercase letter");
+    assert!(types::UserName::try_from("A").is_err(), "at least 2 characters");
+    assert!(types::UserName::try_from("Abcdefghijk").is_err(), "at most 10 characters");
+    let name = types::UserName::try_from("Ann").unwrap();
+    assert_eq!(name.as_str(), "Ann", "reads as a `str`");
+    let r = send("limit=5", "core", &json!({"name": "ann", "role": "admin"}));
+    assert_eq!(r.status().as_u16(), 400);
+    assert!(
+        String::from_utf8_lossy(r.body().bytes()).contains("does not match"),
+        "{}",
+        String::from_utf8_lossy(r.body().bytes())
+    );
+    let r = send("limit=5", "Core1", &json!({"name": "Ann", "role": "admin"}));
+    assert_eq!(r.status().as_u16(), 400, "the X-Team header has a pattern too");
+}
+
+/// Records every wide event; the handler adds its own field.
+#[derive(Default)]
+struct Recording(std::sync::Mutex<Vec<serde_json::Map<String, serde_json::Value>>>);
+
+impl api::Api for Recording {
+    type Principal = ();
+
+    fn login(
+        &self,
+        p: ops::login::Params,
+        _: &api::Context<'_>,
+    ) -> impl Future<Output = Result<ops::login::Response, api::ApiError>> + Send {
+        let reply = types::Login { user: p.body.user, token: String::new() };
+        std::future::ready(Ok(ops::login::Response::Created(reply)))
+    }
+    fn create_shipment(
+        &self,
+        _: ops::create_shipment::Params,
+        _: &api::Context<'_>,
+    ) -> impl Future<Output = Result<ops::create_shipment::Response, api::ApiError>> + Send {
+        std::future::ready(Ok(ops::create_shipment::Response::Created))
+    }
+    fn create_user(
+        &self,
+        p: ops::create_user::Params,
+        ctx: &api::Context<'_>,
+    ) -> impl Future<Output = Result<ops::create_user::Response, api::ApiError>> + Send {
+        ctx.event.set(TENANT, "acme");
+        std::future::ready(Ok(ops::create_user::Response::Created(Box::new(p.body))))
+    }
+    fn add_member(
+        &self,
+        _: ops::add_member::Params,
+        _: &api::Context<'_>,
+    ) -> impl Future<Output = Result<ops::add_member::Response, api::ApiError>> + Send {
+        std::future::ready(Ok(ops::add_member::Response::Created))
+    }
+    fn add_badge(
+        &self,
+        _: ops::add_badge::Params,
+        _: &api::Context<'_>,
+    ) -> impl Future<Output = Result<ops::add_badge::Response, api::ApiError>> + Send {
+        std::future::ready(Ok(ops::add_badge::Response::Created))
+    }
+}
+
+#[test]
+fn one_wide_event_per_request() {
+    let api = std::sync::Arc::new(Recording::default());
+    let sink = std::sync::Arc::clone(&api);
+    let service = api::Server::new(std::sync::Arc::clone(&api))
+        .on_event(move |event| sink.0.lock().unwrap().push(event.fields()))
+        .into_service();
+    for body in [json!({"name": "Ann", "role": "user"}), json!({"name": "Ann", "role": "root", "age": 150})] {
+        let mut req = api::runtime::new_request("POST", "/users".to_owned(), vec![]).unwrap();
+        req.headers_mut()
+            .insert(honig::http::header::CONTENT_TYPE, honig::http::HeaderValue::from_static("application/json"));
+        *req.body_mut() = honig::Body::from(serde_json::to_vec(&body).unwrap());
+        api::block_on(service.handle(req));
+    }
+    let events = api.0.lock().unwrap();
+    assert_eq!(events.len(), 2);
+    let ok = &events[0];
+    assert_eq!(ok["operation"], "create_user");
+    assert_eq!(ok["route"], "/users");
+    assert_eq!(ok["status"], 201);
+    assert_eq!(ok["tenant"], "acme");
+    assert!(ok["duration_us"].is_u64() && ok["request_bytes"].as_u64() > Some(0));
+    let bad = &events[1];
+    assert_eq!(bad["status"], 400);
+    assert_eq!(bad["error"], "invalid");
+    assert_eq!(bad["violations"], 2);
+    assert!(bad.get("tenant").is_none(), "the handler must not run");
+}
+
+#[test]
+fn pattern_properties_type_their_values() {
+    let s: types::Shipment =
+        serde_json::from_value(json!({"kind":"domestic","parcels":[{"fragile":true}],"scores":{"speed":3}})).unwrap();
+    // `if kind == international then customs is required`: a domestic shipment is the `Otherwise` variant.
+    let types::Shipment::Otherwise(s) = s else { panic!("a domestic shipment") };
+    let scores: std::collections::BTreeMap<String, i64> = s.scores.expect("present");
+    assert_eq!(scores["speed"], 3);
+    let bad = shipment(&json!({"kind":"domestic","parcels":[{"fragile":true}],"scores":{"Speed":-1}}));
+    assert_eq!(bad.status().as_u16(), 400, "key pattern and value minimum are both checked");
+}
+
+#[test]
+fn an_object_that_allows_no_property_accepts_only_the_empty_object() {
+    assert!(serde_json::from_value::<types::NoOptions>(json!({})).is_ok());
+    assert!(serde_json::from_value::<types::NoOptions>(json!({"x": 1})).is_err());
+    assert!(serde_json::from_value::<types::NoOptions>(json!([])).is_err());
+}
+
+#[test]
+fn a_schema_without_type_still_checks_and_a_bad_default_is_not_filled_in() {
+    let base = json!({"kind":"domestic","parcels":[{"fragile":true}]});
+    assert_eq!(shipment(&base).status().as_u16(), 201, "no `label`: its bad default is not filled in");
+    let mut low = base.clone();
+    low["rating"] = json!(0);
+    assert_eq!(shipment(&low).status().as_u16(), 400, "`minimum: 1` holds for a number without `type`");
+    low["rating"] = json!("any text");
+    assert_eq!(shipment(&low).status().as_u16(), 201, "`minimum` says nothing about a string");
+}
+
+#[test]
+fn properties_without_type_hold_for_an_object_and_any_other_value_passes() {
+    let with = |meta: serde_json::Value| {
+        let body = json!({"kind": "domestic", "parcels": [{"fragile": true}], "meta": meta});
+        shipment(&body).status().as_u16()
+    };
+    assert_eq!(with(json!({"count": 2})), 201);
+    assert_eq!(with(json!("free text")), 201, "not an object: `properties` says nothing about it");
+    assert_eq!(with(json!({"count": "two"})), 400, "an object takes the properties");
+}
+
+#[test]
+fn the_bounds_of_a_union_branch_are_checked() {
+    let user = |extra: serde_json::Value| {
+        let mut body = json!({"name": "Ann", "role": "user"});
+        body.as_object_mut().unwrap().extend(extra.as_object().unwrap().clone());
+        violations(&send("limit=5", "core", &body))
+    };
+    assert!(user(json!({"loyalty": 4, "note": "fine"})).is_empty());
+    assert!(user(json!({"loyalty": "VIP", "note": null})).is_empty());
+    assert_eq!(user(json!({"loyalty": 11})), ["/body/loyalty 11 is greater than the maximum 10"]);
+    assert_eq!(user(json!({"loyalty": "GOLD"})), ["/body/loyalty at most 3 characters allowed, found 4"]);
+    assert_eq!(user(json!({"note": "too long"})), ["/body/note at most 5 characters allowed, found 8"]);
+}
+
+fn login(body: &serde_json::Value) -> api::Response {
+    let mut req = api::runtime::new_request("POST", "/logins".to_owned(), vec![]).unwrap();
+    req.headers_mut()
+        .insert(honig::http::header::CONTENT_TYPE, honig::http::HeaderValue::from_static("application/json"));
+    *req.body_mut() = honig::Body::from(serde_json::to_vec(body).unwrap());
+    api::block_on(api::Server::new(Users).into_service().handle(req))
+}
+
+#[test]
+fn required_write_only_property_is_required_in_requests() {
+    // `password` is a plain `String` in `LoginRequest`: a body without it does not decode.
+    let r = login(&json!({"user": "ann"}));
+    assert_eq!(r.status().as_u16(), 400, "{}", String::from_utf8_lossy(r.body().bytes()));
+    assert!(
+        String::from_utf8_lossy(r.body().bytes()).contains("password"),
+        "{}",
+        String::from_utf8_lossy(r.body().bytes())
+    );
+}
+
+#[test]
+fn write_only_constraints_still_apply_and_read_only_may_be_omitted() {
+    assert_eq!(login(&json!({"user": "ann", "password": "short"})).status().as_u16(), 400);
+    let r = login(&json!({"user": "ann", "password": "long enough"}));
+    assert_eq!(r.status().as_u16(), 201, "{}", String::from_utf8_lossy(r.body().bytes()));
+    let back: serde_json::Value = serde_json::from_slice(r.body().bytes()).unwrap();
+    assert_eq!(back, json!({"user": "ann", "token": "t0k"}));
+}
+
+#[test]
+fn a_lone_if_then_types_its_requirement() {
+    // `customs` is a `String` in the `International` variant: it cannot be left out.
+    let s: types::Shipment =
+        serde_json::from_value(json!({"kind": "international", "customs": "cn22", "parcels": [{"fragile": true}]}))
+            .unwrap();
+    assert_matches!(&s, types::Shipment::International(i) if i.customs == "cn22");
+}
+
+fn create_user(body: &serde_json::Value) -> api::Response {
+    let mut req = api::runtime::new_request("POST", "/users".to_owned(), vec![]).unwrap();
+    req.headers_mut()
+        .insert(honig::http::header::CONTENT_TYPE, honig::http::HeaderValue::from_static("application/json"));
+    *req.body_mut() = honig::Body::from(serde_json::to_vec(body).unwrap());
+    api::block_on(api::Server::new(Users).into_service().handle(req))
+}
+
+/// The own error type of the handler goes out as it is at its status.
+#[test]
+fn a_typed_error_is_sent_as_it_is() {
+    let r = create_user(&json!({"name": "Taken", "role": "user"}));
+    assert_eq!(
+        (r.status().as_u16(), r.headers().get("content-type").map_or("", |v| v.to_str().unwrap_or(""))),
+        (409, "application/problem+json")
+    );
+    let body: serde_json::Value = serde_json::from_slice(r.body().bytes()).unwrap();
+    assert_eq!(body, json!({"code": "TAKEN", "status": 409, "detail": "the name is taken"}));
+}
+
+/// `Problem` requires a `code` from a closed list and takes no other property. The runtime cannot fill it for a
+/// request that it refuses itself. So it answers RFC 9457 and not a body that breaks the schema. Nor does it borrow
+/// `Refusal`, which `createShipment` declares and the runtime can fill.
+#[test]
+fn an_unfillable_error_schema_falls_back_to_rfc_9457() {
+    let r = create_user(&json!({"name": "Ann", "role": "user", "age": 200}));
+    assert_eq!(
+        (r.status().as_u16(), r.headers().get("content-type").map_or("", |v| v.to_str().unwrap_or(""))),
+        (400, "application/problem+json")
+    );
+    let body: serde_json::Value = serde_json::from_slice(r.body().bytes()).unwrap();
+    assert_eq!((body["title"].as_str(), body.get("code")), (Some("Bad Request"), None), "{body}");
+    assert_eq!(violations(&r), ["/body/age 200 must be less than 150"], "{body}");
+}
+
+/// `email` and `idn-hostname` are types that only a valid value can be (`api::Email` and `api::IdnHostname`). A
+/// request that holds another value is refused while decoding.
+#[test]
+fn mail_addresses_and_host_names_are_types() {
+    let ok = json!({"name": "Ann", "role": "user", "email": "ann@example.com", "site": "bücher.example"});
+    assert_eq!(send("limit=5", "core", &ok).status().as_u16(), 201);
+    for (field, bad) in [("email", "x"), ("site", "-bad-.example")] {
+        let mut body = ok.clone();
+        body[field] = json!(bad);
+        let r = send("limit=5", "core", &body);
+        assert_eq!(r.status().as_u16(), 400);
+        let text = String::from_utf8_lossy(r.body().bytes());
+        assert!(text.contains(&format!("`{bad}` is not a valid")), "{text}");
+    }
+    assert!(api::Email::try_from("x").is_err(), "nor can a handler build one");
+}
+
+/// `multipleOf` on a number divides and allows 1e-9: decimal multiples a binary float cannot hold exactly pass.
+#[test]
+fn a_decimal_multiple_passes_although_its_float_is_inexact() {
+    let price = |p: f64| {
+        let price: types::Price = serde_json::from_value(json!({"amount": p})).unwrap();
+        let mut out = vec![];
+        api::Validate::validate(&price, &api::InstancePath::Root, &mut out);
+        out.into_iter().map(|v| v.path).collect::<Vec<_>>()
+    };
+    assert_eq!(price(0.07), Vec::<String>::new(), "0.07 / 0.01 is 7.000000000000001");
+    assert_eq!(price(19.99), Vec::<String>::new());
+    assert_eq!(price(0.015), ["/amount"]);
+}
+
+/// A refusal of the server goes out in the schema that its operation declares, its `const` at its value.
+#[test]
+fn a_refusal_fills_the_declared_schema() {
+    let r = shipment(&json!({"kind": "domestic", "parcels": "none"}));
+    assert_eq!(
+        (r.status().as_u16(), r.headers().get("content-type").map_or("", |v| v.to_str().unwrap_or(""))),
+        (400, "application/json")
+    );
+    let body: serde_json::Value = serde_json::from_slice(r.body().bytes()).unwrap();
+    // Shipment is checked whole (`contains`, `if`), on the body as sent: the wrong type is a violation with its path.
+    let message = "/body/parcels: must be of type \"array\"";
+    let violations = json!([{"path": "/body/parcels", "message": "must be of type \"array\""}]);
+    assert_eq!(body, json!({"message": message, "object": "error", "violations": violations}));
+}
+
+/// JSON Schema 2020-12 section 6.1.1: `type: null` allows only `null`. Absent, it is `None`. `null` is `Some(())`, which
+/// writes `null` again. Any other value is refused.
+#[test]
+fn a_null_only_property_takes_only_null() {
+    let decode = |body: serde_json::Value| {
+        serde_json::from_value::<types::Price>(body).map(|p| p.retired).map_err(|e| e.to_string())
+    };
+    assert_eq!(decode(json!({})), Ok(None));
+    assert_eq!(decode(json!({"retired": null})), Ok(Some(())));
+    assert_eq!(decode(json!({"retired": "abc"})), Err("invalid type: string \"abc\", expected unit".to_owned()));
+    let sent = types::Price { retired: Some(()), ..types::Price::default() };
+    assert_eq!(serde_json::to_value(&sent).unwrap(), json!({"retired": null}));
+}
+
+/// An `allOf` item whose members both declare `lines` is checked whole. Keywords deep inside it keep their values
+/// after its references are inlined: `type: [string, null]` nine levels down still takes a string and `null`, and
+/// `maxLength` still applies. So does the `maxItems` of the member that one merged struct would drop.
+#[test]
+fn a_whole_checked_schema_keeps_its_deep_keywords() {
+    let check = |lines: serde_json::Value| {
+        let ledger: types::Ledger = serde_json::from_value(json!({"entries": [{"id": 1, "lines": lines}]})).unwrap();
+        let mut out = vec![];
+        api::Validate::validate(&ledger, &api::InstancePath::Root, &mut out);
+        out.into_iter().map(|v| format!("{} {}", v.path, v.message)).collect::<Vec<_>>()
+    };
+    assert_eq!(check(json!([{"note": "ok"}, {"note": null}])), Vec::<String>::new());
+    assert_eq!(check(json!([{"note": "long"}])), ["/entries/0/lines/0/note at most 3 characters allowed, found 4"]);
+    assert_eq!(check(json!([{}, {}, {}])), ["/entries/0/lines at most 2 items allowed, found 3"]);
+}
+
+/// `^(a+)+$` takes exponential time on a long value that almost matches. `handle` is a pattern type: past `maxLength`
+/// it refuses the value before its pattern runs. Run, 30,001 characters would not finish.
+#[test]
+fn a_pattern_does_not_run_past_max_length() {
+    let handle = format!("{}b", "a".repeat(30_000));
+    let err =
+        serde_json::from_value::<types::User>(json!({"name": "Alice", "role": "admin", "handle": handle})).unwrap_err();
+    assert_eq!(err.to_string(), "at most 20 characters allowed, found 30001");
+}
+
+/// A recursive union whose branches differ in a field after the recursive one. Each level used to decode its nested
+/// trees once per branch: depth 40 took 2^40 tries. A branch that cannot fit is now skipped before decoding, and the
+/// stack of a test thread holds it in a debug build.
+#[test]
+fn a_recursive_union_decodes_in_time_linear_in_its_depth() {
+    let mut json = String::from(r#"{"items":[],"x":1}"#);
+    for _ in 0..40 {
+        json = format!(r#"{{"items":[{json}],"x":1}}"#);
+    }
+    assert!(serde_json::from_str::<types::Tree>(&json).is_ok());
+}

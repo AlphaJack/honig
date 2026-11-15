@@ -1,0 +1,106 @@
+openapi: 3.2.0
+info:
+  title: Catalog
+  version: 1.0.0
+servers:
+  - url: https://shop.example.com/v1
+security:
+  - apiKey: []
+paths:
+  /products:
+    get:
+      operationId: listProducts
+      parameters:
+        - name: limit
+          in: query
+          schema: {type: integer, format: int32, maximum: 100}
+        - name: tags
+          in: query
+          style: form
+          explode: false
+          schema: {type: array, items: {type: string}}
+      responses:
+        '200':
+          description: A page of products
+          headers:
+            X-Next: {schema: {type: string}}
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: '#/components/schemas/Product'}}
+        default:
+          description: Error
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Error'}
+    post:
+      operationId: createProduct
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/Product'}
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Product'}
+        default:
+          description: Error
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Error'}
+  /products/{productId}:
+    get:
+      operationId: getProduct
+      parameters:
+        - name: productId
+          in: path
+          required: true
+          schema: {type: integer, format: int64}
+      responses:
+        '200':
+          description: A product
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Product'}
+        '404':
+          description: Not found
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Error'}
+components:
+  securitySchemes:
+    apiKey: {type: apiKey, in: header, name: X-API-Key}
+  schemas:
+    Product:
+      oneOf:
+        - $ref: '#/components/schemas/Physical'
+        - $ref: '#/components/schemas/Digital'
+      discriminator:
+        propertyName: kind
+        mapping:
+          physical: '#/components/schemas/Physical'
+          digital: '#/components/schemas/Digital'
+    # Each branch fixes its tag, so a value matches exactly one: `oneOf` holds whatever the discriminator says.
+    Physical:
+      type: object
+      required: [kind, name]
+      properties:
+        kind: {const: physical}
+        name: {type: string}
+        fragile: {type: boolean}
+        sku: {type: string, pattern: '^[A-Z]{3}-[0-9]{4}$', description: Stock keeping unit}
+    Digital:
+      type: object
+      required: [kind, name]
+      properties:
+        kind: {const: digital}
+        name: {type: string}
+        downloads: {type: [integer, "null"], format: int32}
+    Error:
+      type: object
+      required: [code, message]
+      properties:
+        code: {type: integer, format: int32}
+        message: {type: string}

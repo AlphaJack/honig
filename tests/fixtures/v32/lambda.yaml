@@ -1,0 +1,44 @@
+openapi: 3.2.0
+info:
+  title: Lambda
+  version: "1"
+  description: Served behind one API Gateway `{proxy+}` route through `lambda_http`.
+paths:
+  /items/{id}:
+    get:
+      operationId: getItem
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+        - {name: tag, in: query, schema: {type: array, items: {type: string}}}
+        - {name: X-Trace, in: header, schema: {type: string}}
+        - {name: session, in: cookie, schema: {type: string}}
+      responses:
+        '200':
+          description: Every parameter as the server read it, and the caller's address from API Gateway.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [id, tags]
+                properties:
+                  id: {type: string}
+                  tags: {type: array, items: {type: string}}
+                  trace: {type: string}
+                  session: {type: string}
+                  sourceIp: {type: string}
+  /items/{id}/blob:
+    put:
+      operationId: putBlob
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema: {type: string, format: binary}
+      responses:
+        '200':
+          description: The body, sent back as it arrived.
+          content:
+            application/octet-stream:
+              schema: {type: string, format: binary}

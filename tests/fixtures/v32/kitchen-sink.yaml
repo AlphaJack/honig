@@ -1,0 +1,306 @@
+# Uses every OpenAPI 3.2 object and field at least once.
+openapi: 3.2.0
+$self: https://example.com/apis/kitchen-sink.yaml
+jsonSchemaDialect: https://spec.openapis.org/oas/3.2/dialect/2025-09-17
+info:
+  title: Kitchen Sink
+  summary: Every 3.2 feature
+  description: Exercises the whole model.
+  termsOfService: https://example.com/terms
+  contact: {name: API team, url: https://example.com, email: api@example.com, x-team: core}
+  license: {name: Apache 2.0, identifier: Apache-2.0}
+  version: 1.0.0
+  x-logo: {url: https://example.com/logo.png}
+servers:
+  - url: https://{region}.example.com/v1
+    name: production
+    description: Prod
+    variables:
+      region: {default: eu, enum: [eu, us], description: Region}
+tags:
+  - {name: products, summary: Products, description: Product ops, kind: nav, externalDocs: {url: https://example.com/products}}
+  - {name: gadgets, parent: products, kind: nav}
+  - {name: beta, kind: badge}
+externalDocs: {description: Docs, url: https://example.com/docs}
+security:
+  - {}
+  - bearer: []
+  - oauth: [read, write]
+    apiKey: []
+paths:
+  /forms:
+    post:
+      operationId: submitForm
+      servers: [{url: 'https://forms.example.com', name: forms}]
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              required: [tags, priority]
+              properties:
+                tags: {type: array, items: {type: string}}
+                filter: {type: object, required: [a], properties: {a: {type: string}, b: {type: string}}}
+                note: {type: string, deprecated: true}
+                priority: {type: integer, enum: [1, 2, 3]}
+                blob: {type: string, format: byte}
+            encoding:
+              tags: {style: pipeDelimited, explode: false}
+              filter: {style: deepObject, explode: true}
+              note: {allowReserved: true}
+      responses:
+        '204': {description: Accepted.}
+  /blobs/{id}:
+    servers:
+      - url: https://{region}.blobs.example.com
+        variables: {region: {default: eu, enum: [eu, us]}}
+    put:
+      operationId: putBlob
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string}}
+        - {name: legacy, in: query, deprecated: true, schema: {type: string}}
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema: {type: string, format: binary}
+      responses:
+        '200':
+          summary: Stored
+          description: The stored bytes.
+          headers:
+            X-Size: {schema: {type: integer}}
+            X-Quota:
+              required: true
+              content:
+                application/json:
+                  schema: {type: object, required: [limit], properties: {limit: {type: integer}, scope: {type: string}}}
+          content:
+            application/octet-stream:
+              schema: {type: string, format: binary}
+  x-paths-extension: true
+  /products:
+    summary: Products collection
+    description: All products
+    servers: [{url: https://products.example.com}]
+    parameters:
+      - $ref: '#/components/parameters/Trace'
+    get:
+      tags: [products]
+      summary: List products
+      operationId: listProducts
+      parameters:
+        - {name: limit, in: query, schema: {type: integer, format: int32, minimum: 1, maximum: 100}, required: false, example: 10}
+        - {name: tags, in: query, style: pipeDelimited, explode: false, schema: {type: array, items: {type: string}},
+           examples: {two: {dataValue: [a, b], serializedValue: 'tags=a|b'}}}
+        - {name: filter, in: query, style: deepObject, explode: true, schema: {type: object, additionalProperties: {type: string}},
+           examples: {color: {dataValue: {color: red}, serializedValue: 'filter[color]=red'}}}
+        - {name: session, in: cookie, style: cookie, schema: {type: string}}
+        - {name: X-Rate, in: header, deprecated: true, schema: {type: integer}, examples: {small: {value: 1}, wire: {dataValue: 3, serializedValue: '3'}}}
+        - {name: empty, in: query, allowEmptyValue: true, allowReserved: true, schema: {type: string}}
+      responses:
+        '200':
+          summary: A page of products
+          description: OK
+          headers:
+            X-Next: {description: Next cursor, required: false, schema: {type: string}, style: simple, explode: false}
+            X-Total: {$ref: '#/components/headers/Total'}
+          content:
+            application/json:
+              schema: {type: array, items: {$ref: '#/components/schemas/Product'}}
+              examples:
+                one: {summary: One product, dataValue: [{id: 1, name: Lamp, kind: book}], serializedValue: '[{"id":1,"name":"Lamp","kind":"book"}]'}
+            application/jsonl:
+              itemSchema: {$ref: '#/components/schemas/Product'}
+          links:
+            first: {operationId: getProduct, parameters: {productId: '$response.body#/0/id'}, description: First product, server: {url: https://products.example.com}}
+        2XX: {description: Other success}
+        default: {$ref: '#/components/responses/Error'}
+        x-responses-extension: 1
+    post:
+      operationId: createProduct
+      tags: [gadgets, beta]
+      requestBody:
+        description: New product
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/Product'}
+            example: null
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                meta: {$ref: '#/components/schemas/Product'}
+                photo: {type: string, contentMediaType: image/png, contentEncoding: base64}
+            encoding:
+              meta: {contentType: application/json, headers: {X-Part: {schema: {type: string}}}, encoding: {inner: {contentType: text/plain}}}
+              photo: {contentType: image/png, style: form, explode: true, allowReserved: false}
+          multipart/mixed:
+            itemSchema: {type: object}
+            prefixEncoding: [{contentType: application/json}, {contentType: text/plain}]
+            itemEncoding:
+              contentType: multipart/mixed
+              prefixEncoding: [{contentType: text/plain}]
+              itemEncoding: {contentType: application/octet-stream}
+      responses:
+        '201': {description: Created}
+      callbacks:
+        onAdopt:
+          '{$request.body#/callbackUrl}':
+            post:
+              requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/Product'}}}}
+              responses: {'200': {description: ack}}
+          x-callback-ext: yes
+        shared: {$ref: '#/components/callbacks/Shared'}
+      security: [{oauth: [write]}]
+      deprecated: false
+      externalDocs: {url: https://example.com/create}
+      x-internal: false
+    query:
+      operationId: searchProducts
+      requestBody: {content: {application/json: {schema: {type: object}}}}
+      responses: {'200': {$ref: '#/components/responses/ProductList'}}
+    additionalOperations:
+      COPY:
+        operationId: copyProducts
+        responses: {'204': {description: Copied}}
+  /products/{productId}:
+    $ref: '#/components/pathItems/ProductItem'
+  /search:
+    get:
+      operationId: search
+      parameters:
+        - name: q
+          in: querystring
+          content:
+            application/x-www-form-urlencoded:
+              # `filters` (learn.openapis.org Parameters): a free-form object travels as JSON, by name.
+              schema: {type: object, properties: {term: {type: string}, page: {type: integer}, filters: {type: object}}}
+      responses:
+        '200':
+          description: Events
+          content:
+            text/event-stream:
+              itemSchema:
+                type: object
+                properties: {event: {type: string}, data: {type: string, contentMediaType: application/json, contentSchema: {$ref: '#/components/schemas/Product'}}, id: {type: string}, retry: {type: integer}}
+                required: [data]
+webhooks:
+  newProduct:
+    post:
+      requestBody: {content: {application/json: {schema: {$ref: '#/components/schemas/Product'}}}}
+      responses: {'200': {description: ok}}
+components:
+  schemas:
+    Product:
+      $id: https://example.com/schemas/product
+      $schema: https://spec.openapis.org/oas/3.2/dialect/2025-09-17
+      $comment: A product
+      title: Product
+      description: A product
+      type: object
+      required: [id, name, kind]
+      properties:
+        id: {type: integer, format: int64, readOnly: true, minimum: 0, exclusiveMaximum: 9007199254740991}
+        name: {type: string, minLength: 1, maxLength: 64, pattern: '^[A-Za-z ]+$', examples: [Lamp]}
+        kind: {type: string, enum: [book, gadget]}
+        nickname: {type: [string, 'null'], default: null}
+        secret: {type: string, writeOnly: true, deprecated: true}
+        tags: {type: array, items: {type: string}, uniqueItems: true, minItems: 0, maxItems: 10, contains: {const: vip}, minContains: 0, maxContains: 1}
+        point: {type: array, prefixItems: [{type: number}, {type: number}], items: false, unevaluatedItems: false}
+        attrs: {type: object, patternProperties: {'^x_': {type: string}}, propertyNames: {pattern: '^[a-z_]+$'}, minProperties: 0, maxProperties: 20, unevaluatedProperties: false}
+        weight: {type: number, multipleOf: 0.01, exclusiveMinimum: 0}
+        # Inside `$id` a `#` reference resolves against that `$id` (JSON Schema): the document's own base reaches Owner.
+        owner: {$ref: 'https://example.com/apis/kitchen-sink.yaml#/components/schemas/Owner', description: Overrides description}
+      dependentRequired: {nickname: [name]}
+      dependentSchemas: {secret: {required: [id]}}
+      discriminator: {propertyName: kind, mapping: {book: '#/components/schemas/Book', gadget: '#/components/schemas/Gadget'}, defaultMapping: '#/components/schemas/Product'}
+      xml: {name: product, namespace: https://example.com/ns, prefix: p, nodeType: element}
+      externalDocs: {url: https://example.com/product}
+      example: {id: 1, name: Lamp, kind: book}
+      x-rust-type: {crate: products, version: '1', path: products::Product}
+    Book:
+      allOf: [{$ref: '#/components/schemas/Product'}, {type: object, properties: {hardcover: {type: boolean}}}]
+    Gadget:
+      allOf: [{$ref: '#/components/schemas/Product'}]
+      if: {properties: {kind: {const: gadget}}}
+      then: {required: [name]}
+      else: false
+    Owner:
+      $anchor: owner
+      xml: {attribute: false, wrapped: false}
+      $dynamicAnchor: node
+      type: object
+      properties:
+        children: {type: array, items: {$dynamicRef: '#node'}}
+      not: {required: [forbidden]}
+      $defs: {Inner: {type: string}}
+      $vocabulary: {https://json-schema.org/draft/2020-12/vocab/core: true}
+    Shape:
+      oneOf: [{$ref: '#/components/schemas/Book'}, {$ref: '#/components/schemas/Gadget'}]
+      anyOf: [true]
+    Error:
+      type: object
+      properties: {code: {type: integer}, message: {type: string}}
+      xml: {nodeType: element}
+    Anything: true
+    Nothing: false
+  responses:
+    Error:
+      description: Error
+      content: {application/problem+json: {schema: {$ref: '#/components/schemas/Error'}}}
+    ProductList:
+      description: Products
+      content: {application/json: {$ref: '#/components/mediaTypes/ProductArray'}}
+  parameters:
+    Trace: {name: X-Trace, in: header, schema: {type: string, format: uuid}}
+  examples:
+    Lamp: {summary: Lamp, value: {id: 1}}
+    RexFile: {summary: Lamp as a file, externalValue: https://example.com/lamp.json}
+  requestBodies:
+    ProductBody: {content: {application/json: {schema: {$ref: '#/components/schemas/Product'}}}}
+  headers:
+    Total: {content: {text/plain: {schema: {type: integer}}}}
+    Count: {schema: {type: integer}}
+  securitySchemes:
+    bearer: {type: http, scheme: bearer, bearerFormat: JWT}
+    basic: {type: http, scheme: basic, deprecated: true}
+    apiKey: {type: apiKey, name: X-Key, in: header}
+    mtls: {type: mutualTLS, description: Client cert}
+    oidc: {type: openIdConnect, openIdConnectUrl: https://example.com/.well-known/openid-configuration}
+    oauth:
+      type: oauth2
+      deprecated: true
+      oauth2MetadataUrl: https://example.com/.well-known/oauth-authorization-server
+      flows:
+        implicit: {authorizationUrl: https://example.com/auth, scopes: {read: Read}}
+        password: {tokenUrl: https://example.com/token, scopes: {}}
+        clientCredentials: {tokenUrl: https://example.com/token, refreshUrl: https://example.com/refresh, scopes: {write: Write}}
+        authorizationCode: {authorizationUrl: https://example.com/auth, tokenUrl: https://example.com/token, scopes: {read: Read}}
+        deviceAuthorization: {deviceAuthorizationUrl: https://example.com/device, tokenUrl: https://example.com/token, scopes: {read: Read}}
+  links:
+    Self: {operationRef: '#/paths/~1products/get', requestBody: '$request.body'}
+  callbacks:
+    Shared:
+      '{$request.query.url}':
+        post: {responses: {'200': {description: ok}}}
+  pathItems:
+    ProductItem:
+      parameters: [{name: productId, in: path, required: true, schema: {type: integer}}]
+      get:
+        operationId: getProduct
+        responses: {'200': {description: ok, content: {application/json: {schema: {$ref: '#/components/schemas/Product'}}}}}
+      delete:
+        operationId: deleteProduct
+        responses: {'204': {description: deleted}}
+      put: {operationId: putProduct, responses: {'200': {description: ok}}}
+      patch: {operationId: patchProduct, responses: {'200': {description: ok}}}
+      head: {operationId: headProduct, responses: {'200': {description: ok}}}
+      options: {operationId: optionsProduct, responses: {'200': {description: ok}}}
+      trace: {operationId: traceProduct, responses: {'200': {description: ok}}}
+  mediaTypes:
+    ProductArray:
+      schema: {type: array, items: {$ref: '#/components/schemas/Product'}}
+x-root-extension: {nested: [1, 2, 3]}

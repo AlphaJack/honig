@@ -1,0 +1,31 @@
+[package]
+name = "shop"
+description = "A crate of yours with a generated API: the server and a client for the catalog of a shop"
+version = "0.0.0"
+edition = "2024"
+publish = false
+
+[lints]
+
+[dependencies]
+honig = { path = "../../runtime", version = "=0.0.1", features = ["client", "server", "reqwest", "axum", "regress", "xml", "simd"] }
+clap = { version = "4", features = ["derive"] }
+axum = { version = "0.8", default-features = false, features = ["http1", "tokio"] }
+reqwest = { version = "0.13", default-features = false, features = ["rustls"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["macros", "net", "rt-multi-thread"] }
+
+# The catalog that the shop serves, with a client for it.
+[package.metadata.honig.api]
+spec = "openapi.yaml"
+client = { adapters = ["reqwest"] }
+server = { adapters = ["axum"] }
+formats = {}
+
+# The book supplier that the shop calls. Its XML bodies turn on the `xml` feature of the runtime.
+[package.metadata.honig.supplier]
+spec = "supplier.yaml"
+client = { adapters = ["reqwest"] }
+server = false
+formats = {}

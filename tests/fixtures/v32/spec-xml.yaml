@@ -1,0 +1,316 @@
+# The OpenAPI 3.2.1 specification's XML Object Examples, one operation each. The `externalValue` files are inlined
+# as `serializedValue`, so the generated tests check that each XML decodes to its `dataValue` and that the value
+# encoded decodes back to it.
+#
+# Left out: "XML Name Replacement", whose schema (`products: {type: string}`) contradicts its own `dataValue` (a list).
+# Fixed: "Elements With Attributes And Text" ends its XML with `<products>`, not `</products>`.
+openapi: 3.2.0
+info: {title: Specification XML examples, version: "1"}
+paths:
+  /no-xml-object:
+    get:
+      operationId: noXmlObject
+      responses:
+        '200':
+          description: Basic string property without an XML Object.
+          content:
+            application/xml:
+              schema:
+                type: object
+                xml: {name: document}
+                properties: {products: {type: string}}
+              examples:
+                products:
+                  dataValue: {products: "book, gadget, pen"}
+                  serializedValue: |
+                    <document>
+                      <products>book, gadget, pen</products>
+                    </document>
+  /no-xml-object/array:
+    get:
+      operationId: noXmlObjectArray
+      responses:
+        '200':
+          description: Basic string array property (`nodeType` is `none` by default).
+          content:
+            application/xml:
+              schema:
+                type: object
+                xml: {name: document}
+                properties: {products: {type: array, items: {type: string}}}
+              examples:
+                products:
+                  dataValue: {products: [book, gadget, pen]}
+                  serializedValue: |
+                    <document>
+                      <products>book</products>
+                      <products>gadget</products>
+                      <products>pen</products>
+                    </document>
+  /people:
+    post:
+      operationId: xmlAttributePrefixAndNamespace
+      requestBody: {$ref: "#/components/requestBodies/Person"}
+      responses: {'204': {description: ok}}
+  /arrays/item-names:
+    get:
+      operationId: xmlArrayItemNames
+      responses:
+        '200':
+          description: Items named `product`.
+          content:
+            application/xml:
+              schema:
+                type: object
+                xml: {name: document}
+                properties: {products: {type: array, items: {type: string, xml: {name: product}}}}
+              examples:
+                products:
+                  dataValue: {products: [book, gadget, pen]}
+                  serializedValue: |
+                    <document>
+                      <product>book</product>
+                      <product>gadget</product>
+                      <product>pen</product>
+                    </document>
+  /arrays/unwrapped-name:
+    get:
+      operationId: xmlArrayNameWithoutWrapper
+      responses:
+        '200':
+          description: The array's `name` has no effect while its `nodeType` is `none`.
+          content:
+            application/xml:
+              schema:
+                type: object
+                xml: {name: document}
+                properties:
+                  products: {type: array, xml: {name: aliens}, items: {type: string, xml: {name: product}}}
+              examples:
+                products:
+                  dataValue: {products: [book, gadget, pen]}
+                  serializedValue: |
+                    <document>
+                      <product>book</product>
+                      <product>gadget</product>
+                      <product>pen</product>
+                    </document>
+  /arrays/wrapped:
+    get:
+      operationId: xmlArrayWrapped
+      responses:
+        '200':
+          description: A wrapper element named after the property, items too.
+          content:
+            application/xml:
+              schema:
+                type: object
+                xml: {name: document}
+                properties: {products: {type: array, xml: {nodeType: element}, items: {type: string}}}
+              examples:
+                products:
+                  dataValue: {products: [book, gadget, pen]}
+                  serializedValue: |
+                    <document>
+                      <products>
+                        <products>book</products>
+                        <products>gadget</products>
+                        <products>pen</products>
+                      </products>
+                    </document>
+  /arrays/wrapped-item-names:
+    get:
+      operationId: xmlArrayWrappedItemNames
+      responses:
+        '200':
+          description: A wrapper element, items named `product`.
+          content:
+            application/xml:
+              schema:
+                type: object
+                xml: {name: document}
+                properties:
+                  products: {type: array, xml: {nodeType: element}, items: {type: string, xml: {name: product}}}
+              examples:
+                products:
+                  dataValue: {products: [book, gadget, pen]}
+                  serializedValue: |
+                    <document>
+                      <products>
+                        <product>book</product>
+                        <product>gadget</product>
+                        <product>pen</product>
+                      </products>
+                    </document>
+  /arrays/wrapped-renamed:
+    get:
+      operationId: xmlArrayWrappedRenamed
+      responses:
+        '200':
+          description: A wrapper element named `aliens`, items named `product`.
+          content:
+            application/xml:
+              schema:
+                type: object
+                xml: {name: document}
+                properties:
+                  products:
+                    type: array
+                    xml: {name: aliens, nodeType: element}
+                    items: {type: string, xml: {name: product}}
+              examples:
+                products:
+                  dataValue: {products: [book, gadget, pen]}
+                  serializedValue: |
+                    <document>
+                      <aliens>
+                        <product>book</product>
+                        <product>gadget</product>
+                        <product>pen</product>
+                      </aliens>
+                    </document>
+  /products:
+    get:
+      operationId: elementsWithAttributesAndText
+      responses:
+        '200':
+          description: Each item an element with an attribute and text.
+          content:
+            application/xml:
+              schema:
+                type: array
+                xml: {nodeType: element, name: products}
+                items:
+                  xml: {name: product}
+                  properties:
+                    kind: {type: string, xml: {nodeType: attribute}}
+                    name: {type: string, xml: {nodeType: text}}
+              examples:
+                products:
+                  dataValue: [{kind: Gadget, name: Kettle}, {kind: Book, name: Atlas}]
+                  serializedValue: |
+                    <products>
+                      <product kind="Gadget">Kettle</product>
+                      <product kind="Book">Atlas</product>
+                    </products>
+  /docs:
+    get:
+      operationId: referencedElementWithCdata
+      responses:
+        '200': {$ref: "#/components/responses/AwesomeDocs"}
+  /one-two-three:
+    get:
+      operationId: orderedElements
+      responses:
+        '200':
+          description: A sequence of elements, and `null` as `xsi:nil`.
+          content:
+            application/xml:
+              schema:
+                xml: {nodeType: element, name: OneTwoThree}
+                type: array
+                prefixItems:
+                  - {xml: {name: One}, type: string}
+                  - xml: {name: Two}
+                    type: object
+                    required: [unit, value]
+                    properties:
+                      unit: {type: string, xml: {nodeType: attribute}}
+                      value: {type: number, xml: {nodeType: text}}
+                  - {xml: {name: Three}, type: [boolean, "null"]}
+              examples:
+                OneTwoThree:
+                  dataValue: [Some text, {unit: cubits, value: 42}, null]
+                  serializedValue: |
+                    <OneTwoThree>
+                      <One>Some text</One>
+                      <Two unit="cubits">42</Two>
+                      <Three xsi:nil="true" />
+                    </OneTwoThree>
+  /report:
+    get:
+      operationId: orderedElementsAndText
+      responses:
+        '200':
+          description: Text and elements interleaved.
+          content:
+            application/xml:
+              schema:
+                xml: {nodeType: element, name: Report}
+                type: array
+                prefixItems:
+                  - {xml: {nodeType: text}, type: string}
+                  - {xml: {name: data}, type: number}
+                  - {xml: {nodeType: text}, type: string}
+              examples:
+                Report:
+                  dataValue: [Some preamble text., 42, Some postamble text.]
+                  serializedValue: <Report>Some preamble text.<data>42</data>Some postamble text.</Report>
+  /product:
+    get:
+      operationId: xmlWithNullValues
+      responses:
+        '200':
+          description: Empty objects and `null`.
+          content:
+            application/xml:
+              schema:
+                xml: {name: product}
+                type: object
+                required: [count, description, related]
+                properties:
+                  count: {type: [number, "null"], xml: {nodeType: attribute}}
+                  rating: {type: string, xml: {nodeType: attribute}}
+                  description: {type: string}
+                  related: {type: [object, "null"]}
+              examples:
+                productWithNulls:
+                  dataValue: {count: null, description: Thing, related: null}
+                  serializedValue: |
+                    <product>
+                      <description>Thing</description>
+                      <related xsi:nil="true" />
+                    </product>
+                productNoNulls:
+                  dataValue: {count: 42, description: Thing, related: {}}
+                  serializedValue: |
+                    <product count="42">
+                      <description>Thing</description>
+                      <related></related>
+                    </product>
+components:
+  schemas:
+    Person:
+      type: object
+      properties:
+        id: {type: integer, format: int32, xml: {nodeType: attribute}}
+        name: {type: string, xml: {namespace: "https://example.com/schema/sample", prefix: sample}}
+    Documentation:
+      type: object
+      properties:
+        content: {type: string, contentMediaType: text/html, xml: {nodeType: cdata}}
+  requestBodies:
+    Person:
+      content:
+        application/xml:
+          schema: {$ref: "#/components/schemas/Person"}
+          examples:
+            Person:
+              dataValue: {id: 123, name: example}
+              serializedValue: |
+                <Person id="123">
+                  <sample:name xmlns:sample="https://example.com/schema/sample">example</sample:name>
+                </Person>
+  responses:
+    AwesomeDocs:
+      description: Documentation.
+      content:
+        application/xml:
+          schema: {$ref: "#/components/schemas/Documentation"}
+          examples:
+            docs:
+              dataValue: {content: "<html><head><title>Awesome Docs</title></head><body></body><html>"}
+              serializedValue: |
+                <Documentation>
+                  <![CDATA[<html><head><title>Awesome Docs</title></head><body></body><html>]]>
+                </Documentation>

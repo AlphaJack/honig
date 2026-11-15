@@ -1,0 +1,122 @@
+name: Mutants
+
+# Lists the mutations of the generator and the runtime that no test catches. It runs weekly. It also runs on the
+# changed lines of a PR with the `mutants` label at each push. The `mutants` job reports for every PR. So it can be a
+# required check. Without the label it passes at once.
+on:
+  schedule:
+    - cron: "0 19 * * 5"
+  workflow_dispatch:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+# A PR's newer push replaces its run. The full runs wait for each other.
+concurrency:
+  group: mutants-${{ github.event.pull_request.number || 'main' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+  # Each mutant is built anew: debug info only slows every build and link.
+  CARGO_PROFILE_DEV_DEBUG: "0"
+  CARGO_PROFILE_TEST_DEBUG: "0"
+
+jobs:
+  # Builds the dependencies once. Every shard restores them and does not build them.
+  build:
+    name: build tests
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'mutants')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1
+        with:
+          toolchain: "stable"
+      - name: Cache cargo registry and target
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          shared-key: mutants
+          save-if: ${{ github.event_name != 'pull_request' }}
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39 # v2.90.3
+        with:
+          tool: cargo-nextest
+      - name: Build the tests
+        run: cargo nextest run --workspace --locked --no-run
+
+  mutants:
+    name: mutants (${{ matrix.shard }}/${{ strategy.job-total }})
+    needs: build
+    runs-on: ubuntu-latest
+    # A shard takes about half an hour: one that takes an hour is stuck.
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      max-parallel: 20
+      matrix:
+        # A PR's diff is small: one shard.
+        shard: ${{ fromJSON(github.event_name == 'pull_request' && '[0]' || '[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]') }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          # The base of the PR for the diff.
+          fetch-depth: ${{ github.event_name == 'pull_request' && '0' || '1' }}
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1
+        with:
+          toolchain: "stable"
+          components: rust-analyzer
+      - name: Restore the dependencies built once
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          shared-key: mutants
+          save-if: false
+      - name: Install cargo-nextest and cargo-mutants
+        uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39 # v2.90.3
+        with:
+          tool: cargo-nextest,cargo-mutants
+      - name: Diff against the PR's base
+        if: github.event_name == 'pull_request'
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          git diff "$BASE...HEAD" > "$RUNNER_TEMP/pr.diff"
+          echo "IN_DIFF=--in-diff=$RUNNER_TEMP/pr.diff" >> "$GITHUB_ENV"
+          # The PR's tests already ran in CI.
+          echo "BASELINE=--baseline=skip" >> "$GITHUB_ENV"
+      - name: Mutate
+        env:
+          SHARD: ${{ matrix.shard }}
+          SHARDS: ${{ strategy.job-total }}
+        run: cargo mutants -vV --in-place --test-tool nextest --shard "$SHARD/$SHARDS" --no-shuffle ${IN_DIFF:+"$IN_DIFF"} ${BASELINE:+"$BASELINE"}
+      - name: Upload what the tests missed
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: mutants-${{ matrix.shard }}
+          path: mutants.out
+
+  # The required check. It fails if a shard missed a mutant or did not finish. Without the label nothing ran and it passes.
+  gate:
+    name: mutants
+    needs: [build, mutants]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Every mutant caught
+        env:
+          BUILD: ${{ needs.build.result }}
+          SHARDS: ${{ needs.mutants.result }}
+        run: |
+          echo "build: $BUILD, shards: $SHARDS"
+          [ "$BUILD" != failure ] && [ "$BUILD" != cancelled ] && [ "$SHARDS" != failure ] && [ "$SHARDS" != cancelled ]

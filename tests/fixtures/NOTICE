@@ -1,0 +1,7 @@
+Some fixtures are copied or adapted from the OpenAPI Initiative's repositories, under the Apache License 2.0
+(LICENSE-OAI):
+
+- oai-v31, oai-v32: tests/schema/pass and tests/schema/fail of OAI/OpenAPI-Specification, branches v3.1-dev and
+  v3.2-dev
+- overlay: the compliance sets and worked examples of OAI/Overlay-Specification
+- v32/spec-examples.yaml, v32/spec-xml.yaml: the examples in the text of the OpenAPI Specification 3.2.1

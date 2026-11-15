@@ -1,0 +1,91 @@
+openapi: 3.2.0
+info: {title: Coverage, version: "1"}
+paths:
+  # `responses` is optional: the operation answers with a status of its choosing.
+  /ping:
+    get: {operationId: ping}
+  # The same inline error schema twice: one type, the other an alias of it, one `From` impl between them.
+  /archive:
+    post:
+      operationId: archive
+      responses:
+        "204": {description: Archived.}
+        "409":
+          description: Already archived.
+          content:
+            application/json:
+              schema: {type: object, required: [code, message], properties: {code: {type: integer}, message: {type: string}}}
+    delete:
+      operationId: unarchive
+      responses:
+        "204": {description: Restored.}
+        "409":
+          description: Not archived.
+          content:
+            application/json:
+              schema: {type: object, required: [code, message], properties: {code: {type: integer}, message: {type: string}}}
+  /notes:
+    post:
+      operationId: addNote
+      deprecated: true
+      requestBody: {$ref: '#/components/requestBodies/NoteBody'}
+      responses:
+        "201":
+          description: Stored.
+          headers:
+            X-Tags:
+              description: Tags of the note.
+              deprecated: true
+              explode: true
+              schema: {type: object, properties: {a: {type: string}, b: {type: string}}}
+              example: {a: x, b: y}
+              examples: {two: {description: Two tags, value: {a: x, b: z}}}
+          content:
+            application/json:
+              description: The stored note.
+              schema: {$ref: '#/components/schemas/Note'}
+              example: {kind: text, text: hi}
+              examples:
+                ref: {$ref: '#/components/examples/Hi'}
+                file: {$ref: '#/components/examples/HiFile'}
+components:
+  requestBodies:
+    NoteBody:
+      required: true
+      content: {application/json: {schema: {$ref: '#/components/schemas/Note'}}}
+  examples:
+    Hi: {summary: A text note, description: The smallest note, value: {kind: text, text: hi}}
+    HiFile: {summary: 'The same, from a file', externalValue: examples/note.json}
+  schemas:
+    Note:
+      type: object
+      properties:
+        kind: {type: string}
+        text: {type: string, examples: [hello]}
+        size: {type: integer}
+      discriminator: {propertyName: kind, defaultMapping: '#/components/schemas/TextNote'}
+      oneOf: [{$ref: '#/components/schemas/TextNote'}, {$ref: '#/components/schemas/ImageNote'}]
+    TextNote:
+      type: object
+      required: [text]
+      properties:
+        kind: {const: text}
+        text: {type: string}
+        point: {type: array, items: {type: number}, minItems: 2, maxItems: 2}
+        rgb: {type: array, items: {type: integer, format: uint8}, minItems: 3, maxItems: 3, uniqueItems: true}
+      if: {required: [size]}
+      then: {properties: {size: {maximum: 10}}}
+      else: {properties: {text: {maxLength: 5}}}
+    ImageNote:
+      type: object
+      required: [kind, url]
+      properties:
+        kind: {const: image}
+        url: {type: string}
+        width: {$ref: '#/components/schemas/Pixels', default: 64}
+        crop: {$ref: '#/components/schemas/Crop'}
+    Pixels: {type: integer}
+    Crop:
+      oneOf:
+        - {type: string}
+        - oneOf: [{type: integer}, {type: object, properties: {x: {type: integer}, y: {type: integer}}}]

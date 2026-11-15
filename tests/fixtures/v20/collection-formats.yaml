@@ -1,0 +1,48 @@
+swagger: "2.0"
+info:
+  title: Collection formats
+  version: "1"
+  description: Every Swagger 2.0 collectionFormat, a file upload, and an optional property a service sends as null.
+paths:
+  /items/{ids}:
+    get:
+      operationId: listItems
+      parameters:
+        - {name: ids, in: path, required: true, type: array, items: {type: integer}, collectionFormat: csv}
+        - {name: csv, in: query, type: array, items: {type: string}, collectionFormat: csv}
+        - {name: ssv, in: query, type: array, items: {type: string}, collectionFormat: ssv}
+        - {name: tsv, in: query, type: array, items: {type: string}, collectionFormat: tsv}
+        - {name: pipes, in: query, type: array, items: {type: string}, collectionFormat: pipes}
+        - {name: multi, in: query, type: array, items: {type: integer}, collectionFormat: multi}
+        - {name: X-Tags, in: header, type: array, items: {type: string}, collectionFormat: csv}
+        - {name: flag, in: query, type: boolean, allowEmptyValue: true}
+        - {name: page, in: query, type: integer, allowEmptyValue: true}
+      responses:
+        "200": {description: ok, schema: {type: array, items: {type: string}}}
+  /upload:
+    post:
+      operationId: upload
+      consumes: [multipart/form-data]
+      parameters:
+        - {name: file, in: formData, type: file, required: true}
+        - {name: note, in: formData, type: string}
+      responses:
+        "204": {description: stored}
+  /keys:
+    get:
+      operationId: listKeys
+      responses:
+        "200": {description: ok, schema: {type: array, items: {$ref: "#/definitions/Key"}}}
+definitions:
+  # As a gRPC-gateway service writes it: optional properties it sends as `null` when unset.
+  Key:
+    type: object
+    required: [id]
+    properties:
+      id: {type: string}
+      lastSeen: {type: string, format: date-time}
+      owner: {$ref: "#/definitions/Owner"}
+  Owner:
+    type: object
+    properties:
+      name: {type: string}

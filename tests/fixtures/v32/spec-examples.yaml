@@ -1,0 +1,397 @@
+# The OpenAPI 3.2.1 specification's worked examples, one operation each, so the generated tests check them:
+# every example with a `dataValue` and a `serializedValue` becomes a check that the runtime sends exactly
+# that, and every body round-trips. Section names follow the specification.
+openapi: 3.2.0
+info: {title: Specification examples, version: "1"}
+paths:
+  # "Parsing and Serializing": `extra` travels as XML inside the form, `code` is a string that looks like a number.
+  /form-with-xml:
+    post:
+      operationId: formWithXml
+      requestBody:
+        $ref: '#/components/requestBodies/Form'
+      responses: {'204': {description: ok}}
+  # "Parameter Object Examples".
+  /users/{username}:
+    get:
+      operationId: parameterExamples
+      parameters:
+        - name: X-Token
+          in: header
+          description: token to be passed as a header
+          required: true
+          schema: {type: array, items: {type: integer, format: int64}}
+          style: simple
+          examples:
+            Tokens: {dataValue: [12345678, 90099], serializedValue: "12345678,90099"}
+        - name: cookie
+          in: cookie
+          style: cookie
+          schema: {type: object, properties: {greeting: {type: string}, code: {type: integer, minimum: 0}}}
+          examples:
+            Object:
+              description: The comma and space are pre-percent-encoded in the data; `!` is legal in cookies.
+              dataValue: {greeting: "Hello%2C%20world!", code: 42}
+              serializedValue: "greeting=Hello%2C%20world!; code=42"
+        - name: greeting
+          in: cookie
+          schema: {type: string}
+          examples:
+            Greeting: {dataValue: "Hello, world!", serializedValue: "greeting=Hello%2C%20world%21"}
+        - name: username
+          in: path
+          description: username to fetch
+          required: true
+          schema: {type: string}
+          examples:
+            "Edsger Dijkstra": {dataValue: edijkstra, serializedValue: edijkstra}
+            Diṅnāga: {dataValue: diṅnāga, serializedValue: di%E1%B9%85n%C4%81ga}
+            Al-Khwarizmi:
+              dataValue: "الخوارزميّ"
+              serializedValue: "%D8%A7%D9%84%D8%AE%D9%88%D8%A7%D8%B1%D8%B2%D9%85%D9%8A%D9%91"
+        - name: thing
+          in: query
+          required: false
+          schema: {type: array, items: {type: string}}
+          style: form
+          explode: true
+          examples:
+            ObjectList:
+              dataValue: [one thing, another thing]
+              serializedValue: "thing=one%20thing&thing=another%20thing"
+        - in: query
+          name: freeForm
+          schema: {type: object, additionalProperties: {type: integer}}
+          style: form
+          examples:
+            Pagination: {dataValue: {page: 4, pageSize: 50}, serializedValue: page=4&pageSize=50}
+        - in: query
+          name: coordinates
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [lat, long]
+                properties: {lat: {type: number}, long: {type: number}}
+              examples:
+                'New York': {dataValue: {lat: 40.6, long: -73.9}, serializedValue: '{"lat":40.6,"long":-73.9}'}
+          examples:
+            'New York':
+              dataValue: {lat: 40.6, long: -73.9}
+              serializedValue: coordinates=%7B%22lat%22%3A40.6%2C%22long%22%3A-73.9%7D
+      responses: {'204': {description: ok}}
+  /querystring/form:
+    get:
+      operationId: querystringForm
+      parameters:
+        - in: querystring
+          name: metadata
+          content:
+            application/x-www-form-urlencoded:
+              schema: {type: object, properties: {foo: {type: string}, bar: {type: boolean}}}
+              examples:
+                spacesAndPluses: {dataValue: {foo: a + b, bar: true}, serializedValue: foo=a+%2B+b&bar=true}
+          examples:
+            spacesAndPluses: {dataValue: {foo: a + b, bar: true}, serializedValue: foo=a+%2B+b&bar=true}
+      responses: {'204': {description: ok}}
+  /querystring/json:
+    get:
+      operationId: querystringJson
+      parameters:
+        - in: querystring
+          name: json
+          content:
+            application/json:
+              schema:
+                type: object
+                properties: {numbers: {type: array, items: {type: integer}}, flag: {type: [boolean, "null"]}}
+              examples:
+                TwoNoFlag: {dataValue: {numbers: [1, 2], flag: null}, serializedValue: '{"numbers":[1,2],"flag":null}'}
+          examples:
+            TwoNoFlag:
+              dataValue: {numbers: [1, 2], flag: null}
+              serializedValue: "%7B%22numbers%22%3A%5B1%2C2%5D%2C%22flag%22%3Anull%7D"
+      responses: {'204': {description: ok}}
+  # "Encoding `multipart` Media Types".
+  /multipart/basic:
+    post:
+      operationId: basicMultipartForm
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                id: {type: string, format: uuid}
+                profileImage: {}
+                addresses: {type: array, items: {$ref: '#/components/schemas/Address'}}
+      responses: {'204': {description: ok}}
+  /multipart/encoding:
+    post:
+      operationId: multipartFormWithEncodingObjects
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                id: {type: string, format: uuid}
+                alias: {type: [string, array], pattern: '^[A-Z][a-z]*$', items: {pattern: '^[A-Z][a-z]*$'}}
+                addresses: {description: addresses in XML format, type: array, items: {$ref: '#/components/schemas/Address'}}
+                profileImage: {}
+            encoding:
+              alias: {contentType: text/plain}
+              addresses: {contentType: application/xml; charset=utf-8}
+              profileImage:
+                contentType: image/png, image/jpeg
+                headers:
+                  X-Rate-Limit-Limit: {description: The number of allowed requests in the current period, schema: {type: integer}}
+      responses: {'204': {description: ok}}
+  /multipart/files:
+    post:
+      operationId: multipartFormWithMultipleFiles
+      requestBody:
+        content:
+          multipart/form-data:
+            schema: {type: object, properties: {file: {type: array, items: {}}}}
+      responses: {'204': {description: ok}}
+  /multipart/ordered:
+    post:
+      operationId: orderedUnnamedMultipart
+      requestBody:
+        content:
+          multipart/mixed:
+            schema:
+              type: array
+              prefixItems:
+                - type: object
+                  properties: {author: {type: string}, created: {type: string, format: datetime}, copyright: {type: string}, license: {type: string}}
+                - {}
+            prefixEncoding: [{}, {contentType: image/*}]
+      responses: {'204': {description: ok}}
+  /multipart/related:
+    post:
+      operationId: orderedMultipartWithRequiredHeader
+      requestBody: {$ref: '#/components/requestBodies/RFC2557'}
+      responses: {'204': {description: ok}}
+  /multipart/nested:
+    post:
+      operationId: nestedMultipartMixed
+      requestBody:
+        content:
+          multipart/mixed:
+            schema:
+              type: array
+              prefixItems:
+                - type: array
+                - type: array
+                  prefixItems: [{type: object}, {type: string}, {}]
+            prefixEncoding:
+              - {}
+              - contentType: multipart/mixed
+                prefixEncoding: [{contentType: application/xml}, {}, {contentType: image/png}]
+      responses: {'204': {description: ok}}
+  /multipart/streaming:
+    get:
+      operationId: streamingMultipart
+      responses:
+        '200':
+          description: A device streams its pictures, each processed as it arrives.
+          content:
+            multipart/mixed:
+              itemSchema: {$comment: A single data image from the device}
+              itemEncoding: {contentType: image/jpg}
+  /multipart/byteranges:
+    get:
+      operationId: streamingByteRanges
+      responses:
+        '206':
+          description: Byte ranges of a video, each with its Content-Range.
+          content:
+            multipart/byteranges:
+              itemSchema: {$comment: A single range of bytes from a video}
+              itemEncoding:
+                contentType: video/mp4
+                headers:
+                  Content-Range: {required: true, schema: {type: string}}
+  /querystring/jsonpath:
+    get:
+      operationId: querystringJsonpath
+      parameters:
+        - in: querystring
+          name: selector
+          content:
+            application/jsonpath:
+              schema: {type: string}
+              example: $.a.b[1:1]
+          examples:
+            Selector: {dataValue: "$.a.b[1:1]", serializedValue: "%24.a.b%5B1%3A1%5D"}
+      responses: {'204': {description: ok}}
+  # "Modeling Link Headers": one linkset model, in the `Link` header, as `+json` content, and as a body.
+  /collection:
+    get:
+      operationId: collectionWithLinks
+      responses: {'200': {$ref: '#/components/responses/CollectionWithLinks'}}
+  /collection/linkset-json:
+    get:
+      operationId: standaloneJsonLinkset
+      responses: {'200': {$ref: '#/components/responses/StandaloneJsonLinkset'}}
+  /collection/linkset:
+    get:
+      operationId: linksetBody
+      responses:
+        '200':
+          description: The links in `Link` header syntax.
+          content:
+            application/linkset:
+              schema: {$ref: '#/components/schemas/CollectionLinks'}
+  # "Media Type Examples".
+  /products:
+    get:
+      operationId: mediaTypeJson
+      responses:
+        '200':
+          description: A product.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Product'}
+              examples:
+                gadget: {summary: An example of a gadget, value: {name: Kettle, productType: Gadget, color: White, material: metal, brand: Lumen}}
+                book: {summary: An example of a book with a gadget's color, value: {name: Novel, productType: Book, color: Black, material: paper, brand: Folio}}
+  /logs/stream:
+    get:
+      operationId: logStream
+      responses: {'200': {$ref: '#/components/responses/LogStream'}}
+  /logs/excerpt:
+    get:
+      operationId: logExcerpt
+      responses: {'200': {$ref: '#/components/responses/LogExcerpt'}}
+  /events:
+    post:
+      operationId: serverSentEventStreams
+      requestBody:
+        description: A request body to add a stream of typed data.
+        required: true
+        content:
+          text/event-stream:
+            itemSchema:
+              $ref: "#/components/schemas/Event"
+              required: [event]
+              oneOf:
+                - properties: {event: {const: addString}}
+                - properties: {event: {const: addInt64}, data: {format: int64}}
+                - properties:
+                    event: {const: addJSON}
+                    data:
+                      contentMediaType: application/json
+                      contentSchema: {type: object, required: [foo], properties: {foo: {type: integer}}}
+      responses: {'204': {description: ok}}
+components:
+  schemas:
+    Address:
+      type: object
+      properties: {street: {type: string}, city: {type: string}}
+    FormData:
+      type: object
+      properties:
+        code:
+          allOf:
+            - {type: [string, number], pattern: "1", minimum: 0}
+            - {type: string, pattern: "2"}
+        count: {type: integer}
+        extra: {type: object, properties: {info: {type: string}}}
+    Product:
+      type: object
+      properties: {name: {type: string}, productType: {type: string}, color: {type: string}, material: {type: string}, brand: {type: string}}
+    LogEntry:
+      type: object
+      properties:
+        timestamp: {type: string, format: date-time}
+        level: {type: integer, minimum: 0}
+        message: {type: string}
+    Log: {type: array, items: {$ref: "#/components/schemas/LogEntry"}, maxItems: 100}
+    # "Special Considerations for Server-Sent Events": the generic event.
+    Event:
+      type: object
+      required: [data]
+      properties: {event: {type: string}, data: {type: string}, id: {type: string}, retry: {type: integer, minimum: 0}}
+    SimpleLinkContext:
+      type: array
+      items:
+        type: object
+        required: [href]
+        properties: {href: {type: string, format: uri-reference}}
+    CollectionLinks:
+      type: object
+      required: [linkset]
+      properties:
+        linkset:
+          type: array
+          items:
+            type: object
+            required: [first, prev, next, last]
+            properties: {anchor: {type: string, format: uri}}
+            additionalProperties: {$ref: '#/components/schemas/SimpleLinkContext'}
+  headers:
+    RFC2557NoContentId: {description: Use Content-Location instead of Content-ID, schema: false}
+    RFC2557ContentLocation:
+      required: true
+      schema: {$comment: Use a full URI (not a relative reference), type: string, format: uri}
+  requestBodies:
+    Form:
+      content:
+        application/x-www-form-urlencoded:
+          schema: {$ref: "#/components/schemas/FormData"}
+          encoding:
+            extra: {contentType: application/xml}
+    RFC2557:
+      content:
+        multipart/related; type=text/html:
+          schema:
+            prefixItems: [{type: string}]
+            items: {anyOf: [{type: string}, {$comment: "To allow binary, this must always pass"}]}
+          prefixEncoding:
+            - contentType: text/html
+              headers:
+                Content-ID: {$ref: '#/components/headers/RFC2557NoContentId'}
+                Content-Location: {$ref: '#/components/headers/RFC2557ContentLocation'}
+          itemEncoding:
+            contentType: text/css,text/javascript,image/*
+            headers:
+              Content-ID: {$ref: '#/components/headers/RFC2557NoContentId'}
+              Content-Location: {$ref: '#/components/headers/RFC2557ContentLocation'}
+  examples:
+    LogJSONPerLine:
+      summary: Log entries in application/jsonl or application/x-ndjson
+      value: |
+        {"timestamp": "1985-04-12T23:20:50.52Z", "level": 1, "message": "Hi!"}
+        {"timestamp": "1985-04-12T23:20:51.37Z", "level": 1, "message": "Bye!"}
+  responses:
+    CollectionWithLinks:
+      description: A page of a collection, its pagination links in the `Link` header.
+      content:
+        application/json:
+          schema: {type: array}
+      headers:
+        Link:
+          required: true
+          content:
+            application/linkset:
+              schema: {$ref: '#/components/schemas/CollectionLinks'}
+    StandaloneJsonLinkset:
+      description: The same links as a JSON document.
+      content:
+        application/linkset+json:
+          schema: {$ref: '#/components/schemas/CollectionLinks'}
+    LogStream:
+      description: A stream of JSON-format log messages, in any of the sequential JSON media types.
+      content:
+        application/json-seq: {itemSchema: {$ref: "#/components/schemas/LogEntry"}}
+        application/jsonl: {itemSchema: {$ref: "#/components/schemas/LogEntry"}, examples: {JSONL: {$ref: "#/components/examples/LogJSONPerLine"}}}
+        application/x-ndjson: {itemSchema: {$ref: "#/components/schemas/LogEntry"}, examples: {NDJSON: {$ref: "#/components/examples/LogJSONPerLine"}}}
+    LogExcerpt:
+      description: No more than 100 log records, in any of the sequential JSON media types.
+      content:
+        application/json-seq: {schema: {$ref: "#/components/schemas/Log"}}
+        application/jsonl: {schema: {$ref: "#/components/schemas/Log"}, examples: {JSONL: {$ref: "#/components/examples/LogJSONPerLine"}}}
+        application/x-ndjson: {schema: {$ref: "#/components/schemas/Log"}, examples: {NDJSON: {$ref: "#/components/examples/LogJSONPerLine"}}}

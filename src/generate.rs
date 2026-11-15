@@ -1,0 +1,115 @@
+//! End-to-end generation: spec file to formatted module files on disk.
+
+use std::path::Path;
+
+use crate::diag::Diagnostics;
+use crate::emit::Options;
+use crate::emit::rust::{self, needs};
+
+#[derive(Debug)]
+#[non_exhaustive]
+/// The result of generating a module.
+pub struct Generated {
+    /// Files to write as (path relative to the module directory, contents).
+    pub files: Vec<(String, String)>,
+    /// Every diagnostic from loading and building.
+    pub diagnostics: Diagnostics,
+    /// Number of generated operations.
+    pub operations: usize,
+    /// Number of generated named types.
+    pub types: usize,
+    /// Runtime features the description needs whatever the crate depends on: the codecs it calls.
+    pub runtime_features: Vec<&'static str>,
+}
+
+/// Returns load, validate, build the IR and emit formatted files. Fails only when the
+/// document cannot be parsed. Validation errors are reported but not fatal.
+pub fn generate(spec: &Path, opts: &Options) -> Result<Generated, Diagnostics> {
+    generate_all(&[spec.to_path_buf()], opts)
+}
+
+/// Returns [`generate`] from several root documents merged into one: their paths, webhooks, components and tags.
+///
+/// # Errors
+/// As [`generate`]. Also when two files describe the same operation or give one component name two values.
+pub fn generate_all(specs: &[std::path::PathBuf], opts: &Options) -> Result<Generated, Diagnostics> {
+    let loaded = crate::load::load_paths_with(specs, &opts.overlays);
+    let mut diagnostics = loaded.diagnostics.clone();
+    if loaded.model.is_none() {
+        return Err(diagnostics);
+    }
+    let Some(doc) = loaded.doc() else { return Err(diagnostics) };
+    // A requirement on a scheme the generator cannot see cannot be checked: generating
+    // anyway would serve the operation without it.
+    let unresolved = crate::resolve::unresolved_security(&doc.root);
+    if opts.server && !unresolved.is_empty() {
+        for (ptr, key) in unresolved {
+            diagnostics.error(
+                ptr,
+                format!("security scheme `{key}` does not resolve: refusing to generate a server that would skip it"),
+            );
+        }
+        return Err(diagnostics);
+    }
+    let from_v20 = loaded.source == Some(crate::version::Version::V20);
+    let api = crate::ir::build_with(
+        &doc,
+        &mut diagnostics,
+        opts.keep_unknown,
+        from_v20,
+        rust::names::RESERVED,
+        &opts.rust.crates,
+    );
+    let files = match rust::module(&api, opts) {
+        Ok(files) => files,
+        Err(e) => {
+            diagnostics.error("", format!("{e} (a honig bug: please report it)"));
+            return Err(diagnostics);
+        }
+    };
+    diagnostics.0.extend(rust::warnings(&api, opts));
+    Ok(Generated {
+        runtime_features: needs::runtime_features(
+            &api,
+            opts.rust.libs,
+            opts.client,
+            opts.server,
+            needs::Uses {
+                patterns: needs::uses_pattern(&doc.root, ""),
+                mail_formats: needs::uses_format(&doc.root, "", &["email", "idn-email", "hostname", "idn-hostname"]),
+            },
+        ),
+        files,
+        diagnostics,
+        operations: api.http.operations.len(),
+        types: api.types.defs.len(),
+    })
+}
+
+/// Returns the canonical form for comparing a file on disk with fresh output. So the `cargo fmt` of the user over
+/// generated files does not make them stale. It is printed by `prettyplease` and keeps a leading `// @generated` line
+/// (syn drops plain comments). Text that does not parse stays as it is.
+fn canonical(code: &str) -> String {
+    let (header, body) = match code.split_once('\n') {
+        Some((first, rest)) if first.starts_with("// @generated") => (format!("{first}\n"), rest),
+        _ => (String::new(), code),
+    };
+    // The one place a string becomes a syntax tree: normalizing a file already
+    // on disk for the stale check (and the bridge for user-edited files).
+    #[expect(clippy::disallowed_methods, reason = "reads existing files back; generation itself builds trees")]
+    let Ok(file) = syn::parse_file(body) else { return code.to_owned() };
+    format!("{header}{}", prettyplease::unparse(&file))
+}
+
+/// Returns the files in `dir` that differ from `files` (missing, changed or extra).
+pub(crate) fn stale(dir: &Path, files: &[(String, String)]) -> Vec<String> {
+    let mut out = vec![];
+    for (name, code) in files {
+        match crate::disk::read(&dir.join(name)) {
+            Ok(existing) if existing == *code || canonical(&existing) == canonical(code) => {}
+            Ok(_) => out.push(format!("{name} (changed)")),
+            Err(_) => out.push(format!("{name} (missing)")),
+        }
+    }
+    out
+}

@@ -1,0 +1,95 @@
+openapi: 3.2.0
+info: {title: Formats, version: "1"}
+paths:
+  /events/{id}:
+    get:
+      operationId: getEvent
+      parameters:
+        - {name: id, in: path, required: true, schema: {type: string, format: uuid}}
+        - {name: on, in: query, schema: {type: string, format: date}}
+        - {name: above, in: query, description: "A decimal travels as its digits in the URL too.", schema: {type: number, format: decimal}}
+      responses:
+        "200":
+          description: The event.
+          content:
+            application/json:
+              schema: {$ref: '#/components/schemas/Event'}
+components:
+  schemas:
+    # Required addresses: `std::net::Ipv4Addr` has no `Default`, so neither may the struct (Oxide's `Ipv4Range`).
+    StoreNetwork:
+      type: object
+      required: [first, last]
+      properties:
+        first: {type: string, format: ipv4}
+        last: {type: string, format: ipv6}
+    Event:
+      type: object
+      required: [id, at]
+      properties:
+        id: {type: string, format: uuid}
+        at: {type: string, format: date-time}
+        ip4: {type: string, format: ipv4}
+        ip6: {type: string, format: ipv6}
+        day: {type: string, format: date}
+        seen: {type: array, items: {type: string, format: date-time}}
+        token: {type: string, contentEncoding: base64url}
+        level: {type: integer, format: int8}
+        port: {type: integer, format: uint16, minimum: 1024}
+        # More digits than an f64 holds: `runtime::Decimal`, read and written as its digits.
+        amount: {type: number, format: decimal, minimum: 0}
+        sum: {type: number, format: decimal128}
+        # Typed when the crate has the library: `char` always, `uri` with `url`, the CIDR formats with `ipnet`;
+        # `date-time-local` and `time-local` with chrono or jiff (strings here: this crate has neither).
+        initial: {type: string, format: char}
+        home: {type: string, format: uri}
+        net4: {type: string, format: ipv4-cidr}
+        net6: {type: string, format: ipv6-cidr}
+        local: {type: string, format: date-time-local}
+        clock: {type: string, format: time-local}
+        # A decimal written as a string: a `String`, every digit kept, checked as a decimal.
+        price: {type: string, format: decimal}
+        # The same, for 34 significant digits.
+        total: {type: string, format: decimal128}
+        opens: {type: string, format: time}
+        # No library reads it: a `String` checked as one of the three forms of RFC 9110.
+        expires: {type: string, format: http-date}
+        # An ISO 8601 duration: no std type holds `P1M`, which has no fixed length.
+        lasts: {type: string, format: duration}
+        # Grammars the runtime checks itself: references (RFC 3986 and 3987), pointers, templates and ECMA-262.
+        link: {type: string, format: uri-reference}
+        page: {type: string, format: iri}
+        rel: {type: string, format: iri-reference}
+        at_path: {type: string, format: json-pointer}
+        up: {type: string, format: relative-json-pointer}
+        filter: {type: string, format: regex}
+        search: {type: string, format: uri-template}
+        # A decimal inside a `oneOf` branch keeps its digits too: the union decodes from the JSON text.
+        charge:
+          oneOf:
+            - {type: object, required: [refund], properties: {refund: {type: number, format: decimal}}}
+            - {type: object, required: [fee], properties: {fee: {type: number, format: decimal}}}
+        # The same through a discriminator, wherever it sits in the object: the tag is read from the JSON text.
+        payment:
+          oneOf:
+            - $ref: '#/components/schemas/Card'
+            - $ref: '#/components/schemas/Transfer'
+          discriminator: {propertyName: method}
+        payload:
+          type: string
+          contentMediaType: application/json
+          contentSchema: {type: object, required: [n], properties: {n: {type: integer}}}
+    # `Transfer` is `Card` again: the generator declares it as an alias, and the union's arms of the two share one body.
+    # Each branch fixes its tag: a value matches exactly one, as `oneOf` requires.
+    Card:
+      type: object
+      required: [method, amount]
+      properties:
+        method: {const: Card}
+        amount: {type: number, format: decimal, minimum: 0}
+    Transfer:
+      type: object
+      required: [method, amount]
+      properties:
+        method: {const: Transfer}
+        amount: {type: number, format: decimal, minimum: 0}

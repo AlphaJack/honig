@@ -1,0 +1,54 @@
+//! The PR gate on time: no kind of path takes more than its `max_time` times the time of its hand-rolled twin at any
+//! of `cost::GATE_SIZES`. Both run in turn in one process, so the speed of the machine cancels out of the ratio. It
+//! needs a release build, so it is a bench: `cargo bench -p e2e --bench time_gate`. `tests/allocation_gate.rs` gates
+//! allocations.
+
+use std::time::{Duration, Instant};
+
+#[path = "../cost/mod.rs"]
+mod cost;
+
+/// Rounds of both sides in turn. The fastest round of each side counts: it is the one least disturbed.
+const ROUNDS: usize = 15;
+/// About how long one round of one side takes.
+const ROUND: Duration = Duration::from_millis(4);
+
+fn main() -> std::process::ExitCode {
+    let started = Instant::now();
+    let runtime = cost::runtime();
+    let mut failed = vec![];
+    for size in cost::GATE_SIZES {
+        let (generated, twin) = cost::at(size);
+        for path in cost::paths(size) {
+            let measured = runtime.block_on(async {
+                cost::both_succeed(&generated, &twin, &path).await?;
+                Ok::<_, String>(cost::times(&generated, &twin, &path, ROUNDS, ROUND).await)
+            });
+            let (time, twin_time) = match measured {
+                Ok(times) => times,
+                Err(e) => {
+                    failed.push(e);
+                    continue;
+                }
+            };
+            let ratio = time.as_secs_f64() / twin_time.as_secs_f64();
+            println!(
+                "{size:>8} B {:<14} {:>9.1}us, twin {:>9.1}us: {ratio:.2}x",
+                path.name,
+                time.as_secs_f64() * 1e6,
+                twin_time.as_secs_f64() * 1e6
+            );
+            if ratio > path.max_time {
+                failed.push(format!(
+                    "{} at {size} B: {ratio:.2}x the time of its twin (at most {}x)",
+                    path.name, path.max_time
+                ));
+            }
+        }
+    }
+    println!("{:.1}s", started.elapsed().as_secs_f64());
+    for f in &failed {
+        eprintln!("FAIL {f}");
+    }
+    if failed.is_empty() { std::process::ExitCode::SUCCESS } else { std::process::ExitCode::FAILURE }
+}

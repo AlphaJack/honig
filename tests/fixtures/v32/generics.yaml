@@ -1,0 +1,48 @@
+openapi: 3.2.0
+info: {title: Generics, version: "1", description: "$dynamicRef generics, monomorphized per binding site."}
+paths:
+  /products:
+    get:
+      operationId: listProducts
+      responses:
+        '200': {description: A page of products., content: {application/json: {schema: {$ref: '#/components/schemas/ProductPage'}}}}
+  /tags:
+    get:
+      operationId: tagTree
+      responses:
+        '200': {description: A tree of tags., content: {application/json: {schema: {$ref: '#/components/schemas/StringTree'}}}}
+  /any:
+    get:
+      operationId: anyPage
+      responses:
+        '200': {description: "Unbound, the generic's default.", content: {application/json: {schema: {$ref: '#/components/schemas/Page'}}}}
+components:
+  schemas:
+    Product:
+      type: object
+      required: [name]
+      properties: {name: {type: string}}
+    Page:
+      type: object
+      required: [items]
+      properties:
+        items: {type: array, items: {$dynamicRef: '#item'}}
+        next: {type: string}
+      $defs:
+        item: {$dynamicAnchor: item}
+    ProductPage:
+      $ref: '#/components/schemas/Page'
+      $defs:
+        item: {$dynamicAnchor: item, $ref: '#/components/schemas/Product'}
+    Tree:
+      type: object
+      required: [value]
+      properties:
+        value: {$dynamicRef: '#node'}
+        children: {type: array, items: {$ref: '#/components/schemas/Tree'}}
+      $defs:
+        node: {$dynamicAnchor: node}
+    StringTree:
+      $ref: '#/components/schemas/Tree'
+      $defs:
+        node: {$dynamicAnchor: node, type: string}

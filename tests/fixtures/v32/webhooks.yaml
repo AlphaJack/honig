@@ -1,0 +1,49 @@
+openapi: 3.2.0
+info: {title: Webhooks, version: "1", description: Webhooks and callbacks the API sends.}
+paths:
+  /subscriptions:
+    post:
+      operationId: subscribe
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [callbackUrl]
+              properties: {callbackUrl: {type: string, format: uri}}
+      responses:
+        "201": {description: Subscribed.}
+      callbacks:
+        onEvent:
+          '{$request.body#/callbackUrl}':
+            post:
+              requestBody:
+                required: true
+                content:
+                  application/json:
+                    schema: {$ref: '#/components/schemas/Event'}
+              responses:
+                "204": {description: Received.}
+webhooks:
+  newProduct:
+    post:
+      operationId: newProduct
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: {$ref: '#/components/schemas/Product'}
+      responses:
+        "200": {description: Accepted.}
+        "410": {description: "Gone, stop sending."}
+components:
+  schemas:
+    Product:
+      type: object
+      required: [id, name]
+      properties: {id: {type: integer, format: int64}, name: {type: string}}
+    Event:
+      type: object
+      required: [kind]
+      properties: {kind: {type: string, enum: [created, deleted]}, at: {type: string, format: date-time}}

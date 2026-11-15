@@ -1,0 +1,20 @@
+[book]
+title = "honig"
+authors = ["honig contributors"]
+language = "en"
+src = "src"
+
+[build]
+build-dir = "../../target/book"
+create-missing = false
+
+[output.html]
+site-url = "/honig/"
+
+# No Run button: every snippet needs the generated `api` module or the `honig` crate, which the Rust playground has not.
+[output.html.playground]
+runnable = false
+
+[output.html.fold]
+enable = true
+level = 1
