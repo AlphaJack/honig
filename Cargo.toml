@@ -1,6 +1,6 @@
 [package]
 name = "cargo-honig"
-description = "A cargo subcommand that generates a Rust client and server from an OpenAPI description."
+description = "honig turns an OpenAPI description into typed Rust clients and servers."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
