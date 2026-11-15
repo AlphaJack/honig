@@ -1316,7 +1316,7 @@ fn fits(space: &Space<'_>, t: &Ty) -> Option<TokenStream> {
     (!checks.is_empty()).then(|| quote!(runtime::fits(&v, &[#(#checks),*])))
 }
 
-/// Whether `t` decodes from more JSON kinds than [`TypeSpace::kind_of`] names: a `Decimal` reads a number or a string
+/// Whether `t` decodes from more JSON kinds than [`TypeSpace::kind_of`](crate::ir::types::TypeSpace::kind_of) names: a `Decimal` reads a number or a string
 /// and bytes read an array or a string. Seen through options, boxes, aliases and newtypes.
 fn reads_several_kinds(space: &Space<'_>, t: &Ty, depth: usize) -> bool {
     const MAX_DEPTH: usize = 32;

@@ -19,7 +19,7 @@ pub(crate) struct Unread<B> {
     seen: usize,
 }
 
-/// Returns `body` left unread for [`Request::stream`](crate::Request::stream).
+/// Returns `body` left unread for [`Body::stream`](crate::Body::stream).
 pub(crate) fn unread<B>(body: B, headers: &http::HeaderMap, limit: usize) -> crate::ByteStream
 where
     B: http_body::Body<Data = bytes::Bytes> + Send + Unpin + 'static,

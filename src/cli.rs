@@ -31,7 +31,7 @@ enum Command {
     Init { spec: String },
     /// Generate the modules set in Cargo.toml files
     Generate {
-        /// Only the module of [package.metadata.honig.<MODULE>]
+        /// Only this module of [package.metadata.honig]
         module: Option<String>,
         /// Only this workspace member
         #[arg(short, long)]
@@ -39,7 +39,7 @@ enum Command {
     },
     /// Fail if a module is stale
     Check {
-        /// Only the module of [package.metadata.honig.<MODULE>]
+        /// Only this module of [package.metadata.honig]
         module: Option<String>,
         /// Only this workspace member
         #[arg(short, long)]
