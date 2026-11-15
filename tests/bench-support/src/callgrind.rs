@@ -58,14 +58,21 @@ struct Growth {
 /// Counts every path at every size, prints how each grew and fails if one grew faster than [`MAX_EXPONENT`].
 fn check(paths: &[&Path], sizes: &[usize], program: &str) -> ExitCode {
     let mut steep = vec![];
+    println!("path\texponent\tmax_exponent\tlarger_sizes\tresult");
     for path in paths {
         let Some(growth) = growth(path, sizes, program) else {
             eprintln!("{}: callgrind did not run: install valgrind", path.name);
             return ExitCode::FAILURE;
         };
-        let stopped = if growth.stopped { ", stopped before the larger sizes" } else { "" };
-        println!("{:<28} n^{:.2}{stopped}", path.name, growth.steepest);
-        if growth.steepest > MAX_EXPONENT {
+        let over = growth.steepest > MAX_EXPONENT;
+        println!(
+            "{}\t{:.2}\t{MAX_EXPONENT}\t{}\t{}",
+            path.name,
+            growth.steepest,
+            if growth.stopped { "skipped" } else { "run" },
+            if over { "FAIL" } else { "ok" }
+        );
+        if over {
             steep.push(path.name);
         }
     }

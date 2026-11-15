@@ -24,6 +24,7 @@ fn main() -> std::process::ExitCode {
     let started = Instant::now();
     let runtime = cost::runtime();
     let mut failed = vec![];
+    println!("size_bytes\tpath\thonig_us\ttwin_us\tratio\tmax_ratio\tresult");
     for size in cost::GATE_SIZES {
         let (generated, twin) = cost::at(size);
         for path in cost::paths(size) {
@@ -51,21 +52,21 @@ fn main() -> std::process::ExitCode {
                 }
             };
             let ratio = ratio_of((time, twin_time));
+            let over = ratio > path.max_time;
             println!(
-                "{size:>8} B {:<14} {:>9.1}us, twin {:>9.1}us: {ratio:.2}x",
+                "{size}\t{}\t{:.1}\t{:.1}\t{ratio:.2}\t{:.2}\t{}",
                 path.name,
                 time.as_secs_f64() * 1e6,
-                twin_time.as_secs_f64() * 1e6
+                twin_time.as_secs_f64() * 1e6,
+                path.max_time,
+                if over { "FAIL" } else { "ok" }
             );
-            if ratio > path.max_time {
-                failed.push(format!(
-                    "{} at {size} B: {ratio:.2}x the time of its twin (at most {}x)",
-                    path.name, path.max_time
-                ));
+            if over {
+                failed.push(format!("{} at {size} B", path.name));
             }
         }
     }
-    println!("{:.1}s", started.elapsed().as_secs_f64());
+    eprintln!("took {:.1}s", started.elapsed().as_secs_f64());
     for f in &failed {
         eprintln!("FAIL {f}");
     }
