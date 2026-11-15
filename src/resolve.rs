@@ -315,8 +315,8 @@ fn read_external(dir: Option<&Path>, uri: &str) -> Result<String, Error> {
 /// collapsing `.` and `..` segments.
 fn join_ref(file: &str, rel: &str) -> String {
     if !is_http(file) {
-        let dir = Path::new(file).parent().unwrap_or_else(|| Path::new(""));
-        return dir.join(rel).to_string_lossy().into_owned();
+        // A ref is a URI reference: its separator is `/` on every OS.
+        return file.rsplit_once('/').map_or_else(|| rel.to_owned(), |(dir, _)| format!("{dir}/{rel}"));
     }
     let scheme_end = file.find("://").map_or_default(|i| i + "://".len());
     let host_end = file.get(scheme_end..).and_then(|t| t.find('/')).map_or(file.len(), |i| scheme_end + i);
