@@ -30,12 +30,18 @@ thread_local! {
 /// the body is split is still there when the value is deserialized. A conversion already open is joined.
 #[cfg(feature = "multipart")]
 pub(crate) fn raw_parts<R>(f: impl FnOnce() -> R) -> R {
+    /// Closes the conversion also when `f` unwinds. A worker thread must not keep its parts.
+    struct Close;
+    impl Drop for Close {
+        fn drop(&mut self) {
+            RAW_PARTS.with(|c| *c.borrow_mut() = None);
+        }
+    }
     if RAW_PARTS.with(|c| c.borrow().is_some()) {
         return f();
     }
     RAW_PARTS.with(|c| *c.borrow_mut() = Some(vec![]));
-    // Closes the conversion also when `f` unwinds. A worker thread must not keep its parts.
-    let _close = std::mem::DropGuard::new((), |()| RAW_PARTS.with(|c| *c.borrow_mut() = None));
+    let _close = Close;
     f()
 }
 
@@ -61,7 +67,7 @@ fn raw_store(part: Binary) -> String {
     RAW_PARTS.with(|c| match c.borrow_mut().as_mut() {
         Some(parts) => {
             parts.push(part);
-            [RAW_MARK, (parts.len() - 1).format_into(&mut fmt::NumBuffer::new())].concat()
+            [RAW_MARK, itoa::Buffer::new().format(parts.len() - 1)].concat()
         }
         // Outside a conversion no marker can be read back: the bytes as text.
         None => String::from_utf8_lossy(&part.bytes).into_owned(),

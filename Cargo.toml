@@ -28,7 +28,7 @@ exclude = ["reference", "target"]
 # Generated code pins `honig = "=<version>"`: both crates share it.
 version = "0.0.1"
 edition = "2024"
-rust-version = "1.100"
+rust-version = "1.91"
 license = "Apache-2.0"
 repository = "https://github.com/AlphaJack/honig"
 homepage = "https://alphajack.github.io/honig"
@@ -84,6 +84,8 @@ pkg-fmt = "zip"
 bin-dir = "{ bin }{ binary-ext }"
 
 [dev-dependencies]
+# `assert_matches!`: the macro of std is unstable at the oldest Rust supported.
+assert_matches = "1"
 anyhow = "1"
 # `benches/scaling_gate.rs`: the callgrind check that the runtime's benches run too.
 bench-support = { path = "tests/bench-support" }

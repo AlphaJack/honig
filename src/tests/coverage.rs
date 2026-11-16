@@ -409,7 +409,7 @@ fn generate(doc: &Value, dir: &Path, opts: &crate::emit::Options) -> String {
     let mut d = crate::json::Doc::new(doc.clone());
     d.externals = crate::resolve::read_externals(doc, Some(dir));
     let api = crate::ir::build(&d, &mut diags);
-    crate::emit::rust::module(&api, opts).map_or_default(|files| files.into_iter().map(|(_, t)| t).collect())
+    crate::emit::rust::module(&api, opts).map(|files| files.into_iter().map(|(_, t)| t).collect()).unwrap_or_default()
 }
 
 /// Every fixture loaded and upgraded to 3.2 with the libraries that it declares.

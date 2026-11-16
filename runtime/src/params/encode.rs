@@ -102,7 +102,7 @@ pub(crate) fn key_order<T: Serialize + ?Sized>(v: &T) -> Vec<String> {
             d.deserialize_map(V)
         }
     }
-    serde_json::to_string(v).ok().and_then(|s| serde_json::from_str::<Keys>(&s).ok()).map_or_default(|k| k.0)
+    serde_json::to_string(v).ok().and_then(|s| serde_json::from_str::<Keys>(&s).ok()).map(|k| k.0).unwrap_or_default()
 }
 
 /// Returns the entries of an object in `order`. RFC 6570 expands an associative array in

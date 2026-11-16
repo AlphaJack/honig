@@ -42,7 +42,8 @@ pub(crate) fn with_runtime(text: &str, needed: &[&str]) -> Result<String, Error>
     let current: Vec<String> = table
         .get("features")
         .and_then(Item::as_array)
-        .map_or_default(|a| a.iter().filter_map(Value::as_str).map(str::to_owned).collect());
+        .map(|a| a.iter().filter_map(Value::as_str).map(str::to_owned).collect())
+        .unwrap_or_default();
     if let Some(extra) = current.iter().find(|f| !FEATURES.iter().any(|(k, _)| k == f)) {
         return Err(Error::Feature {
             feature: extra.clone(),
@@ -171,7 +172,10 @@ mod tests {
         let text = PINNED.replace("FEATURES", listed);
         let out = with_runtime(&text, needed)?;
         assert_eq!(stale(&out, needed), None, "idempotent");
-        Ok(out.split_once("features = ").map_or_default(|(_, f)| f.lines().next().unwrap_or_default().to_owned()))
+        Ok(out
+            .split_once("features = ")
+            .map(|(_, f)| f.lines().next().unwrap_or_default().to_owned())
+            .unwrap_or_default())
     }
 
     #[test]

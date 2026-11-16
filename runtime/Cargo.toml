@@ -17,6 +17,8 @@ include = ["/src/**/*.rs", "/README.md", "/LICENSE", "/Cargo.toml"]
 workspace = true
 
 [dependencies]
+# Integers as text without a heap allocation.
+itoa = "1"
 serde = { version = "1", features = ["derive"] }
 # `raw_value`: a `format: decimal` number reads and writes its exact digits (`Decimal`).
 # `float_roundtrip`: a float reads back as the same `f64`. Without it the last digit can move (2.598486701473248e-187
@@ -136,6 +138,8 @@ all-features = true
 
 # `tests/clients.rs`: reqwest needs a tokio runtime to send on.
 [dev-dependencies]
+# `assert_matches!`: the macro of std is unstable at the oldest Rust supported.
+assert_matches = "1"
 # The paths the benches time and the callgrind check of how they scale.
 bench-support = { path = "../tests/bench-support" }
 tokio = { version = "1", features = ["rt-multi-thread"] }

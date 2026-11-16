@@ -39,12 +39,12 @@ fn order(size: usize) -> Vec<u8> {
             i % 7 + 1
         )
     };
-    let lines: Vec<String> = Vec::from_fn(size / line(0).len(), line);
+    let lines: Vec<String> = (0..size / line(0).len()).map(line).collect();
     format!(r#"{{"id":7,"customer":"ACME","lines":[{}]}}"#, lines.join(",")).into_bytes()
 }
 
 fn raw(size: usize) -> Vec<u8> {
-    Vec::from_fn(size, |i| u8::try_from(i * 31 % 251).unwrap_or(0))
+    (0..size).map(|i| u8::try_from(i * 31 % 251).unwrap_or(0)).collect::<Vec<_>>()
 }
 
 #[divan::bench(args = SIZES)]

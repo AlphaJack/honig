@@ -35,8 +35,8 @@ fn mixed_encode_in<T: Serialize>(v: &T, media: &str, types: &[(&str, &str)]) -> 
     }
     let mut body = Vec::new();
     for (i, x) in items.iter().enumerate() {
-        let mut index = std::fmt::NumBuffer::new();
-        let index = i.format_into(&mut index);
+        let mut index = itoa::Buffer::new();
+        let index = index.format(i);
         let declared = types
             .iter()
             .find(|(k, _)| *k == index)

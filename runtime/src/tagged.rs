@@ -734,7 +734,7 @@ impl<'de> de::IntoDeserializer<'de, serde_json::Error> for KeyRef<'_, 'de> {
 
 #[cfg(test)]
 mod tests {
-    use std::assert_matches;
+    use assert_matches::assert_matches;
 
     use super::*;
 

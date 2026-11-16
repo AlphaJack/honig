@@ -93,7 +93,7 @@ fn read_chunked(reader: &mut impl BufRead) -> Vec<u8> {
 }
 
 fn pattern(n: usize) -> Vec<u8> {
-    Vec::from_fn(n, |i| u8::try_from(i % 251).unwrap())
+    (0..n).map(|i| u8::try_from(i % 251).unwrap()).collect::<Vec<_>>()
 }
 
 fn request(size: usize) -> Request {

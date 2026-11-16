@@ -471,7 +471,7 @@ fn hints(cfgs: &[&settings::Settings], manifest: &Path) {
         }
     }
     for cfg in cfgs {
-        let module = cfg.output.file_name().map_or_default(|n| n.to_string_lossy().to_string());
+        let module = cfg.output.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
         let declared = ["lib.rs", "main.rs"]
             .iter()
             .filter_map(|r| crate::disk::read(&cfg.root.join("src").join(r)).ok())

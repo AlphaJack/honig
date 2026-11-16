@@ -511,7 +511,8 @@ fn operation(b: &mut Builder<'_>, site: &Site<'_>, security: Option<&Value>, sch
             .get("servers")
             .or_else(|| pointer(&b.doc.root, site.item_ptr).and_then(|i| i.get("servers")))
             .and_then(Value::as_array)
-            .map_or_default(|a| a.iter().filter_map(server).collect()),
+            .map(|a| a.iter().filter_map(server).collect())
+            .unwrap_or_default(),
         pointer: site.op_ptr.to_owned(),
     }
 }
@@ -530,7 +531,7 @@ fn param_value(
         Some((media.clone(), m, mptr))
     });
     let content_schema = media.as_ref().and_then(|(_, m, _)| m.get("schema"));
-    let constraints = p.get("schema").or(content_schema).map_or_default(|s| b.constraints(s));
+    let constraints = p.get("schema").or(content_schema).map(|s| b.constraints(s)).unwrap_or_default();
     match &media {
         Some((media, m, mptr)) => {
             let s = json::schema(m);
@@ -660,7 +661,7 @@ fn part_headers(b: &mut Builder<'_>, site: &Site<'_>, prefix: &Name, params: &[P
                 allow_reserved: false,
                 content: None,
                 doc: json::string(&h, "description"),
-                constraints: h.get("schema").map_or_default(|s| b.constraints(s)),
+                constraints: h.get("schema").map(|s| b.constraints(s)).unwrap_or_default(),
                 examples: examples_of(b, &h, &hptr, false),
                 allow_empty: false,
                 deprecated: h.get("deprecated") == Some(&Value::Bool(true)),
@@ -790,7 +791,7 @@ fn body(b: &mut Builder<'_>, site: &Site<'_>, prefix: &Name) -> Option<Body> {
     // are checked by the body type's `Validate`.
     let constraints =
         match rb.get("content").and_then(Value::as_object).map(|m| m.values().collect::<Vec<_>>()).as_deref() {
-            Some([media]) => media.get("schema").map_or_default(|s| b.constraints(s)),
+            Some([media]) => media.get("schema").map(|s| b.constraints(s)).unwrap_or_default(),
             _ => crate::ir::types::Constraints::default(),
         };
     // The schema is checked on a request: `readOnly` properties are not sent.
@@ -1192,7 +1193,8 @@ fn positional_encoding(media_obj: &Value, open_prefix: Option<usize>) -> Vec<(St
     let mut out: Vec<(String, String)> = media_obj
         .get("prefixEncoding")
         .and_then(Value::as_array)
-        .map_or_default(|es| es.iter().enumerate().filter_map(|(i, e)| Some((i.to_string(), ct(e)?))).collect());
+        .map(|es| es.iter().enumerate().filter_map(|(i, e)| Some((i.to_string(), ct(e)?))).collect())
+        .unwrap_or_default();
     if let Some(c) = media_obj.get("itemEncoding").and_then(ct) {
         out.push(("*".to_owned(), c));
     }
@@ -1214,15 +1216,19 @@ fn media_variant(media: &str) -> String {
 /// Returns one Server Object (url, name, variables).
 pub(crate) fn server(s: &Value) -> Option<super::Server> {
     let url = s.get("url")?.as_str()?.to_owned();
-    let variables = s.get("variables").and_then(Value::as_object).map_or_default(|vars| {
-        vars.iter()
-            .map(|(name, v)| {
-                let default = v.get("default").and_then(Value::as_str).unwrap_or("").to_owned();
-                let allowed = v.get("enum").and_then(Value::as_array).map_or_default(|a| json::strings(a));
-                (name.clone(), default, allowed)
-            })
-            .collect()
-    });
+    let variables = s
+        .get("variables")
+        .and_then(Value::as_object)
+        .map(|vars| {
+            vars.iter()
+                .map(|(name, v)| {
+                    let default = v.get("default").and_then(Value::as_str).unwrap_or("").to_owned();
+                    let allowed = v.get("enum").and_then(Value::as_array).map(|a| json::strings(a)).unwrap_or_default();
+                    (name.clone(), default, allowed)
+                })
+                .collect()
+        })
+        .unwrap_or_default();
     let text = |k: &str| json::string(s, k);
     let mut lines: Vec<String> = text("description").into_iter().collect();
     for (name, v) in s.get("variables").and_then(Value::as_object).into_iter().flatten() {

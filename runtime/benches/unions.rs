@@ -10,7 +10,7 @@
 
 #![expect(clippy::expect_used, reason = "a bench fails loudly on input it built itself")]
 
-use std::assert_matches;
+use assert_matches::assert_matches;
 
 use divan::Bencher;
 use divan::counter::BytesCount;

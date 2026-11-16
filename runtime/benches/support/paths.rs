@@ -25,7 +25,7 @@ fn built<T, E: std::fmt::Display>(r: Result<T, E>) -> T {
 }
 
 fn raw(size: usize) -> Vec<u8> {
-    Vec::from_fn(size, |i| u8::try_from(i * 31 % 251).unwrap_or(0))
+    (0..size).map(|i| u8::try_from(i * 31 % 251).unwrap_or(0)).collect::<Vec<_>>()
 }
 
 /// `MIXED` repeated to about `size` bytes.
@@ -139,7 +139,7 @@ fn fields(size: usize) -> BTreeMap<String, String> {
 /// A `Cookie` header of about `size` bytes and the name of its last cookie.
 fn cookies(size: usize) -> (String, String) {
     let count = size.div_ceil(24);
-    let pairs: Vec<String> = Vec::from_fn(count, |i| format!("c{i:06}=v%20{i:08}"));
+    let pairs: Vec<String> = (0..count).map(|i| format!("c{i:06}=v%20{i:08}")).collect();
     (pairs.join("; "), format!("c{:06}", count - 1))
 }
 
@@ -153,7 +153,7 @@ fn items(size: usize) -> Vec<Value> {
 /// A `Link` header's model of about `size` bytes: one context with many `next` links.
 fn links(size: usize) -> Value {
     let next: Vec<Value> =
-        Vec::from_fn(size.div_ceil(32), |i| serde_json::json!({"href": format!("/products?page={i}")}));
+        (0..size.div_ceil(32)).map(|i| serde_json::json!({"href": format!("/products?page={i}")})).collect::<Vec<_>>();
     serde_json::json!({"linkset": [{"anchor": "https://shop.example.com/products", "next": next}]})
 }
 
@@ -162,7 +162,8 @@ const ROUTE_BYTES: usize = 10;
 
 /// A trie of `count` literal routes from `/r00000000` up and the path of its last one.
 fn routes(count: usize) -> (Vec<runtime::Node>, String) {
-    let names: Vec<&'static str> = Vec::from_fn(count, |i| &*Box::leak(format!("r{i:08}").into_boxed_str()));
+    let names: Vec<&'static str> =
+        (0..count).map(|i| &*Box::leak(format!("r{i:08}").into_boxed_str())).collect::<Vec<_>>();
     let children: Vec<(&'static str, u32)> =
         names.iter().enumerate().map(|(i, n)| (*n, u32::try_from(i + 1).unwrap_or(u32::MAX))).collect();
     let none = runtime::Node::NONE;
@@ -338,7 +339,7 @@ pub(crate) const PATHS: &[Path] = &[
         name: "unique_items",
         prepare: |size| {
             let items: Vec<Value> =
-                Vec::from_fn(size.div_ceil(MIXED.len()), |i| serde_json::json!({"i": i, "note": MIXED}));
+                (0..size.div_ceil(MIXED.len())).map(|i| serde_json::json!({"i": i, "note": MIXED})).collect::<Vec<_>>();
             let check = |v: &Vec<Value>| {
                 let mut out = vec![];
                 runtime::check_unique(&mut out, &runtime::InstancePath::Root, v);

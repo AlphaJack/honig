@@ -1,6 +1,6 @@
 //! Hand-written checks for the `webhooks` fixture. What `WebhookClient` sends `server::webhook` receives.
 
-use std::assert_matches;
+use assert_matches::assert_matches;
 use std::sync::{Arc, Mutex};
 
 use e2e::v32_webhooks::api::{self, WebhookClient, operations as ops, types};

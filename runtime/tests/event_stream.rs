@@ -2,7 +2,7 @@
 
 #![expect(clippy::unwrap_used, reason = "test code fails loudly")]
 
-use std::assert_matches;
+use assert_matches::assert_matches;
 use std::collections::VecDeque;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;

@@ -53,12 +53,12 @@ fn decode_parts(v: Value) -> Value {
 pub fn decode_path(raw: &str, name: &str, style: Style, shape: Shape, explode: bool) -> Option<Value> {
     let v = match style {
         Style::Label => {
-            let body = raw.trim_prefix('.');
+            let body = raw.strip_prefix('.').unwrap_or(raw);
             let sep = if explode { '.' } else { ',' };
             split_value(body, shape, explode, if shape == Shape::Object && explode { '.' } else { sep })
         }
         Style::Matrix => {
-            let body = raw.trim_prefix(';');
+            let body = raw.strip_prefix(';').unwrap_or(raw);
             match (shape, explode) {
                 (Shape::Array, true) => Value::Array(
                     body.split(';')
@@ -68,7 +68,7 @@ pub fn decode_path(raw: &str, name: &str, style: Style, shape: Shape, explode: b
                 ),
                 (Shape::Object, true) => split_value(body, shape, true, ';'),
                 _ => {
-                    let value = body.split_once('=').map_or_default(|(_, v)| v);
+                    let value = body.split_once('=').map(|(_, v)| v).unwrap_or_default();
                     let _ = name;
                     split_value(value, shape, false, ',')
                 }
@@ -286,8 +286,8 @@ pub fn path_param<T: DeserializeOwned>(caps: &[&str], index: usize, style: Style
 /// then percent-decoded (borrowed when there is nothing to decode).
 pub fn path_text(raw: &str, style: Style) -> Cow<'_, str> {
     let v = match style {
-        Style::Label => raw.trim_prefix('.'),
-        Style::Matrix => raw.trim_prefix(';').split_once('=').map_or_default(|(_, v)| v),
+        Style::Label => raw.strip_prefix('.').unwrap_or(raw),
+        Style::Matrix => raw.strip_prefix(';').unwrap_or(raw).split_once('=').map(|(_, v)| v).unwrap_or_default(),
         Style::Simple
         | Style::Form
         | Style::SpaceDelimited

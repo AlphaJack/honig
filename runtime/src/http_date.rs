@@ -100,7 +100,10 @@ pub(crate) const MONTHS: [&str; 12] =
 /// Returns the year of an RFC 850 date: one more than 50 years ahead is the most recent past year with those last two
 /// digits (RFC 9110 section 5.6.7).
 pub(crate) fn two_digit_year(yy: i64) -> i64 {
-    let now = SystemTime::now().duration_since(UNIX_EPOCH).map_or_default(|d| i64::try_from(d.as_secs()).unwrap_or(0));
+    let now = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| i64::try_from(d.as_secs()).unwrap_or(0))
+        .unwrap_or_default();
     let this_year = civil_year(now.div_euclid(DAY_SECONDS));
     let century = this_year - this_year.rem_euclid(100);
     let year = century + yy;
@@ -172,8 +175,10 @@ mod tests {
 
     #[test]
     fn a_two_digit_year_is_never_more_than_50_years_ahead() {
-        let now =
-            SystemTime::now().duration_since(UNIX_EPOCH).map_or_default(|d| i64::try_from(d.as_secs()).unwrap_or(0));
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .map(|d| i64::try_from(d.as_secs()).unwrap_or(0))
+            .unwrap_or_default();
         let this_year = civil_year(now.div_euclid(86_400));
         assert_eq!(two_digit_year(this_year % 100), this_year);
         assert_eq!(two_digit_year((this_year + 51) % 100), this_year + 51 - 100);

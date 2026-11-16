@@ -1,6 +1,6 @@
 //! Hand-written checks for the `formats` fixture.
 
-use std::assert_matches;
+use assert_matches::assert_matches;
 
 use e2e::v32_formats::api::{self, operations as ops, types};
 use serde_json::json;

@@ -2,7 +2,7 @@
 
 mod support;
 
-use std::assert_matches;
+use assert_matches::assert_matches;
 use std::future::Future;
 use std::sync::Mutex;
 
