@@ -23,7 +23,7 @@ serde = { version = "1", features = ["derive"] }
 # became 2.5984867014732485e-187), and a body passed on would carry other numbers than it got.
 serde_json = { version = "1", features = ["raw_value", "float_roundtrip"] }
 # `pkce`: the `S256` challenge.
-sha2 = { version = "0.10", optional = true, default-features = false }
+sha2 = { version = "0.11", optional = true, default-features = false }
 percent-encoding = "2.3"
 form_urlencoded = "1.2"
 # `Cookie` parameters and API keys.
