@@ -1,11 +1,11 @@
 name: Mutants
 
-# Lists the mutations of the generator and the runtime that no test catches. It runs weekly. It also runs on the
+# Lists the mutations of the generator, the runtime and the generated crates that no test catches. It runs weekly. It also runs on the
 # changed lines of a PR with the `mutants` label at each push. The `mutants` job reports for every PR. So it can be a
 # required check. Without the label it passes at once.
 on:
   schedule:
-    - cron: "0 19 * * 5"
+    - cron: "0 19 * * 3"
   workflow_dispatch:
   pull_request:
     types: [opened, synchronize, reopened, labeled, unlabeled]
@@ -56,14 +56,14 @@ jobs:
     name: mutants (${{ matrix.shard }}/${{ strategy.job-total }})
     needs: build
     runs-on: ubuntu-latest
-    # A shard takes about half an hour: one that takes an hour is stuck.
-    timeout-minutes: 60
+    # A shard takes about 45 minutes: one that takes 90 is stuck.
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       max-parallel: 20
       matrix:
         # A PR's diff is small: one shard.
-        shard: ${{ fromJSON(github.event_name == 'pull_request' && '[0]' || '[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19]') }}
+        shard: ${{ fromJSON(github.event_name == 'pull_request' && '[0]' || '[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39]') }}
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -98,7 +98,7 @@ jobs:
         env:
           SHARD: ${{ matrix.shard }}
           SHARDS: ${{ strategy.job-total }}
-        run: cargo mutants -vV --in-place --test-tool nextest --shard "$SHARD/$SHARDS" --no-shuffle ${IN_DIFF:+"$IN_DIFF"} ${BASELINE:+"$BASELINE"}
+        run: cargo mutants --workspace -vV --in-place --test-tool nextest --shard "$SHARD/$SHARDS" --no-shuffle ${IN_DIFF:+"$IN_DIFF"} ${BASELINE:+"$BASELINE"}
       - name: Upload what the tests missed
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

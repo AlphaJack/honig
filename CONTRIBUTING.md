@@ -20,7 +20,7 @@ CARGO_BUILD_WARNINGS=deny cargo clippy --workspace --all-targets
 cargo nextest run --workspace --run-ignored all
 cargo acyclic
 CARGO_BUILD_WARNINGS=deny cargo hack clippy -p honig --each-feature --all-targets
-cargo hack test -p honig --each-feature
+cargo hack nextest run -p honig --each-feature
 ```
 
 ## Pull requests

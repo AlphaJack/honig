@@ -1,8 +1,7 @@
 # A mutant of the generator or the runtime runs every package's tests: `tests/e2e` exercises both.
 test_workspace = true
 
-# Generated code is not mutated.
-exclude_globs = ["tests/**"]
+examine_globs = ["src/**", "runtime/src/**", "tests/e2e/src/**", "examples/shop/src/**"]
 
 # Mutants go to the shards one by one. Then the shards finish together.
 sharding = "round-robin"

@@ -10,6 +10,7 @@ mod cost;
 fn no_generated_path_allocates_much_more_than_its_twin() {
     let runtime = cost::runtime();
     let mut failed = vec![];
+    println!("size_bytes\tpath\thonig_allocs\ttwin_allocs\tratio\tmax_ratio\tresult");
     for size in cost::GATE_SIZES {
         let (generated, twin) = cost::at(size);
         for path in cost::paths(size) {
@@ -18,12 +19,15 @@ fn no_generated_path_allocates_much_more_than_its_twin() {
                 (cost::heap(&generated, &path).await.0, cost::heap(&twin, &path).await.0)
             });
             let ratio = allocs as f64 / twin_allocs.max(1) as f64;
-            println!("{size:>8} B {:<14} {allocs:>6} allocations, twin {twin_allocs:>6}: {ratio:.2}x", path.name);
-            if ratio > path.max_allocs {
-                failed.push(format!(
-                    "{} at {size} B: {allocs} allocations, {ratio:.2}x its twin's {twin_allocs} (at most {}x)",
-                    path.name, path.max_allocs
-                ));
+            let over = ratio > path.max_allocs;
+            println!(
+                "{size}\t{}\t{allocs}\t{twin_allocs}\t{ratio:.2}\t{:.2}\t{}",
+                path.name,
+                path.max_allocs,
+                if over { "FAIL" } else { "ok" }
+            );
+            if over {
+                failed.push(format!("{} at {size} B", path.name));
             }
         }
     }
