@@ -38,6 +38,11 @@ release = false
 name = "bench-support"
 release = false
 
+# Its version is 0.0.0. Released, it would leave `{{ version }}` in `pr_name` undefined.
+[[package]]
+name = "shop"
+release = false
+
 [changelog]
 header = """
 # Changelog
