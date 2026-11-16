@@ -1,6 +1,6 @@
 [package]
 name = "cargo-honig"
-description = "A cargo subcommand that generates a Rust client and server from an OpenAPI description."
+description = "honig turns an OpenAPI description into typed Rust clients and servers."
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
@@ -66,7 +66,7 @@ clap = { version = "4", features = ["derive"] }
 cargo_metadata = "0.23.1"
 
 [[bench]]
-name = "scaling"
+name = "scaling_gate"
 harness = false
 
 # `cargo binstall cargo-honig` downloads the archive dist built for the release.
@@ -85,7 +85,7 @@ bin-dir = "{ bin }{ binary-ext }"
 
 [dev-dependencies]
 anyhow = "1"
-# `benches/scaling.rs`: the callgrind check that the runtime's benches run too.
+# `benches/scaling_gate.rs`: the callgrind check that the runtime's benches run too.
 bench-support = { path = "tests/bench-support" }
 # `src/tests/fuzz.rs`: random APIs. A failure shrinks to the smallest API that fails.
 proptest = { version = "1", default-features = false, features = ["std"] }

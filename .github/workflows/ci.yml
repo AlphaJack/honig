@@ -17,6 +17,9 @@ concurrency:
 env:
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: "0"
+  # Without debug info test builds are faster, most of all on Windows. A panic still names its line.
+  CARGO_PROFILE_DEV_DEBUG: "0"
+  CARGO_PROFILE_TEST_DEBUG: "0"
 
 jobs:
   fmt:
@@ -45,7 +48,8 @@ jobs:
         uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1
         with:
           toolchain: "stable"
-          components: clippy
+          # `cargo acyclic` indexes the code with rust-analyzer.
+          components: clippy, rust-analyzer
       - name: Cache cargo registry and target
         uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
@@ -58,6 +62,30 @@ jobs:
       # The benches and the optional codecs and adapters.
       - name: Clippy with every runtime feature
         run: cargo clippy -p honig --all-targets --all-features --locked -- -D warnings
+      - name: Install cargo-acyclic
+        uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39 # v2.90.3
+        with:
+          tool: cargo-acyclic
+      # No cycles between modules or items and no calls up to a free function of an ancestor. Layers in order.
+      - name: Modules are acyclic
+        run: cargo acyclic
+
+  # The API docs and the book.
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1
+        with:
+          toolchain: "stable"
+      - name: Cache cargo registry and target
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
       - name: Rustdoc
         env:
           RUSTDOCFLAGS: -D warnings
@@ -69,31 +97,12 @@ jobs:
         run: |
           cargo doc -p honig --no-deps --all-features --locked
           cargo doc -p cargo-honig --no-deps --locked
-
-  # cargo acyclic: no cycles between modules or items and no calls up to a free function of an ancestor. Layers in order.
-  acyclic:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - name: Install Rust toolchain
-        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1
-        with:
-          toolchain: "stable"
-          # `cargo acyclic` indexes the code with rust-analyzer.
-          components: rust-analyzer
-      - name: Cache cargo registry and target
-        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
-        with:
-          save-if: ${{ github.ref == 'refs/heads/main' }}
-      - name: Install cargo-acyclic
+      - name: Install mdbook
         uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39 # v2.90.3
         with:
-          tool: cargo-acyclic
-      - name: Acyclic
-        run: cargo acyclic
+          tool: mdbook
+      - name: Build the book
+        run: mdbook build docs/book
 
   # Each runtime feature alone and no features. `--workspace` turns on every feature that the e2e crate asks for. So only
   # this job finds a missing `cfg` or a test without the feature that it needs.
@@ -113,43 +122,26 @@ jobs:
         uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           save-if: ${{ github.ref == 'refs/heads/main' }}
-      - name: Install cargo-hack
+      - name: Install cargo-hack and cargo-nextest
         uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39 # v2.90.3
         with:
-          tool: cargo-hack
+          tool: cargo-hack,cargo-nextest
       - name: Clippy, each runtime feature
         run: cargo hack clippy -p honig --each-feature --all-targets --locked -- -D warnings
       - name: Test, each runtime feature
-        run: cargo hack test -p honig --each-feature --locked
+        run: cargo hack nextest run -p honig --each-feature --locked
       # The generator with only the runtime features that it asks for itself. In `--workspace` the e2e crate turns
       # on more (`regress`), so a check the CLI cannot run still passes there. Its own target directory keeps the
       # unified build's artifacts out.
+      # The fuzz and coverage tests do not depend on features: the test job runs them.
       - name: Test the generator alone
-        run: cargo test -p cargo-honig --locked --target-dir target/isolated
-
-  # The oldest Rust the published crates build with: `rust-version` in Cargo.toml.
-  msrv:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - name: Install the toolchain Cargo.toml names
-        run: |
-          version=$(cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.name == "cargo-honig") | .rust_version')
-          rustup toolchain install "$version" --profile minimal
-          echo "MSRV=$version" >> "$GITHUB_ENV"
-      - name: Check
-        run: cargo "+$MSRV" check -p cargo-honig -p honig --all-features --locked
+        run: cargo nextest run -p cargo-honig --locked --target-dir target/isolated -E 'not test(/fuzz|coverage/)'
+      # The generator without its HTTPS client and overlays.
+      - name: Test the generator without default features
+        run: cargo nextest run -p cargo-honig --lib --no-default-features --locked --target-dir target/isolated -E 'not test(/fuzz|coverage/)'
 
   test:
-    name: test (${{ matrix.os }})
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -173,14 +165,19 @@ jobs:
         run: cargo nextest run --workspace --locked --run-ignored all
       - name: Doctests
         run: cargo test --workspace --doc --locked
-      - name: Test without default features
-        if: runner.os == 'Linux'
-        run: cargo nextest run -p cargo-honig --lib --no-default-features --locked
 
-  # Fails when a runtime path costs more than n^1.3. It counts instructions under callgrind. The counts are the same on every run.
-  scaling:
-    runs-on: ubuntu-latest
+  # Paths and line endings differ on Windows. Not a required check.
+  test-windows:
+    name: test (windows-latest)
+    runs-on: windows-latest
     steps:
+      # Before anything is checked out, installed, built or written, so that no scanner reads it.
+      - name: Turn off Defender's scanners
+        shell: pwsh
+        run: |
+          Set-MpPreference -DisableRealtimeMonitoring $true -DisableBehaviorMonitoring $true -DisableIOAVProtection $true -DisableScriptScanning $true -DisableArchiveScanning $true -DisableBlockAtFirstSeen $true
+          "TEMP=$env:RUNNER_TEMP" >> $env:GITHUB_ENV
+          "TMP=$env:RUNNER_TEMP" >> $env:GITHUB_ENV
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -189,21 +186,25 @@ jobs:
         uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1
         with:
           toolchain: "stable"
+          # `wasm_client` checks the browser client compiles for wasm32.
+          targets: wasm32-unknown-unknown
       - name: Cache cargo registry and target
         uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           save-if: ${{ github.ref == 'refs/heads/main' }}
-      - name: Install valgrind
-        run: sudo apt-get install -y --no-install-recommends valgrind
-      - name: Runtime scaling
-        run: cargo bench -p honig --bench scaling --features cookie,multipart,server,xml --locked
-      - name: Generator scaling
-        run: cargo bench -p cargo-honig --bench scaling --locked
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39 # v2.90.3
+        with:
+          tool: cargo-nextest
+      # Every failure, not the first one only.
+      - name: Test
+        run: cargo nextest run --workspace --locked --run-ignored all --no-fail-fast
 
-  # Generated paths against hand-rolled axum twins: `tests/e2e/benches/time_gate.rs`. It builds e2e in release, so a
-  # pull request runs it only when it changes what a request costs: the runtime, the emitted code, e2e or a
-  # dependency.
-  time-gate:
+  # The scaling gate fails when a path costs more than n^1.3. It counts instructions under callgrind, so its counts
+  # are the same on every run. The time gate races generated paths against hand-rolled axum twins:
+  # `tests/e2e/benches/time_gate.rs`. It builds e2e in release, so a pull request runs it only when it changes what a
+  # request costs: the runtime, the emitted code, e2e or a dependency.
+  performance:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -218,37 +219,30 @@ jobs:
           BASE_REF: ${{ github.base_ref }}
         run: |
           if [ "$EVENT" = pull_request ] && git diff --quiet "origin/$BASE_REF...HEAD" -- runtime/src src/emit tests/e2e Cargo.lock; then
-            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "time=false" >> "$GITHUB_OUTPUT"
           else
-            echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "time=true" >> "$GITHUB_OUTPUT"
           fi
       - name: Install Rust toolchain
-        if: steps.changed.outputs.run == 'true'
         uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1
         with:
           toolchain: "stable"
       - name: Cache cargo registry and target
-        if: steps.changed.outputs.run == 'true'
         uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           save-if: ${{ github.ref == 'refs/heads/main' }}
+      # The runner's package index goes stale: without an update apt asks for packages that the mirror has dropped.
+      - name: Install valgrind
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends valgrind
+      - name: Scaling gate, runtime
+        run: cargo bench -p honig --bench scaling_gate --features cookie,multipart,server,xml --locked
+      - name: Scaling gate, generator
+        run: cargo bench -p cargo-honig --bench scaling_gate --locked
       - name: Time gate
-        if: steps.changed.outputs.run == 'true'
+        if: steps.changed.outputs.time == 'true'
         run: cargo bench -p e2e --bench time_gate --locked
-
-  book:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - name: Install mdbook
-        uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39 # v2.90.3
-        with:
-          tool: mdbook
-      - name: Build the book
-        run: mdbook build docs/book
 
   deny:
     runs-on: ubuntu-latest

@@ -152,4 +152,3 @@ async fn the_full_stack_runs_in_order() {
     assert_eq!(mallory.status(), 403, "the filter after `authenticate` sees the principal");
     assert!(text(mallory).await.contains("\"code\":403"));
 }
-

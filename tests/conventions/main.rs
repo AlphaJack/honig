@@ -38,7 +38,8 @@ fn sources(dir: &Path, found: &mut Vec<(String, String)>) {
         if path.is_dir() && !path.ends_with("fixtures") && !path.ends_with(Path::new("e2e").join("src")) {
             sources(&path, found);
         } else if path.extension().is_some_and(|e| e == "rs") {
-            let file = path.strip_prefix(root()).unwrap_or(&path).display().to_string();
+            // With `/` on every OS: the conventions match prefixes such as `src/emit/`.
+            let file = path.strip_prefix(root()).unwrap_or(&path).display().to_string().replace('\\', "/");
             found.push((file, fs::read_to_string(&path).unwrap()));
         }
     }

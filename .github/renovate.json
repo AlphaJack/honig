@@ -18,8 +18,14 @@
       "description": "users do not see crate bumps so they stay out of the changelog",
       "matchDatasources": ["crate"],
       "semanticCommitType": "chore"
+    },
+    {
+      "description": "dist generates release.yml: update it with `dist init`",
+      "matchFileNames": [".github/workflows/release.yml"],
+      "enabled": false
     }
   ],
+  "ignorePaths": [".github/workflows/release.yml"],
   "customManagers": [
     {
       "description": "actionlint and the checksum of its archive",

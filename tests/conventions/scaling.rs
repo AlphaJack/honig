@@ -1,4 +1,4 @@
-//! Every body codec that the runtime offers is a path of `runtime/benches/paths`. `scaling` checks those for growth. A
+//! Every body codec that the runtime offers is a path of `runtime/benches/paths`. `scaling_gate` checks those for growth. A
 //! codec that it leaves out could grow quadratically unseen.
 
 use std::fs;

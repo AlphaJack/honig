@@ -4,7 +4,6 @@
 
 #![expect(clippy::unwrap_used, reason = "test code fails loudly")]
 
-
 use futures_util::StreamExt;
 use honig::__private::{
     Framing, ItemStream, XmlField, XmlNode, XmlShape, block_on, check_unique, cookie_text, form_decode, form_encode,
