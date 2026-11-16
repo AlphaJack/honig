@@ -482,6 +482,22 @@ fn hints(cfgs: &[&settings::Settings], manifest: &Path) {
     }
 }
 
+/// Returns the manifest `text` with each of the `lines` added to its `[dependencies]`. It parses the TOML, so a
+/// header with CRLF or a comment after it is found too.
+///
+/// # Errors
+/// `text` or a line is not valid TOML.
+fn with_dependencies(text: &str, lines: &[&str]) -> Result<String, crate::error::Error> {
+    let mut doc: toml_edit::DocumentMut = text.parse()?;
+    let added: toml_edit::DocumentMut = lines.join("\n").parse()?;
+    if let Some(deps) = doc.entry("dependencies").or_insert_with(toml_edit::table).as_table_like_mut() {
+        for (name, item) in added.iter() {
+            deps.insert(name, item.clone());
+        }
+    }
+    Ok(doc.to_string())
+}
+
 fn init(spec: &str, args: &Args) -> Result<ExitCode, Failure> {
     let text = crate::disk::read(&args.manifest)?;
     let manifest = settings::Manifest::load(&args.manifest)?;
@@ -498,15 +514,8 @@ fn init(spec: &str, args: &Args) -> Result<ExitCode, Failure> {
     if !manifest.has_dependency("serde_json") {
         missing.push("serde_json = \"1\"");
     }
-    if !missing.is_empty() {
-        if let Some(pos) = out.find("[dependencies]\n") {
-            let at = pos + "[dependencies]\n".len();
-            out.insert_str(at, &format!("{}\n", missing.join("\n")));
-        } else {
-            out.push_str(&format!("\n[dependencies]\n{}\n", missing.join("\n")));
-        }
-    }
-    let out = crate::manifest::with_new_runtime(&(out + "\n"), &settings::init_features())?;
+    let out = with_dependencies(&(out + "\n"), &missing)?;
+    let out = crate::manifest::with_new_runtime(&out, &settings::init_features())?;
     crate::disk::write(&args.manifest, &out)?;
     args.say(format_args!("added [package.metadata.honig.api] to {}", args.manifest.display()));
     args.say(format_args!("next: cargo honig generate"));
@@ -546,4 +555,27 @@ pub fn run(args: impl IntoIterator<Item = String>) -> ExitCode {
 #[must_use]
 pub fn usage() -> String {
     Cli::command().term_width(0).render_help().to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::with_dependencies;
+
+    const SERDE: &str = "serde = { version = \"1\", features = [\"derive\"] }";
+
+    #[test]
+    fn dependencies_go_into_a_crlf_manifest_once() {
+        let crlf = "[package]\r\nname = \"x\"\r\n\r\n[dependencies]\r\naxum = \"0.8\"\r\n";
+        let out = with_dependencies(crlf, &[SERDE]).unwrap();
+        assert_eq!(out.matches("[dependencies]").count(), 1, "{out}");
+        let doc: toml_edit::DocumentMut = out.parse().unwrap();
+        assert!(doc["dependencies"].get("axum").is_some() && doc["dependencies"].get("serde").is_some(), "{out}");
+    }
+
+    #[test]
+    fn a_manifest_without_dependencies_gets_the_table() {
+        let out = with_dependencies("[package]\nname = \"x\"\n", &[SERDE, "serde_json = \"1\""]).unwrap();
+        let doc: toml_edit::DocumentMut = out.parse().unwrap();
+        assert!(doc["dependencies"].get("serde").is_some() && doc["dependencies"].get("serde_json").is_some(), "{out}");
+    }
 }
