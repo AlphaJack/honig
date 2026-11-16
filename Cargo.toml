@@ -28,7 +28,7 @@ exclude = ["reference", "target"]
 # Generated code pins `honig = "=<version>"`: both crates share it.
 version = "0.0.1"
 edition = "2024"
-rust-version = "1.100"
+rust-version = "1.91"
 license = "Apache-2.0"
 repository = "https://github.com/AlphaJack/honig"
 homepage = "https://alphajack.github.io/honig"
