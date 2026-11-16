@@ -1020,7 +1020,7 @@ dependencies = [
  "form_urlencoded",
  "futures-core",
  "futures-util",
- "getrandom 0.3.4",
+ "getrandom 0.4.3",
  "gloo-net",
  "gloo-timers",
  "http",
