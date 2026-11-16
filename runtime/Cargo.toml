@@ -82,7 +82,7 @@ reqwest = { version = "0.13", optional = true, default-features = false, feature
 # The wait before an event stream reconnects.
 gloo-timers = { version = "0.3", features = ["futures"] }
 # `GlooTransport`: browser `fetch` and its response body as a `ReadableStream`.
-gloo-net = { version = "0.6", optional = true, default-features = false, features = ["http"] }
+gloo-net = { version = "0.8", optional = true, default-features = false, features = ["http"] }
 web-sys = { version = "0.3", optional = true, default-features = false, features = ["ReadableStream", "ReadableStreamDefaultReader", "ReadableStreamReadResult"] }
 js-sys = { version = "0.3", optional = true }
 wasm-bindgen = { version = "0.2", optional = true }
