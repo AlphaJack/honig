@@ -30,10 +30,6 @@ thread_local! {
 /// the body is split is still there when the value is deserialized. A conversion already open is joined.
 #[cfg(feature = "multipart")]
 pub(crate) fn raw_parts<R>(f: impl FnOnce() -> R) -> R {
-    if RAW_PARTS.with(|c| c.borrow().is_some()) {
-        return f();
-    }
-    RAW_PARTS.with(|c| *c.borrow_mut() = Some(vec![]));
     /// Closes the conversion also when `f` unwinds. A worker thread must not keep its parts.
     struct Close;
     impl Drop for Close {
@@ -41,6 +37,10 @@ pub(crate) fn raw_parts<R>(f: impl FnOnce() -> R) -> R {
             RAW_PARTS.with(|c| *c.borrow_mut() = None);
         }
     }
+    if RAW_PARTS.with(|c| c.borrow().is_some()) {
+        return f();
+    }
+    RAW_PARTS.with(|c| *c.borrow_mut() = Some(vec![]));
     let _close = Close;
     f()
 }

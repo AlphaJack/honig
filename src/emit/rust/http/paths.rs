@@ -70,7 +70,7 @@ pub(crate) enum Seg {
 }
 
 pub(crate) fn template_segs(op: &Operation) -> Vec<Seg> {
-    let path = op.path.strip_prefix('/').unwrap_or(op.path);
+    let path = op.path.strip_prefix('/').unwrap_or(&op.path);
     path.split('/')
         .map(|seg| {
             let pieces: Vec<Result<String, ()>> = template(seg)

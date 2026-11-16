@@ -41,7 +41,7 @@ pub(crate) fn axum_paths(api: &Api) -> BTreeSet<String> {
 /// position because operation names may share a word (`CreateUser`,
 /// `CreateOrder`) that the `enum_variant_names` of clippy rejects.
 pub(crate) fn op_variants(path_ops: &[&Operation]) -> Vec<proc_macro2::Ident> {
-    Vec::from_fn(path_ops.len(), |i| format_ident!("O{i}"))
+    (0..path_ops.len()).map(|i| format_ident!("O{i}")).collect::<Vec<_>>()
 }
 
 /// Returns `Op::<Variant>` for the operation at `i` through the enum of its chunk when
@@ -85,9 +85,9 @@ pub(crate) fn dispatch_fns(path_ops: &[&Operation], variants: &[proc_macro2::Ide
     }
     let chunks: Vec<(&[&Operation], &[proc_macro2::Ident])> =
         path_ops.chunks(DISPATCH_CHUNK).zip(variants.chunks(DISPATCH_CHUNK)).collect();
-    let cs: Vec<_> = Vec::from_fn(chunks.len(), |ci| format_ident!("C{ci}"));
-    let es: Vec<_> = Vec::from_fn(chunks.len(), |ci| format_ident!("Op{ci}"));
-    let fs: Vec<_> = Vec::from_fn(chunks.len(), |ci| format_ident!("dispatch_{ci}"));
+    let cs: Vec<_> = (0..chunks.len()).map(|ci| format_ident!("C{ci}")).collect();
+    let es: Vec<_> = (0..chunks.len()).map(|ci| format_ident!("Op{ci}")).collect();
+    let fs: Vec<_> = (0..chunks.len()).map(|ci| format_ident!("dispatch_{ci}")).collect();
     let parts = chunks.iter().enumerate().map(|(ci, (ops, vs))| {
         let (e, f) = (&es[ci], &fs[ci]);
         let arms = ops.iter().zip(vs.iter()).map(|(op, v)| {

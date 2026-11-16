@@ -1223,7 +1223,7 @@ pub(crate) fn server(s: &Value) -> Option<super::Server> {
             vars.iter()
                 .map(|(name, v)| {
                     let default = v.get("default").and_then(Value::as_str).unwrap_or("").to_owned();
-                    let allowed = v.get("enum").and_then(Value::as_array).map_or_default(|a| json::strings(a));
+                    let allowed = v.get("enum").and_then(Value::as_array).map(|a| json::strings(a)).unwrap_or_default();
                     (name.clone(), default, allowed)
                 })
                 .collect()
