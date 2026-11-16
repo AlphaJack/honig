@@ -98,6 +98,8 @@ jobs:
         env:
           SHARD: ${{ matrix.shard }}
           SHARDS: ${{ strategy.job-total }}
+          # A mutated generator must not rewrite tests/e2e and examples/shop: the next mutants would not build.
+          HONIG_REGEN_CHECK_ONLY: "1"
         run: cargo mutants --workspace -vV --in-place --test-tool nextest --shard "$SHARD/$SHARDS" --no-shuffle ${IN_DIFF:+"$IN_DIFF"} ${BASELINE:+"$BASELINE"}
       - name: Upload what the tests missed
         if: always()
