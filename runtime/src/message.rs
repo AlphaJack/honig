@@ -232,3 +232,21 @@ pub fn target(base_url: &str, uri: &http::Uri) -> String {
         format!("{base_url}{}", uri.path_and_query().map_or("/", http::uri::PathAndQuery::as_str))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{body_response, check_body_media};
+    use crate::Error;
+
+    #[test]
+    fn a_body_of_an_undeclared_media_type_is_an_error() {
+        let resp = body_response(200, "text/html", "<p>hi</p>");
+        assert!(check_body_media(&resp, &["text/html", "application/json"]).is_ok());
+        let err = check_body_media(&resp, &["application/json"]).unwrap_err();
+        assert!(
+            matches!(&err, Error::UnexpectedMedia { status: 200, content_type, declared, .. }
+                if content_type == "text/html" && declared == "application/json"),
+            "{err:?}"
+        );
+    }
+}

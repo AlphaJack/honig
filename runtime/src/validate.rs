@@ -241,15 +241,11 @@ fn canonical(v: &Value, out: &mut String) {
     }
 }
 
-/// Returns a float as the integer that it equals when it has no fraction. Otherwise its shortest round-trip text.
+/// Returns a float as its shortest round-trip text. `Display` writes a whole float as the integer it equals (`1.0` as
+/// `1`) and never in exponent form. Only `-0.0` needs a case of its own.
 fn canonical_float(f: f64) -> String {
     if f == 0.0 {
         return "0".to_owned();
-    }
-    if f.fract() == 0.0 && f.abs() < MAX_EXACT_INT {
-        // Whole and below 2^53: exact as an i64.
-        #[expect(clippy::cast_possible_truncation, reason = "whole and below 2^53, so exact")]
-        return (f as i64).to_string();
     }
     f.to_string()
 }
@@ -1153,6 +1149,86 @@ mod tests {
         assert_eq!(faults(&json!(-2), &json!({"const": -2.0})), 0);
         assert_eq!(faults(&json!([1.0]), &json!({"enum": [[1]]})), 0);
         assert_eq!(faults(&json!("foo"), &json!({"maxLength": 2.0})), 1);
+    }
+
+    #[test]
+    fn floats_are_equal_by_value_also_beyond_the_integers() {
+        use serde_json::json;
+        assert!(super::json_equal(&json!(-0.0), &json!(0)));
+        assert!(super::json_equal(&json!(3.0), &json!(3)));
+        assert!(super::json_equal(&json!(1e20), &json!(100_000_000_000_000_000_000.0)));
+        assert!(!super::json_equal(&json!(1e20), &json!(2e20)));
+        assert!(!super::json_equal(&json!(0.5), &json!(0.25)));
+    }
+
+    #[test]
+    fn unique_items_compares_whole_arrays() {
+        use serde_json::json;
+        let mut out = vec![];
+        super::check_unique(
+            &mut out,
+            &super::InstancePath::Root,
+            &[json!([1, 2]), json!([12]), json!({"a": 1, "b": 2})],
+        );
+        super::check_unique(
+            &mut out,
+            &super::InstancePath::Root,
+            &[json!({"a": 1, "b": [1, 2]}), json!({"b": [1, 2], "a": 1.0})],
+        );
+        let messages: Vec<&str> = out.iter().map(|v| v.message.as_str()).collect();
+        assert_eq!(messages, ["items must be unique"], "only the second list has a duplicate");
+    }
+
+    #[test]
+    fn check_records_its_message_only_when_not_ok() {
+        let mut out = vec![];
+        super::check(&mut out, &super::InstancePath::Root, true, "fine");
+        super::check(&mut out, &super::InstancePath::Root, false, "must match ^a");
+        let messages: Vec<&str> = out.iter().map(|v| v.message.as_str()).collect();
+        assert_eq!(messages, ["must match ^a"]);
+    }
+
+    #[test]
+    fn a_map_validates_each_value_under_its_key() {
+        struct Bad(&'static str);
+        impl super::Validate for Bad {
+            fn validate(&self, path: &super::InstancePath<'_>, out: &mut Vec<super::Violation>) {
+                super::violation(out, path, self.0);
+            }
+        }
+        let map = std::collections::BTreeMap::from([("x".to_owned(), Bad("bad"))]);
+        let mut out = vec![];
+        super::Validate::validate(&map, &super::InstancePath::Root, &mut out);
+        let found: Vec<String> = out.iter().map(|v| format!("{} {}", v.path, v.message)).collect();
+        assert_eq!(found, ["/x bad"]);
+    }
+
+    #[test]
+    fn multiple_of_and_property_counts_hold_at_their_bounds() {
+        use serde_json::json;
+        assert_eq!(faults(&json!(4), &json!({"multipleOf": 2})), 0);
+        assert_eq!(faults(&json!(0.3), &json!({"multipleOf": 0.1})), 0, "within the float tolerance");
+        assert_eq!(faults(&json!(3), &json!({"multipleOf": 2})), 1);
+        assert_eq!(faults(&json!({"a": 1}), &json!({"maxProperties": 1})), 0);
+        assert_eq!(faults(&json!({"a": 1, "b": 2}), &json!({"maxProperties": 1})), 1);
+    }
+
+    #[test]
+    fn property_names_and_null_types_are_checked() {
+        use serde_json::json;
+        assert_eq!(faults(&json!({"a": 1}), &json!({"propertyNames": {"minLength": 2}})), 1);
+        assert_eq!(faults(&json!({"ab": 1}), &json!({"propertyNames": {"minLength": 2, "type": "string"}})), 0);
+        assert_eq!(faults(&json!([null]), &json!({"contains": {"type": "null"}})), 0);
+        assert_eq!(faults(&json!([1]), &json!({"contains": {"type": "null"}})), 1);
+    }
+
+    /// A definition that refers to itself on the same value consumes nothing. It passes instead of recursing forever.
+    #[test]
+    fn a_definition_that_refers_to_itself_passes() {
+        use serde_json::json;
+        let schema = json!({"$defs": {"loop": {"$ref": "#/$defs/loop"}}, "$ref": "#/$defs/loop"});
+        assert_eq!(faults(&json!({"a": [1]}), &schema), 0);
+        assert_eq!(faults(&json!([1]), &schema), 0);
     }
 
     /// `^(a+)+$` takes exponential time on a long value that almost matches. Past `maxLength` it does not run: the

@@ -173,7 +173,7 @@ pub(crate) fn is_xml_media(ct: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::negotiate;
+    use super::{media_matches, negotiate};
 
     const OFFERED: [&str; 2] = ["application/json", "application/jsonl"];
 
@@ -199,5 +199,22 @@ mod tests {
         assert_eq!(negotiate(Some("garbage"), &OFFERED), Some(0));
         assert_eq!(negotiate(Some("application/json;q=2"), &OFFERED), Some(0), "a quality over 1 is no range");
         assert_eq!(negotiate(Some(""), &[]), None, "nothing offered");
+        assert_eq!(negotiate(Some("application/json;q=0.5, application/jsonl;q=1.5"), &OFFERED), Some(0));
+    }
+
+    #[test]
+    fn a_quality_of_one_may_have_decimals() {
+        for one in ["1", "1.", "1.0", "1.000"] {
+            let accept = format!("application/json;q=0.5, application/jsonl;q={one}");
+            assert_eq!(negotiate(Some(&accept), &OFFERED), Some(1), "{accept}");
+        }
+    }
+
+    #[test]
+    fn a_range_ends_with_a_slash_and_a_star() {
+        assert!(media_matches("image/png", "image/*"));
+        assert!(media_matches("IMAGE/png", "image/*"));
+        assert!(!media_matches("imagery/png", "image*"), "a star without the slash is no range");
+        assert!(!media_matches("text/png", "image/*"));
     }
 }
