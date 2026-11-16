@@ -223,7 +223,7 @@ fn read(path: &Path) -> Result<String> {
 /// The text of a doc comment line without `///` or `//!` and the space after it.
 fn doc_text<'a>(line: &'a str, marker: &str) -> Option<&'a str> {
     let rest = line.trim_start().strip_prefix(marker)?;
-    Some(rest.trim_prefix(' '))
+    Some(rest.strip_prefix(' ').unwrap_or(rest))
 }
 
 /// The docs of the item that starts with `item`. Then one `###` section with docs per method of the block that

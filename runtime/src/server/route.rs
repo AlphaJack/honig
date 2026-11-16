@@ -98,7 +98,7 @@ pub const fn node(
 /// values in path order.
 pub fn route<'p>(nodes: &[Node], path: &'p str) -> Option<(usize, Captures<'p>)> {
     let mut caps = Captures::default();
-    let leaf = walk(nodes, 0, Some(path.trim_prefix('/')), &mut caps)?;
+    let leaf = walk(nodes, 0, Some(path.strip_prefix('/').unwrap_or(path)), &mut caps)?;
     Some((leaf as usize, caps))
 }
 

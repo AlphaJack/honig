@@ -396,7 +396,7 @@ fn string_array(item: Option<&Item>) -> Option<Vec<String>> {
 /// It has no table or a setting holds the wrong kind of value.
 pub(crate) fn settings<'a>(module: impl Into<Module<'a>>, path: &Path) -> Result<Settings, Error> {
     let module = module.into();
-    let root = path.parent().map_or_default(Path::to_path_buf);
+    let root = path.parent().map(Path::to_path_buf).unwrap_or_default();
     let table = module.table.ok_or_else(|| Error::NoTable(path.to_path_buf()))?;
     let name = module.path();
     let string = |k: &str| match table.get(k) {
@@ -908,7 +908,10 @@ mod tests {
     #[test]
     fn a_typo_is_an_error() {
         let err = |module: &str| {
-            modules_of(&format!("[package.metadata.honig.api]\n{module}")).err().map_or_default(|e| e.to_string())
+            modules_of(&format!("[package.metadata.honig.api]\n{module}"))
+                .err()
+                .map(|e| e.to_string())
+                .unwrap_or_default()
         };
         assert!(err("spec = \"a.yaml\"\nstrcit = false").contains("no setting `strcit`"), "a typo is not ignored");
         assert_eq!(err("spec = \"a.yaml\""), "");

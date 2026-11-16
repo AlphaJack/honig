@@ -353,8 +353,8 @@ fn positional_parts(body: &[u8], boundary: &str) -> Vec<Part> {
             break;
         }
         // The line ending after the boundary. Then the one that belongs to the next delimiter.
-        let chunk = chunk.trim_prefix(b"\r\n");
-        let chunk = chunk.trim_suffix(b"\r\n");
+        let chunk = chunk.strip_prefix(b"\r\n").unwrap_or(chunk);
+        let chunk = chunk.strip_suffix(b"\r\n").unwrap_or(chunk);
         let (head, data) = match chunk.strip_prefix(b"\r\n") {
             Some(data) => (&b""[..], data),
             None => match memchr::memmem::find(chunk, b"\r\n\r\n") {

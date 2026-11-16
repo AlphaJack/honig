@@ -52,7 +52,7 @@ pub(crate) fn inner_docs(d: &str) -> TokenStream {
 
 /// Docs from spec prose or none. A doc that restates the name of the item is noise.
 pub(crate) fn doc_opt(d: Option<&str>) -> TokenStream {
-    d.map(str::trim).filter(|d| !d.is_empty()).map_or_default(|d| docs(&rustdoc(d)))
+    d.map(str::trim).filter(|d| !d.is_empty()).map(|d| docs(&rustdoc(d))).unwrap_or_default()
 }
 
 /// Returns rust type of `ty`; named types get `types::` when `qualify` is set.
@@ -335,7 +335,7 @@ fn grouped(number: &str) -> String {
     let (sign, unsigned) = number.split_at(usize::from(number.starts_with('-')));
     let (mantissa, exponent) = unsigned.split_at(unsigned.find(['e', 'E']).unwrap_or(unsigned.len()));
     let (int, fraction) = mantissa.split_once('.').map_or((mantissa, None), |(i, f)| (i, Some(f)));
-    let fraction = fraction.map_or_default(|f| format!(".{}", in_threes(f, 0)));
+    let fraction = fraction.map(|f| format!(".{}", in_threes(f, 0))).unwrap_or_default();
     format!("{sign}{}{fraction}{exponent}", in_threes(int, int.len() % GROUP))
 }
 
@@ -723,7 +723,7 @@ fn looks_code(w: &str) -> bool {
         }
         let ident = p.chars().all(|c| c.is_alphanumeric() || c == '_');
         let underscore = ident && p.contains('_');
-        let s = p.trim_suffix('s');
+        let s = p.strip_suffix('s').unwrap_or(p);
         let camel = s.starts_with(|c: char| c.is_uppercase())
             && s.chars().all(char::is_alphanumeric)
             && s.chars().filter(|c| c.is_uppercase()).count() > 1

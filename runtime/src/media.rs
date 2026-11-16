@@ -82,7 +82,8 @@ pub fn negotiate(accept: Option<&str>, offered: &[&str]) -> Option<usize> {
             })
             // Specificity: an exact type, then `type/*` and then `*/*`.
             .max_by_key(|(k, s, _)| (*k != "*", *s != "*"))
-            .map_or_default(|(.., q)| q)
+            .map(|(.., q)| q)
+            .unwrap_or_default()
     };
     let mut best: Option<(usize, u16)> = None;
     for (i, media) in offered.iter().enumerate() {

@@ -265,7 +265,7 @@ fn collect_op_tags(root: &Obj, out: &mut BTreeSet<String>) {
         let Some(item) = v.as_object() else { return };
         for (k, op) in item {
             let candidates: Vec<&Value> = if k == "additionalOperations" {
-                op.as_object().map_or_default(|m| m.values().collect())
+                op.as_object().map(|m| m.values().collect()).unwrap_or_default()
             } else {
                 vec![op]
             };

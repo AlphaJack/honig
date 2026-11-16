@@ -415,7 +415,8 @@ fn linked(params: &Value) -> Value {
 fn every_runtime_expression_form_reaches_a_value_source() {
     for e in EXPRESSIONS {
         let ops = squash(&operations_of("expr-forms", &linked(&json!({"v": e}))));
-        let init = ops.split("Self{v:").nth(1).map_or_default(|r| r.split_once("},").map_or(r, |(head, _)| head));
+        let init =
+            ops.split("Self{v:").nth(1).map(|r| r.split_once("},").map_or(r, |(head, _)| head)).unwrap_or_default();
         assert!(!init.starts_with("None"), "{e} is never evaluated: {init}");
         let static_source = e.starts_with("$request.path.")
             || e.starts_with("$request.query.")

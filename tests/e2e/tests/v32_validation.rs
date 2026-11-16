@@ -1,6 +1,6 @@
 //! Hand-written checks for the `validation` fixture. They run against the module that `tests/regen.rs` keeps fresh.
 
-use std::assert_matches;
+use assert_matches::assert_matches;
 use std::future::Future;
 
 use e2e::v32_validation::api::{self, operations as ops, types};

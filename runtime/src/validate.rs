@@ -103,7 +103,7 @@ fn uuid(s: &str) -> bool {
 
 /// Returns an optional `-` and digits. Then optionally `.` and more digits.
 fn decimal(s: &str) -> bool {
-    let s = s.trim_prefix('-');
+    let s = s.strip_prefix('-').unwrap_or(s);
     let (whole, fraction) = s.split_once('.').unwrap_or((s, "0"));
     let number = |p: &str| !p.is_empty() && p.bytes().all(|b| b.is_ascii_digit());
     number(whole) && number(fraction)
@@ -196,7 +196,7 @@ fn has_duplicates<T: Serialize>(items: &[T]) -> bool {
                 key
             }
             // Never equal to another item: a key no JSON text starts with.
-            Err(_) => ["\u{0}", i.format_into(&mut fmt::NumBuffer::new())].concat(),
+            Err(_) => ["\u{0}", itoa::Buffer::new().format(i)].concat(),
         })
         .collect();
     keys.sort_unstable();
@@ -232,8 +232,8 @@ fn canonical(v: &Value, out: &mut String) {
             out.push('}');
         }
         Value::Number(n) => match (n.as_i64(), n.as_u64(), n.as_f64()) {
-            (Some(i), ..) => out.push_str(i.format_into(&mut fmt::NumBuffer::new())),
-            (None, Some(u), _) => out.push_str(u.format_into(&mut fmt::NumBuffer::new())),
+            (Some(i), ..) => out.push_str(itoa::Buffer::new().format(i)),
+            (None, Some(u), _) => out.push_str(itoa::Buffer::new().format(u)),
             (None, None, Some(f)) => out.push_str(&canonical_float(f)),
             (None, None, None) => out.push_str(&n.to_string()),
         },
@@ -632,7 +632,7 @@ impl Schema<'_> {
                 self.nested(v, sub, || format!("/{i}"), out);
             }
         }
-        let start = prefix.map_or_default(Vec::len);
+        let start = prefix.map(Vec::len).unwrap_or_default();
         ev.items = ev.items.max(start.min(items.len()));
         if let Some(sub) = s.get("items") {
             for (i, v) in items.iter().enumerate().skip(start) {

@@ -243,7 +243,7 @@ fn shaped(
         if f.text {
             // No text. An optional text field stays absent. A required one is empty.
             // A CDATA field is the content of its sections without the formatting around them.
-            let t = text.take().map_or_default(|t| if f.cdata { cdata.map_or(t, str::to_owned) } else { t });
+            let t = text.take().map(|t| if f.cdata { cdata.map_or(t, str::to_owned) } else { t }).unwrap_or_default();
             if f.required || !t.is_empty() {
                 o.push((Cow::Borrowed(f.wire), Xml::Text(t)));
             }

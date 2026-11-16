@@ -1,7 +1,7 @@
 //! Adapters: the server under hyper without axum, a blocking ureq client, an in-memory client for tests and a
 //! transport of your own.
 
-use std::assert_matches;
+use assert_matches::assert_matches;
 use std::sync::Arc;
 
 use e2e::v32_catalog::api::{self, operations as ops};

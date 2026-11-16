@@ -1,6 +1,6 @@
 //! `if`/`then` on a property's constant becomes a native enum.
 
-use std::assert_matches;
+use assert_matches::assert_matches;
 use std::future::Future;
 
 use e2e::v32_conditional::api::{self, operations as ops, types};

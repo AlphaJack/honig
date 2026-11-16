@@ -332,7 +332,7 @@ fn answer<R: serde::de::DeserializeOwned>(resp: Response) -> Result<R, Error> {
 
 #[cfg(test)]
 mod tests {
-    use std::assert_matches;
+    use assert_matches::assert_matches;
 
     use super::*;
 

@@ -318,14 +318,14 @@ fn join_ref(file: &str, rel: &str) -> String {
         // A ref is a URI reference: its separator is `/` on every OS.
         return file.rsplit_once('/').map_or_else(|| rel.to_owned(), |(dir, _)| format!("{dir}/{rel}"));
     }
-    let scheme_end = file.find("://").map_or_default(|i| i + "://".len());
+    let scheme_end = file.find("://").map(|i| i + "://".len()).unwrap_or_default();
     let host_end = file.get(scheme_end..).and_then(|t| t.find('/')).map_or(file.len(), |i| scheme_end + i);
     let origin = file.get(..host_end).unwrap_or(file);
     let path = file.get(host_end..).unwrap_or("");
     let mut segs: Vec<&str> = if rel.starts_with('/') {
         vec![]
     } else {
-        let dir = path.rsplit_once('/').map_or_default(|(d, _)| d);
+        let dir = path.rsplit_once('/').map(|(d, _)| d).unwrap_or_default();
         dir.split('/').filter(|x| !x.is_empty()).collect()
     };
     for seg in rel.split('/') {

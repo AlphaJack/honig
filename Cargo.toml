@@ -84,6 +84,8 @@ pkg-fmt = "zip"
 bin-dir = "{ bin }{ binary-ext }"
 
 [dev-dependencies]
+# `assert_matches!`: the macro of std is unstable at the oldest Rust supported.
+assert_matches = "1"
 anyhow = "1"
 # `benches/scaling_gate.rs`: the callgrind check that the runtime's benches run too.
 bench-support = { path = "tests/bench-support" }

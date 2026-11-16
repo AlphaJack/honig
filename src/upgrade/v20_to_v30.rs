@@ -560,7 +560,7 @@ fn schema(s: &Value) -> Value {
 }
 
 fn media_list(v: Option<&Value>) -> Vec<String> {
-    v.and_then(Value::as_array).map_or_default(|a| json::strings(a))
+    v.and_then(Value::as_array).map(|a| json::strings(a)).unwrap_or_default()
 }
 
 trait OrDefault {

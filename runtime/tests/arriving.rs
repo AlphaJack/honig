@@ -3,7 +3,7 @@
 
 #![expect(clippy::unwrap_used, reason = "test code fails loudly")]
 
-use std::assert_matches;
+use assert_matches::assert_matches;
 
 use futures_util::StreamExt;
 use honig::__private::{Framing, block_on};

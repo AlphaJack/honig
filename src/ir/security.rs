@@ -151,7 +151,7 @@ pub(crate) fn requirements(security: Option<&Value>, schemes: &[SecurityScheme])
             r.iter()
                 .map(|(k, v)| Requirement {
                     scheme: k.clone(),
-                    scopes: v.as_array().map_or_default(|a| json::strings(a)),
+                    scopes: v.as_array().map(|a| json::strings(a)).unwrap_or_default(),
                 })
                 .collect()
         })

@@ -120,7 +120,7 @@ pub(crate) fn sse_state(block: &str) -> (Option<&str>, Option<u64>) {
     let (mut id, mut retry) = (None, None);
     for line in sse_lines(block) {
         let (k, v) = line.split_once(':').unwrap_or((line, ""));
-        let v = v.trim_prefix(' ');
+        let v = v.strip_prefix(' ').unwrap_or(v);
         match k {
             "id" if !v.contains('\0') => id = Some(v),
             "retry" if !v.is_empty() && v.bytes().all(|b| b.is_ascii_digit()) => retry = v.parse().ok().or(retry),
@@ -202,7 +202,7 @@ pub(crate) fn sse_item<T: DeserializeOwned>(status: u16, block: &str) -> Result<
     let mut o = Map::new();
     for line in sse_lines(block).filter(|l| !l.starts_with(':')) {
         let (k, v) = line.split_once(':').unwrap_or((line, ""));
-        let v = v.trim_prefix(' ');
+        let v = v.strip_prefix(' ').unwrap_or(v);
         match k {
             "data" => match o.get_mut("data") {
                 Some(Value::String(prev)) => {
@@ -219,12 +219,11 @@ pub(crate) fn sse_item<T: DeserializeOwned>(status: u16, block: &str) -> Result<
             "id" if !v.contains('\0') => {
                 o.insert("id".to_owned(), Value::String(v.to_owned()));
             }
-            "retry"
-                if !v.is_empty()
-                    && v.bytes().all(|b| b.is_ascii_digit())
-                    && let Ok(n) = v.parse::<u64>() =>
-            {
-                o.insert("retry".to_owned(), Value::from(n));
+            // A number too large for `u64` is ignored, as any other field that is not one.
+            "retry" if !v.is_empty() && v.bytes().all(|b| b.is_ascii_digit()) => {
+                if let Ok(n) = v.parse::<u64>() {
+                    o.insert("retry".to_owned(), Value::from(n));
+                }
             }
             _ => {}
         }
@@ -278,7 +277,7 @@ fn sse_data(block: &str) -> Option<String> {
     let lines: Vec<&str> = sse_lines(block)
         .map(|l| l.split_once(':').unwrap_or((l, "")))
         .filter(|(k, _)| *k == "data")
-        .map(|(_, v)| v.trim_prefix(' '))
+        .map(|(_, v)| v.strip_prefix(' ').unwrap_or(v))
         .collect();
     (!lines.is_empty()).then(|| lines.join("\n"))
 }
@@ -480,7 +479,7 @@ impl Serializer for FieldNames {
 
 #[cfg(test)]
 mod tests {
-    use std::assert_matches;
+    use assert_matches::assert_matches;
 
     use super::*;
 

@@ -1005,7 +1005,7 @@ impl<'a> Builder<'a> {
             return Ty::Any; // cycle through a non-component pointer
         }
         let schema = pointer(&self.doc.root, &target).cloned().unwrap_or(Value::Bool(true));
-        let hint = target.rsplit('/').next().map_or_default(json::unescape_token);
+        let hint = target.rsplit('/').next().map(json::unescape_token).unwrap_or_default();
         let ty = self.ty(&schema, &target, &Name::new(&hint));
         self.in_progress.remove(&target);
         self.ptr_cache.insert(target, ty.clone());
@@ -1019,7 +1019,7 @@ impl<'a> Builder<'a> {
     /// deep as the value goes. A `$dynamicRef` resolves by where evaluation came from: with one in reach, cycles are
     /// inlined to `MAX_SCHEMA_DEPTH` as before.
     fn inlined(&self, s: &Value, at: Option<&str>, scope: Vec<String>) -> Value {
-        let expanding = at.map_or_default(|p| vec![p.to_owned()]);
+        let expanding = at.map(|p| vec![p.to_owned()]).unwrap_or_default();
         let mut walk = Walk { scope: scope.clone(), expanding, cut: true, ..Walk::default() };
         let mut root = self.inline_scoped(s, 0, at, &mut walk);
         if walk.dynamic {
@@ -1625,9 +1625,11 @@ impl<'a> Builder<'a> {
             && let Some(prop) = d.get("propertyName").and_then(Value::as_str)
             && all_objects
         {
-            let mapping: Vec<(String, String)> = d.get("mapping").and_then(Value::as_object).map_or_default(|m| {
-                m.iter().filter_map(|(k, v)| v.as_str().map(|v| (k.clone(), v.to_owned()))).collect()
-            });
+            let mapping: Vec<(String, String)> = d
+                .get("mapping")
+                .and_then(Value::as_object)
+                .map(|m| m.iter().filter_map(|(k, v)| v.as_str().map(|v| (k.clone(), v.to_owned()))).collect())
+                .unwrap_or_default();
             for (i, (b, _)) in branches.iter().enumerate() {
                 let r = branch_ref(b);
                 let target = r.and_then(|r| self.doc.local_pointer(r));
@@ -2065,7 +2067,7 @@ pub(crate) fn kind_in(defs: &[TypeDef], ty: &Ty, depth: usize) -> JsonKind {
 
 #[cfg(test)]
 mod tests {
-    use std::assert_matches;
+    use assert_matches::assert_matches;
 
     use super::*;
     use serde_json::json;

@@ -1,7 +1,7 @@
 //! Client recipes: the response media type, a conditional request, the OAuth device flow, event streams and callback
 //! URLs. Each runs against a server in memory that answers as the shop would.
 
-use std::assert_matches;
+use assert_matches::assert_matches;
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::time::Duration;
 

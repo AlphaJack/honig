@@ -2,7 +2,7 @@
 //! mappings, link `operationId`s) resolve from the entry document as 3.2 RECOMMENDS ("Resolving Implicit
 //! Connections"). This holds even when the referenced document declares the same names itself.
 
-use std::assert_matches;
+use assert_matches::assert_matches;
 
 use super::common;
 

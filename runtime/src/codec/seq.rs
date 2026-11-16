@@ -58,5 +58,5 @@ pub(crate) fn blank_record(record: &[u8]) -> bool {
 /// Returns one JSON Lines or `json-seq` record without its record separator. It is decoded as a JSON body is (with
 /// `simd` by sonic-rs).
 pub(crate) fn json_record<T: DeserializeOwned>(status: u16, record: &[u8]) -> Result<T, Error> {
-    json_decode(status, record.trim_prefix(&[RECORD_SEPARATOR]))
+    json_decode(status, record.strip_prefix(&[RECORD_SEPARATOR]).unwrap_or(record))
 }

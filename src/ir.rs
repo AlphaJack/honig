@@ -104,7 +104,8 @@ pub(crate) fn build_with(
         .root
         .get("servers")
         .and_then(|v| v.as_array())
-        .map_or_default(|a| a.iter().filter_map(http::server).collect());
+        .map(|a| a.iter().filter_map(http::server).collect())
+        .unwrap_or_default();
     let tags = tags(&doc.root, http.operations.iter().flat_map(|o| o.tags.iter().map(String::as_str)));
     Api { info: info(&doc.root), tags, servers, types, http, schemes }
 }
