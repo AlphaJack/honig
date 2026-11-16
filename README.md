@@ -49,6 +49,19 @@ Every place your code must change becomes a compile error: a new operation is a 
 Run `cargo honig check` in CI to assert that the module is up to date with the description or the generator.
 <!-- ANCHOR_END: update -->
 
+### Update honig
+
+<!-- ANCHOR: upgrade -->
+Install the new generator, then generate again:
+
+```sh
+cargo binstall cargo-honig
+cargo honig generate
+```
+
+`generate` moves the `honig` dependency to the version of the generator. The two always match: the generated code calls runtime internals that change between versions.
+<!-- ANCHOR_END: upgrade -->
+
 ## Full documentation
 
 The [book](https://alphajack.github.io/honig) covers usage and features.
