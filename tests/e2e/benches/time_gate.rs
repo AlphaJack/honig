@@ -66,7 +66,8 @@ fn main() -> std::process::ExitCode {
             }
         }
     }
-    eprintln!("took {:.1}s", started.elapsed().as_secs_f64());
+    // stdout: on stderr it lands inside the table.
+    println!("took {:.1}s", started.elapsed().as_secs_f64());
     for f in &failed {
         eprintln!("FAIL {f}");
     }
