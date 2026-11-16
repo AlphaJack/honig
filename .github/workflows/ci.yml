@@ -166,6 +166,40 @@ jobs:
       - name: Doctests
         run: cargo test --workspace --doc --locked
 
+  # Paths and line endings differ on Windows. Not a required check.
+  test-windows:
+    name: test (windows-latest)
+    runs-on: windows-latest
+    steps:
+      # Before anything is checked out, installed, built or written, so that no scanner reads it.
+      - name: Turn off Defender's scanners
+        shell: pwsh
+        run: |
+          Set-MpPreference -DisableRealtimeMonitoring $true -DisableBehaviorMonitoring $true -DisableIOAVProtection $true -DisableScriptScanning $true -DisableArchiveScanning $true -DisableBlockAtFirstSeen $true
+          "TEMP=$env:RUNNER_TEMP" >> $env:GITHUB_ENV
+          "TMP=$env:RUNNER_TEMP" >> $env:GITHUB_ENV
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1
+        with:
+          toolchain: "stable"
+          # `wasm_client` checks the browser client compiles for wasm32.
+          targets: wasm32-unknown-unknown
+      - name: Cache cargo registry and target
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@cfdb7ed4ccc7c7dce37759eae89dc5674b469b39 # v2.90.3
+        with:
+          tool: cargo-nextest
+      # Every failure, not the first one only.
+      - name: Test
+        run: cargo nextest run --workspace --locked --run-ignored all --no-fail-fast
+
   # The scaling gate fails when a path costs more than n^1.3. It counts instructions under callgrind, so its counts
   # are the same on every run. The time gate races generated paths against hand-rolled axum twins:
   # `tests/e2e/benches/time_gate.rs`. It builds e2e in release, so a pull request runs it only when it changes what a
