@@ -355,6 +355,58 @@ mod tests {
         assert_eq!(resolve("urn:uuid:1234", "#/$defs/a"), "urn:uuid:1234#/$defs/a");
     }
 
+    /// RFC 3986 section 5.4, without the examples that have a query: `resolve` does not handle queries.
+    #[test]
+    fn the_examples_of_rfc_3986_resolve() {
+        let base = "http://a/b/c/d;p";
+        for (r, want) in [
+            ("g:h", "g:h"),
+            ("g/", "http://a/b/c/g/"),
+            ("//g", "http://g"),
+            (";x", "http://a/b/c/;x"),
+            ("g;x", "http://a/b/c/g;x"),
+            ("", "http://a/b/c/d;p"),
+            (".", "http://a/b/c/"),
+            ("./", "http://a/b/c/"),
+            ("..", "http://a/b/"),
+            ("../", "http://a/b/"),
+            ("../..", "http://a/"),
+            ("../../", "http://a/"),
+            ("../../g", "http://a/g"),
+            // Section 5.4.2: abnormal examples.
+            ("../../../g", "http://a/g"),
+            ("../../../../g", "http://a/g"),
+            ("/./g", "http://a/g"),
+            ("/../g", "http://a/g"),
+            ("g.", "http://a/b/c/g."),
+            (".g", "http://a/b/c/.g"),
+            ("g..", "http://a/b/c/g.."),
+            ("..g", "http://a/b/c/..g"),
+            ("./../g", "http://a/b/g"),
+            ("./g/.", "http://a/b/c/g/"),
+            ("g/./h", "http://a/b/c/g/h"),
+            ("g/../h", "http://a/b/c/h"),
+            ("g;x=1/./y", "http://a/b/c/g;x=1/y"),
+            ("g;x=1/../y", "http://a/b/c/y"),
+        ] {
+            assert_eq!(resolve(base, r), want, "{r}");
+        }
+    }
+
+    #[test]
+    fn escapes_in_a_fragment_are_decoded() {
+        assert_eq!(percent_decode("%2Fa%7e%25"), "/a~%");
+        assert_eq!(percent_decode("a%2"), "a%2", "too short");
+        assert_eq!(percent_decode("%zz%"), "%zz%", "not hex");
+    }
+
+    #[test]
+    fn an_anchor_names_the_schema_that_declares_it() {
+        let doc = json!({"$defs": {"a": {"type": "string"}, "b": {"$anchor": "here", "type": "integer"}}});
+        assert_eq!(anchor(&doc, "here").as_deref(), Some("/$defs/b"));
+        assert_eq!(anchor(&doc, "elsewhere"), None);
+    }
+
     #[test]
     fn a_ref_inside_an_id_resolves_against_that_id() {
         let mut doc = json!({"openapi": "3.2.0", "components": {"schemas": {
