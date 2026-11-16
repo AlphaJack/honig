@@ -168,8 +168,8 @@ jobs:
 
   # The scaling gate fails when a path costs more than n^1.3. It counts instructions under callgrind, so its counts
   # are the same on every run. The time gate races generated paths against hand-rolled axum twins:
-  # `tests/e2e/benches/time_gate.rs`. It builds e2e in release, so a pull request runs it only when it changes what a
-  # request costs: the runtime, the emitted code, e2e or a dependency.
+  # `tests/e2e/benches/time_gate.rs`. Each builds in release, so a pull request runs a gate only when it changes what
+  # that gate measures.
   performance:
     runs-on: ubuntu-latest
     steps:
@@ -184,27 +184,41 @@ jobs:
           EVENT: ${{ github.event_name }}
           BASE_REF: ${{ github.base_ref }}
         run: |
-          if [ "$EVENT" = pull_request ] && git diff --quiet "origin/$BASE_REF...HEAD" -- runtime/src src/emit tests/e2e Cargo.lock; then
-            echo "time=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "time=true" >> "$GITHUB_OUTPUT"
-          fi
+          changed() {
+            [ "$EVENT" != pull_request ] || ! git diff --quiet "origin/$BASE_REF...HEAD" -- "$@" Cargo.toml Cargo.lock
+          }
+          if changed runtime src benches tests/bench-support; then scaling=true; else scaling=false; fi
+          if changed runtime/src src/emit tests/e2e; then time=true; else time=false; fi
+          if [ "$scaling$time" = falsefalse ]; then any=false; else any=true; fi
+          {
+            echo "scaling=$scaling"
+            echo "time=$time"
+            echo "any=$any"
+          } >> "$GITHUB_OUTPUT"
       - name: Install Rust toolchain
+        if: steps.changed.outputs.any == 'true'
         uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1
         with:
           toolchain: "stable"
       - name: Cache cargo registry and target
+        if: steps.changed.outputs.any == 'true'
         uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           save-if: ${{ github.ref == 'refs/heads/main' }}
-      # The runner's package index goes stale: without an update apt asks for packages that the mirror has dropped.
+      # The runner's package index can name packages that the mirror has dropped. Only then is it updated: that takes
+      # half a minute.
       - name: Install valgrind
+        if: steps.changed.outputs.scaling == 'true'
         run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends valgrind
+          sudo apt-get install -y --no-install-recommends valgrind || {
+            sudo apt-get update -qq
+            sudo apt-get install -y --no-install-recommends valgrind
+          }
       - name: Scaling gate, runtime
+        if: steps.changed.outputs.scaling == 'true'
         run: cargo bench -p honig --bench scaling_gate --features cookie,multipart,server,xml --locked
       - name: Scaling gate, generator
+        if: steps.changed.outputs.scaling == 'true'
         run: cargo bench -p cargo-honig --bench scaling_gate --locked
       - name: Time gate
         if: steps.changed.outputs.time == 'true'
