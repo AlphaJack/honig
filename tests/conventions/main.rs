@@ -56,7 +56,7 @@ fn all_sources() -> Vec<(String, String)> {
 /// A test or a bench: a file below a `tests` or `benches` folder or a `tests.rs`. Tests may repeat themselves, name
 /// numbers and fail with text.
 fn is_test_file(file: &str) -> bool {
-    file.ends_with("tests.rs") || file.split('/').any(|c| c == "tests" || c == "benches")
+    file.ends_with("tests.rs") || file.split(['/', '\\']).any(|c| c == "tests" || c == "benches")
 }
 
 /// `#[test]` or `#[cfg(test)]`.
