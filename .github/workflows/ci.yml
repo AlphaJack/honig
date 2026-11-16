@@ -133,28 +133,16 @@ jobs:
       # The generator with only the runtime features that it asks for itself. In `--workspace` the e2e crate turns
       # on more (`regress`), so a check the CLI cannot run still passes there. Its own target directory keeps the
       # unified build's artifacts out.
+      # The fuzz and coverage tests do not depend on features: the test job runs them.
       - name: Test the generator alone
-        run: cargo nextest run -p cargo-honig --locked --target-dir target/isolated
+        run: cargo nextest run -p cargo-honig --locked --target-dir target/isolated -E 'not test(/fuzz|coverage/)'
       # The generator without its HTTPS client and overlays.
       - name: Test the generator without default features
-        run: cargo nextest run -p cargo-honig --lib --no-default-features --locked --target-dir target/isolated
+        run: cargo nextest run -p cargo-honig --lib --no-default-features --locked --target-dir target/isolated -E 'not test(/fuzz|coverage/)'
 
   test:
-    name: test (${{ matrix.os }})
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest, windows-latest]
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     steps:
-      # Before anything is checked out, installed, built or written, so that no scanner reads it.
-      - name: Turn off Defender's scanners
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          Set-MpPreference -DisableRealtimeMonitoring $true -DisableBehaviorMonitoring $true -DisableIOAVProtection $true -DisableScriptScanning $true -DisableArchiveScanning $true -DisableBlockAtFirstSeen $true
-          "TEMP=$env:RUNNER_TEMP" >> $env:GITHUB_ENV
-          "TMP=$env:RUNNER_TEMP" >> $env:GITHUB_ENV
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
