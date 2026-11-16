@@ -7,7 +7,7 @@ use std::{
 };
 
 use anyhow::{Context, Result};
-use toml_edit::{DocumentMut, Item};
+use toml_edit::DocumentMut;
 
 #[test]
 fn generated_pages_are_fresh() {
@@ -283,16 +283,12 @@ fn turned_on(name: &str) -> String {
     }
 }
 
-/// A table of the `[features]` of `manifest`. It has the `##` comment of each feature, the version of the first
-/// dependency that it turns on and `when` it is on. A feature without a `##` comment is an error.
+/// A table of the `[features]` of `manifest`. It has the `##` comment of each feature, the first dependency that it
+/// turns on and `when` it is on. Not its version: a version bump would make the page stale. A feature without a `##`
+/// comment is an error.
 fn features_page(manifest: &str, when: impl Fn(&str) -> String) -> Result<String> {
     let doc: DocumentMut = manifest.parse()?;
-    // A dependency only one target builds (`gloo-net` on `wasm32`) sits in a `[target.'cfg(..)'.dependencies]` table.
-    let targets = doc.get("target").and_then(Item::as_table_like).into_iter().flat_map(|t| t.iter().map(|(_, t)| t));
-    let tables: Vec<&Item> =
-        doc.get("dependencies").into_iter().chain(targets.filter_map(|t| t.get("dependencies"))).collect();
-    let version = |dep: &str| tables.iter().find_map(|t| t.get(dep)?.get("version")?.as_str());
-    let mut page = "| Feature | Built against | Adds | On when |\n|---|---|---|---|\n".to_owned();
+    let mut page = "| Feature | Crate | Adds | On when |\n|---|---|---|---|\n".to_owned();
     let mut docs = vec![];
     let section = manifest.lines().skip_while(|l| *l != "[features]").skip(1);
     for line in section.take_while(|l| !l.starts_with('[')) {
@@ -300,10 +296,9 @@ fn features_page(manifest: &str, when: impl Fn(&str) -> String) -> Result<String
             docs.push(text);
         } else if let Some((name, _)) = line.split_once(" = ") {
             let deps = doc["features"][name].as_array().context(name.to_owned())?;
-            let dep = deps.iter().find_map(|d| d.as_str()?.strip_prefix("dep:"));
-            let built = dep.and_then(|d| Some(format!("{d} {}", version(d)?))).unwrap_or_default();
+            let dep = deps.iter().find_map(|d| d.as_str()?.strip_prefix("dep:")).unwrap_or_default();
             anyhow::ensure!(!docs.is_empty(), "feature `{name}` has no `##` comment");
-            page.push_str(&format!("| `{name}` | {built} | {} | {} |\n", docs.join(" "), when(name)));
+            page.push_str(&format!("| `{name}` | {dep} | {} | {} |\n", docs.join(" "), when(name)));
             docs.clear();
         }
     }
@@ -348,7 +343,7 @@ fn features_page_has_one_row_per_feature() {
     let page = features_page(manifest, |name| format!("{name} on")).unwrap();
     assert_eq!(
         page,
-        "| Feature | Built against | Adds | On when |\n|---|---|---|---|\n| `x` | x 1 | Adds x. | x on |\n| `none` |  | Adds nothing. | none on |\n"
+        "| Feature | Crate | Adds | On when |\n|---|---|---|---|\n| `x` | x | Adds x. | x on |\n| `none` |  | Adds nothing. | none on |\n"
     );
 }
 
