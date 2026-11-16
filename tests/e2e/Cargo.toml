@@ -36,7 +36,9 @@ axum = ["dep:axum", "honig/axum"]
 [dev-dependencies]
 # `tests/v32_catalog`: the recipes of the book with tower and tower-http layers and hyper as the server.
 tower = { version = "0.5", default-features = false, features = ["util", "limit", "load-shed", "timeout", "filter"] }
-tower-http = { version = "0.7", default-features = false, features = ["cors", "fs"] }
+tower-http = { version = "0.7", default-features = false, features = ["cors"] }
+# The web app recipe: its files compiled into the binary, each with the content type of its extension.
+rust-embed = { version = "8", features = ["mime-guess"] }
 hyper = { version = "1", default-features = false, features = ["server", "http1"] }
 hyper-util = { version = "0.1", default-features = false, features = ["tokio", "service"] }
 # `tests/v32_catalog/adapters.rs`: retries and an HTTP cache through the reqwest-middleware stack. Only 1.0 builds on

@@ -1,6 +1,5 @@
 //! Recipes: whole setups that combine the pieces of the other pages.
 
-use std::path::Path;
 use std::time::Duration;
 
 use e2e::v32_catalog::api;
@@ -11,12 +10,25 @@ use super::Catalog;
 // ANCHOR: spa
 /// A web app and its API on one port. The API lives under its base path `/v1`, so an unknown `/v1/...` path gets a
 /// `404` in the error schema. Every other path serves the app: a file of `dist` or else its `index.html`, so that the
-/// app's own router handles the path.
-fn web_app(dist: &Path) -> axum::Router {
+/// app's own router handles the path. `dist` is compiled into the binary, so the server ships as one file.
+#[derive(rust_embed::Embed)]
+#[folder = "tests/v32_catalog/dist"]
+struct Dist;
+
+async fn app(uri: axum::http::Uri) -> axum::response::Response {
+    use axum::response::IntoResponse;
+    let path = uri.path().trim_start_matches('/');
+    match Dist::get(path).or_else(|| Dist::get("index.html")) {
+        Some(file) => {
+            ([(axum::http::header::CONTENT_TYPE, file.metadata.mimetype().to_owned())], file.data).into_response()
+        }
+        None => axum::http::StatusCode::NOT_FOUND.into_response(),
+    }
+}
+
+fn web_app() -> axum::Router {
     let api = api::Server::new(Catalog::default()).into_service();
-    let app = tower_http::services::ServeDir::new(dist)
-        .fallback(tower_http::services::ServeFile::new(dist.join("index.html")));
-    axum::Router::new().nest_service("/v1", api).fallback_service(app)
+    axum::Router::new().nest_service("/v1", api).fallback(app)
 }
 // ANCHOR_END: spa
 
@@ -111,16 +123,15 @@ async fn text(resp: axum::http::Response<axum::body::Body>) -> String {
 
 #[tokio::test]
 async fn the_web_app_and_its_api_share_one_port() {
-    let dist = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests").join("v32_catalog").join("dist");
-    let products = get(web_app(&dist), "/v1/products", None).await;
+    let products = get(web_app(), "/v1/products", None).await;
     assert_eq!(products.status(), 200);
     assert_eq!(products.headers()["content-type"], "application/json");
-    let unknown = get(web_app(&dist), "/v1/nothing-here", None).await;
+    let unknown = get(web_app(), "/v1/nothing-here", None).await;
     assert_eq!(unknown.status(), 404, "an unknown API path is the API's 404, not the app");
     assert!(text(unknown).await.contains("\"code\":404"));
-    let script = get(web_app(&dist), "/assets/app.js", None).await;
+    let script = get(web_app(), "/assets/app.js", None).await;
     assert_eq!(text(script).await, "console.log(\"shop\");\n");
-    let deep_link = get(web_app(&dist), "/products/7", None).await;
+    let deep_link = get(web_app(), "/products/7", None).await;
     assert_eq!(deep_link.status(), 200);
     assert!(text(deep_link).await.contains("<title>Shop</title>"), "the app's router handles the path");
 }

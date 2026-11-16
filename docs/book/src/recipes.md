@@ -2,7 +2,7 @@
 
 Each recipe is a whole setup that combines the pieces of the other pages. Each one is a test, so it matches the code.
 
-## A server and its client
+## Web server and CLI client
 
 The `examples/shop` crate runs a server and a client for a small catalog of products against each other. Every example in this book is a test that runs on each change. So each example matches the code.
 
@@ -14,7 +14,7 @@ The description is `openapi.yaml`:
 {{#include ../../../examples/shop/openapi.yaml}}
 ```
 
-#### Server
+### Server
 
 The server implements the generated `Api` trait, which has one method per operation:
 
@@ -28,7 +28,7 @@ Serve it with axum in `src/main.rs`:
 {{#include ../../../examples/shop/src/main.rs:server}}
 ```
 
-#### Client
+### Client
 
 The client has one method per operation. Each returns one variant per documented response:
 
@@ -36,9 +36,9 @@ The client has one method per operation. Each returns one variant per documented
 {{#include ../../../examples/shop/tests/client.rs:client}}
 ```
 
-## A web app and its API
+## API server and SPA
 
-A single-page app and its API share one port. Unknown paths under the API's base path still get the API's `404` in its error schema, so a client never receives the app's HTML by mistake:
+A single-page app and its API share one port. Unknown paths under the API's base path still get the API's `404` in its error schema, so a client never receives the app's HTML by mistake. [rust-embed](https://crates.io/crates/rust-embed) compiles the app's folder into the binary, so the server ships as one file:
 
 ```rust
 {{#include ../../../tests/e2e/tests/v32_catalog/recipes.rs:spa}}
@@ -60,7 +60,7 @@ A layer outside the server answers in its own format. Its answers go out in the 
 {{#include ../../../tests/e2e/tests/v32_catalog/recipes.rs:outer-errors}}
 ```
 
-## A full stack
+## Middlewares
 
 Layers outside the server, `authenticate` and layers inside it, in the order that a request passes them:
 
