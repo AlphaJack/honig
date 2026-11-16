@@ -147,30 +147,44 @@ fn each_item(doc: &mut Map<String, Value>, mut f: impl FnMut(&mut Map<String, Va
 fn items(into: &mut Map<String, Value>, from: Value, key: &str, file: &str, diags: &mut Diagnostics) {
     let Value::Object(from) = from else { return };
     for (path, item) in from {
-        let Value::Object(item) = item else { continue };
+        let Value::Object(mut item) = item else { continue };
         let Some(Value::Object(have)) = into.get_mut(&path) else {
             into.insert(path, Value::Object(item));
             continue;
         };
+        // `servers`, `parameters` and the like that differ: each file's operations keep their own. They move from the
+        // path item onto its operations: the earlier files' get the old value and this file's the new one.
+        let differing: Vec<String> = item
+            .iter()
+            .filter(|(k, v)| !METHODS.contains(&k.as_str()) && have.get(*k).is_some_and(|old| old != *v))
+            .map(|(k, _)| k.clone())
+            .collect();
+        for k in differing {
+            for owner in [&mut *have, &mut item] {
+                let value = owner.remove(&k).unwrap_or_default();
+                onto_operations(owner, &k, &value);
+            }
+        }
         for (k, v) in item {
             match have.get(&k) {
                 None => {
                     have.insert(k, v);
                 }
                 Some(old) if *old == v => {}
-                Some(_) if METHODS.contains(&k.as_str()) => diags.error(
+                Some(_) => diags.error(
                     format!("{file}#/{key}/{}/{k}", crate::json::escape_token(&path)),
                     format!("`{} {path}` is also described by an earlier file", k.to_uppercase()),
                 ),
-                // `servers`, `parameters` and the like that differ: each file's operations keep their own.
-                Some(_) => {
-                    for m in METHODS {
-                        if let Some(Value::Object(op)) = have.get_mut(m) {
-                            op.entry(k.clone()).or_insert_with(|| v.clone());
-                        }
-                    }
-                }
             }
+        }
+    }
+}
+
+/// Gives each operation of a path item `value` as its `key`, unless it has its own.
+fn onto_operations(item: &mut Map<String, Value>, key: &str, value: &Value) {
+    for m in METHODS {
+        if let Some(Value::Object(op)) = item.get_mut(m) {
+            op.entry(key.to_owned()).or_insert_with(|| value.clone());
         }
     }
 }
@@ -262,5 +276,97 @@ mod tests {
         let mut d = Diagnostics::default();
         merge(&[a, b], &mut d);
         assert!(d.iter().any(|x| x.message.contains("`Id` is a different schemas entry")), "{d:?}");
+    }
+
+    #[test]
+    fn one_method_in_two_files_is_an_error() {
+        let dir = scratch("method");
+        let id = json!({"type": "string"});
+        let mut b = file("/login", "/v3", &id);
+        b["paths"]["/login"]["get"]["operationId"] = json!("again");
+        let a = write(&dir, "a.json", &file("/login", "/v3", &id));
+        let b = write(&dir, "b.json", &b);
+        let mut d = Diagnostics::default();
+        let v = merge(&[a, b.clone()], &mut d).unwrap();
+        let errors: Vec<(String, String)> = d.iter().map(|x| (x.pointer.clone(), x.message.clone())).collect();
+        assert_eq!(
+            errors,
+            [(
+                format!("{}#/paths/~1login/get", b.display()),
+                "`GET /login` is also described by an earlier file".to_owned()
+            )]
+        );
+        assert_eq!(v["paths"]["/login"]["get"]["operationId"], "login", "the first file's");
+    }
+
+    /// Two files on different hosts share a path with different methods. Each method keeps its own file's servers.
+    #[test]
+    fn methods_of_one_path_keep_the_servers_of_their_file() {
+        let dir = scratch("shared-path");
+        let id = json!({"type": "string"});
+        let a = file("/login", "/v3", &id);
+        let mut b = file("/login", "/v3", &id);
+        b["servers"] = json!([{"url": "https://other.example.org/v3"}]);
+        let get = b["paths"]["/login"]["get"].take();
+        b["paths"]["/login"] = json!({"post": get});
+        let a = write(&dir, "a.json", &a);
+        let b = write(&dir, "b.json", &b);
+        let mut d = Diagnostics::default();
+        let v = merge(&[a, b], &mut d).unwrap();
+        assert!(!d.has_errors(), "{d:?}");
+        let item = &v["paths"]["/login"];
+        let servers = |m: &str| item[m].get("servers").unwrap_or_else(|| &item["servers"]).clone();
+        assert_eq!(
+            servers("get"),
+            json!([{"url": "{scheme}://{host}{basePath}", "variables": {
+            "scheme": {"default": "https"}, "host": {"default": "localhost"}, "basePath": {"default": "/v3"}}}]),
+            "{item:#}"
+        );
+        assert_eq!(servers("post"), json!([{"url": "https://other.example.org/v3"}]), "{item:#}");
+    }
+
+    #[test]
+    fn tags_merge_by_name() {
+        let dir = scratch("tags");
+        let id = json!({"type": "string"});
+        let mut a = file("/login", "/v3", &id);
+        a["tags"] = json!([{"name": "auth"}]);
+        let mut b = file("/media", "/v3", &id);
+        b["tags"] = json!([{"name": "auth", "description": "again"}, {"name": "media"}]);
+        let a = write(&dir, "a.json", &a);
+        let b = write(&dir, "b.json", &b);
+        let mut d = Diagnostics::default();
+        let v = merge(&[a, b], &mut d).unwrap();
+        assert_eq!(v["tags"], json!([{"name": "auth"}, {"name": "media"}]));
+    }
+
+    #[test]
+    fn a_diagnostic_names_its_file() {
+        let dir = scratch("located");
+        let id = json!({"$ref": "#/components/schemas/Nope"});
+        let a = write(&dir, "a.json", &file("/login", "/v3", &json!({"type": "string"})));
+        let b = write(&dir, "b.json", &file("/media", "/v3", &id));
+        let mut d = Diagnostics::default();
+        merge(&[a, b.clone()], &mut d);
+        let prefix = format!("{}#/", b.display());
+        assert!(!d.is_empty() && d.iter().all(|x| x.pointer.starts_with(&prefix)), "{d:?}");
+    }
+
+    #[test]
+    fn a_variable_that_changes_the_base_path_keeps_the_servers() {
+        let with = |var: &str, alternatives: Value| {
+            let dir = scratch(&format!("variable-{var}"));
+            let id = json!({"type": "string"});
+            let mut a = file("/login", "/v3", &id);
+            a["servers"][0]["variables"][var]["enum"] = alternatives;
+            let a = write(&dir, "a.json", &a);
+            let b = write(&dir, "b.json", &file("/media", "/v1", &id));
+            let mut d = Diagnostics::default();
+            merge(&[a, b], &mut d).unwrap()
+        };
+        let folded = with("scheme", json!(["https", "http"]));
+        assert!(folded["paths"]["/v3/login"].is_object(), "the scheme changes only the host: {:#}", folded["paths"]);
+        let kept = with("basePath", json!(["/v3", "/v4"]));
+        assert!(kept["paths"]["/login"]["servers"].is_array(), "{:#}", kept["paths"]);
     }
 }
