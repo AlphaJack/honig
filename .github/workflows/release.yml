@@ -131,9 +131,6 @@ jobs:
             curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
             echo "$HOME/.cargo/bin" >> $GITHUB_PATH
           fi
-      - name: "Update Rust"
-        run: "rustup update stable --no-self-update && rustup default stable"
-        shell: "bash"
       - name: "Install sccache"
         uses: "mozilla-actions/sccache-action@fc920bf0ec8de6ee65d409111f7ec508035751ba"
         if: "${{ vars.CI_USE_SCCACHE == 'true' && !(runner.os == 'Windows' && runner.arch == 'ARM64') }}"
