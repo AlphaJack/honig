@@ -403,11 +403,12 @@ fn object_mut<'a>(doc: &'a mut Value, path: &[String]) -> Option<&'a mut Map<Str
     cur.as_object_mut()
 }
 
-/// The generated module of a 3.2 document as one string.
-fn generate(doc: &Value, dir: &Path, opts: &crate::emit::Options) -> String {
+/// The generated module of a 3.2 document as one string. `externals` are the files and URLs that its examples name:
+/// read once per fixture, since some are URLs and removing a field never names a new one.
+fn generate(doc: &Value, externals: &crate::json::Externals, opts: &crate::emit::Options) -> String {
     let mut diags = crate::diag::Diagnostics::default();
     let mut d = crate::json::Doc::new(doc.clone());
-    d.externals = crate::resolve::read_externals(doc, Some(dir));
+    d.externals = externals.clone();
     let api = crate::ir::build(&d, &mut diags);
     crate::emit::rust::module(&api, opts).map(|files| files.into_iter().map(|(_, t)| t).collect()).unwrap_or_default()
 }
@@ -443,6 +444,24 @@ fn fixtures() -> Vec<(String, Value, crate::emit::Options, std::path::PathBuf)> 
     out
 }
 
+/// Each (kind, field) that `doc` sets, other than `x-` extensions, with the paths of the objects that set it.
+fn fields<'k>(doc: &Value, kinds: &'k Kinds) -> BTreeMap<(String, String), Vec<&'k Vec<String>>> {
+    let mut fields: BTreeMap<(String, String), Vec<&Vec<String>>> = BTreeMap::new();
+    for (kind, path) in &kinds.0 {
+        let Some(Value::Object(o)) = path.iter().try_fold(doc, |v, t| match v {
+            Value::Array(a) => a.get(t.parse::<usize>().ok()?),
+            Value::Object(m) => m.get(t),
+            Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_) => None,
+        }) else {
+            continue;
+        };
+        for k in o.keys().filter(|k| !k.starts_with("x-")) {
+            fields.entry(((*kind).to_owned(), k.clone())).or_default().push(path);
+        }
+    }
+    fields
+}
+
 #[test]
 fn every_model_field_reaches_the_generated_code_or_is_explained() {
     let model = model_fields();
@@ -463,21 +482,9 @@ fn every_model_field_reaches_the_generated_code_or_is_explained() {
                     let mut found = vec![];
                     while let Some((name, doc, opts, dir)) = fixtures.get(next.fetch_add(1, Ordering::Relaxed)) {
                         let kinds = Kinds::of(doc);
-                        let mut fields: BTreeMap<(String, String), Vec<&Vec<String>>> = BTreeMap::new();
-                        for (kind, path) in &kinds.0 {
-                            let Some(Value::Object(o)) = path.iter().try_fold(doc, |v, t| match v {
-                                Value::Array(a) => a.get(t.parse::<usize>().ok()?),
-                                Value::Object(m) => m.get(t),
-                                Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_) => None,
-                            }) else {
-                                continue;
-                            };
-                            for k in o.keys().filter(|k| !k.starts_with("x-")) {
-                                fields.entry(((*kind).to_owned(), k.clone())).or_default().push(path);
-                            }
-                        }
-                        let base = generate(doc, dir, opts);
-                        for (key, paths) in fields {
+                        let externals = crate::resolve::read_externals(doc, Some(dir));
+                        let base = generate(doc, &externals, opts);
+                        for (key, paths) in fields(doc, &kinds) {
                             found.push((key.clone(), name.clone()));
                             if changes.lock().unwrap().contains(&key) {
                                 continue;
@@ -488,7 +495,7 @@ fn every_model_field_reaches_the_generated_code_or_is_explained() {
                                     o.remove(&key.1);
                                 }
                             }
-                            if generate(&stripped, dir, opts) != base {
+                            if generate(&stripped, &externals, opts) != base {
                                 changes.lock().unwrap().insert(key);
                             }
                         }

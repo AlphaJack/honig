@@ -786,9 +786,7 @@ fn param(api: &Api, p: &Param, v: V) -> Value {
 }
 
 /// Version-independent summary of what the generator will emit.
-fn summary(doc: &crate::json::Doc) -> String {
-    let mut d = crate::diag::Diagnostics::default();
-    let api = crate::ir::build(doc, &mut d);
+fn summary(api: &crate::ir::Api) -> String {
     let mut out = String::new();
     let mut ops: Vec<&crate::ir::http::Operation> = api.http.operations.iter().collect();
     ops.sort_by(|a, b| a.name.cmp(&b.name));
@@ -840,13 +838,17 @@ fn check(choices: &[u64], profile: Profile) -> Result<(), String> {
         Profile::V32 => &[V::V32],
     };
     let mut summaries: Vec<(V, String)> = vec![];
+    // The IR of each version that was emitted. Emitting is a function of the IR, so an IR seen before is not emitted
+    // again. Versions before 3.1 always give the same IR, and later ones often do.
+    let mut emitted: Vec<String> = vec![];
     for &v in versions {
         let doc = write(&api, v);
-        let text = serde_json::to_string_pretty(&doc).map_err(|e| e.to_string())?;
+        let text = serde_json::to_string(&doc).map_err(|e| e.to_string())?;
         let loaded = crate::load::load_str(&text);
         let errors: Vec<String> =
             loaded.diagnostics.iter().filter(|d| d.level == Level::Error).map(ToString::to_string).collect();
         if !errors.is_empty() {
+            let text = serde_json::to_string_pretty(&doc).unwrap_or(text);
             return Err(format!("{v:?}: valid document rejected: {errors:?}\n{text}"));
         }
         let Some(model) = loaded.model.clone() else { return Err(format!("{v:?}: no model")) };
@@ -857,14 +859,24 @@ fn check(choices: &[u64], profile: Profile) -> Result<(), String> {
         let generated = std::panic::catch_unwind(|| {
             let mut d = crate::diag::Diagnostics::default();
             let ir = crate::ir::build(&rdoc, &mut d);
-            crate::emit::rust::module(&ir, &crate::emit::Options::default()).map(|files| files.len())
+            let key = format!("{ir:?}");
+            let files = if emitted.contains(&key) {
+                Ok(0)
+            } else {
+                crate::emit::rust::module(&ir, &crate::emit::Options::default()).map(|files| files.len())
+            };
+            (ir, key, files)
         });
         match generated {
             Err(_) => return Err(format!("{v:?}: code generation panicked")),
-            Ok(Err(e)) => return Err(format!("{v:?}: {e}")),
-            Ok(Ok(_)) => {}
+            Ok((_, _, Err(e))) => return Err(format!("{v:?}: {e}")),
+            Ok((ir, key, Ok(_))) => {
+                summaries.push((v, summary(&ir)));
+                if !emitted.contains(&key) {
+                    emitted.push(key);
+                }
+            }
         }
-        summaries.push((v, summary(&rdoc)));
     }
     if let Some((first_v, first)) = summaries.first() {
         for (v, s) in &summaries[1..] {
@@ -890,25 +902,54 @@ fn choices() -> impl Strategy<Value = Vec<u64>> {
     proptest::collection::vec(any::<u64>(), 0..CHOICES)
 }
 
-proptest! {
-    // The same cases on every run. So CI fails only on a change. A failure is saved in `proptest-regressions` and
-    // replayed first.
-    #![proptest_config(ProptestConfig { rng_seed: RngSeed::Fixed(0), ..ProptestConfig::default() })]
+/// Cases of each profile, split into shards that nextest runs side by side. Each shard has a fixed seed of its own,
+/// so CI fails only on a change. A failure is saved in `proptest-regressions` and replayed first.
+const CASES: u32 = 256;
+const SHARDS: u32 = 4;
 
-    #[test]
-    fn common_profile_across_v20_v30_v31_v32(choices in choices()) {
-        check(&choices, Profile::Common).map_err(TestCaseError::fail)?;
-    }
+fn fuzz(profile: Profile, shard: u32) {
+    let config = ProptestConfig {
+        cases: CASES / SHARDS,
+        rng_seed: RngSeed::Fixed(u64::from(shard)),
+        source_file: Some(file!()),
+        ..ProptestConfig::default()
+    };
+    TestRunner::new(config).run(&choices(), |c| check(&c, profile).map_err(TestCaseError::fail)).unwrap();
+}
 
-    #[test]
-    fn rich_profile_across_v30_v31_v32(choices in choices()) {
-        check(&choices, Profile::Rich).map_err(TestCaseError::fail)?;
-    }
+/// One module per profile with a test per shard.
+macro_rules! shards {
+    ($($name:ident: $profile:expr;)*) => {$(
+        mod $name {
+            use super::{Profile, fuzz};
 
-    #[test]
-    fn v32_only_features(choices in choices()) {
-        check(&choices, Profile::V32).map_err(TestCaseError::fail)?;
-    }
+            #[test]
+            fn shard_0() {
+                fuzz($profile, 0);
+            }
+
+            #[test]
+            fn shard_1() {
+                fuzz($profile, 1);
+            }
+
+            #[test]
+            fn shard_2() {
+                fuzz($profile, 2);
+            }
+
+            #[test]
+            fn shard_3() {
+                fuzz($profile, 3);
+            }
+        }
+    )*};
+}
+
+shards! {
+    common_profile_across_v20_v30_v31_v32: Profile::Common;
+    rich_profile_across_v30_v31_v32: Profile::Rich;
+    v32_only_features: Profile::V32;
 }
 
 /// Compile the generated crates of a few APIs with their test of the documented examples and run it.
