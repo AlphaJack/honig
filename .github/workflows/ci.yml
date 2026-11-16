@@ -105,9 +105,14 @@ jobs:
         run: mdbook build docs/book
 
   # Each runtime feature alone and no features. `--workspace` turns on every feature that the e2e crate asks for. So only
-  # this job finds a missing `cfg` or a test without the feature that it needs.
-  features:
+  # this job finds a missing `cfg` or a test without the feature that it needs. Two shards split the features.
+  features-shard:
+    name: features (${{ matrix.partition }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        partition: [1/2, 2/2]
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -118,27 +123,48 @@ jobs:
         with:
           toolchain: "stable"
           components: clippy
+      # One cache each: rust-cache keys on the job and not on the shard.
       - name: Cache cargo registry and target
         uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
+          key: ${{ matrix.partition }}
           save-if: ${{ github.ref == 'refs/heads/main' }}
       - name: Install cargo-hack and cargo-nextest
         uses: taiki-e/install-action@ab49d3c64680143e184118bed66a46419fc15519 # v2.90.5
         with:
           tool: cargo-hack,cargo-nextest
+      # The clippy job runs every feature together.
       - name: Clippy, each runtime feature
-        run: cargo hack clippy -p honig --each-feature --all-targets --locked -- -D warnings
+        env:
+          PARTITION: ${{ matrix.partition }}
+        run: cargo hack clippy -p honig --each-feature --exclude-all-features --partition "$PARTITION" --all-targets --locked -- -D warnings
       - name: Test, each runtime feature
-        run: cargo hack nextest run -p honig --each-feature --locked
+        env:
+          PARTITION: ${{ matrix.partition }}
+        run: cargo hack nextest run -p honig --each-feature --partition "$PARTITION" --locked
       # The generator with only the runtime features that it asks for itself. In `--workspace` the e2e crate turns
       # on more (`regress`), so a check the CLI cannot run still passes there. Its own target directory keeps the
-      # unified build's artifacts out.
-      # The fuzz and coverage tests do not depend on features: the test job runs them.
+      # unified build's artifacts out. The fuzz and coverage tests do not depend on features: the test job runs them.
       - name: Test the generator alone
+        if: matrix.partition == '2/2'
         run: cargo nextest run -p cargo-honig --locked --target-dir target/isolated -E 'not test(/fuzz|coverage/)'
       # The generator without its HTTPS client and overlays.
       - name: Test the generator without default features
+        if: matrix.partition == '2/2'
         run: cargo nextest run -p cargo-honig --lib --no-default-features --locked --target-dir target/isolated -E 'not test(/fuzz|coverage/)'
+
+  # The required check: it fails if a shard failed or did not finish.
+  features:
+    needs: features-shard
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Every shard passed
+        env:
+          RESULT: ${{ needs.features-shard.result }}
+        run: |
+          echo "shards: $RESULT"
+          [ "$RESULT" = success ]
 
   test:
     runs-on: ubuntu-latest
