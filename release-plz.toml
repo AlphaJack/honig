@@ -9,6 +9,8 @@ semver_check = true
 release_commits = "^(feat|fix|perf)"
 # The default title has a scope that pr-title.yml rejects.
 pr_name = "chore: release v{{ version }}"
+# One tag for the version group. Without it release-plz looks for `honig-v<version>`, finds none and releases again.
+git_tag_name = "v{{ version }}"
 # crates.yml publishes once dist has built every target.
 publish = false
 
@@ -17,7 +19,6 @@ publish = false
 name = "cargo-honig"
 version_group = "honig"
 git_tag_enable = true
-git_tag_name = "v{{ version }}"
 git_release_enable = true
 git_release_name = "v{{ version }}"
 # dist uploads the binaries to the draft and then publishes it.
