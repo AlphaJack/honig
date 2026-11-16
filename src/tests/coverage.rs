@@ -9,6 +9,8 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
+use std::sync::Mutex;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use serde_json::{Map, Value};
 
@@ -446,41 +448,65 @@ fn every_model_field_reaches_the_generated_code_or_is_explained() {
     let model = model_fields();
     let not_emitted: BTreeMap<(String, String), &str> =
         NOT_EMITTED.iter().map(|(k, f, why)| (((*k).to_owned(), (*f).to_owned()), *why)).collect();
-    // (kind, field) to the fixtures that use it and whether removing it changed the code.
+    // (kind, field) to the fixtures that use it and whether removing it changed the code. Each fixture is regenerated
+    // once per field: the fixtures share the cores. A field that one fixture showed to change the code is not tried
+    // again, so `changes` does not depend on the order.
+    let fixtures = fixtures();
+    let next = AtomicUsize::new(0);
+    let changes: Mutex<BTreeSet<(String, String)>> = Mutex::new(BTreeSet::new());
+    let workers = std::thread::available_parallelism().map_or(1, usize::from);
     let mut used: BTreeMap<(String, String), Vec<String>> = BTreeMap::new();
-    let mut changes: BTreeSet<(String, String)> = BTreeSet::new();
-    for (name, doc, opts, dir) in fixtures() {
-        let kinds = Kinds::of(&doc);
-        let mut fields: BTreeMap<(String, String), Vec<&Vec<String>>> = BTreeMap::new();
-        for (kind, path) in &kinds.0 {
-            let Some(Value::Object(o)) = path.iter().try_fold(&doc, |v, t| match v {
-                Value::Array(a) => a.get(t.parse::<usize>().ok()?),
-                Value::Object(m) => m.get(t),
-                Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_) => None,
-            }) else {
-                continue;
-            };
-            for k in o.keys().filter(|k| !k.starts_with("x-")) {
-                fields.entry(((*kind).to_owned(), k.clone())).or_default().push(path);
-            }
-        }
-        let base = generate(&doc, &dir, &opts);
-        for (key, paths) in fields {
-            used.entry(key.clone()).or_default().push(name.clone());
-            if changes.contains(&key) {
-                continue;
-            }
-            let mut stripped = doc.clone();
-            for p in paths {
-                if let Some(o) = object_mut(&mut stripped, p) {
-                    o.remove(&key.1);
-                }
-            }
-            if generate(&stripped, &dir, &opts) != base {
-                changes.insert(key);
-            }
-        }
+    let found: Vec<Vec<((String, String), String)>> = std::thread::scope(|scope| {
+        let handles: Vec<_> = (0..workers)
+            .map(|_| {
+                scope.spawn(|| {
+                    let mut found = vec![];
+                    while let Some((name, doc, opts, dir)) = fixtures.get(next.fetch_add(1, Ordering::Relaxed)) {
+                        let kinds = Kinds::of(doc);
+                        let mut fields: BTreeMap<(String, String), Vec<&Vec<String>>> = BTreeMap::new();
+                        for (kind, path) in &kinds.0 {
+                            let Some(Value::Object(o)) = path.iter().try_fold(doc, |v, t| match v {
+                                Value::Array(a) => a.get(t.parse::<usize>().ok()?),
+                                Value::Object(m) => m.get(t),
+                                Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_) => None,
+                            }) else {
+                                continue;
+                            };
+                            for k in o.keys().filter(|k| !k.starts_with("x-")) {
+                                fields.entry(((*kind).to_owned(), k.clone())).or_default().push(path);
+                            }
+                        }
+                        let base = generate(doc, dir, opts);
+                        for (key, paths) in fields {
+                            found.push((key.clone(), name.clone()));
+                            if changes.lock().unwrap().contains(&key) {
+                                continue;
+                            }
+                            let mut stripped = doc.clone();
+                            for p in paths {
+                                if let Some(o) = object_mut(&mut stripped, p) {
+                                    o.remove(&key.1);
+                                }
+                            }
+                            if generate(&stripped, dir, opts) != base {
+                                changes.lock().unwrap().insert(key);
+                            }
+                        }
+                    }
+                    found
+                })
+            })
+            .collect();
+        handles.into_iter().map(|h| h.join().unwrap()).collect()
+    });
+    // In the order of the fixtures, as one thread would list them.
+    let mut found: Vec<_> = found.into_iter().flatten().collect();
+    let order: BTreeMap<&str, usize> = fixtures.iter().enumerate().map(|(i, f)| (f.0.as_str(), i)).collect();
+    found.sort_by_key(|(_, name)| order.get(name.as_str()).copied());
+    for (key, name) in found {
+        used.entry(key).or_default().push(name);
     }
+    let changes = changes.into_inner().unwrap();
     let mut problems = vec![];
     for (key, files) in &used {
         let (k, f) = key;
