@@ -348,6 +348,11 @@ fn validated_paths() -> serde_json::Value {
             "requestBody": {"required": true, "content": {"application/json": {"schema": {"type": "string", "format": "date-time"}}}},
             "responses": {"204": {"description": "Kept."}},
         }},
+        "/days": {"post": {
+            "operationId": "postDays",
+            "requestBody": {"required": true, "content": {"application/jsonl": {"itemSchema": {"type": "string", "format": "date"}}}},
+            "responses": {"204": {"description": "Kept."}, "422": {"description": "An item is not a date."}},
+        }},
         "/log": {"get": {
             "operationId": "getLog",
             "responses": {"200": {
@@ -393,6 +398,13 @@ impl api::Api for Items {
         Ok(ops::post_stamp::Response::NoContent)
     }
 
+    async fn post_days(&self, p: ops::post_days::Params, _: &api::Context<'_>) -> Result<ops::post_days::Response, api::ApiError> {
+        Ok(match p.body.collect().await {
+            Ok(_) => ops::post_days::Response::NoContent,
+            Err(_) => ops::post_days::Response::UnprocessableEntity,
+        })
+    }
+
     async fn get_log(&self, _: ops::get_log::Params, _: &api::Context<'_>) -> Result<ops::get_log::Response, api::ApiError> {
         Ok(ops::get_log::Response::Ok(api::Items::List(vec![])))
     }
@@ -402,7 +414,8 @@ impl api::Api for Items {
 fn status(method: &str, uri: &str, header: Option<(&str, &str)>, body: &str) -> u16 {
     use api::Service;
     let mut service = api::Server::new(Items).into_service();
-    let mut req = api::http::Request::builder().method(method).uri(uri).header("content-type", "application/json");
+    let ct = if uri == "/days" { "application/jsonl" } else { "application/json" };
+    let mut req = api::http::Request::builder().method(method).uri(uri).header("content-type", ct);
     if let Some((name, value)) = header {
         req = req.header(name, value);
     }
@@ -430,6 +443,9 @@ fn the_server_checks_parameters_and_bodies() {
     expect(400, "GET", &format!("{item}?days=2024-06-19&days=20240620"), None, "");
     expect(204, "POST", "/stamps", None, "\"2024-06-19T08:30:06Z\"");
     expect(400, "POST", "/stamps", None, "\"2024-06-19 08:30:06Z\"");
+    expect(204, "POST", "/days", None, "\"2024-06-19\"\n\"2024-06-20\"\n");
+    // The body is read as it arrives: the wrong item reaches the handler as an error, and it answers 422.
+    expect(422, "POST", "/days", None, "\"2024-06-19\"\n\"20240620\"\n");
     assert!(wrong.is_empty(), "{wrong:#?}");
 }
 
@@ -472,12 +488,23 @@ fn the_client_reads_what_its_library_reads() {
         let client = api::Client::new(Answer { content_type: "application/jsonl", location: "/", body });
         api::block_on(client.get_log(ops::get_log::Params {})).is_ok()
     };
+    let streamed = |body: &'static str| {
+        let client = api::Client::new(Answer { content_type: "application/jsonl", location: "/", body });
+        api::block_on(async {
+            match client.get_log_stream(ops::get_log::Params {}).await {
+                Ok(api::Streamed::Ok(items)) => api::Items::Stream(items).collect().await.is_ok(),
+                _ => false,
+            }
+        })
+    };
     let read = [
         item("https://example.com/a", "\"2024-06-19 08:30:06Z\""),
         item("https://example.com/a b", "\"2024-06-19T08:30:06Z\""),
         log("\"2024-06-19\"\n\"20240620\"\n"),
+        streamed("\"2024-06-19\"\n\"20240620\"\n"),
     ];
-    assert_eq!(read, [true; 3], "a space in a date-time, a space in a URL, a date without hyphens");
+    let what = "a space in a date-time, a space in a URL, a date without hyphens whole and as it arrives";
+    assert_eq!(read, [true; 4], "{what}");
 }
 }
 "#;
