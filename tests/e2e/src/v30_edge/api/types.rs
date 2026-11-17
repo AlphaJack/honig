@@ -11,6 +11,11 @@
     clippy::missing_errors_doc,
     reason = "generated docs hold only the description's own prose"
 )]
+macro_rules! validate_impl {
+    ($t:ty) => {
+        impl runtime::Validate for $t {}
+    };
+}
 macro_rules! deserialize_impl {
     ($t:ty) => {
         impl < 'de > serde::Deserialize < 'de > for $t { fn deserialize < D :
@@ -22,11 +27,6 @@ macro_rules! serialize_impl {
     ($t:ty) => {
         impl serde::Serialize for $t { fn serialize < S : serde::Serializer > (& self, s
         : S) -> Result < S::Ok, S::Error > { Self::serialize(self, s) } }
-    };
-}
-macro_rules! validate_impl {
-    ($t:ty) => {
-        impl runtime::Validate for $t {}
     };
 }
 macro_rules! validate_impl_2 {
@@ -80,59 +80,46 @@ macro_rules! str_enum_impls {
     ($n:ident) => {
         impl std::fmt::Display for $n { fn fmt(& self, f : & mut std::fmt::Formatter < '_
         >) -> std::fmt::Result { f.write_str(self.as_str()) } } impl std::str::FromStr
-        for $n { type Err = std::convert::Infallible; fn from_str(s : & str) -> Result <
-        Self, Self::Err > { Ok(Self::from(s)) } } impl serde::Serialize for $n { fn
-        serialize < S : serde::Serializer > (& self, s : S) -> Result < S::Ok, S::Error >
-        { s.serialize_str(self.as_str()) } } impl < 'de > serde::Deserialize < 'de > for
-        $n { fn deserialize < D : serde::Deserializer < 'de >> (d : D) -> Result < Self,
-        D::Error > { let s = < String as serde::Deserialize > ::deserialize(d) ?;
-        Ok(Self::from(s.as_str())) } }
+        for $n { type Err = String; fn from_str(s : & str) -> Result < Self, Self::Err >
+        { Self::try_from(s) } } impl serde::Serialize for $n { fn serialize < S :
+        serde::Serializer > (& self, s : S) -> Result < S::Ok, S::Error > { s
+        .serialize_str(self.as_str()) } } impl < 'de > serde::Deserialize < 'de > for $n
+        { fn deserialize < D : serde::Deserializer < 'de >> (d : D) -> Result < Self,
+        D::Error > { let s = < std::borrow::Cow < 'de, str > as serde::Deserialize >
+        ::deserialize(d) ?; Self::try_from(& * s).map_err(serde::de::Error::custom) } }
     };
 }
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum Status {
     Draft,
     Confirmed,
     Delivered,
-    Other(String),
 }
 impl Status {
     #[must_use]
-    pub const fn as_str(&self) -> &str {
+    pub const fn as_str(&self) -> &'static str {
         match self {
             Self::Draft => "draft",
             Self::Confirmed => "confirmed",
             Self::Delivered => "delivered",
-            Self::Other(s) => s.as_str(),
         }
     }
 }
-impl From<&str> for Status {
-    fn from(s: &str) -> Self {
+impl TryFrom<&str> for Status {
+    type Error = String;
+    fn try_from(s: &str) -> Result<Self, String> {
         match s {
-            "draft" => Self::Draft,
-            "confirmed" => Self::Confirmed,
-            "delivered" => Self::Delivered,
-            other => Self::Other(other.to_owned()),
+            "draft" => Ok(Self::Draft),
+            "confirmed" => Ok(Self::Confirmed),
+            "delivered" => Ok(Self::Delivered),
+            other => {
+                Err(format!("`{other}` is not one of `draft`, `confirmed`, `delivered`"))
+            }
         }
     }
 }
 str_enum_impls!(Status);
-impl runtime::Validate for Status {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        if let Self::Other(v) = self {
-            runtime::violation(
-                out,
-                path,
-                format!("`{v}` is not one of `draft`, `confirmed`, `delivered`"),
-            );
-        }
-    }
-}
+validate_impl!(Status);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Money {
@@ -270,14 +257,12 @@ validate_impl!(Van);
 pub enum Vehicle {
     Car(Car),
     Van(Van),
-    Other(serde_json::Value),
 }
 impl serde::Serialize for Vehicle {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         match self {
             Self::Car(v) => serde::Serialize::serialize(v, s),
             Self::Van(v) => serde::Serialize::serialize(v, s),
-            Self::Other(v) => serde::Serialize::serialize(v, s),
         }
     }
 }
@@ -307,22 +292,11 @@ impl<'de> runtime::TaggedUnion<'de> for Vehicle {
         match which {
             0 => v.decode_into(Self::Car),
             1 => v.decode_into(Self::Van),
-            _ => Ok(Self::Other(v.into_value())),
+            _ => Err(serde::de::Error::custom("matches no variant")),
         }
     }
 }
-impl runtime::Validate for Vehicle {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        match self {
-            Self::Car(_) | Self::Van(_) => {}
-            Self::Other(_) => runtime::violation(out, path, "matches no variant"),
-        }
-    }
-}
+validate_impl!(Vehicle);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Order {
@@ -398,11 +372,6 @@ impl runtime::Validate for Order {
                 "uuid",
             );
         }
-        runtime::Validate::validate(
-            &self.status,
-            &runtime::InstancePath::Key(path, "status"),
-            out,
-        );
         if let runtime::Nullable::Value(v) = &self.customer {
             {
                 static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
@@ -570,14 +539,12 @@ pub type OrderCustomer2 = Customer;
 pub enum OrderPayment {
     Card(Card),
     Sepa(Sepa),
-    Other(serde_json::Value),
 }
 impl serde::Serialize for OrderPayment {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         match self {
             Self::Card(v) => serde::Serialize::serialize(v, s),
             Self::Sepa(v) => serde::Serialize::serialize(v, s),
-            Self::Other(v) => serde::Serialize::serialize(v, s),
         }
     }
 }
@@ -603,7 +570,7 @@ impl<'de> serde::Deserialize<'de> for OrderPayment {
             }
             first.get_or_insert(picked);
         }
-        Ok(first.unwrap_or_else(|| Self::Other(v.into_value())))
+        first.ok_or_else(|| serde::de::Error::custom("matches no variant"))
     }
 }
 impl runtime::Validate for OrderPayment {
@@ -617,7 +584,6 @@ impl runtime::Validate for OrderPayment {
                 runtime::Validate::validate(x, path, out);
             }
             Self::Sepa(_) => {}
-            Self::Other(_) => runtime::violation(out, path, "matches no variant"),
         }
     }
 }
@@ -657,47 +623,32 @@ impl<'de> serde::Deserialize<'de> for OrderDiscount {
     }
 }
 validate_impl!(OrderDiscount);
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum ListOrdersSort {
     Newest,
     Oldest,
-    Other(String),
 }
 impl ListOrdersSort {
     #[must_use]
-    pub const fn as_str(&self) -> &str {
+    pub const fn as_str(&self) -> &'static str {
         match self {
             Self::Newest => "newest",
             Self::Oldest => "oldest",
-            Self::Other(s) => s.as_str(),
         }
     }
 }
-impl From<&str> for ListOrdersSort {
-    fn from(s: &str) -> Self {
+impl TryFrom<&str> for ListOrdersSort {
+    type Error = String;
+    fn try_from(s: &str) -> Result<Self, String> {
         match s {
-            "newest" => Self::Newest,
-            "oldest" => Self::Oldest,
-            other => Self::Other(other.to_owned()),
+            "newest" => Ok(Self::Newest),
+            "oldest" => Ok(Self::Oldest),
+            other => Err(format!("`{other}` is not one of `newest`, `oldest`")),
         }
     }
 }
 str_enum_impls!(ListOrdersSort);
-impl runtime::Validate for ListOrdersSort {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        if let Self::Other(v) = self {
-            runtime::violation(
-                out,
-                path,
-                format!("`{v}` is not one of `newest`, `oldest`"),
-            );
-        }
-    }
-}
+validate_impl!(ListOrdersSort);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct ListOrdersCursor(String);
@@ -732,60 +683,33 @@ impl UploadDocumentBody {
         Self { file, kind }
     }
 }
-impl runtime::Validate for UploadDocumentBody {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        runtime::Validate::validate(
-            &self.kind,
-            &runtime::InstancePath::Key(path, "kind"),
-            out,
-        );
-    }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+validate_impl!(UploadDocumentBody);
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum UploadDocumentBodyKind {
     Invoice,
     Contract,
-    Other(String),
 }
 impl UploadDocumentBodyKind {
     #[must_use]
-    pub const fn as_str(&self) -> &str {
+    pub const fn as_str(&self) -> &'static str {
         match self {
             Self::Invoice => "invoice",
             Self::Contract => "contract",
-            Self::Other(s) => s.as_str(),
         }
     }
 }
-impl From<&str> for UploadDocumentBodyKind {
-    fn from(s: &str) -> Self {
+impl TryFrom<&str> for UploadDocumentBodyKind {
+    type Error = String;
+    fn try_from(s: &str) -> Result<Self, String> {
         match s {
-            "invoice" => Self::Invoice,
-            "contract" => Self::Contract,
-            other => Self::Other(other.to_owned()),
+            "invoice" => Ok(Self::Invoice),
+            "contract" => Ok(Self::Contract),
+            other => Err(format!("`{other}` is not one of `invoice`, `contract`")),
         }
     }
 }
 str_enum_impls!(UploadDocumentBodyKind);
-impl runtime::Validate for UploadDocumentBodyKind {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        if let Self::Other(v) = self {
-            runtime::violation(
-                out,
-                path,
-                format!("`{v}` is not one of `invoice`, `contract`"),
-            );
-        }
-    }
-}
+validate_impl!(UploadDocumentBodyKind);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct OrderRequest {
@@ -845,11 +769,6 @@ impl runtime::Validate for OrderRequest {
         path: &runtime::InstancePath<'_>,
         out: &mut Vec<runtime::Violation>,
     ) {
-        runtime::Validate::validate(
-            &self.status,
-            &runtime::InstancePath::Key(path, "status"),
-            out,
-        );
         if let runtime::Nullable::Value(v) = &self.customer {
             {
                 static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();

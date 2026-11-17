@@ -75,6 +75,14 @@ macro_rules! deserialize_impl_2 {
         .map_err(serde::de::Error::custom) } }
     };
 }
+macro_rules! validate_impl_3 {
+    ($t:ty) => {
+        impl runtime::Validate for $t { fn validate(& self, path : &
+        runtime::InstancePath < '_ >, out : & mut Vec < runtime::Violation >) { if let
+        Some(v) = & self.id { runtime::check_format(out, &
+        runtime::InstancePath::Key(path, "id"), v.as_str(), "uuid"); } } }
+    };
+}
 use super::runtime;
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -556,22 +564,7 @@ impl BasicMultipartFormBody {
         }
     }
 }
-impl runtime::Validate for BasicMultipartFormBody {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        if let Some(v) = &self.id {
-            runtime::check_format(
-                out,
-                &runtime::InstancePath::Key(path, "id"),
-                v.as_str(),
-                "uuid",
-            );
-        }
-    }
-}
+validate_impl_3!(BasicMultipartFormBody);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct MultipartFormWithEncodingObjectsBody {
@@ -615,41 +608,17 @@ impl MultipartFormWithEncodingObjectsBody {
         }
     }
 }
-impl runtime::Validate for MultipartFormWithEncodingObjectsBody {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        if let Some(v) = &self.id {
-            runtime::check_format(
-                out,
-                &runtime::InstancePath::Key(path, "id"),
-                v.as_str(),
-                "uuid",
-            );
-        }
-        if let Some(v) = &self.alias {
-            runtime::Validate::validate(
-                v,
-                &runtime::InstancePath::Key(path, "alias"),
-                out,
-            );
-        }
-    }
-}
+validate_impl_3!(MultipartFormWithEncodingObjectsBody);
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MultipartFormWithEncodingObjectsBodyAlias {
     String(MultipartFormWithEncodingObjectsBodyAliasString),
     Array(Vec<serde_json::Value>),
-    Other(serde_json::Value),
 }
 impl serde::Serialize for MultipartFormWithEncodingObjectsBodyAlias {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         match self {
             Self::String(v) => serde::Serialize::serialize(v, s),
             Self::Array(v) => serde::Serialize::serialize(v, s),
-            Self::Other(v) => serde::Serialize::serialize(v, s),
         }
     }
 }
@@ -663,22 +632,13 @@ impl<'de> serde::Deserialize<'de> for MultipartFormWithEncodingObjectsBodyAlias 
             | runtime::Kind::Bool
             | runtime::Kind::Integer
             | runtime::Kind::Number
-            | runtime::Kind::Object => Ok(Self::Other(v.into_value())),
+            | runtime::Kind::Object => {
+                Err(serde::de::Error::custom("matches no variant"))
+            }
         }
     }
 }
-impl runtime::Validate for MultipartFormWithEncodingObjectsBodyAlias {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        match self {
-            Self::String(_) | Self::Array(_) => {}
-            Self::Other(_) => runtime::violation(out, path, "matches no variant"),
-        }
-    }
-}
+validate_impl!(MultipartFormWithEncodingObjectsBodyAlias);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct MultipartFormWithEncodingObjectsBodyAliasString(String);
@@ -759,7 +719,6 @@ pub enum ServerSentEventStreamsBodyItem {
     Event(ServerSentEventStreamsBodyItemEvent),
     AddInt64(ServerSentEventStreamsBodyItemAddInt64),
     AddJson(ServerSentEventStreamsBodyItemAddJson),
-    Other(serde_json::Value),
 }
 impl serde::Serialize for ServerSentEventStreamsBodyItem {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
@@ -794,7 +753,6 @@ impl serde::Serialize for ServerSentEventStreamsBodyItem {
                 }
                 serde::Serialize::serialize(&j, s)
             }
-            Self::Other(v) => serde::Serialize::serialize(v, s),
         }
     }
 }
@@ -842,7 +800,7 @@ impl<'de> runtime::TaggedUnion<'de> for ServerSentEventStreamsBodyItem {
             0 => v.decode_into(Self::Event),
             1 => v.decode_into(Self::AddInt64),
             2 => v.decode_into(Self::AddJson),
-            _ => Ok(Self::Other(v.into_value())),
+            _ => Err(serde::de::Error::custom("matches no variant")),
         }
     }
 }
@@ -862,7 +820,6 @@ impl runtime::Validate for ServerSentEventStreamsBodyItem {
             Self::AddJson(x) => {
                 runtime::Validate::validate(x, path, out);
             }
-            Self::Other(_) => runtime::violation(out, path, "matches no variant"),
         }
     }
 }

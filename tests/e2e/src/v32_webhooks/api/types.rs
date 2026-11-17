@@ -34,13 +34,13 @@ macro_rules! str_enum_impls {
     ($n:ident) => {
         impl std::fmt::Display for $n { fn fmt(& self, f : & mut std::fmt::Formatter < '_
         >) -> std::fmt::Result { f.write_str(self.as_str()) } } impl std::str::FromStr
-        for $n { type Err = std::convert::Infallible; fn from_str(s : & str) -> Result <
-        Self, Self::Err > { Ok(Self::from(s)) } } impl serde::Serialize for $n { fn
-        serialize < S : serde::Serializer > (& self, s : S) -> Result < S::Ok, S::Error >
-        { s.serialize_str(self.as_str()) } } impl < 'de > serde::Deserialize < 'de > for
-        $n { fn deserialize < D : serde::Deserializer < 'de >> (d : D) -> Result < Self,
-        D::Error > { let s = < String as serde::Deserialize > ::deserialize(d) ?;
-        Ok(Self::from(s.as_str())) } }
+        for $n { type Err = String; fn from_str(s : & str) -> Result < Self, Self::Err >
+        { Self::try_from(s) } } impl serde::Serialize for $n { fn serialize < S :
+        serde::Serializer > (& self, s : S) -> Result < S::Ok, S::Error > { s
+        .serialize_str(self.as_str()) } } impl < 'de > serde::Deserialize < 'de > for $n
+        { fn deserialize < D : serde::Deserializer < 'de >> (d : D) -> Result < Self,
+        D::Error > { let s = < std::borrow::Cow < 'de, str > as serde::Deserialize >
+        ::deserialize(d) ?; Self::try_from(& * s).map_err(serde::de::Error::custom) } }
     };
 }
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
@@ -83,11 +83,6 @@ impl runtime::Validate for Event {
         path: &runtime::InstancePath<'_>,
         out: &mut Vec<runtime::Violation>,
     ) {
-        runtime::Validate::validate(
-            &self.kind,
-            &runtime::InstancePath::Key(path, "kind"),
-            out,
-        );
         if let Some(v) = &self.at {
             runtime::check_format(
                 out,
@@ -98,47 +93,32 @@ impl runtime::Validate for Event {
         }
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum EventKind {
     Created,
     Deleted,
-    Other(String),
 }
 impl EventKind {
     #[must_use]
-    pub const fn as_str(&self) -> &str {
+    pub const fn as_str(&self) -> &'static str {
         match self {
             Self::Created => "created",
             Self::Deleted => "deleted",
-            Self::Other(s) => s.as_str(),
         }
     }
 }
-impl From<&str> for EventKind {
-    fn from(s: &str) -> Self {
+impl TryFrom<&str> for EventKind {
+    type Error = String;
+    fn try_from(s: &str) -> Result<Self, String> {
         match s {
-            "created" => Self::Created,
-            "deleted" => Self::Deleted,
-            other => Self::Other(other.to_owned()),
+            "created" => Ok(Self::Created),
+            "deleted" => Ok(Self::Deleted),
+            other => Err(format!("`{other}` is not one of `created`, `deleted`")),
         }
     }
 }
 str_enum_impls!(EventKind);
-impl runtime::Validate for EventKind {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        if let Self::Other(v) = self {
-            runtime::violation(
-                out,
-                path,
-                format!("`{v}` is not one of `created`, `deleted`"),
-            );
-        }
-    }
-}
+validate_impl!(EventKind);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct SubscribeBody {

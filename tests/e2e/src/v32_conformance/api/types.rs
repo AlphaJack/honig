@@ -60,14 +60,12 @@ validate_impl!(Closed);
 pub enum Product {
     Gadget(ProductGadget),
     Book(ProductBook),
-    Other(serde_json::Value),
 }
 impl serde::Serialize for Product {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         match self {
             Self::Gadget(v) => serde::Serialize::serialize(v, s),
             Self::Book(v) => serde::Serialize::serialize(v, s),
-            Self::Other(v) => serde::Serialize::serialize(v, s),
         }
     }
 }
@@ -99,22 +97,11 @@ impl<'de> runtime::TaggedUnion<'de> for Product {
         match which {
             0 => v.decode_into(Self::Gadget),
             1 => v.decode_into(Self::Book),
-            _ => Ok(Self::Other(v.into_value())),
+            _ => Err(serde::de::Error::custom("matches no variant")),
         }
     }
 }
-impl runtime::Validate for Product {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        match self {
-            Self::Gadget(_) | Self::Book(_) => {}
-            Self::Other(_) => runtime::violation(out, path, "matches no variant"),
-        }
-    }
-}
+validate_impl!(Product);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Gadget {

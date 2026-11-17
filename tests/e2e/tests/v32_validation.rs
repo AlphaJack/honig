@@ -187,14 +187,23 @@ fn every_violation_is_reported_with_its_path() {
     let r = send(
         "limit=0",
         "core",
-        &json!({"name":"Ann","role":"root","age":150,"score":1.2,"tags":["abcd","x","x"],"meta":{"a":"1","b":"2","c":"3"}}),
+        &json!({"name":"Ann","role":"admin","age":150,"score":1.2,"tags":["abcd","x","x"],"meta":{"a":"1","b":"2","c":"3"}}),
     );
     assert_eq!(r.status().as_u16(), 400);
     let v: serde_json::Value = serde_json::from_slice(r.body().bytes()).unwrap();
     let paths: Vec<&str> = v["violations"].as_array().unwrap().iter().map(|x| x["path"].as_str().unwrap()).collect();
-    for want in ["/query/limit", "/body/age", "/body/score", "/body/tags", "/body/tags/0", "/body/role", "/body/meta"] {
+    for want in ["/query/limit", "/body/age", "/body/score", "/body/tags", "/body/tags/0", "/body/meta"] {
         assert!(paths.contains(&want), "missing {want} in {v:#}");
     }
+}
+
+/// An enum is closed: a value that it does not list fails to decode. The request is refused for that value alone.
+#[test]
+fn an_unlisted_enum_value_is_a_bad_request() {
+    let r = send("limit=0", "core", &json!({"name":"Ann","role":"root","age":150}));
+    assert_eq!(r.status().as_u16(), 400);
+    let v: serde_json::Value = serde_json::from_slice(r.body().bytes()).unwrap();
+    assert_eq!(v["violations"], json!([{"path": "/body/role", "message": "`root` is not one of `admin`, `user`"}]));
 }
 
 /// A string with a `pattern` is a type that only `TryFrom` (and decoding) builds.
@@ -272,7 +281,9 @@ fn one_wide_event_per_request() {
     let service = api::Server::new(std::sync::Arc::clone(&api))
         .on_event(move |event| sink.0.lock().unwrap().push(event.fields()))
         .into_service();
-    for body in [json!({"name": "Ann", "role": "user"}), json!({"name": "Ann", "role": "root", "age": 150})] {
+    for body in
+        [json!({"name": "Ann", "role": "user"}), json!({"name": "Ann", "role": "user", "age": 150, "score": 1.2})]
+    {
         let mut req = api::runtime::new_request("POST", "/users".to_owned(), vec![]).unwrap();
         req.headers_mut()
             .insert(honig::http::header::CONTENT_TYPE, honig::http::HeaderValue::from_static("application/json"));

@@ -41,7 +41,7 @@ macro_rules! serialize_impl_2 {
         serde_json::to_value(v).map_err(serde::ser::Error::custom) ?; if let
         serde_json::Value::Object(m) = & mut j { m.insert("type".to_owned(),
         serde_json::Value::String("size".to_owned())); } serde::Serialize::serialize(& j,
-        s) }, Self::Other(v) => serde::Serialize::serialize(v, s), } } }
+        s) }, } } }
     };
 }
 macro_rules! deserialize_impl_2 {
@@ -56,18 +56,15 @@ macro_rules! validate_impl_2 {
         impl runtime::Validate for $t { fn validate(& self, path : &
         runtime::InstancePath < '_ >, out : & mut Vec < runtime::Violation >) { match
         self { Self::Product(x) => { runtime::Validate::validate(x, path, out); },
-        Self::Variant(x) => { runtime::Validate::validate(x, path, out); },
-        Self::Other(_) => runtime::violation(out, path, "matches no variant"), } } }
+        Self::Variant(x) => { runtime::Validate::validate(x, path, out); }, } } }
     };
 }
 macro_rules! validate_impl_3 {
     ($t:ty) => {
         impl runtime::Validate for $t { fn validate(& self, path : &
         runtime::InstancePath < '_ >, out : & mut Vec < runtime::Violation >) { if let
-        Some(v) = & self.type_ { runtime::Validate::validate(v, &
-        runtime::InstancePath::Key(path, "type"), out); } if let Some(v) = & self
-        .shipping { runtime::Validate::validate(v, & runtime::InstancePath::Key(path,
-        "shipping"), out); } } }
+        Some(v) = & self.shipping { runtime::Validate::validate(v, &
+        runtime::InstancePath::Key(path, "shipping"), out); } } }
     };
 }
 macro_rules! validate_impl_4 {
@@ -76,27 +73,19 @@ macro_rules! validate_impl_4 {
         runtime::InstancePath < '_ >, out : & mut Vec < runtime::Violation >) { if let
         Some(v) = & self.id { runtime::check_format(out, &
         runtime::InstancePath::Key(path, "id"), v.as_str(), "uuid"); }
-        runtime::Validate::validate(& self.event, & runtime::InstancePath::Key(path,
-        "event"), out); runtime::Validate::validate(& self.product, &
-        runtime::InstancePath::Key(path, "product"), out); if let Some(v) = & self
-        .occurred_at { runtime::check_format(out, & runtime::InstancePath::Key(path,
-        "occurredAt"), v.as_str(), "date-time"); } } }
+        runtime::Validate::validate(& self.product, & runtime::InstancePath::Key(path,
+        "product"), out); if let Some(v) = & self.occurred_at {
+        runtime::check_format(out, & runtime::InstancePath::Key(path, "occurredAt"), v
+        .as_str(), "date-time"); } } }
     };
 }
-macro_rules! from_impl {
+macro_rules! try_from_impl {
     ($t:ty) => {
-        impl From < & str > for $t { fn from(s : & str) -> Self { match s { "hardware" =>
-        Self::Hardware, "software" => Self::Software, "service" => Self::Service,
-        "accessory" => Self::Accessory, "subscription" => Self::Subscription, other =>
-        Self::Other(other.to_owned()), } } }
-    };
-}
-macro_rules! validate_impl_5 {
-    ($t:ty) => {
-        impl runtime::Validate for $t { fn validate(& self, path : &
-        runtime::InstancePath < '_ >, out : & mut Vec < runtime::Violation >) { if let
-        Self::Other(v) = self { runtime::violation(out, path,
-        format!("`{v}` is not one of `hardware`, `software`, `service`, `accessory`, `subscription`"));
+        impl TryFrom < & str > for $t { type Error = String; fn try_from(s : & str) ->
+        Result < Self, String > { match s { "hardware" => Ok(Self::Hardware), "software"
+        => Ok(Self::Software), "service" => Ok(Self::Service), "accessory" =>
+        Ok(Self::Accessory), "subscription" => Ok(Self::Subscription), other =>
+        Err(format!("`{other}` is not one of `hardware`, `software`, `service`, `accessory`, `subscription`")),
         } } }
     };
 }
@@ -107,7 +96,7 @@ macro_rules! serialize_impl_3 {
         runtime::UniqueKeys(s)) } }
     };
 }
-macro_rules! validate_impl_6 {
+macro_rules! validate_impl_5 {
     ($t:ty) => {
         impl runtime::Validate for $t { fn validate(& self, path : &
         runtime::InstancePath < '_ >, out : & mut Vec < runtime::Violation >) { if let
@@ -115,7 +104,7 @@ macro_rules! validate_impl_6 {
         runtime::InstancePath::Key(path, "product"), out); } } }
     };
 }
-macro_rules! validate_impl_7 {
+macro_rules! validate_impl_6 {
     ($t:ty) => {
         impl runtime::Validate for $t { fn validate(& self, path : &
         runtime::InstancePath < '_ >, out : & mut Vec < runtime::Violation >) { if let
@@ -133,13 +122,13 @@ macro_rules! str_enum_impls {
     ($n:ident) => {
         impl std::fmt::Display for $n { fn fmt(& self, f : & mut std::fmt::Formatter < '_
         >) -> std::fmt::Result { f.write_str(self.as_str()) } } impl std::str::FromStr
-        for $n { type Err = std::convert::Infallible; fn from_str(s : & str) -> Result <
-        Self, Self::Err > { Ok(Self::from(s)) } } impl serde::Serialize for $n { fn
-        serialize < S : serde::Serializer > (& self, s : S) -> Result < S::Ok, S::Error >
-        { s.serialize_str(self.as_str()) } } impl < 'de > serde::Deserialize < 'de > for
-        $n { fn deserialize < D : serde::Deserializer < 'de >> (d : D) -> Result < Self,
-        D::Error > { let s = < String as serde::Deserialize > ::deserialize(d) ?;
-        Ok(Self::from(s.as_str())) } }
+        for $n { type Err = String; fn from_str(s : & str) -> Result < Self, Self::Err >
+        { Self::try_from(s) } } impl serde::Serialize for $n { fn serialize < S :
+        serde::Serializer > (& self, s : S) -> Result < S::Ok, S::Error > { s
+        .serialize_str(self.as_str()) } } impl < 'de > serde::Deserialize < 'de > for $n
+        { fn deserialize < D : serde::Deserializer < 'de >> (d : D) -> Result < Self,
+        D::Error > { let s = < std::borrow::Cow < 'de, str > as serde::Deserialize >
+        ::deserialize(d) ?; Self::try_from(& * s).map_err(serde::de::Error::custom) } }
     };
 }
 /// A user
@@ -308,7 +297,6 @@ validate_impl!(Token);
 pub enum Item {
     Product(Product),
     Variant(Variant),
-    Other(serde_json::Value),
 }
 serialize_impl_2!(Item);
 deserialize_impl_2!(Item);
@@ -340,7 +328,7 @@ impl<'de> runtime::TaggedUnion<'de> for Item {
         match which {
             0 => v.decode_into(Self::Product),
             1 => v.decode_into(Self::Variant),
-            _ => Ok(Self::Other(v.into_value())),
+            _ => Err(serde::de::Error::custom("matches no variant")),
         }
     }
 }
@@ -713,13 +701,6 @@ impl runtime::Validate for Product {
         path: &runtime::InstancePath<'_>,
         out: &mut Vec<runtime::Violation>,
     ) {
-        if let Some(v) = &self.type_ {
-            runtime::Validate::validate(
-                v,
-                &runtime::InstancePath::Key(path, "type"),
-                out,
-            );
-        }
         if let Some(v) = &self.rating {
             runtime::check_range(
                 out,
@@ -1065,31 +1046,12 @@ impl runtime::Validate for ProductQuery {
         path: &runtime::InstancePath<'_>,
         out: &mut Vec<runtime::Violation>,
     ) {
-        if let Some(v) = &self.type_ {
-            {
-                let base = &runtime::InstancePath::Key(path, "type");
-                for (i, v) in v.iter().enumerate() {
-                    runtime::Validate::validate(
-                        v,
-                        &runtime::InstancePath::Index(base, i),
-                        out,
-                    );
-                }
-            }
-        }
         if let Some(v) = &self.min_rating {
             runtime::check_range(
                 out,
                 &runtime::InstancePath::Key(path, "minRating"),
                 *v,
                 [Some(0.0), Some(1.0), None, None],
-            );
-        }
-        if let Some(v) = &self.sort {
-            runtime::Validate::validate(
-                v,
-                &runtime::InstancePath::Key(path, "sort"),
-                out,
             );
         }
     }
@@ -2510,31 +2472,29 @@ impl runtime::XmlShape for TooManyRequestsError {
     }
 }
 validate_impl!(TooManyRequestsError);
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum ProductType {
     Hardware,
     Software,
     Service,
     Accessory,
     Subscription,
-    Other(String),
 }
 impl ProductType {
     #[must_use]
-    pub const fn as_str(&self) -> &str {
+    pub const fn as_str(&self) -> &'static str {
         match self {
             Self::Hardware => "hardware",
             Self::Software => "software",
             Self::Service => "service",
             Self::Accessory => "accessory",
             Self::Subscription => "subscription",
-            Self::Other(s) => s.as_str(),
         }
     }
 }
-from_impl!(ProductType);
+try_from_impl!(ProductType);
 str_enum_impls!(ProductType);
-validate_impl_5!(ProductType);
+validate_impl!(ProductType);
 #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct ProductDimensions {
@@ -2873,50 +2833,35 @@ impl runtime::Validate for ProductMaterialsItem {
         }
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum VariantType {
     Size,
     Color,
     Edition,
-    Other(String),
 }
 impl VariantType {
     #[must_use]
-    pub const fn as_str(&self) -> &str {
+    pub const fn as_str(&self) -> &'static str {
         match self {
             Self::Size => "size",
             Self::Color => "color",
             Self::Edition => "edition",
-            Self::Other(s) => s.as_str(),
         }
     }
 }
-impl From<&str> for VariantType {
-    fn from(s: &str) -> Self {
+impl TryFrom<&str> for VariantType {
+    type Error = String;
+    fn try_from(s: &str) -> Result<Self, String> {
         match s {
-            "size" => Self::Size,
-            "color" => Self::Color,
-            "edition" => Self::Edition,
-            other => Self::Other(other.to_owned()),
+            "size" => Ok(Self::Size),
+            "color" => Ok(Self::Color),
+            "edition" => Ok(Self::Edition),
+            other => Err(format!("`{other}` is not one of `size`, `color`, `edition`")),
         }
     }
 }
 str_enum_impls!(VariantType);
-impl runtime::Validate for VariantType {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        if let Self::Other(v) = self {
-            runtime::violation(
-                out,
-                path,
-                format!("`{v}` is not one of `size`, `color`, `edition`"),
-            );
-        }
-    }
-}
+validate_impl!(VariantType);
 #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct VariantShipping {
@@ -3014,130 +2959,108 @@ impl runtime::XmlShape for VariantShipping {
         &NODE
     }
 }
-validate_impl_6!(VariantShipping);
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+validate_impl_5!(VariantShipping);
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum ProductQueryTypeItem {
     Hardware,
     Software,
     Service,
     Accessory,
     Subscription,
-    Other(String),
 }
 impl ProductQueryTypeItem {
     #[must_use]
-    pub const fn as_str(&self) -> &str {
+    pub const fn as_str(&self) -> &'static str {
         match self {
             Self::Hardware => "hardware",
             Self::Software => "software",
             Self::Service => "service",
             Self::Accessory => "accessory",
             Self::Subscription => "subscription",
-            Self::Other(s) => s.as_str(),
         }
     }
 }
-from_impl!(ProductQueryTypeItem);
+try_from_impl!(ProductQueryTypeItem);
 str_enum_impls!(ProductQueryTypeItem);
-validate_impl_5!(ProductQueryTypeItem);
+validate_impl!(ProductQueryTypeItem);
 /// Sort field; prefix with `-` for descending order
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum ProductQuerySort {
     Name,
     Name2,
     Rating,
     Rating2,
-    Other(String),
 }
 impl ProductQuerySort {
     #[must_use]
-    pub const fn as_str(&self) -> &str {
+    pub const fn as_str(&self) -> &'static str {
         match self {
             Self::Name => "name",
             Self::Name2 => "-name",
             Self::Rating => "rating",
             Self::Rating2 => "-rating",
-            Self::Other(s) => s.as_str(),
         }
     }
 }
-impl From<&str> for ProductQuerySort {
-    fn from(s: &str) -> Self {
+impl TryFrom<&str> for ProductQuerySort {
+    type Error = String;
+    fn try_from(s: &str) -> Result<Self, String> {
         match s {
-            "name" => Self::Name,
-            "-name" => Self::Name2,
-            "rating" => Self::Rating,
-            "-rating" => Self::Rating2,
-            other => Self::Other(other.to_owned()),
+            "name" => Ok(Self::Name),
+            "-name" => Ok(Self::Name2),
+            "rating" => Ok(Self::Rating),
+            "-rating" => Ok(Self::Rating2),
+            other => {
+                Err(
+                    format!(
+                        "`{other}` is not one of `name`, `-name`, `rating`, `-rating`"
+                    ),
+                )
+            }
         }
     }
 }
 str_enum_impls!(ProductQuerySort);
-impl runtime::Validate for ProductQuerySort {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        if let Self::Other(v) = self {
-            runtime::violation(
-                out,
-                path,
-                format!("`{v}` is not one of `name`, `-name`, `rating`, `-rating`"),
-            );
-        }
-    }
-}
+validate_impl!(ProductQuerySort);
 /// The kind of change that occurred
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum ProductEventEvent {
     Created,
     Updated,
     Deleted,
     Discontinued,
-    Other(String),
 }
 impl ProductEventEvent {
     #[must_use]
-    pub const fn as_str(&self) -> &str {
+    pub const fn as_str(&self) -> &'static str {
         match self {
             Self::Created => "created",
             Self::Updated => "updated",
             Self::Deleted => "deleted",
             Self::Discontinued => "discontinued",
-            Self::Other(s) => s.as_str(),
         }
     }
 }
-impl From<&str> for ProductEventEvent {
-    fn from(s: &str) -> Self {
+impl TryFrom<&str> for ProductEventEvent {
+    type Error = String;
+    fn try_from(s: &str) -> Result<Self, String> {
         match s {
-            "created" => Self::Created,
-            "updated" => Self::Updated,
-            "deleted" => Self::Deleted,
-            "discontinued" => Self::Discontinued,
-            other => Self::Other(other.to_owned()),
+            "created" => Ok(Self::Created),
+            "updated" => Ok(Self::Updated),
+            "deleted" => Ok(Self::Deleted),
+            "discontinued" => Ok(Self::Discontinued),
+            other => {
+                Err(
+                    format!(
+                        "`{other}` is not one of `created`, `updated`, `deleted`, `discontinued`"
+                    ),
+                )
+            }
         }
     }
 }
 str_enum_impls!(ProductEventEvent);
-impl runtime::Validate for ProductEventEvent {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        if let Self::Other(v) = self {
-            runtime::violation(
-                out,
-                path,
-                format!(
-                    "`{v}` is not one of `created`, `updated`, `deleted`, `discontinued`"
-                ),
-            );
-        }
-    }
-}
+validate_impl!(ProductEventEvent);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct PaginatedResourceMeta {
@@ -3321,7 +3244,7 @@ impl runtime::XmlShape for GetAllDataOk {
         &NODE
     }
 }
-validate_impl_7!(GetAllDataOk);
+validate_impl_6!(GetAllDataOk);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct GetAllDataOkMeta {
@@ -3505,7 +3428,7 @@ impl runtime::XmlShape for GetAllDataOk2 {
         &NODE
     }
 }
-validate_impl_7!(GetAllDataOk2);
+validate_impl_6!(GetAllDataOk2);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct GetAllDataOk2Meta {
@@ -3689,7 +3612,7 @@ impl runtime::XmlShape for QueryProductsOk {
         &NODE
     }
 }
-validate_impl_7!(QueryProductsOk);
+validate_impl_6!(QueryProductsOk);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct QueryProductsOkMeta {
@@ -3873,7 +3796,7 @@ impl runtime::XmlShape for SearchProductsOk {
         &NODE
     }
 }
-validate_impl_7!(SearchProductsOk);
+validate_impl_6!(SearchProductsOk);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct SearchProductsOkMeta {
@@ -4418,7 +4341,6 @@ validate_impl!(CredentialsRequest);
 pub enum ItemRequest {
     Product(ProductRequest),
     Variant(VariantRequest),
-    Other(serde_json::Value),
 }
 serialize_impl_2!(ItemRequest);
 deserialize_impl_2!(ItemRequest);
@@ -4450,7 +4372,7 @@ impl<'de> runtime::TaggedUnion<'de> for ItemRequest {
         match which {
             0 => v.decode_into(Self::Product),
             1 => v.decode_into(Self::Variant),
-            _ => Ok(Self::Other(v.into_value())),
+            _ => Err(serde::de::Error::custom("matches no variant")),
         }
     }
 }
@@ -4781,13 +4703,6 @@ impl runtime::Validate for ProductRequest {
         path: &runtime::InstancePath<'_>,
         out: &mut Vec<runtime::Violation>,
     ) {
-        if let Some(v) = &self.type_ {
-            runtime::Validate::validate(
-                v,
-                &runtime::InstancePath::Key(path, "type"),
-                out,
-            );
-        }
         if let Some(v) = &self.rating {
             runtime::check_range(
                 out,
@@ -5204,7 +5119,7 @@ impl runtime::XmlShape for VariantShippingRequest {
         &NODE
     }
 }
-validate_impl_6!(VariantShippingRequest);
+validate_impl_5!(VariantShippingRequest);
 /// A generic paginated resource. Specializing schemas bind the item type by declaring a `$dynamicAnchor` named `itemType`, the JSON Schema 2020-12 way to express `PaginatedResource<T>`.
 #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -5274,7 +5189,7 @@ impl runtime::XmlShape for GetAllDataOkRequest {
         &NODE
     }
 }
-validate_impl_7!(GetAllDataOkRequest);
+validate_impl_6!(GetAllDataOkRequest);
 /// A generic paginated resource. Specializing schemas bind the item type by declaring a `$dynamicAnchor` named `itemType`, the JSON Schema 2020-12 way to express `PaginatedResource<T>`.
 #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -5344,7 +5259,7 @@ impl runtime::XmlShape for GetAllDataOk2Request {
         &NODE
     }
 }
-validate_impl_7!(GetAllDataOk2Request);
+validate_impl_6!(GetAllDataOk2Request);
 /// A generic paginated resource. Specializing schemas bind the item type by declaring a `$dynamicAnchor` named `itemType`, the JSON Schema 2020-12 way to express `PaginatedResource<T>`.
 #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -5414,7 +5329,7 @@ impl runtime::XmlShape for QueryProductsOkRequest {
         &NODE
     }
 }
-validate_impl_7!(QueryProductsOkRequest);
+validate_impl_6!(QueryProductsOkRequest);
 /// A generic paginated resource. Specializing schemas bind the item type by declaring a `$dynamicAnchor` named `itemType`, the JSON Schema 2020-12 way to express `PaginatedResource<T>`.
 #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -5484,7 +5399,7 @@ impl runtime::XmlShape for SearchProductsOkRequest {
         &NODE
     }
 }
-validate_impl_7!(SearchProductsOkRequest);
+validate_impl_6!(SearchProductsOkRequest);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct CreateUserBodyRequest {

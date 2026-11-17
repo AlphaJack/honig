@@ -30,12 +30,11 @@ macro_rules! validate_impl {
         impl runtime::Validate for $t { fn validate(& self, path : &
         runtime::InstancePath < '_ >, out : & mut Vec < runtime::Violation >) {
         runtime::check_range(out, & runtime::InstancePath::Key(path, "id"), self.id,
-        [Some(0), None, None, Some(9_007_199_254_740_991)]);
-        runtime::Validate::validate(& self.kind, & runtime::InstancePath::Key(path,
-        "kind"), out); if let Some(v) = & self.tags { { static SCHEMA :
-        std::sync::OnceLock < serde_json::Value > = std::sync::OnceLock::new(); let value
-        = runtime::to_value(v).unwrap_or_default(); runtime::check_schema(out, &
-        runtime::InstancePath::Key(path, "tags"), & value, SCHEMA.get_or_init(| |
+        [Some(0), None, None, Some(9_007_199_254_740_991)]); if let Some(v) = & self.tags
+        { { static SCHEMA : std::sync::OnceLock < serde_json::Value > =
+        std::sync::OnceLock::new(); let value = runtime::to_value(v).unwrap_or_default();
+        runtime::check_schema(out, & runtime::InstancePath::Key(path, "tags"), & value,
+        SCHEMA.get_or_init(| |
         serde_json::from_str("{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"uniqueItems\":true,\"minItems\":0,\"maxItems\":10,\"contains\":{\"const\":\"vip\"},\"minContains\":0,\"maxContains\":1}")
         .unwrap_or_default())); } } if let Some(v) = & self.point { { static SCHEMA :
         std::sync::OnceLock < serde_json::Value > = std::sync::OnceLock::new(); let value
@@ -64,7 +63,6 @@ macro_rules! serialize_impl_2 {
         impl serde::Serialize for $t { fn serialize < S : serde::Serializer > (& self, s
         : S) -> Result < S::Ok, S::Error > { match self { Self::Book(v) =>
         serde::Serialize::serialize(v, s), Self::Gadget(v) =>
-        serde::Serialize::serialize(v, s), Self::Other(v) =>
         serde::Serialize::serialize(v, s), } } }
     };
 }
@@ -73,8 +71,7 @@ macro_rules! validate_impl_2 {
         impl runtime::Validate for $t { fn validate(& self, path : &
         runtime::InstancePath < '_ >, out : & mut Vec < runtime::Violation >) { match
         self { Self::Book(x) => { runtime::Validate::validate(x, path, out); },
-        Self::Gadget(x) => { runtime::Validate::validate(x, path, out); }, Self::Other(_)
-        => runtime::violation(out, path, "matches no variant"), } } }
+        Self::Gadget(x) => { runtime::Validate::validate(x, path, out); }, } } }
     };
 }
 macro_rules! validate_impl_3 {
@@ -127,11 +124,10 @@ macro_rules! validate_impl_6 {
 macro_rules! validate_impl_7 {
     ($t:ty) => {
         impl runtime::Validate for $t { fn validate(& self, path : &
-        runtime::InstancePath < '_ >, out : & mut Vec < runtime::Violation >) {
-        runtime::Validate::validate(& self.kind, & runtime::InstancePath::Key(path,
-        "kind"), out); if let Some(v) = & self.tags { { static SCHEMA :
-        std::sync::OnceLock < serde_json::Value > = std::sync::OnceLock::new(); let value
-        = runtime::to_value(v).unwrap_or_default(); runtime::check_schema(out, &
+        runtime::InstancePath < '_ >, out : & mut Vec < runtime::Violation >) { if let
+        Some(v) = & self.tags { { static SCHEMA : std::sync::OnceLock < serde_json::Value
+        > = std::sync::OnceLock::new(); let value = runtime::to_value(v)
+        .unwrap_or_default(); runtime::check_schema(out, &
         runtime::InstancePath::Key(path, "tags"), & value, SCHEMA.get_or_init(| |
         serde_json::from_str("{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"uniqueItems\":true,\"minItems\":0,\"maxItems\":10,\"contains\":{\"const\":\"vip\"},\"minContains\":0,\"maxContains\":1}")
         .unwrap_or_default())); } } if let Some(v) = & self.point { { static SCHEMA :
@@ -161,13 +157,13 @@ macro_rules! str_enum_impls {
     ($n:ident) => {
         impl std::fmt::Display for $n { fn fmt(& self, f : & mut std::fmt::Formatter < '_
         >) -> std::fmt::Result { f.write_str(self.as_str()) } } impl std::str::FromStr
-        for $n { type Err = std::convert::Infallible; fn from_str(s : & str) -> Result <
-        Self, Self::Err > { Ok(Self::from(s)) } } impl serde::Serialize for $n { fn
-        serialize < S : serde::Serializer > (& self, s : S) -> Result < S::Ok, S::Error >
-        { s.serialize_str(self.as_str()) } } impl < 'de > serde::Deserialize < 'de > for
-        $n { fn deserialize < D : serde::Deserializer < 'de >> (d : D) -> Result < Self,
-        D::Error > { let s = < String as serde::Deserialize > ::deserialize(d) ?;
-        Ok(Self::from(s.as_str())) } }
+        for $n { type Err = String; fn from_str(s : & str) -> Result < Self, Self::Err >
+        { Self::try_from(s) } } impl serde::Serialize for $n { fn serialize < S :
+        serde::Serializer > (& self, s : S) -> Result < S::Ok, S::Error > { s
+        .serialize_str(self.as_str()) } } impl < 'de > serde::Deserialize < 'de > for $n
+        { fn deserialize < D : serde::Deserializer < 'de >> (d : D) -> Result < Self,
+        D::Error > { let s = < std::borrow::Cow < 'de, str > as serde::Deserialize >
+        ::deserialize(d) ?; Self::try_from(& * s).map_err(serde::de::Error::custom) } }
     };
 }
 macro_rules! int_enum_impls {
@@ -177,8 +173,8 @@ macro_rules! int_enum_impls {
         for $n { fn serialize < S : serde::Serializer > (& self, s : S) -> Result <
         S::Ok, S::Error > { s.serialize_i64(self.value()) } } impl < 'de >
         serde::Deserialize < 'de > for $n { fn deserialize < D : serde::Deserializer <
-        'de >> (d : D) -> Result < Self, D::Error > { < i64 as serde::Deserialize >
-        ::deserialize(d).map(Self::from) } }
+        'de >> (d : D) -> Result < Self, D::Error > { let v = < i64 as serde::Deserialize
+        > ::deserialize(d) ?; Self::try_from(v).map_err(serde::de::Error::custom) } }
     };
 }
 /// Product
@@ -360,7 +356,6 @@ impl runtime::Validate for Owner {
 pub enum Shape {
     Book(Book),
     Gadget(Gadget),
-    Other(serde_json::Value),
 }
 serialize_impl_2!(Shape);
 impl<'de> serde::Deserialize<'de> for Shape {
@@ -406,7 +401,7 @@ impl<'de> serde::Deserialize<'de> for Shape {
             }
             first.get_or_insert(picked);
         }
-        Ok(first.unwrap_or_else(|| Self::Other(v.into_value())))
+        first.ok_or_else(|| serde::de::Error::custom("matches no variant"))
     }
 }
 validate_impl_2!(Shape);
@@ -496,47 +491,32 @@ impl<'de> serde::Deserialize<'de> for ProductName {
     }
 }
 validate_impl_3!(ProductName);
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum ProductKind {
     Book,
     Gadget,
-    Other(String),
 }
 impl ProductKind {
     #[must_use]
-    pub const fn as_str(&self) -> &str {
+    pub const fn as_str(&self) -> &'static str {
         match self {
             Self::Book => "book",
             Self::Gadget => "gadget",
-            Self::Other(s) => s.as_str(),
         }
     }
 }
-impl From<&str> for ProductKind {
-    fn from(s: &str) -> Self {
+impl TryFrom<&str> for ProductKind {
+    type Error = String;
+    fn try_from(s: &str) -> Result<Self, String> {
         match s {
-            "book" => Self::Book,
-            "gadget" => Self::Gadget,
-            other => Self::Other(other.to_owned()),
+            "book" => Ok(Self::Book),
+            "gadget" => Ok(Self::Gadget),
+            other => Err(format!("`{other}` is not one of `book`, `gadget`")),
         }
     }
 }
 str_enum_impls!(ProductKind);
-impl runtime::Validate for ProductKind {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        if let Self::Other(v) = self {
-            runtime::violation(
-                out,
-                path,
-                format!("`{v}` is not one of `book`, `gadget`"),
-            );
-        }
-    }
-}
+validate_impl_3!(ProductKind);
 pub type BookName = ProductName;
 pub type BookKind = ProductKind;
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -770,19 +750,7 @@ impl SubmitFormBody {
         }
     }
 }
-impl runtime::Validate for SubmitFormBody {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        runtime::Validate::validate(
-            &self.priority,
-            &runtime::InstancePath::Key(path, "priority"),
-            out,
-        );
-    }
-}
+validate_impl_3!(SubmitFormBody);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct SubmitFormBodyFilter {
@@ -808,7 +776,6 @@ pub enum SubmitFormBodyPriority {
     N1,
     N2,
     N3,
-    Other(i64),
 }
 impl SubmitFormBodyPriority {
     #[must_use]
@@ -817,32 +784,22 @@ impl SubmitFormBodyPriority {
             Self::N1 => 1,
             Self::N2 => 2,
             Self::N3 => 3,
-            Self::Other(v) => v,
         }
     }
 }
-impl From<i64> for SubmitFormBodyPriority {
-    fn from(v: i64) -> Self {
+impl TryFrom<i64> for SubmitFormBodyPriority {
+    type Error = String;
+    fn try_from(v: i64) -> Result<Self, String> {
         match v {
-            1 => Self::N1,
-            2 => Self::N2,
-            3 => Self::N3,
-            other => Self::Other(other),
+            1 => Ok(Self::N1),
+            2 => Ok(Self::N2),
+            3 => Ok(Self::N3),
+            other => Err(format!("`{other}` is not one of `1`, `2`, `3`")),
         }
     }
 }
 int_enum_impls!(SubmitFormBodyPriority);
-impl runtime::Validate for SubmitFormBodyPriority {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        if let Self::Other(v) = self {
-            runtime::violation(out, path, format!("`{v}` is not one of `1`, `2`, `3`"));
-        }
-    }
-}
+validate_impl_3!(SubmitFormBodyPriority);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct PutBlobOkXQuota {
@@ -1112,7 +1069,6 @@ pub type GadgetRequest = Gadget2Request;
 pub enum ShapeRequest {
     Book(BookRequest),
     Gadget(GadgetRequest),
-    Other(serde_json::Value),
 }
 serialize_impl_2!(ShapeRequest);
 impl<'de> serde::Deserialize<'de> for ShapeRequest {
@@ -1158,7 +1114,7 @@ impl<'de> serde::Deserialize<'de> for ShapeRequest {
             }
             first.get_or_insert(picked);
         }
-        Ok(first.unwrap_or_else(|| Self::Other(v.into_value())))
+        first.ok_or_else(|| serde::de::Error::custom("matches no variant"))
     }
 }
 validate_impl_2!(ShapeRequest);

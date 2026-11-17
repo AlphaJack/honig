@@ -267,16 +267,16 @@ fn every_place_checks_its_text() {
     assert!(decoded.is_empty(), "decoded: {decoded:?}");
 }
 
-/// A branch of an untagged union takes only its own format. Text that no branch takes is `Other`.
+/// A branch of an untagged union takes only its own format. Text that no branch takes does not decode.
 #[test]
 fn an_untagged_branch_checks_its_text() {
     use api::types::SameKind;
     let _strict = api::runtime::validated::Strict::enter();
-    let pick = |s: &str| serde_json::from_str::<SameKind>(s).unwrap();
-    assert!(matches!(pick("\"2024-06-19T08:30:06Z\""), SameKind::DateTime(_)));
-    assert!(matches!(pick("\"01234567-89ab-4def-8123-456789abcdef\""), SameKind::Uuid(_)));
-    assert!(matches!(pick("\"2024-06-19 08:30:06Z\""), SameKind::Other(_)));
-    assert!(matches!(pick("\"{01234567-89ab-4def-8123-456789abcdef}\""), SameKind::Other(_)));
+    let pick = |s: &str| serde_json::from_str::<SameKind>(s);
+    assert!(matches!(pick("\"2024-06-19T08:30:06Z\""), Ok(SameKind::DateTime(_))));
+    assert!(matches!(pick("\"01234567-89ab-4def-8123-456789abcdef\""), Ok(SameKind::Uuid(_))));
+    assert!(pick("\"2024-06-19 08:30:06Z\"").is_err());
+    assert!(pick("\"{01234567-89ab-4def-8123-456789abcdef}\"").is_err());
 }
 }
 "##;

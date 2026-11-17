@@ -551,14 +551,12 @@ impl runtime::Validate for Transfer {
 pub enum EventCharge {
     Refund(EventChargeRefund),
     Fee(EventChargeFee),
-    Other(serde_json::Value),
 }
 impl serde::Serialize for EventCharge {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         match self {
             Self::Refund(v) => serde::Serialize::serialize(v, s),
             Self::Fee(v) => serde::Serialize::serialize(v, s),
-            Self::Other(v) => serde::Serialize::serialize(v, s),
         }
     }
 }
@@ -584,21 +582,10 @@ impl<'de> serde::Deserialize<'de> for EventCharge {
             }
             first.get_or_insert(picked);
         }
-        Ok(first.unwrap_or_else(|| Self::Other(v.into_value())))
+        first.ok_or_else(|| serde::de::Error::custom("matches no variant"))
     }
 }
-impl runtime::Validate for EventCharge {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        match self {
-            Self::Refund(_) | Self::Fee(_) => {}
-            Self::Other(_) => runtime::violation(out, path, "matches no variant"),
-        }
-    }
-}
+validate_impl!(EventCharge);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct EventChargeRefund {
@@ -631,7 +618,6 @@ validate_impl!(EventChargeFee);
 pub enum EventPayment {
     Card(Card),
     Transfer(Transfer),
-    Other(serde_json::Value),
 }
 impl serde::Serialize for EventPayment {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
@@ -656,7 +642,6 @@ impl serde::Serialize for EventPayment {
                 }
                 serde::Serialize::serialize(&j, s)
             }
-            Self::Other(v) => serde::Serialize::serialize(v, s),
         }
     }
 }
@@ -671,7 +656,7 @@ impl<'de> serde::Deserialize<'de> for EventPayment {
         match which {
             0 => v.decode_into(Self::Card),
             1 => v.decode_into(Self::Transfer),
-            _ => Ok(Self::Other(v.into_value())),
+            _ => Err(serde::de::Error::custom("matches no variant")),
         }
     }
 }
@@ -688,7 +673,6 @@ impl runtime::Validate for EventPayment {
             Self::Transfer(x) => {
                 runtime::Validate::validate(x, path, out);
             }
-            Self::Other(_) => runtime::violation(out, path, "matches no variant"),
         }
     }
 }

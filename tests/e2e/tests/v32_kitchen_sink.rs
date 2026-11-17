@@ -49,9 +49,9 @@ fn integer_enum_values_are_checked() {
     let mut out = vec![];
     api::Validate::validate(&form(types::SubmitFormBodyPriority::N2), &api::InstancePath::Root, &mut out);
     assert!(out.is_empty(), "{out:?}");
-    api::Validate::validate(&form(types::SubmitFormBodyPriority::from(7)), &api::InstancePath::Root, &mut out);
-    assert_eq!(out.len(), 1, "{out:?}");
-    assert_eq!(out[0].path, "/body/priority");
+    assert_eq!(types::SubmitFormBodyPriority::try_from(2), Ok(types::SubmitFormBodyPriority::N2));
+    assert_eq!(types::SubmitFormBodyPriority::try_from(7), Err("`7` is not one of `1`, `2`, `3`".to_owned()));
+    assert!(serde_json::from_str::<types::SubmitFormBodyPriority>("7").is_err());
 }
 
 #[test]
@@ -107,13 +107,15 @@ fn callback_urls_evaluate_their_expressions_against_the_request() {
 }
 
 #[test]
-fn an_open_enum_keeps_unknown_values_and_writes_every_value_back() {
-    for (text, kind) in [("book", types::ProductKind::Book), ("bird", types::ProductKind::Other("bird".to_owned()))] {
-        let json = format!("\"{text}\"");
-        assert_eq!(serde_json::from_str::<types::ProductKind>(&json).ok(), Some(kind.clone()));
-        assert_eq!(serde_json::to_string(&kind).ok(), Some(json));
-        assert_eq!(kind.to_string(), text);
-    }
+fn a_closed_enum_refuses_unknown_values_and_writes_every_value_back() {
+    let kind = types::ProductKind::Book;
+    assert_eq!(serde_json::from_str::<types::ProductKind>("\"book\"").ok(), Some(kind));
+    assert_eq!(serde_json::to_string(&kind).ok(), Some("\"book\"".to_owned()));
+    assert_eq!(kind.to_string(), "book");
+    assert_eq!("book".parse::<types::ProductKind>(), Ok(kind));
+    let err = serde_json::from_str::<types::ProductKind>("\"bird\"").expect_err("not listed");
+    assert!(err.to_string().starts_with("`bird` is not one of `"), "{err}");
+    assert!(types::ProductKind::try_from("bird").is_err());
 }
 
 #[test]

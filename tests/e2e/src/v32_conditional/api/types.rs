@@ -26,10 +26,7 @@ macro_rules! serialize_impl {
 }
 macro_rules! validate_impl {
     ($t:ty) => {
-        impl runtime::Validate for $t { fn validate(& self, path : &
-        runtime::InstancePath < '_ >, out : & mut Vec < runtime::Violation >) {
-        runtime::Validate::validate(& self.type_, & runtime::InstancePath::Key(path,
-        "type"), out); } }
+        impl runtime::Validate for $t {}
     };
 }
 macro_rules! deserialize_impl_2 {
@@ -44,21 +41,7 @@ macro_rules! serialize_impl_2 {
         impl serde::Serialize for $t { fn serialize < S : serde::Serializer > (& self, s
         : S) -> Result < S::Ok, S::Error > { match self { Self::Pickup(v) =>
         serde::Serialize::serialize(v, s), Self::Address(v) =>
-        serde::Serialize::serialize(v, s), Self::Other(v) =>
         serde::Serialize::serialize(v, s), } } }
-    };
-}
-macro_rules! validate_impl_2 {
-    ($t:ty) => {
-        impl runtime::Validate for $t { fn validate(& self, path : &
-        runtime::InstancePath < '_ >, out : & mut Vec < runtime::Violation >) { match
-        self { Self::Pickup(_) | Self::Address(_) => {} Self::Other(_) =>
-        runtime::violation(out, path, "matches no variant"), } } }
-    };
-}
-macro_rules! validate_impl_3 {
-    ($t:ty) => {
-        impl runtime::Validate for $t {}
     };
 }
 macro_rules! serialize_impl_3 {
@@ -80,13 +63,13 @@ macro_rules! str_enum_impls {
     ($n:ident) => {
         impl std::fmt::Display for $n { fn fmt(& self, f : & mut std::fmt::Formatter < '_
         >) -> std::fmt::Result { f.write_str(self.as_str()) } } impl std::str::FromStr
-        for $n { type Err = std::convert::Infallible; fn from_str(s : & str) -> Result <
-        Self, Self::Err > { Ok(Self::from(s)) } } impl serde::Serialize for $n { fn
-        serialize < S : serde::Serializer > (& self, s : S) -> Result < S::Ok, S::Error >
-        { s.serialize_str(self.as_str()) } } impl < 'de > serde::Deserialize < 'de > for
-        $n { fn deserialize < D : serde::Deserializer < 'de >> (d : D) -> Result < Self,
-        D::Error > { let s = < String as serde::Deserialize > ::deserialize(d) ?;
-        Ok(Self::from(s.as_str())) } }
+        for $n { type Err = String; fn from_str(s : & str) -> Result < Self, Self::Err >
+        { Self::try_from(s) } } impl serde::Serialize for $n { fn serialize < S :
+        serde::Serializer > (& self, s : S) -> Result < S::Ok, S::Error > { s
+        .serialize_str(self.as_str()) } } impl < 'de > serde::Deserialize < 'de > for $n
+        { fn deserialize < D : serde::Deserializer < 'de >> (d : D) -> Result < Self,
+        D::Error > { let s = < std::borrow::Cow < 'de, str > as serde::Deserialize >
+        ::deserialize(d) ?; Self::try_from(& * s).map_err(serde::de::Error::custom) } }
     };
 }
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -125,7 +108,6 @@ validate_impl!(SmsRequest);
 pub enum Discriminated {
     EmailRequest(EmailRequest),
     SmsRequest(SmsRequest),
-    Other(serde_json::Value),
 }
 impl serde::Serialize for Discriminated {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
@@ -150,7 +132,6 @@ impl serde::Serialize for Discriminated {
                 }
                 serde::Serialize::serialize(&j, s)
             }
-            Self::Other(v) => serde::Serialize::serialize(v, s),
         }
     }
 }
@@ -181,33 +162,16 @@ impl<'de> runtime::TaggedUnion<'de> for Discriminated {
         match which {
             0 => v.decode_into(Self::EmailRequest),
             1 => v.decode_into(Self::SmsRequest),
-            _ => Ok(Self::Other(v.into_value())),
+            _ => Err(serde::de::Error::custom("matches no variant")),
         }
     }
 }
-impl runtime::Validate for Discriminated {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        match self {
-            Self::EmailRequest(x) => {
-                runtime::Validate::validate(x, path, out);
-            }
-            Self::SmsRequest(x) => {
-                runtime::Validate::validate(x, path, out);
-            }
-            Self::Other(_) => runtime::violation(out, path, "matches no variant"),
-        }
-    }
-}
+validate_impl!(Discriminated);
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum IfThen {
     Email(IfThenEmail),
     Sms(IfThenSms),
     Otherwise(IfThenOtherwise),
-    Other(serde_json::Value),
 }
 impl serde::Serialize for IfThen {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
@@ -233,7 +197,6 @@ impl serde::Serialize for IfThen {
                 serde::Serialize::serialize(&j, s)
             }
             Self::Otherwise(v) => serde::Serialize::serialize(v, s),
-            Self::Other(v) => serde::Serialize::serialize(v, s),
         }
     }
 }
@@ -279,7 +242,6 @@ impl runtime::Validate for IfThen {
                 runtime::Validate::validate(x, path, out);
             }
             Self::Otherwise(_) => {}
-            Self::Other(_) => runtime::violation(out, path, "matches no variant"),
         }
     }
 }
@@ -287,7 +249,6 @@ impl runtime::Validate for IfThen {
 pub enum ConstOneOf {
     Email(ConstOneOfEmail),
     Sms(ConstOneOfSms),
-    Other(serde_json::Value),
 }
 impl serde::Serialize for ConstOneOf {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
@@ -312,7 +273,6 @@ impl serde::Serialize for ConstOneOf {
                 }
                 serde::Serialize::serialize(&j, s)
             }
-            Self::Other(v) => serde::Serialize::serialize(v, s),
         }
     }
 }
@@ -340,32 +300,15 @@ impl<'de> runtime::TaggedUnion<'de> for ConstOneOf {
         match which {
             0 => v.decode_into(Self::Email),
             1 => v.decode_into(Self::Sms),
-            _ => Ok(Self::Other(v.into_value())),
+            _ => Err(serde::de::Error::custom("matches no variant")),
         }
     }
 }
-impl runtime::Validate for ConstOneOf {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        match self {
-            Self::Email(x) => {
-                runtime::Validate::validate(x, path, out);
-            }
-            Self::Sms(x) => {
-                runtime::Validate::validate(x, path, out);
-            }
-            Self::Other(_) => runtime::violation(out, path, "matches no variant"),
-        }
-    }
-}
+validate_impl!(ConstOneOf);
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Delivery {
     Pickup(DeliveryPickup),
     Address(DeliveryAddress),
-    Other(serde_json::Value),
 }
 serialize_impl_2!(Delivery);
 impl<'de> serde::Deserialize<'de> for Delivery {
@@ -402,15 +345,14 @@ impl<'de> serde::Deserialize<'de> for Delivery {
             }
             first.get_or_insert(picked);
         }
-        Ok(first.unwrap_or_else(|| Self::Other(v.into_value())))
+        first.ok_or_else(|| serde::de::Error::custom("matches no variant"))
     }
 }
-validate_impl_2!(Delivery);
+validate_impl!(Delivery);
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DeliveryMethod {
     Pickup(DeliveryMethodPickup),
     Address(Address),
-    Other(serde_json::Value),
 }
 serialize_impl_2!(DeliveryMethod);
 impl<'de> serde::Deserialize<'de> for DeliveryMethod {
@@ -435,10 +377,10 @@ impl<'de> serde::Deserialize<'de> for DeliveryMethod {
             }
             first.get_or_insert(picked);
         }
-        Ok(first.unwrap_or_else(|| Self::Other(v.into_value())))
+        first.ok_or_else(|| serde::de::Error::custom("matches no variant"))
     }
 }
-validate_impl_2!(DeliveryMethod);
+validate_impl!(DeliveryMethod);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Address {
@@ -452,12 +394,11 @@ impl Address {
         Self { street }
     }
 }
-validate_impl_3!(Address);
+validate_impl!(Address);
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Shipping {
     Us(ShippingUs),
     Otherwise(ShippingOtherwise),
-    Other(serde_json::Value),
 }
 impl serde::Serialize for Shipping {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
@@ -473,7 +414,6 @@ impl serde::Serialize for Shipping {
                 serde::Serialize::serialize(&j, s)
             }
             Self::Otherwise(v) => serde::Serialize::serialize(v, s),
-            Self::Other(v) => serde::Serialize::serialize(v, s),
         }
     }
 }
@@ -511,7 +451,6 @@ impl runtime::Validate for Shipping {
                 runtime::Validate::validate(x, path, out);
             }
             Self::Otherwise(_) => {}
-            Self::Other(_) => runtime::violation(out, path, "matches no variant"),
         }
     }
 }
@@ -520,7 +459,6 @@ pub enum Contact {
     EmailOrMail(ContactEmailOrMail),
     Sms(ContactSms),
     Otherwise(ContactOtherwise),
-    Other(serde_json::Value),
 }
 impl serde::Serialize for Contact {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
@@ -546,7 +484,6 @@ impl serde::Serialize for Contact {
                 serde::Serialize::serialize(&j, s)
             }
             Self::Otherwise(v) => serde::Serialize::serialize(v, s),
-            Self::Other(v) => serde::Serialize::serialize(v, s),
         }
     }
 }
@@ -586,85 +523,59 @@ impl runtime::Validate for Contact {
         out: &mut Vec<runtime::Violation>,
     ) {
         match self {
-            Self::EmailOrMail(x) => {
-                runtime::Validate::validate(x, path, out);
-            }
             Self::Sms(x) => {
                 runtime::Validate::validate(x, path, out);
             }
-            Self::Otherwise(_) => {}
-            Self::Other(_) => runtime::violation(out, path, "matches no variant"),
+            Self::EmailOrMail(_) | Self::Otherwise(_) => {}
         }
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum EmailRequestType {
     Email,
-    Other(String),
 }
 impl EmailRequestType {
     #[must_use]
-    pub const fn as_str(&self) -> &str {
+    pub const fn as_str(&self) -> &'static str {
         match self {
             Self::Email => "email",
-            Self::Other(s) => s.as_str(),
         }
     }
 }
-impl From<&str> for EmailRequestType {
-    fn from(s: &str) -> Self {
+impl TryFrom<&str> for EmailRequestType {
+    type Error = String;
+    fn try_from(s: &str) -> Result<Self, String> {
         match s {
-            "email" => Self::Email,
-            other => Self::Other(other.to_owned()),
+            "email" => Ok(Self::Email),
+            other => Err(format!("`{other}` is not one of `email`")),
         }
     }
 }
 str_enum_impls!(EmailRequestType);
-impl runtime::Validate for EmailRequestType {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        if let Self::Other(v) = self {
-            runtime::violation(out, path, format!("`{v}` is not one of `email`"));
-        }
-    }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+validate_impl!(EmailRequestType);
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum SmsRequestType {
     Sms,
-    Other(String),
 }
 impl SmsRequestType {
     #[must_use]
-    pub const fn as_str(&self) -> &str {
+    pub const fn as_str(&self) -> &'static str {
         match self {
             Self::Sms => "sms",
-            Self::Other(s) => s.as_str(),
         }
     }
 }
-impl From<&str> for SmsRequestType {
-    fn from(s: &str) -> Self {
+impl TryFrom<&str> for SmsRequestType {
+    type Error = String;
+    fn try_from(s: &str) -> Result<Self, String> {
         match s {
-            "sms" => Self::Sms,
-            other => Self::Other(other.to_owned()),
+            "sms" => Ok(Self::Sms),
+            other => Err(format!("`{other}` is not one of `sms`")),
         }
     }
 }
 str_enum_impls!(SmsRequestType);
-impl runtime::Validate for SmsRequestType {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        if let Self::Other(v) = self {
-            runtime::violation(out, path, format!("`{v}` is not one of `sms`"));
-        }
-    }
-}
+validate_impl!(SmsRequestType);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct IfThenEmail {
@@ -713,7 +624,7 @@ impl<'de> serde::Deserialize<'de> for IfThenEmailType {
             .map(|()| Self)
     }
 }
-validate_impl_3!(IfThenEmailType);
+validate_impl!(IfThenEmailType);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct IfThenSms {
@@ -757,7 +668,7 @@ impl IfThenSmsType {
 }
 serialize_impl_3!(IfThenSmsType);
 deserialize_impl_3!(IfThenSmsType);
-validate_impl_3!(IfThenSmsType);
+validate_impl!(IfThenSmsType);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct IfThenOtherwise {
@@ -777,7 +688,7 @@ impl IfThenOtherwise {
         Self { type_: None }
     }
 }
-validate_impl_3!(IfThenOtherwise);
+validate_impl!(IfThenOtherwise);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct ConstOneOfEmail {
@@ -828,7 +739,7 @@ impl DeliveryPickup {
         Self { pickup, order_id }
     }
 }
-validate_impl_3!(DeliveryPickup);
+validate_impl!(DeliveryPickup);
 /// Address
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -845,7 +756,7 @@ impl DeliveryAddress {
         Self { street, order_id }
     }
 }
-validate_impl_3!(DeliveryAddress);
+validate_impl!(DeliveryAddress);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct DeliveryMethodPickup {
@@ -859,7 +770,7 @@ impl DeliveryMethodPickup {
         Self { pickup }
     }
 }
-validate_impl_3!(DeliveryMethodPickup);
+validate_impl!(DeliveryMethodPickup);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct ShippingUs {
@@ -917,7 +828,7 @@ impl<'de> serde::Deserialize<'de> for ShippingUsCountry {
             .map(|()| Self)
     }
 }
-validate_impl_3!(ShippingUsCountry);
+validate_impl!(ShippingUsCountry);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct ShippingOtherwise {
@@ -947,7 +858,7 @@ impl ShippingOtherwise {
         }
     }
 }
-validate_impl_3!(ShippingOtherwise);
+validate_impl!(ShippingOtherwise);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct ContactEmailOrMail {
@@ -962,60 +873,33 @@ impl ContactEmailOrMail {
         Self { via, address }
     }
 }
-impl runtime::Validate for ContactEmailOrMail {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        runtime::Validate::validate(
-            &self.via,
-            &runtime::InstancePath::Key(path, "via"),
-            out,
-        );
-    }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+validate_impl!(ContactEmailOrMail);
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum ContactEmailOrMailVia {
     Email,
     Mail,
-    Other(String),
 }
 impl ContactEmailOrMailVia {
     #[must_use]
-    pub const fn as_str(&self) -> &str {
+    pub const fn as_str(&self) -> &'static str {
         match self {
             Self::Email => "email",
             Self::Mail => "mail",
-            Self::Other(s) => s.as_str(),
         }
     }
 }
-impl From<&str> for ContactEmailOrMailVia {
-    fn from(s: &str) -> Self {
+impl TryFrom<&str> for ContactEmailOrMailVia {
+    type Error = String;
+    fn try_from(s: &str) -> Result<Self, String> {
         match s {
-            "email" => Self::Email,
-            "mail" => Self::Mail,
-            other => Self::Other(other.to_owned()),
+            "email" => Ok(Self::Email),
+            "mail" => Ok(Self::Mail),
+            other => Err(format!("`{other}` is not one of `email`, `mail`")),
         }
     }
 }
 str_enum_impls!(ContactEmailOrMailVia);
-impl runtime::Validate for ContactEmailOrMailVia {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        if let Self::Other(v) = self {
-            runtime::violation(
-                out,
-                path,
-                format!("`{v}` is not one of `email`, `mail`"),
-            );
-        }
-    }
-}
+validate_impl!(ContactEmailOrMailVia);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct ContactSms {
@@ -1058,7 +942,7 @@ impl ContactSmsVia {
 }
 serialize_impl_3!(ContactSmsVia);
 deserialize_impl_3!(ContactSmsVia);
-validate_impl_3!(ContactSmsVia);
+validate_impl!(ContactSmsVia);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct ContactOtherwise {
@@ -1077,4 +961,4 @@ impl ContactOtherwise {
         Self { via: None }
     }
 }
-validate_impl_3!(ContactOtherwise);
+validate_impl!(ContactOtherwise);

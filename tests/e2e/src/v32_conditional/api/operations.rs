@@ -26,19 +26,7 @@ pub mod a {
             Self { body }
         }
     }
-    impl runtime::Validate for Params {
-        fn validate(
-            &self,
-            path: &runtime::InstancePath<'_>,
-            out: &mut Vec<runtime::Violation>,
-        ) {
-            runtime::Validate::validate(
-                &self.body,
-                &runtime::InstancePath::Key(path, "body"),
-                out,
-            );
-        }
-    }
+    impl runtime::Validate for Params {}
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// ok
