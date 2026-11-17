@@ -147,11 +147,11 @@ impl StoreNetwork {
     }
 }
 validate_impl!(StoreNetwork);
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Event {
-    pub id: String,
-    pub at: String,
+    pub id: runtime::UuidText,
+    pub at: runtime::DateTimeText,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
@@ -169,13 +169,13 @@ pub struct Event {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub day: Option<String>,
+    pub day: Option<runtime::DateText>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub seen: Option<Vec<String>>,
+    pub seen: Option<Vec<runtime::DateTimeText>>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
@@ -235,19 +235,19 @@ pub struct Event {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub local: Option<String>,
+    pub local: Option<runtime::DateTimeLocalText>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub clock: Option<String>,
+    pub clock: Option<runtime::TimeLocalText>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub price: Option<String>,
+    pub price: Option<runtime::DecimalText>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
@@ -259,61 +259,61 @@ pub struct Event {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub opens: Option<String>,
+    pub opens: Option<runtime::TimeText>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub expires: Option<String>,
+    pub expires: Option<runtime::HttpDateText>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub lasts: Option<String>,
+    pub lasts: Option<runtime::DurationText>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub link: Option<String>,
+    pub link: Option<runtime::UriReferenceText>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub page: Option<String>,
+    pub page: Option<runtime::IriText>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub rel: Option<String>,
+    pub rel: Option<runtime::IriReferenceText>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub at_path: Option<String>,
+    pub at_path: Option<runtime::JsonPointerText>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub up: Option<String>,
+    pub up: Option<runtime::RelativeJsonPointerText>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub filter: Option<String>,
+    pub filter: Option<runtime::RegexText>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub search: Option<String>,
+    pub search: Option<runtime::UriTemplateText>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
@@ -337,7 +337,7 @@ deserialize_impl!(Event);
 serialize_impl!(Event);
 impl Event {
     #[must_use]
-    pub const fn new(id: String, at: String) -> Self {
+    pub const fn new(id: runtime::UuidText, at: runtime::DateTimeText) -> Self {
         Self {
             id,
             at,
@@ -380,143 +380,6 @@ impl runtime::Validate for Event {
         path: &runtime::InstancePath<'_>,
         out: &mut Vec<runtime::Violation>,
     ) {
-        runtime::check_format(
-            out,
-            &runtime::InstancePath::Key(path, "id"),
-            self.id.as_str(),
-            "uuid",
-        );
-        runtime::check_format(
-            out,
-            &runtime::InstancePath::Key(path, "at"),
-            self.at.as_str(),
-            "date-time",
-        );
-        if let Some(v) = &self.day {
-            runtime::check_format(
-                out,
-                &runtime::InstancePath::Key(path, "day"),
-                v.as_str(),
-                "date",
-            );
-        }
-        if let Some(v) = &self.seen {
-            {
-                let base = &runtime::InstancePath::Key(path, "seen");
-                for (i, v) in v.iter().enumerate() {
-                    runtime::check_format(
-                        out,
-                        &runtime::InstancePath::Index(base, i),
-                        v.as_str(),
-                        "date-time",
-                    );
-                }
-            }
-        }
-        if let Some(v) = &self.local {
-            runtime::check_format(
-                out,
-                &runtime::InstancePath::Key(path, "local"),
-                v.as_str(),
-                "date-time-local",
-            );
-        }
-        if let Some(v) = &self.clock {
-            runtime::check_format(
-                out,
-                &runtime::InstancePath::Key(path, "clock"),
-                v.as_str(),
-                "time-local",
-            );
-        }
-        if let Some(v) = &self.price {
-            runtime::check_format(
-                out,
-                &runtime::InstancePath::Key(path, "price"),
-                v.as_str(),
-                "decimal",
-            );
-        }
-        if let Some(v) = &self.opens {
-            runtime::check_format(
-                out,
-                &runtime::InstancePath::Key(path, "opens"),
-                v.as_str(),
-                "time",
-            );
-        }
-        if let Some(v) = &self.expires {
-            runtime::check_format(
-                out,
-                &runtime::InstancePath::Key(path, "expires"),
-                v.as_str(),
-                "http-date",
-            );
-        }
-        if let Some(v) = &self.lasts {
-            runtime::check_format(
-                out,
-                &runtime::InstancePath::Key(path, "lasts"),
-                v.as_str(),
-                "duration",
-            );
-        }
-        if let Some(v) = &self.link {
-            runtime::check_format(
-                out,
-                &runtime::InstancePath::Key(path, "link"),
-                v.as_str(),
-                "uri-reference",
-            );
-        }
-        if let Some(v) = &self.page {
-            runtime::check_format(
-                out,
-                &runtime::InstancePath::Key(path, "page"),
-                v.as_str(),
-                "iri",
-            );
-        }
-        if let Some(v) = &self.rel {
-            runtime::check_format(
-                out,
-                &runtime::InstancePath::Key(path, "rel"),
-                v.as_str(),
-                "iri-reference",
-            );
-        }
-        if let Some(v) = &self.at_path {
-            runtime::check_format(
-                out,
-                &runtime::InstancePath::Key(path, "at_path"),
-                v.as_str(),
-                "json-pointer",
-            );
-        }
-        if let Some(v) = &self.up {
-            runtime::check_format(
-                out,
-                &runtime::InstancePath::Key(path, "up"),
-                v.as_str(),
-                "relative-json-pointer",
-            );
-        }
-        if let Some(v) = &self.filter {
-            runtime::check_format(
-                out,
-                &runtime::InstancePath::Key(path, "filter"),
-                v.as_str(),
-                "regex",
-            );
-        }
-        if let Some(v) = &self.search {
-            runtime::check_format(
-                out,
-                &runtime::InstancePath::Key(path, "search"),
-                v.as_str(),
-                "uri-template",
-            );
-        }
         if let Some(v) = &self.charge {
             {
                 static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
@@ -881,8 +744,8 @@ pub mod builders {
     impl super::Event {
         /// Starts a builder from the required properties.
         pub fn builder(
-            id: impl TryInto<String, Error: std::fmt::Display>,
-            at: impl TryInto<String, Error: std::fmt::Display>,
+            id: impl TryInto<runtime::UuidText, Error: std::fmt::Display>,
+            at: impl TryInto<runtime::DateTimeText, Error: std::fmt::Display>,
         ) -> Event {
             Event(
                 runtime::Builder::start(|| Ok(
@@ -906,12 +769,15 @@ pub mod builders {
         ) -> Self {
             Self(self.0.set("ip6", value, |s, v| s.ip6 = Some(v)))
         }
-        pub fn day(self, value: impl TryInto<String, Error: std::fmt::Display>) -> Self {
+        pub fn day(
+            self,
+            value: impl TryInto<runtime::DateText, Error: std::fmt::Display>,
+        ) -> Self {
             Self(self.0.set("day", value, |s, v| s.day = Some(v)))
         }
         pub fn seen(
             self,
-            value: impl TryInto<Vec<String>, Error: std::fmt::Display>,
+            value: impl TryInto<Vec<runtime::DateTimeText>, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("seen", value, |s, v| s.seen = Some(v)))
         }
@@ -968,19 +834,19 @@ pub mod builders {
         }
         pub fn local(
             self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
+            value: impl TryInto<runtime::DateTimeLocalText, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("local", value, |s, v| s.local = Some(v)))
         }
         pub fn clock(
             self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
+            value: impl TryInto<runtime::TimeLocalText, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("clock", value, |s, v| s.clock = Some(v)))
         }
         pub fn price(
             self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
+            value: impl TryInto<runtime::DecimalText, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("price", value, |s, v| s.price = Some(v)))
         }
@@ -992,55 +858,64 @@ pub mod builders {
         }
         pub fn opens(
             self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
+            value: impl TryInto<runtime::TimeText, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("opens", value, |s, v| s.opens = Some(v)))
         }
         pub fn expires(
             self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
+            value: impl TryInto<runtime::HttpDateText, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("expires", value, |s, v| s.expires = Some(v)))
         }
         pub fn lasts(
             self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
+            value: impl TryInto<runtime::DurationText, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("lasts", value, |s, v| s.lasts = Some(v)))
         }
         pub fn link(
             self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
+            value: impl TryInto<runtime::UriReferenceText, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("link", value, |s, v| s.link = Some(v)))
         }
         pub fn page(
             self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
+            value: impl TryInto<runtime::IriText, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("page", value, |s, v| s.page = Some(v)))
         }
-        pub fn rel(self, value: impl TryInto<String, Error: std::fmt::Display>) -> Self {
+        pub fn rel(
+            self,
+            value: impl TryInto<runtime::IriReferenceText, Error: std::fmt::Display>,
+        ) -> Self {
             Self(self.0.set("rel", value, |s, v| s.rel = Some(v)))
         }
         pub fn at_path(
             self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
+            value: impl TryInto<runtime::JsonPointerText, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("at_path", value, |s, v| s.at_path = Some(v)))
         }
-        pub fn up(self, value: impl TryInto<String, Error: std::fmt::Display>) -> Self {
+        pub fn up(
+            self,
+            value: impl TryInto<
+                runtime::RelativeJsonPointerText,
+                Error: std::fmt::Display,
+            >,
+        ) -> Self {
             Self(self.0.set("up", value, |s, v| s.up = Some(v)))
         }
         pub fn filter(
             self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
+            value: impl TryInto<runtime::RegexText, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("filter", value, |s, v| s.filter = Some(v)))
         }
         pub fn search(
             self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
+            value: impl TryInto<runtime::UriTemplateText, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("search", value, |s, v| s.search = Some(v)))
         }

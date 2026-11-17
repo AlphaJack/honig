@@ -100,7 +100,7 @@ Without the table the dependencies decide: a library with its `serde` feature gi
 
 {{#include generated/formats.md}}
 
-A format without its library is a `String`. The server checks its text on every request as the library would on parsing. `generate` turns on the runtime feature that each check needs. [Adapters](adapters.md) lists the features.
+A format without its library is its checked text, such as `api::UuidText` or `api::DateTimeText`. Only text of the format is one: `try_from`, `parse` and decoding check it as the library would on parsing. It reads as a `str`. `generate` turns on the runtime feature that each check needs. [Adapters](adapters.md) lists the features.
 
 A library reads more than its format allows. `jiff` and `chrono` read `2024-06-19 08:30Z` as a `date-time`. `uuid` reads `{...}` and `url` reads a space. So a library type in a property, a branch of a union, a newtype, a parameter or a body has its text validated first, as a `String` of that format is. The items of a body read as it arrives are validated one at a time. Then the library reads it. A server decoding a request and a client reading a response check alike. A fraction of a second past nine digits is cut: both date libraries hold nanoseconds.
 
@@ -112,7 +112,7 @@ Mail addresses and host names are types of the runtime. Only a valid value can b
 
 {{#include generated/checked-text.md}}
 
-`http-date` is a `String` checked as one of the three forms of RFC 9110 section 5.6.7. `duration` is a `String` checked as an ISO 8601 duration of RFC 3339 Appendix A. No std type holds `P1M`: a month has no fixed length. `uri-reference`, `iri`, `iri-reference`, `json-pointer`, `relative-json-pointer`, `uri-template` and `regex` are `String`s checked by their grammars (RFC 3986, 3987, 6901, 6570 and ECMA-262). `uuid` without its library takes only the hyphenated form of RFC 9562.
+`http-date` is `api::HttpDateText`, one of the three forms of RFC 9110 section 5.6.7. `duration` is `api::DurationText`, an ISO 8601 duration of RFC 3339 Appendix A. No std type holds `P1M`: a month has no fixed length. `uri-reference`, `iri`, `iri-reference`, `json-pointer`, `relative-json-pointer`, `uri-template` and `regex` are checked text of their grammars (RFC 3986, 3987, 6901, 6570 and ECMA-262). `uuid` without its library takes only the hyphenated form of RFC 9562.
 
 `contentEncoding: base64url` gives `api::Base64Url`. It holds bytes in the URL-safe alphabet.
 
@@ -120,7 +120,7 @@ Mail addresses and host names are types of the runtime. Only a valid value can b
 It reads the exact text wherever the number is. This includes `oneOf` branches. It rounds only in the `Other` of an open union. That variant holds a value that no branch takes as a `serde_json::Value`.
 
 For arithmetic parse its digits into a decimal type with `d.as_str().parse::<rust_decimal::Decimal>()`.
-`{type: string, format: decimal}` is a `String` with every digit. The server checks it as a decimal. Use it past the 28 significant digits that `rust_decimal` holds.
+`{type: string, format: decimal}` is `api::DecimalText` with every digit, checked as a decimal. Use it past the 28 significant digits that `rust_decimal` holds.
 
 JSON the description leaves untyped is a `serde_json::Value`:
 

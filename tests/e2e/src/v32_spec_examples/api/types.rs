@@ -57,26 +57,6 @@ macro_rules! try_from_impl {
         }
     };
 }
-macro_rules! validate_impl_2 {
-    ($t:ty) => {
-        impl runtime::Validate for $t {
-            fn validate(
-                &self,
-                path: &runtime::InstancePath<'_>,
-                out: &mut Vec<runtime::Violation>,
-            ) {
-                if let Some(v) = &self.id {
-                    runtime::check_format(
-                        out,
-                        &runtime::InstancePath::Key(path, "id"),
-                        v.as_str(),
-                        "uuid",
-                    );
-                }
-            }
-        }
-    };
-}
 use super::runtime;
 macro_rules! checked_str_impls {
     ($n:ident) => {
@@ -333,7 +313,7 @@ pub struct LogEntry {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub timestamp: Option<String>,
+    pub timestamp: Option<runtime::DateTimeText>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
@@ -359,22 +339,7 @@ impl LogEntry {
         }
     }
 }
-impl runtime::Validate for LogEntry {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        if let Some(v) = &self.timestamp {
-            runtime::check_format(
-                out,
-                &runtime::InstancePath::Key(path, "timestamp"),
-                v.as_str(),
-                "date-time",
-            );
-        }
-    }
-}
+validate_impl!(LogEntry);
 pub type Log = Vec<LogEntry>;
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -494,33 +459,20 @@ pub struct EventRetry(pub(super) i64);
 try_from_impl!(EventRetry);
 checked_num_impls!(EventRetry, i64);
 validate_impl!(EventRetry);
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct SimpleLinkContextItem {
-    pub href: String,
+    pub href: runtime::UriReferenceText,
 }
 deserialize_impl!(SimpleLinkContextItem);
 serialize_impl!(SimpleLinkContextItem);
 impl SimpleLinkContextItem {
     #[must_use]
-    pub const fn new(href: String) -> Self {
+    pub const fn new(href: runtime::UriReferenceText) -> Self {
         Self { href }
     }
 }
-impl runtime::Validate for SimpleLinkContextItem {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        runtime::check_format(
-            out,
-            &runtime::InstancePath::Key(path, "href"),
-            self.href.as_str(),
-            "uri-reference",
-        );
-    }
-}
+validate_impl!(SimpleLinkContextItem);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct CollectionLinksLinksetItem {
@@ -652,7 +604,7 @@ pub struct BasicMultipartFormBody {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub id: Option<String>,
+    pub id: Option<runtime::UuidText>,
     #[serde(
         rename = "profileImage",
         default,
@@ -679,7 +631,7 @@ impl BasicMultipartFormBody {
         }
     }
 }
-validate_impl_2!(BasicMultipartFormBody);
+validate_impl!(BasicMultipartFormBody);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct MultipartFormWithEncodingObjectsBody {
@@ -688,7 +640,7 @@ pub struct MultipartFormWithEncodingObjectsBody {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub id: Option<String>,
+    pub id: Option<runtime::UuidText>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
@@ -723,7 +675,7 @@ impl MultipartFormWithEncodingObjectsBody {
         }
     }
 }
-validate_impl_2!(MultipartFormWithEncodingObjectsBody);
+validate_impl!(MultipartFormWithEncodingObjectsBody);
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MultipartFormWithEncodingObjectsBodyAlias {
     String(MultipartFormWithEncodingObjectsBodyAliasString),
@@ -1164,7 +1116,7 @@ pub mod builders {
     impl LogEntry {
         pub fn timestamp(
             self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
+            value: impl TryInto<runtime::DateTimeText, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("timestamp", value, |s, v| s.timestamp = Some(v)))
         }
@@ -1262,7 +1214,7 @@ pub mod builders {
     impl super::SimpleLinkContextItem {
         /// Starts a builder from the required properties.
         pub fn builder(
-            href: impl TryInto<String, Error: std::fmt::Display>,
+            href: impl TryInto<runtime::UriReferenceText, Error: std::fmt::Display>,
         ) -> SimpleLinkContextItem {
             SimpleLinkContextItem(
                 runtime::Builder::start(|| Ok(Self::new(runtime::field("href", href)?))),
@@ -1411,7 +1363,10 @@ pub mod builders {
     #[must_use = "a builder does nothing until `build`"]
     pub struct BasicMultipartFormBody(runtime::Builder<super::BasicMultipartFormBody>);
     impl BasicMultipartFormBody {
-        pub fn id(self, value: impl TryInto<String, Error: std::fmt::Display>) -> Self {
+        pub fn id(
+            self,
+            value: impl TryInto<runtime::UuidText, Error: std::fmt::Display>,
+        ) -> Self {
             Self(self.0.set("id", value, |s, v| s.id = Some(v)))
         }
         pub fn profile_image(
@@ -1446,7 +1401,10 @@ pub mod builders {
         runtime::Builder<super::MultipartFormWithEncodingObjectsBody>,
     );
     impl MultipartFormWithEncodingObjectsBody {
-        pub fn id(self, value: impl TryInto<String, Error: std::fmt::Display>) -> Self {
+        pub fn id(
+            self,
+            value: impl TryInto<runtime::UuidText, Error: std::fmt::Display>,
+        ) -> Self {
             Self(self.0.set("id", value, |s, v| s.id = Some(v)))
         }
         pub fn alias(

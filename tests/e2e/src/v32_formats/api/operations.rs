@@ -18,45 +18,18 @@ pub mod get_event {
     pub const PATH: &str = "/events/{id}";
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct Params {
-        pub id: String,
-        pub on: Option<String>,
+        pub id: runtime::UuidText,
+        pub on: Option<runtime::DateText>,
         /// A decimal travels as its digits in the URL too.
         pub above: Option<runtime::Decimal>,
     }
     impl Params {
         #[must_use]
-        pub const fn new(id: String) -> Self {
+        pub const fn new(id: runtime::UuidText) -> Self {
             Self { id, on: None, above: None }
         }
     }
-    impl runtime::Validate for Params {
-        fn validate(
-            &self,
-            path: &runtime::InstancePath<'_>,
-            out: &mut Vec<runtime::Violation>,
-        ) {
-            runtime::check_format(
-                out,
-                &runtime::InstancePath::Key(
-                    &runtime::InstancePath::Key(path, "path"),
-                    "id",
-                ),
-                self.id.as_str(),
-                "uuid",
-            );
-            if let Some(v) = &self.on {
-                runtime::check_format(
-                    out,
-                    &runtime::InstancePath::Key(
-                        &runtime::InstancePath::Key(path, "query"),
-                        "on",
-                    ),
-                    v.as_str(),
-                    "date",
-                );
-            }
-        }
-    }
+    impl runtime::Validate for Params {}
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// The event.

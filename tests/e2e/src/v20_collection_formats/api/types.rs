@@ -40,7 +40,7 @@ use super::runtime;
 pub struct Key {
     pub id: String,
     #[serde(rename = "lastSeen", default, skip_serializing_if = "Option::is_none")]
-    pub last_seen: Option<String>,
+    pub last_seen: Option<runtime::DateTimeText>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub owner: Option<Owner>,
 }
@@ -56,22 +56,7 @@ impl Key {
         }
     }
 }
-impl runtime::Validate for Key {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        if let Some(v) = &self.last_seen {
-            runtime::check_format(
-                out,
-                &runtime::InstancePath::Key(path, "lastSeen"),
-                v.as_str(),
-                "date-time",
-            );
-        }
-    }
-}
+validate_impl!(Key);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Owner {
@@ -119,7 +104,7 @@ pub mod builders {
     impl Key {
         pub fn last_seen(
             self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
+            value: impl TryInto<runtime::DateTimeText, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("lastSeen", value, |s, v| s.last_seen = Some(v)))
         }

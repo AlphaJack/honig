@@ -42,6 +42,88 @@ macro_rules! validate_impl_2 {
                 path: &runtime::InstancePath<'_>,
                 out: &mut Vec<runtime::Violation>,
             ) {
+                if let runtime::Nullable::Value(v) = &self.customer {
+                    {
+                        static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                        let value = runtime::to_value(v).unwrap_or_default();
+                        runtime::check_schema(
+                            out,
+                            &runtime::InstancePath::Key(path, "customer"),
+                            &value,
+                            SCHEMA
+                                .get_or_init(|| {
+                                    serde_json::from_str(
+                                            "{\"anyOf\":[{\"allOf\":[{\"type\":\"object\",\"additionalProperties\":true,\"required\":[\"name\"],\"properties\":{\"name\":{\"type\":\"string\",\"minLength\":1},\"email\":{\"type\":[\"string\",\"null\"]}}}]},{\"type\":\"null\"}]}",
+                                        )
+                                        .unwrap_or_default()
+                                }),
+                        );
+                    }
+                }
+                if let Some(v) = &self.payment {
+                    {
+                        static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                        let value = runtime::to_value(v).unwrap_or_default();
+                        runtime::check_schema(
+                            out,
+                            &runtime::InstancePath::Key(path, "payment"),
+                            &value,
+                            SCHEMA
+                                .get_or_init(|| {
+                                    serde_json::from_str(
+                                            "{\"oneOf\":[{\"type\":\"object\",\"required\":[\"last4\"],\"properties\":{\"last4\":{\"type\":\"string\",\"minLength\":4,\"maxLength\":4}}},{\"type\":\"object\",\"required\":[\"iban\"],\"properties\":{\"iban\":{\"type\":\"string\"}}}]}",
+                                        )
+                                        .unwrap_or_default()
+                                }),
+                        );
+                    }
+                }
+                {
+                    static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                    let value = runtime::to_value(&self.vehicle).unwrap_or_default();
+                    runtime::check_schema(
+                        out,
+                        &runtime::InstancePath::Key(path, "vehicle"),
+                        &value,
+                        SCHEMA
+                            .get_or_init(|| {
+                                serde_json::from_str(
+                                        "{\"oneOf\":[{\"type\":\"object\",\"required\":[\"kind\",\"seats\"],\"properties\":{\"kind\":{\"type\":\"string\"},\"seats\":{\"type\":\"integer\"}}},{\"type\":\"object\",\"required\":[\"kind\",\"cargoLitres\"],\"properties\":{\"kind\":{\"type\":\"string\"},\"cargoLitres\":{\"type\":\"integer\"}}}]}",
+                                    )
+                                    .unwrap_or_default()
+                            }),
+                    );
+                }
+                if let Some(v) = &self.discount {
+                    {
+                        static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                        let value = runtime::to_value(v).unwrap_or_default();
+                        runtime::check_schema(
+                            out,
+                            &runtime::InstancePath::Key(path, "discount"),
+                            &value,
+                            SCHEMA
+                                .get_or_init(|| {
+                                    serde_json::from_str(
+                                            "{\"anyOf\":[{\"type\":\"object\",\"required\":[\"amountCents\",\"currency\"],\"properties\":{\"amountCents\":{\"type\":\"integer\",\"format\":\"int64\"},\"currency\":{\"type\":\"string\",\"pattern\":\"^[A-Z]{3}$\"}}},{}]}",
+                                        )
+                                        .unwrap_or_default()
+                                }),
+                        );
+                    }
+                }
+            }
+        }
+    };
+}
+macro_rules! validate_impl_3 {
+    ($t:ty) => {
+        impl runtime::Validate for $t {
+            fn validate(
+                &self,
+                path: &runtime::InstancePath<'_>,
+                out: &mut Vec<runtime::Violation>,
+            ) {
                 {
                     let base = &runtime::InstancePath::Key(path, "items");
                     for (i, v) in self.items.iter().enumerate() {
@@ -379,7 +461,7 @@ pub struct Order {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub id: Option<String>,
+    pub id: Option<runtime::UuidText>,
     pub status: Status,
     pub total: Money,
     #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
@@ -392,7 +474,7 @@ pub struct Order {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub created_at: Option<String>,
+    pub created_at: Option<runtime::DateTimeText>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
@@ -432,100 +514,7 @@ impl Order {
         }
     }
 }
-impl runtime::Validate for Order {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        if let Some(v) = &self.id {
-            runtime::check_format(
-                out,
-                &runtime::InstancePath::Key(path, "id"),
-                v.as_str(),
-                "uuid",
-            );
-        }
-        if let runtime::Nullable::Value(v) = &self.customer {
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(v).unwrap_or_default();
-                runtime::check_schema(
-                    out,
-                    &runtime::InstancePath::Key(path, "customer"),
-                    &value,
-                    SCHEMA
-                        .get_or_init(|| {
-                            serde_json::from_str(
-                                    "{\"anyOf\":[{\"allOf\":[{\"type\":\"object\",\"additionalProperties\":true,\"required\":[\"name\"],\"properties\":{\"name\":{\"type\":\"string\",\"minLength\":1},\"email\":{\"type\":[\"string\",\"null\"]}}}]},{\"type\":\"null\"}]}",
-                                )
-                                .unwrap_or_default()
-                        }),
-                );
-            }
-        }
-        if let Some(v) = &self.created_at {
-            runtime::check_format(
-                out,
-                &runtime::InstancePath::Key(path, "createdAt"),
-                v.as_str(),
-                "date-time",
-            );
-        }
-        if let Some(v) = &self.payment {
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(v).unwrap_or_default();
-                runtime::check_schema(
-                    out,
-                    &runtime::InstancePath::Key(path, "payment"),
-                    &value,
-                    SCHEMA
-                        .get_or_init(|| {
-                            serde_json::from_str(
-                                    "{\"oneOf\":[{\"type\":\"object\",\"required\":[\"last4\"],\"properties\":{\"last4\":{\"type\":\"string\",\"minLength\":4,\"maxLength\":4}}},{\"type\":\"object\",\"required\":[\"iban\"],\"properties\":{\"iban\":{\"type\":\"string\"}}}]}",
-                                )
-                                .unwrap_or_default()
-                        }),
-                );
-            }
-        }
-        {
-            static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-            let value = runtime::to_value(&self.vehicle).unwrap_or_default();
-            runtime::check_schema(
-                out,
-                &runtime::InstancePath::Key(path, "vehicle"),
-                &value,
-                SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"oneOf\":[{\"type\":\"object\",\"required\":[\"kind\",\"seats\"],\"properties\":{\"kind\":{\"type\":\"string\"},\"seats\":{\"type\":\"integer\"}}},{\"type\":\"object\",\"required\":[\"kind\",\"cargoLitres\"],\"properties\":{\"kind\":{\"type\":\"string\"},\"cargoLitres\":{\"type\":\"integer\"}}}]}",
-                            )
-                            .unwrap_or_default()
-                    }),
-            );
-        }
-        if let Some(v) = &self.discount {
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(v).unwrap_or_default();
-                runtime::check_schema(
-                    out,
-                    &runtime::InstancePath::Key(path, "discount"),
-                    &value,
-                    SCHEMA
-                        .get_or_init(|| {
-                            serde_json::from_str(
-                                    "{\"anyOf\":[{\"type\":\"object\",\"required\":[\"amountCents\",\"currency\"],\"properties\":{\"amountCents\":{\"type\":\"integer\",\"format\":\"int64\"},\"currency\":{\"type\":\"string\",\"pattern\":\"^[A-Z]{3}$\"}}},{}]}",
-                                )
-                                .unwrap_or_default()
-                        }),
-                );
-            }
-        }
-    }
-}
+validate_impl_2!(Order);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct OrderPage {
@@ -545,7 +534,7 @@ impl OrderPage {
         Self { items, total: None }
     }
 }
-validate_impl_2!(OrderPage);
+validate_impl_3!(OrderPage);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Problem {
@@ -930,84 +919,7 @@ impl OrderRequest {
         }
     }
 }
-impl runtime::Validate for OrderRequest {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        if let runtime::Nullable::Value(v) = &self.customer {
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(v).unwrap_or_default();
-                runtime::check_schema(
-                    out,
-                    &runtime::InstancePath::Key(path, "customer"),
-                    &value,
-                    SCHEMA
-                        .get_or_init(|| {
-                            serde_json::from_str(
-                                    "{\"anyOf\":[{\"allOf\":[{\"type\":\"object\",\"additionalProperties\":true,\"required\":[\"name\"],\"properties\":{\"name\":{\"type\":\"string\",\"minLength\":1},\"email\":{\"type\":[\"string\",\"null\"]}}}]},{\"type\":\"null\"}]}",
-                                )
-                                .unwrap_or_default()
-                        }),
-                );
-            }
-        }
-        if let Some(v) = &self.payment {
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(v).unwrap_or_default();
-                runtime::check_schema(
-                    out,
-                    &runtime::InstancePath::Key(path, "payment"),
-                    &value,
-                    SCHEMA
-                        .get_or_init(|| {
-                            serde_json::from_str(
-                                    "{\"oneOf\":[{\"type\":\"object\",\"required\":[\"last4\"],\"properties\":{\"last4\":{\"type\":\"string\",\"minLength\":4,\"maxLength\":4}}},{\"type\":\"object\",\"required\":[\"iban\"],\"properties\":{\"iban\":{\"type\":\"string\"}}}]}",
-                                )
-                                .unwrap_or_default()
-                        }),
-                );
-            }
-        }
-        {
-            static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-            let value = runtime::to_value(&self.vehicle).unwrap_or_default();
-            runtime::check_schema(
-                out,
-                &runtime::InstancePath::Key(path, "vehicle"),
-                &value,
-                SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"oneOf\":[{\"type\":\"object\",\"required\":[\"kind\",\"seats\"],\"properties\":{\"kind\":{\"type\":\"string\"},\"seats\":{\"type\":\"integer\"}}},{\"type\":\"object\",\"required\":[\"kind\",\"cargoLitres\"],\"properties\":{\"kind\":{\"type\":\"string\"},\"cargoLitres\":{\"type\":\"integer\"}}}]}",
-                            )
-                            .unwrap_or_default()
-                    }),
-            );
-        }
-        if let Some(v) = &self.discount {
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(v).unwrap_or_default();
-                runtime::check_schema(
-                    out,
-                    &runtime::InstancePath::Key(path, "discount"),
-                    &value,
-                    SCHEMA
-                        .get_or_init(|| {
-                            serde_json::from_str(
-                                    "{\"anyOf\":[{\"type\":\"object\",\"required\":[\"amountCents\",\"currency\"],\"properties\":{\"amountCents\":{\"type\":\"integer\",\"format\":\"int64\"},\"currency\":{\"type\":\"string\",\"pattern\":\"^[A-Z]{3}$\"}}},{}]}",
-                                )
-                                .unwrap_or_default()
-                        }),
-                );
-            }
-        }
-    }
-}
+validate_impl_2!(OrderRequest);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct OrderPageRequest {
@@ -1027,7 +939,7 @@ impl OrderPageRequest {
         Self { items, total: None }
     }
 }
-validate_impl_2!(OrderPageRequest);
+validate_impl_3!(OrderPageRequest);
 /// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
 /// its field. `build` returns the first field that did not convert.
 pub mod builders {
@@ -1188,7 +1100,10 @@ pub mod builders {
     #[must_use = "a builder does nothing until `build`"]
     pub struct Order(runtime::Builder<super::Order>);
     impl Order {
-        pub fn id(self, value: impl TryInto<String, Error: std::fmt::Display>) -> Self {
+        pub fn id(
+            self,
+            value: impl TryInto<runtime::UuidText, Error: std::fmt::Display>,
+        ) -> Self {
             Self(self.0.set("id", value, |s, v| s.id = Some(v)))
         }
         pub fn customer(
@@ -1215,7 +1130,7 @@ pub mod builders {
         }
         pub fn created_at(
             self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
+            value: impl TryInto<runtime::DateTimeText, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("createdAt", value, |s, v| s.created_at = Some(v)))
         }

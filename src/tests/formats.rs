@@ -22,11 +22,11 @@ fn types_rs(test: &str, dates: Option<DateLib>) -> String {
     common::file(&common::generate(test, &doc, &opts), "types.rs").to_owned()
 }
 
-/// `time` has an offset (`08:30:06Z`). `chrono::NaiveTime` has none and refuses it: the text stays a checked `String`.
+/// `time` has an offset (`08:30:06Z`). `chrono::NaiveTime` has none and refuses it: the text stays checked text.
 #[test]
-fn time_with_chrono_is_a_string() {
+fn time_with_chrono_is_checked_text() {
     let t = types_rs("time-chrono", Some(DateLib::Chrono));
-    assert!(t.contains("pub opens: String"), "{t}");
+    assert!(t.contains("pub opens: runtime::TimeText"), "{t}");
 }
 
 /// With `jiff` a `time` is the runtime's `FullTime`: the clock and its offset in `jiff` types.
@@ -37,8 +37,8 @@ fn time_with_jiff_is_a_full_time() {
 }
 
 #[test]
-fn time_without_a_date_library_is_a_string() {
-    assert!(types_rs("time-none", None).contains("pub opens: String"));
+fn time_without_a_date_library_is_checked_text() {
+    assert!(types_rs("time-none", None).contains("pub opens: runtime::TimeText"));
 }
 
 /// A `format: decimal` number keeps its digits (`runtime::Decimal` read through the raw value of `serde_json`). There
@@ -61,17 +61,17 @@ fn a_decimal_number_keeps_its_digits() {
         t.contains("pub amount: Option<runtime::Decimal>") && t.contains("pub total: Option<runtime::Decimal>"),
         "{t}"
     );
-    assert!(t.contains("pub label: Option<String>"), "{t}");
+    assert!(t.contains("pub label: Option<runtime::DecimalText>"), "{t}");
 }
 
 fn types_rs_of(test: &str, doc: &serde_json::Value) -> String {
     common::file(&common::generate(test, doc, &crate::emit::Options::default()), "types.rs").to_owned()
 }
 
-/// `{type: string, format: decimal}` is a `String` that keeps every digit as `decimal128` is. The 28 significant
+/// `{type: string, format: decimal}` is checked text that keeps every digit, as `decimal128` is. The 28 significant
 /// digits of `rust_decimal` would refuse longer values that the format allows.
 #[test]
-fn a_string_decimal_is_a_string() {
+fn a_string_decimal_is_checked_text() {
     let doc = common::spec(
         "3.2.0",
         &json!({}),
@@ -82,7 +82,9 @@ fn a_string_decimal_is_a_string() {
     );
     let t = common::file(&common::generate("string-decimal", &doc, &crate::emit::Options::default()), "types.rs")
         .to_owned();
-    assert!(t.contains("pub amount: String") && t.contains("pub wide: String"), "{t}");
+    assert!(t.contains("pub amount: runtime::DecimalText"), "{t}");
+    // `decimal128` is not a string format of the registry: a string with it is not checked.
+    assert!(t.contains("pub wide: String"), "{t}");
 }
 
 /// `date-time-local` and `time-local` (RFC 3339 without an offset) take the date library's civil types.
@@ -110,5 +112,5 @@ fn local_date_time_formats_use_the_date_library() {
     assert!(chrono.contains("pub starts: chrono::NaiveDateTime") && chrono.contains("pub ends: chrono::NaiveTime"));
     let jiff = with(Some(DateLib::Jiff), "local-jiff");
     assert!(jiff.contains("pub starts: jiff::civil::DateTime") && jiff.contains("pub ends: jiff::civil::Time"));
-    assert!(with(None, "local-none").contains("pub starts: String"));
+    assert!(with(None, "local-none").contains("pub starts: runtime::DateTimeLocalText"));
 }

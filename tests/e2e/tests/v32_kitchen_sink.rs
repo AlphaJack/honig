@@ -360,7 +360,7 @@ fn each_method_reaches_its_operation() {
         Some(ops::trace_product::Response::Ok)
     );
     assert_eq!(products.last(), Some(ops::trace_product::Params { product_id: 9 }));
-    let copy = ops::copy_products::Params { x_trace: Some("01234567-89ab-4def-8123-456789abcdef".to_owned()) };
+    let copy = ops::copy_products::Params { x_trace: Some("01234567-89ab-4def-8123-456789abcdef".parse().unwrap()) };
     assert_eq!(api::block_on(client.copy_products(copy.clone())).ok(), Some(ops::copy_products::Response::NoContent));
     assert_eq!(products.last(), Some(copy));
 }
@@ -398,7 +398,7 @@ fn list_products_answers_in_the_media_type_asked_for() {
             filter: Some([("color".to_owned(), "red".to_owned())].into()),
             session: Some("s1".to_owned()),
             x_rate: Some(3),
-            x_trace: Some("01234567-89ab-4def-8123-456789abcdef".to_owned()),
+            x_trace: Some("01234567-89ab-4def-8123-456789abcdef".parse().unwrap()),
             media,
             ..ops::list_products::Params::new()
         };
