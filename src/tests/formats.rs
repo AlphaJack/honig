@@ -22,16 +22,18 @@ fn types_rs(test: &str, dates: Option<DateLib>) -> String {
     common::file(&common::generate(test, &doc, &opts), "types.rs").to_owned()
 }
 
+/// `time` has an offset (`08:30:06Z`). `chrono::NaiveTime` has none and refuses it: the text stays a checked `String`.
 #[test]
-fn time_uses_chrono() {
+fn time_with_chrono_is_a_string() {
     let t = types_rs("time-chrono", Some(DateLib::Chrono));
-    assert!(t.contains("pub opens: chrono::NaiveTime"), "{t}");
+    assert!(t.contains("pub opens: String"), "{t}");
 }
 
+/// With `jiff` a `time` is the runtime's `FullTime`: the clock and its offset in `jiff` types.
 #[test]
-fn time_uses_jiff() {
+fn time_with_jiff_is_a_full_time() {
     let t = types_rs("time-jiff", Some(DateLib::Jiff));
-    assert!(t.contains("pub opens: jiff::civil::Time"), "{t}");
+    assert!(t.contains("pub opens: runtime::FullTime"), "{t}");
 }
 
 #[test]

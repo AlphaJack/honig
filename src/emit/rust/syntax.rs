@@ -144,8 +144,10 @@ fn library_ty(libs: FormatLibs, f: Format) -> Option<TokenStream> {
         (Format::IdnEmail, ..) => Some(quote!(runtime::IdnEmail)),
         (Format::Hostname, ..) => Some(quote!(runtime::Hostname)),
         (Format::IdnHostname, ..) => Some(quote!(runtime::IdnHostname)),
-        (Format::Time | Format::TimeLocal, _, Some(DateLib::Chrono)) => Some(quote!(chrono::NaiveTime)),
-        (Format::Time | Format::TimeLocal, _, Some(DateLib::Jiff)) => Some(quote!(jiff::civil::Time)),
+        // `time` has an offset: neither library has a type for it. The runtime holds it in `jiff` types.
+        (Format::Time, _, Some(DateLib::Jiff)) => Some(quote!(runtime::FullTime)),
+        (Format::TimeLocal, _, Some(DateLib::Chrono)) => Some(quote!(chrono::NaiveTime)),
+        (Format::TimeLocal, _, Some(DateLib::Jiff)) => Some(quote!(jiff::civil::Time)),
         (Format::Uuid, true, _) => Some(quote!(uuid::Uuid)),
         (Format::DateTime, _, Some(DateLib::Chrono)) => Some(quote!(chrono::DateTime<chrono::Utc>)),
         (Format::Date, _, Some(DateLib::Chrono)) => Some(quote!(chrono::NaiveDate)),
@@ -169,7 +171,8 @@ fn library_ty(libs: FormatLibs, f: Format) -> Option<TokenStream> {
             | Format::Ipv6Cidr,
             ..,
         )
-        | (Format::DateTime | Format::Date | Format::Time | Format::DateTimeLocal | Format::TimeLocal, _, None) => None,
+        | (Format::DateTime | Format::Date | Format::Time | Format::DateTimeLocal | Format::TimeLocal, _, None)
+        | (Format::Time, _, Some(DateLib::Chrono)) => None,
     }
 }
 

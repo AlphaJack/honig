@@ -70,8 +70,13 @@ pub use client::transport::{Transport, send, send_streaming};
 pub use codec::PartTypes;
 pub use decimal::{Decimal, NotADecimal};
 pub use error::{ApiError, Error};
+#[cfg(feature = "jiff")]
+pub use full_time::{FullTime, NotAFullTime};
 /// The `http` crate that [`Request`], [`Response`] and their parts come from.
 pub use http;
+/// The `jiff` crate that [`FullTime`] holds the types of.
+#[cfg(feature = "jiff")]
+pub use jiff;
 pub use links::Exchange;
 /// The string header helpers that generated code calls. Your code uses the `headers()` of `http`.
 #[doc(hidden)]
@@ -94,6 +99,8 @@ pub use server::service::{
 };
 pub use source::{Blob, Body, ByteStream, Sse};
 pub use stream::{Check, Framing, ItemStream, Items, Streamed};
+#[cfg(any(feature = "client", feature = "server"))]
+pub use tower_service::Service;
 pub use transport::block_on;
 #[cfg(feature = "idn")]
 pub use validate::{Email, Hostname, IdnEmail, IdnHostname};

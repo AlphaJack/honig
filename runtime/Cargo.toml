@@ -61,6 +61,7 @@ opentelemetry = { version = "0.33", optional = true, default-features = false, f
 tracing-opentelemetry = { version = "0.34", optional = true, default-features = false }
 # String formats the crates check.
 ipnet = { version = "2", optional = true, default-features = false }
+jiff = { version = "1", optional = true, default-features = false }
 # `email`, `idn-email`, `hostname` and `idn-hostname` checks: IDNA2008 and punycode.
 idna = { version = "1", optional = true }
 # `pattern` checks: ECMA-262 as JSON Schema reads it.
@@ -71,7 +72,8 @@ simdutf8 = { version = "0.1", optional = true }
 base64-simd = { version = "0.8", optional = true }
 
 [target.'cfg(any(target_arch = "x86_64", target_arch = "aarch64"))'.dependencies]
-sonic-rs = { version = "0.5", optional = true }
+# 0.5.11: the depth limit fits a 2 MiB stack in debug builds too (cloudwego/sonic-rs#267).
+sonic-rs = { version = "0.5.11", optional = true }
 
 # wasm32 reads reqwest responses through `bytes_stream`.
 # `Pkce::new`: a verifier from OS randomness. wasm32 has none without configuration: a browser passes its own to
@@ -114,6 +116,8 @@ tracing = ["server", "dep:tracing"]
 tracing-opentelemetry = ["dep:opentelemetry", "dep:tracing-opentelemetry", "dep:tracing"]
 ## `format: ipv4-cidr` and `ipv6-cidr` checks
 ipnet = ["dep:ipnet"]
+## `FullTime`: `format: time` with its offset in `jiff` types
+jiff = ["dep:jiff"]
 ## `email`, `idn-email`, `hostname` and `idn-hostname` checks
 idn = ["dep:idna"]
 ## `pattern` and `patternProperties` checks (ECMA-262)

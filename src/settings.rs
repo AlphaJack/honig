@@ -661,7 +661,7 @@ impl Trigger {
 /// Every runtime feature and what turns it on.
 ///
 /// The book's table of features shows this one.
-pub(crate) const FEATURES: [(&str, Trigger); 19] = [
+pub(crate) const FEATURES: [(&str, Trigger); 20] = [
     (CLIENT, Trigger::Half(Side::Client)),
     (SERVER, Trigger::Half(Side::Server)),
     ("reqwest", Trigger::Library(Side::Client)),
@@ -675,6 +675,7 @@ pub(crate) const FEATURES: [(&str, Trigger); 19] = [
     (COOKIE, Trigger::Description),
     (IDN, Trigger::Description),
     (IPNET, Trigger::Description),
+    (JIFF, Trigger::Description),
     (MULTIPART, Trigger::Description),
     (OAUTH, Trigger::Description),
     (PKCE, Trigger::Description),
@@ -748,7 +749,8 @@ pub(crate) struct FormatLibs {
 /// The libraries whose types string formats take with their `serde` feature.
 const FORMAT_LIBRARIES: [&str; 5] = [UUID, URL, IPNET, CHRONO, JIFF];
 const CHRONO: &str = "chrono";
-const JIFF: &str = "jiff";
+/// `jiff` (with its `serde` feature): the dates and times. Also the runtime feature of `runtime::FullTime`.
+pub(crate) const JIFF: &str = "jiff";
 
 /// Returns the library types that string formats take. The `formats` table decides when the crate has one. Each library
 /// that it names must be a dependency with its `serde` feature. Without the table the dependencies decide.
