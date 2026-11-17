@@ -964,6 +964,37 @@ mod tests {
     }
 
     #[test]
+    fn derives_and_overlays_are_read_in_order() {
+        let configs = modules_of(
+            "[package.metadata.honig.api]\nspec = \"a.yaml\"\noverlays = [\"one.yaml\", \"fix/two.yaml\"]\n\
+             derives = { \"*\" = [\"Hash\"], Pet = [\"sqlx::FromRow\", \"Eq\"] }\n",
+        )
+        .unwrap();
+        let c = &configs[0];
+        let derive = |k: &str, v: &[&str]| (k.to_owned(), v.iter().map(|s| (*s).to_owned()).collect::<Vec<_>>());
+        assert_eq!(c.derives, [derive("*", &["Hash"]), derive("Pet", &["sqlx::FromRow", "Eq"])]);
+        assert_eq!(c.overlay_paths(), [c.root.join("one.yaml"), c.root.join("fix").join("two.yaml")]);
+    }
+
+    #[test]
+    fn a_derive_must_be_a_path() {
+        for bad in ["\"\"", "\"not a path\"", "\"a::\"", "\"Hash\", 1"] {
+            let tables = format!("[package.metadata.honig.api]\nspec = \"a.yaml\"\nderives = {{ Pet = [{bad}] }}\n");
+            let err = modules_of(&tables).unwrap_err().to_string();
+            assert!(err.contains("derives") && err.contains("Pet"), "{bad}: {err}");
+        }
+    }
+
+    #[test]
+    fn a_star_matches_names_long_enough_for_both_ends() {
+        assert!(matches_star(Path::new("billing.yaml"), "bill", ".yaml"));
+        assert!(matches_star(Path::new(".yaml"), "", ".yaml"));
+        assert!(!matches_star(Path::new("billing.yml"), "bill", ".yaml"));
+        assert!(!matches_star(Path::new("a"), "a", "a"), "the ends may not overlap");
+        assert!(!matches_star(Path::new("aba"), "ab", "ba"));
+    }
+
+    #[test]
     fn each_table_is_one_module_with_its_own_output() {
         let configs = modules_of(
             "[package.metadata.honig.api]\nspec = \"own.yaml\"\nclient = false\n\n\
