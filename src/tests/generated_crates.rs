@@ -169,10 +169,21 @@ fn library_types_read_only_their_format() {
 }
 
 /// A struct with a checked format in every place a field can hold one: itself, `Option`, `runtime::Nullable`, a
-/// list, a tuple, an array, an alias and the undeclared properties.
+/// list, a tuple, an array, an alias, the undeclared properties, a union branch and a newtype.
 fn checked_schemas() -> serde_json::Value {
     serde_json::json!({
         "Stamp": {"type": "string", "format": "date-time"},
+        "ByKind": {"oneOf": [{"type": "string", "format": "date-time"}, {"type": "integer"}]},
+        "SameKind": {"oneOf": [{"type": "string", "format": "date-time"}, {"type": "string", "format": "uuid"}]},
+        "Rec": {
+            "type": "array",
+            "prefixItems": [
+                {"type": "string", "format": "date"},
+                {"oneOf": [{"$ref": "#/components/schemas/Rec"}, {"type": "null"}]},
+            ],
+            "items": false,
+            "minItems": 2,
+        },
         "Checked": {
             "type": "object",
             "required": ["at", "id", "maybe_at"],
@@ -194,6 +205,9 @@ fn checked_schemas() -> serde_json::Value {
                 },
                 "two": {"type": "array", "items": {"type": "string", "format": "date"}, "minItems": 2, "maxItems": 2},
                 "stamp": {"$ref": "#/components/schemas/Stamp"},
+                "by_kind": {"$ref": "#/components/schemas/ByKind"},
+                "same_kind": {"$ref": "#/components/schemas/SameKind"},
+                "rec": {"$ref": "#/components/schemas/Rec"},
             },
             "additionalProperties": {"type": "string", "format": "date"},
         },
@@ -211,7 +225,8 @@ use super::api;
 const OK: &str = r#"{"at":"2024-06-19T08:30:06Z","id":"01234567-89ab-4def-8123-456789abcdef","maybe_at":null,
 "home":"https://example.com/a","net":"192.168.0.0/24","day":"2024-06-19","clock":"08:30:06",
 "local":"2024-06-19T08:30:06","seen":["2024-06-19T08:30:06Z"],"pair":["2024-06-19",1],
-"two":["2024-06-19","2024-06-20"],"stamp":"2024-06-19T08:30:06Z","extra":"2024-06-19"}"#;
+"two":["2024-06-19","2024-06-20"],"stamp":"2024-06-19T08:30:06Z","extra":"2024-06-19",
+"by_kind":"2024-06-19T08:30:06Z","same_kind":"01234567-89ab-4def-8123-456789abcdef","rec":["2024-06-19",null]}"#;
 
 fn decodes(json: &str) -> bool {
     serde_json::from_str::<api::types::Checked>(json).is_ok()
@@ -221,6 +236,7 @@ fn decodes(json: &str) -> bool {
 fn every_place_checks_its_text() {
     assert!(decodes(OK), "{:?}", serde_json::from_str::<api::types::Checked>(OK).err());
     assert!(decodes(&OK.replace("08:30:06Z\",\"id", "08:30:06.1234567891Z\",\"id")), "more than 9 fraction digits");
+    let mut decoded = vec![];
     for (good, bad) in [
         ("\"at\":\"2024-06-19T08:30:06Z\"", "\"at\":\"2024-06-19 08:30:06Z\""),
         ("\"maybe_at\":null", "\"maybe_at\":\"2024-06-19T08:30:06+0100\""),
@@ -235,10 +251,26 @@ fn every_place_checks_its_text() {
         ("\"two\":[\"2024-06-19\",\"2024-06-20\"]", "\"two\":[\"2024-06-19\",\"20240620\"]"),
         ("\"stamp\":\"2024-06-19T08:30:06Z\"", "\"stamp\":\"2024-06-19T08:30:06+01\""),
         ("\"extra\":\"2024-06-19\"", "\"extra\":\"2024-06-19T00:00:00\""),
+        ("\"by_kind\":\"2024-06-19T08:30:06Z\"", "\"by_kind\":\"2024-06-19 08:30:06Z\""),
+        ("\"rec\":[\"2024-06-19\",null]", "\"rec\":[\"20240619\",null]"),
     ] {
         assert!(OK.contains(good), "{good}");
-        assert!(!decodes(&OK.replace(good, bad)), "{bad}");
+        if decodes(&OK.replace(good, bad)) {
+            decoded.push(bad);
+        }
     }
+    assert!(decoded.is_empty(), "decoded: {decoded:?}");
+}
+
+/// A branch of an untagged union takes only its own format. Text that no branch takes is `Other`.
+#[test]
+fn an_untagged_branch_checks_its_text() {
+    use api::types::SameKind;
+    let pick = |s: &str| serde_json::from_str::<SameKind>(s).unwrap();
+    assert!(matches!(pick("\"2024-06-19T08:30:06Z\""), SameKind::DateTime(_)));
+    assert!(matches!(pick("\"01234567-89ab-4def-8123-456789abcdef\""), SameKind::Uuid(_)));
+    assert!(matches!(pick("\"2024-06-19 08:30:06Z\""), SameKind::Other(_)));
+    assert!(matches!(pick("\"{01234567-89ab-4def-8123-456789abcdef}\""), SameKind::Other(_)));
 }
 }
 "##;

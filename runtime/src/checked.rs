@@ -134,6 +134,24 @@ pub fn read<'de, D: Deserializer<'de>, T, S: Holds<'de, T>>(d: D) -> Result<T, D
     S::read(d)
 }
 
+/// `T` read through `H`: a branch of a union or a body that is a library type itself. Decode one and take the value
+/// with [`Checked::into_inner`].
+#[derive(Debug)]
+pub struct Checked<T, H>(T, PhantomData<H>);
+
+impl<T, H> Checked<T, H> {
+    /// Returns the value.
+    pub fn into_inner(self) -> T {
+        self.0
+    }
+}
+
+impl<'de, T, H: Holds<'de, T>> Deserialize<'de> for Checked<T, H> {
+    fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        H::read(d).map(|v| Self(v, PhantomData))
+    }
+}
+
 /// A value read as it is: a position of a tuple without a checked format.
 #[derive(Debug, Clone, Copy)]
 pub struct Plain;
@@ -420,6 +438,16 @@ mod tests {
         let pair = read::<(Lenient, u8), (Text<format::Date>, Plain)>(r#"["2024-06-19", 3]"#).unwrap();
         assert_eq!(pair, (Lenient("2024-06-19".to_owned()), 3));
         assert!(read::<(Lenient, u8), (Text<format::Date>, Plain)>(r#"["2024 06 19", 3]"#).is_err());
+    }
+
+    #[test]
+    fn checked_reads_through_its_shape() {
+        type Day = super::Checked<Lenient, Text<format::Date>>;
+        assert_eq!(
+            serde_json::from_str::<Day>(r#""2024-06-19""#).unwrap().into_inner(),
+            Lenient("2024-06-19".to_owned())
+        );
+        assert!(serde_json::from_str::<Day>(r#""2024-6-19""#).is_err());
     }
 
     #[test]
