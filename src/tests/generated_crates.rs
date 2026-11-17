@@ -37,7 +37,12 @@ gloo-net = { version = "0.6", default-features = false, features = ["http"] }
     // Streams, OAuth flows and webhooks are the client paths that hold futures.
     let spec = root.join("tests").join("fixtures").join("v32").join("shop.yaml");
     let generated = crate::generate::generate(&spec, &opts).unwrap_or_else(|d| panic!("generation failed: {:?}", d.0));
-    crate::disk::write_module(&out.join("src").join("api"), &generated.files).unwrap();
+    crate::disk::write_module(
+        &out.join("src").join("api"),
+        &out.join("src").join("api").join("mod.rs"),
+        &generated.files,
+    )
+    .unwrap();
     std::fs::write(
         out.join("Cargo.toml"),
         crate::manifest::with_runtime(manifest, &[&generated.runtime_features[..], &["gloo-net"]].concat()).unwrap(),

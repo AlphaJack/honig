@@ -53,7 +53,7 @@ pub(crate) fn warnings(api: &Api, opts: &super::Options) -> Vec<crate::diag::Dia
 pub(crate) const FILES: [(&str, &str); 7] = [
     (
         "mod.rs",
-        "The root of the module. It declares the other files and re-exports the client, the server and the runtime.",
+        "The root of the module, or `<output>.rs` with `mod_rs = false`. It declares the other files and re-exports the client, the server and the runtime.",
     ),
     ("types.rs", "The schemas of the description as Rust types: structs, enums and newtypes."),
     ("operations.rs", "One module per operation with its `Params`, its `Response` enum and their body types."),

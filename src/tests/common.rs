@@ -101,5 +101,10 @@ pub(crate) fn new_crate(spec: &Path, dir: &Path, name: &str, opts: &crate::emit:
     std::fs::write(dir.join("Cargo.toml"), manifest).unwrap();
     std::fs::create_dir_all(dir.join("src")).unwrap();
     std::fs::write(dir.join("src").join("lib.rs"), "pub mod api;\npub use api::*;\n").unwrap();
-    crate::disk::write_module(&dir.join("src").join("api"), &generated.files).unwrap();
+    crate::disk::write_module(
+        &dir.join("src").join("api"),
+        &dir.join("src").join("api").join("mod.rs"),
+        &generated.files,
+    )
+    .unwrap();
 }

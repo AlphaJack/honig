@@ -2,7 +2,7 @@
 
 | File | Contents |
 |---|---|
-| `mod.rs` | The root of the module. It declares the other files and re-exports the client, the server and the runtime. |
+| `mod.rs` | The root of the module, or `<output>.rs` with `mod_rs = false`. It declares the other files and re-exports the client, the server and the runtime. |
 | `types.rs` | The schemas of the description as Rust types: structs, enums and newtypes. |
 | `operations.rs` | One module per operation with its `Params`, its `Response` enum and their body types. |
 | `client.rs` | The `Client` with one method per operation, and the `WebhookClient` when the description has webhooks. |
