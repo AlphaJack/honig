@@ -7,7 +7,6 @@ mod auth;
 #[cfg(feature = "base64")]
 mod base64;
 mod binary;
-mod checked;
 #[cfg(feature = "client")]
 mod client;
 mod codec;
@@ -51,6 +50,7 @@ mod unique_keys;
 mod uri;
 mod uri_template;
 mod validate;
+mod validated;
 #[cfg(feature = "xml")]
 mod xml;
 #[cfg(feature = "xml")]
@@ -120,8 +120,8 @@ pub mod __private {
     pub use crate::base64::*;
     pub use crate::binary::*;
     /// Library types of formats, read with their text checked.
-    pub mod checked {
-        pub use crate::checked::*;
+    pub mod validated {
+        pub use crate::validated::*;
     }
     #[cfg(feature = "client")]
     pub use crate::client::auth::*;

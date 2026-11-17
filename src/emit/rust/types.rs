@@ -613,8 +613,8 @@ fn field(space: &Space<'_>, f: &Field, owner: &str) -> TokenStream {
     // field's own type does: `Option`, `runtime::Nullable` or itself.
     let checked = |t: &Ty, wrap: &str| {
         holds_text(space, t).map(|h| {
-            let h = if wrap.is_empty() { h } else { format!("runtime::checked::{wrap}<{h}>") };
-            let read = lit(&format!("runtime::checked::read::<_, _, {h}>"));
+            let h = if wrap.is_empty() { h } else { format!("runtime::validated::{wrap}<{h}>") };
+            let read = lit(&format!("runtime::validated::read::<_, _, {h}>"));
             quote!(deserialize_with = #read)
         })
     };
@@ -686,7 +686,7 @@ fn structure(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, s: &St
     let extra = ident(&extra_field(s));
     let additional = s.additional.as_ref().map(|t| {
         let read = holds_text(space, t).map(|h| {
-            let read = lit(&format!("runtime::checked::read::<_, _, runtime::checked::Values<{h}>>"));
+            let read = lit(&format!("runtime::validated::read::<_, _, runtime::validated::Values<{h}>>"));
             quote!(, deserialize_with = #read)
         });
         let t = ty(space, t, false);
@@ -914,12 +914,17 @@ fn newtype(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, def: &Ty
     let name = pascal_ident(&def.name);
     let doc = doc_opt(def.doc.as_deref());
     let derive = derives(space, id, false);
+    // A library type has its text checked before the library reads it.
+    let read = holds_text(space, t).map(|h| {
+        let read = lit(&format!("runtime::validated::read::<_, _, {h}>"));
+        quote!(#[serde(deserialize_with = #read)])
+    });
     let t = ty(space, t, false);
     items.push(quote! {
         #doc
         #derive
         #[serde(transparent)]
-        pub struct #name(pub #t);
+        pub struct #name(#read pub #t);
     });
 }
 
@@ -1084,7 +1089,11 @@ fn union_deserialize_impl(space: &Space<'_>, n: &proc_macro2::Ident, u: &Union) 
     let arms = tagged.iter().map(|v| {
         let tags = v.tags.iter().map(|t| lit(t));
         let (name, t) = (pascal_ident(&v.name), ty(space, &v.ty, false));
-        quote!(#(#tags)|* => <#t as serde::Deserialize>::deserialize(d).map(Self::#name),)
+        let read = match holds(space, &v.ty) {
+            Some(h) => quote!(runtime::validated::read::<_, #t, #h>(d)),
+            None => quote!(<#t as serde::Deserialize>::deserialize(d)),
+        };
+        quote!(#(#tags)|* => #read.map(Self::#name),)
     });
     let property = lit(property);
     let tag_arg = if all.is_empty() { quote!(_tag) } else { quote!(tag) };
@@ -1162,9 +1171,27 @@ fn union_serialize(space: &Space<'_>, aliases: &std::collections::BTreeMap<usize
     quote!(#(#arms)*)
 }
 
-fn conv(name: &str) -> TokenStream {
+/// Returns the buffered value `v` decoded into variant `name` of type `t`. A library type has its text checked first.
+fn conv(space: &Space<'_>, name: &str, t: &Ty) -> TokenStream {
     let name = ident(name);
-    quote!(v.decode_into(Self::#name))
+    match holds(space, t) {
+        Some(h) => {
+            let t = ty(space, t, false);
+            quote!(v.decode_into(|c: runtime::validated::Validated<#t, #h>| Self::#name(c.into_inner())))
+        }
+        None => quote!(v.decode_into(Self::#name)),
+    }
+}
+
+/// Returns the buffered value `v` decoded as `t` without consuming it. A library type has its text checked first.
+fn decode_ref(space: &Space<'_>, t: &Ty) -> TokenStream {
+    let rust = ty(space, t, false);
+    match holds(space, t) {
+        Some(h) => {
+            quote!(v.decode_ref::<runtime::validated::Validated<#rust, #h>>().map(runtime::validated::Validated::into_inner))
+        }
+        None => quote!(v.decode_ref::<#rust>()),
+    }
 }
 
 fn union_deserialize(space: &Space<'_>, u: &Union) -> TokenStream {
@@ -1186,11 +1213,11 @@ fn union_deserialize(space: &Space<'_>, u: &Union) -> TokenStream {
                 quote!(Some(#(#tags)|*) => #i,)
             });
             let arms = tagged.iter().enumerate().map(|(i, v)| {
-                let (i, c) = (proc_macro2::Literal::usize_unsuffixed(i), conv(&pascal(&v.name)));
+                let (i, c) = (proc_macro2::Literal::usize_unsuffixed(i), conv(space, &pascal(&v.name), &v.ty));
                 quote!(#i => #c,)
             });
             let fallback = match default {
-                Some(i) => conv(&pascal(&u.variants[*i].name)),
+                Some(i) => conv(space, &pascal(&u.variants[*i].name), &u.variants[*i].ty),
                 None => quote!(Ok(Self::Other(v.into_value()))),
             };
             let none = proc_macro2::Literal::usize_unsuffixed(tagged.len());
@@ -1255,12 +1282,13 @@ fn untagged(space: &Space<'_>, u: &Union) -> TokenStream {
             let x = if boxed { quote!(x.as_ref()) } else { quote!(x) };
             quote!(#guard let Ok(x) = v.decode_ref::<#t>() && !matches!(#x, #it::Other(_)))
         } else {
-            quote!(#guard let Ok(x) = v.decode_ref::<#t>())
+            let decoded = decode_ref(space, &v.ty);
+            quote!(#guard let Ok(x) = #decoded)
         };
         // A branch that decodes but fails its checks (an open enum, a `format`) is not a match: the union's
         // own checks of that variant decide, and the branches after it get their turn. A closed union keeps
         // the first that decoded, so that its violations name what is wrong. So when no later branch can fit,
-        // a closed union's choice does not depend on the checks: it skips them. Checked at every level, a
+        // a closed union's choice does not depend on the checks: it skips them. Validated at every level, a
         // recursive union checked each nested value once per level above it.
         let later = &guards[i + 1..];
         let checked = if u.open || later.iter().any(Option::is_none) {
@@ -1409,9 +1437,9 @@ fn by_kind(space: &Space<'_>, u: &Union) -> TokenStream {
         let c = if u.open {
             // An open union has a branch that takes any value. A value of this kind that does not fit the
             // variant, or fails its checks, is that branch's: `Other` holds it.
-            let (vn, t) = (ident(&name), ty(space, vty, false));
+            let (vn, decoded) = (ident(&name), decode_ref(space, vty));
             quote!({
-                if let Ok(x) = v.decode_ref::<#t>() {
+                if let Ok(x) = #decoded {
                     let picked = Self::#vn(x);
                     if runtime::is_valid(&picked) {
                         return Ok(picked);
@@ -1420,7 +1448,7 @@ fn by_kind(space: &Space<'_>, u: &Union) -> TokenStream {
                 Ok(Self::Other(v.into_value()))
             })
         } else {
-            conv(&name)
+            conv(space, &name, vty)
         };
         arms.push(quote!(#(#pats)|* => #c,));
     }

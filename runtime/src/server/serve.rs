@@ -227,7 +227,11 @@ impl<A: Sync, C: Sync, P: Validate + Send, R, Id: Send + Sync> OpSteps<C, Id> fo
     fn run<'r>(&'r self, incoming: Incoming<'r>, ctx: &'r Context<'r, C, Id>) -> StepFuture<'r> {
         Box::pin(async move {
             let media = incoming.media;
-            let params = (self.decode)(incoming)?;
+            // The text of a library type is validated in a request. A client leaves it to the library.
+            let params = {
+                let _strict = crate::validated::Strict::enter();
+                (self.decode)(incoming)?
+            };
             let mut violations = Vec::new();
             params.validate(&crate::InstancePath::Root, &mut violations);
             if !violations.is_empty() {
