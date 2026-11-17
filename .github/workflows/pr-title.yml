@@ -26,7 +26,7 @@ jobs:
             chore
           scopes: |
             cli
-            codegen
+            generator
             runtime
           # An imperative verb first: not an article, not "adds", "added" or "adding".
           subjectPattern: ^(?!(?:a|an|the|this|that|each|every|all|no|one)\s)(?![a-z]*[^su]s\s)(?![a-z]{3,}ing\s)(?![a-z]+[^eb]ed\s)[a-z]+\s.+$

@@ -5,7 +5,7 @@
 //! 2. the typed model roundtrips losslessly
 //! 3. every version yields the same IR (operations, parameters, bodies, responses, security), so the upgraders
 //!    preserve meaning
-//! 4. code generation does not panic
+//! 4. the generator does not panic
 //!
 //! Profiles:
 //!
@@ -868,7 +868,7 @@ fn check(choices: &[u64], profile: Profile) -> Result<(), String> {
             (ir, key, files)
         });
         match generated {
-            Err(_) => return Err(format!("{v:?}: code generation panicked")),
+            Err(_) => return Err(format!("{v:?}: the generator panicked")),
             Ok((_, _, Err(e))) => return Err(format!("{v:?}: {e}")),
             Ok((ir, key, Ok(_))) => {
                 summaries.push((v, summary(&ir)));

@@ -45,6 +45,12 @@ name = "shop"
 release = false
 
 [changelog]
+commit_preprocessors = [
+    # The scope `codegen` became `generator`: commits from before read the same as those after.
+    { pattern = '^([a-z]+)\(codegen\)', replace = "${1}(generator)" },
+    # The default of release-plz, which a list of our own replaces: each `(#N)` links its pull request.
+    { pattern = '\(#([0-9]+)\)', replace = "([#${1}](https://github.com/AlphaJack/honig/pull/${1}))" },
+]
 header = """
 # Changelog
 

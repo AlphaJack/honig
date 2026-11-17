@@ -25,7 +25,7 @@ cargo hack nextest run -p honig --each-feature
 
 ## Pull requests
 
-The title is a conventional commit such as `feat(codegen): add typed links`. Its subject starts with an imperative verb. [pr-title.yml](.github/workflows/pr-title.yml) checks it.
+The title is a conventional commit such as `feat(generator): add typed links`. Its subject starts with an imperative verb. [pr-title.yml](.github/workflows/pr-title.yml) checks it.
 
 | Type | Usage |
 | --- | --- |
@@ -37,7 +37,7 @@ The title is a conventional commit such as `feat(codegen): add typed links`. Its
 | Scope | Usage |
 | --- | --- |
 | `cli` | the command users run |
-| `codegen` | the generated code |
+| `generator` | the generator and the code it writes |
 | `runtime` | the dependency crate |
 
 The scope is optional. A `!` after it marks a breaking change. The description then needs `BREAKING CHANGE: <what users must do>`.
