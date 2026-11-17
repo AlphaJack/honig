@@ -53,13 +53,7 @@ pub(crate) fn merge(specs: &[PathBuf], diags: &mut Diagnostics) -> Option<Value>
             });
         }
         if !security_shared && let Some(security) = doc.remove("security") {
-            each_item(&mut doc, |item| {
-                for m in METHODS {
-                    if let Some(Value::Object(op)) = item.get_mut(m) {
-                        op.entry("security").or_insert_with(|| security.clone());
-                    }
-                }
-            });
+            each_item(&mut doc, |item| onto_operations(item, "security", &security));
         }
         for (key, value) in doc {
             match (key.as_str(), out.get_mut(&key)) {
@@ -143,7 +137,13 @@ fn each_item(doc: &mut Map<String, Value>, mut f: impl FnMut(&mut Map<String, Va
     }
 }
 
+/// The path item field with the operations of methods that have no field of their own (3.2 section 4.9).
+const ADDITIONAL: &str = "additionalOperations";
+
 /// Adds the path items of `from` to `into`. Two files may share a path but not a method of it.
+///
+/// `servers`, `parameters` and the other fields that the files of a shared path do not agree on move from the path
+/// item onto the operations of the file that set them. So no file's operations take a field of another file.
 fn items(into: &mut Map<String, Value>, from: Value, key: &str, file: &str, diags: &mut Diagnostics) {
     let Value::Object(from) = from else { return };
     for (path, item) in from {
@@ -152,39 +152,78 @@ fn items(into: &mut Map<String, Value>, from: Value, key: &str, file: &str, diag
             into.insert(path, Value::Object(item));
             continue;
         };
-        // `servers`, `parameters` and the like that differ: each file's operations keep their own. They move from the
-        // path item onto its operations: the earlier files' get the old value and this file's the new one.
-        let differing: Vec<String> = item
-            .iter()
-            .filter(|(k, v)| !METHODS.contains(&k.as_str()) && have.get(*k).is_some_and(|old| old != *v))
-            .map(|(k, _)| k.clone())
+        let mut differing: Vec<String> = have
+            .keys()
+            .chain(item.keys())
+            .filter(|k| !METHODS.contains(&k.as_str()) && *k != ADDITIONAL && have.get(*k) != item.get(*k))
+            .cloned()
             .collect();
+        differing.sort_unstable();
+        differing.dedup();
         for k in differing {
             for owner in [&mut *have, &mut item] {
-                let value = owner.remove(&k).unwrap_or_default();
-                onto_operations(owner, &k, &value);
+                if let Some(value) = owner.remove(&k) {
+                    onto_operations(owner, &k, &value);
+                }
             }
         }
+        let at = |k: &str| format!("{file}#/{key}/{}/{k}", crate::json::escape_token(&path));
         for (k, v) in item {
-            match have.get(&k) {
-                None => {
+            match (have.get_mut(&k), v) {
+                (None, v) => {
                     have.insert(k, v);
                 }
-                Some(old) if *old == v => {}
-                Some(_) => diags.error(
-                    format!("{file}#/{key}/{}/{k}", crate::json::escape_token(&path)),
-                    format!("`{} {path}` is also described by an earlier file", k.to_uppercase()),
-                ),
+                (Some(old), v) if *old == v => {}
+                (Some(Value::Object(ops)), Value::Object(added)) if k == ADDITIONAL => {
+                    for (method, op) in added {
+                        match ops.get(&method) {
+                            None => {
+                                ops.insert(method, op);
+                            }
+                            Some(old) if *old == op => {}
+                            Some(_) => diags.error(
+                                at(&format!("{ADDITIONAL}/{}", crate::json::escape_token(&method))),
+                                format!("`{method} {path}` is also described by an earlier file"),
+                            ),
+                        }
+                    }
+                }
+                (Some(_), _) => {
+                    diags.error(at(&k), format!("`{} {path}` is also described by an earlier file", k.to_uppercase()));
+                }
             }
         }
     }
 }
 
-/// Gives each operation of a path item `value` as its `key`, unless it has its own.
+/// Gives each operation of a path item the field `key` of the path item. An operation's own field wins. Parameters
+/// add up: an operation's parameter replaces the one of the path item with its name and location.
 fn onto_operations(item: &mut Map<String, Value>, key: &str, value: &Value) {
-    for m in METHODS {
-        if let Some(Value::Object(op)) = item.get_mut(m) {
-            op.entry(key.to_owned()).or_insert_with(|| value.clone());
+    let give = |op: &mut Value| {
+        let Value::Object(op) = op else { return };
+        match (key, value) {
+            ("parameters", Value::Array(shared)) => {
+                let Value::Array(own) = op.entry(key).or_insert_with(|| Value::Array(vec![])) else { return };
+                let id = |p: &Value| (p.get("name").cloned(), p.get("in").cloned());
+                let added: Vec<Value> = shared
+                    .iter()
+                    .filter(|p| !own.iter().any(|o| o == *p || (o.get("name").is_some() && id(o) == id(p))))
+                    .cloned()
+                    .collect();
+                own.extend(added);
+            }
+            _ => {
+                op.entry(key).or_insert_with(|| value.clone());
+            }
+        }
+    };
+    for (k, op) in item.iter_mut() {
+        if METHODS.contains(&k.as_str()) {
+            give(op);
+        } else if k == ADDITIONAL
+            && let Value::Object(ops) = op
+        {
+            ops.values_mut().for_each(give);
         }
     }
 }
@@ -323,6 +362,73 @@ mod tests {
             "{item:#}"
         );
         assert_eq!(servers("post"), json!([{"url": "https://other.example.org/v3"}]), "{item:#}");
+    }
+
+    /// Two files share `/login`: `a` has `GET` and `b` has `POST`. `edit_a` and `edit_b` change their path items.
+    fn shared_path(test: &str, edit_a: impl Fn(&mut Value), edit_b: impl Fn(&mut Value)) -> (Value, Diagnostics) {
+        let dir = scratch(test);
+        let id = json!({"type": "string"});
+        let mut a = file("/login", "/v3", &id);
+        let mut b = file("/login", "/v3", &id);
+        let get = b["paths"]["/login"]["get"].take();
+        b["paths"]["/login"] = json!({"post": get});
+        edit_a(&mut a["paths"]["/login"]);
+        edit_b(&mut b["paths"]["/login"]);
+        let a = write(&dir, "a.json", &a);
+        let b = write(&dir, "b.json", &b);
+        let mut d = Diagnostics::default();
+        let v = merge(&[a, b], &mut d).unwrap();
+        (v["paths"]["/login"].clone(), d)
+    }
+
+    fn names(op: &Value) -> Vec<&str> {
+        op["parameters"].as_array().into_iter().flatten().filter_map(|p| p["name"].as_str()).collect()
+    }
+
+    #[test]
+    fn a_field_of_one_file_stays_with_its_operations() {
+        let q = json!([{"name": "q", "in": "query", "schema": {"type": "string"}}]);
+        let (item, d) = shared_path("later-only", |_| {}, |b| b["parameters"] = q.clone());
+        assert!(!d.has_errors(), "{d:?}");
+        assert_eq!((names(&item["get"]), names(&item["post"])), (vec![], vec!["q"]), "{item:#}");
+        assert!(item.get("parameters").is_none(), "on the path item it would reach `GET`: {item:#}");
+        let (item, _) = shared_path("earlier-only", |a| a["parameters"] = q.clone(), |_| {});
+        assert_eq!((names(&item["get"]), names(&item["post"])), (vec!["q"], vec![]), "{item:#}");
+        assert!(item.get("parameters").is_none(), "{item:#}");
+    }
+
+    #[test]
+    fn path_parameters_add_to_those_of_an_operation() {
+        let (item, _) = shared_path(
+            "parameters",
+            |_| {},
+            |b| {
+                b["parameters"] = json!([{"name": "q", "in": "query"}, {"name": "id", "in": "query"}]);
+                b["post"]["parameters"] = json!([{"name": "id", "in": "query", "required": true}]);
+            },
+        );
+        assert_eq!(names(&item["post"]), ["id", "q"], "{item:#}");
+        assert_eq!(item["post"]["parameters"][0]["required"], true, "the operation's own wins");
+    }
+
+    #[test]
+    fn additional_operations_merge_by_method() {
+        let op = |id: &str| json!({"operationId": id, "responses": {"204": {"description": "ok"}}});
+        let (item, d) = shared_path(
+            "additional",
+            |a| a["additionalOperations"] = json!({"COPY": op("copy")}),
+            |b| b["additionalOperations"] = json!({"LINK": op("link")}),
+        );
+        assert!(!d.has_errors(), "{d:?}");
+        assert_eq!(item["additionalOperations"]["COPY"]["operationId"], "copy");
+        assert_eq!(item["additionalOperations"]["LINK"]["operationId"], "link");
+        let (_, d) = shared_path(
+            "additional-clash",
+            |a| a["additionalOperations"] = json!({"COPY": op("copy")}),
+            |b| b["additionalOperations"] = json!({"COPY": op("again")}),
+        );
+        let messages: Vec<&str> = d.iter().map(|x| x.message.as_str()).collect();
+        assert_eq!(messages, ["`COPY /login` is also described by an earlier file"]);
     }
 
     #[test]
