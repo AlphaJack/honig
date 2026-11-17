@@ -726,6 +726,28 @@ async fn round(once: &impl AsyncFn(), n: u32) -> Duration {
     started.elapsed() / n
 }
 
+/// Measurements of a path before it fails.
+#[allow(dead_code, reason = "the allocation bench does not time")]
+const ATTEMPTS: usize = 3;
+
+/// Returns the fastest of up to [`ATTEMPTS`] `measure`s, stopping at the first within `max_ratio`. A shared CI runner
+/// stalls now and then: a path over its limit is measured again. A real slowdown fails every attempt and a stall does
+/// not.
+#[allow(dead_code, reason = "the allocation bench does not time")]
+pub async fn best_of(max_ratio: f64, measure: impl AsyncFn() -> Timing) -> Timing {
+    let mut best = measure().await;
+    for _ in 1..ATTEMPTS {
+        if best.ratio <= max_ratio {
+            break;
+        }
+        let again = measure().await;
+        if again.ratio < best.ratio {
+            best = again;
+        }
+    }
+    best
+}
+
 /// What [`times`] measured: each side's median time of one request and the median ratio of the two.
 #[allow(dead_code, reason = "the allocation bench does not time")]
 #[derive(Clone, Copy)]

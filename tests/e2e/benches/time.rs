@@ -12,8 +12,6 @@ mod cost;
 const ROUNDS: usize = 15;
 /// About how long one round of one side takes.
 const ROUND: Duration = Duration::from_millis(4);
-/// Measurements of a path before it fails.
-const ATTEMPTS: usize = 3;
 
 fn main() -> std::process::ExitCode {
     let started = Instant::now();
@@ -26,19 +24,8 @@ fn main() -> std::process::ExitCode {
         for path in cost::paths(size) {
             let measured = runtime.block_on(async {
                 cost::same_answer(&generated, &baseline, &path).await?;
-                // A shared CI runner stalls now and then. A path over its limit is measured again. A real slowdown
-                // fails every attempt and a stall does not.
-                let mut best = cost::times(&generated, &baseline, &path, ROUNDS, ROUND).await;
-                for _ in 1..ATTEMPTS {
-                    if best.ratio <= path.max_time {
-                        break;
-                    }
-                    let again = cost::times(&generated, &baseline, &path, ROUNDS, ROUND).await;
-                    if again.ratio < best.ratio {
-                        best = again;
-                    }
-                }
-                Ok::<_, String>(best)
+                let measure = async || cost::times(&generated, &baseline, &path, ROUNDS, ROUND).await;
+                Ok::<_, String>(cost::best_of(path.max_time, measure).await)
             });
             let timing = match measured {
                 Ok(timing) => timing,

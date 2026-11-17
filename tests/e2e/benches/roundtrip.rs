@@ -31,7 +31,8 @@ fn main() -> std::process::ExitCode {
                 let theirs = async || {
                     std::hint::black_box(roundtrip::base(&base, trip.name).await.ok());
                 };
-                Ok::<_, String>(cost::times_of(&ours, &theirs, ROUNDS, ROUND).await)
+                let measure = async || cost::times_of(&ours, &theirs, ROUNDS, ROUND).await;
+                Ok::<_, String>(cost::best_of(trip.max_time, measure).await)
             });
             let timing = match measured {
                 Ok(timing) => timing,
