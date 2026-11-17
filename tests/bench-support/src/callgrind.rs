@@ -59,13 +59,12 @@ struct Growth {
 /// Counts every path at every size, prints how each grew and fails if one grew faster than [`MAX_EXPONENT`].
 fn check(paths: &[&Path], sizes: &[usize], program: &str) -> ExitCode {
     let mut steep = vec![];
-    // The cost grows as n^growth with the size n of the input.
+    // The cost grows as n^k with the size n of the input. The limit is the same for every path.
+    println!("k may be at most {MAX_EXPONENT}; stopped: a step was steeper than k = {STOP_EXPONENT}");
     let table = Table::new(&[
         Column::left("path", paths.iter().map(|p| p.name.len()).max().unwrap_or_default()),
-        Column::right("growth", &format!("n^{MAX_EXPONENT:.2}")),
-        Column::right("max", &format!("n^{MAX_EXPONENT}")),
-        Column::left("larger", "skipped".len()),
-        Column::left("result", "FAIL".len()),
+        Column::right("n^k", &format!("{MAX_EXPONENT:.2}")),
+        Column::left("result", "stopped".len()),
     ]);
     for path in paths {
         let Some(growth) = growth(path, sizes, program) else {
@@ -73,13 +72,13 @@ fn check(paths: &[&Path], sizes: &[usize], program: &str) -> ExitCode {
             return ExitCode::FAILURE;
         };
         let over = growth.steepest > MAX_EXPONENT;
-        table.row(&[
-            path.name.to_owned(),
-            format!("n^{:.2}", growth.steepest),
-            format!("n^{MAX_EXPONENT}"),
-            if growth.stopped { "skipped" } else { "run" }.to_owned(),
-            if over { "FAIL" } else { "ok" }.to_owned(),
-        ]);
+        // A path stops only on a step steeper than the limit: it fails, and its larger sizes did not run.
+        let result = match (over, growth.stopped) {
+            (_, true) => "stopped",
+            (true, false) => "FAIL",
+            (false, false) => "ok",
+        };
+        table.row(&[path.name.to_owned(), format!("{:.2}", growth.steepest), result.to_owned()]);
         if over {
             steep.push(path.name);
         }

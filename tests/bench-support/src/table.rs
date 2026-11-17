@@ -59,7 +59,7 @@ impl Table {
                 Align::Right => format!("{cell:>width$}", width = c.width),
             })
             .collect();
-        println!("{}", padded.join("  ").trim_end());
+        println!("{}", padded.join(" ").trim_end());
     }
 }
 

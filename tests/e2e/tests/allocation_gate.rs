@@ -10,7 +10,7 @@ mod cost;
 fn no_generated_path_allocates_much_more_than_its_baseline() {
     let runtime = cost::runtime();
     let mut failed = vec![];
-    let table = cost::gate_table("honig", "base", "9999999");
+    let table = cost::gate_table("honig", "base", "999999");
     for size in cost::GATE_SIZES {
         let (generated, baseline) = cost::at(size);
         for path in cost::paths(size) {
