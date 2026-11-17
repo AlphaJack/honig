@@ -447,9 +447,10 @@ pub fn member_body() -> Bytes {
     Bytes::from_static(b"name=Alice&age=30&role=admin")
 }
 
-/// The sizes that both benches check every kind at. A kind keeps one budget across them.
+/// The sizes that both benches check every kind at. A kind keeps one budget across them. 2 KiB is about the median
+/// JSON body of real APIs; 256 B, 16 KiB and 1 MiB bracket it.
 #[allow(dead_code, reason = "the size sweep picks its own sizes")]
-pub const BENCH_SIZES: [usize; 3] = [256, 16 << 10, 1 << 20];
+pub const BENCH_SIZES: [usize; 4] = [256, 2 << 10, 16 << 10, 1 << 20];
 
 /// The table that a bench prints: per kind of path and size, what the generated side (`head`) and its baseline
 /// (`base`) measured, as wide as `sample`, their ratio, the budget of the kind and whether it holds.
