@@ -186,3 +186,7 @@ required-features = ["multipart"]
 [[bench]]
 name = "unions"
 harness = false
+
+[[bench]]
+name = "schema"
+harness = false
