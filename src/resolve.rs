@@ -836,4 +836,112 @@ mod tests {
         }
         std::fs::remove_dir_all(dir).ok();
     }
+
+    /// A fresh directory with `files` as (path, text).
+    fn files(test: &str, files: &[(&str, &str)]) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("honig-{test}-{}", std::process::id()));
+        std::fs::remove_dir_all(&dir).ok();
+        for (path, text) in files {
+            let path = dir.join(path);
+            std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+            std::fs::write(path, text).unwrap();
+        }
+        dir
+    }
+
+    #[test]
+    fn files_of_one_name_in_three_folders_get_numbered_names() {
+        let dir = files(
+            "numbered",
+            &[
+                ("a/Order.yaml", "type: string"),
+                ("b/Order.yaml", "type: integer"),
+                ("c/Order.yaml", "type: boolean"),
+                ("a/lang.yaml", "{name: a, in: query, schema: {type: string}}"),
+                ("b/lang.yaml", "{name: b, in: query, schema: {type: string}}"),
+                ("c/lang.yaml", "{name: c, in: query, schema: {type: string}}"),
+            ],
+        );
+        let op = |d: &str| {
+            json!({"parameters": [{"$ref": format!("{d}/lang.yaml")}], "responses": {"200": {"description": "ok",
+                "content": {"application/json": {"schema": {"$ref": format!("{d}/Order.yaml")}}}}}})
+        };
+        let root = json!({
+            "openapi": "3.2.0",
+            "paths": {"/a": {"get": op("a")}, "/b": {"get": op("b")}, "/c": {"get": op("c")}},
+            "components": {"parameters": {"lang": {"name": "own", "in": "query"}}}
+        });
+        let mut d = Diagnostics::default();
+        let out = bundle(root, Some(&dir), &mut d);
+        assert!(d.is_empty(), "{d:?}");
+        let names = |kind: &str| -> Vec<&String> { out["components"][kind].as_object().unwrap().keys().collect() };
+        assert_eq!(names("schemas"), ["Order", "Order2", "Order3"]);
+        assert_eq!(names("parameters"), ["lang", "lang2", "lang3", "lang4"], "`lang` was taken already");
+        assert_eq!(out["components"]["parameters"]["lang"]["name"], "own");
+        std::fs::remove_dir_all(dir).ok();
+    }
+
+    #[test]
+    fn an_external_header_becomes_a_component_and_an_anchor_resolves() {
+        let dir = files(
+            "header",
+            &[
+                ("rate.yaml", "{schema: {type: integer}}"),
+                ("defs.yaml", "$defs: {a: {type: string}, b: {$anchor: id, type: integer, minimum: 1}}"),
+            ],
+        );
+        let root = json!({
+            "openapi": "3.2.0",
+            "paths": {"/a": {"get": {"responses": {"200": {"description": "ok",
+                "headers": {"X-Rate": {"$ref": "rate.yaml"}},
+                "content": {"application/json": {"schema": {"$ref": "defs.yaml#id"}}}}}}}}
+        });
+        let mut d = Diagnostics::default();
+        let out = bundle(root, Some(&dir), &mut d);
+        assert!(d.is_empty(), "{d:?}");
+        let response = &out["paths"]["/a"]["get"]["responses"]["200"];
+        assert_eq!(response["headers"]["X-Rate"]["$ref"], "#/components/headers/rate");
+        let schema = &response["content"]["application/json"]["schema"]["$ref"];
+        let name = schema.as_str().unwrap().rsplit('/').next().unwrap();
+        assert_eq!(out["components"]["schemas"][name]["minimum"], 1, "{out:#}");
+        std::fs::remove_dir_all(dir).ok();
+    }
+
+    #[test]
+    fn external_security_schemes_of_one_name_get_numbered_names() {
+        let scheme = "components: {securitySchemes: {key: {type: apiKey, name: k, in: header}}}";
+        let dir = files("schemes", &[("a.yaml", scheme), ("b.yaml", scheme), ("c.yaml", scheme)]);
+        let root = json!({
+            "openapi": "3.2.0",
+            "security": [
+                {"a.yaml#/components/securitySchemes/key": []},
+                {"b.yaml#/components/securitySchemes/key": []},
+                {"c.yaml#/components/securitySchemes/key": []}
+            ],
+            "components": {"securitySchemes": {"key": {"type": "http", "scheme": "basic"}}}
+        });
+        let mut d = Diagnostics::default();
+        let out = bundle(root, Some(&dir), &mut d);
+        assert!(!d.has_errors(), "{d:?}");
+        let names: Vec<&String> =
+            out["security"].as_array().unwrap().iter().flat_map(|r| r.as_object().unwrap().keys()).collect();
+        assert_eq!(names, ["key2", "key3", "key4"]);
+        std::fs::remove_dir_all(dir).ok();
+    }
+
+    #[test]
+    fn security_requirements_are_found_only_where_they_apply() {
+        let root = json!({
+            "openapi": "3.2.0",
+            "security": [{"root": []}],
+            "paths": {"/a": {
+                "security": [{"pathItem": []}],
+                "get": {"security": [{"get": []}], "responses": {}},
+                "additionalOperations": {"COPY": {"security": [{"copy": []}], "responses": {}}}
+            }},
+            "components": {"schemas": {"S": {"properties": {"security": {"example": {"security": [{"data": []}]}}}}}}
+        });
+        let keys: Vec<String> = unresolved_security(&root).into_iter().map(|(_, k)| k).collect();
+        assert_eq!(keys, ["root", "get", "copy"]);
+    }
 }

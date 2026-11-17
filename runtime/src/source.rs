@@ -680,3 +680,43 @@ pub enum Sse<T> {
     /// A comment line that clients skip. It is a keep-alive. See [`Items::heartbeat`](crate::Items::heartbeat).
     Comment(String),
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{Blob, Body, BodyError, ByteStream};
+
+    fn pieces(pieces: &[&'static str]) -> ByteStream {
+        let pieces: Vec<Result<bytes::Bytes, crate::Error>> =
+            pieces.iter().map(|p| Ok(bytes::Bytes::from_static(p.as_bytes()))).collect();
+        ByteStream::chunks(futures_util::stream::iter(pieces), None)
+    }
+
+    #[test]
+    fn read_all_joins_the_pieces_up_to_the_limit() {
+        let read = |limit| crate::block_on(pieces(&["abc", "de"]).take_source().unwrap().read_all(limit));
+        assert_eq!(read(5).ok().as_deref(), Some(&b"abcde"[..]), "exactly the limit");
+        assert!(matches!(read(4), Err(BodyError::TooLarge)));
+        assert!(matches!(read(2), Err(BodyError::TooLarge)), "the first piece alone is too large");
+    }
+
+    #[test]
+    fn streams_are_equal_only_to_their_clones() {
+        let a = pieces(&["a"]);
+        assert_eq!(a, a.clone());
+        assert_ne!(a, pieces(&["a"]));
+        assert_ne!(a, ByteStream::default());
+        assert_eq!(ByteStream::default(), ByteStream::default());
+    }
+
+    #[test]
+    fn a_blob_in_memory_is_not_streamed() {
+        let blob = Blob::from(vec![7, 8]);
+        assert!(!blob.is_streamed());
+        assert_eq!(blob.into_bytes(), Some(vec![7, 8]));
+        let streamed = Blob::stream(futures_util::stream::iter([vec![7_u8]]));
+        assert!(streamed.is_streamed());
+        assert_eq!(streamed.into_bytes(), None);
+        assert!(Body::from(pieces(&["a"])).is_streamed());
+        assert!(!Body::from("a").is_streamed());
+    }
+}
