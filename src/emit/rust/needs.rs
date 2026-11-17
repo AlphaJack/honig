@@ -67,8 +67,8 @@ fn codecs(api: &Api, server: bool) -> Vec<&'static str> {
 }
 
 /// Returns the runtime features of the string formats that a description uses. `idn` is for the types of mail addresses
-/// and host names. `uuid`, `time`, `url` and `ipnet` check `uuid`, the dates and times, `uri` and the CIDR blocks
-/// without their library types.
+/// and host names. `regress` checks `regex` without its library type. `ipnet` checks the CIDR blocks with or without
+/// theirs.
 fn format_checks(api: &Api, libs: FormatLibs) -> Vec<&'static str> {
     let mut used = BTreeSet::new();
     for ty in every_ty(api) {
@@ -81,7 +81,8 @@ fn format_checks(api: &Api, libs: FormatLibs) -> Vec<&'static str> {
         (IDN, mail.iter().any(|f| used.contains(f))),
         // The libraries that would type these formats check them.
         (REGRESS, checked(&[Format::Regex])),
-        (IPNET, checked(&[Format::Ipv4Cidr, Format::Ipv6Cidr])),
+        // The CIDR blocks: as text, and before `ipnet::Ipv4Net` reads one (`runtime::checked`).
+        (IPNET, used.contains(&Format::Ipv4Cidr) || used.contains(&Format::Ipv6Cidr)),
         // `runtime::FullTime`: a `time` with its offset.
         (JIFF, used.contains(&Format::Time) && libs.dates == Some(DateLib::Jiff)),
     ];

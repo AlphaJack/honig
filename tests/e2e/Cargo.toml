@@ -22,7 +22,7 @@ reqwest = { version = "0.13", optional = true, default-features = false, feature
 axum = { version = "0.8", optional = true, default-features = false }
 ureq = { version = "3", optional = true, default-features = false }
 reqwest-middleware = { version = "0.5", optional = true }
-honig = { version = "=0.0.1", features = ["client", "server", "base64", "cookie", "idn", "multipart", "oauth", "pkce", "regress", "xml", "simd"], path = "../../runtime" }
+honig = { version = "=0.0.1", features = ["client", "server", "base64", "cookie", "idn", "ipnet", "multipart", "oauth", "pkce", "regress", "xml", "simd"], path = "../../runtime" }
 
 [features]
 # On by default so that the tests of the workspace serve and call through them. Optional so that the generated
