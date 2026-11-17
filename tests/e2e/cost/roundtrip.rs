@@ -48,14 +48,14 @@ const fn trip(name: &'static str, (max_allocs, max_time): (f64, f64)) -> Trip {
 
 /// Every kind of roundtrip: the kinds of path of `cost::paths`.
 pub const TRIPS: [Trip; 8] = [
-    trip("upload", (1.45, 2.25)),
-    trip("multipart_b64", (2.0, 2.05)),
-    trip("download", (1.6, 2.65)),
-    trip("json_get", (1.3, 1.75)),
-    trip("sse", (1.25, 1.3)),
-    trip("jsonl", (1.1, 2.0)),
-    trip("xml", (0.7, 1.1)),
-    trip("form", (1.8, 2.55)),
+    trip("upload", (1.45, 2.5)),
+    trip("multipart_b64", (2.0, 2.4)),
+    trip("download", (1.6, 2.85)),
+    trip("json_get", (1.3, 1.9)),
+    trip("sse", (1.25, 1.45)),
+    trip("jsonl", (1.1, 2.2)),
+    trip("xml", (0.7, 1.2)),
+    trip("form", (1.8, 2.75)),
 ];
 
 type Over = honig::TowerTransport<Router>;

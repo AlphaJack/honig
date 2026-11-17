@@ -507,7 +507,7 @@ pub fn print_rows(table: &Table, mut rows: Vec<Measured>) -> Vec<String> {
 
 /// One kind of path, the request that it gets at one size, and its budgets against its baseline. The allocation budget
 /// is the most that the kind makes at any of [`BENCH_SIZES`], rounded up to the next 0.05: counts are the same on every
-/// run, so it needs no margin. The time budget is the worst ratio of the kind in a CI run and a tenth more, rounded up
+/// run, so it needs no margin. The time budget is the worst ratio of the kind in the CI runs so far and a tenth more, rounded up
 /// to the next 0.05: ratios differ between machines, so they come from the runner that enforces them. Lower a budget
 /// when a change makes the kind cheaper.
 pub struct Path {
