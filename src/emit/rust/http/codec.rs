@@ -4,10 +4,12 @@ use proc_macro2::{Literal, TokenStream};
 use quote::{format_ident, quote};
 
 use super::shared::{blob, enc, lists_part_types, send_media, style_variant, wrap};
+use crate::emit::rust::space::Space;
 use crate::emit::rust::syntax::pascal_ident;
-use crate::emit::rust::syntax::{ident, lit};
+use crate::emit::rust::syntax::{holds, ident, lit, ty};
 use crate::ir::http::Content;
 use crate::ir::media::MediaKind;
+use crate::ir::types::Ty;
 
 pub(crate) fn fallible_encode(kind: MediaKind) -> bool {
     !matches!(kind, MediaKind::Text | MediaKind::Bytes)
@@ -114,7 +116,7 @@ pub(crate) fn body_bytes(e: &TokenStream, c: &Content, by_ref: bool) -> Option<T
         MediaKind::Linkset => quote!(runtime::linkset_encode(#arg)?.into_bytes()),
         // An owned `String` body moves into the response (no copy). A named string type converts first. The
         // function form also takes `*body` (the body of a boxed variant). `*body.into_bytes()` would misparse that.
-        MediaKind::Text if matches!(c.ty, crate::ir::types::Ty::String) => quote!(String::into_bytes(#e)),
+        MediaKind::Text if matches!(c.ty, Ty::String) => quote!(String::into_bytes(#e)),
         MediaKind::Text => quote!(String::from(#e).into_bytes()),
         MediaKind::Xml => quote!(runtime::xml_encode(#arg)?),
         MediaKind::Bytes if !blob(c) => e.clone(),
@@ -227,11 +229,22 @@ fn form_encode_styles(c: &Content) -> Vec<TokenStream> {
         .collect()
 }
 
+/// Returns `.map(...)` that takes a decoded `runtime::checked::Checked` of `t` apart: the decoder reads `t` with the text
+/// of its library formats checked first. `None` when `t` holds none.
+pub(crate) fn checked_map(space: &Space<'_>, t: &Ty) -> Option<TokenStream> {
+    let h = holds(space, t)?;
+    let t = ty(space, t, true);
+    Some(quote!(.map(runtime::checked::Checked::<#t, #h>::into_inner)))
+}
+
 /// Returns the expression that decodes one content and whether it is a `Result`.
-pub(crate) fn decode_body(c: &Content, d: &Decode) -> (TokenStream, bool) {
+pub(crate) fn decode_body(space: &Space<'_>, c: &Content, d: &Decode) -> (TokenStream, bool) {
     let (status, ct, body) = (&d.status, &d.ct, &d.body);
     match c.kind {
-        MediaKind::Json => (quote!(runtime::json_decode(#status, &#body)), true),
+        MediaKind::Json => {
+            let checked = checked_map(space, &c.ty);
+            (quote!(runtime::json_decode(#status, &#body) #checked), true)
+        }
         MediaKind::Linkset => (quote!(runtime::linkset_decode(#status, &String::from_utf8_lossy(&#body))), true),
         MediaKind::Text => (quote!(runtime::text_decode(&#body)), false),
         MediaKind::Xml => (quote!(runtime::xml_decode(#status, &#body)), true),
@@ -287,7 +300,17 @@ pub(crate) fn decode_body(c: &Content, d: &Decode) -> (TokenStream, bool) {
                 }
             );
             let items = c.streams().then(|| quote!(.map(runtime::Items::List)));
-            (quote!(runtime::#f(#status, &#body) #items), true)
+            // Each item has the text of its library formats checked first.
+            let item = if let Ty::Vec(item) = &c.ty { Some(item.as_ref()) } else { None };
+            let checked = item.and_then(|item| {
+                holds(space, item).map(|h| {
+                    let item = ty(space, item, true);
+                    quote!(.map(|v: Vec<runtime::checked::Checked<#item, #h>>| {
+                        v.into_iter().map(runtime::checked::Checked::into_inner).collect::<Vec<_>>()
+                    }))
+                })
+            });
+            (quote!(runtime::#f(#status, &#body) #checked #items), true)
         }
     }
 }
@@ -320,13 +343,14 @@ pub(crate) fn media_rank(media: &str) -> Generality {
 ///
 /// `enum_path` names the enum of one variant per media type; `None` when every one decodes into the same type.
 pub(crate) fn decode_contents(
+    space: &Space<'_>,
     contents: &[Content],
     plan: &[bool],
     enum_path: Option<&TokenStream>,
     d: &Decode,
 ) -> TokenStream {
     let one = |c: &Content| {
-        let (e, fallible) = decode_body(c, d);
+        let (e, fallible) = decode_body(space, c, d);
         let q = &d.q;
         if fallible { quote!(#e #q) } else { e }
     };

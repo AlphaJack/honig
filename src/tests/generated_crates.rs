@@ -153,19 +153,14 @@ fn a_shift_keeps_every_offset_as_sent() {
 #[test]
 #[ignore = "compiles generated crates"]
 fn library_types_read_only_their_format() {
+    let types = Crate { paths: serde_json::json!({}), schemas: checked_schemas(), test: CHECKED_TEST, http: false };
     let all = crate::settings::FormatLibs { uuid: true, url: true, ipnet: true, dates: None };
     let jiff = "jiff = { version = \"1\", features = [\"serde\"] }";
-    build_checked(
-        "checked-jiff",
-        jiff,
-        crate::settings::FormatLibs { dates: Some(crate::settings::DateLib::Jiff), ..all },
-    );
+    let with_jiff = crate::settings::FormatLibs { dates: Some(crate::settings::DateLib::Jiff), ..all };
+    build_checked("checked-jiff", jiff, with_jiff, &types);
     let chrono = "chrono = { version = \"0.4\", features = [\"serde\"] }";
-    build_checked(
-        "checked-chrono",
-        chrono,
-        crate::settings::FormatLibs { dates: Some(crate::settings::DateLib::Chrono), ..all },
-    );
+    let with_chrono = crate::settings::FormatLibs { dates: Some(crate::settings::DateLib::Chrono), ..all };
+    build_checked("checked-chrono", chrono, with_chrono, &types);
 }
 
 /// A struct with a checked format in every place a field can hold one: itself, `Option`, `runtime::Nullable`, a
@@ -275,8 +270,16 @@ fn an_untagged_branch_checks_its_text() {
 }
 "##;
 
-/// Generates `checked_schemas` with `libs` into a crate named `name` that depends on `lib` too, and runs its test.
-fn build_checked(name: &str, lib: &str, libs: crate::settings::FormatLibs) {
+/// The description and the test of a generated crate. `http` generates its client and server too.
+struct Crate<'a> {
+    paths: serde_json::Value,
+    schemas: serde_json::Value,
+    test: &'a str,
+    http: bool,
+}
+
+/// Generates `krate` with `libs` into a crate named `name` that depends on `lib` too, and runs its test.
+fn build_checked(name: &str, lib: &str, libs: crate::settings::FormatLibs, krate: &Crate<'_>) {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
     let out = root.join("target").join("gen-tests").join(name);
     // A missing directory is fine: there is nothing to clean up.
@@ -288,13 +291,13 @@ fn build_checked(name: &str, lib: &str, libs: crate::settings::FormatLibs) {
          ipnet = {{ version = \"2\", features = [\"serde\"] }}\n"
     );
     let opts = crate::emit::Options {
-        client: false,
-        server: false,
+        client: krate.http,
+        server: krate.http,
         tests: false,
         rust: crate::emit::rust::Options { libs, ..Default::default() },
         ..crate::emit::Options::default()
     };
-    let doc = super::common::spec("3.2.0", &serde_json::json!({}), &serde_json::json!({"schemas": checked_schemas()}));
+    let doc = super::common::spec("3.2.0", &krate.paths, &serde_json::json!({"schemas": krate.schemas}));
     let spec = super::common::write(name, &doc, &[]);
     let generated = crate::generate::generate(&spec, &opts).unwrap_or_else(|d| panic!("generation failed: {:?}", d.0));
     let api = out.join("src").join("api");
@@ -302,7 +305,7 @@ fn build_checked(name: &str, lib: &str, libs: crate::settings::FormatLibs) {
     let manifest = crate::manifest::with_runtime(&manifest, &generated.runtime_features).unwrap();
     std::fs::write(out.join("Cargo.toml"), manifest).unwrap();
     super::common::use_local_runtime(&out.join("Cargo.toml"));
-    std::fs::write(out.join("src").join("lib.rs"), CHECKED_TEST).unwrap();
+    std::fs::write(out.join("src").join("lib.rs"), krate.test).unwrap();
     let status = Command::new(env!("CARGO"))
         .args(["test", "--quiet"])
         .current_dir(&out)
@@ -311,3 +314,159 @@ fn build_checked(name: &str, lib: &str, libs: crate::settings::FormatLibs) {
         .expect("cargo runs");
     assert!(status.success(), "{name} does not build or its test fails");
 }
+
+/// Operations whose parameters, bodies and response headers are library types.
+fn checked_paths() -> serde_json::Value {
+    serde_json::json!({
+        "/items/{id}": {"get": {
+            "operationId": "getItem",
+            "parameters": [
+                {"name": "id", "in": "path", "required": true, "schema": {"type": "string", "format": "uuid"}},
+                {"name": "since", "in": "query", "schema": {"type": "string", "format": "date-time"}},
+                {"name": "X-Day", "in": "header", "schema": {"type": "string", "format": "date"}},
+                {"name": "days", "in": "query", "schema": {"type": "array", "items": {"type": "string", "format": "date"}}},
+            ],
+            "responses": {"200": {
+                "description": "The time of the item.",
+                "headers": {"Location": {"schema": {"type": "string", "format": "uri"}}},
+                "content": {"application/json": {"schema": {"type": "string", "format": "date-time"}}},
+            }},
+        }},
+        "/stamps": {"post": {
+            "operationId": "postStamp",
+            "requestBody": {"required": true, "content": {"application/json": {"schema": {"type": "string", "format": "date-time"}}}},
+            "responses": {"204": {"description": "Kept."}},
+        }},
+        "/log": {"get": {
+            "operationId": "getLog",
+            "responses": {"200": {
+                "description": "One day per line.",
+                "content": {"application/jsonl": {"itemSchema": {"type": "string", "format": "date"}}},
+            }},
+        }},
+    })
+}
+
+/// Bodies, parameters and response headers that are library types check their text too.
+#[test]
+#[ignore = "compiles generated crates"]
+fn library_types_in_requests_and_responses_read_only_their_format() {
+    let http = Crate { paths: checked_paths(), schemas: serde_json::json!({}), test: CHECKED_HTTP_TEST, http: true };
+    let jiff = "jiff = { version = \"1\", features = [\"serde\"] }";
+    let libs =
+        crate::settings::FormatLibs { uuid: true, url: true, ipnet: true, dates: Some(crate::settings::DateLib::Jiff) };
+    build_checked("checked-http", jiff, libs, &http);
+}
+
+/// The test of the generated client and server: a request or a response with text that only the library reads fails.
+const CHECKED_HTTP_TEST: &str = r#"#![deny(warnings)]
+pub mod api;
+
+#[cfg(test)]
+mod tests {
+use super::api::{self, operations as ops};
+
+const ID: &str = "01234567-89ab-4def-8123-456789abcdef";
+
+struct Items;
+
+impl api::Api for Items {
+    type Principal = ();
+
+    async fn get_item(&self, _: ops::get_item::Params, _: &api::Context<'_>) -> Result<ops::get_item::Response, api::ApiError> {
+        Ok(ops::get_item::Response::Ok { body: "2024-06-19T08:30:06Z".parse().unwrap(), location: None })
+    }
+
+    async fn post_stamp(&self, _: ops::post_stamp::Params, _: &api::Context<'_>) -> Result<ops::post_stamp::Response, api::ApiError> {
+        Ok(ops::post_stamp::Response::NoContent)
+    }
+
+    async fn get_log(&self, _: ops::get_log::Params, _: &api::Context<'_>) -> Result<ops::get_log::Response, api::ApiError> {
+        Ok(ops::get_log::Response::Ok(api::Items::List(vec![])))
+    }
+}
+
+/// The status the server answers.
+fn status(method: &str, uri: &str, header: Option<(&str, &str)>, body: &str) -> u16 {
+    use api::Service;
+    let mut service = api::Server::new(Items).into_service();
+    let mut req = api::http::Request::builder().method(method).uri(uri).header("content-type", "application/json");
+    if let Some((name, value)) = header {
+        req = req.header(name, value);
+    }
+    let req = req.body(body.to_owned()).unwrap();
+    api::block_on(service.call(req)).unwrap().status().as_u16()
+}
+
+#[test]
+fn the_server_checks_parameters_and_bodies() {
+    let item = format!("/items/{ID}");
+    let mut wrong = vec![];
+    let mut expect = |want: u16, method: &str, uri: &str, header: Option<(&str, &str)>, body: &str| {
+        let got = status(method, uri, header, body);
+        if got != want {
+            wrong.push(format!("{method} {uri} {header:?} {body}: {got}, not {want}"));
+        }
+    };
+    expect(200, "GET", &item, None, "");
+    expect(400, "GET", "/items/%7B01234567-89ab-4def-8123-456789abcdef%7D", None, "");
+    expect(200, "GET", &format!("{item}?since=2024-06-19T08:30:06Z"), None, "");
+    expect(400, "GET", &format!("{item}?since=2024-06-19%2008:30:06Z"), None, "");
+    expect(200, "GET", &item, Some(("x-day", "2024-06-19")), "");
+    expect(400, "GET", &item, Some(("x-day", "20240619")), "");
+    expect(200, "GET", &format!("{item}?days=2024-06-19&days=2024-06-20"), None, "");
+    expect(400, "GET", &format!("{item}?days=2024-06-19&days=20240620"), None, "");
+    expect(204, "POST", "/stamps", None, "\"2024-06-19T08:30:06Z\"");
+    expect(400, "POST", "/stamps", None, "\"2024-06-19 08:30:06Z\"");
+    assert!(wrong.is_empty(), "{wrong:#?}");
+}
+
+/// A transport that answers every request with one response.
+#[derive(Clone)]
+struct Answer {
+    content_type: &'static str,
+    location: &'static str,
+    body: &'static str,
+}
+
+impl api::Service<api::Request> for Answer {
+    type Response = api::Response;
+    type Error = std::convert::Infallible;
+    type Future = std::future::Ready<Result<api::Response, std::convert::Infallible>>;
+
+    fn poll_ready(&mut self, _: &mut std::task::Context<'_>) -> std::task::Poll<Result<(), Self::Error>> {
+        std::task::Poll::Ready(Ok(()))
+    }
+
+    fn call(&mut self, _: api::Request) -> Self::Future {
+        let response = api::http::Response::builder()
+            .status(200)
+            .header("content-type", self.content_type)
+            .header("location", self.location)
+            .body(api::Body::from(self.body))
+            .unwrap();
+        std::future::ready(Ok(response))
+    }
+}
+
+#[test]
+fn the_client_checks_bodies_and_headers() {
+    let item = |location: &'static str, body: &'static str| {
+        let client = api::Client::new(Answer { content_type: "application/json", location, body });
+        api::block_on(client.get_item(ops::get_item::Params::new(ID.parse().unwrap()))).is_ok()
+    };
+    let log = |body: &'static str| {
+        let client = api::Client::new(Answer { content_type: "application/jsonl", location: "/", body });
+        api::block_on(client.get_log(ops::get_log::Params {})).is_ok()
+    };
+    let got = [
+        item("https://example.com/a", "\"2024-06-19T08:30:06Z\""),
+        !item("https://example.com/a", "\"2024-06-19 08:30:06Z\""),
+        !item("https://example.com/a b", "\"2024-06-19T08:30:06Z\""),
+        log("\"2024-06-19\"\n\"2024-06-20\"\n"),
+        !log("\"2024-06-19\"\n\"20240620\"\n"),
+    ];
+    assert_eq!(got, [true; 5], "good body, bad body, bad header, good lines, bad line");
+}
+}
+"#;
