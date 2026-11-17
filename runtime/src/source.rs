@@ -719,4 +719,51 @@ mod tests {
         assert!(Body::from(pieces(&["a"])).is_streamed());
         assert!(!Body::from("a").is_streamed());
     }
+
+    /// A buffer that clones still hold is sent whole with its length.
+    #[test]
+    fn a_shared_buffer_knows_its_size() {
+        use super::{BodySource, Shared};
+        let held = bytes::Bytes::from_static(b"abc");
+        assert_eq!(Shared(Some(held.clone())).shared(), Some(held));
+        assert_eq!((Shared(Some(bytes::Bytes::from_static(b"abc"))).size(), Shared(None).size()), (Some(3), None));
+    }
+
+    #[test]
+    fn a_blob_in_memory_is_one_piece_and_equal_by_bytes_and_media() {
+        use futures_util::StreamExt;
+        let mut blob = Blob::from(vec![7]);
+        assert_eq!(crate::block_on(blob.next()).and_then(Result::ok).as_deref(), Some(&[7_u8][..]));
+        assert!(crate::block_on(blob.next()).is_none());
+        assert!(crate::block_on(Blob::default().next()).is_none(), "no empty piece");
+        assert_eq!(Blob::from(vec![1]), Blob::from(vec![1]));
+        assert_ne!(Blob::from(vec![1]), Blob::from(vec![2]));
+        assert_ne!(Blob::from(vec![1]).with_media("text/plain"), Blob::from(vec![1]));
+    }
+
+    /// A ranged body sends its length. A range outside it or backwards leaves the whole body.
+    #[test]
+    fn a_ranged_body_knows_its_size() {
+        let size = |cut: Option<(u64, u64)>| {
+            let body = Blob::ranged(10, |_, _| futures_util::stream::iter([vec![0_u8]])).into_body();
+            #[cfg(feature = "server")]
+            if let Some((first, last)) = cut {
+                body.chunks().cut(first, last);
+            }
+            #[cfg(not(feature = "server"))]
+            let _ = cut;
+            body.chunks().size()
+        };
+        assert_eq!(size(None), Some(10));
+        #[cfg(feature = "server")]
+        assert_eq!((size(Some((2, 4))), size(Some((5, 2))), size(Some((2, 10)))), (Some(3), Some(10), Some(10)));
+    }
+
+    #[test]
+    fn a_body_ends_when_nothing_is_held_or_to_come() {
+        use http_body::Body as _;
+        assert!(!Body::from("a").is_empty() && Body::from("").is_empty());
+        assert!(Body::from("").is_end_stream() && !Body::from("a").is_end_stream());
+        assert!(!Body::from(pieces(&["a"])).is_end_stream());
+    }
 }

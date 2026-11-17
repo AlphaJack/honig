@@ -60,3 +60,11 @@ pub(crate) fn blank_record(record: &[u8]) -> bool {
 pub(crate) fn json_record<T: DeserializeOwned>(status: u16, record: &[u8]) -> Result<T, Error> {
     json_decode(status, record.strip_prefix(&[RECORD_SEPARATOR]).unwrap_or(record))
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn a_json_sequence_starts_each_record_with_rs() {
+        assert_eq!(super::json_seq_encode(&[1, 2]).unwrap(), b"\x1e1\n\x1e2\n");
+    }
+}

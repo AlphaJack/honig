@@ -60,6 +60,48 @@ impl XmlShape for Note {
     }
 }
 
+/// An element whose text is an optional field.
+#[derive(Debug, Deserialize, Serialize, PartialEq)]
+struct Label {
+    #[serde(default)]
+    value: Option<String>,
+}
+
+static LABEL: XmlNode = XmlNode {
+    name: "label",
+    namespace: "",
+    prefix: "",
+    fields: &[XmlField {
+        wire: "value",
+        name: "value",
+        prefix: "",
+        attribute: false,
+        text: true,
+        list: false,
+        wrapped: false,
+        required: false,
+        item: "value",
+        child: None,
+        cdata: false,
+        inline: false,
+        nullable: false,
+        object: false,
+    }],
+};
+
+impl XmlShape for Label {
+    fn xml() -> &'static XmlNode {
+        &LABEL
+    }
+}
+
+#[test]
+fn xml_text_fields_and_empty_elements_keep_their_text() {
+    assert_eq!(xml_decode::<Label>(0, b"<label>hi</label>").unwrap(), Label { value: Some("hi".into()) });
+    assert_eq!(xml_decode::<Label>(0, b"<label/>").unwrap(), Label { value: None }, "optional: absent");
+    assert_eq!(xml_decode::<Note>(0, b"<note><body></body></note>").unwrap(), Note { body: String::new() });
+}
+
 fn xml(text: &str) -> Result<Any, honig::Error> {
     xml_decode::<Any>(0, text.as_bytes())
 }

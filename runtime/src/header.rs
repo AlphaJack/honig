@@ -27,3 +27,23 @@ pub fn header_text(bytes: &[u8]) -> Cow<'_, str> {
 pub(crate) fn latin1(bytes: &[u8]) -> String {
     bytes.iter().map(|&b| char::from(b)).collect()
 }
+
+#[cfg(test)]
+mod tests {
+    use std::borrow::Cow;
+
+    use super::{header_text, header_value};
+
+    #[test]
+    fn a_header_value_has_no_control_character_but_a_tab() {
+        assert!(header_value(Cow::Borrowed("a\tb")).is_some());
+        assert!(header_value(Cow::Borrowed("a\nb")).is_none());
+        assert!(header_value(Cow::Owned("a\rb".to_owned())).is_none());
+    }
+
+    #[test]
+    fn text_that_is_not_utf8_is_latin1() {
+        assert_eq!(header_text(b"caf\xE9"), "café");
+        assert!(matches!(header_text(b"cafe"), Cow::Borrowed("cafe")));
+    }
+}

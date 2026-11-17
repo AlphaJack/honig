@@ -1259,6 +1259,22 @@ mod mail {
             assert!(hostname("실례.테스트", true), "idn-hostname allows Unicode labels");
             assert!(!hostname("〮실례.테스트", true), "a combining mark cannot start a label");
         }
+
+        /// The local part of `email` is ASCII. `idn-email` adds any non-ASCII character but no more ASCII.
+        #[test]
+        fn only_idn_email_allows_non_ascii_local_parts() {
+            assert!(!email("ü@example.com", false) && email("ü@example.com", true));
+            assert!(!email("a(b@example.com", true));
+            assert!(!email("\"ü\"@example.com", false) && email("\"ü\"@example.com", true));
+            assert!(!email("\"a\tb\"@example.com", true));
+        }
+
+        /// RFC 5892 appendix A: a middle dot stands between two `l`. A katakana middle dot needs Japanese in its label.
+        #[test]
+        fn idn_hostname_follows_the_context_rules() {
+            assert!(hostname("l\u{B7}l", true) && !hostname("a\u{B7}b", true));
+            assert!(hostname("\u{30A2}\u{30FB}\u{30A2}", true) && !hostname("a\u{30FB}b", true));
+        }
     }
 }
 
@@ -1367,6 +1383,50 @@ mod tests {
         let schema = json!({"$defs": {"loop": {"$ref": "#/$defs/loop"}}, "$ref": "#/$defs/loop"});
         assert_eq!(faults(&json!({"a": [1]}), &schema), 0);
         assert_eq!(faults(&json!([1]), &schema), 0);
+    }
+
+    #[test]
+    fn number_bounds_hold_at_their_value() {
+        use serde_json::json;
+        assert_eq!(faults(&json!(1), &json!({"minimum": 1, "maximum": 1})), 0);
+        assert_eq!(faults(&json!(0), &json!({"exclusiveMinimum": 1})), 1);
+        assert_eq!(faults(&json!(2), &json!({"exclusiveMinimum": 1})), 0);
+        assert_eq!(faults(&json!({"a": 1}), &json!({"minProperties": 2})), 1);
+        assert_eq!(faults(&json!({"a": 1, "b": 2, "c": 3}), &json!({"minProperties": 2})), 0);
+    }
+
+    /// A count is a whole number from 0 below 2^53. Any other bound is no bound.
+    #[test]
+    fn a_count_that_is_not_whole_or_exact_is_no_bound() {
+        use serde_json::json;
+        assert_eq!(faults(&json!("a"), &json!({"maxLength": -1.0})), 0);
+        assert_eq!(faults(&json!("ab"), &json!({"maxLength": 1.5})), 0);
+        assert_eq!(faults(&json!("a"), &json!({"minLength": 9_007_199_254_740_992.0})), 0);
+    }
+
+    #[test]
+    fn a_reference_checks_its_definition_and_types_are_checked() {
+        use serde_json::json;
+        let schema = json!({"$defs": {"s": {"type": "string"}}, "$ref": "#/$defs/s"});
+        assert_eq!(faults(&json!(1), &schema), 1);
+        assert_eq!(faults(&json!(1.5), &json!({"type": "integer"})), 1);
+        assert_eq!(faults(&json!(1), &json!({"type": "object"})), 1);
+        assert_eq!(faults(&json!({"b": 1}), &json!({"propertyNames": {"const": "a"}})), 1);
+    }
+
+    #[test]
+    fn formats_are_checked_by_name() {
+        let wrong = |value: &str, format: &str| {
+            let mut out = vec![];
+            super::check_format(&mut out, &super::InstancePath::Root, value, format);
+            !out.is_empty()
+        };
+        assert!(wrong("x", "ipv6") && !wrong("::1", "ipv6"));
+        assert!(wrong("x", "uri") && !wrong("https://example.com", "uri"));
+        #[cfg(feature = "ipnet")]
+        assert!(wrong("::1", "ipv6-cidr") && !wrong("::1/128", "ipv6-cidr"));
+        #[cfg(feature = "idn")]
+        assert!(!wrong("ann@example.com", "email"));
     }
 
     /// `^(a+)+$` takes exponential time on a long value that almost matches. Past `maxLength` it does not run: the

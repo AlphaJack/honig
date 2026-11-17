@@ -297,3 +297,18 @@ pub fn set_cookies(req: &mut Request, pairs: Vec<String>) -> Result<(), Error> {
     }
     if joined.is_empty() { Ok(()) } else { add_cookie(req, &joined) }
 }
+
+#[cfg(test)]
+mod tests {
+    #[derive(serde::Serialize)]
+    struct Pair {
+        b: u8,
+        a: u8,
+    }
+
+    #[test]
+    fn keys_keep_the_order_of_their_fields() {
+        assert_eq!(super::key_order(&Pair { b: 1, a: 2 }), ["b", "a"]);
+        assert_eq!(super::key_order(&5), Vec::<String>::new());
+    }
+}

@@ -39,3 +39,15 @@ pub(crate) fn push_all(out: &mut String, pieces: &[&str]) {
         out.push_str(p);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{text_decode, text_encode};
+
+    #[test]
+    fn a_text_body_is_its_utf8_bytes() {
+        assert_eq!(text_encode("hé"), "hé".as_bytes());
+        assert_eq!(text_encode(""), b"");
+        assert_eq!(text_decode(b"h\xFF"), "h\u{FFFD}");
+    }
+}

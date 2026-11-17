@@ -202,4 +202,13 @@ mod tests {
             assert!(bad.parse::<Decimal>().is_err(), "{bad}");
         }
     }
+
+    #[test]
+    fn integers_are_decimals_as_written() {
+        use serde::de::IntoDeserializer;
+        assert_eq!((Decimal::from(-5_i64).to_string(), Decimal::from(5_u64).to_string()), ("-5".into(), "5".into()));
+        let read = Decimal::deserialize(IntoDeserializer::<de::value::Error>::into_deserializer(-7_i64));
+        assert_eq!(read.map(|d| d.to_string()), Ok("-7".to_owned()));
+        assert_eq!("x".parse::<Decimal>().unwrap_err().to_string(), "`x` is not a decimal number");
+    }
 }

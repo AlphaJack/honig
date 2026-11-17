@@ -415,4 +415,14 @@ mod tests {
             "https://id.example/auth?x=1&response_type=token&client_id=a&redirect_uri=r&state=s"
         );
     }
+
+    /// RFC 8628 section 3.2: a client waits 5 seconds between polls when the server names no interval.
+    #[test]
+    fn a_device_code_polls_every_5_seconds_by_default() {
+        let code: DeviceCode = serde_json::from_str(
+            r#"{"device_code": "d", "user_code": "u", "verification_uri": "https://example.com", "expires_in": 600}"#,
+        )
+        .unwrap();
+        assert_eq!(code.interval, 5);
+    }
 }

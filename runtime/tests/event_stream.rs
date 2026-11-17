@@ -139,6 +139,22 @@ fn failed_reconnections_are_errors_until_the_budget_runs_out() {
     assert_eq!(script.sent.lock().unwrap().len(), 3, "no third attempt");
 }
 
+/// `429 Too Many Requests` is busy as a server error is: the stream tries again.
+#[test]
+fn too_many_requests_is_retried() {
+    let script = Script::new([
+        Answer::Stream(200, SSE, vec![Some("retry: 0\n\n")]),
+        Answer::Stream(429, "text/plain", vec![]),
+        Answer::Stream(200, SSE, vec![Some("data: \"a\"\n\n")]),
+    ]);
+    let got = drain(&mut open(&script).max_retries(2));
+    assert_matches!(
+        &got[..],
+        [Err(Error::UnexpectedStatus { status: http::StatusCode::TOO_MANY_REQUESTS, .. }), Ok(a)] if a == "a",
+        "{got:?}"
+    );
+}
+
 #[test]
 fn another_status_or_media_type_ends_the_stream() {
     for (answer, media) in

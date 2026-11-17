@@ -515,4 +515,29 @@ mod tests {
         let Err(Reason::Invalid(v)) = check_raw_json(br#"{"a": 1}"#, &any) else { panic!("refused") };
         assert_eq!(v.first().map(|v| v.path.as_str()), Some("/body/a"));
     }
+
+    /// A required field that nothing maps to gets the empty value of its type.
+    #[test]
+    fn a_required_field_gets_the_empty_value_of_its_type() {
+        static SCHEMA: ErrorSchema = ErrorSchema {
+            media: "application/json",
+            fields: &[
+                ("n", ErrorField::Empty("integer")),
+                ("ok", ErrorField::Empty("boolean")),
+                ("list", ErrorField::Empty("array")),
+                ("more", ErrorField::Empty("object")),
+                ("text", ErrorField::Empty("string")),
+            ],
+            open: false,
+        };
+        let r = Rejection::<()> {
+            reason: Reason::NotFound,
+            operation: None,
+            schema: Some(&SCHEMA),
+            headers: http::HeaderMap::new(),
+        };
+        assert_eq!(r.status(), http::StatusCode::NOT_FOUND);
+        let body: Value = serde_json::from_slice(r.response().body().bytes()).unwrap();
+        assert_eq!(body, serde_json::json!({"n": 0, "ok": false, "list": [], "more": {}, "text": ""}));
+    }
 }

@@ -133,4 +133,10 @@ mod tests {
             assert_eq!(serde_json::from_str::<Patch>(json).unwrap(), p);
         }
     }
+
+    #[test]
+    fn only_a_value_has_one() {
+        assert_eq!((Nullable::Value(1).value(), Nullable::Value(1).into_value()), (Some(&1), Some(1)));
+        assert_eq!((Nullable::<i32>::Null.value(), Nullable::<i32>::Absent.into_value()), (None, None));
+    }
 }

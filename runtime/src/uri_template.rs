@@ -128,4 +128,10 @@ mod tests {
             assert!(!is_uri_template(bad), "{bad}");
         }
     }
+
+    /// RFC 6570 `literals`: `ucschar` and `iprivate`, no other non-ASCII character.
+    #[test]
+    fn a_literal_may_be_private_use_but_not_a_noncharacter() {
+        assert!(is_uri_template("/a\u{e000}") && !is_uri_template("/a\u{fffe}"));
+    }
 }

@@ -12,8 +12,17 @@ sharding = "round-robin"
 # `const fn` that never stops runs at compile time.
 build_timeout_multiplier = 3.0
 
-# Built only for wasm32. The runner never compiles them, so every mutant is missed.
-exclude_globs = ["runtime/src/client/adapters/gloo.rs", "runtime/src/client/adapters/reqwest/wasm.rs", "runtime/src/transport/wasm.rs"]
+# Code behind a feature that no workspace member turns on (`ipnet`, `ureq`, `reqwest-middleware`) is built and tested.
+all_features = true
+
+# Built only for wasm32. The runner never compiles them, so every mutant is missed. The same for the engines that
+# `simd` replaces.
+exclude_globs = [
+  "runtime/src/client/adapters/gloo.rs",
+  "runtime/src/client/adapters/reqwest/wasm.rs",
+  "runtime/src/transport/wasm.rs",
+  "runtime/src/json/plain.rs",
+]
 
 # Mutants that change nothing a test can see.
 exclude_re = [
@@ -23,7 +32,8 @@ exclude_re = [
   # A hint: callers must work with any value.
   '::size_hint -> Option<usize>',
   # Forwards to the wrapped serializer. No format of the runtime reads it.
-  'runtime/src/finite\.rs:.*is_human_readable',
+  'runtime/src/(finite|path|integral|no_seq)\.rs:.*is_human_readable',
+  'runtime/src/path\.rs:\d+:\d+: replace <impl de::VariantAccess<.*>::unit_variant -> ',
   # Needs a server on the network. The build without `remote-refs` is not mutated.
   'src/resolve\.rs:.*replace download -> ',
   # The 16 MiB default of `max_body_bytes`.
@@ -33,5 +43,35 @@ exclude_re = [
   # A fragment that is empty or a pointer finds no anchor either way.
   'src/resolve\.rs:\d+:\d+: replace && with \|\| in fetch$',
   # When a decoder drops the records it returned. Later only costs memory.
-  'runtime/src/stream\.rs:\d+:\d+: replace / with \* in Decoder<T>::poll_item$',
+  'runtime/src/stream\.rs:\d+:\d+: replace (/ with \*|> with <|> with >=) in Decoder<T>::poll_item$',
+  # One more item in a piece of a streamed body. The bytes are the same.
+  'runtime/src/stream\.rs:319:\d+: replace < with <= in ',
+  # Three bytes hold no whole event: waiting for a fourth changes nothing.
+  'runtime/src/stream\.rs:872:\d+: replace < with <= in ',
+  # `eol + 1` and `eol * 1`: past the line break either way.
+  'runtime/src/stream\.rs:(930:34|948:37): replace \+ with \* in ',
+  # The base64 engine without `simd`. The build has `simd` on.
+  'runtime/src/base64\.rs:(2[4-9]|3\d|4[0-4]):',
+  # `from_str` checks what the guard checks: the guard only saves the check.
+  'runtime/src/header\.rs:\d+:\d+: replace (match guard .* with false|\|\| with &&) in header_value$',
+  # Pieces joined early decode to the same bytes. The capacity is a hint.
+  'runtime/src/base64\.rs:\d+:\d+: replace && with \|\| in decode_pieces$',
+  'runtime/src/base64\.rs:\d+:\d+: replace [/*] with [-+*/%] in unbase64_mime$',
+  # A month that does not exist has 0 days: no day is in `1..=0` either way.
+  'runtime/src/formats\.rs:\d+:\d+: replace > with >= in is_date$',
+  # An ASCII character that the arm before refused is no `ucschar` or `iprivate` either.
+  'runtime/src/uri\.rs:\d+:\d+: replace match guard !c\.is_ascii\(\) with true in all$',
+  # serde_json refuses an optional map key itself.
+  'runtime/src/unique_keys\.rs:\d+:\d+: replace <impl Serializer for KeyText>::serialize_some -> ',
+  # Text that does not start with `[` parses to no array: the guard only saves the parse.
+  'runtime/src/coerce\.rs:\d+:\d+: replace match guard s\.trim_start\(\)\.starts_with\(.*\) with true ',
+  # `None` and the error both send the value down the `Value` path.
+  'runtime/src/scalar\.rs:\d+:\d+: replace <impl Serializer for ScalarText>::serialize_(bytes|newtype_variant) -> .* with Ok\(None\)$',
+  'runtime/src/scalar\.rs:\d+:\d+: replace <impl fmt::Display for NotScalar>::fmt ',
+  # A leading comma on both sides: the text is still the same for equal values only.
+  'runtime/src/validate\.rs:\d+:\d+: replace > with >= in canonical$',
+  # A plain schema checked whole gives the same answer. The arm only skips a copy of the name.
+  'runtime/src/validate\.rs:\d+:\d+: delete match arm "pattern" \| "minLength" \| "maxLength" in Schema<.*>::valid_name$',
+  # `multipleOf: 0` divides by zero: NaN fails no comparison either way.
+  'runtime/src/validate\.rs:546:\d+: replace > with >= in Schema<.*>::check$',
 ]

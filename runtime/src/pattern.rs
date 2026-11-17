@@ -63,4 +63,10 @@ mod tests {
         assert!(pattern_matches_dyn(r"[\-\_]", "_"), "plain ECMA-262 when Unicode mode refuses it");
         assert!(pattern_matches_dyn("(", "anything"));
     }
+
+    #[test]
+    fn a_pattern_compiles_with_or_without_unicode() {
+        assert!(compiles("^[a-z]+$") && compiles(r"[\-\_]"));
+        assert!(!compiles("(a"));
+    }
 }

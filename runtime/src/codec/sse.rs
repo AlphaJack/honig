@@ -219,8 +219,8 @@ pub(crate) fn sse_item<T: DeserializeOwned>(status: u16, block: &str) -> Result<
             "id" if !v.contains('\0') => {
                 o.insert("id".to_owned(), Value::String(v.to_owned()));
             }
-            // A number too large for `u64` is ignored, as any other field that is not one.
-            "retry" if !v.is_empty() && v.bytes().all(|b| b.is_ascii_digit()) => {
+            // A number too large for `u64` is ignored, as any other field that is not one. So is an empty one.
+            "retry" if v.bytes().all(|b| b.is_ascii_digit()) => {
                 if let Ok(n) = v.parse::<u64>() {
                     o.insert("retry".to_owned(), Value::from(n));
                 }
@@ -568,6 +568,7 @@ mod tests {
     fn a_non_numeric_retry_is_ignored_and_a_bom_is_skipped() {
         let e = events("\u{feff}data: x\nretry: 10s\n\n");
         assert_eq!(e, [Frame { data: "x".into(), event: None, id: None, retry: None }]);
+        assert_eq!(events("data: x\nretry:\n\n")[0].retry, None, "empty");
     }
 
     #[test]
@@ -629,5 +630,20 @@ mod tests {
         assert_eq!(sse_boundary(b"data: a\n\r", 0, false), Err(7), "may be \\r\\n");
         assert_eq!(sse_boundary(b"data: a\n\r", 0, true), Ok((7, 9)));
         assert_eq!(sse_boundary(b"data: a\n\r\nx", 0, false), Ok((7, 10)));
+    }
+
+    /// An event-shaped item reads its `data` as the field. A `data` object is not the whole item.
+    #[test]
+    fn an_event_shaped_item_keeps_object_data_whole() {
+        let inner = serde_json::json!({"data": {"k": "v"}}).as_object().cloned();
+        let body = b"data: {\"data\": {\"k\": \"v\"}}\n\n";
+        assert_eq!(sse_decode::<Update>(200, body).unwrap(), [Update { id: None, data: inner }]);
+    }
+
+    #[test]
+    fn an_id_with_nul_is_ignored_and_an_option_is_its_value() {
+        let items = sse_decode::<Update>(200, b"id: a\0b\ndata: {}\n\n").unwrap();
+        assert_eq!(items[0].id, None);
+        assert_eq!(String::from_utf8(sse_encode(&[Some(5)]).unwrap()).unwrap(), "data: 5\n\n");
     }
 }

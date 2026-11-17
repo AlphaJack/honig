@@ -79,3 +79,16 @@ pub fn expect_const<'de, D: Deserializer<'de>>(d: D, want: &Value) -> Result<(),
 pub fn json_text<T: DeserializeOwned>(text: &str) -> Result<T, serde_json::Error> {
     serde_json::from_str(text)
 }
+
+#[cfg(test)]
+mod tests {
+    use serde_json::{Value, json};
+
+    /// A `const` of a number takes the number or text that spells it. Other text is refused.
+    #[test]
+    fn a_number_const_takes_its_spelling() {
+        assert!(super::expect_const(Value::from("5"), &json!(5)).is_ok());
+        assert!(super::expect_const(Value::from("6"), &json!(5)).is_err());
+        assert!(super::expect_const(Value::from(" 5"), &json!(5)).is_err());
+    }
+}

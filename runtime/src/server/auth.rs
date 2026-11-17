@@ -182,4 +182,12 @@ mod tests {
         let ctx = Context::new(&req, crate::server::serve::TestOp, SatisfiedSecurity::default(), &event);
         assert!(ctx.scopes_held(|_| false), "nothing required");
     }
+
+    #[test]
+    fn a_context_gives_the_headers_of_its_request() {
+        let req = request(&[("X-Trace", "abc")]);
+        let event = RequestEvent::new(Some(crate::server::serve::TestOp), "GET");
+        let ctx = Context::new(&req, crate::server::serve::TestOp, SatisfiedSecurity::default(), &event);
+        assert_eq!(ctx.headers().get("X-Trace").map(http::HeaderValue::as_bytes), Some(&b"abc"[..]));
+    }
 }

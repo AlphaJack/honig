@@ -105,3 +105,15 @@ fn mixed_decode_in<T: DeserializeOwned>(
     }
     raw_parts(|| T::deserialize(Coerce(Value::Array(items)))).map_err(|e| decode_err(status, body, e))
 }
+
+#[cfg(test)]
+mod tests {
+    /// A string part declared JSON is a JSON string. Without a declared type it is plain text.
+    #[test]
+    fn a_string_declared_json_is_quoted() {
+        let (_, body) = super::mixed_encode(&["a", "b"], "multipart/mixed", &[("0", "application/json")]).unwrap();
+        let text = String::from_utf8(body).unwrap();
+        assert!(text.contains("application/json\r\n\r\n\"a\"\r\n"), "{text}");
+        assert!(text.contains("text/plain\r\n\r\nb\r\n"), "{text}");
+    }
+}
