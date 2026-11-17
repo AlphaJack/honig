@@ -69,6 +69,7 @@ futures-util = { version = "0.3", default-features = false, features = ["sink"] 
 quick-xml = { version = "0.42", features = ["serialize"] }
 regex = "1"
 base64 = "0.23"
+serde_urlencoded = "0.7"
 # `tests/v32_catalog/observability.rs`: spans exported through OpenTelemetry carry a trace across a request.
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", default-features = false, features = ["registry", "std"] }
@@ -80,6 +81,11 @@ honig = { version = "=0.0.1", path = "../../runtime", features = ["tracing", "tr
 # The time bench of a pull request: generated paths against hand-rolled baselines.
 [[bench]]
 name = "time"
+harness = false
+
+# A roundtrip through the generated client and server against a hand-rolled client and server.
+[[bench]]
+name = "roundtrip"
 harness = false
 
 # How the cost of a request grows with its payload, against the hand-rolled baselines: `tests/e2e/cost`.

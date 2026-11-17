@@ -4,6 +4,8 @@
 //!
 //! - `tests/allocations.rs`: no kind allocates more than `max_allocs` times its baseline at any of [`BENCH_SIZES`].
 //! - `benches/time.rs`: no kind takes more than `max_time` times its baseline in a release build at any of them.
+//! - `roundtrip.rs` with `benches/roundtrip.rs` and `tests/allocations.rs`: the same through the generated client
+//!   against a hand-rolled one.
 //! - `benches/size_sweep.rs`: the CSV of every kind from 256 B to 32 MiB.
 
 use std::alloc::{GlobalAlloc, Layout, System};
@@ -331,25 +333,25 @@ async fn baseline_lines() -> Response {
 /// The `bk:book` root, its namespace declared on it, as the generated side writes it.
 #[derive(serde::Deserialize, serde::Serialize)]
 #[serde(rename = "bk:book")]
-struct Book {
+pub struct Book {
     #[serde(rename = "@xmlns:bk")]
-    namespace: String,
+    pub namespace: String,
     #[serde(rename = "@id")]
-    id: i64,
-    title: String,
-    authors: Authors,
+    pub id: i64,
+    pub title: String,
+    pub authors: Authors,
 }
 
 #[derive(serde::Deserialize, serde::Serialize)]
-struct Authors {
+pub struct Authors {
     #[serde(default)]
-    author: Vec<Author>,
+    pub author: Vec<Author>,
 }
 
 #[derive(serde::Deserialize, serde::Serialize)]
-struct Author {
-    name: String,
-    born: Option<i64>,
+pub struct Author {
+    pub name: String,
+    pub born: Option<i64>,
 }
 
 async fn baseline_book(body: Bytes) -> Response {
@@ -415,7 +417,12 @@ pub fn upload_body(n: usize) -> Bytes {
 
 /// A multipart body whose `scan` part is `n` bytes in base64, broken into MIME lines.
 pub fn scan_body(n: usize) -> Bytes {
-    let text = base64::engine::general_purpose::STANDARD.encode(upload_body(n));
+    scan_form(&upload_body(n))
+}
+
+/// A multipart body whose `scan` part is `raw` in base64, broken into MIME lines.
+pub fn scan_form(raw: &[u8]) -> Bytes {
+    let text = base64::engine::general_purpose::STANDARD.encode(raw);
     let lines = text.as_bytes().chunks(MIME_LINE).collect::<Vec<_>>().join(&b"\r\n"[..]);
     let mut body =
         b"--XyZ\r\nContent-Disposition: form-data; name=\"scan\"\r\nContent-Transfer-Encoding: base64\r\n\r\n".to_vec();
@@ -428,7 +435,7 @@ pub fn scan_body(n: usize) -> Bytes {
 pub const SCAN_TYPE: &str = "multipart/form-data; boundary=XyZ";
 
 /// About the bytes of one author in the XML of a book.
-const AUTHOR: usize = 64;
+pub const AUTHOR: usize = 64;
 
 /// A book in XML of about `n` bytes: its authors grow with it.
 pub fn book_body(n: usize) -> Bytes {
@@ -586,6 +593,7 @@ pub async fn serve(router: &Router, path: &Path) -> (u16, usize) {
 }
 
 /// What a side answers in full: its status, its `Content-Type` and its body.
+#[allow(dead_code, reason = "the roundtrip bench compares what the clients end with")]
 async fn answer(router: &Router, path: &Path) -> (u16, String, Vec<u8>) {
     let Ok(resp) = router.clone().oneshot(request(path)).await;
     let status = resp.status().as_u16();
@@ -602,6 +610,7 @@ async fn answer(router: &Router, path: &Path) -> (u16, String, Vec<u8>) {
 
 /// Both sides succeed with the same answer: the same status, `Content-Type` and body bytes. Otherwise their costs
 /// compare different work.
+#[allow(dead_code, reason = "the roundtrip bench compares what the clients end with")]
 pub async fn same_answer(generated: &Router, baseline: &Router, path: &Path) -> Result<(), String> {
     let (ours, theirs) = (answer(generated, path).await, answer(baseline, path).await);
     let at = format!("{} at {}", path.name, table::size(size()));
@@ -684,13 +693,22 @@ const TRIES: usize = 3;
 /// The allocations and the peak live heap in KiB of one request: the fewest of a few.
 #[allow(dead_code, reason = "the time bench does not count allocations")]
 pub async fn heap(router: &Router, path: &Path) -> (u64, isize) {
+    heap_of(async || {
+        serve(router, path).await;
+    })
+    .await
+}
+
+/// [`heap`] of any call.
+#[allow(dead_code, reason = "the time bench does not count allocations")]
+pub async fn heap_of(once: impl AsyncFn()) -> (u64, isize) {
     let (mut allocs, mut peak) = (u64::MAX, isize::MAX);
     for _ in 0..TRIES {
         let before = ALLOCS.with(Cell::get);
         let base = LIVE.with(Cell::get);
         PEAK.with(|p| p.set(base));
         COUNTING.store(true, Ordering::Relaxed);
-        serve(router, path).await;
+        once().await;
         COUNTING.store(false, Ordering::Relaxed);
         allocs = allocs.min(ALLOCS.with(Cell::get) - before);
         peak = peak.min(PEAK.with(Cell::get) - base);
@@ -698,11 +716,11 @@ pub async fn heap(router: &Router, path: &Path) -> (u64, isize) {
     (allocs, peak >> 10)
 }
 
-/// The time of one request in a round of `n`.
-async fn round(router: &Router, path: &Path, n: u32) -> Duration {
+/// The time of one call of `once` in a round of `n`.
+async fn round(once: &impl AsyncFn(), n: u32) -> Duration {
     let started = Instant::now();
     for _ in 0..n {
-        std::hint::black_box(serve(router, path).await);
+        once().await;
     }
     started.elapsed() / n
 }
@@ -723,11 +741,23 @@ pub struct Timing {
 /// its own, took one lucky round of a side as the whole truth and failed now and then on a busy CI runner.
 #[allow(dead_code, reason = "the allocation bench does not time")]
 pub async fn times(generated: &Router, baseline: &Router, path: &Path, rounds: usize, length: Duration) -> Timing {
-    let once = round(baseline, path, 1).await.max(Duration::from_nanos(1));
+    let head = async || {
+        std::hint::black_box(serve(generated, path).await);
+    };
+    let base = async || {
+        std::hint::black_box(serve(baseline, path).await);
+    };
+    times_of(&head, &base, rounds, length).await
+}
+
+/// [`times`] of any two calls: `head`, the generated side, and `base`, its baseline.
+#[allow(dead_code, reason = "the allocation bench does not time")]
+pub async fn times_of(head: &impl AsyncFn(), base: &impl AsyncFn(), rounds: usize, length: Duration) -> Timing {
+    let once = round(base, 1).await.max(Duration::from_nanos(1));
     let n = u32::try_from(length.as_nanos() / once.as_nanos()).unwrap_or(1).clamp(1, 5000);
     let mut pairs = Vec::with_capacity(rounds);
     for _ in 0..rounds {
-        pairs.push((round(generated, path, n).await, round(baseline, path, n).await));
+        pairs.push((round(head, n).await, round(base, n).await));
     }
     let median = |mut values: Vec<f64>| {
         values.sort_by(f64::total_cmp);
