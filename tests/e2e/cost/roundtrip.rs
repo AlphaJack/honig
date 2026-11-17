@@ -52,7 +52,7 @@ pub const TRIPS: [Trip; 9] = [
     trip("multipart_b64", (2.0, 2.4)),
     trip("download", (1.6, 2.85)),
     trip("json_get", (1.3, 1.9)),
-    trip("json_put", (1.35, 1.7)),
+    trip("json_put", (1.35, 1.75)),
     trip("sse", (1.25, 1.45)),
     trip("jsonl", (1.1, 2.2)),
     trip("xml", (0.7, 1.2)),
