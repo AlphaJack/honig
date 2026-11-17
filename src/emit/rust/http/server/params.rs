@@ -241,7 +241,8 @@ pub(crate) fn server_params(
         let media = b.contents.iter().map(|c| lit(&c.media));
         // A body checked whole is checked as sent: decoding would drop what the run-time check must judge.
         let raw = match (b.contents.as_slice(), &b.constraints.schema) {
-            ([c], Some(schema)) if c.kind == MediaKind::Json => {
+            // A type of yours (`x-rust-type`) keeps its own invariants: the body is not checked for it.
+            ([c], Some(schema)) if c.kind == MediaKind::Json && !space.is_external(&c.ty) => {
                 let json = json_tokens(schema);
                 quote! {
                     if !#body_expr.is_empty() {

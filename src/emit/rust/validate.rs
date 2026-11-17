@@ -356,6 +356,10 @@ fn string_checks(c: &Constraints, value: &TokenStream, path: &TokenStream) -> To
 /// Checks of `value` (an expression of type `&T` for `t`) at `path`.
 /// Empty when nothing can be violated.
 fn checks(cx: Cx<'_>, t: &Ty, c: &Constraints, value: &TokenStream, path: &TokenStream) -> TokenStream {
+    // A type of yours keeps its own invariants (see `live_types`): the schema where it is used is not checked either.
+    if cx.space.is_external(t) {
+        return TokenStream::new();
+    }
     // Keywords without a Rust type of their own. The whole fragment (refs
     // inlined) is checked on the serialized value. Typed checks are skipped.
     // It is JSON text parsed once: as Rust that builds the value, a large

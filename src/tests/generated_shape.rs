@@ -451,3 +451,48 @@ fn a_named_schema_keeps_its_name_beside_a_twin() {
         assert!(types.contains(own), "{own} in {types}");
     }
 }
+
+#[test]
+fn a_body_of_your_own_type_is_left_to_it() {
+    // A body of two object schemas that no Rust type judges alone: the generated code checks it as JSON, unless the
+    // schema is a type of yours.
+    let generate = |test: &str, rust_type: Option<&str>| {
+        let mut note = json!({"oneOf": [
+            {"type": "object", "required": ["a"], "properties": {"a": {"type": "string"}}},
+            {"type": "object", "required": ["b"], "properties": {"b": {"type": "string"}}},
+        ]});
+        if let Some(path) = rust_type {
+            note["x-rust-type"] = json!(path);
+        }
+        let note_ref = json!({"$ref": "#/components/schemas/Note"});
+        let doc = common::spec(
+            "3.1.0",
+            &json!({
+                // One JSON body: checked as sent.
+                "/one": {"post": {
+                    "operationId": "one",
+                    "requestBody": {"content": {"application/json": {"schema": note_ref}}},
+                    "responses": {"204": {"description": "ok"}},
+                }},
+                // A JSON body or a form: checked once decoded.
+                "/two": {"post": {
+                    "operationId": "two",
+                    "requestBody": {"content": {
+                        "application/json": {"schema": note_ref},
+                        "application/x-www-form-urlencoded": {"schema": {"type": "object"}},
+                    }},
+                    "responses": {"204": {"description": "ok"}},
+                }},
+            }),
+            &json!({"schemas": {"Note": note}}),
+        );
+        let files = common::generate(test, &doc, &crate::emit::Options::default());
+        (common::file(&files, "operations.rs").to_owned(), common::file(&files, "server.rs").to_owned())
+    };
+    let (ops, server) = generate("shape-own-body-generated", None);
+    assert!(op_module(&ops, "two").contains("check_schema"), "{ops}");
+    assert!(server.contains("check_raw_json"), "{server}");
+    let (ops, server) = generate("shape-own-body-yours", Some("crate::Note"));
+    assert!(!ops.contains("check_schema"), "{ops}");
+    assert!(!server.contains("check_raw_json"), "{server}");
+}

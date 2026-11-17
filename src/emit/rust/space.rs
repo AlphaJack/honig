@@ -17,6 +17,37 @@ pub(crate) struct Space<'a> {
 }
 
 impl<'a> Space<'a> {
+    /// Is `t` an `x-rust-type`, a type of yours, maybe behind a `Box`?
+    pub(crate) fn is_external(&self, t: &Ty) -> bool {
+        match t {
+            Ty::Indirect(x) => self.is_external(x),
+            Ty::Named(id) => self.types.get(*id).rust_type.is_some(),
+            Ty::Bool
+            | Ty::I8
+            | Ty::I16
+            | Ty::I32
+            | Ty::I64
+            | Ty::U8
+            | Ty::U16
+            | Ty::U32
+            | Ty::U64
+            | Ty::F32
+            | Ty::F64
+            | Ty::Decimal
+            | Ty::String
+            | Ty::Bytes
+            | Ty::Binary
+            | Ty::Format(_)
+            | Ty::Any
+            | Ty::Unit
+            | Ty::Vec(_)
+            | Ty::Array(..)
+            | Ty::Tuple(_)
+            | Ty::Map(_)
+            | Ty::Option(_) => false,
+        }
+    }
+
     /// Creates the view of the emitter on `types` for a crate with `libs`.
     pub(crate) fn new(types: &'a TypeSpace, libs: FormatLibs) -> Self {
         Self { types, libs, floats: float_defs(types) }
