@@ -675,14 +675,14 @@ fn response_arm(
     let collapsed = crate::emit::rust::http::shared::collapses(space, r);
     let plan = if collapsed { vec![false; r.contents.len()] } else { bx.resp_enums[i].clone() };
     let path = (!collapsed).then_some(&enum_path);
-    let decoded = || wrap(bx.resp[i], decode_contents(&r.contents, &plan, path, &decode));
+    let decoded = || wrap(bx.resp[i], decode_contents(space, &r.contents, &plan, path, &decode));
     let check = media_check(r);
     match variant_shape(r) {
         VariantShape::Unit => (pat, quote!(Ok(#op_mod::Response::#variant))),
         VariantShape::Tuple => {
             // One fallible body that is not boxed maps straight into its variant.
             if let ([c], false) = (r.contents.as_slice(), bx.resp[i])
-                && let (e, true) = decode_body(c, &decode)
+                && let (e, true) = decode_body(space, c, &decode)
             {
                 return (pat, quote!({ #check #e.map(#op_mod::Response::#variant) }));
             }
