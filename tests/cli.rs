@@ -59,3 +59,171 @@ fn bundle_prints_the_same_document_as_json_or_yaml() {
     assert_eq!(json, yaml);
     assert_eq!(json["openapi"], "3.2.0");
 }
+
+/// A crate of its own under the target directory: a `Cargo.toml`, an empty `src/lib.rs` and the `shop` description.
+fn scratch_crate(name: &str) -> PathBuf {
+    let dir = Path::new(env!("CARGO_TARGET_TMPDIR")).join(name);
+    std::fs::remove_dir_all(&dir).ok();
+    std::fs::create_dir_all(dir.join("src")).unwrap();
+    std::fs::write(dir.join("Cargo.toml"), format!("[package]\nname = \"{name}\"\nedition = \"2024\"\n")).unwrap();
+    std::fs::write(dir.join("src").join("lib.rs"), "").unwrap();
+    std::fs::copy(fixture("shop.yaml"), dir.join("openapi.yaml")).unwrap();
+    dir
+}
+
+fn in_crate(dir: &Path, args: &[&str]) -> (Option<i32>, String, String) {
+    let manifest = dir.join("Cargo.toml");
+    let out = run(&[args, &["--manifest-path", manifest.to_str().unwrap()]].concat());
+    (out.status.code(), String::from_utf8(out.stdout).unwrap(), String::from_utf8(out.stderr).unwrap())
+}
+
+#[test]
+fn init_then_generate_writes_a_module_that_check_finds_up_to_date() {
+    let dir = scratch_crate("cli_init");
+    let (code, out, err) = in_crate(&dir, &["init", "openapi.yaml"]);
+    assert_eq!(code, Some(0), "{err}");
+    assert!(out.contains("added [package.metadata.honig.api]") && out.contains("next: cargo honig generate"), "{out}");
+    let manifest = std::fs::read_to_string(dir.join("Cargo.toml")).unwrap();
+    for line in ["[package.metadata.honig.api]", "spec = \"openapi.yaml\"", "serde = ", "serde_json = ", "honig = "] {
+        assert!(manifest.contains(line), "{line} missing from:\n{manifest}");
+    }
+
+    let (code, _, err) = in_crate(&dir, &["init", "openapi.yaml"]);
+    assert_eq!(code, Some(2));
+    assert!(err.contains("already has [package.metadata.honig]"), "{err}");
+
+    let (code, _, err) = in_crate(&dir, &["check"]);
+    assert_eq!(code, Some(1), "check passed before generate");
+    assert!(err.contains("stale generated code in") && err.contains("run `cargo honig generate`"), "{err}");
+
+    let (code, out, err) = in_crate(&dir, &["generate"]);
+    assert_eq!(code, Some(0), "{err}");
+    assert!(out.contains("generated ") && out.contains(" operations, "), "{out}");
+    assert!(err.contains("hint: add `pub mod api;` to src/lib.rs"), "{err}");
+    assert!(dir.join("src").join("api").join("mod.rs").is_file(), "generate wrote no module");
+
+    let (code, out, err) = in_crate(&dir, &["check"]);
+    assert_eq!(code, Some(0), "{err}");
+    assert!(out.contains("up to date: "), "{out}");
+}
+
+#[test]
+fn quiet_prints_no_progress_and_no_hints() {
+    let dir = scratch_crate("cli_quiet");
+    assert_eq!(in_crate(&dir, &["init", "openapi.yaml", "--quiet"]), (Some(0), String::new(), String::new()));
+    assert_eq!(in_crate(&dir, &["generate", "--quiet"]), (Some(0), String::new(), String::new()));
+    assert_eq!(in_crate(&dir, &["check", "--quiet"]), (Some(0), String::new(), String::new()));
+}
+
+#[test]
+fn check_finds_a_module_file_edited_after_generate() {
+    let dir = scratch_crate("cli_edited");
+    assert_eq!(in_crate(&dir, &["init", "openapi.yaml"]).0, Some(0));
+    assert_eq!(in_crate(&dir, &["generate"]).0, Some(0));
+    let types = dir.join("src").join("api").join("types.rs");
+    let text = std::fs::read_to_string(&types).unwrap();
+    std::fs::write(&types, text + "\npub struct Extra;\n").unwrap();
+    let (code, _, err) = in_crate(&dir, &["check", "api"]);
+    assert_eq!(code, Some(1), "{err}");
+    assert!(err.contains("types.rs"), "{err}");
+}
+
+#[test]
+fn validate_takes_a_module_or_every_module_of_the_manifest() {
+    let dir = scratch_crate("cli_validate");
+    assert_eq!(in_crate(&dir, &["init", "openapi.yaml"]).0, Some(0));
+    for args in [&["validate"][..], &["validate", "api"]] {
+        let (code, out, err) = in_crate(&dir, args);
+        assert_eq!(code, Some(0), "{args:?}: {err}");
+        assert!(out.starts_with("ok: ") && out.trim_end().ends_with("openapi.yaml"), "{args:?}: {out}");
+    }
+    std::fs::write(dir.join("openapi.yaml"), "openapi: 3.2.0\npaths: {}\n").unwrap();
+    let (code, out, err) = in_crate(&dir, &["validate"]);
+    assert_eq!(code, Some(1), "an invalid description passed: {out}");
+    assert!(err.contains("error"), "{err}");
+}
+
+#[test]
+fn a_workspace_generates_its_members_and_names_a_missing_one() {
+    let root = Path::new(env!("CARGO_TARGET_TMPDIR")).join("cli_workspace");
+    std::fs::remove_dir_all(&root).ok();
+    std::fs::create_dir_all(&root).unwrap();
+    std::fs::write(root.join("Cargo.toml"), "[workspace]\nmembers = [\"member\"]\nresolver = \"3\"\n").unwrap();
+    let member = scratch_crate("cli_workspace_member");
+    std::fs::rename(&member, root.join("member")).unwrap();
+    let member = root.join("member");
+    assert_eq!(in_crate(&member, &["init", "openapi.yaml"]).0, Some(0));
+
+    let (code, _, err) = in_crate(&root, &["generate", "--package", "nope"]);
+    assert_eq!(code, Some(2));
+    assert!(err.contains("has no member `nope` with [package.metadata.honig.*]"), "{err}");
+    let (code, _, err) = in_crate(&root, &["generate", "other"]);
+    assert_eq!(code, Some(2));
+    assert!(err.contains("has no member with the module `other`"), "{err}");
+
+    assert_eq!(in_crate(&root, &["check"]).0, Some(1));
+    let (code, _, err) = in_crate(&root, &["generate", "--package", "cli_workspace_member"]);
+    assert_eq!(code, Some(0), "{err}");
+    assert!(member.join("src").join("api").join("mod.rs").is_file());
+    assert_eq!(in_crate(&root, &["check", "api"]).0, Some(0));
+}
+
+/// Two path templates that differ only in their parameter names: an error in the description that does not stop
+/// `generate`.
+const SAME_TEMPLATE: &str = "openapi: 3.2.0
+info: {title: t, version: \"1\"}
+paths:
+  /a/{x}:
+    parameters: [{name: x, in: path, required: true, schema: {type: string}}]
+    get: {operationId: one, responses: {\"204\": {description: ok}}}
+  /a/{y}:
+    parameters: [{name: y, in: path, required: true, schema: {type: string}}]
+    get: {operationId: two, responses: {\"204\": {description: ok}}}
+";
+
+#[test]
+fn generate_reports_errors_warnings_and_hints_and_adds_the_runtime() {
+    let dir = scratch_crate("cli_hints");
+    std::fs::write(dir.join("openapi.yaml"), SAME_TEMPLATE).unwrap();
+    std::fs::write(dir.join("src").join("lib.rs"), "pub mod api;\n").unwrap();
+    let manifest = "[package]\nname = \"cli_hints\"\nedition = \"2024\"\n\n[package.metadata.honig.api]\n\
+                    spec = \"openapi.yaml\"\n\n[dependencies]\nuuid = \"1\"\n";
+    std::fs::write(dir.join("Cargo.toml"), manifest).unwrap();
+
+    let (code, out, err) = in_crate(&dir, &["generate"]);
+    assert_eq!(code, Some(0), "{err}");
+    assert!(out.contains("Cargo.toml: honig ="), "{out}");
+    assert!(std::fs::read_to_string(dir.join("Cargo.toml")).unwrap().contains("honig = "));
+    for line in [
+        "are the same templated path",
+        "generated anyway: 1 error(s) in the description",
+        "warning: `uuid` has no `serde` feature",
+        "hint: add `serde = ",
+        "hint: add `serde_json = ",
+    ] {
+        assert!(err.contains(line), "{line} missing from:\n{err}");
+    }
+    assert!(!err.contains("pub mod api"), "src/lib.rs declares the module:\n{err}");
+
+    let (code, out, err) = in_crate(&dir, &["generate", "--quiet"]);
+    assert_eq!(code, Some(0), "{err}");
+    assert!(out.is_empty(), "{out}");
+    assert!(!err.contains("warning:") && !err.contains("hint:"), "{err}");
+}
+
+#[test]
+fn generate_names_a_package_or_output_that_does_not_fit() {
+    let dir = scratch_crate("cli_misfit");
+    assert_eq!(in_crate(&dir, &["init", "openapi.yaml"]).0, Some(0));
+    let (code, _, err) = in_crate(&dir, &["generate", "--package", "other"]);
+    assert_eq!(code, Some(2));
+    assert!(err.contains("is `cli_misfit`, not `other`"), "{err}");
+    assert_eq!(in_crate(&dir, &["check", "--package", "cli_misfit"]).0, Some(1), "its own name is fine");
+
+    let manifest = std::fs::read_to_string(dir.join("Cargo.toml")).unwrap();
+    let twice = manifest + "\n[package.metadata.honig.again]\nspec = \"openapi.yaml\"\noutput = \"src/api\"\n";
+    std::fs::write(dir.join("Cargo.toml"), twice).unwrap();
+    let (code, _, err) = in_crate(&dir, &["generate"]);
+    assert_eq!(code, Some(2));
+    assert!(err.contains("Give each module its own `output`"), "{err}");
+}
