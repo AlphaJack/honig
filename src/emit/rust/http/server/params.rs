@@ -198,9 +198,11 @@ pub(crate) fn server_params(
         let shape = if p.content.is_some() { quote!(runtime::Shape::Prim) } else { shape(space, &p.ty) };
         let (s, explode) = (style(p), p.explode);
         // Scalars decode from their text: no `Value` in between.
+        // A library type has the text of its format checked first.
+        let checked = crate::emit::rust::http::codec::validated_map(space, &p.ty);
         if let Some(decode) = text_decode(space, p, &vars, &s, &wire, &at) {
             let n = snake_ident(&p.name);
-            return quote!(#n: #decode?,);
+            return quote!(#n: #decode #checked?,);
         }
         let raw = spread_object(space, op, p, param_source(p, &vars, &s, &shape, explode, &wire, &at, &body_expr));
         let from = if p.content == Some(MediaKind::Json) && p.location != Location::QueryString {
@@ -217,7 +219,7 @@ pub(crate) fn server_params(
             }
             None => raw,
         };
-        quote!(#n: #from(#raw, #at)?,)
+        quote!(#n: #from(#raw, #at) #checked?,)
     });
     let body = op.body.as_ref().map(|b| {
         let d = Decode {
@@ -228,7 +230,7 @@ pub(crate) fn server_params(
             held: if inputs.take { Held::OwnedCow } else { Held::Borrowed },
             stream: Some(quote!(stream)),
         };
-        let e = decode_contents(&b.contents, &bx.body_enum, Some(&quote!(#m::Body)), &d);
+        let e = decode_contents(space, &b.contents, &bx.body_enum, Some(&quote!(#m::Body)), &d);
         if b.required {
             quote!(body: #e,)
         } else {
