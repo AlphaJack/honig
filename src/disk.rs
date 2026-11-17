@@ -92,9 +92,12 @@ pub(crate) fn write_module(dir: &Path, root: &Path, files: &[(String, String)]) 
     Ok(())
 }
 
+/// The name of the root of a module as the emitter returns it, whatever `mod_rs` says.
+pub(crate) const ROOT_FILE: &str = "mod.rs";
+
 /// Returns where the generated file `name` goes: the root at `root`, the others in `dir`.
 pub(crate) fn placed(dir: &Path, root: &Path, name: &str) -> std::path::PathBuf {
-    if name == crate::settings::ROOT_FILE { root.to_path_buf() } else { dir.join(name) }
+    if name == ROOT_FILE { root.to_path_buf() } else { dir.join(name) }
 }
 
 /// Is `path` a file that honig wrote? Its first line is the `@generated` marker.

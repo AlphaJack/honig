@@ -118,7 +118,7 @@ pub(crate) fn stale(dir: &Path, root: &Path, files: &[(String, String)]) -> Vec<
             Err(_) => out.push(format!("{name} (missing)")),
         }
     }
-    let inside = dir.join(crate::settings::ROOT_FILE);
+    let inside = dir.join(crate::disk::ROOT_FILE);
     let other = if root == inside { dir.with_extension("rs") } else { inside };
     if crate::disk::is_generated(&other) {
         out.push(format!("{} (extra)", other.display()));

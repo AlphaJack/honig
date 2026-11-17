@@ -142,12 +142,13 @@ impl Settings {
 
     /// Returns the absolute path of the root of the module: `<output>/mod.rs` or `<output>.rs`.
     pub(crate) fn root_path(&self) -> PathBuf {
-        if self.mod_rs { self.output_path().join(ROOT_FILE) } else { self.output_path().with_extension("rs") }
+        if self.mod_rs {
+            self.output_path().join(crate::disk::ROOT_FILE)
+        } else {
+            self.output_path().with_extension("rs")
+        }
     }
 }
-
-/// The name of the root of a module as the emitter returns it, whatever `mod_rs` says.
-pub(crate) const ROOT_FILE: &str = "mod.rs";
 
 /// A crate's `Cargo.toml` as cargo resolves it (`cargo metadata`): its name, its dependencies with the features that
 /// `workspace = true` inherits, its targets and its workspace. Its `[package.metadata.honig.*]` tables are read as
