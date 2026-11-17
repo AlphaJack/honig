@@ -4,6 +4,7 @@
 |---|---|---|---|
 | `spec` | yes |  | the description relative to Cargo.toml; a list ["a.yaml", "api/*.yaml"] merges several |
 | `output` | no | `"src/<module>"` | the module directory |
+| `mod_rs` | no | `the crate's clippy lints, else true` | true writes the root of the module as `<output>/mod.rs`, false as `<output>.rs` |
 | `client` | no | `true` | generate the client; a table sets its adapters = ["reqwest"] and operations = ["getOrder"] |
 | `server` | no | `true` | generate the server; a table sets its adapters = ["axum"] and allow_unimplemented = true |
 | `tests` | no | `false` | generate a test that the description's examples decode |

@@ -391,8 +391,10 @@ fn check_modules(
     runtime: &[&str],
     args: &Args,
 ) -> ExitCode {
-    let mut stale: Vec<String> =
-        selected.iter().flat_map(|m| generate::stale(&m.cfg.output_path(), &m.generated.files)).collect();
+    let mut stale: Vec<String> = selected
+        .iter()
+        .flat_map(|m| generate::stale(&m.cfg.output_path(), &m.cfg.root_path(), &m.generated.files))
+        .collect();
     stale.extend(crate::manifest::stale(manifest_text, runtime));
     stale.extend(root.and_then(|(_, text)| crate::manifest::stale_workspace(text)));
     let outputs: Vec<String> = selected.iter().map(|m| m.cfg.output_path().display().to_string()).collect();
@@ -416,8 +418,12 @@ fn write_modules(
     runtime: &[&str],
     args: &Args,
 ) -> Result<ExitCode, Failure> {
-    // A file `src/<module>.rs` next to the directory would make `mod <module>;` ambiguous. Nothing is written then.
-    if let Some(m) = selected.iter().find(|m| crate::disk::is_file(&m.cfg.output_path().with_extension("rs"))) {
+    // A file `src/<module>.rs` of yours next to the directory would make `mod <module>;` ambiguous. Nothing is written
+    // then. One that honig wrote is the root of the module, or a root that an earlier run wrote there.
+    let beside = |m: &&Module| m.cfg.output_path().with_extension("rs");
+    if let Some(m) =
+        selected.iter().find(|m| crate::disk::is_file(&beside(m)) && !crate::disk::is_generated(&beside(m)))
+    {
         return Err(Failure::Generator(crate::error::Error::Module {
             table: m.cfg.table.clone(),
             problem: format!(
@@ -428,7 +434,7 @@ fn write_modules(
         }));
     }
     for m in selected {
-        crate::disk::write_module(&m.cfg.output_path(), &m.generated.files)?;
+        crate::disk::write_module(&m.cfg.output_path(), &m.cfg.root_path(), &m.generated.files)?;
     }
     let synced = crate::manifest::with_runtime(manifest_text, runtime)?;
     if synced != manifest_text {
