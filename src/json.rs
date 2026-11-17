@@ -111,11 +111,17 @@ pub(crate) fn pointer<'a>(root: &'a Value, ptr: &str) -> Option<&'a Value> {
         let token = unescape_token(&percent_decode(raw));
         cur = match cur {
             Value::Object(m) => m.get(&token)?,
-            Value::Array(a) => a.get(token.parse::<usize>().ok()?)?,
+            Value::Array(a) => a.get(array_index(&token)?)?,
             Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_) => return None,
         };
     }
     Some(cur)
+}
+
+/// Returns an RFC 6901 array index: `0` or digits without a leading zero. `parse` alone would take `+1` and `01`.
+fn array_index(token: &str) -> Option<usize> {
+    let digits = !token.is_empty() && token.bytes().all(|b| b.is_ascii_digit());
+    (digits && (token == "0" || !token.starts_with('0'))).then(|| token.parse().ok()).flatten()
 }
 
 /// Percent-decodes a URI fragment (`#/paths/~1a%7Bb%7D`).
@@ -262,6 +268,17 @@ mod tests {
         assert_eq!(doc.get("https://x.com/b#/$defs/C").unwrap()["type"], "integer");
         assert!(doc.get("#/paths/~1a%7Bb%7D/get").is_some());
         assert!(doc.get("#/nope").is_none());
+    }
+
+    /// RFC 6901 section 4: an array index is `0` or digits without a leading zero.
+    #[test]
+    fn an_array_index_is_only_its_plain_digits() {
+        let doc = json!({"a": [10, 11]});
+        assert_eq!(pointer(&doc, "/a/0"), Some(&json!(10)));
+        assert_eq!(pointer(&doc, "/a/1"), Some(&json!(11)));
+        for index in ["01", "+1", "00", "-0", " 1", "1 "] {
+            assert_eq!(pointer(&doc, &format!("/a/{index}")), None, "{index}");
+        }
     }
 
     #[test]
