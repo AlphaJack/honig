@@ -19,7 +19,7 @@ fn main() -> std::process::ExitCode {
     let started = Instant::now();
     let runtime = cost::runtime();
     let mut failed = vec![];
-    let table = cost::bench_table("head µs", "base µs", "99999.9");
+    let table = cost::bench_table("head_µs", "base_µs", "99999.9");
     let mut rows = vec![];
     for size in cost::BENCH_SIZES {
         let (generated, baseline) = cost::at(size);
