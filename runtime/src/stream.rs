@@ -201,6 +201,31 @@ impl<T: DeserializeOwned> Items<T> {
         }
         .map(Self::List)
     }
+
+    /// Returns [`Items::received`] with the text of the library formats of each item checked first, as `H` says
+    /// (`runtime::checked`).
+    ///
+    /// # Errors
+    /// `body` does not decode.
+    pub fn received_checked<H: for<'de> crate::checked::Holds<'de, T>>(
+        body: &[u8],
+        stream: &ByteStream,
+        framing: Framing,
+    ) -> Result<Self, Error> {
+        type Checked<T, H> = crate::checked::Checked<T, H>;
+        if let Some(source) = stream.take_source() {
+            let items = ItemStream::new(REQUEST, ByteStream::pinned(source), framing).checked::<H>();
+            return Ok(Self::Stream(items));
+        }
+        let items: Vec<Checked<T, H>> = match framing {
+            Framing::JsonLines => crate::jsonl_decode(REQUEST, body),
+            Framing::JsonSeq => crate::json_seq_decode(REQUEST, body),
+            Framing::Sse => crate::sse_decode(REQUEST, body),
+            #[cfg(feature = "multipart")]
+            Framing::Multipart => Err(not_encoded()),
+        }?;
+        Ok(Self::List(items.into_iter().map(Checked::into_inner).collect()))
+    }
 }
 
 /// The status a request body decodes with: there is no response yet.
@@ -595,6 +620,13 @@ impl<T: DeserializeOwned> ItemStream<T> {
         Self::with(Inner::Decoding(Box::new(Decoder::new(status, body, framing))))
     }
 
+    /// Reads each item with the text of its library formats checked first, as `H` says (`runtime::checked`).
+    #[must_use]
+    pub fn checked<H: for<'de> crate::checked::Holds<'de, T>>(self) -> Self {
+        self.decoder(|items| items.item = read_checked::<T, H>);
+        self
+    }
+
     /// Returns the parts of a `multipart/*` body. It is a response with this status and `Content-Type`. The parts are
     /// decoded as they arrive.
     #[cfg(feature = "multipart")]
@@ -654,6 +686,49 @@ pub(crate) struct Decoder<T> {
     check: Option<(Check<T>, String)>,
     /// Items read so far: the index of the next one.
     read: usize,
+    /// Reads one record as an item: as `T`, or with the text of its library formats checked first.
+    item: ReadItem<T>,
+}
+
+/// Reads one record as an item.
+type ReadItem<T> = fn(&Record<'_>) -> Result<T, Error>;
+
+/// One record of an arriving body and what decoding it needs.
+pub(crate) struct Record<'a> {
+    status: u16,
+    framing: Framing,
+    /// `Framing::Multipart`: the boundary of the body.
+    #[cfg(feature = "multipart")]
+    boundary: &'a str,
+    bytes: &'a [u8],
+}
+
+/// Returns `record` decoded as `U`: `T`, or `T` read through `runtime::checked`.
+fn decode<U: DeserializeOwned>(record: &Record<'_>) -> Result<U, Error> {
+    let (status, bytes) = (record.status, record.bytes);
+    match record.framing {
+        Framing::JsonLines | Framing::JsonSeq => crate::codec::json_record(status, bytes),
+        Framing::Sse => sse_item(status, &String::from_utf8_lossy(bytes)),
+        #[cfg(feature = "multipart")]
+        Framing::Multipart => {
+            // One part decoded as a one-part body would be. Headers, raw bytes and media types are as in a whole
+            // body.
+            let b = record.boundary;
+            let mut one = format!("--{b}\r\n").into_bytes();
+            one.extend_from_slice(bytes);
+            one.extend_from_slice(format!("\r\n--{b}--\r\n").as_bytes());
+            let ct = format!("multipart/mixed; boundary={b}");
+            let items: Vec<U> = crate::codec::mixed_decode(status, &ct, &one, None)?;
+            items.into_iter().next().ok_or_else(|| decode_err(status, bytes, "an empty part"))
+        }
+    }
+}
+
+/// Reads a record as `Checked<T, H>`: the text of each library format in `T` is checked before its library reads it.
+fn read_checked<T: DeserializeOwned, H: for<'de> crate::checked::Holds<'de, T>>(
+    record: &Record<'_>,
+) -> Result<T, Error> {
+    decode::<crate::checked::Checked<T, H>>(record).map(crate::checked::Checked::into_inner)
 }
 
 impl<T: DeserializeOwned> Decoder<T> {
@@ -681,6 +756,7 @@ impl<T: DeserializeOwned> Decoder<T> {
             max_retries: None,
             check: None,
             read: 0,
+            item: decode::<T>,
         }
     }
 
@@ -736,7 +812,7 @@ impl<T: DeserializeOwned> Decoder<T> {
                 if self.skips(record) {
                     continue;
                 }
-                return Poll::Ready(Some(self.decode(record)));
+                return Poll::Ready(Some((self.item)(&self.record(record))));
             }
             if self.done && self.framing == Framing::Sse {
                 // An event the body ended inside is dropped: the stream broke off before it was whole.
@@ -755,7 +831,7 @@ impl<T: DeserializeOwned> Decoder<T> {
                 if self.skips(record) {
                     return Poll::Ready(None);
                 }
-                return Poll::Ready(Some(self.decode(record)));
+                return Poll::Ready(Some((self.item)(&self.record(record))));
             }
             match ready!(Pin::new(&mut self.body).poll_next(cx)) {
                 Some(Ok(chunk)) => {
@@ -827,7 +903,7 @@ impl<T: DeserializeOwned> Decoder<T> {
                 }
                 let record =
                     if self.buf.is_empty() { self.frame.get(line).unwrap_or_default() } else { self.buf.as_slice() };
-                let item = (!self.skips(record)).then(|| self.decode(record));
+                let item = (!self.skips(record)).then(|| (self.item)(&self.record(record)));
                 self.buf.clear();
                 match item {
                     Some(item) => return Poll::Ready(Some(item)),
@@ -837,7 +913,7 @@ impl<T: DeserializeOwned> Decoder<T> {
             self.buf.extend_from_slice(rest);
             self.at = self.frame.len();
             if self.done {
-                let item = (!self.skips(&self.buf)).then(|| self.decode(&self.buf));
+                let item = (!self.skips(&self.buf)).then(|| (self.item)(&self.record(&self.buf)));
                 self.buf.clear();
                 return Poll::Ready(item);
             }
@@ -893,22 +969,14 @@ impl<T: DeserializeOwned> Decoder<T> {
         Some(record)
     }
 
-    fn decode(&self, record: &[u8]) -> Result<T, Error> {
-        match self.framing {
-            Framing::JsonLines | Framing::JsonSeq => crate::codec::json_record(self.status, record),
-            Framing::Sse => sse_item(self.status, &String::from_utf8_lossy(record)),
+    /// Returns the record at `bytes` with what decoding it needs.
+    fn record<'a>(&'a self, bytes: &'a [u8]) -> Record<'a> {
+        Record {
+            status: self.status,
+            framing: self.framing,
             #[cfg(feature = "multipart")]
-            Framing::Multipart => {
-                // One part decoded as a one-part body would be. Headers, raw bytes and media types are as in a whole
-                // body.
-                let b = &self.boundary;
-                let mut one = format!("--{b}\r\n").into_bytes();
-                one.extend_from_slice(record);
-                one.extend_from_slice(format!("\r\n--{b}--\r\n").as_bytes());
-                let ct = format!("multipart/mixed; boundary={b}");
-                let items: Vec<T> = crate::codec::mixed_decode(self.status, &ct, &one, None)?;
-                items.into_iter().next().ok_or_else(|| decode_err(self.status, record, "an empty part"))
-            }
+            boundary: &self.boundary,
+            bytes,
         }
     }
 

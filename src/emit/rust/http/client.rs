@@ -375,6 +375,8 @@ pub(crate) fn stream_method(
 ) -> Option<TokenStream> {
     let Some((ri, item, seq)) = stream_target(op) else { return blob_stream_method(op, p, prelude, respond) };
     let Status::Code(status) = op.responses[ri].status else { return None };
+    // Each item has the text of its library formats checked first.
+    let checked_items = crate::emit::rust::syntax::holds(space, item).map(|h| quote!(.checked::<#h>()));
     let item = ty(space, item, true);
     // The response's `Content-Type` picks the framing; the first one otherwise.
     // Media types sharing a framing share a branch.
@@ -400,6 +402,10 @@ pub(crate) fn stream_method(
     // One `else if` chain (clippy `collapsible_else_if`).
     let branches = checked.iter().map(|(_, (_, f, ms, _))| quote!(if #(runtime::media_matches(&ct, #ms))||* { #f }));
     let framing = if checked.is_empty() { fallback } else { quote!(#(#branches)else* else { #fallback }) };
+    let framing = match checked_items {
+        Some(c) => quote!((#framing) #c),
+        None => framing,
+    };
     let ct = (groups.len() > 1).then(|| quote!(let ct = runtime::Message::content_type(&resp).to_owned();));
     let media = seq
         .iter()

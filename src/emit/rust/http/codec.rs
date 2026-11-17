@@ -287,7 +287,12 @@ pub(crate) fn decode_body(space: &Space<'_>, c: &Content, d: &Decode) -> (TokenS
             // A sequential request body the adapter left unread reaches the handler as it arrives.
             if let (true, Some(stream), Held::OwnedCow) = (c.streams(), &d.stream, d.held) {
                 let framing = framing(c.kind);
-                return (quote!(runtime::Items::received(&#body, &#stream, #framing)), true);
+                // Each item has the text of its library formats checked first.
+                let checked = if let Ty::Vec(item) = &c.ty { holds(space, item) } else { None };
+                return match checked {
+                    Some(h) => (quote!(runtime::Items::received_checked::<#h>(&#body, &#stream, #framing)), true),
+                    None => (quote!(runtime::Items::received(&#body, &#stream, #framing)), true),
+                };
             }
             let f = format_ident!(
                 "{}",
