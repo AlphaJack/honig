@@ -80,14 +80,21 @@ pub fn check_format(out: &mut Vec<Violation>, path: &InstancePath<'_>, value: &s
         #[cfg(feature = "idn")]
         "email" | "idn-email" | "hostname" | "idn-hostname" => mail::is(value, format),
         #[cfg(feature = "ipnet")]
-        "ipv4-cidr" => value.parse::<ipnet::Ipv4Net>().is_ok(),
+        "ipv4-cidr" => cidr_address(value, crate::formats::is_ipv4) && value.parse::<ipnet::Ipv4Net>().is_ok(),
         #[cfg(feature = "ipnet")]
-        "ipv6-cidr" => value.parse::<ipnet::Ipv6Net>().is_ok(),
+        "ipv6-cidr" => cidr_address(value, crate::formats::is_ipv6) && value.parse::<ipnet::Ipv6Net>().is_ok(),
         _ => true,
     };
     if !ok {
         violation(out, path, format!("is not a valid {format}"));
     }
+}
+
+/// Is the address before the `/` of a CIDR block valid? `ipnet` takes leading zeros (`01.2.3.4`) and a `::` that
+/// stands for no group (`1:2:3:4:5:6:7::8`). `ipv4` and `ipv6` refuse both.
+#[cfg(feature = "ipnet")]
+fn cidr_address(value: &str, address: fn(&str) -> bool) -> bool {
+    value.split_once('/').is_some_and(|(a, _)| address(a))
 }
 
 /// The length of a UUID's text and where its hyphens sit (RFC 9562 section 4: 8-4-4-4-12 hex digits).
@@ -1427,6 +1434,25 @@ mod tests {
         assert!(wrong("::1", "ipv6-cidr") && !wrong("::1/128", "ipv6-cidr"));
         #[cfg(feature = "idn")]
         assert!(!wrong("ann@example.com", "email"));
+    }
+
+    /// The address of a CIDR block is checked as `ipv4` and `ipv6` check one.
+    #[cfg(feature = "ipnet")]
+    #[test]
+    fn a_cidr_block_has_a_valid_address() {
+        let wrong = |value: &str, format: &str| {
+            let mut out = vec![];
+            super::check_format(&mut out, &super::InstancePath::Root, value, format);
+            !out.is_empty()
+        };
+        assert!(!wrong("192.168.0.0/24", "ipv4-cidr") && !wrong("0.0.0.0/0", "ipv4-cidr"));
+        for octal in ["01.2.3.4/8", "192.168.000.0/24", "192.168.0.00/24"] {
+            assert!(wrong(octal, "ipv4-cidr"), "{octal}: a leading zero reads as octal in some parsers");
+        }
+        assert!(!wrong("2001:db8::/32", "ipv6-cidr") && !wrong("::ffff:192.168.0.0/120", "ipv6-cidr"));
+        for nine in ["1:2:3:4:5:6:7::8/64", "1:2:3:4::5:6:7:8/64", "::1:2:3:4:5:6:7:8/128"] {
+            assert!(wrong(nine, "ipv6-cidr"), "{nine}: `::` stands for at least one group");
+        }
     }
 
     /// `^(a+)+$` takes exponential time on a long value that almost matches. Past `maxLength` it does not run: the
