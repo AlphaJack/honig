@@ -774,4 +774,34 @@ mod tests {
         }
         assert_eq!((raw_kind("\"x\""), raw_kind("true"), raw_kind("null")), (Kind::String, Kind::Bool, Kind::Null));
     }
+
+    /// Which way a union was read.
+    #[derive(Debug, PartialEq)]
+    enum Read {
+        Streamed(String),
+        Buffered(Value),
+    }
+
+    impl<'de> TaggedUnion<'de> for Read {
+        const TAG: &'static str = "kind";
+        fn knows(tag: &str) -> bool {
+            tag == "cat"
+        }
+        fn from_tag<D: Deserializer<'de>>(tag: &str, d: D) -> Result<Self, D::Error> {
+            IgnoredAny::deserialize(d)?;
+            Ok(Self::Streamed(tag.to_owned()))
+        }
+        fn from_content(v: Content<'de>) -> Result<Self, serde_json::Error> {
+            Ok(Self::Buffered(v.into_value()))
+        }
+    }
+
+    /// A known tag first streams into its variant. A known tag value under another key does not.
+    #[test]
+    fn only_a_leading_tag_streams() {
+        let read = |text: &str| tagged::<_, Read>(&mut serde_json::Deserializer::from_str(text)).unwrap();
+        assert_eq!(read(r#"{"kind": "cat", "a": 1}"#), Read::Streamed("cat".into()));
+        let other = r#"{"name": "cat", "kind": "dog"}"#;
+        assert_eq!(read(other), Read::Buffered(serde_json::from_str(other).unwrap()));
+    }
 }

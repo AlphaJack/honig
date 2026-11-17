@@ -994,6 +994,29 @@ mod tests {
     }
 
     #[test]
+    fn a_list_is_in_memory() {
+        assert_eq!(Items::List(vec![1]).into_list(), Some(vec![1]));
+    }
+
+    /// A `retry` or a comment exists only in `text/event-stream`. Other framings write nothing for it.
+    #[test]
+    fn retry_and_comments_are_written_only_as_events() {
+        let framed = |record: &super::Sse<i32>, framing| {
+            let mut out = vec![];
+            super::frame_record(record, framing, &mut out).unwrap();
+            String::from_utf8(out).unwrap()
+        };
+        let retry = super::Sse::Retry(Duration::from_millis(1500));
+        let comment = super::Sse::Comment("hi".to_owned());
+        assert_eq!(framed(&retry, Framing::Sse), "retry: 1500\n\n");
+        assert_eq!(framed(&comment, Framing::Sse), ": hi\n\n");
+        assert_eq!(
+            (framed(&retry, Framing::JsonLines), framed(&comment, Framing::JsonSeq)),
+            (String::new(), String::new())
+        );
+    }
+
+    #[test]
     fn a_request_with_a_streamed_body_cannot_be_sent_again() {
         let mut req = crate::message::new_request("POST", "/a".to_owned(), vec![]).unwrap();
         *req.body_mut() = Body::from("x");

@@ -111,4 +111,10 @@ mod tests {
         assert!(is_ipv4("192.168.0.1") && !is_ipv4("087.10.0.1") && !is_ipv4("256.0.0.1"));
         assert!(is_ipv6("::ffff:192.168.0.1") && !is_ipv6("12345::"));
     }
+
+    #[test]
+    fn a_local_time_has_hours_and_minutes_in_range() {
+        assert!(is_time_local("23:59:59"));
+        assert!(!is_time_local("24:00:00") && !is_time_local("12:60:00"));
+    }
 }

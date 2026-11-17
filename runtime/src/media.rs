@@ -217,4 +217,26 @@ mod tests {
         assert!(!media_matches("imagery/png", "image*"), "a star without the slash is no range");
         assert!(!media_matches("text/png", "image/*"));
     }
+
+    /// The most specific range decides: `*/*;q=0` does not refuse a type that `Accept` names.
+    #[test]
+    fn a_named_type_wins_over_any_type() {
+        assert_eq!(negotiate(Some("text/plain, */*;q=0"), &["text/plain"]), Some(0));
+        assert_eq!(negotiate(Some("text/plain;q=0, */*"), &["text/plain"]), None);
+    }
+
+    #[test]
+    fn a_range_has_a_type_and_a_subtype() {
+        assert!(super::range("text/").is_none() && super::range("/plain").is_none());
+        assert!(super::range("text/plain").is_some());
+    }
+
+    #[cfg(feature = "multipart")]
+    #[test]
+    fn json_types_end_in_json() {
+        for json in ["application/json", "application/problem+json", "text/json; charset=utf-8"] {
+            assert!(super::json_type(json), "{json}");
+        }
+        assert!(!super::json_type("text/plain"));
+    }
 }

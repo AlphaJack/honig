@@ -458,4 +458,21 @@ mod tests {
         let unknown = PartTypes::from([("logo", "image/png")]);
         assert!(unknown.choose(&declared).unwrap_err().to_string().contains("part `logo`"));
     }
+
+    /// A part declared `multipart/*` nests its own parts, up to `MAX_NESTING` levels. A part of another type does not.
+    #[test]
+    fn parts_nest_only_when_declared_multipart_and_not_too_deep() {
+        let text = |value: Value, types: &[(&str, &str)]| {
+            String::from_utf8(multipart_encode(&value, types).unwrap().1).unwrap()
+        };
+        let meta = text(serde_json::json!({"meta": {"a": 1}}), &[("meta", "application/json")]);
+        assert!(meta.contains(r#"{"a":1}"#) && !meta.contains("-part1-"), "{meta}");
+        let mixed = "multipart/mixed";
+        let types = [("f", mixed), ("f/*", mixed), ("f/0/*", mixed), ("f/0/0/*", mixed), ("f/0/0/0/*", mixed)];
+        let deep = text(serde_json::json!({"f": [[[[[1]]]]]}), &types);
+        for level in 1..=4 {
+            assert!(deep.contains(&format!("-part{level}-")), "level {level}: {deep}");
+        }
+        assert!(!deep.contains("-part5-"), "{deep}");
+    }
 }

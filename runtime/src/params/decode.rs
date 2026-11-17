@@ -55,7 +55,7 @@ pub fn decode_path(raw: &str, name: &str, style: Style, shape: Shape, explode: b
         Style::Label => {
             let body = raw.strip_prefix('.').unwrap_or(raw);
             let sep = if explode { '.' } else { ',' };
-            split_value(body, shape, explode, if shape == Shape::Object && explode { '.' } else { sep })
+            split_value(body, shape, explode, sep)
         }
         Style::Matrix => {
             let body = raw.strip_prefix(';').unwrap_or(raw);
@@ -470,5 +470,23 @@ pub fn from_json_param<T: DeserializeOwned>(v: Option<Value>, at: &str) -> Resul
     match v {
         Some(Value::String(s)) => serde_json::from_str(&s).map_err(|e| Reason::invalid(at, e.to_string())),
         other => from_param(other, at),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{Shape, Style, decode_path};
+    use serde_json::json;
+
+    #[cfg(feature = "cookie")]
+    #[test]
+    fn a_cookie_is_found_by_its_name() {
+        assert_eq!(super::decode_cookie(Some("a=1; b=2"), "b", Style::Form, Shape::Prim, true), Some(json!("2")));
+    }
+
+    #[test]
+    fn a_label_object_splits_at_its_separator() {
+        assert_eq!(decode_path(".a=1.b=2", "p", Style::Label, Shape::Object, true), Some(json!({"a": "1", "b": "2"})));
+        assert_eq!(decode_path(".a,1,b,2", "p", Style::Label, Shape::Object, false), Some(json!({"a": "1", "b": "2"})));
     }
 }

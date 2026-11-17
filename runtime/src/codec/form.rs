@@ -404,4 +404,13 @@ mod tests {
             Advanced { filters: v["filters"].as_object().cloned(), sorting: Some(vec!["a".into(), "b".into()]) }
         );
     }
+
+    /// A field whose `encoding.contentType` is JSON is read as JSON. A text field stays text.
+    #[test]
+    fn a_json_field_is_read_as_json() {
+        let styles = [("meta", Style::Form, Shape::Prim, true), ("note", Style::Form, Shape::Prim, true)];
+        let types = [("meta", "application/json"), ("note", "text/plain")];
+        let got: Value = form_decode_with(0, b"meta=%7B%22a%22%3A1%7D&note=%7B%7D", &styles, &types).unwrap();
+        assert_eq!(got, serde_json::json!({"meta": {"a": 1}, "note": "{}"}));
+    }
 }

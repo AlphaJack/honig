@@ -85,4 +85,9 @@ mod tests {
             assert!(!is_full_time(bad), "{bad}");
         }
     }
+
+    #[test]
+    fn a_minute_ends_at_59() {
+        assert!(is_full_time("10:59:00Z") && !is_full_time("10:60:00Z"));
+    }
 }

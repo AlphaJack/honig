@@ -212,4 +212,10 @@ mod tests {
         assert_eq!(message(Error::transport("no route")), "no route");
         assert_eq!(message(Error::transport(String::from("no route"))), "no route");
     }
+
+    #[test]
+    fn an_api_error_shows_its_status_and_message() {
+        let e = super::ApiError::new(http::StatusCode::CONFLICT, "taken");
+        assert_eq!(e.to_string(), "409: taken");
+    }
 }

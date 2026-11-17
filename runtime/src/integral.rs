@@ -360,4 +360,14 @@ mod tests {
         assert_eq!(decode::<f64>("2.5").unwrap(), 2.5);
         assert_eq!(decode::<u64>("18446744073709549568.0").unwrap(), 18_446_744_073_709_549_568);
     }
+
+    /// A newtype reads its integral float as an integer. A decimal keeps its text as written.
+    #[test]
+    fn a_newtype_reads_integers_and_a_decimal_keeps_its_digits() {
+        #[derive(Debug, PartialEq, serde::Deserialize)]
+        struct Id(u32);
+        assert_eq!(decode::<Id>("3.0").unwrap(), Id(3));
+        let wide: crate::Decimal = decode("12345678901234567.89").unwrap();
+        assert_eq!(wide.to_string(), "12345678901234567.89");
+    }
 }

@@ -259,4 +259,30 @@ mod tests {
             assert_eq!(Vec::<u8>::from(u), b"xy");
         }
     }
+
+    #[test]
+    fn binaries_compare_and_hash_by_bytes() {
+        use std::hash::{BuildHasher, RandomState};
+        let (a, b) = (Binary::from(vec![1]), Binary::from(vec![2]));
+        assert!(a != b && a < b && a.partial_cmp(&b) == Some(std::cmp::Ordering::Less));
+        let hasher = RandomState::new();
+        assert_ne!(hasher.hash_one(&a), hasher.hash_one(&b));
+        assert_eq!(hasher.hash_one(&a), hasher.hash_one(Binary::from(vec![1])));
+    }
+
+    /// `serde_json::Value` hands the string to `visit_newtype_struct`.
+    #[cfg(feature = "base64")]
+    #[test]
+    fn binary_reads_from_a_json_value() {
+        let read = Binary::deserialize(serde_json::Value::String(base64(b"hi"))).unwrap();
+        assert_eq!(read.bytes.as_ref(), b"hi");
+    }
+
+    /// A marker read after its conversion ended names no part.
+    #[cfg(feature = "multipart")]
+    #[test]
+    fn parts_are_dropped_when_the_conversion_ends() {
+        let mark = raw_parts(|| raw_mark(&bytes::Bytes::from_static(b"x"), None, None));
+        assert!(raw_part(&mark).is_none());
+    }
 }

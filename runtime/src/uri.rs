@@ -183,4 +183,11 @@ mod tests {
         assert!(is_reference("/\u{00e2}\u{00e8}c", Chars::Iri, false));
         assert!(!is_reference("http://example.com/\u{fffe}", Chars::Iri, false), "a noncharacter");
     }
+
+    /// RFC 3986 `IPvFuture`: `v`, hex digits, `.` and at least one more character.
+    #[test]
+    fn a_future_ip_literal_needs_text_after_its_version() {
+        assert!(is_reference("http://[v1.x]/", Chars::Uri, true));
+        assert!(!is_reference("http://[v1.]/", Chars::Uri, true));
+    }
 }

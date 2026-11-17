@@ -173,6 +173,20 @@ mod tests {
         }
     }
 
+    /// Every day of two eras: a slip in the leap days moves some day into the wrong year.
+    #[test]
+    fn every_day_falls_in_its_year() {
+        let mut year = 1600;
+        let mut next = days_from_civil(year + 1, 1, 1);
+        for day in days_from_civil(year, 1, 1)..days_from_civil(2401, 1, 1) {
+            if day == next {
+                year += 1;
+                next = days_from_civil(year + 1, 1, 1);
+            }
+            assert_eq!(civil_year(day), year, "day {day}");
+        }
+    }
+
     #[test]
     fn a_two_digit_year_is_never_more_than_50_years_ahead() {
         let now = SystemTime::now()
@@ -212,6 +226,7 @@ mod tests {
             "Sun, 06 Nov 1994 24:00:00 GMT",
             "Sun, 06 Nov 1994 8:49:37 GMT",
             "Sun, 06 Nov 1994 08:49:61 GMT",
+            "Sun, 06 Nov 1994 08:60:00 GMT",
             "1994-11-06T08:49:37Z",
         ] {
             assert!(!is_http_date(bad), "{bad}");

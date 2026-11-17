@@ -249,4 +249,13 @@ mod tests {
             "{err:?}"
         );
     }
+
+    #[test]
+    fn a_path_goes_after_the_base_url_unless_it_is_a_url() {
+        assert_eq!(super::target_url("https://api.example.com/v1", "/pets"), "https://api.example.com/v1/pets");
+        assert_eq!(
+            super::target_url("https://api.example.com", "http://hooks.example.com/a"),
+            "http://hooks.example.com/a"
+        );
+    }
 }

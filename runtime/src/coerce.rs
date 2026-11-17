@@ -358,4 +358,47 @@ mod tests {
             assert_eq!(read::<Value>(text).ok(), Some(Value::from(text)), "{text} stays text");
         }
     }
+
+    #[test]
+    fn untyped_text_is_a_boolean_and_a_number_only_when_exact() {
+        assert_eq!(read::<Value>("true").ok(), Some(Value::Bool(true)));
+        assert_eq!(read::<Value>("false").ok(), Some(Value::Bool(false)));
+        assert_eq!(read::<Value>("1.5").ok(), Some(Value::from(1.5)));
+        // An `f64` would round these: they stay text.
+        for text in ["1e5", "18446744073709551616"] {
+            assert_eq!(read::<Value>(text).ok(), Some(Value::from(text)), "{text} stays text");
+        }
+    }
+
+    #[test]
+    fn text_is_a_boolean_unit_newtype_or_list() {
+        #[derive(Debug, PartialEq, Deserialize)]
+        struct Id(i32);
+        assert_eq!((read::<bool>(" 0 ").ok(), read::<bool>("1").ok()), (Some(false), Some(true)));
+        assert!(read::<bool>("yes").is_err());
+        assert!(read::<()>("").is_ok() && read::<()>("null").is_ok() && read::<()>("x").is_err());
+        assert_eq!(read::<Id>("5").ok(), Some(Id(5)));
+        assert_eq!(read::<Vec<i32>>("[1, 2]").ok(), Some(vec![1, 2]));
+        assert_eq!(read::<Vec<String>>("[x").ok(), Some(vec!["[x".to_owned()]));
+        assert_eq!(read::<Vec<String>>("a").ok(), Some(vec!["a".to_owned()]));
+        assert_eq!(read::<bool>("yes").unwrap_err().to_string(), "`yes` is not a boolean");
+    }
+
+    /// A multipart part declared XML is read as XML when an object is wanted. A part of another media type is not.
+    #[cfg(all(feature = "multipart", feature = "xml"))]
+    #[test]
+    fn an_xml_part_is_read_as_an_object() {
+        use std::collections::BTreeMap;
+        type Fields = BTreeMap<String, String>;
+        let part = |text: &'static str, media: &str| {
+            crate::binary::raw_parts(|| {
+                let mark = crate::binary::raw_mark(&bytes::Bytes::from(text), None, Some(media));
+                Fields::deserialize(Coerce(Value::String(mark))).ok()
+            })
+        };
+        assert_eq!(part("<a><b>1</b></a>", "application/xml"), Some(Fields::from([("b".into(), "1".into())])));
+        assert_eq!(part("<a/>", "application/xml"), Some(Fields::new()));
+        assert_eq!(part("<a>x</a>", "application/xml"), None);
+        assert_eq!(part("<a><b>1</b></a>", "text/plain"), None, "not declared XML");
+    }
 }

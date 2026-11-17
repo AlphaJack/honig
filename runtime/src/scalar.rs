@@ -175,3 +175,35 @@ impl Serializer for ScalarText {
         Err(NotScalar)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use serde::{Serialize, Serializer};
+
+    use super::scalar_text;
+
+    struct Bytes;
+    impl Serialize for Bytes {
+        fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+            s.serialize_bytes(b"ab")
+        }
+    }
+
+    #[derive(Serialize)]
+    struct Unit;
+    #[derive(Serialize)]
+    struct Id(i32);
+    #[derive(Serialize)]
+    enum Kind {
+        Cat,
+    }
+
+    #[test]
+    fn scalars_are_written_as_json_spells_them() {
+        assert_eq!(scalar_text(&1.5_f32).as_deref(), Some("1.5"));
+        assert_eq!(scalar_text(&2.5_f64).as_deref(), Some("2.5"));
+        assert_eq!(scalar_text(&Id(5)).as_deref(), Some("5"));
+        assert_eq!(scalar_text(&Kind::Cat).as_deref(), Some("Cat"));
+        assert_eq!((scalar_text(&()), scalar_text(&Unit), scalar_text(&Bytes)), (None, None, None));
+    }
+}

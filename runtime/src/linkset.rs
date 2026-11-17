@@ -123,7 +123,8 @@ fn split_outside_quotes(s: &str, sep: char) -> Vec<&str> {
             '\\' if quote => escaped = true,
             '"' if !angle => quote = !quote,
             '<' if !quote => angle = true,
-            '>' if !quote => angle = false,
+            // Inside a quoted string `angle` is false already.
+            '>' => angle = false,
             c if c == sep && !quote && !angle => {
                 out.push(s.get(start..i).unwrap_or_default());
                 start = i + c.len_utf8();
@@ -189,5 +190,26 @@ mod tests {
         assert_eq!(ctx["next"][0]["href"], "https://a.example/b,c", "a comma inside <...> is not a separator");
         assert_eq!(ctx["prev"], ctx["next"], "one link, two relations");
         assert_eq!(ctx["up"][0], json!({"href": "/x", "title": "a, \"b\"", "hreflang": ["en", "de"]}));
+    }
+
+    /// A quote escaped inside a quoted string does not end it. `<` inside a quoted string opens no target.
+    #[test]
+    fn quotes_hide_separators() {
+        let v: Value =
+            linkset_decode(200, r#"</b>; rel=next; title="<", </a>; rel=up; title="\"a, b\""; hreflang=en"#).unwrap();
+        let ctx = &v["linkset"][0];
+        assert_eq!(ctx["up"][0], json!({"href": "/a", "title": "\"a, b\"", "hreflang": ["en"]}));
+        assert_eq!(ctx["next"][0], json!({"href": "/b", "title": "<"}));
+    }
+
+    #[test]
+    fn a_link_header_reads_and_writes_its_linkset() {
+        let model = json!({"linkset": [{"anchor": "https://example.com/items", "next": [{"href": "/items?page=3"}]}]});
+        let header = encode_linkset_header(&model).unwrap();
+        assert_eq!(header, "</items?page=3>; rel=\"next\"; anchor=\"https://example.com/items\"");
+        assert_eq!(linkset_header(Some(&header)), Some(model));
+        assert_eq!(linkset_header(None), None);
+        assert_eq!(encode_linkset_header(&Value::Null), None);
+        assert_eq!(encode_linkset_header(&json!({"linkset": []})), None);
     }
 }
