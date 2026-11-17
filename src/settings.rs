@@ -973,7 +973,7 @@ mod tests {
         let c = &configs[0];
         let derive = |k: &str, v: &[&str]| (k.to_owned(), v.iter().map(|s| (*s).to_owned()).collect::<Vec<_>>());
         assert_eq!(c.derives, [derive("*", &["Hash"]), derive("Pet", &["sqlx::FromRow", "Eq"])]);
-        assert_eq!(c.overlay_paths(), [c.root.join("one.yaml"), c.root.join("fix/two.yaml")]);
+        assert_eq!(c.overlay_paths(), [c.root.join("one.yaml"), c.root.join("fix").join("two.yaml")]);
     }
 
     #[test]
@@ -987,11 +987,11 @@ mod tests {
 
     #[test]
     fn a_star_matches_names_long_enough_for_both_ends() {
-        assert!(matches_star(Path::new("v/billing.yaml"), "bill", ".yaml"));
-        assert!(matches_star(Path::new("v/.yaml"), "", ".yaml"));
-        assert!(!matches_star(Path::new("v/billing.yml"), "bill", ".yaml"));
-        assert!(!matches_star(Path::new("v/a"), "a", "a"), "the ends may not overlap");
-        assert!(!matches_star(Path::new("v/aba"), "ab", "ba"));
+        assert!(matches_star(Path::new("billing.yaml"), "bill", ".yaml"));
+        assert!(matches_star(Path::new(".yaml"), "", ".yaml"));
+        assert!(!matches_star(Path::new("billing.yml"), "bill", ".yaml"));
+        assert!(!matches_star(Path::new("a"), "a", "a"), "the ends may not overlap");
+        assert!(!matches_star(Path::new("aba"), "ab", "ba"));
     }
 
     #[test]
