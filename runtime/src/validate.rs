@@ -54,7 +54,14 @@ pub fn violation(out: &mut Vec<Violation>, path: &InstancePath<'_>, message: imp
 /// formats are not checked.
 #[cfg_attr(feature = "idn", doc = "\nThose types are [`Email`] and [`Hostname`].")]
 pub fn check_format(out: &mut Vec<Violation>, path: &InstancePath<'_>, value: &str, format: &str) {
-    let ok = match format {
+    if !is_format(value, format) {
+        violation(out, path, format!("is not a valid {format}"));
+    }
+}
+
+/// Is `value` of `format` as [`check_format`] checks it? A format it does not know is.
+pub(crate) fn is_format(value: &str, format: &str) -> bool {
+    match format {
         "uuid" => uuid(value),
         "date" => crate::formats::is_date(value),
         "time" => crate::full_time::is_full_time(value),
@@ -84,9 +91,6 @@ pub fn check_format(out: &mut Vec<Violation>, path: &InstancePath<'_>, value: &s
         #[cfg(feature = "ipnet")]
         "ipv6-cidr" => cidr_address(value, crate::formats::is_ipv6) && value.parse::<ipnet::Ipv6Net>().is_ok(),
         _ => true,
-    };
-    if !ok {
-        violation(out, path, format!("is not a valid {format}"));
     }
 }
 

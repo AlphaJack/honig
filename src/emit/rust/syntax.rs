@@ -176,6 +176,66 @@ fn library_ty(libs: FormatLibs, f: Format) -> Option<TokenStream> {
     }
 }
 
+/// Returns the marker in `runtime::checked::format` of a format whose library type reads more than the format allows.
+/// `jiff` reads `2024-06-19 08:30Z` as a `date-time` and `uuid` reads `{...}`. `None` for text, the standard library's
+/// addresses and the runtime's own types: those read only valid values.
+fn checked_format(libs: FormatLibs, f: Format) -> Option<Ident> {
+    let marker = match (f, libs.dates) {
+        (Format::DateTime, Some(_)) => "DateTime",
+        (Format::DateTimeLocal, Some(_)) => "DateTimeLocal",
+        (Format::TimeLocal, Some(_)) => "TimeLocal",
+        (Format::Date, Some(_)) => "Date",
+        (Format::Uuid, _) if libs.uuid => "Uuid",
+        (Format::Uri, _) if libs.url => "Uri",
+        (Format::Ipv4Cidr, _) if libs.ipnet => "Ipv4Cidr",
+        (Format::Ipv6Cidr, _) if libs.ipnet => "Ipv6Cidr",
+        _ => return None,
+    };
+    Some(ident(marker))
+}
+
+/// Returns how `t` holds the text of its checked formats: a `runtime::checked::Holds` that reads it with each text
+/// checked before its library reads it. `None` when `t` holds none. Aliases are followed. A named type checks its own.
+pub(crate) fn holds(space: &Space<'_>, t: &Ty) -> Option<TokenStream> {
+    let c = quote!(runtime::checked);
+    match space.types.unalias(t) {
+        Ty::Format(f) => checked_format(space.libs, *f).map(|m| quote!(#c::Text<#c::format::#m>)),
+        Ty::Vec(x) => holds(space, x).map(|h| quote!(#c::Many<#h>)),
+        Ty::Array(x, n) => {
+            let n = Literal::usize_unsuffixed(*n);
+            holds(space, x).map(|h| quote!(#c::Exactly<#h, #n>))
+        }
+        Ty::Map(x) => holds(space, x).map(|h| quote!(#c::Values<#h>)),
+        Ty::Option(x) => holds(space, x).map(|h| quote!(#c::Maybe<#h>)),
+        Ty::Indirect(x) => holds(space, x).map(|h| quote!(#c::Boxed<#h>)),
+        Ty::Tuple(xs) => {
+            let each: Vec<Option<TokenStream>> = xs.iter().map(|x| holds(space, x)).collect();
+            each.iter().any(Option::is_some).then(|| {
+                let each = each.into_iter().map(|h| h.unwrap_or_else(|| quote!(#c::Plain)));
+                quote!((#(#each,)*))
+            })
+        }
+        Ty::Bool
+        | Ty::I8
+        | Ty::I16
+        | Ty::I32
+        | Ty::I64
+        | Ty::U8
+        | Ty::U16
+        | Ty::U32
+        | Ty::U64
+        | Ty::F32
+        | Ty::F64
+        | Ty::Decimal
+        | Ty::String
+        | Ty::Bytes
+        | Ty::Binary
+        | Ty::Any
+        | Ty::Unit
+        | Ty::Named(_) => None,
+    }
+}
+
 /// Does `t` mention a named type (needs `types`) or `runtime::Binary` (needs `runtime`)?
 pub(crate) fn mentions(t: &Ty) -> (bool, bool) {
     let runtime = matches!(

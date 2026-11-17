@@ -7,6 +7,7 @@ mod auth;
 #[cfg(feature = "base64")]
 mod base64;
 mod binary;
+mod checked;
 #[cfg(feature = "client")]
 mod client;
 mod codec;
@@ -118,6 +119,10 @@ pub mod __private {
     #[cfg(feature = "base64")]
     pub use crate::base64::*;
     pub use crate::binary::*;
+    /// Library types of formats, read with their text checked.
+    pub mod checked {
+        pub use crate::checked::*;
+    }
     #[cfg(feature = "client")]
     pub use crate::client::auth::*;
     #[cfg(feature = "oauth")]

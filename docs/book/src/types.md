@@ -96,6 +96,8 @@ Without the table the dependencies decide: a library with its `serde` feature gi
 
 A format without its library is a `String`. The server checks its text on every request as the library would on parsing. `generate` turns on the runtime feature that each check needs. [Adapters](adapters.md) lists the features.
 
+A library reads more than its format allows. `jiff` and `chrono` read `2024-06-19 08:30Z` as a `date-time`. `uuid` reads `{...}` and `url` reads a space. So a property of an object with a library type is decoded with the same check of its text first. Then the library reads it. A fraction of a second past nine digits is cut: both date libraries hold nanoseconds.
+
 Mail addresses and host names are types of the runtime. Only a valid value can be one of them. `try_from` and decoding check the value. They need the `idn` feature of the runtime. `generate` turns it on when the description uses them:
 
 ```rust

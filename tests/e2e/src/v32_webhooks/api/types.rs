@@ -142,7 +142,10 @@ impl runtime::Validate for EventKind {
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct SubscribeBody {
-    #[serde(rename = "callbackUrl")]
+    #[serde(
+        rename = "callbackUrl",
+        deserialize_with = "runtime::checked::read::<_, _, runtime::checked::Text<runtime::checked::format::Uri>>"
+    )]
     pub callback_url: url::Url,
 }
 deserialize_impl!(SubscribeBody);

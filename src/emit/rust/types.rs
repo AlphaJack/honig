@@ -3,7 +3,7 @@
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
-use super::syntax::{doc_opt, has_float, ident, lit, ty};
+use super::syntax::{doc_opt, has_float, holds, ident, lit, ty};
 
 use crate::emit::rust::names::{pascal, snake};
 use crate::emit::rust::space::Space;
@@ -605,29 +605,46 @@ fn field(space: &Space<'_>, f: &Field, owner: &str) -> TokenStream {
     // serde already uses the field name (a raw `r#type` as `type`).
     let wire = lit(&f.wire);
     let rename = (f.wire != snake(&f.name)).then(|| quote!(rename = #wire));
-    let serde = |rest: &[TokenStream]| {
-        let all: Vec<&TokenStream> = rename.iter().chain(rest).collect();
+    let serde = |rest: &[Option<TokenStream>]| {
+        let all: Vec<&TokenStream> = rename.iter().chain(rest.iter().flatten()).collect();
         (!all.is_empty()).then(|| quote!(#[serde(#(#all),*)]))
+    };
+    // A library type that reads more than its format allows gets its text checked first. `wrap` holds it as the
+    // field's own type does: `Option`, `runtime::Nullable` or itself.
+    let checked = |t: &Ty, wrap: &str| {
+        holds_text(space, t).map(|h| {
+            let h = if wrap.is_empty() { h } else { format!("runtime::checked::{wrap}<{h}>") };
+            let read = lit(&format!("runtime::checked::read::<_, _, {h}>"));
+            quote!(deserialize_with = #read)
+        })
     };
     let attr = if field_default(space, f).is_some() {
         let fun = lit(&format!("{owner}::default_{}", snake(&f.name)));
-        serde(&[quote!(default = #fun)])
+        serde(&[Some(quote!(default = #fun)), checked(&f.ty, "")])
     } else if f.required && space.types.nullable(&f.ty).is_some() {
         // serde reads a missing `Option` as `None`: its own deserializer makes the property required again.
-        serde(&[quote!(deserialize_with = "runtime::required_nullable")])
+        let read = checked(&f.ty, "").unwrap_or_else(|| quote!(deserialize_with = "runtime::required_nullable"));
+        serde(&[Some(read)])
     } else if f.required {
-        serde(&[])
-    } else if space.types.nullable(&f.ty).is_some() {
-        serde(&[quote!(default), quote!(skip_serializing_if = "runtime::Nullable::is_absent")])
+        serde(&[checked(&f.ty, "")])
+    } else if let Some(inner) = space.types.nullable(&f.ty) {
+        let skip = quote!(skip_serializing_if = "runtime::Nullable::is_absent");
+        serde(&[Some(quote!(default)), Some(skip), checked(inner, "OrNull")])
     } else if f.null_as_absent {
         // serde's own `Option`: `null` and absent both read as `None`.
-        serde(&[quote!(default), quote!(skip_serializing_if = "Option::is_none")])
+        let skip = quote!(skip_serializing_if = "Option::is_none");
+        serde(&[Some(quote!(default)), Some(skip), checked(&f.ty, "Maybe")])
     } else {
         // `null` is no value of a property that is not nullable whether it is absent or not.
-        let not_null = quote!(deserialize_with = "runtime::not_null");
-        serde(&[quote!(default), quote!(skip_serializing_if = "Option::is_none"), not_null])
+        let not_null = checked(&f.ty, "Present").unwrap_or_else(|| quote!(deserialize_with = "runtime::not_null"));
+        serde(&[Some(quote!(default)), Some(quote!(skip_serializing_if = "Option::is_none")), Some(not_null)])
     };
     quote! { #doc #attr pub #name: #t, }
+}
+
+/// Returns [`holds`] as the text of a `deserialize_with` path. It is paths, generics and numbers: no space is needed.
+fn holds_text(space: &Space<'_>, t: &Ty) -> Option<String> {
+    holds(space, t).map(|h| h.to_string().replace(' ', ""))
 }
 
 /// Returns the empty undeclared-properties map.
@@ -668,9 +685,13 @@ fn structure(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, s: &St
     let fields = s.fields.iter().map(|f| field(space, f, &pascal(&def.name)));
     let extra = ident(&extra_field(s));
     let additional = s.additional.as_ref().map(|t| {
+        let read = holds_text(space, t).map(|h| {
+            let read = lit(&format!("runtime::checked::read::<_, _, runtime::checked::Values<{h}>>"));
+            quote!(, deserialize_with = #read)
+        });
         let t = ty(space, t, false);
         quote! {
-            #[serde(flatten)]
+            #[serde(flatten #read)]
             pub #extra: std::collections::BTreeMap<String, #t>,
         }
     });
