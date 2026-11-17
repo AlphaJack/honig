@@ -213,7 +213,7 @@ jobs:
         run: cargo test --workspace --doc --locked
 
   # The scaling gates fail when a path costs more than n^1.3. They count instructions under callgrind, so their counts
-  # are the same on every run. The time gate races generated paths against hand-rolled axum twins:
+  # are the same on every run. The time gate races generated paths against hand-rolled axum baselines:
   # `tests/e2e/benches/time_gate.rs`. Each gate builds in release, so a pull request runs it only when it changes what
   # that gate measures, `Cargo.toml` or `Cargo.lock`.
   performance-gate:

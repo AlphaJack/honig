@@ -1,5 +1,5 @@
 //! How the cost of a request grows with its payload: each kind of `tests/e2e/cost` from 256 B to 32 MiB (a form stays
-//! small), generated against its hand-rolled axum twin. It prints CSV: the time of a request, its allocations, its
+//! small), generated against its hand-rolled axum baseline. It prints CSV: the time of a request, its allocations, its
 //! peak live heap and the frames of its response body. Over a socket each frame is at least one write, so the frames
 //! show what the process does not pay for.
 //!
@@ -22,28 +22,28 @@ fn in_process(sizes: &[usize]) {
     let runtime = cost::runtime();
     let started = Instant::now();
     println!(
-        "size,path,generated_us,twin_us,time_ratio,generated_allocs,twin_allocs,generated_peak_kib,twin_peak_kib,\
-         generated_frames,twin_frames"
+        "size,path,generated_us,baseline_us,time_ratio,generated_allocs,baseline_allocs,generated_peak_kib,baseline_peak_kib,\
+         generated_frames,baseline_frames"
     );
     for &size in sizes {
-        let (generated, twin) = cost::at(size);
+        let (generated, baseline) = cost::at(size);
         runtime.block_on(async {
             for path in cost::paths(size) {
-                if let Err(e) = cost::both_succeed(&generated, &twin, &path).await {
+                if let Err(e) = cost::same_answer(&generated, &baseline, &path).await {
                     eprintln!("{e}");
                     continue;
                 }
-                let ((_, frames), (_, twin_frames)) =
-                    (cost::serve(&generated, &path).await, cost::serve(&twin, &path).await);
-                let (time, twin_time) = cost::times(&generated, &twin, &path, ROUNDS, ROUND).await;
+                let ((_, frames), (_, baseline_frames)) =
+                    (cost::serve(&generated, &path).await, cost::serve(&baseline, &path).await);
+                let timing = cost::times(&generated, &baseline, &path, ROUNDS, ROUND).await;
                 let (allocs, peak) = cost::heap(&generated, &path).await;
-                let (twin_allocs, twin_peak) = cost::heap(&twin, &path).await;
+                let (baseline_allocs, baseline_peak) = cost::heap(&baseline, &path).await;
                 println!(
-                    "{size},{},{:.1},{:.1},{:.2},{allocs},{twin_allocs},{peak},{twin_peak},{frames},{twin_frames}",
+                    "{size},{},{:.1},{:.1},{:.2},{allocs},{baseline_allocs},{peak},{baseline_peak},{frames},{baseline_frames}",
                     path.name,
-                    time.as_secs_f64() * 1e6,
-                    twin_time.as_secs_f64() * 1e6,
-                    time.as_secs_f64() / twin_time.as_secs_f64(),
+                    timing.generated.as_secs_f64() * 1e6,
+                    timing.baseline.as_secs_f64() * 1e6,
+                    timing.ratio,
                 );
             }
         });
