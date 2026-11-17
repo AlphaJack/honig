@@ -1,6 +1,6 @@
-//! The PR gate on time: no kind of path takes more than its `max_time` times the time of its hand-rolled baseline at any
-//! of `cost::GATE_SIZES`. Both run in turn in one process, so the speed of the machine cancels out of the ratio. It
-//! needs a release build, so it is a bench: `cargo bench -p e2e --bench time_gate`. `tests/allocation_gate.rs` gates
+//! The time bench of a pull request: no kind of path takes more than its `max_time` times the time of its
+//! hand-rolled baseline at any of `cost::BENCH_SIZES`. Both run in turn in one process, so the speed of the machine
+//! cancels out of the ratio. It needs a release build: `cargo bench -p e2e --bench time`. `tests/allocations.rs` counts
 //! allocations.
 
 use std::time::{Duration, Instant};
@@ -19,8 +19,9 @@ fn main() -> std::process::ExitCode {
     let started = Instant::now();
     let runtime = cost::runtime();
     let mut failed = vec![];
-    let table = cost::gate_table("honig µs", "base µs", "99999.9");
-    for size in cost::GATE_SIZES {
+    let table = cost::bench_table("head µs", "base µs", "99999.9");
+    let mut rows = vec![];
+    for size in cost::BENCH_SIZES {
         let (generated, baseline) = cost::at(size);
         for path in cost::paths(size) {
             let measured = runtime.block_on(async {
@@ -47,12 +48,11 @@ fn main() -> std::process::ExitCode {
                 }
             };
             let micros = |d: Duration| format!("{:.1}", d.as_secs_f64() * 1e6);
-            let measured = [micros(timing.generated), micros(timing.baseline)];
-            if cost::gate_row(&table, size, &path, measured, timing.ratio, path.max_time) {
-                failed.push(format!("{} at {size} B", path.name));
-            }
+            let sides = [micros(timing.generated), micros(timing.baseline)];
+            rows.push(cost::Measured { path: path.name, size, sides, ratio: timing.ratio, max: path.max_time });
         }
     }
+    failed.extend(cost::print_rows(&table, rows));
     // stdout, after the table: on stderr a line lands inside it.
     println!("took {:.1}s", started.elapsed().as_secs_f64());
     for f in &failed {

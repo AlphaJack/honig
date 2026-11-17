@@ -68,7 +68,7 @@ const UNITS: [&str; 4] = ["B", "KiB", "MiB", "GiB"];
 /// The step between two [`UNITS`].
 const STEP: usize = 1024;
 
-/// Returns `bytes` in the largest unit that holds it whole: `256 B`, `16 KiB`, `1 MiB`.
+/// Returns `bytes` in the largest unit that holds it whole: `256B`, `16KiB`, `1MiB`.
 #[must_use]
 pub fn size(bytes: usize) -> String {
     let mut n = bytes;
@@ -79,7 +79,7 @@ pub fn size(bytes: usize) -> String {
         n /= STEP;
         name = next;
     }
-    format!("{n} {name}")
+    format!("{n}{name}")
 }
 
 #[cfg(test)]
@@ -88,9 +88,9 @@ mod tests {
 
     #[test]
     fn a_size_takes_the_largest_unit_that_holds_it_whole() {
-        assert_eq!(size(256), "256 B");
-        assert_eq!(size(16 << 10), "16 KiB");
-        assert_eq!(size(1 << 20), "1 MiB");
-        assert_eq!(size(1536), "1536 B");
+        assert_eq!(size(256), "256B");
+        assert_eq!(size(16 << 10), "16KiB");
+        assert_eq!(size(1 << 20), "1MiB");
+        assert_eq!(size(1536), "1536B");
     }
 }

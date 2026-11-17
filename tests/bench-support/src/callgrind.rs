@@ -19,7 +19,7 @@ const STOP_EXPONENT: f64 = 1.8;
 const MEASURE: &str = "--measure";
 
 /// Checks every path at every size. When callgrind runs it with `--measure` it runs one path at one size. Names on the
-/// command line (`cargo bench --bench scaling_gate -- text_encode`) check only those paths.
+/// command line (`cargo bench --bench scaling -- text_encode`) check only those paths.
 pub fn main(paths: &[Path], sizes: &[usize]) -> ExitCode {
     let args: Vec<String> = std::env::args().collect();
     match args.iter().map(String::as_str).collect::<Vec<_>>()[..] {

@@ -1193,7 +1193,7 @@ fn union_deserialize(space: &Space<'_>, u: &Union) -> TokenStream {
 fn untagged(space: &Space<'_>, u: &Union) -> TokenStream {
     // What rules a branch out before it decodes: the JSON kind of the value and the fields of a struct. Each is
     // named `fit_<i>` and computed once.
-    let gates: Vec<Option<TokenStream>> = u
+    let guards: Vec<Option<TokenStream>> = u
         .variants
         .iter()
         .map(|v| {
@@ -1215,7 +1215,7 @@ fn untagged(space: &Space<'_>, u: &Union) -> TokenStream {
         })
         .collect();
     let fit = |i: usize| quote::format_ident!("fit_{i}");
-    let lets = gates.iter().enumerate().filter_map(|(i, g)| {
+    let lets = guards.iter().enumerate().filter_map(|(i, g)| {
         let (name, g) = (fit(i), g.as_ref()?);
         Some(quote!(let #name = #g;))
     });
@@ -1225,28 +1225,28 @@ fn untagged(space: &Space<'_>, u: &Union) -> TokenStream {
         // of its own variants. So the branches after it still get their turn. A boxed one too.
         let (inner, boxed) = if let Ty::Indirect(i) = &v.ty { (i.as_ref(), true) } else { (&v.ty, false) };
         let union = matches!(inner, Ty::Named(id) if matches!(space.types.get(*id).kind, Kind::Union(_)));
-        let gate = gates[i].as_ref().map(|_| {
+        let guard = guards[i].as_ref().map(|_| {
             let f = fit(i);
             quote!(#f &&)
         });
         let decoded = if union {
             let it = ty(space, inner, false);
             let x = if boxed { quote!(x.as_ref()) } else { quote!(x) };
-            quote!(#gate let Ok(x) = v.decode_ref::<#t>() && !matches!(#x, #it::Other(_)))
+            quote!(#guard let Ok(x) = v.decode_ref::<#t>() && !matches!(#x, #it::Other(_)))
         } else {
-            quote!(#gate let Ok(x) = v.decode_ref::<#t>())
+            quote!(#guard let Ok(x) = v.decode_ref::<#t>())
         };
         // A branch that decodes but fails its checks (an open enum, a `format`) is not a match: the union's
         // own checks of that variant decide, and the branches after it get their turn. A closed union keeps
         // the first that decoded, so that its violations name what is wrong. So when no later branch can fit,
         // a closed union's choice does not depend on the checks: it skips them. Checked at every level, a
         // recursive union checked each nested value once per level above it.
-        let later = &gates[i + 1..];
+        let later = &guards[i + 1..];
         let checked = if u.open || later.iter().any(Option::is_none) {
             quote!(runtime::is_valid(&picked))
         } else {
             // Nothing held from an earlier branch and no later branch that can fit: this one is the answer.
-            let fits = (i + 1..gates.len()).map(fit);
+            let fits = (i + 1..guards.len()).map(fit);
             if later.is_empty() {
                 quote!(first.is_none() || runtime::is_valid(&picked))
             } else {

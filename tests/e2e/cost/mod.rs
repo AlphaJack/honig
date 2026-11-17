@@ -2,8 +2,8 @@
 //! request of each size, how one request is served, timed and counted, and the budget of each kind. Both serve in the
 //! process through `oneshot`, so no socket or other process adds noise.
 //!
-//! - `tests/allocation_gate.rs`: no kind allocates more than `max_allocs` times its baseline at any of [`GATE_SIZES`].
-//! - `benches/time_gate.rs`: no kind takes more than `max_time` times its baseline in a release build at any of them.
+//! - `tests/allocations.rs`: no kind allocates more than `max_allocs` times its baseline at any of [`BENCH_SIZES`].
+//! - `benches/time.rs`: no kind takes more than `max_time` times its baseline in a release build at any of them.
 //! - `benches/size_sweep.rs`: the CSV of every kind from 256 B to 32 MiB.
 
 use std::alloc::{GlobalAlloc, Layout, System};
@@ -447,51 +447,61 @@ pub fn member_body() -> Bytes {
     Bytes::from_static(b"name=Alice&age=30&role=admin")
 }
 
-/// The sizes that both gates check every kind at. A kind keeps one budget across them.
+/// The sizes that both benches check every kind at. A kind keeps one budget across them.
 #[allow(dead_code, reason = "the size sweep picks its own sizes")]
-pub const GATE_SIZES: [usize; 3] = [256, 16 << 10, 1 << 20];
+pub const BENCH_SIZES: [usize; 3] = [256, 16 << 10, 1 << 20];
 
-/// The table that a gate prints: per size and kind of path, what the generated side and its baseline measured
-/// (`honig` and `baseline`, as wide as `sample`), their ratio, the budget of the kind and whether it holds.
-#[allow(dead_code, reason = "the size sweep prints no gate")]
-pub fn gate_table(honig: &'static str, baseline: &'static str, sample: &str) -> Table {
-    let sizes = GATE_SIZES.map(table::size);
+/// The table that a bench prints: per size and kind of path, what the generated side (`head`) and its baseline
+/// (`base`) measured, as wide as `sample`, their ratio, the budget of the kind and whether it holds.
+#[allow(dead_code, reason = "the size sweep prints no bench")]
+pub fn bench_table(head: &'static str, base: &'static str, sample: &str) -> Table {
+    let sizes = BENCH_SIZES.map(table::size);
     let widest_size = sizes.iter().max_by_key(|s| s.len()).map_or("", String::as_str);
-    let widest_path = paths(GATE_SIZES[0]).iter().map(|p| p.name.len()).max().unwrap_or_default();
+    let widest_path = paths(BENCH_SIZES[0]).iter().map(|p| p.name.len()).max().unwrap_or_default();
     Table::new(&[
         Column::right("size", widest_size),
         Column::left("path", widest_path),
-        Column::right(honig, sample),
-        Column::right(baseline, sample),
+        Column::right(head, sample),
+        Column::right(base, sample),
         Column::right("ratio", "99.99"),
         Column::right("max", "9.99"),
         Column::left("result", "FAIL".len()),
     ])
 }
 
-/// Prints the row of `path` at `size`: both sides as measured and their `ratio` against the budget `max`. Returns
-/// whether the ratio is over it.
-#[allow(dead_code, reason = "the size sweep prints no gate")]
-pub fn gate_row(table: &Table, size: usize, path: &Path, measured: [String; 2], ratio: f64, max: f64) -> bool {
-    let over = ratio > max;
-    let [honig, baseline] = measured;
-    let result = if over { "FAIL" } else { "ok" };
-    table.row(&[
-        table::size(size),
-        path.name.to_owned(),
-        honig,
-        baseline,
-        format!("{ratio:.2}"),
-        format!("{max:.2}"),
-        result.to_owned(),
-    ]);
+/// One row of a bench: a kind of path at a size, both sides as measured, their ratio and the budget of the kind.
+#[allow(dead_code, reason = "the size sweep prints no bench")]
+pub struct Measured {
+    pub path: &'static str,
+    pub size: usize,
+    /// The generated side and its baseline, as the table shows them.
+    pub sides: [String; 2],
+    pub ratio: f64,
+    pub max: f64,
+}
+
+/// Prints `rows` by path and then by size, so the sizes of one kind sit together. Returns each row over its budget.
+#[allow(dead_code, reason = "the size sweep prints no bench")]
+pub fn print_rows(table: &Table, mut rows: Vec<Measured>) -> Vec<String> {
+    rows.sort_by_key(|r| (r.path, r.size));
+    let mut over = vec![];
+    for Measured { path, size, sides: [head, base], ratio, max } in rows {
+        let failed = ratio > max;
+        let result = if failed { "FAIL" } else { "ok" };
+        let cells = [table::size(size), path.to_owned(), head, base, format!("{ratio:.2}"), format!("{max:.2}")];
+        table.row(&[cells.as_slice(), &[result.to_owned()]].concat());
+        if failed {
+            over.push(format!("{path} at {}", table::size(size)));
+        }
+    }
     over
 }
 
-/// One kind of path, the request that it gets at one size, and its budgets against its baseline. The allocation budget is
-/// the most that the kind makes at any of [`GATE_SIZES`], rounded up to the next 0.05: counts are the same on every
-/// run, so it needs no margin. The time budget is the median of three runs at its slowest size and a quarter more: one
-/// run on a busy machine can be twice as slow. Lower a budget when a change makes the kind cheaper.
+/// One kind of path, the request that it gets at one size, and its budgets against its baseline. The allocation budget
+/// is the most that the kind makes at any of [`BENCH_SIZES`], rounded up to the next 0.05: counts are the same on every
+/// run, so it needs no margin. The time budget is the worst ratio of the kind in a CI run and a tenth more, rounded up
+/// to the next 0.05: ratios differ between machines, so they come from the runner that enforces them. Lower a budget
+/// when a change makes the kind cheaper.
 pub struct Path {
     pub name: &'static str,
     method: &'static str,
@@ -500,10 +510,10 @@ pub struct Path {
     accept: &'static str,
     body: Bytes,
     /// At most how many times the allocations of the baseline.
-    #[allow(dead_code, reason = "only the allocation gate reads it")]
+    #[allow(dead_code, reason = "only the allocation bench reads it")]
     pub max_allocs: f64,
     /// At most how many times the time of the baseline in a release build.
-    #[allow(dead_code, reason = "only the time gate reads it")]
+    #[allow(dead_code, reason = "only the time bench reads it")]
     pub max_time: f64,
 }
 
@@ -523,26 +533,26 @@ pub fn paths(size: usize) -> Vec<Path> {
         Path {
             content_type: "application/octet-stream",
             body: upload_body(size),
-            ..path("upload", "PUT", "/up/files/a", "*/*", (1.15, 1.95))
+            ..path("upload", "PUT", "/up/files/a", "*/*", (1.15, 2.0))
         },
         Path {
             content_type: SCAN_TYPE,
             body: scan_body(size),
-            ..path("multipart_b64", "POST", "/mp/scans", "*/*", (1.3, 1.6))
+            ..path("multipart_b64", "POST", "/mp/scans", "*/*", (1.3, 1.55))
         },
-        path("download", "GET", "/dl/exports/x", "application/zip", (1.3, 2.3)),
+        path("download", "GET", "/dl/exports/x", "application/zip", (1.3, 2.25)),
         path("json_get", "GET", "/dl/exports/x/manifest", "application/json", (1.1, 1.55)),
-        path("sse", "GET", "/sse/tiles/stream", "text/event-stream", (0.8, 1.15)),
+        path("sse", "GET", "/sse/tiles/stream", "text/event-stream", (0.8, 0.95)),
         path("jsonl", "GET", "/sse/tiles/lines", "application/jsonl", (1.0, 1.75)),
         Path {
             content_type: "application/xml",
             body: book_body(size),
-            ..path("xml", "POST", "/xml/books", "application/xml", (0.75, 1.25))
+            ..path("xml", "POST", "/xml/books", "application/xml", (0.75, 1.15))
         },
         Path {
             content_type: "application/x-www-form-urlencoded",
             body: member_body(),
-            ..path("form", "POST", "/val/members", "*/*", (1.15, 1.8))
+            ..path("form", "POST", "/val/members", "*/*", (1.15, 1.95))
         },
     ]
 }
@@ -672,7 +682,7 @@ static GLOBAL: Counting = Counting;
 const TRIES: usize = 3;
 
 /// The allocations and the peak live heap in KiB of one request: the fewest of a few.
-#[allow(dead_code, reason = "the time gate does not count allocations")]
+#[allow(dead_code, reason = "the time bench does not count allocations")]
 pub async fn heap(router: &Router, path: &Path) -> (u64, isize) {
     let (mut allocs, mut peak) = (u64::MAX, isize::MAX);
     for _ in 0..TRIES {
@@ -698,7 +708,7 @@ async fn round(router: &Router, path: &Path, n: u32) -> Duration {
 }
 
 /// What [`times`] measured: each side's median time of one request and the median ratio of the two.
-#[allow(dead_code, reason = "the allocation gate does not time")]
+#[allow(dead_code, reason = "the allocation bench does not time")]
 #[derive(Clone, Copy)]
 pub struct Timing {
     pub generated: Duration,
@@ -707,11 +717,11 @@ pub struct Timing {
     pub ratio: f64,
 }
 
-/// Times `rounds` pairs of rounds: one of the generated side, then one of its baseline. A round takes about `length` for
-/// the baseline. The ratio is the median of the ratios of each pair: a stall of the machine slows the two rounds of a
-/// pair alike or one pair only, so it barely moves the median. A ratio of the two fastest rounds, each from a pair of
+/// Times `rounds` pairs of rounds: one of the generated side, then one of its baseline. A round takes about `length`
+/// for the baseline. The ratio is the median of the ratios of each pair: a stall of the machine slows the two rounds of
+/// a pair alike or one pair only, so it barely moves the median. A ratio of the two fastest rounds, each from a pair of
 /// its own, took one lucky round of a side as the whole truth and failed now and then on a busy CI runner.
-#[allow(dead_code, reason = "the allocation gate does not time")]
+#[allow(dead_code, reason = "the allocation bench does not time")]
 pub async fn times(generated: &Router, baseline: &Router, path: &Path, rounds: usize, length: Duration) -> Timing {
     let once = round(baseline, path, 1).await.max(Duration::from_nanos(1));
     let n = u32::try_from(length.as_nanos() / once.as_nanos()).unwrap_or(1).clamp(1, 5000);

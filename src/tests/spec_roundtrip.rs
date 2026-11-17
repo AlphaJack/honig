@@ -1,4 +1,4 @@
-//! Phase 1 gate: parsing into the typed model and writing it back as JSON must give the input JSON.
+//! Phase 1 check: parsing into the typed model and writing it back as JSON must give the input JSON.
 
 use std::path::Path;
 

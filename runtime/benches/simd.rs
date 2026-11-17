@@ -26,7 +26,7 @@ struct Line {
 }
 
 fn main() {
-    // A time cap per benchmark and size. A whole run takes seconds. A slow path shows as few samples and not as a wait.
+    // A time cap per bench and size. A whole run takes seconds. A slow path shows as few samples and not as a wait.
     // Options on the command line (`--max-time 30` to profile one) override these.
     divan::Divan::default().sample_count(20).max_time(std::time::Duration::from_millis(200)).config_with_args().main();
 }
