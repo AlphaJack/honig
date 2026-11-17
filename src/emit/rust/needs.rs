@@ -81,7 +81,7 @@ fn format_checks(api: &Api, libs: FormatLibs) -> Vec<&'static str> {
         (IDN, mail.iter().any(|f| used.contains(f))),
         // The libraries that would type these formats check them.
         (REGRESS, checked(&[Format::Regex])),
-        // The CIDR blocks: as text, and before `ipnet::Ipv4Net` reads one (`runtime::checked`).
+        // The CIDR blocks: as text, and before `ipnet::Ipv4Net` reads one (`runtime::validated`).
         (IPNET, used.contains(&Format::Ipv4Cidr) || used.contains(&Format::Ipv6Cidr)),
         // `runtime::FullTime`: a `time` with its offset.
         (JIFF, used.contains(&Format::Time) && libs.dates == Some(DateLib::Jiff)),

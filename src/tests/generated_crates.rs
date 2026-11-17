@@ -155,25 +155,36 @@ fn a_shift_keeps_every_offset_as_sent() {
 fn library_types_read_only_their_format() {
     let all = crate::settings::FormatLibs { uuid: true, url: true, ipnet: true, dates: None };
     let jiff = "jiff = { version = \"1\", features = [\"serde\"] }";
-    build_checked(
-        "checked-jiff",
+    build_validated(
+        "validated-jiff",
         jiff,
         crate::settings::FormatLibs { dates: Some(crate::settings::DateLib::Jiff), ..all },
     );
     let chrono = "chrono = { version = \"0.4\", features = [\"serde\"] }";
-    build_checked(
-        "checked-chrono",
+    build_validated(
+        "validated-chrono",
         chrono,
         crate::settings::FormatLibs { dates: Some(crate::settings::DateLib::Chrono), ..all },
     );
 }
 
 /// A struct with a checked format in every place a field can hold one: itself, `Option`, `runtime::Nullable`, a
-/// list, a tuple, an array, an alias and the undeclared properties.
-fn checked_schemas() -> serde_json::Value {
+/// list, a tuple, an array, an alias, the undeclared properties, a union branch and a newtype.
+fn validated_schemas() -> serde_json::Value {
     serde_json::json!({
         "Stamp": {"type": "string", "format": "date-time"},
-        "Checked": {
+        "ByKind": {"oneOf": [{"type": "string", "format": "date-time"}, {"type": "integer"}]},
+        "SameKind": {"oneOf": [{"type": "string", "format": "date-time"}, {"type": "string", "format": "uuid"}]},
+        "Rec": {
+            "type": "array",
+            "prefixItems": [
+                {"type": "string", "format": "date"},
+                {"oneOf": [{"$ref": "#/components/schemas/Rec"}, {"type": "null"}]},
+            ],
+            "items": false,
+            "minItems": 2,
+        },
+        "Validated": {
             "type": "object",
             "required": ["at", "id", "maybe_at"],
             "properties": {
@@ -194,6 +205,9 @@ fn checked_schemas() -> serde_json::Value {
                 },
                 "two": {"type": "array", "items": {"type": "string", "format": "date"}, "minItems": 2, "maxItems": 2},
                 "stamp": {"$ref": "#/components/schemas/Stamp"},
+                "by_kind": {"$ref": "#/components/schemas/ByKind"},
+                "same_kind": {"$ref": "#/components/schemas/SameKind"},
+                "rec": {"$ref": "#/components/schemas/Rec"},
             },
             "additionalProperties": {"type": "string", "format": "date"},
         },
@@ -201,7 +215,7 @@ fn checked_schemas() -> serde_json::Value {
 }
 
 /// The test of the generated crate: each place refuses a text that its library alone would read.
-const CHECKED_TEST: &str = r##"#![deny(warnings)]
+const VALIDATED_TEST: &str = r##"#![deny(warnings)]
 pub mod api;
 
 #[cfg(test)]
@@ -211,16 +225,28 @@ use super::api;
 const OK: &str = r#"{"at":"2024-06-19T08:30:06Z","id":"01234567-89ab-4def-8123-456789abcdef","maybe_at":null,
 "home":"https://example.com/a","net":"192.168.0.0/24","day":"2024-06-19","clock":"08:30:06",
 "local":"2024-06-19T08:30:06","seen":["2024-06-19T08:30:06Z"],"pair":["2024-06-19",1],
-"two":["2024-06-19","2024-06-20"],"stamp":"2024-06-19T08:30:06Z","extra":"2024-06-19"}"#;
+"two":["2024-06-19","2024-06-20"],"stamp":"2024-06-19T08:30:06Z","extra":"2024-06-19",
+"by_kind":"2024-06-19T08:30:06Z","same_kind":"01234567-89ab-4def-8123-456789abcdef","rec":["2024-06-19",null]}"#;
 
+/// Decodes `json` as the server decodes a request: the text of library types is validated.
 fn decodes(json: &str) -> bool {
-    serde_json::from_str::<api::types::Checked>(json).is_ok()
+    let _strict = api::runtime::validated::Strict::enter();
+    serde_json::from_str::<api::types::Validated>(json).is_ok()
+}
+
+/// A client leaves the text to the library: jiff reads a space in a `date-time`.
+#[test]
+fn a_client_reads_what_its_library_reads() {
+    let lenient = OK.replace("\"at\":\"2024-06-19T08:30:06Z\"", "\"at\":\"2024-06-19 08:30:06Z\"");
+    assert!(serde_json::from_str::<api::types::Validated>(&lenient).is_ok());
+    assert!(!decodes(&lenient));
 }
 
 #[test]
 fn every_place_checks_its_text() {
-    assert!(decodes(OK), "{:?}", serde_json::from_str::<api::types::Checked>(OK).err());
+    assert!(decodes(OK), "{:?}", serde_json::from_str::<api::types::Validated>(OK).err());
     assert!(decodes(&OK.replace("08:30:06Z\",\"id", "08:30:06.1234567891Z\",\"id")), "more than 9 fraction digits");
+    let mut decoded = vec![];
     for (good, bad) in [
         ("\"at\":\"2024-06-19T08:30:06Z\"", "\"at\":\"2024-06-19 08:30:06Z\""),
         ("\"maybe_at\":null", "\"maybe_at\":\"2024-06-19T08:30:06+0100\""),
@@ -235,16 +261,33 @@ fn every_place_checks_its_text() {
         ("\"two\":[\"2024-06-19\",\"2024-06-20\"]", "\"two\":[\"2024-06-19\",\"20240620\"]"),
         ("\"stamp\":\"2024-06-19T08:30:06Z\"", "\"stamp\":\"2024-06-19T08:30:06+01\""),
         ("\"extra\":\"2024-06-19\"", "\"extra\":\"2024-06-19T00:00:00\""),
+        ("\"by_kind\":\"2024-06-19T08:30:06Z\"", "\"by_kind\":\"2024-06-19 08:30:06Z\""),
+        ("\"rec\":[\"2024-06-19\",null]", "\"rec\":[\"20240619\",null]"),
     ] {
         assert!(OK.contains(good), "{good}");
-        assert!(!decodes(&OK.replace(good, bad)), "{bad}");
+        if decodes(&OK.replace(good, bad)) {
+            decoded.push(bad);
+        }
     }
+    assert!(decoded.is_empty(), "decoded: {decoded:?}");
+}
+
+/// A branch of an untagged union takes only its own format. Text that no branch takes is `Other`.
+#[test]
+fn an_untagged_branch_checks_its_text() {
+    use api::types::SameKind;
+    let _strict = api::runtime::validated::Strict::enter();
+    let pick = |s: &str| serde_json::from_str::<SameKind>(s).unwrap();
+    assert!(matches!(pick("\"2024-06-19T08:30:06Z\""), SameKind::DateTime(_)));
+    assert!(matches!(pick("\"01234567-89ab-4def-8123-456789abcdef\""), SameKind::Uuid(_)));
+    assert!(matches!(pick("\"2024-06-19 08:30:06Z\""), SameKind::Other(_)));
+    assert!(matches!(pick("\"{01234567-89ab-4def-8123-456789abcdef}\""), SameKind::Other(_)));
 }
 }
 "##;
 
-/// Generates `checked_schemas` with `libs` into a crate named `name` that depends on `lib` too, and runs its test.
-fn build_checked(name: &str, lib: &str, libs: crate::settings::FormatLibs) {
+/// Generates `validated_schemas` with `libs` into a crate named `name` that depends on `lib` too, and runs its test.
+fn build_validated(name: &str, lib: &str, libs: crate::settings::FormatLibs) {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
     let out = root.join("target").join("gen-tests").join(name);
     // A missing directory is fine: there is nothing to clean up.
@@ -262,7 +305,8 @@ fn build_checked(name: &str, lib: &str, libs: crate::settings::FormatLibs) {
         rust: crate::emit::rust::Options { libs, ..Default::default() },
         ..crate::emit::Options::default()
     };
-    let doc = super::common::spec("3.2.0", &serde_json::json!({}), &serde_json::json!({"schemas": checked_schemas()}));
+    let doc =
+        super::common::spec("3.2.0", &serde_json::json!({}), &serde_json::json!({"schemas": validated_schemas()}));
     let spec = super::common::write(name, &doc, &[]);
     let generated = crate::generate::generate(&spec, &opts).unwrap_or_else(|d| panic!("generation failed: {:?}", d.0));
     let api = out.join("src").join("api");
@@ -270,7 +314,7 @@ fn build_checked(name: &str, lib: &str, libs: crate::settings::FormatLibs) {
     let manifest = crate::manifest::with_runtime(&manifest, &generated.runtime_features).unwrap();
     std::fs::write(out.join("Cargo.toml"), manifest).unwrap();
     super::common::use_local_runtime(&out.join("Cargo.toml"));
-    std::fs::write(out.join("src").join("lib.rs"), CHECKED_TEST).unwrap();
+    std::fs::write(out.join("src").join("lib.rs"), VALIDATED_TEST).unwrap();
     let status = Command::new(env!("CARGO"))
         .args(["test", "--quiet"])
         .current_dir(&out)

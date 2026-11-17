@@ -395,7 +395,7 @@ pub struct CollectionLinksLinksetItem {
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::checked::read::<_, _, runtime::checked::Present<runtime::checked::Text<runtime::checked::format::Uri>>>"
+        deserialize_with = "runtime::validated::read::<_, _, runtime::validated::Present<runtime::validated::Text<runtime::validated::format::Uri>>>"
     )]
     pub anchor: Option<url::Url>,
     #[serde(flatten)]

@@ -176,10 +176,10 @@ fn library_ty(libs: FormatLibs, f: Format) -> Option<TokenStream> {
     }
 }
 
-/// Returns the marker in `runtime::checked::format` of a format whose library type reads more than the format allows.
+/// Returns the marker in `runtime::validated::format` of a format whose library type reads more than the format allows.
 /// `jiff` reads `2024-06-19 08:30Z` as a `date-time` and `uuid` reads `{...}`. `None` for text, the standard library's
 /// addresses and the runtime's own types: those read only valid values.
-fn checked_format(libs: FormatLibs, f: Format) -> Option<Ident> {
+fn validated_format(libs: FormatLibs, f: Format) -> Option<Ident> {
     let marker = match (f, libs.dates) {
         (Format::DateTime, Some(_)) => "DateTime",
         (Format::DateTimeLocal, Some(_)) => "DateTimeLocal",
@@ -194,12 +194,12 @@ fn checked_format(libs: FormatLibs, f: Format) -> Option<Ident> {
     Some(ident(marker))
 }
 
-/// Returns how `t` holds the text of its checked formats: a `runtime::checked::Holds` that reads it with each text
+/// Returns how `t` holds the text of its checked formats: a `runtime::validated::Holds` that reads it with each text
 /// checked before its library reads it. `None` when `t` holds none. Aliases are followed. A named type checks its own.
 pub(crate) fn holds(space: &Space<'_>, t: &Ty) -> Option<TokenStream> {
-    let c = quote!(runtime::checked);
+    let c = quote!(runtime::validated);
     match space.types.unalias(t) {
-        Ty::Format(f) => checked_format(space.libs, *f).map(|m| quote!(#c::Text<#c::format::#m>)),
+        Ty::Format(f) => validated_format(space.libs, *f).map(|m| quote!(#c::Text<#c::format::#m>)),
         Ty::Vec(x) => holds(space, x).map(|h| quote!(#c::Many<#h>)),
         Ty::Array(x, n) => {
             let n = Literal::usize_unsuffixed(*n);

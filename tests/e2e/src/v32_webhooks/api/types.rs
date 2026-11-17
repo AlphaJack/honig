@@ -144,7 +144,7 @@ impl runtime::Validate for EventKind {
 pub struct SubscribeBody {
     #[serde(
         rename = "callbackUrl",
-        deserialize_with = "runtime::checked::read::<_, _, runtime::checked::Text<runtime::checked::format::Uri>>"
+        deserialize_with = "runtime::validated::read::<_, _, runtime::validated::Text<runtime::validated::format::Uri>>"
     )]
     pub callback_url: url::Url,
 }
