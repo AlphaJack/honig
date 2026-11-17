@@ -34,6 +34,8 @@ ureq = ["dep:ureq", "honig/ureq"]
 axum = ["dep:axum", "honig/axum"]
 
 [dev-dependencies]
+# The table that the benches print.
+bench-support = { path = "../bench-support" }
 # `assert_matches!`: the macro of std is unstable at the oldest Rust supported.
 assert_matches = "1"
 # `tests/v32_catalog`: the recipes of the book with tower and tower-http layers and hyper as the server.
@@ -63,7 +65,7 @@ axum = { version = "0.8", default-features = false, features = ["http1", "tokio"
 # `tests/v32_catalog/websocket.rs` talks to the WebSocket route beside the generated one.
 tokio-tungstenite = "0.30"
 futures-util = { version = "0.3", default-features = false, features = ["sink"] }
-# `gate`: the hand-rolled twins of the generated paths that the allocation and time gates compare with.
+# The hand-rolled baselines that the allocation and time benches compare the generated paths with.
 quick-xml = { version = "0.42", features = ["serialize"] }
 regex = "1"
 base64 = "0.23"
@@ -75,12 +77,12 @@ opentelemetry = { version = "0.33", default-features = false, features = ["trace
 opentelemetry_sdk = { version = "0.33", default-features = false, features = ["trace"] }
 honig = { version = "=0.0.1", path = "../../runtime", features = ["tracing", "tracing-opentelemetry"] }
 
-# The PR gate on the cost of a request: generated paths against hand-rolled twins.
+# The time bench of a pull request: generated paths against hand-rolled baselines.
 [[bench]]
-name = "time_gate"
+name = "time"
 harness = false
 
-# How the cost of a request grows with its payload, against the hand-rolled twins: `tests/e2e/cost`.
+# How the cost of a request grows with its payload, against the hand-rolled baselines: `tests/e2e/cost`.
 [[bench]]
 name = "size_sweep"
 harness = false

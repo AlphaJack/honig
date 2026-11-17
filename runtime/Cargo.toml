@@ -173,7 +173,7 @@ harness = false
 required-features = ["cookie", "multipart", "xml"]
 
 [[bench]]
-name = "scaling_gate"
+name = "scaling"
 harness = false
 required-features = ["cookie", "multipart", "server", "xml"]
 

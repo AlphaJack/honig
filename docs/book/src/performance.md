@@ -26,6 +26,6 @@ The span and log line of the `tracing` adapter cost a fixed amount per request. 
 
 `pattern` checks run on `regress`. This is the ECMA-262 engine that JSON Schema asks for. One check is cheap. A large array of patterned fields adds up.
 
-## Benchmarks
+## Benches
 
-`cargo bench -p honig --all-features` times the runtime from 256 B to 16 MiB. CI also counts instructions under Valgrind. It fails when a path costs more than n^1.3 (`--bench scaling_gate`). To see what SIMD gives, compare `--bench simd --features multipart` with `--bench simd --features multipart,simd`.
+`cargo bench -p honig --all-features` times the runtime from 256 B to 16 MiB. CI also counts instructions under Valgrind. It fails when a path costs more than n^1.3 (`--bench scaling`). To see what SIMD gives, compare `--bench simd --features multipart` with `--bench simd --features multipart,simd`.

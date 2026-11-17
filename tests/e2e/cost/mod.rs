@@ -1,9 +1,9 @@
-//! The cost of a request, in one place: each kind of path as a generated server and a hand-rolled axum twin, the
+//! The cost of a request, in one place: each kind of path as a generated server and a hand-rolled axum baseline, the
 //! request of each size, how one request is served, timed and counted, and the budget of each kind. Both serve in the
 //! process through `oneshot`, so no socket or other process adds noise.
 //!
-//! - `tests/allocation_gate.rs`: no kind allocates more than `max_allocs` times its twin at any of [`GATE_SIZES`].
-//! - `benches/time_gate.rs`: no kind takes more than `max_time` times its twin in a release build at any of them.
+//! - `tests/allocations.rs`: no kind allocates more than `max_allocs` times its baseline at any of [`BENCH_SIZES`].
+//! - `benches/time.rs`: no kind takes more than `max_time` times its baseline in a release build at any of them.
 //! - `benches/size_sweep.rs`: the CSV of every kind from 256 B to 32 MiB.
 
 use std::alloc::{GlobalAlloc, Layout, System};
@@ -19,6 +19,7 @@ use axum::http::{Request, StatusCode, header};
 use axum::response::{IntoResponse, Response, Sse, sse::Event};
 use axum::routing::{get, post, put};
 use base64::Engine;
+use bench_support::table::{self, Column, Table};
 use futures_util::StreamExt;
 use http_body_util::BodyExt;
 use tower::ServiceExt;
@@ -273,7 +274,7 @@ pub fn generated() -> Router {
         .nest("/val", val::api::Server::new(Members).max_body_bytes(LIMIT).into_axum())
 }
 
-async fn twin_scan(mut form: Multipart) -> StatusCode {
+async fn baseline_scan(mut form: Multipart) -> StatusCode {
     let mut scanned = false;
     while let Ok(Some(field)) = form.next_field().await {
         let scan = field.name() == Some("scan");
@@ -294,7 +295,7 @@ async fn twin_scan(mut form: Multipart) -> StatusCode {
     StatusCode::NO_CONTENT
 }
 
-async fn twin_put(body: Body) -> Response {
+async fn baseline_put(body: Body) -> Response {
     let mut stream = body.into_data_stream();
     let (mut bytes, mut chunks) = (0, 0);
     while let Some(chunk) = stream.next().await {
@@ -305,20 +306,20 @@ async fn twin_put(body: Body) -> Response {
     axum::Json(serde_json::json!({"bytes": bytes, "chunks": chunks})).into_response()
 }
 
-async fn twin_export() -> Response {
+async fn baseline_export() -> Response {
     let body = Body::from_stream(futures_util::stream::iter(chunks().map(Ok::<_, std::io::Error>)));
     ([(header::CONTENT_TYPE, "application/zip")], body).into_response()
 }
 
-async fn twin_manifest() -> Response {
+async fn baseline_manifest() -> Response {
     axum::Json(manifest()).into_response()
 }
 
-async fn twin_events() -> impl IntoResponse {
+async fn baseline_events() -> impl IntoResponse {
     Sse::new(futures_util::stream::iter((0..items()).map(|i| Event::default().json_data(tile(i)))))
 }
 
-async fn twin_lines() -> Response {
+async fn baseline_lines() -> Response {
     let lines = futures_util::stream::iter((0..items()).map(|i| {
         let mut line = serde_json::to_vec(&tile(i)).unwrap_or_default();
         line.push(b'\n');
@@ -327,9 +328,12 @@ async fn twin_lines() -> Response {
     ([(header::CONTENT_TYPE, "application/jsonl")], Body::from_stream(lines)).into_response()
 }
 
+/// The `bk:book` root, its namespace declared on it, as the generated side writes it.
 #[derive(serde::Deserialize, serde::Serialize)]
-#[serde(rename = "book")]
+#[serde(rename = "bk:book")]
 struct Book {
+    #[serde(rename = "@xmlns:bk")]
+    namespace: String,
     #[serde(rename = "@id")]
     id: i64,
     title: String,
@@ -348,11 +352,12 @@ struct Author {
     born: Option<i64>,
 }
 
-async fn twin_book(body: Bytes) -> Response {
+async fn baseline_book(body: Bytes) -> Response {
     let Some(book) = std::str::from_utf8(&body).ok().and_then(|s| quick_xml::de::from_str::<Book>(s).ok()) else {
         return StatusCode::BAD_REQUEST.into_response();
     };
-    let Ok(out) = quick_xml::se::to_string(&book) else { return StatusCode::INTERNAL_SERVER_ERROR.into_response() };
+    let Ok(xml) = quick_xml::se::to_string(&book) else { return StatusCode::INTERNAL_SERVER_ERROR.into_response() };
+    let out = format!("<?xml version=\"1.0\" encoding=\"UTF-8\"?>{xml}");
     (StatusCode::CREATED, [(header::CONTENT_TYPE, "application/xml")], out).into_response()
 }
 
@@ -372,7 +377,7 @@ struct Member {
 
 /// What the `User` schema asks of the fields that the form sends: `name` 2 to 10 characters from an uppercase letter,
 /// `age` from 0 below 150 and `role` one of its values. The generated side checks them all.
-async fn twin_member(axum::Form(m): axum::Form<Member>) -> StatusCode {
+async fn baseline_member(axum::Form(m): axum::Form<Member>) -> StatusCode {
     static NAME: std::sync::OnceLock<regex::Regex> = std::sync::OnceLock::new();
     let pattern = NAME.get_or_init(|| regex::Regex::new(r"^\p{Lu}").expect("a valid pattern"));
     let name_ok = (2..=10).contains(&m.name.chars().count()) && pattern.is_match(&m.name);
@@ -383,18 +388,23 @@ async fn twin_member(axum::Form(m): axum::Form<Member>) -> StatusCode {
     StatusCode::CREATED
 }
 
-/// The hand-rolled twins on the same paths, nested under the same prefixes: nesting costs axum a few allocations.
-pub fn twin() -> Router {
+/// The hand-rolled baselines on the same paths, nested under the same prefixes: nesting costs axum a few allocations.
+pub fn baseline() -> Router {
     Router::new()
-        .nest("/mp", Router::new().route("/scans", post(twin_scan)))
-        .nest("/up", Router::new().route("/files/{name}", put(twin_put)))
+        .nest("/mp", Router::new().route("/scans", post(baseline_scan)))
+        .nest("/up", Router::new().route("/files/{name}", put(baseline_put)))
         .nest(
             "/dl",
-            Router::new().route("/exports/{id}", get(twin_export)).route("/exports/{id}/manifest", get(twin_manifest)),
+            Router::new()
+                .route("/exports/{id}", get(baseline_export))
+                .route("/exports/{id}/manifest", get(baseline_manifest)),
         )
-        .nest("/sse", Router::new().route("/tiles/stream", get(twin_events)).route("/tiles/lines", get(twin_lines)))
-        .nest("/xml", Router::new().route("/books", post(twin_book)))
-        .nest("/val", Router::new().route("/members", post(twin_member)))
+        .nest(
+            "/sse",
+            Router::new().route("/tiles/stream", get(baseline_events)).route("/tiles/lines", get(baseline_lines)),
+        )
+        .nest("/xml", Router::new().route("/books", post(baseline_book)))
+        .nest("/val", Router::new().route("/members", post(baseline_member)))
         .layer(axum::extract::DefaultBodyLimit::max(LIMIT))
 }
 
@@ -437,14 +447,61 @@ pub fn member_body() -> Bytes {
     Bytes::from_static(b"name=Alice&age=30&role=admin")
 }
 
-/// The sizes that both gates check every kind at. A kind keeps one budget across them.
+/// The sizes that both benches check every kind at. A kind keeps one budget across them.
 #[allow(dead_code, reason = "the size sweep picks its own sizes")]
-pub const GATE_SIZES: [usize; 3] = [256, 16 << 10, 1 << 20];
+pub const BENCH_SIZES: [usize; 3] = [256, 16 << 10, 1 << 20];
 
-/// One kind of path, the request that it gets at one size, and its budgets against its twin. The allocation budget is
-/// the most that the kind makes at any of [`GATE_SIZES`] and a tenth more. The time budget is the median of three runs
-/// at its slowest size and a quarter more: one run on a busy machine can be twice as slow. Lower a budget when a change
-/// makes the kind cheaper.
+/// The table that a bench prints: per kind of path and size, what the generated side (`head`) and its baseline
+/// (`base`) measured, as wide as `sample`, their ratio, the budget of the kind and whether it holds.
+#[allow(dead_code, reason = "the size sweep prints no bench")]
+pub fn bench_table(head: &'static str, base: &'static str, sample: &str) -> Table {
+    let sizes = BENCH_SIZES.map(table::size);
+    let widest_size = sizes.iter().max_by_key(|s| s.len()).map_or("", String::as_str);
+    let widest_path = paths(BENCH_SIZES[0]).iter().map(|p| p.name.len()).max().unwrap_or_default();
+    Table::new(&[
+        Column::left("path", widest_path),
+        Column::right("size", widest_size),
+        Column::right(head, sample),
+        Column::right(base, sample),
+        Column::right("ratio", "99.99"),
+        Column::right("max", "9.99"),
+        Column::left("result", "FAIL".len()),
+    ])
+}
+
+/// One row of a bench: a kind of path at a size, both sides as measured, their ratio and the budget of the kind.
+#[allow(dead_code, reason = "the size sweep prints no bench")]
+pub struct Measured {
+    pub path: &'static str,
+    pub size: usize,
+    /// The generated side and its baseline, as the table shows them.
+    pub sides: [String; 2],
+    pub ratio: f64,
+    pub max: f64,
+}
+
+/// Prints `rows` by path and then by size, so the sizes of one kind sit together. Returns each row over its budget.
+#[allow(dead_code, reason = "the size sweep prints no bench")]
+pub fn print_rows(table: &Table, mut rows: Vec<Measured>) -> Vec<String> {
+    rows.sort_by_key(|r| (r.path, r.size));
+    let mut over = vec![];
+    for Measured { path, size, sides: [head, base], ratio, max } in rows {
+        let failed = ratio > max;
+        let result = if failed { "FAIL" } else { "ok" };
+        let cells = [path.to_owned(), table::size(size), head, base, format!("{ratio:.2}"), format!("{max:.2}")];
+        table.row(&[cells.as_slice(), &[result.to_owned()]].concat());
+        if failed {
+            over.push(format!("{path} at {}", table::size(size)));
+        }
+    }
+    over
+}
+
+/// One kind of path, the request that it gets at one size, and its budgets against its baseline. The allocation budget
+/// is the most that the kind makes at any of [`BENCH_SIZES`], rounded up to the next 0.05: counts are the same on every
+/// run, so it needs no margin. The time budget is the worst ratio of the kind in a CI run and a tenth more, rounded up
+/// to the next 0.05: ratios differ between machines, so they come from the runner that enforces them. Lower a budget
+/// when a change makes the kind cheaper.
 pub struct Path {
     pub name: &'static str,
     method: &'static str,
@@ -452,11 +509,11 @@ pub struct Path {
     content_type: &'static str,
     accept: &'static str,
     body: Bytes,
-    /// At most how many times the allocations of the twin.
-    #[allow(dead_code, reason = "only the allocation gate reads it")]
+    /// At most how many times the allocations of the baseline.
+    #[allow(dead_code, reason = "only the allocation bench reads it")]
     pub max_allocs: f64,
-    /// At most how many times the time of the twin in a release build.
-    #[allow(dead_code, reason = "only the time gate reads it")]
+    /// At most how many times the time of the baseline in a release build.
+    #[allow(dead_code, reason = "only the time bench reads it")]
     pub max_time: f64,
 }
 
@@ -476,26 +533,26 @@ pub fn paths(size: usize) -> Vec<Path> {
         Path {
             content_type: "application/octet-stream",
             body: upload_body(size),
-            ..path("upload", "PUT", "/up/files/a", "*/*", (1.2, 1.95))
+            ..path("upload", "PUT", "/up/files/a", "*/*", (1.15, 2.0))
         },
         Path {
             content_type: SCAN_TYPE,
             body: scan_body(size),
-            ..path("multipart_b64", "POST", "/mp/scans", "*/*", (1.35, 1.6))
+            ..path("multipart_b64", "POST", "/mp/scans", "*/*", (1.3, 1.55))
         },
-        path("download", "GET", "/dl/exports/x", "application/zip", (1.3, 2.3)),
+        path("download", "GET", "/dl/exports/x", "application/zip", (1.3, 2.25)),
         path("json_get", "GET", "/dl/exports/x/manifest", "application/json", (1.1, 1.55)),
-        path("sse", "GET", "/sse/tiles/stream", "text/event-stream", (0.8, 1.15)),
-        path("jsonl", "GET", "/sse/tiles/lines", "application/jsonl", (1.05, 1.75)),
+        path("sse", "GET", "/sse/tiles/stream", "text/event-stream", (0.8, 0.95)),
+        path("jsonl", "GET", "/sse/tiles/lines", "application/jsonl", (1.0, 1.75)),
         Path {
             content_type: "application/xml",
             body: book_body(size),
-            ..path("xml", "POST", "/xml/books", "application/xml", (0.85, 1.25))
+            ..path("xml", "POST", "/xml/books", "application/xml", (0.75, 1.15))
         },
         Path {
             content_type: "application/x-www-form-urlencoded",
             body: member_body(),
-            ..path("form", "POST", "/val/members", "*/*", (1.15, 1.8))
+            ..path("form", "POST", "/val/members", "*/*", (1.15, 1.95))
         },
     ]
 }
@@ -528,13 +585,38 @@ pub async fn serve(router: &Router, path: &Path) -> (u16, usize) {
     (status, frames)
 }
 
-/// Both sides answer with a success. Otherwise their costs say nothing.
-pub async fn both_succeed(generated: &Router, twin: &Router, path: &Path) -> Result<(), String> {
-    let ((status, _), (twin_status, _)) = (serve(generated, path).await, serve(twin, path).await);
-    if status < 300 && twin_status < 300 {
-        return Ok(());
+/// What a side answers in full: its status, its `Content-Type` and its body.
+async fn answer(router: &Router, path: &Path) -> (u16, String, Vec<u8>) {
+    let Ok(resp) = router.clone().oneshot(request(path)).await;
+    let status = resp.status().as_u16();
+    let content_type = resp.headers().get(header::CONTENT_TYPE).and_then(|v| v.to_str().ok()).unwrap_or("").to_owned();
+    let mut body = resp.into_body();
+    let mut bytes = Vec::new();
+    while let Some(Ok(frame)) = body.frame().await {
+        if let Ok(data) = frame.into_data() {
+            bytes.extend_from_slice(&data);
+        }
     }
-    Err(format!("{} at {} B: answered {status}, its twin {twin_status}", path.name, size()))
+    (status, content_type, bytes)
+}
+
+/// Both sides succeed with the same answer: the same status, `Content-Type` and body bytes. Otherwise their costs
+/// compare different work.
+pub async fn same_answer(generated: &Router, baseline: &Router, path: &Path) -> Result<(), String> {
+    let (ours, theirs) = (answer(generated, path).await, answer(baseline, path).await);
+    let at = format!("{} at {}", path.name, table::size(size()));
+    if ours.0 >= 300 || theirs.0 >= 300 {
+        return Err(format!("{at}: answered {}, its baseline {}", ours.0, theirs.0));
+    }
+    if ours.0 != theirs.0 || ours.1 != theirs.1 {
+        return Err(format!("{at}: answered {} {:?}, its baseline {} {:?}", ours.0, ours.1, theirs.0, theirs.1));
+    }
+    if ours.2 != theirs.2 {
+        let first = ours.2.iter().zip(&theirs.2).take_while(|(a, b)| a == b).count();
+        let (a, b) = (ours.2.len(), theirs.2.len());
+        return Err(format!("{at}: bodies differ from byte {first} ({a} bytes, its baseline {b})"));
+    }
+    Ok(())
 }
 
 // The allocations of this thread, the bytes it holds and the most it held. Requests are served on one thread.
@@ -600,7 +682,7 @@ static GLOBAL: Counting = Counting;
 const TRIES: usize = 3;
 
 /// The allocations and the peak live heap in KiB of one request: the fewest of a few.
-#[allow(dead_code, reason = "the time gate does not count allocations")]
+#[allow(dead_code, reason = "the time bench does not count allocations")]
 pub async fn heap(router: &Router, path: &Path) -> (u64, isize) {
     let (mut allocs, mut peak) = (u64::MAX, isize::MAX);
     for _ in 0..TRIES {
@@ -625,23 +707,39 @@ async fn round(router: &Router, path: &Path, n: u32) -> Duration {
     started.elapsed() / n
 }
 
-/// The fastest of `rounds` rounds of each side, the two in turn. A round takes about `length` for the twin.
-#[allow(dead_code, reason = "the allocation gate does not time")]
-pub async fn times(
-    generated: &Router,
-    twin: &Router,
-    path: &Path,
-    rounds: usize,
-    length: Duration,
-) -> (Duration, Duration) {
-    let once = round(twin, path, 1).await.max(Duration::from_nanos(1));
+/// What [`times`] measured: each side's median time of one request and the median ratio of the two.
+#[allow(dead_code, reason = "the allocation bench does not time")]
+#[derive(Clone, Copy)]
+pub struct Timing {
+    pub generated: Duration,
+    pub baseline: Duration,
+    /// How many times the time of its baseline the generated path takes.
+    pub ratio: f64,
+}
+
+/// Times `rounds` pairs of rounds: one of the generated side, then one of its baseline. A round takes about `length`
+/// for the baseline. The ratio is the median of the ratios of each pair: a stall of the machine slows the two rounds of
+/// a pair alike or one pair only, so it barely moves the median. A ratio of the two fastest rounds, each from a pair of
+/// its own, took one lucky round of a side as the whole truth and failed now and then on a busy CI runner.
+#[allow(dead_code, reason = "the allocation bench does not time")]
+pub async fn times(generated: &Router, baseline: &Router, path: &Path, rounds: usize, length: Duration) -> Timing {
+    let once = round(baseline, path, 1).await.max(Duration::from_nanos(1));
     let n = u32::try_from(length.as_nanos() / once.as_nanos()).unwrap_or(1).clamp(1, 5000);
-    let (mut fastest_generated, mut fastest_twin) = (Duration::MAX, Duration::MAX);
+    let mut pairs = Vec::with_capacity(rounds);
     for _ in 0..rounds {
-        fastest_generated = fastest_generated.min(round(generated, path, n).await);
-        fastest_twin = fastest_twin.min(round(twin, path, n).await);
+        pairs.push((round(generated, path, n).await, round(baseline, path, n).await));
     }
-    (fastest_generated, fastest_twin)
+    let median = |mut values: Vec<f64>| {
+        values.sort_by(f64::total_cmp);
+        values.get(values.len() / 2).copied().unwrap_or_default()
+    };
+    let seconds =
+        |side: fn(&(Duration, Duration)) -> Duration| median(pairs.iter().map(|p| side(p).as_secs_f64()).collect());
+    Timing {
+        generated: Duration::from_secs_f64(seconds(|p| p.0)),
+        baseline: Duration::from_secs_f64(seconds(|p| p.1)),
+        ratio: median(pairs.iter().map(|(g, b)| g.as_secs_f64() / b.as_secs_f64().max(f64::MIN_POSITIVE)).collect()),
+    }
 }
 
 /// The runtime that requests are served on. One thread: the allocations that it counts are the request's.
@@ -649,8 +747,8 @@ pub fn runtime() -> tokio::runtime::Runtime {
     tokio::runtime::Builder::new_current_thread().enable_all().build().expect("a tokio runtime")
 }
 
-/// The generated servers and their twins with [`SIZE`] set to `size`.
+/// The generated servers and their baselines with [`SIZE`] set to `size`.
 pub fn at(size: usize) -> (Router, Router) {
     SIZE.store(size, Ordering::Relaxed);
-    (generated(), twin())
+    (generated(), baseline())
 }

@@ -108,7 +108,7 @@ jobs:
           path: mutants.out
 
   # The required check. It fails if a shard missed a mutant or did not finish. Without the label nothing ran and it passes.
-  gate:
+  mutants-result:
     name: mutants
     needs: [build, mutants]
     if: always()

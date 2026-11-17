@@ -212,29 +212,29 @@ jobs:
       - name: Doctests
         run: cargo test --workspace --doc --locked
 
-  # The scaling gates fail when a path costs more than n^1.3. They count instructions under callgrind, so their counts
-  # are the same on every run. The time gate races generated paths against hand-rolled axum twins:
-  # `tests/e2e/benches/time_gate.rs`. Each gate builds in release, so a pull request runs it only when it changes what
-  # that gate measures, `Cargo.toml` or `Cargo.lock`.
-  performance-gate:
-    name: performance (${{ matrix.gate }})
+  # The scaling benches fail when a path costs more than n^1.3. They count instructions under callgrind, so their
+  # counts are the same on every run. The time bench races generated paths against hand-rolled axum baselines:
+  # `tests/e2e/benches/time.rs`. Each bench builds in release, so a pull request runs it only when it changes what
+  # that bench measures, `Cargo.toml` or `Cargo.lock`.
+  benches:
+    name: bench (${{ matrix.bench }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         include:
-          - gate: scaling-runtime
+          - bench: scaling-runtime
             paths: runtime benches tests/bench-support
             valgrind: true
-            run: cargo bench -p honig --bench scaling_gate --features cookie,multipart,server,xml --locked
-          - gate: scaling-generator
+            run: cargo bench -p honig --bench scaling --features cookie,multipart,server,xml --locked
+          - bench: scaling-generator
             paths: src benches tests/bench-support
             valgrind: true
-            run: cargo bench -p cargo-honig --bench scaling_gate --locked
-          - gate: time
+            run: cargo bench -p cargo-honig --bench scaling --locked
+          - bench: time
             paths: runtime/src src/emit tests/e2e
             valgrind: false
-            run: cargo bench -p e2e --bench time_gate --locked
+            run: cargo bench -p e2e --bench time --locked
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -259,12 +259,12 @@ jobs:
         uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1
         with:
           toolchain: "stable"
-      # One cache each: rust-cache keys on the job and not on the gate.
+      # One cache each: rust-cache keys on the job and not on the bench.
       - name: Cache cargo registry and target
         if: steps.changed.outputs.run == 'true'
         uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
-          key: ${{ matrix.gate }}
+          key: ${{ matrix.bench }}
           save-if: ${{ github.ref == 'refs/heads/main' }}
       # The runner's package index can name packages that the mirror has dropped. Only then is it updated: that takes
       # half a minute.
@@ -275,23 +275,23 @@ jobs:
             sudo apt-get update -qq
             sudo apt-get install -y --no-install-recommends valgrind
           }
-      - name: Gate
+      - name: Bench
         if: steps.changed.outputs.run == 'true'
         env:
           RUN: ${{ matrix.run }}
         run: $RUN
 
-  # The required check: it fails if a gate failed or did not finish.
-  performance:
-    needs: performance-gate
+  # The required check: it fails if a bench failed or did not finish.
+  bench:
+    needs: benches
     if: always()
     runs-on: ubuntu-latest
     steps:
-      - name: Every gate passed
+      - name: Every bench passed
         env:
-          RESULT: ${{ needs.performance-gate.result }}
+          RESULT: ${{ needs.benches.result }}
         run: |
-          echo "gates: $RESULT"
+          echo "benches: $RESULT"
           [ "$RESULT" = success ]
 
   deny:

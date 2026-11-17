@@ -8,6 +8,7 @@
 
 use std::process::{Command, ExitCode};
 
+use crate::table::{Column, Table};
 use crate::{Path, Work};
 
 /// The largest `k` in `cost ~ n^k` that a path may show. n log n fits under it. n^1.5 and n^2 do not.
@@ -18,7 +19,7 @@ const STOP_EXPONENT: f64 = 1.8;
 const MEASURE: &str = "--measure";
 
 /// Checks every path at every size. When callgrind runs it with `--measure` it runs one path at one size. Names on the
-/// command line (`cargo bench --bench scaling_gate -- text_encode`) check only those paths.
+/// command line (`cargo bench --bench scaling -- text_encode`) check only those paths.
 pub fn main(paths: &[Path], sizes: &[usize]) -> ExitCode {
     let args: Vec<String> = std::env::args().collect();
     match args.iter().map(String::as_str).collect::<Vec<_>>()[..] {
@@ -58,20 +59,29 @@ struct Growth {
 /// Counts every path at every size, prints how each grew and fails if one grew faster than [`MAX_EXPONENT`].
 fn check(paths: &[&Path], sizes: &[usize], program: &str) -> ExitCode {
     let mut steep = vec![];
-    println!("path\texponent\tmax_exponent\tlarger_sizes\tresult");
+    // In the order of their names, so a path is easy to find in the table.
+    let mut paths = paths.to_vec();
+    paths.sort_by_key(|p| p.name);
+    // The cost grows as n^k with the size n of the input. The limit is the same for every path.
+    println!("k may be at most {MAX_EXPONENT}; stopped: a step was steeper than k = {STOP_EXPONENT}");
+    let table = Table::new(&[
+        Column::left("path", paths.iter().map(|p| p.name.len()).max().unwrap_or_default()),
+        Column::right("n^k", &format!("{MAX_EXPONENT:.2}")),
+        Column::left("result", "stopped".len()),
+    ]);
     for path in paths {
         let Some(growth) = growth(path, sizes, program) else {
             eprintln!("{}: callgrind did not run: install valgrind", path.name);
             return ExitCode::FAILURE;
         };
         let over = growth.steepest > MAX_EXPONENT;
-        println!(
-            "{}\t{:.2}\t{MAX_EXPONENT}\t{}\t{}",
-            path.name,
-            growth.steepest,
-            if growth.stopped { "skipped" } else { "run" },
-            if over { "FAIL" } else { "ok" }
-        );
+        // A path stops only on a step steeper than the limit: it fails, and its larger sizes did not run.
+        let result = match (over, growth.stopped) {
+            (_, true) => "stopped",
+            (true, false) => "FAIL",
+            (false, false) => "ok",
+        };
+        table.row(&[path.name.to_owned(), format!("{:.2}", growth.steepest), result.to_owned()]);
         if over {
             steep.push(path.name);
         }
