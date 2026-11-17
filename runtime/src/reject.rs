@@ -489,4 +489,30 @@ mod tests {
         assert_eq!(v.first().map(|v| v.path.as_str()), Some("/body/bar"));
         assert!(check_raw_json(b"not json", &schema).is_ok(), "decoding reports it");
     }
+
+    #[test]
+    fn a_union_that_no_branch_matches_names_the_field_of_the_closest_branch() {
+        let urls = serde_json::json!({"oneOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}}]});
+        let schema = serde_json::json!({"oneOf": [
+            {"type": "object", "required": ["status", "alerts"], "properties": {"urls": urls}},
+            {"type": "object", "not": {"required": ["status"]}, "properties": {"urls": urls}},
+        ]});
+        let first = |body: &[u8]| match check_raw_json(body, &schema) {
+            Err(Reason::Invalid(v)) => v.into_iter().next().map(|v| (v.path, v.message)),
+            other => panic!("refused as invalid: {other:?}"),
+        };
+        // The second branch only fails on `urls`: the first also misses `status` and `alerts`.
+        let (path, message) = first(br#"{"urls": 5}"#).unwrap();
+        assert_eq!((path.as_str(), message.as_str()), ("/body/urls", "matches 0 of `oneOf`, not exactly one"));
+        // Every branch fails on the value itself: the union's own message.
+        let (path, message) = first(b"5").unwrap();
+        assert_eq!((path.as_str(), message.as_str()), ("/body", "matches 0 of `oneOf`, not exactly one"));
+        // Each branch misses its own required property: neither got further.
+        let charge = serde_json::json!({"oneOf": [{"required": ["refund"]}, {"required": ["fee"]}]});
+        let Err(Reason::Invalid(v)) = check_raw_json(br#"{"neither": 1}"#, &charge) else { panic!("refused") };
+        assert_eq!(v.first().map(|v| v.path.as_str()), Some("/body"));
+        let any = serde_json::json!({"anyOf": [{"properties": {"a": {"type": "string"}}}, {"type": "array"}]});
+        let Err(Reason::Invalid(v)) = check_raw_json(br#"{"a": 1}"#, &any) else { panic!("refused") };
+        assert_eq!(v.first().map(|v| v.path.as_str()), Some("/body/a"));
+    }
 }

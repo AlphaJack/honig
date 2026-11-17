@@ -350,6 +350,36 @@ fn matches(pattern: &str, s: &str) -> bool {
     }
 }
 
+/// Violations as (relative JSON pointer, message).
+type Violations = Vec<(String, String)>;
+
+/// Returns the violations of the branch that got furthest into `value`, when no branch of a `oneOf` or `anyOf`
+/// matches. Furthest is the deepest violation at a place that `value` holds: a branch that failed on a property of the
+/// value matched the value itself, whereas a missing required property is a failure of the value itself. A tie in depth
+/// goes to the branch with fewer violations. `None` when every branch failed on the value itself, or two branches are
+/// as close: then no branch is the one meant, and the union's own message says more.
+fn closest(value: &Value, misses: Vec<Violations>) -> Option<Violations> {
+    let reached = |at: &str| {
+        let depth = at.matches('/').count();
+        if value.pointer(at).is_some() { depth } else { depth.saturating_sub(1) }
+    };
+    let score = |found: &[(String, String)]| (found.iter().map(|(at, _)| reached(at)).max().unwrap_or(0), found.len());
+    let mut best: Option<((usize, usize), Violations)> = None;
+    let mut tied = false;
+    for found in misses {
+        let (depth, count) = score(&found);
+        match &best {
+            Some(((d, c), _)) if depth < *d || (depth == *d && count > *c) => {}
+            Some(((d, c), _)) if depth == *d && count == *c => tied = true,
+            _ => {
+                tied = false;
+                best = Some(((depth, count), found));
+            }
+        }
+    }
+    best.filter(|((depth, _), _)| *depth > 0 && !tied).map(|(_, found)| found)
+}
+
 /// Returns `/key` as a JSON pointer token.
 fn pointer_key(k: &str) -> String {
     format!("/{}", k.replace('~', "~0").replace('/', "~1"))
@@ -538,30 +568,41 @@ impl Schema<'_> {
         }
         if let Some(Value::Array(any)) = s.get("anyOf") {
             let mut hit = false;
+            let mut misses = vec![];
             for sub in any {
                 let mut tmp = vec![];
                 let e = self.check(value, sub, &mut tmp);
                 if tmp.is_empty() {
                     hit = true;
                     merge(&mut ev, e);
+                } else {
+                    misses.push(tmp);
                 }
             }
             if !hit {
-                fail(out, "matches none of `anyOf`".into());
+                match closest(value, misses) {
+                    Some(found) => out.extend(found),
+                    None => fail(out, "matches none of `anyOf`".into()),
+                }
             }
         }
         if let Some(Value::Array(one)) = s.get("oneOf") {
             let mut hits = 0;
+            let mut misses = vec![];
             for sub in one {
                 let mut tmp = vec![];
                 let e = self.check(value, sub, &mut tmp);
                 if tmp.is_empty() {
                     hits += 1;
                     merge(&mut ev, e);
+                } else {
+                    misses.push(tmp);
                 }
             }
-            if hits != 1 {
-                fail(out, format!("matches {hits} of `oneOf`, not exactly one"));
+            match (hits, closest(value, misses)) {
+                (1, _) => {}
+                (0, Some(found)) => out.extend(found),
+                _ => fail(out, format!("matches {hits} of `oneOf`, not exactly one")),
             }
         }
         if let Some(not) = s.get("not")
