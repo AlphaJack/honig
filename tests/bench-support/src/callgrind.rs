@@ -59,6 +59,9 @@ struct Growth {
 /// Counts every path at every size, prints how each grew and fails if one grew faster than [`MAX_EXPONENT`].
 fn check(paths: &[&Path], sizes: &[usize], program: &str) -> ExitCode {
     let mut steep = vec![];
+    // In the order of their names, so a path is easy to find in the table.
+    let mut paths = paths.to_vec();
+    paths.sort_by_key(|p| p.name);
     // The cost grows as n^k with the size n of the input. The limit is the same for every path.
     println!("k may be at most {MAX_EXPONENT}; stopped: a step was steeper than k = {STOP_EXPONENT}");
     let table = Table::new(&[
