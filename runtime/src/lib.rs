@@ -99,6 +99,8 @@ pub use server::service::{
 };
 pub use source::{Blob, Body, ByteStream, Sse};
 pub use stream::{Check, Framing, ItemStream, Items, Streamed};
+#[cfg(any(feature = "client", feature = "server"))]
+pub use tower_service::Service;
 pub use transport::block_on;
 #[cfg(feature = "idn")]
 pub use validate::{Email, Hostname, IdnEmail, IdnHostname};
