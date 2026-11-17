@@ -579,7 +579,7 @@ fn ty_default(space: &Space<'_>, t: &Ty, seen: &mut Vec<TypeId>) -> bool {
     if let Ty::Format(f) = t {
         // `url::Url` and `std::net`'s `Ipv4Addr` and `Ipv6Addr` have no `Default`. A mail address and a host name
         // have no value that every one of their kind could start from either. The uuid, chrono, jiff and ipnet format
-        // types all implement it.
+        // types all implement it. So does `runtime::FullTime`.
         return !((*f == Format::Uri && space.libs.url)
             || matches!(
                 f,

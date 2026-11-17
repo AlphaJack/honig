@@ -12,6 +12,7 @@
 | `tracing` | tracing | A span per request and a log line for each wide event | `server = { adapters = ["tracing"] }` |
 | `tracing-opentelemetry` | opentelemetry | W3C Trace Context: `traceparent` and `tracestate` | `adapters = ["tracing-opentelemetry"]` in `client` or `server` |
 | `ipnet` | ipnet | `format: ipv4-cidr` and `ipv6-cidr` checks | The description calls for it |
+| `jiff` | jiff | `FullTime`: `format: time` with its offset in `jiff` types | The description calls for it |
 | `idn` | idna | `email`, `idn-email`, `hostname` and `idn-hostname` checks | The description calls for it |
 | `regress` | regress | `pattern` and `patternProperties` checks (ECMA-262) | The description calls for it |
 | `oauth` |  | The `OAuth` 2.0 flows of the client: token grants, device authorization and discovery | The description calls for it |

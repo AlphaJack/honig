@@ -8,7 +8,9 @@ use crate::ir::http::{Location, Operation};
 use crate::ir::media::MediaKind;
 use crate::ir::security::{SchemeKind, SecurityScheme};
 use crate::ir::types::{Format, Ty, def_types};
-use crate::settings::{BASE64, CLIENT, COOKIE, FormatLibs, IDN, IPNET, MULTIPART, OAUTH, PKCE, REGRESS, SERVER, XML};
+use crate::settings::{
+    BASE64, CLIENT, COOKIE, DateLib, FormatLibs, IDN, IPNET, JIFF, MULTIPART, OAUTH, PKCE, REGRESS, SERVER, XML,
+};
 
 /// Returns the runtime features that the description needs whatever the crate depends on. That is the halves that it
 /// generates and the codecs, checks and flows that they call. `patterns`: it has a `pattern`. [`uses_pattern`] finds
@@ -80,6 +82,8 @@ fn format_checks(api: &Api, libs: FormatLibs) -> Vec<&'static str> {
         // The libraries that would type these formats check them.
         (REGRESS, checked(&[Format::Regex])),
         (IPNET, checked(&[Format::Ipv4Cidr, Format::Ipv6Cidr])),
+        // `runtime::FullTime`: a `time` with its offset.
+        (JIFF, used.contains(&Format::Time) && libs.dates == Some(DateLib::Jiff)),
     ];
     needed.into_iter().filter_map(|(feature, on)| on.then_some(feature)).collect()
 }

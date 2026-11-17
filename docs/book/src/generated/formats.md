@@ -7,7 +7,7 @@
 | `date` | `String` | `chrono::NaiveDate` | `jiff::civil::Date` |
 | `ipv4` | `std::net::Ipv4Addr` | `std::net::Ipv4Addr` | `std::net::Ipv4Addr` |
 | `ipv6` | `std::net::Ipv6Addr` | `std::net::Ipv6Addr` | `std::net::Ipv6Addr` |
-| `time` | `String` | `chrono::NaiveTime` | `jiff::civil::Time` |
+| `time` | `String` | `String` | `api::FullTime` |
 | `base64url` | `api::Base64Url` | `api::Base64Url` | `api::Base64Url` |
 | `decimal` | `String` | `String` | `String` |
 | `char` | `char` | `char` | `char` |
