@@ -57,13 +57,19 @@ header = """
 # Changelog
 
 """
+# Each group lists its commits by scope, in the order of CONTRIBUTING.md, then the rest. Without it they follow the
+# order release-plz reads them in: the commits of cargo-honig, then those of honig.
 body = """
+{%- set scopes = ["cli", "generator", "runtime"] %}
 ## [{{ version }}]{%- if release_link -%}({{ release_link }}){% endif %} - {{ timestamp | date(format="%Y-%m-%d") }}
 {% for group, commits in commits | group_by(attribute="group") %}
 ### {{ group | upper_first }}
-{% for c in commits %}
+{% for scope in scopes %}{% for c in commits | filter(attribute="scope", value=scope) %}
+- **{{ c.scope }}**: {% if c.breaking %}**breaking**: {% endif %}{{ c.message | upper_first }}
+{%- endfor %}{% endfor %}
+{%- for c in commits %}{% if c.scope not in scopes %}
 - {% if c.scope %}**{{ c.scope }}**: {% endif %}{% if c.breaking %}**breaking**: {% endif %}{{ c.message | upper_first }}
-{%- endfor %}
+{%- endif %}{% endfor %}
 {% endfor %}
 """
 commit_parsers = [
