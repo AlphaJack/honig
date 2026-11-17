@@ -94,6 +94,10 @@ pub use server::service::{
 };
 pub use source::{Blob, Body, ByteStream, Sse};
 pub use stream::{Check, Framing, ItemStream, Items, Streamed};
+/// The tower trait that a transport and the server implement: `Service::call` hands the server a request without a
+/// dependency on `tower-service` of your own.
+#[cfg(any(feature = "client", feature = "server"))]
+pub use tower_service::Service;
 pub use transport::block_on;
 #[cfg(feature = "idn")]
 pub use validate::{Email, Hostname, IdnEmail, IdnHostname};
