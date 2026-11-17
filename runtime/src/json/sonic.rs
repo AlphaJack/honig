@@ -3,78 +3,11 @@
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 
-/// The deepest nesting that `sonic-rs` is given in a debug build. It is the limit of `serde_json`. `sonic-rs` stops at
-/// 255 levels. A release build holds that on a 512 KiB stack. The larger frames of a debug build overflow a 2 MiB
-/// worker stack first. Then one body of nested arrays would abort the server. A deeper body goes to `serde_json`, which
-/// refuses it.
-const MAX_DEPTH: usize = 128;
-
 /// Creates `body` decoded or `None`.
 pub(crate) fn from_slice<T: DeserializeOwned>(body: &[u8]) -> Option<T> {
-    if cfg!(debug_assertions) && nested_past(body, MAX_DEPTH) {
-        return None;
-    }
     let mut d = sonic_rs::Deserializer::from_slice(body);
     let v = T::deserialize(crate::integral::Ints(&mut d)).ok()?;
     d.end().ok().map(|()| v)
-}
-
-/// What a byte outside a string does to the nesting.
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum Class {
-    Other,
-    Open,
-    Close,
-    Quote,
-}
-
-/// Each byte's [`Class`]: one load and one well-predicted branch for the common byte.
-const CLASSES: [Class; 256] = {
-    let mut t = [Class::Other; 256];
-    t[b'[' as usize] = Class::Open;
-    t[b'{' as usize] = Class::Open;
-    t[b']' as usize] = Class::Close;
-    t[b'}' as usize] = Class::Close;
-    t[b'"' as usize] = Class::Quote;
-    t
-};
-
-/// Returns whether arrays and objects nest deeper than `limit` in `body`. Brackets inside strings do not count. Strings
-/// are most of a body. They are skipped with `memchr` to their closing quote.
-fn nested_past(body: &[u8], limit: usize) -> bool {
-    let mut depth = 0_usize;
-    let mut i = 0;
-    while let Some(&b) = body.get(i) {
-        match CLASSES[usize::from(b)] {
-            Class::Other => i += 1,
-            Class::Open => {
-                depth += 1;
-                if depth > limit {
-                    return true;
-                }
-                i += 1;
-            }
-            Class::Close => {
-                depth = depth.saturating_sub(1);
-                i += 1;
-            }
-            Class::Quote => i = string_end(body, i + 1),
-        }
-    }
-    false
-}
-
-/// Returns the index after the quote that closes a string whose text starts at `from`. Otherwise the end of `body`.
-fn string_end(body: &[u8], mut from: usize) -> usize {
-    while let Some(at) = body.get(from..).and_then(|rest| memchr::memchr2(b'"', b'\\', rest)) {
-        let at = from + at;
-        if body.get(at) == Some(&b'"') {
-            return at + 1;
-        }
-        // An escape. The next byte is part of it even if it is a quote.
-        from = at + "\\x".len();
-    }
-    body.len()
 }
 
 /// Returns `v` appended to `out`.
@@ -84,10 +17,40 @@ pub(crate) fn to_writer<T: Serialize>(out: &mut Vec<u8>, v: &T) -> Result<(), St
 
 #[cfg(test)]
 mod tests {
+    use serde::Deserialize;
+    use serde_json::Value;
+
+    /// The deepest nesting `sonic-rs` decodes. One level more is an error.
+    const DEPTH: usize = 254;
+
+    /// A schema that refers to itself, as generated code has it: a struct that holds itself in an object and in a list.
+    #[derive(Deserialize)]
+    #[expect(dead_code, reason = "decoded for its depth")]
+    struct Node {
+        #[serde(default)]
+        child: Option<Box<Self>>,
+        #[serde(default)]
+        children: Vec<Self>,
+        #[serde(default)]
+        extra: Option<Value>,
+    }
+
     #[test]
-    fn nesting_counts_brackets_outside_strings_only() {
-        assert!(!super::nested_past(br#"{"a":[[1]],"s":"[[[[\"[["}"#, 3));
-        assert!(super::nested_past(b"[[[[1]]]]", 3));
-        assert!(!super::nested_past(b"[[[1]]][[[1]]]", 3), "siblings do not add up");
+    fn decodes_the_deepest_nesting_on_a_worker_sized_stack() {
+        let objects = format!("{}{{}}{}", r#"{"child":"#.repeat(DEPTH - 1), "}".repeat(DEPTH - 1));
+        let lists = format!("{}{{}}{}", r#"{"children":["#.repeat(DEPTH / 2 - 1), "]}".repeat(DEPTH / 2 - 1));
+        let values = format!(r#"{{"extra":{}0{}}}"#, "[".repeat(DEPTH - 1), "]".repeat(DEPTH - 1));
+        let deeper = format!("{}0{}", "[".repeat(DEPTH + 1), "]".repeat(DEPTH + 1));
+        std::thread::Builder::new()
+            .stack_size(2 << 20)
+            .spawn(move || {
+                for (shape, body) in [("objects", objects), ("lists", lists), ("values", values)] {
+                    assert!(super::from_slice::<Node>(body.as_bytes()).is_some(), "{shape}");
+                }
+                assert!(super::from_slice::<Value>(deeper.as_bytes()).is_none());
+            })
+            .unwrap()
+            .join()
+            .unwrap();
     }
 }
