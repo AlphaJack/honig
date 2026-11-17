@@ -523,3 +523,22 @@ fn a_recursive_union_decodes_in_time_linear_in_its_depth() {
     }
     assert!(serde_json::from_str::<types::Tree>(&json).is_ok());
 }
+
+/// A builder takes raw values for its fields and converts each one. `build` returns the first that did not convert,
+/// named as the description spells it. The required properties are the arguments of `builder`.
+#[test]
+fn a_builder_converts_each_field_and_returns_the_first_error() -> Result<(), Box<dyn std::error::Error>> {
+    // ANCHOR: builder
+    let user = types::User::builder("Anna", "admin").age(30).email("anna@example.com").build()?;
+    // ANCHOR_END: builder
+    assert_eq!(
+        (user.name.as_str(), user.role, user.age.map(types::UserAge::get)),
+        ("Anna", types::UserRole::Admin, Some(30))
+    );
+    let err = types::User::builder("Anna", "admin").age(150).email("x").build().expect_err("150 is past the limit");
+    assert_eq!(err.to_string(), "`age`: 150 must be less than 150", "the first error");
+    let err = types::User::builder("anna", "admin").age(30).build().expect_err("a lowercase name");
+    assert_eq!(err.field(), "name", "{err}");
+    assert!(err.to_string().starts_with("`name`: "), "{err}");
+    Ok(())
+}

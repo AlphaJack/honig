@@ -991,3 +991,385 @@ impl ContactOtherwise {
     }
 }
 validate_impl!(ContactOtherwise);
+/// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
+/// its field. `build` returns the first field that did not convert.
+pub mod builders {
+    use super as types;
+    use super::runtime;
+    impl super::EmailRequest {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            type_: impl TryInto<types::EmailRequestType, Error: std::fmt::Display>,
+            email: impl TryInto<runtime::Email, Error: std::fmt::Display>,
+        ) -> EmailRequest {
+            EmailRequest(
+                runtime::Builder::start(|| Ok(
+                    Self::new(
+                        runtime::field("type", type_)?,
+                        runtime::field("email", email)?,
+                    ),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct EmailRequest(runtime::Builder<super::EmailRequest>);
+    impl EmailRequest {
+        /// Returns the value.
+        pub fn build(self) -> Result<super::EmailRequest, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::SmsRequest {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            type_: impl TryInto<types::SmsRequestType, Error: std::fmt::Display>,
+            phone: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> SmsRequest {
+            SmsRequest(
+                runtime::Builder::start(|| Ok(
+                    Self::new(
+                        runtime::field("type", type_)?,
+                        runtime::field("phone", phone)?,
+                    ),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct SmsRequest(runtime::Builder<super::SmsRequest>);
+    impl SmsRequest {
+        /// Returns the value.
+        pub fn build(self) -> Result<super::SmsRequest, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::Address {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            street: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Address {
+            Address(
+                runtime::Builder::start(|| Ok(
+                    Self::new(runtime::field("street", street)?),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct Address(runtime::Builder<super::Address>);
+    impl Address {
+        /// Returns the value.
+        pub fn build(self) -> Result<super::Address, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::IfThenEmail {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            type_: impl TryInto<types::IfThenEmailType, Error: std::fmt::Display>,
+            email: impl TryInto<runtime::Email, Error: std::fmt::Display>,
+        ) -> IfThenEmail {
+            IfThenEmail(
+                runtime::Builder::start(|| Ok(
+                    Self::new(
+                        runtime::field("type", type_)?,
+                        runtime::field("email", email)?,
+                    ),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct IfThenEmail(runtime::Builder<super::IfThenEmail>);
+    impl IfThenEmail {
+        /// Returns the value.
+        pub fn build(self) -> Result<super::IfThenEmail, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::IfThenSms {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            type_: impl TryInto<types::IfThenSmsType, Error: std::fmt::Display>,
+            phone: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> IfThenSms {
+            IfThenSms(
+                runtime::Builder::start(|| Ok(
+                    Self::new(
+                        runtime::field("type", type_)?,
+                        runtime::field("phone", phone)?,
+                    ),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct IfThenSms(runtime::Builder<super::IfThenSms>);
+    impl IfThenSms {
+        /// Returns the value.
+        pub fn build(self) -> Result<super::IfThenSms, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::IfThenOtherwise {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> IfThenOtherwise {
+            IfThenOtherwise(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct IfThenOtherwise(runtime::Builder<super::IfThenOtherwise>);
+    impl IfThenOtherwise {
+        pub fn type_(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("type", value, |s, v| s.type_ = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::IfThenOtherwise, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::ConstOneOfEmail {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            type_: impl TryInto<types::ConstOneOfEmailType, Error: std::fmt::Display>,
+            email: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> ConstOneOfEmail {
+            ConstOneOfEmail(
+                runtime::Builder::start(|| Ok(
+                    Self::new(
+                        runtime::field("type", type_)?,
+                        runtime::field("email", email)?,
+                    ),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct ConstOneOfEmail(runtime::Builder<super::ConstOneOfEmail>);
+    impl ConstOneOfEmail {
+        /// Returns the value.
+        pub fn build(self) -> Result<super::ConstOneOfEmail, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::ConstOneOfSms {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            type_: impl TryInto<types::ConstOneOfSmsType, Error: std::fmt::Display>,
+            phone: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> ConstOneOfSms {
+            ConstOneOfSms(
+                runtime::Builder::start(|| Ok(
+                    Self::new(
+                        runtime::field("type", type_)?,
+                        runtime::field("phone", phone)?,
+                    ),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct ConstOneOfSms(runtime::Builder<super::ConstOneOfSms>);
+    impl ConstOneOfSms {
+        /// Returns the value.
+        pub fn build(self) -> Result<super::ConstOneOfSms, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::DeliveryPickup {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            pickup: impl TryInto<bool, Error: std::fmt::Display>,
+            order_id: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> DeliveryPickup {
+            DeliveryPickup(
+                runtime::Builder::start(|| Ok(
+                    Self::new(
+                        runtime::field("pickup", pickup)?,
+                        runtime::field("orderId", order_id)?,
+                    ),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct DeliveryPickup(runtime::Builder<super::DeliveryPickup>);
+    impl DeliveryPickup {
+        /// Returns the value.
+        pub fn build(self) -> Result<super::DeliveryPickup, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::DeliveryAddress {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            street: impl TryInto<String, Error: std::fmt::Display>,
+            order_id: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> DeliveryAddress {
+            DeliveryAddress(
+                runtime::Builder::start(|| Ok(
+                    Self::new(
+                        runtime::field("street", street)?,
+                        runtime::field("orderId", order_id)?,
+                    ),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct DeliveryAddress(runtime::Builder<super::DeliveryAddress>);
+    impl DeliveryAddress {
+        /// Returns the value.
+        pub fn build(self) -> Result<super::DeliveryAddress, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::DeliveryMethodPickup {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            pickup: impl TryInto<bool, Error: std::fmt::Display>,
+        ) -> DeliveryMethodPickup {
+            DeliveryMethodPickup(
+                runtime::Builder::start(|| Ok(
+                    Self::new(runtime::field("pickup", pickup)?),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct DeliveryMethodPickup(runtime::Builder<super::DeliveryMethodPickup>);
+    impl DeliveryMethodPickup {
+        /// Returns the value.
+        pub fn build(self) -> Result<super::DeliveryMethodPickup, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::ShippingUs {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            country: impl TryInto<types::ShippingUsCountry, Error: std::fmt::Display>,
+            zip: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> ShippingUs {
+            ShippingUs(
+                runtime::Builder::start(|| Ok(
+                    Self::new(
+                        runtime::field("country", country)?,
+                        runtime::field("zip", zip)?,
+                    ),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct ShippingUs(runtime::Builder<super::ShippingUs>);
+    impl ShippingUs {
+        pub fn postcode(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("postcode", value, |s, v| s.postcode = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::ShippingUs, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::ShippingOtherwise {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            postcode: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> ShippingOtherwise {
+            ShippingOtherwise(
+                runtime::Builder::start(|| Ok(
+                    Self::new(runtime::field("postcode", postcode)?),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct ShippingOtherwise(runtime::Builder<super::ShippingOtherwise>);
+    impl ShippingOtherwise {
+        pub fn country(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("country", value, |s, v| s.country = Some(v)))
+        }
+        pub fn zip(self, value: impl TryInto<String, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("zip", value, |s, v| s.zip = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::ShippingOtherwise, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::ContactEmailOrMail {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            via: impl TryInto<types::ContactEmailOrMailVia, Error: std::fmt::Display>,
+            address: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> ContactEmailOrMail {
+            ContactEmailOrMail(
+                runtime::Builder::start(|| Ok(
+                    Self::new(
+                        runtime::field("via", via)?,
+                        runtime::field("address", address)?,
+                    ),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct ContactEmailOrMail(runtime::Builder<super::ContactEmailOrMail>);
+    impl ContactEmailOrMail {
+        /// Returns the value.
+        pub fn build(self) -> Result<super::ContactEmailOrMail, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::ContactSms {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            via: impl TryInto<types::ContactSmsVia, Error: std::fmt::Display>,
+            phone: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> ContactSms {
+            ContactSms(
+                runtime::Builder::start(|| Ok(
+                    Self::new(
+                        runtime::field("via", via)?,
+                        runtime::field("phone", phone)?,
+                    ),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct ContactSms(runtime::Builder<super::ContactSms>);
+    impl ContactSms {
+        /// Returns the value.
+        pub fn build(self) -> Result<super::ContactSms, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::ContactOtherwise {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> ContactOtherwise {
+            ContactOtherwise(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct ContactOtherwise(runtime::Builder<super::ContactOtherwise>);
+    impl ContactOtherwise {
+        pub fn via(self, value: impl TryInto<String, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("via", value, |s, v| s.via = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::ContactOtherwise, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+}

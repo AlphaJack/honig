@@ -103,3 +103,79 @@ impl UploadBody {
     }
 }
 validate_impl!(UploadBody);
+/// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
+/// its field. `build` returns the first field that did not convert.
+pub mod builders {
+    use super as types;
+    use super::runtime;
+    impl super::Key {
+        /// Starts a builder from the required properties.
+        pub fn builder(id: impl TryInto<String, Error: std::fmt::Display>) -> Key {
+            Key(runtime::Builder::start(|| Ok(Self::new(runtime::field("id", id)?))))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct Key(runtime::Builder<super::Key>);
+    impl Key {
+        pub fn last_seen(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("lastSeen", value, |s, v| s.last_seen = Some(v)))
+        }
+        pub fn owner(
+            self,
+            value: impl TryInto<types::Owner, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("owner", value, |s, v| s.owner = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::Key, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::Owner {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> Owner {
+            Owner(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct Owner(runtime::Builder<super::Owner>);
+    impl Owner {
+        pub fn name(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("name", value, |s, v| s.name = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::Owner, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::UploadBody {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            file: impl TryInto<runtime::Binary, Error: std::fmt::Display>,
+        ) -> UploadBody {
+            UploadBody(
+                runtime::Builder::start(|| Ok(Self::new(runtime::field("file", file)?))),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct UploadBody(runtime::Builder<super::UploadBody>);
+    impl UploadBody {
+        pub fn note(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("note", value, |s, v| s.note = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::UploadBody, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+}

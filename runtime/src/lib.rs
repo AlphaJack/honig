@@ -7,6 +7,7 @@ mod auth;
 #[cfg(feature = "base64")]
 mod base64;
 mod binary;
+mod builder;
 #[cfg(feature = "client")]
 mod client;
 mod codec;
@@ -60,6 +61,7 @@ pub use auth::Presented;
 #[cfg(feature = "base64")]
 pub use binary::Base64Url;
 pub use binary::Binary;
+pub use builder::BuildError;
 pub use bytes::Bytes;
 #[cfg(feature = "pkce")]
 pub use client::oauth::Pkce;
@@ -119,6 +121,7 @@ pub mod __private {
     #[cfg(feature = "base64")]
     pub use crate::base64::*;
     pub use crate::binary::*;
+    pub use crate::builder::{Builder, field};
     /// Library types of formats, read with their text checked.
     pub mod validated {
         pub use crate::validated::*;

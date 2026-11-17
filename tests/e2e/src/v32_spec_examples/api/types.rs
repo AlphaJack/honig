@@ -1049,3 +1049,579 @@ impl ServerSentEventStreamsBodyItemAddJson {
 }
 validate_impl!(ServerSentEventStreamsBodyItemAddJson);
 pub type ServerSentEventStreamsBodyItemAddJsonRetry = EventRetry;
+/// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
+/// its field. `build` returns the first field that did not convert.
+pub mod builders {
+    use super as types;
+    use super::runtime;
+    impl super::Address {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> Address {
+            Address(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct Address(runtime::Builder<super::Address>);
+    impl Address {
+        pub fn street(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("street", value, |s, v| s.street = Some(v)))
+        }
+        pub fn city(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("city", value, |s, v| s.city = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::Address, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::FormData {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> FormData {
+            FormData(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct FormData(runtime::Builder<super::FormData>);
+    impl FormData {
+        pub fn code(
+            self,
+            value: impl TryInto<types::FormDataCode, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("code", value, |s, v| s.code = Some(v)))
+        }
+        pub fn count(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("count", value, |s, v| s.count = Some(v)))
+        }
+        pub fn extra(
+            self,
+            value: impl TryInto<types::FormDataExtra, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("extra", value, |s, v| s.extra = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::FormData, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::Product {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> Product {
+            Product(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct Product(runtime::Builder<super::Product>);
+    impl Product {
+        pub fn name(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("name", value, |s, v| s.name = Some(v)))
+        }
+        pub fn product_type(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("productType", value, |s, v| s.product_type = Some(v)))
+        }
+        pub fn color(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("color", value, |s, v| s.color = Some(v)))
+        }
+        pub fn material(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("material", value, |s, v| s.material = Some(v)))
+        }
+        pub fn brand(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("brand", value, |s, v| s.brand = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::Product, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::LogEntry {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> LogEntry {
+            LogEntry(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct LogEntry(runtime::Builder<super::LogEntry>);
+    impl LogEntry {
+        pub fn timestamp(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("timestamp", value, |s, v| s.timestamp = Some(v)))
+        }
+        pub fn level(
+            self,
+            value: impl TryInto<types::LogEntryLevel, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("level", value, |s, v| s.level = Some(v)))
+        }
+        pub fn message(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("message", value, |s, v| s.message = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::LogEntry, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::Event {
+        /// Starts a builder from the required properties.
+        pub fn builder(data: impl TryInto<String, Error: std::fmt::Display>) -> Event {
+            Event(
+                runtime::Builder::start(|| Ok(Self::new(runtime::field("data", data)?))),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct Event(runtime::Builder<super::Event>);
+    impl Event {
+        pub fn event(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("event", value, |s, v| s.event = Some(v)))
+        }
+        pub fn id(self, value: impl TryInto<String, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("id", value, |s, v| s.id = Some(v)))
+        }
+        pub fn retry(
+            self,
+            value: impl TryInto<types::EventRetry, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("retry", value, |s, v| s.retry = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::Event, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::CollectionLinks {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            linkset: impl TryInto<
+                Vec<types::CollectionLinksLinksetItem>,
+                Error: std::fmt::Display,
+            >,
+        ) -> CollectionLinks {
+            CollectionLinks(
+                runtime::Builder::start(|| Ok(
+                    Self::new(runtime::field("linkset", linkset)?),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct CollectionLinks(runtime::Builder<super::CollectionLinks>);
+    impl CollectionLinks {
+        /// Returns the value.
+        pub fn build(self) -> Result<super::CollectionLinks, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::FormDataExtra {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> FormDataExtra {
+            FormDataExtra(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct FormDataExtra(runtime::Builder<super::FormDataExtra>);
+    impl FormDataExtra {
+        pub fn info(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("info", value, |s, v| s.info = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::FormDataExtra, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::SimpleLinkContextItem {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            href: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> SimpleLinkContextItem {
+            SimpleLinkContextItem(
+                runtime::Builder::start(|| Ok(Self::new(runtime::field("href", href)?))),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct SimpleLinkContextItem(runtime::Builder<super::SimpleLinkContextItem>);
+    impl SimpleLinkContextItem {
+        /// Returns the value.
+        pub fn build(self) -> Result<super::SimpleLinkContextItem, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::CollectionLinksLinksetItem {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> CollectionLinksLinksetItem {
+            CollectionLinksLinksetItem(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct CollectionLinksLinksetItem(
+        runtime::Builder<super::CollectionLinksLinksetItem>,
+    );
+    impl CollectionLinksLinksetItem {
+        pub fn anchor(
+            self,
+            value: impl TryInto<url::Url, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("anchor", value, |s, v| s.anchor = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(
+            self,
+        ) -> Result<super::CollectionLinksLinksetItem, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::ParameterExamplesCookie {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> ParameterExamplesCookie {
+            ParameterExamplesCookie(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct ParameterExamplesCookie(runtime::Builder<super::ParameterExamplesCookie>);
+    impl ParameterExamplesCookie {
+        pub fn greeting(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("greeting", value, |s, v| s.greeting = Some(v)))
+        }
+        pub fn code(
+            self,
+            value: impl TryInto<
+                types::ParameterExamplesCookieCode,
+                Error: std::fmt::Display,
+            >,
+        ) -> Self {
+            Self(self.0.set("code", value, |s, v| s.code = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(
+            self,
+        ) -> Result<super::ParameterExamplesCookie, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::ParameterExamplesCoordinates {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            lat: impl TryInto<f64, Error: std::fmt::Display>,
+            long: impl TryInto<f64, Error: std::fmt::Display>,
+        ) -> ParameterExamplesCoordinates {
+            ParameterExamplesCoordinates(
+                runtime::Builder::start(|| Ok(
+                    Self::new(runtime::field("lat", lat)?, runtime::field("long", long)?),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct ParameterExamplesCoordinates(
+        runtime::Builder<super::ParameterExamplesCoordinates>,
+    );
+    impl ParameterExamplesCoordinates {
+        /// Returns the value.
+        pub fn build(
+            self,
+        ) -> Result<super::ParameterExamplesCoordinates, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::QuerystringFormMetadata {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> QuerystringFormMetadata {
+            QuerystringFormMetadata(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct QuerystringFormMetadata(runtime::Builder<super::QuerystringFormMetadata>);
+    impl QuerystringFormMetadata {
+        pub fn foo(self, value: impl TryInto<String, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("foo", value, |s, v| s.foo = Some(v)))
+        }
+        pub fn bar(self, value: impl TryInto<bool, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("bar", value, |s, v| s.bar = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(
+            self,
+        ) -> Result<super::QuerystringFormMetadata, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::QuerystringJsonJson {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> QuerystringJsonJson {
+            QuerystringJsonJson(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct QuerystringJsonJson(runtime::Builder<super::QuerystringJsonJson>);
+    impl QuerystringJsonJson {
+        pub fn numbers(
+            self,
+            value: impl TryInto<Vec<i64>, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("numbers", value, |s, v| s.numbers = Some(v)))
+        }
+        pub fn flag(self, value: impl TryInto<bool, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("flag", value, |s, v| s.flag = runtime::Nullable::Value(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::QuerystringJsonJson, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::BasicMultipartFormBody {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> BasicMultipartFormBody {
+            BasicMultipartFormBody(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct BasicMultipartFormBody(runtime::Builder<super::BasicMultipartFormBody>);
+    impl BasicMultipartFormBody {
+        pub fn id(self, value: impl TryInto<String, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("id", value, |s, v| s.id = Some(v)))
+        }
+        pub fn profile_image(
+            self,
+            value: impl TryInto<runtime::Binary, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("profileImage", value, |s, v| s.profile_image = Some(v)))
+        }
+        pub fn addresses(
+            self,
+            value: impl TryInto<Vec<types::Address>, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("addresses", value, |s, v| s.addresses = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(
+            self,
+        ) -> Result<super::BasicMultipartFormBody, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::MultipartFormWithEncodingObjectsBody {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> MultipartFormWithEncodingObjectsBody {
+            MultipartFormWithEncodingObjectsBody(
+                runtime::Builder::start(|| Ok(Self::new())),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct MultipartFormWithEncodingObjectsBody(
+        runtime::Builder<super::MultipartFormWithEncodingObjectsBody>,
+    );
+    impl MultipartFormWithEncodingObjectsBody {
+        pub fn id(self, value: impl TryInto<String, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("id", value, |s, v| s.id = Some(v)))
+        }
+        pub fn alias(
+            self,
+            value: impl TryInto<
+                types::MultipartFormWithEncodingObjectsBodyAlias,
+                Error: std::fmt::Display,
+            >,
+        ) -> Self {
+            Self(self.0.set("alias", value, |s, v| s.alias = Some(v)))
+        }
+        /// addresses in XML format
+        pub fn addresses(
+            self,
+            value: impl TryInto<Vec<types::Address>, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("addresses", value, |s, v| s.addresses = Some(v)))
+        }
+        pub fn profile_image(
+            self,
+            value: impl TryInto<runtime::Binary, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("profileImage", value, |s, v| s.profile_image = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(
+            self,
+        ) -> Result<super::MultipartFormWithEncodingObjectsBody, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::MultipartFormWithMultipleFilesBody {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> MultipartFormWithMultipleFilesBody {
+            MultipartFormWithMultipleFilesBody(
+                runtime::Builder::start(|| Ok(Self::new())),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct MultipartFormWithMultipleFilesBody(
+        runtime::Builder<super::MultipartFormWithMultipleFilesBody>,
+    );
+    impl MultipartFormWithMultipleFilesBody {
+        pub fn file(
+            self,
+            value: impl TryInto<Vec<runtime::Binary>, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("file", value, |s, v| s.file = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(
+            self,
+        ) -> Result<super::MultipartFormWithMultipleFilesBody, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::ServerSentEventStreamsBodyItemEvent {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            data: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> ServerSentEventStreamsBodyItemEvent {
+            ServerSentEventStreamsBodyItemEvent(
+                runtime::Builder::start(|| Ok(Self::new(runtime::field("data", data)?))),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct ServerSentEventStreamsBodyItemEvent(
+        runtime::Builder<super::ServerSentEventStreamsBodyItemEvent>,
+    );
+    impl ServerSentEventStreamsBodyItemEvent {
+        pub fn event(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("event", value, |s, v| s.event = Some(v)))
+        }
+        pub fn id(self, value: impl TryInto<String, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("id", value, |s, v| s.id = Some(v)))
+        }
+        pub fn retry(
+            self,
+            value: impl TryInto<
+                types::ServerSentEventStreamsBodyItemEventRetry,
+                Error: std::fmt::Display,
+            >,
+        ) -> Self {
+            Self(self.0.set("retry", value, |s, v| s.retry = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(
+            self,
+        ) -> Result<super::ServerSentEventStreamsBodyItemEvent, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::ServerSentEventStreamsBodyItemAddInt64 {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            data: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> ServerSentEventStreamsBodyItemAddInt64 {
+            ServerSentEventStreamsBodyItemAddInt64(
+                runtime::Builder::start(|| Ok(Self::new(runtime::field("data", data)?))),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct ServerSentEventStreamsBodyItemAddInt64(
+        runtime::Builder<super::ServerSentEventStreamsBodyItemAddInt64>,
+    );
+    impl ServerSentEventStreamsBodyItemAddInt64 {
+        pub fn event(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("event", value, |s, v| s.event = Some(v)))
+        }
+        pub fn id(self, value: impl TryInto<String, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("id", value, |s, v| s.id = Some(v)))
+        }
+        pub fn retry(
+            self,
+            value: impl TryInto<
+                types::ServerSentEventStreamsBodyItemAddInt64Retry,
+                Error: std::fmt::Display,
+            >,
+        ) -> Self {
+            Self(self.0.set("retry", value, |s, v| s.retry = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(
+            self,
+        ) -> Result<super::ServerSentEventStreamsBodyItemAddInt64, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::ServerSentEventStreamsBodyItemAddJson {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            data: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> ServerSentEventStreamsBodyItemAddJson {
+            ServerSentEventStreamsBodyItemAddJson(
+                runtime::Builder::start(|| Ok(Self::new(runtime::field("data", data)?))),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct ServerSentEventStreamsBodyItemAddJson(
+        runtime::Builder<super::ServerSentEventStreamsBodyItemAddJson>,
+    );
+    impl ServerSentEventStreamsBodyItemAddJson {
+        pub fn event(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("event", value, |s, v| s.event = Some(v)))
+        }
+        pub fn id(self, value: impl TryInto<String, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("id", value, |s, v| s.id = Some(v)))
+        }
+        pub fn retry(
+            self,
+            value: impl TryInto<
+                types::ServerSentEventStreamsBodyItemAddJsonRetry,
+                Error: std::fmt::Display,
+            >,
+        ) -> Self {
+            Self(self.0.set("retry", value, |s, v| s.retry = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(
+            self,
+        ) -> Result<super::ServerSentEventStreamsBodyItemAddJson, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+}

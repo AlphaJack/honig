@@ -1516,3 +1516,760 @@ pub struct SearchOkItemDataRequest(pub ProductRequest);
 serialize_impl_3!(SearchOkItemDataRequest);
 deserialize_impl_2!(SearchOkItemDataRequest);
 validate_impl_7!(SearchOkItemDataRequest);
+/// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
+/// its field. `build` returns the first field that did not convert.
+pub mod builders {
+    use super as types;
+    use super::runtime;
+    impl super::Product {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            id: impl TryInto<types::ProductId, Error: std::fmt::Display>,
+            name: impl TryInto<types::ProductName, Error: std::fmt::Display>,
+            kind: impl TryInto<types::ProductKind, Error: std::fmt::Display>,
+        ) -> Product {
+            Product(
+                runtime::Builder::start(|| Ok(
+                    Self::new(
+                        runtime::field("id", id)?,
+                        runtime::field("name", name)?,
+                        runtime::field("kind", kind)?,
+                    ),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct Product(runtime::Builder<super::Product>);
+    impl Product {
+        pub fn nickname(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(
+                self
+                    .0
+                    .set(
+                        "nickname",
+                        value,
+                        |s, v| s.nickname = runtime::Nullable::Value(v),
+                    ),
+            )
+        }
+        pub fn tags(
+            self,
+            value: impl TryInto<Vec<String>, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("tags", value, |s, v| s.tags = Some(v)))
+        }
+        pub fn point(
+            self,
+            value: impl TryInto<Vec<serde_json::Value>, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("point", value, |s, v| s.point = Some(v)))
+        }
+        pub fn attrs(
+            self,
+            value: impl TryInto<
+                std::collections::BTreeMap<String, String>,
+                Error: std::fmt::Display,
+            >,
+        ) -> Self {
+            Self(self.0.set("attrs", value, |s, v| s.attrs = Some(v)))
+        }
+        pub fn weight(
+            self,
+            value: impl TryInto<types::ProductWeight, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("weight", value, |s, v| s.weight = Some(v)))
+        }
+        /// Overrides description
+        pub fn owner(
+            self,
+            value: impl TryInto<types::Owner, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("owner", value, |s, v| s.owner = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::Product, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::Book {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            id: impl TryInto<types::BookId, Error: std::fmt::Display>,
+            name: impl TryInto<types::BookName, Error: std::fmt::Display>,
+            kind: impl TryInto<types::BookKind, Error: std::fmt::Display>,
+        ) -> Book {
+            Book(
+                runtime::Builder::start(|| Ok(
+                    Self::new(
+                        runtime::field("id", id)?,
+                        runtime::field("name", name)?,
+                        runtime::field("kind", kind)?,
+                    ),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct Book(runtime::Builder<super::Book>);
+    impl Book {
+        pub fn nickname(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(
+                self
+                    .0
+                    .set(
+                        "nickname",
+                        value,
+                        |s, v| s.nickname = runtime::Nullable::Value(v),
+                    ),
+            )
+        }
+        pub fn tags(
+            self,
+            value: impl TryInto<Vec<String>, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("tags", value, |s, v| s.tags = Some(v)))
+        }
+        pub fn point(
+            self,
+            value: impl TryInto<Vec<serde_json::Value>, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("point", value, |s, v| s.point = Some(v)))
+        }
+        pub fn attrs(
+            self,
+            value: impl TryInto<
+                std::collections::BTreeMap<String, String>,
+                Error: std::fmt::Display,
+            >,
+        ) -> Self {
+            Self(self.0.set("attrs", value, |s, v| s.attrs = Some(v)))
+        }
+        pub fn weight(
+            self,
+            value: impl TryInto<types::BookWeight, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("weight", value, |s, v| s.weight = Some(v)))
+        }
+        /// Overrides description
+        pub fn owner(
+            self,
+            value: impl TryInto<types::Owner, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("owner", value, |s, v| s.owner = Some(v)))
+        }
+        pub fn hardcover(
+            self,
+            value: impl TryInto<bool, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("hardcover", value, |s, v| s.hardcover = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::Book, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::Owner {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> Owner {
+            Owner(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct Owner(runtime::Builder<super::Owner>);
+    impl Owner {
+        pub fn children(
+            self,
+            value: impl TryInto<Vec<serde_json::Value>, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("children", value, |s, v| s.children = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::Owner, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::Error {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> Error {
+            Error(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct Error(runtime::Builder<super::Error>);
+    impl Error {
+        pub fn code(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("code", value, |s, v| s.code = Some(v)))
+        }
+        pub fn message(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("message", value, |s, v| s.message = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::Error, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::Gadget2 {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            id: impl TryInto<types::Gadget2Id, Error: std::fmt::Display>,
+            name: impl TryInto<types::Gadget2Name, Error: std::fmt::Display>,
+            kind: impl TryInto<types::Gadget2Kind, Error: std::fmt::Display>,
+        ) -> Gadget2 {
+            Gadget2(
+                runtime::Builder::start(|| Ok(
+                    Self::new(
+                        runtime::field("id", id)?,
+                        runtime::field("name", name)?,
+                        runtime::field("kind", kind)?,
+                    ),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct Gadget2(runtime::Builder<super::Gadget2>);
+    impl Gadget2 {
+        pub fn nickname(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(
+                self
+                    .0
+                    .set(
+                        "nickname",
+                        value,
+                        |s, v| s.nickname = runtime::Nullable::Value(v),
+                    ),
+            )
+        }
+        pub fn tags(
+            self,
+            value: impl TryInto<Vec<String>, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("tags", value, |s, v| s.tags = Some(v)))
+        }
+        pub fn point(
+            self,
+            value: impl TryInto<Vec<serde_json::Value>, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("point", value, |s, v| s.point = Some(v)))
+        }
+        pub fn attrs(
+            self,
+            value: impl TryInto<
+                std::collections::BTreeMap<String, String>,
+                Error: std::fmt::Display,
+            >,
+        ) -> Self {
+            Self(self.0.set("attrs", value, |s, v| s.attrs = Some(v)))
+        }
+        pub fn weight(
+            self,
+            value: impl TryInto<types::Gadget2Weight, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("weight", value, |s, v| s.weight = Some(v)))
+        }
+        /// Overrides description
+        pub fn owner(
+            self,
+            value: impl TryInto<types::Owner, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("owner", value, |s, v| s.owner = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::Gadget2, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::SubmitFormBody {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            tags: impl TryInto<Vec<String>, Error: std::fmt::Display>,
+            priority: impl TryInto<
+                types::SubmitFormBodyPriority,
+                Error: std::fmt::Display,
+            >,
+        ) -> SubmitFormBody {
+            SubmitFormBody(
+                runtime::Builder::start(|| Ok(
+                    Self::new(
+                        runtime::field("tags", tags)?,
+                        runtime::field("priority", priority)?,
+                    ),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct SubmitFormBody(runtime::Builder<super::SubmitFormBody>);
+    impl SubmitFormBody {
+        pub fn filter(
+            self,
+            value: impl TryInto<types::SubmitFormBodyFilter, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("filter", value, |s, v| s.filter = Some(v)))
+        }
+        pub fn note(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("note", value, |s, v| s.note = Some(v)))
+        }
+        pub fn blob(
+            self,
+            value: impl TryInto<runtime::Binary, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("blob", value, |s, v| s.blob = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::SubmitFormBody, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::SubmitFormBodyFilter {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            a: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> SubmitFormBodyFilter {
+            SubmitFormBodyFilter(
+                runtime::Builder::start(|| Ok(Self::new(runtime::field("a", a)?))),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct SubmitFormBodyFilter(runtime::Builder<super::SubmitFormBodyFilter>);
+    impl SubmitFormBodyFilter {
+        pub fn b(self, value: impl TryInto<String, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("b", value, |s, v| s.b = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::SubmitFormBodyFilter, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::PutBlobOkXQuota {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            limit: impl TryInto<i64, Error: std::fmt::Display>,
+        ) -> PutBlobOkXQuota {
+            PutBlobOkXQuota(
+                runtime::Builder::start(|| Ok(
+                    Self::new(runtime::field("limit", limit)?),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct PutBlobOkXQuota(runtime::Builder<super::PutBlobOkXQuota>);
+    impl PutBlobOkXQuota {
+        pub fn scope(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("scope", value, |s, v| s.scope = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::PutBlobOkXQuota, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::CreateProductBody {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> CreateProductBody {
+            CreateProductBody(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct CreateProductBody(runtime::Builder<super::CreateProductBody>);
+    impl CreateProductBody {
+        pub fn meta(
+            self,
+            value: impl TryInto<types::Product, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("meta", value, |s, v| s.meta = Some(v)))
+        }
+        pub fn photo(
+            self,
+            value: impl TryInto<runtime::Binary, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("photo", value, |s, v| s.photo = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::CreateProductBody, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::SearchQ {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> SearchQ {
+            SearchQ(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct SearchQ(runtime::Builder<super::SearchQ>);
+    impl SearchQ {
+        pub fn term(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("term", value, |s, v| s.term = Some(v)))
+        }
+        pub fn page(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("page", value, |s, v| s.page = Some(v)))
+        }
+        pub fn filters(
+            self,
+            value: impl TryInto<
+                std::collections::BTreeMap<String, serde_json::Value>,
+                Error: std::fmt::Display,
+            >,
+        ) -> Self {
+            Self(self.0.set("filters", value, |s, v| s.filters = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::SearchQ, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::SearchOkItem {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            data: impl TryInto<types::SearchOkItemData, Error: std::fmt::Display>,
+        ) -> SearchOkItem {
+            SearchOkItem(
+                runtime::Builder::start(|| Ok(Self::new(runtime::field("data", data)?))),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct SearchOkItem(runtime::Builder<super::SearchOkItem>);
+    impl SearchOkItem {
+        pub fn event(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("event", value, |s, v| s.event = Some(v)))
+        }
+        pub fn id(self, value: impl TryInto<String, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("id", value, |s, v| s.id = Some(v)))
+        }
+        pub fn retry(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("retry", value, |s, v| s.retry = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::SearchOkItem, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::ProductRequest {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            name: impl TryInto<types::ProductName, Error: std::fmt::Display>,
+            kind: impl TryInto<types::ProductKind, Error: std::fmt::Display>,
+        ) -> ProductRequest {
+            ProductRequest(
+                runtime::Builder::start(|| Ok(
+                    Self::new(
+                        runtime::field("name", name)?,
+                        runtime::field("kind", kind)?,
+                    ),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct ProductRequest(runtime::Builder<super::ProductRequest>);
+    impl ProductRequest {
+        pub fn nickname(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(
+                self
+                    .0
+                    .set(
+                        "nickname",
+                        value,
+                        |s, v| s.nickname = runtime::Nullable::Value(v),
+                    ),
+            )
+        }
+        pub fn secret(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("secret", value, |s, v| s.secret = Some(v)))
+        }
+        pub fn tags(
+            self,
+            value: impl TryInto<Vec<String>, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("tags", value, |s, v| s.tags = Some(v)))
+        }
+        pub fn point(
+            self,
+            value: impl TryInto<Vec<serde_json::Value>, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("point", value, |s, v| s.point = Some(v)))
+        }
+        pub fn attrs(
+            self,
+            value: impl TryInto<
+                std::collections::BTreeMap<String, String>,
+                Error: std::fmt::Display,
+            >,
+        ) -> Self {
+            Self(self.0.set("attrs", value, |s, v| s.attrs = Some(v)))
+        }
+        pub fn weight(
+            self,
+            value: impl TryInto<types::ProductWeight, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("weight", value, |s, v| s.weight = Some(v)))
+        }
+        /// Overrides description
+        pub fn owner(
+            self,
+            value: impl TryInto<types::Owner, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("owner", value, |s, v| s.owner = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::ProductRequest, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::BookRequest {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            name: impl TryInto<types::BookName, Error: std::fmt::Display>,
+            kind: impl TryInto<types::BookKind, Error: std::fmt::Display>,
+        ) -> BookRequest {
+            BookRequest(
+                runtime::Builder::start(|| Ok(
+                    Self::new(
+                        runtime::field("name", name)?,
+                        runtime::field("kind", kind)?,
+                    ),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct BookRequest(runtime::Builder<super::BookRequest>);
+    impl BookRequest {
+        pub fn nickname(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(
+                self
+                    .0
+                    .set(
+                        "nickname",
+                        value,
+                        |s, v| s.nickname = runtime::Nullable::Value(v),
+                    ),
+            )
+        }
+        pub fn secret(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("secret", value, |s, v| s.secret = Some(v)))
+        }
+        pub fn tags(
+            self,
+            value: impl TryInto<Vec<String>, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("tags", value, |s, v| s.tags = Some(v)))
+        }
+        pub fn point(
+            self,
+            value: impl TryInto<Vec<serde_json::Value>, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("point", value, |s, v| s.point = Some(v)))
+        }
+        pub fn attrs(
+            self,
+            value: impl TryInto<
+                std::collections::BTreeMap<String, String>,
+                Error: std::fmt::Display,
+            >,
+        ) -> Self {
+            Self(self.0.set("attrs", value, |s, v| s.attrs = Some(v)))
+        }
+        pub fn weight(
+            self,
+            value: impl TryInto<types::BookWeight, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("weight", value, |s, v| s.weight = Some(v)))
+        }
+        /// Overrides description
+        pub fn owner(
+            self,
+            value: impl TryInto<types::Owner, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("owner", value, |s, v| s.owner = Some(v)))
+        }
+        pub fn hardcover(
+            self,
+            value: impl TryInto<bool, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("hardcover", value, |s, v| s.hardcover = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::BookRequest, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::Gadget2Request {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            name: impl TryInto<types::Gadget2Name, Error: std::fmt::Display>,
+            kind: impl TryInto<types::Gadget2Kind, Error: std::fmt::Display>,
+        ) -> Gadget2Request {
+            Gadget2Request(
+                runtime::Builder::start(|| Ok(
+                    Self::new(
+                        runtime::field("name", name)?,
+                        runtime::field("kind", kind)?,
+                    ),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct Gadget2Request(runtime::Builder<super::Gadget2Request>);
+    impl Gadget2Request {
+        pub fn nickname(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(
+                self
+                    .0
+                    .set(
+                        "nickname",
+                        value,
+                        |s, v| s.nickname = runtime::Nullable::Value(v),
+                    ),
+            )
+        }
+        pub fn secret(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("secret", value, |s, v| s.secret = Some(v)))
+        }
+        pub fn tags(
+            self,
+            value: impl TryInto<Vec<String>, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("tags", value, |s, v| s.tags = Some(v)))
+        }
+        pub fn point(
+            self,
+            value: impl TryInto<Vec<serde_json::Value>, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("point", value, |s, v| s.point = Some(v)))
+        }
+        pub fn attrs(
+            self,
+            value: impl TryInto<
+                std::collections::BTreeMap<String, String>,
+                Error: std::fmt::Display,
+            >,
+        ) -> Self {
+            Self(self.0.set("attrs", value, |s, v| s.attrs = Some(v)))
+        }
+        pub fn weight(
+            self,
+            value: impl TryInto<types::Gadget2Weight, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("weight", value, |s, v| s.weight = Some(v)))
+        }
+        /// Overrides description
+        pub fn owner(
+            self,
+            value: impl TryInto<types::Owner, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("owner", value, |s, v| s.owner = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::Gadget2Request, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::CreateProductBodyRequest {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> CreateProductBodyRequest {
+            CreateProductBodyRequest(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct CreateProductBodyRequest(
+        runtime::Builder<super::CreateProductBodyRequest>,
+    );
+    impl CreateProductBodyRequest {
+        pub fn meta(
+            self,
+            value: impl TryInto<types::ProductRequest, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("meta", value, |s, v| s.meta = Some(v)))
+        }
+        pub fn photo(
+            self,
+            value: impl TryInto<runtime::Binary, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("photo", value, |s, v| s.photo = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(
+            self,
+        ) -> Result<super::CreateProductBodyRequest, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::SearchOkItemRequest {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            data: impl TryInto<types::SearchOkItemDataRequest, Error: std::fmt::Display>,
+        ) -> SearchOkItemRequest {
+            SearchOkItemRequest(
+                runtime::Builder::start(|| Ok(Self::new(runtime::field("data", data)?))),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct SearchOkItemRequest(runtime::Builder<super::SearchOkItemRequest>);
+    impl SearchOkItemRequest {
+        pub fn event(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("event", value, |s, v| s.event = Some(v)))
+        }
+        pub fn id(self, value: impl TryInto<String, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("id", value, |s, v| s.id = Some(v)))
+        }
+        pub fn retry(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("retry", value, |s, v| s.retry = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::SearchOkItemRequest, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+}

@@ -224,3 +224,129 @@ impl StringTree {
     }
 }
 validate_impl!(StringTree);
+/// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
+/// its field. `build` returns the first field that did not convert.
+pub mod builders {
+    use super as types;
+    use super::runtime;
+    impl super::Product {
+        /// Starts a builder from the required properties.
+        pub fn builder(name: impl TryInto<String, Error: std::fmt::Display>) -> Product {
+            Product(
+                runtime::Builder::start(|| Ok(Self::new(runtime::field("name", name)?))),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct Product(runtime::Builder<super::Product>);
+    impl Product {
+        /// Returns the value.
+        pub fn build(self) -> Result<super::Product, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::Page {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            items: impl TryInto<Vec<serde_json::Value>, Error: std::fmt::Display>,
+        ) -> Page {
+            Page(
+                runtime::Builder::start(|| Ok(
+                    Self::new(runtime::field("items", items)?),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct Page(runtime::Builder<super::Page>);
+    impl Page {
+        pub fn next(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("next", value, |s, v| s.next = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::Page, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::ProductPage {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            items: impl TryInto<Vec<types::Product>, Error: std::fmt::Display>,
+        ) -> ProductPage {
+            ProductPage(
+                runtime::Builder::start(|| Ok(
+                    Self::new(runtime::field("items", items)?),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct ProductPage(runtime::Builder<super::ProductPage>);
+    impl ProductPage {
+        pub fn next(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("next", value, |s, v| s.next = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::ProductPage, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::Tree {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            value: impl TryInto<serde_json::Value, Error: std::fmt::Display>,
+        ) -> Tree {
+            Tree(
+                runtime::Builder::start(|| Ok(
+                    Self::new(runtime::field("value", value)?),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct Tree(runtime::Builder<super::Tree>);
+    impl Tree {
+        pub fn children(
+            self,
+            value: impl TryInto<Vec<types::Tree>, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("children", value, |s, v| s.children = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::Tree, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::StringTree {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> StringTree {
+            StringTree(
+                runtime::Builder::start(|| Ok(
+                    Self::new(runtime::field("value", value)?),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct StringTree(runtime::Builder<super::StringTree>);
+    impl StringTree {
+        pub fn children(
+            self,
+            value: impl TryInto<Vec<types::StringTree>, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("children", value, |s, v| s.children = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::StringTree, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+}

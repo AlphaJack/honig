@@ -60,3 +60,47 @@ impl GetItemOk {
     }
 }
 impl runtime::Validate for GetItemOk {}
+/// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
+/// its field. `build` returns the first field that did not convert.
+pub mod builders {
+    use super::runtime;
+    impl super::GetItemOk {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            id: impl TryInto<String, Error: std::fmt::Display>,
+            tags: impl TryInto<Vec<String>, Error: std::fmt::Display>,
+        ) -> GetItemOk {
+            GetItemOk(
+                runtime::Builder::start(|| Ok(
+                    Self::new(runtime::field("id", id)?, runtime::field("tags", tags)?),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct GetItemOk(runtime::Builder<super::GetItemOk>);
+    impl GetItemOk {
+        pub fn trace(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("trace", value, |s, v| s.trace = Some(v)))
+        }
+        pub fn session(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("session", value, |s, v| s.session = Some(v)))
+        }
+        pub fn source_ip(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("sourceIp", value, |s, v| s.source_ip = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::GetItemOk, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+}

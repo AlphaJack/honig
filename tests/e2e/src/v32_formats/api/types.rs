@@ -849,3 +849,326 @@ impl<'de> serde::Deserialize<'de> for TransferMethod {
 }
 validate_impl!(TransferMethod);
 pub type TransferAmount = EventAmount;
+/// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
+/// its field. `build` returns the first field that did not convert.
+pub mod builders {
+    use super as types;
+    use super::runtime;
+    impl super::StoreNetwork {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            first: impl TryInto<std::net::Ipv4Addr, Error: std::fmt::Display>,
+            last: impl TryInto<std::net::Ipv6Addr, Error: std::fmt::Display>,
+        ) -> StoreNetwork {
+            StoreNetwork(
+                runtime::Builder::start(|| Ok(
+                    Self::new(
+                        runtime::field("first", first)?,
+                        runtime::field("last", last)?,
+                    ),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct StoreNetwork(runtime::Builder<super::StoreNetwork>);
+    impl StoreNetwork {
+        /// Returns the value.
+        pub fn build(self) -> Result<super::StoreNetwork, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::Event {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            id: impl TryInto<String, Error: std::fmt::Display>,
+            at: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Event {
+            Event(
+                runtime::Builder::start(|| Ok(
+                    Self::new(runtime::field("id", id)?, runtime::field("at", at)?),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct Event(runtime::Builder<super::Event>);
+    impl Event {
+        pub fn ip4(
+            self,
+            value: impl TryInto<std::net::Ipv4Addr, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("ip4", value, |s, v| s.ip4 = Some(v)))
+        }
+        pub fn ip6(
+            self,
+            value: impl TryInto<std::net::Ipv6Addr, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("ip6", value, |s, v| s.ip6 = Some(v)))
+        }
+        pub fn day(self, value: impl TryInto<String, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("day", value, |s, v| s.day = Some(v)))
+        }
+        pub fn seen(
+            self,
+            value: impl TryInto<Vec<String>, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("seen", value, |s, v| s.seen = Some(v)))
+        }
+        pub fn token(
+            self,
+            value: impl TryInto<runtime::Base64Url, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("token", value, |s, v| s.token = Some(v)))
+        }
+        pub fn level(self, value: impl TryInto<i8, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("level", value, |s, v| s.level = Some(v)))
+        }
+        pub fn port(
+            self,
+            value: impl TryInto<types::EventPort, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("port", value, |s, v| s.port = Some(v)))
+        }
+        pub fn amount(
+            self,
+            value: impl TryInto<types::EventAmount, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("amount", value, |s, v| s.amount = Some(v)))
+        }
+        pub fn sum(
+            self,
+            value: impl TryInto<runtime::Decimal, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("sum", value, |s, v| s.sum = Some(v)))
+        }
+        pub fn initial(
+            self,
+            value: impl TryInto<char, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("initial", value, |s, v| s.initial = Some(v)))
+        }
+        pub fn home(
+            self,
+            value: impl TryInto<url::Url, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("home", value, |s, v| s.home = Some(v)))
+        }
+        pub fn net4(
+            self,
+            value: impl TryInto<ipnet::Ipv4Net, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("net4", value, |s, v| s.net4 = Some(v)))
+        }
+        pub fn net6(
+            self,
+            value: impl TryInto<ipnet::Ipv6Net, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("net6", value, |s, v| s.net6 = Some(v)))
+        }
+        pub fn local(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("local", value, |s, v| s.local = Some(v)))
+        }
+        pub fn clock(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("clock", value, |s, v| s.clock = Some(v)))
+        }
+        pub fn price(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("price", value, |s, v| s.price = Some(v)))
+        }
+        pub fn total(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("total", value, |s, v| s.total = Some(v)))
+        }
+        pub fn opens(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("opens", value, |s, v| s.opens = Some(v)))
+        }
+        pub fn expires(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("expires", value, |s, v| s.expires = Some(v)))
+        }
+        pub fn lasts(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("lasts", value, |s, v| s.lasts = Some(v)))
+        }
+        pub fn link(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("link", value, |s, v| s.link = Some(v)))
+        }
+        pub fn page(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("page", value, |s, v| s.page = Some(v)))
+        }
+        pub fn rel(self, value: impl TryInto<String, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("rel", value, |s, v| s.rel = Some(v)))
+        }
+        pub fn at_path(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("at_path", value, |s, v| s.at_path = Some(v)))
+        }
+        pub fn up(self, value: impl TryInto<String, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("up", value, |s, v| s.up = Some(v)))
+        }
+        pub fn filter(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("filter", value, |s, v| s.filter = Some(v)))
+        }
+        pub fn search(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("search", value, |s, v| s.search = Some(v)))
+        }
+        pub fn charge(
+            self,
+            value: impl TryInto<types::EventCharge, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("charge", value, |s, v| s.charge = Some(v)))
+        }
+        pub fn payment(
+            self,
+            value: impl TryInto<types::EventPayment, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("payment", value, |s, v| s.payment = Some(v)))
+        }
+        pub fn payload(
+            self,
+            value: impl TryInto<types::EventPayload, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("payload", value, |s, v| s.payload = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::Event, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::Card {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            method: impl TryInto<types::CardMethod, Error: std::fmt::Display>,
+            amount: impl TryInto<types::CardAmount, Error: std::fmt::Display>,
+        ) -> Card {
+            Card(
+                runtime::Builder::start(|| Ok(
+                    Self::new(
+                        runtime::field("method", method)?,
+                        runtime::field("amount", amount)?,
+                    ),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct Card(runtime::Builder<super::Card>);
+    impl Card {
+        /// Returns the value.
+        pub fn build(self) -> Result<super::Card, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::Transfer {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            method: impl TryInto<types::TransferMethod, Error: std::fmt::Display>,
+            amount: impl TryInto<types::TransferAmount, Error: std::fmt::Display>,
+        ) -> Transfer {
+            Transfer(
+                runtime::Builder::start(|| Ok(
+                    Self::new(
+                        runtime::field("method", method)?,
+                        runtime::field("amount", amount)?,
+                    ),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct Transfer(runtime::Builder<super::Transfer>);
+    impl Transfer {
+        /// Returns the value.
+        pub fn build(self) -> Result<super::Transfer, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::EventChargeRefund {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            refund: impl TryInto<runtime::Decimal, Error: std::fmt::Display>,
+        ) -> EventChargeRefund {
+            EventChargeRefund(
+                runtime::Builder::start(|| Ok(
+                    Self::new(runtime::field("refund", refund)?),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct EventChargeRefund(runtime::Builder<super::EventChargeRefund>);
+    impl EventChargeRefund {
+        /// Returns the value.
+        pub fn build(self) -> Result<super::EventChargeRefund, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::EventChargeFee {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            fee: impl TryInto<runtime::Decimal, Error: std::fmt::Display>,
+        ) -> EventChargeFee {
+            EventChargeFee(
+                runtime::Builder::start(|| Ok(Self::new(runtime::field("fee", fee)?))),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct EventChargeFee(runtime::Builder<super::EventChargeFee>);
+    impl EventChargeFee {
+        /// Returns the value.
+        pub fn build(self) -> Result<super::EventChargeFee, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::EventPayloadContent {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            n: impl TryInto<i64, Error: std::fmt::Display>,
+        ) -> EventPayloadContent {
+            EventPayloadContent(
+                runtime::Builder::start(|| Ok(Self::new(runtime::field("n", n)?))),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct EventPayloadContent(runtime::Builder<super::EventPayloadContent>);
+    impl EventPayloadContent {
+        /// Returns the value.
+        pub fn build(self) -> Result<super::EventPayloadContent, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+}

@@ -593,3 +593,223 @@ impl AddNoteCreatedXTags {
     }
 }
 validate_impl!(AddNoteCreatedXTags);
+/// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
+/// its field. `build` returns the first field that did not convert.
+pub mod builders {
+    use super as types;
+    use super::runtime;
+    impl super::TextNote {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            text: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> TextNote {
+            TextNote(
+                runtime::Builder::start(|| Ok(Self::new(runtime::field("text", text)?))),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct TextNote(runtime::Builder<super::TextNote>);
+    impl TextNote {
+        pub fn kind(
+            self,
+            value: impl TryInto<types::TextNoteKind, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("kind", value, |s, v| s.kind = Some(v)))
+        }
+        pub fn point(
+            self,
+            value: impl TryInto<[f64; 2], Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("point", value, |s, v| s.point = Some(v)))
+        }
+        pub fn rgb(
+            self,
+            value: impl TryInto<[u8; 3], Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("rgb", value, |s, v| s.rgb = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::TextNote, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::ImageNote {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            kind: impl TryInto<types::ImageNoteKind, Error: std::fmt::Display>,
+            url: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> ImageNote {
+            ImageNote(
+                runtime::Builder::start(|| Ok(
+                    Self::new(runtime::field("kind", kind)?, runtime::field("url", url)?),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct ImageNote(runtime::Builder<super::ImageNote>);
+    impl ImageNote {
+        pub fn width(
+            self,
+            value: impl TryInto<types::Pixels, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("width", value, |s, v| s.width = v))
+        }
+        pub fn crop(
+            self,
+            value: impl TryInto<types::Crop, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("crop", value, |s, v| s.crop = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::ImageNote, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::NoteTextNote {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            text: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> NoteTextNote {
+            NoteTextNote(
+                runtime::Builder::start(|| Ok(Self::new(runtime::field("text", text)?))),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct NoteTextNote(runtime::Builder<super::NoteTextNote>);
+    impl NoteTextNote {
+        pub fn kind(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("kind", value, |s, v| s.kind = Some(v)))
+        }
+        pub fn point(
+            self,
+            value: impl TryInto<[f64; 2], Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("point", value, |s, v| s.point = Some(v)))
+        }
+        pub fn rgb(
+            self,
+            value: impl TryInto<[u8; 3], Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("rgb", value, |s, v| s.rgb = Some(v)))
+        }
+        pub fn size(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("size", value, |s, v| s.size = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::NoteTextNote, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::NoteImageNote {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            kind: impl TryInto<String, Error: std::fmt::Display>,
+            url: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> NoteImageNote {
+            NoteImageNote(
+                runtime::Builder::start(|| Ok(
+                    Self::new(runtime::field("kind", kind)?, runtime::field("url", url)?),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct NoteImageNote(runtime::Builder<super::NoteImageNote>);
+    impl NoteImageNote {
+        pub fn width(
+            self,
+            value: impl TryInto<types::Pixels, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("width", value, |s, v| s.width = v))
+        }
+        pub fn crop(
+            self,
+            value: impl TryInto<types::Crop, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("crop", value, |s, v| s.crop = Some(v)))
+        }
+        pub fn text(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("text", value, |s, v| s.text = Some(v)))
+        }
+        pub fn size(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("size", value, |s, v| s.size = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::NoteImageNote, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::CropVariant2Variant2 {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> CropVariant2Variant2 {
+            CropVariant2Variant2(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct CropVariant2Variant2(runtime::Builder<super::CropVariant2Variant2>);
+    impl CropVariant2Variant2 {
+        pub fn x(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("x", value, |s, v| s.x = Some(v)))
+        }
+        pub fn y(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("y", value, |s, v| s.y = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::CropVariant2Variant2, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::ArchiveConflict {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            code: impl TryInto<i64, Error: std::fmt::Display>,
+            message: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> ArchiveConflict {
+            ArchiveConflict(
+                runtime::Builder::start(|| Ok(
+                    Self::new(
+                        runtime::field("code", code)?,
+                        runtime::field("message", message)?,
+                    ),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct ArchiveConflict(runtime::Builder<super::ArchiveConflict>);
+    impl ArchiveConflict {
+        /// Returns the value.
+        pub fn build(self) -> Result<super::ArchiveConflict, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::AddNoteCreatedXTags {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> AddNoteCreatedXTags {
+            AddNoteCreatedXTags(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct AddNoteCreatedXTags(runtime::Builder<super::AddNoteCreatedXTags>);
+    impl AddNoteCreatedXTags {
+        pub fn a(self, value: impl TryInto<String, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("a", value, |s, v| s.a = Some(v)))
+        }
+        pub fn b(self, value: impl TryInto<String, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("b", value, |s, v| s.b = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::AddNoteCreatedXTags, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+}

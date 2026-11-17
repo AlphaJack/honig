@@ -686,3 +686,273 @@ impl runtime::XmlShape for XmlWithNullValuesOk {
     }
 }
 validate_impl!(XmlWithNullValuesOk);
+/// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
+/// its field. `build` returns the first field that did not convert.
+pub mod builders {
+    use super::runtime;
+    impl super::Person {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> Person {
+            Person(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct Person(runtime::Builder<super::Person>);
+    impl Person {
+        pub fn id(self, value: impl TryInto<i32, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("id", value, |s, v| s.id = Some(v)))
+        }
+        pub fn name(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("name", value, |s, v| s.name = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::Person, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::Documentation {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> Documentation {
+            Documentation(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct Documentation(runtime::Builder<super::Documentation>);
+    impl Documentation {
+        pub fn content(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("content", value, |s, v| s.content = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::Documentation, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::NoXmlObjectOk {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> NoXmlObjectOk {
+            NoXmlObjectOk(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct NoXmlObjectOk(runtime::Builder<super::NoXmlObjectOk>);
+    impl NoXmlObjectOk {
+        pub fn products(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("products", value, |s, v| s.products = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::NoXmlObjectOk, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::NoXmlObjectArrayOk {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> NoXmlObjectArrayOk {
+            NoXmlObjectArrayOk(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct NoXmlObjectArrayOk(runtime::Builder<super::NoXmlObjectArrayOk>);
+    impl NoXmlObjectArrayOk {
+        pub fn products(
+            self,
+            value: impl TryInto<Vec<String>, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("products", value, |s, v| s.products = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::NoXmlObjectArrayOk, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::XmlArrayItemNamesOk {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> XmlArrayItemNamesOk {
+            XmlArrayItemNamesOk(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct XmlArrayItemNamesOk(runtime::Builder<super::XmlArrayItemNamesOk>);
+    impl XmlArrayItemNamesOk {
+        pub fn products(
+            self,
+            value: impl TryInto<Vec<String>, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("products", value, |s, v| s.products = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::XmlArrayItemNamesOk, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::XmlArrayNameWithoutWrapperOk {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> XmlArrayNameWithoutWrapperOk {
+            XmlArrayNameWithoutWrapperOk(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct XmlArrayNameWithoutWrapperOk(
+        runtime::Builder<super::XmlArrayNameWithoutWrapperOk>,
+    );
+    impl XmlArrayNameWithoutWrapperOk {
+        pub fn products(
+            self,
+            value: impl TryInto<Vec<String>, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("products", value, |s, v| s.products = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(
+            self,
+        ) -> Result<super::XmlArrayNameWithoutWrapperOk, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::XmlArrayWrappedOk {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> XmlArrayWrappedOk {
+            XmlArrayWrappedOk(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct XmlArrayWrappedOk(runtime::Builder<super::XmlArrayWrappedOk>);
+    impl XmlArrayWrappedOk {
+        pub fn products(
+            self,
+            value: impl TryInto<Vec<String>, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("products", value, |s, v| s.products = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::XmlArrayWrappedOk, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::XmlArrayWrappedItemNamesOk {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> XmlArrayWrappedItemNamesOk {
+            XmlArrayWrappedItemNamesOk(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct XmlArrayWrappedItemNamesOk(
+        runtime::Builder<super::XmlArrayWrappedItemNamesOk>,
+    );
+    impl XmlArrayWrappedItemNamesOk {
+        pub fn products(
+            self,
+            value: impl TryInto<Vec<String>, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("products", value, |s, v| s.products = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(
+            self,
+        ) -> Result<super::XmlArrayWrappedItemNamesOk, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::XmlArrayWrappedRenamedOk {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> XmlArrayWrappedRenamedOk {
+            XmlArrayWrappedRenamedOk(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct XmlArrayWrappedRenamedOk(
+        runtime::Builder<super::XmlArrayWrappedRenamedOk>,
+    );
+    impl XmlArrayWrappedRenamedOk {
+        pub fn products(
+            self,
+            value: impl TryInto<Vec<String>, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("products", value, |s, v| s.products = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(
+            self,
+        ) -> Result<super::XmlArrayWrappedRenamedOk, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::ElementsWithAttributesAndTextOkItemObject {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> ElementsWithAttributesAndTextOkItemObject {
+            ElementsWithAttributesAndTextOkItemObject(
+                runtime::Builder::start(|| Ok(Self::new())),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct ElementsWithAttributesAndTextOkItemObject(
+        runtime::Builder<super::ElementsWithAttributesAndTextOkItemObject>,
+    );
+    impl ElementsWithAttributesAndTextOkItemObject {
+        pub fn kind(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("kind", value, |s, v| s.kind = Some(v)))
+        }
+        pub fn name(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("name", value, |s, v| s.name = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(
+            self,
+        ) -> Result<
+            super::ElementsWithAttributesAndTextOkItemObject,
+            runtime::BuildError,
+        > {
+            self.0.build()
+        }
+    }
+    impl super::XmlWithNullValuesOk {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            count: impl TryInto<Option<f64>, Error: std::fmt::Display>,
+            description: impl TryInto<String, Error: std::fmt::Display>,
+            related: impl TryInto<
+                Option<std::collections::BTreeMap<String, serde_json::Value>>,
+                Error: std::fmt::Display,
+            >,
+        ) -> XmlWithNullValuesOk {
+            XmlWithNullValuesOk(
+                runtime::Builder::start(|| Ok(
+                    Self::new(
+                        runtime::field("count", count)?,
+                        runtime::field("description", description)?,
+                        runtime::field("related", related)?,
+                    ),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct XmlWithNullValuesOk(runtime::Builder<super::XmlWithNullValuesOk>);
+    impl XmlWithNullValuesOk {
+        pub fn rating(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("rating", value, |s, v| s.rating = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::XmlWithNullValuesOk, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+}

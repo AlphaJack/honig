@@ -433,3 +433,108 @@ impl TryFrom<i32> for ListProductsLimit {
 }
 checked_num_impls!(ListProductsLimit, i32);
 validate_impl!(ListProductsLimit);
+/// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
+/// its field. `build` returns the first field that did not convert.
+pub mod builders {
+    use super as types;
+    use super::runtime;
+    impl super::Physical {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            kind: impl TryInto<types::PhysicalKind, Error: std::fmt::Display>,
+            name: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Physical {
+            Physical(
+                runtime::Builder::start(|| Ok(
+                    Self::new(
+                        runtime::field("kind", kind)?,
+                        runtime::field("name", name)?,
+                    ),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct Physical(runtime::Builder<super::Physical>);
+    impl Physical {
+        pub fn fragile(
+            self,
+            value: impl TryInto<bool, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("fragile", value, |s, v| s.fragile = Some(v)))
+        }
+        /// Stock keeping unit
+        pub fn sku(
+            self,
+            value: impl TryInto<types::PhysicalSku, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("sku", value, |s, v| s.sku = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::Physical, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::Digital {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            kind: impl TryInto<types::DigitalKind, Error: std::fmt::Display>,
+            name: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Digital {
+            Digital(
+                runtime::Builder::start(|| Ok(
+                    Self::new(
+                        runtime::field("kind", kind)?,
+                        runtime::field("name", name)?,
+                    ),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct Digital(runtime::Builder<super::Digital>);
+    impl Digital {
+        pub fn downloads(
+            self,
+            value: impl TryInto<i32, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(
+                self
+                    .0
+                    .set(
+                        "downloads",
+                        value,
+                        |s, v| s.downloads = runtime::Nullable::Value(v),
+                    ),
+            )
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::Digital, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::Error {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            code: impl TryInto<i32, Error: std::fmt::Display>,
+            message: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Error {
+            Error(
+                runtime::Builder::start(|| Ok(
+                    Self::new(
+                        runtime::field("code", code)?,
+                        runtime::field("message", message)?,
+                    ),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct Error(runtime::Builder<super::Error>);
+    impl Error {
+        /// Returns the value.
+        pub fn build(self) -> Result<super::Error, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+}

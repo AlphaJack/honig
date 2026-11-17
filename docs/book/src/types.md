@@ -146,4 +146,12 @@ Where the field type is known, `try_into` builds the value. A spec `default` is 
 {{#include ../../../tests/e2e/tests/v32_catalog/schemas.rs:try-into}}
 ```
 
+A builder converts every field and returns the first one that does not convert, from `build`. So the whole value needs one `?`. `builder` takes the required properties, so leaving one out is still a compile error. Each setter takes anything that converts to the type of its field: a number for a checked number, a `&str` for a string, a checked string or an enum:
+
+```rust
+{{#include ../../../tests/e2e/tests/v32_validation.rs:builder}}
+```
+
+The error names the field as the description spells it: `` `age`: 150 must be less than 150 ``. The builder of `User` is `types::builders::User`.
+
 A checked type reads as its value: a string one derefs to `str` and compares with `&str`, a number one derefs to its number and compares with it. `get` and `into_inner` return the value, and `parse` reads one from text.

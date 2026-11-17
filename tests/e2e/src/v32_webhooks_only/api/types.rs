@@ -41,3 +41,34 @@ impl Shipment {
     }
 }
 impl runtime::Validate for Shipment {}
+/// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
+/// its field. `build` returns the first field that did not convert.
+pub mod builders {
+    use super::runtime;
+    impl super::Shipment {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            order_id: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Shipment {
+            Shipment(
+                runtime::Builder::start(|| Ok(
+                    Self::new(runtime::field("orderId", order_id)?),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct Shipment(runtime::Builder<super::Shipment>);
+    impl Shipment {
+        pub fn carrier(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("carrier", value, |s, v| s.carrier = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::Shipment, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+}
