@@ -346,6 +346,109 @@ fn matches(pattern: &str, s: &str) -> bool {
     }
 }
 
+/// A keyword that the check reads: its discriminant is its bit in [`Keywords`].
+#[derive(Clone, Copy)]
+enum Keyword {
+    Ref,
+    AdditionalProperties,
+    AllOf,
+    AnyOf,
+    Const,
+    Contains,
+    DependentRequired,
+    DependentSchemas,
+    Else,
+    Enum,
+    Format,
+    If,
+    Items,
+    MaxContains,
+    MaxItems,
+    MaxLength,
+    MaxProperties,
+    MinContains,
+    MinItems,
+    MinLength,
+    MinProperties,
+    Not,
+    OneOf,
+    Pattern,
+    PatternProperties,
+    PrefixItems,
+    Properties,
+    PropertyNames,
+    Required,
+    Then,
+    Type,
+    UnevaluatedItems,
+    UnevaluatedProperties,
+    UniqueItems,
+}
+
+/// The bit of every keyword that the check does not read.
+const OTHER_KEYWORDS: u32 = u64::BITS - 1;
+
+/// The keywords of one schema object, with a bit for each keyword that it holds. A keyword that the check asks for
+/// and the object does not hold costs a bit test, not a search of its map: most objects hold a few of the
+/// 34 keywords that the check asks each one for.
+struct Keywords<'s> {
+    map: &'s Map<String, Value>,
+    present: u64,
+}
+
+impl<'s> Keywords<'s> {
+    fn new(map: &'s Map<String, Value>) -> Self {
+        Self { map, present: map.keys().fold(0, |bits, k| bits | Self::bit(k)) }
+    }
+
+    /// Returns the bit of a keyword that the check reads. Every other name shares the last bit.
+    fn bit(keyword: &str) -> u64 {
+        let known = match keyword {
+            "$ref" => Keyword::Ref,
+            "additionalProperties" => Keyword::AdditionalProperties,
+            "allOf" => Keyword::AllOf,
+            "anyOf" => Keyword::AnyOf,
+            "const" => Keyword::Const,
+            "contains" => Keyword::Contains,
+            "dependentRequired" => Keyword::DependentRequired,
+            "dependentSchemas" => Keyword::DependentSchemas,
+            "else" => Keyword::Else,
+            "enum" => Keyword::Enum,
+            "format" => Keyword::Format,
+            "if" => Keyword::If,
+            "items" => Keyword::Items,
+            "maxContains" => Keyword::MaxContains,
+            "maxItems" => Keyword::MaxItems,
+            "maxLength" => Keyword::MaxLength,
+            "maxProperties" => Keyword::MaxProperties,
+            "minContains" => Keyword::MinContains,
+            "minItems" => Keyword::MinItems,
+            "minLength" => Keyword::MinLength,
+            "minProperties" => Keyword::MinProperties,
+            "not" => Keyword::Not,
+            "oneOf" => Keyword::OneOf,
+            "pattern" => Keyword::Pattern,
+            "patternProperties" => Keyword::PatternProperties,
+            "prefixItems" => Keyword::PrefixItems,
+            "properties" => Keyword::Properties,
+            "propertyNames" => Keyword::PropertyNames,
+            "required" => Keyword::Required,
+            "then" => Keyword::Then,
+            "type" => Keyword::Type,
+            "unevaluatedItems" => Keyword::UnevaluatedItems,
+            "unevaluatedProperties" => Keyword::UnevaluatedProperties,
+            "uniqueItems" => Keyword::UniqueItems,
+            _ => return 1 << OTHER_KEYWORDS,
+        };
+        1 << known as u32
+    }
+
+    /// Returns the value of `keyword` when the object holds it.
+    fn get(&self, keyword: &str) -> Option<&'s Value> {
+        if self.present & Self::bit(keyword) == 0 { None } else { self.map.get(keyword) }
+    }
+}
+
 /// Violations as (relative JSON pointer, message).
 type Violations = Vec<(String, String)>;
 
@@ -474,7 +577,7 @@ impl Schema<'_> {
                 out.push((String::new(), "no value is allowed here".into()));
                 return ev;
             }
-            Value::Object(s) => s,
+            Value::Object(s) => &Keywords::new(s),
             Value::Bool(true) | Value::Null | Value::Number(_) | Value::String(_) | Value::Array(_) => return ev,
         };
         if let Some(target) = s.get("$ref").and_then(Value::as_str).and_then(|r| self.def(r)) {
@@ -646,13 +749,7 @@ impl Schema<'_> {
         ev
     }
 
-    fn check_array(
-        &self,
-        items: &[Value],
-        s: &Map<String, Value>,
-        out: &mut Vec<(String, String)>,
-        ev: &mut Evaluated<'_>,
-    ) {
+    fn check_array(&self, items: &[Value], s: &Keywords<'_>, out: &mut Vec<(String, String)>, ev: &mut Evaluated<'_>) {
         let n = u64::try_from(items.len()).unwrap_or(u64::MAX);
         if let Some(m) = s.get("minItems").and_then(count).filter(|m| n < *m) {
             out.push((String::new(), format!("at least {m} items required, found {n}")));
@@ -696,7 +793,7 @@ impl Schema<'_> {
         &self,
         value: &'v Value,
         o: &'v Map<String, Value>,
-        s: &Map<String, Value>,
+        s: &Keywords<'_>,
         out: &mut Vec<(String, String)>,
         ev: &mut Evaluated<'v>,
     ) {
