@@ -752,4 +752,31 @@ mod tests {
         assert_eq!(streamed, Order { id: 2, lines: vec![], tags: vec![], note: None });
         assert_eq!(streamed, through_tree(text));
     }
+
+    static SKU: XmlNode = XmlNode { name: "sku", namespace: "", prefix: "", fields: &[field("sku")] };
+    static HOLDER: XmlNode = XmlNode {
+        name: "holder",
+        namespace: "",
+        prefix: "",
+        fields: &[XmlField { inline: true, child: Some(|| &SKU), ..field("item") }],
+    };
+    static OUTER: XmlNode = XmlNode {
+        name: "outer",
+        namespace: "",
+        prefix: "",
+        fields: &[XmlField { inline: true, child: Some(|| &HOLDER), ..field("holder") }, field("note")],
+    };
+
+    #[derive(Debug, PartialEq, Deserialize)]
+    struct Outer {
+        note: Option<String>,
+    }
+
+    /// An element that a `nodeType: none` field holds, here or two levels down, is left to the tree.
+    #[test]
+    fn an_element_held_in_place_deeper_is_left_to_the_tree() {
+        assert_eq!(decode::<Outer>("<outer><note>n</note></outer>", &OUTER), Some(Outer { note: Some("n".into()) }));
+        assert_eq!(decode::<Outer>("<outer><item/></outer>", &OUTER), None, "one level down");
+        assert_eq!(decode::<Outer>("<outer><sku>A</sku></outer>", &OUTER), None, "two levels down");
+    }
 }
