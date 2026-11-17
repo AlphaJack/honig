@@ -1,7 +1,9 @@
 # A mutant of the generator or the runtime runs every package's tests: `tests/e2e` exercises both.
 test_workspace = true
 
-examine_globs = ["src/**", "runtime/src/**", "tests/e2e/src/**", "examples/shop/src/**"]
+# Not the generated code of `tests/e2e` and `examples/shop`: an edit to it is stale, so `tests/regen.rs` catches
+# every mutant of it. That was a third of the run's time.
+examine_globs = ["src/**", "runtime/src/**"]
 
 # Mutants go to the shards one by one. Then the shards finish together.
 sharding = "round-robin"
@@ -26,4 +28,10 @@ exclude_re = [
   'src/resolve\.rs:.*replace download -> ',
   # The 16 MiB default of `max_body_bytes`.
   'runtime/src/reject\.rs:\d+:\d+: replace \* with \+$',
+  # The same pass walks and hoists what adoption brought in. Another pass after adoption alone finds nothing.
+  'src/resolve\.rs:\d+:\d+: replace \|\| with && in bundle_with$',
+  # A fragment that is empty or a pointer finds no anchor either way.
+  'src/resolve\.rs:\d+:\d+: replace && with \|\| in fetch$',
+  # When a decoder drops the records it returned. Later only costs memory.
+  'runtime/src/stream\.rs:\d+:\d+: replace / with \* in Decoder<T>::poll_item$',
 ]

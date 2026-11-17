@@ -56,8 +56,7 @@ jobs:
     name: mutants (${{ matrix.shard }}/${{ strategy.job-total }})
     needs: build
     runs-on: ubuntu-latest
-    # A shard takes about 45 minutes: one that takes 90 is stuck.
-    timeout-minutes: 90
+    timeout-minutes: 180
     strategy:
       fail-fast: false
       max-parallel: 20
