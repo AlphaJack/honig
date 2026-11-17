@@ -10,7 +10,7 @@ mod cost;
 fn no_generated_path_allocates_much_more_than_its_twin() {
     let runtime = cost::runtime();
     let mut failed = vec![];
-    println!("size_bytes\tpath\thonig_allocs\ttwin_allocs\tratio\tmax_ratio\tresult");
+    let table = cost::gate_table("honig", "twin", "9999999");
     for size in cost::GATE_SIZES {
         let (generated, twin) = cost::at(size);
         for path in cost::paths(size) {
@@ -19,14 +19,8 @@ fn no_generated_path_allocates_much_more_than_its_twin() {
                 (cost::heap(&generated, &path).await.0, cost::heap(&twin, &path).await.0)
             });
             let ratio = allocs as f64 / twin_allocs.max(1) as f64;
-            let over = ratio > path.max_allocs;
-            println!(
-                "{size}\t{}\t{allocs}\t{twin_allocs}\t{ratio:.2}\t{:.2}\t{}",
-                path.name,
-                path.max_allocs,
-                if over { "FAIL" } else { "ok" }
-            );
-            if over {
+            let measured = [allocs.to_string(), twin_allocs.to_string()];
+            if cost::gate_row(&table, size, &path, measured, ratio, path.max_allocs) {
                 failed.push(format!("{} at {size} B", path.name));
             }
         }

@@ -24,7 +24,7 @@ fn main() -> std::process::ExitCode {
     let started = Instant::now();
     let runtime = cost::runtime();
     let mut failed = vec![];
-    println!("size_bytes\tpath\thonig_us\ttwin_us\tratio\tmax_ratio\tresult");
+    let table = cost::gate_table("honig µs", "twin µs", "99999.9");
     for size in cost::GATE_SIZES {
         let (generated, twin) = cost::at(size);
         for path in cost::paths(size) {
@@ -51,25 +51,17 @@ fn main() -> std::process::ExitCode {
                     continue;
                 }
             };
-            let ratio = ratio_of((time, twin_time));
-            let over = ratio > path.max_time;
-            println!(
-                "{size}\t{}\t{:.1}\t{:.1}\t{ratio:.2}\t{:.2}\t{}",
-                path.name,
-                time.as_secs_f64() * 1e6,
-                twin_time.as_secs_f64() * 1e6,
-                path.max_time,
-                if over { "FAIL" } else { "ok" }
-            );
-            if over {
+            let micros = |d: Duration| format!("{:.1}", d.as_secs_f64() * 1e6);
+            let measured = [micros(time), micros(twin_time)];
+            if cost::gate_row(&table, size, &path, measured, ratio_of((time, twin_time)), path.max_time) {
                 failed.push(format!("{} at {size} B", path.name));
             }
         }
     }
-    // stdout: on stderr it lands inside the table.
+    // stdout, after the table: on stderr a line lands inside it.
     println!("took {:.1}s", started.elapsed().as_secs_f64());
     for f in &failed {
-        eprintln!("FAIL {f}");
+        println!("FAIL {f}");
     }
     if failed.is_empty() { std::process::ExitCode::SUCCESS } else { std::process::ExitCode::FAILURE }
 }

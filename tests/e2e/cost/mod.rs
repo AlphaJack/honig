@@ -19,6 +19,7 @@ use axum::http::{Request, StatusCode, header};
 use axum::response::{IntoResponse, Response, Sse, sse::Event};
 use axum::routing::{get, post, put};
 use base64::Engine;
+use bench_support::table::{self, Column, Table};
 use futures_util::StreamExt;
 use http_body_util::BodyExt;
 use tower::ServiceExt;
@@ -440,6 +441,43 @@ pub fn member_body() -> Bytes {
 /// The sizes that both gates check every kind at. A kind keeps one budget across them.
 #[allow(dead_code, reason = "the size sweep picks its own sizes")]
 pub const GATE_SIZES: [usize; 3] = [256, 16 << 10, 1 << 20];
+
+/// The table that a gate prints: per size and kind of path, what the generated side and its twin measured
+/// (`honig` and `twin`, as wide as `sample`), their ratio, the budget of the kind and whether it holds.
+#[allow(dead_code, reason = "the size sweep prints no gate")]
+pub fn gate_table(honig: &'static str, twin: &'static str, sample: &str) -> Table {
+    let sizes = GATE_SIZES.map(table::size);
+    let widest_size = sizes.iter().max_by_key(|s| s.len()).map_or("", String::as_str);
+    let widest_path = paths(GATE_SIZES[0]).iter().map(|p| p.name.len()).max().unwrap_or_default();
+    Table::new(&[
+        Column::right("size", widest_size),
+        Column::left("path", widest_path),
+        Column::right(honig, sample),
+        Column::right(twin, sample),
+        Column::right("ratio", "99.99"),
+        Column::right("max", "9.99"),
+        Column::left("result", "FAIL".len()),
+    ])
+}
+
+/// Prints the row of `path` at `size`: both sides as measured and their `ratio` against the budget `max`. Returns
+/// whether the ratio is over it.
+#[allow(dead_code, reason = "the size sweep prints no gate")]
+pub fn gate_row(table: &Table, size: usize, path: &Path, measured: [String; 2], ratio: f64, max: f64) -> bool {
+    let over = ratio > max;
+    let [honig, twin] = measured;
+    let result = if over { "FAIL" } else { "ok" };
+    table.row(&[
+        table::size(size),
+        path.name.to_owned(),
+        honig,
+        twin,
+        format!("{ratio:.2}"),
+        format!("{max:.2}"),
+        result.to_owned(),
+    ]);
+    over
+}
 
 /// One kind of path, the request that it gets at one size, and its budgets against its twin. The allocation budget is
 /// the most that the kind makes at any of [`GATE_SIZES`] and a tenth more. The time budget is the median of three runs
