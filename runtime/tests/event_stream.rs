@@ -211,3 +211,20 @@ fn a_quiet_stream_sends_a_heartbeat() {
     let first = honig::__private::block_on(resp.into_body().into_stream().next()).unwrap().unwrap();
     assert_eq!(&first[..], b": \n\n");
 }
+
+/// Body pieces and then a connection that stays open.
+fn open_ended(pieces: &[&'static str]) -> ByteStream {
+    let pieces: Vec<Result<Bytes, Error>> = pieces.iter().map(|p| Ok(Bytes::from_static(p.as_bytes()))).collect();
+    ByteStream::chunks(futures_util::stream::iter(pieces).chain(futures_util::stream::pending()), None)
+}
+
+#[test]
+fn an_event_arrives_before_the_body_ends() {
+    use futures_util::FutureExt;
+    let mut stream: ItemStream<String> =
+        ItemStream::new(200, open_ended(&["retry: 1500\ndata: \"a\"\n\n", "data: \"b"]), Framing::Sse);
+    assert_eq!(stream.retry(), Duration::from_secs(3), "until the server sends one");
+    assert_matches!(stream.next().now_or_never(), Some(Some(Ok(a))) if a == "a");
+    assert_eq!(stream.retry(), Duration::from_millis(1500));
+    assert!(stream.next().now_or_never().is_none(), "the rest of `b` has not arrived");
+}

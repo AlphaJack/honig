@@ -951,3 +951,54 @@ impl<T: DeserializeOwned> Decoder<T> {
         Some(record)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::time::Duration;
+
+    use futures_util::StreamExt;
+
+    use super::{Framing, ItemStream, Items, backoff};
+    use crate::{Body, ByteStream, Bytes};
+
+    #[test]
+    fn the_wait_doubles_up_to_a_minute_or_the_retry() {
+        let s = Duration::from_secs;
+        let waits: Vec<Duration> = (0..8).map(|f| backoff(s(1), f)).collect();
+        assert_eq!(waits, [s(1), s(2), s(4), s(8), s(16), s(32), s(60), s(60)]);
+        assert_eq!(backoff(s(90), 3), s(90), "a longer retry is the cap");
+    }
+
+    fn body(text: &'static str) -> ByteStream {
+        ByteStream::chunks(futures_util::stream::iter([Ok(Bytes::from_static(text.as_bytes()))]), None)
+    }
+
+    #[test]
+    fn items_are_equal_by_list_or_by_stream() {
+        assert_eq!(Items::List(vec![1]), Items::List(vec![1]));
+        assert_ne!(Items::List(vec![1]), Items::List(vec![2]));
+        let stream: ItemStream<i32> = ItemStream::new(200, body("1\n"), Framing::JsonLines);
+        let other: ItemStream<i32> = ItemStream::new(200, body("1\n"), Framing::JsonLines);
+        assert_eq!(Items::Stream(stream.clone()), Items::Stream(stream.clone()));
+        assert_ne!(Items::Stream(stream.clone()), Items::Stream(other));
+        assert_ne!(Items::Stream(stream), Items::List(vec![1]));
+    }
+
+    /// Asking a decoding stream for the items of your code gives nothing and leaves the stream as it was.
+    #[test]
+    fn a_decoding_stream_is_no_feed_and_still_reads() {
+        let mut stream: ItemStream<i32> = ItemStream::new(200, body("1\n2\n"), Framing::JsonLines);
+        assert!(stream.take_feed().is_none());
+        let got: Vec<i32> = crate::block_on(stream.by_ref().map(Result::unwrap).collect());
+        assert_eq!(got, [1, 2]);
+    }
+
+    #[test]
+    fn a_request_with_a_streamed_body_cannot_be_sent_again() {
+        let mut req = crate::message::new_request("POST", "/a".to_owned(), vec![]).unwrap();
+        *req.body_mut() = Body::from("x");
+        assert_eq!(super::resendable(&req).map(|again| again.body().bytes().to_vec()), Some(b"x".to_vec()));
+        *req.body_mut() = Body::from(body("x"));
+        assert!(super::resendable(&req).is_none());
+    }
+}

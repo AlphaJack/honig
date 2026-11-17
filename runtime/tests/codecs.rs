@@ -478,3 +478,33 @@ fn a_decimal_keeps_its_digits_in_a_form_and_a_multipart_part() {
     let part: Holder = multipart_decode(200, "multipart/form-data; boundary=b", body.as_bytes()).unwrap();
     assert_eq!(part.d.as_str(), DIGITS);
 }
+
+/// Body pieces and then, when `open`, a connection that stays open.
+fn arriving(pieces: Vec<String>, open: bool) -> ByteStream {
+    let pieces = futures_util::stream::iter(pieces.into_iter().map(|p| Ok(honig::Bytes::from(p))));
+    if open {
+        ByteStream::chunks(pieces.chain(futures_util::stream::pending()), None)
+    } else {
+        ByteStream::chunks(pieces, None)
+    }
+}
+
+const MIXED: &str = "--b\r\nContent-Type: application/json\r\n\r\n{\"a\":1}\r\n--b\r\nContent-Type: application/json\r\n\r\n{\"a\":2}\r\n--b--\r\n";
+
+#[test]
+fn multipart_items_split_byte_by_byte_arrive_whole() {
+    let bytes: Vec<String> = MIXED.chars().map(String::from).collect();
+    let items: ItemStream<Value> = ItemStream::multipart(200, arriving(bytes, false), "multipart/mixed; boundary=b");
+    let got: Vec<Value> = block_on(items.map(Result::unwrap).collect());
+    assert_eq!(got, [json!({"a": 1}), json!({"a": 2})]);
+}
+
+#[test]
+fn a_multipart_item_arrives_before_the_body_ends() {
+    use futures_util::FutureExt;
+    let (first, _) = MIXED.split_at(MIXED.find("{\"a\":2}").unwrap());
+    let mut items: ItemStream<Value> =
+        ItemStream::multipart(200, arriving(vec![first.to_owned()], true), "multipart/mixed; boundary=b");
+    assert_eq!(items.next().now_or_never().map(|i| i.map(Result::unwrap)), Some(Some(json!({"a": 1}))));
+    assert!(items.next().now_or_never().is_none(), "the second part has not arrived");
+}
