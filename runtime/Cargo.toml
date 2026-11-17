@@ -61,6 +61,7 @@ opentelemetry = { version = "0.33", optional = true, default-features = false, f
 tracing-opentelemetry = { version = "0.34", optional = true, default-features = false }
 # String formats the crates check.
 ipnet = { version = "2", optional = true, default-features = false }
+jiff = { version = "1", optional = true, default-features = false }
 # `email`, `idn-email`, `hostname` and `idn-hostname` checks: IDNA2008 and punycode.
 idna = { version = "1", optional = true }
 # `pattern` checks: ECMA-262 as JSON Schema reads it.
@@ -115,6 +116,8 @@ tracing = ["server", "dep:tracing"]
 tracing-opentelemetry = ["dep:opentelemetry", "dep:tracing-opentelemetry", "dep:tracing"]
 ## `format: ipv4-cidr` and `ipv6-cidr` checks
 ipnet = ["dep:ipnet"]
+## `FullTime`: `format: time` with its offset in `jiff` types
+jiff = ["dep:jiff"]
 ## `email`, `idn-email`, `hostname` and `idn-hostname` checks
 idn = ["dep:idna"]
 ## `pattern` and `patternProperties` checks (ECMA-262)
