@@ -47,11 +47,12 @@ const fn trip(name: &'static str, (max_allocs, max_time): (f64, f64)) -> Trip {
 }
 
 /// Every kind of roundtrip: the kinds of path of `cost::paths`.
-pub const TRIPS: [Trip; 8] = [
+pub const TRIPS: [Trip; 9] = [
     trip("upload", (1.45, 2.5)),
     trip("multipart_b64", (2.0, 2.4)),
     trip("download", (1.6, 2.85)),
     trip("json_get", (1.3, 1.9)),
+    trip("json_put", (1.35, 1.7)),
     trip("sse", (1.25, 1.45)),
     trip("jsonl", (1.1, 2.2)),
     trip("xml", (0.7, 1.2)),
@@ -72,6 +73,7 @@ pub struct Head {
     upload_scan: mp::api::operations::upload_scan::Params,
     add_book: xml::api::operations::add_book::Params,
     add_member: val::api::operations::add_member::Params,
+    replace_manifest: dl::api::operations::replace_manifest::Params,
 }
 
 /// The hand-rolled client: the baseline router and the values that it sends.
@@ -81,6 +83,7 @@ pub struct Base {
     scan: Vec<u8>,
     book: cost::Book,
     member: Member,
+    manifest: Vec<String>,
 }
 
 #[derive(serde::Serialize)]
@@ -146,6 +149,7 @@ pub fn at(size: usize) -> (Head, Base) {
             body: book,
             media: xml::api::operations::add_book::Media::Xml,
         },
+        replace_manifest: dl::api::operations::replace_manifest::Params::new("x".to_owned(), cost::manifest()),
         add_member: val::api::operations::add_member::Params::new(
             val::api::operations::add_member::Body::XWwwFormUrlencoded(user),
         ),
@@ -163,6 +167,7 @@ pub fn at(size: usize) -> (Head, Base) {
             },
         },
         member: Member { name: "Alice".to_owned(), age: 30, role: "admin" },
+        manifest: cost::manifest(),
     };
     (head, base)
 }
@@ -197,6 +202,12 @@ pub async fn head(c: &Head, trip: &str) -> Result<Seen, String> {
                 dl::api::operations::get_manifest::Response::NotFound => return Err("not found".to_owned()),
             }
         }
+        "json_put" => match c.dl.replace_manifest(&c.replace_manifest).await.map_err(failed)? {
+            dl::api::operations::replace_manifest::Response::NoContent => Seen::Done,
+            dl::api::operations::replace_manifest::Response::PreconditionFailed => {
+                return Err("precondition failed".to_owned());
+            }
+        },
         "sse" => match c.sse.tile_stream(sse::api::operations::tile_stream::Params {}).await.map_err(failed)? {
             sse::api::operations::tile_stream::Response::Ok(items) => {
                 Seen::Tiles(items.collect().await.map_err(failed)?.into_iter().map(|t| (t.tile, t.rows)).collect())
@@ -268,6 +279,11 @@ pub async fn base(c: &Base, trip: &str) -> Result<Seen, String> {
         }
         "download" => Seen::Bytes(call(r, get("/dl/exports/x", "application/zip"), 200).await?.to_vec()),
         "json_get" => Seen::Names(json(&call(r, get("/dl/exports/x/manifest", "application/json"), 200).await?)?),
+        "json_put" => {
+            let body = serde_json::to_vec(&c.manifest).map_err(|e| e.to_string())?;
+            call(r, post("PUT", "/dl/exports/x/manifest", "application/json", body), 204).await?;
+            Seen::Done
+        }
         "sse" => {
             let body = call(r, get("/sse/tiles/stream", "text/event-stream"), 200).await?;
             tiles(body.split(|&b| b == b'\n').filter_map(|line| line.strip_prefix(b"data: ")))?

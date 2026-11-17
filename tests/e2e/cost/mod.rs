@@ -61,7 +61,7 @@ fn items() -> usize {
     (size() / ITEM).max(1)
 }
 
-fn manifest() -> Vec<String> {
+pub fn manifest() -> Vec<String> {
     (0..(size() / ENTRY).max(1)).map(|i| format!("photos/product-{i:08}.jpg")).collect()
 }
 
@@ -149,12 +149,13 @@ impl dl::api::Api for Exports {
     ) -> Result<dl::api::operations::get_manifest::Response, dl::api::ApiError> {
         Ok(dl::api::operations::get_manifest::Response::Ok { body: manifest(), e_tag: None, last_modified: None })
     }
-    fn replace_manifest(
+    async fn replace_manifest(
         &self,
-        _: dl::api::operations::replace_manifest::Params,
+        p: dl::api::operations::replace_manifest::Params,
         _: &dl::api::Context<'_>,
-    ) -> impl Future<Output = Result<dl::api::operations::replace_manifest::Response, dl::api::ApiError>> + Send {
-        unused()
+    ) -> Result<dl::api::operations::replace_manifest::Response, dl::api::ApiError> {
+        std::hint::black_box(p.body.len());
+        Ok(dl::api::operations::replace_manifest::Response::NoContent)
     }
     fn get_thumbnail(
         &self,
@@ -317,6 +318,11 @@ async fn baseline_manifest() -> Response {
     axum::Json(manifest()).into_response()
 }
 
+async fn baseline_replace(axum::Json(names): axum::Json<Vec<String>>) -> StatusCode {
+    std::hint::black_box(names.len());
+    StatusCode::NO_CONTENT
+}
+
 async fn baseline_events() -> impl IntoResponse {
     Sse::new(futures_util::stream::iter((0..items()).map(|i| Event::default().json_data(tile(i)))))
 }
@@ -399,7 +405,7 @@ pub fn baseline() -> Router {
             "/dl",
             Router::new()
                 .route("/exports/{id}", get(baseline_export))
-                .route("/exports/{id}/manifest", get(baseline_manifest)),
+                .route("/exports/{id}/manifest", get(baseline_manifest).put(baseline_replace)),
         )
         .nest(
             "/sse",
@@ -447,6 +453,11 @@ pub fn book_body(n: usize) -> Bytes {
          <title>Dune</title><authors>{authors}</authors></bk:book>"
     )
     .into()
+}
+
+/// The manifest in JSON: a body of about `n` bytes.
+pub fn manifest_body() -> Bytes {
+    serde_json::to_vec(&manifest()).unwrap_or_default().into()
 }
 
 /// A form of a member: it is small whatever the size.
@@ -550,6 +561,11 @@ pub fn paths(size: usize) -> Vec<Path> {
         },
         path("download", "GET", "/dl/exports/x", "application/zip", (1.3, 2.25)),
         path("json_get", "GET", "/dl/exports/x/manifest", "application/json", (1.1, 1.55)),
+        Path {
+            content_type: "application/json",
+            body: manifest_body(),
+            ..path("json_put", "PUT", "/dl/exports/x/manifest", "*/*", (1.2, 1.55))
+        },
         path("sse", "GET", "/sse/tiles/stream", "text/event-stream", (0.8, 0.95)),
         path("jsonl", "GET", "/sse/tiles/lines", "application/jsonl", (1.0, 1.75)),
         Path {
