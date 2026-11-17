@@ -97,7 +97,7 @@ fn type_body(cx: Cx<'_>, def: &TypeDef) -> TokenStream {
         }
         Kind::Newtype(t) => checks(cx, t, &Constraints::default(), &quote!(&self.0), &quote!(path)),
         // Decoding already rejects any other value.
-        Kind::StrEnum(_) | Kind::IntEnum(_) | Kind::Const(_) | Kind::Pattern(_) | Kind::Alias(_) | Kind::Pending => {
+        Kind::StrEnum(_) | Kind::IntEnum(_) | Kind::Const(_) | Kind::Checked(_) | Kind::Alias(_) | Kind::Pending => {
             TokenStream::new()
         }
     }
@@ -303,7 +303,7 @@ fn receiver(value: &TokenStream) -> TokenStream {
 }
 
 /// Returns the length and pattern checks of a `String` value.
-fn string_checks(c: &Constraints, value: &TokenStream, path: &TokenStream) -> TokenStream {
+pub(super) fn string_checks(c: &Constraints, value: &TokenStream, path: &TokenStream) -> TokenStream {
     let pat = c.pattern.as_ref().map(|p| {
         let msg = lit(&format!("does not match `{p}`"));
         let p = lit(p);
@@ -406,7 +406,7 @@ fn checks(cx: Cx<'_>, t: &Ty, c: &Constraints, value: &TokenStream, path: &Token
             | Kind::Union(_)
             | Kind::Newtype(_)
             | Kind::Const(_)
-            | Kind::Pattern(_)
+            | Kind::Checked(_)
             | Kind::Pending => TokenStream::new(),
         },
         Ty::Bool | Ty::Bytes | Ty::Binary | Ty::Format(_) | Ty::Any | Ty::Unit | Ty::Tuple(_) => TokenStream::new(),
@@ -439,7 +439,7 @@ fn named_inside(cx: Cx<'_>, t: &Ty) -> bool {
         | Kind::Union(_)
         | Kind::Newtype(_)
         | Kind::Const(_)
-        | Kind::Pattern(_) => cx.live[id.0],
+        | Kind::Checked(_) => cx.live[id.0],
     }
 }
 
@@ -455,7 +455,7 @@ fn opt_u64(v: Option<u64>) -> TokenStream {
 
 /// Returns the value of a float as `float_checks` reads it. A decimal compares by its nearest `f64` (a range and not
 /// the value).
-fn float_value(t: &Ty, value: &TokenStream) -> TokenStream {
+pub(super) fn float_value(t: &Ty, value: &TokenStream) -> TokenStream {
     if *t == Ty::Decimal {
         let r = receiver(value);
         quote!(&#r.as_f64())
@@ -466,7 +466,7 @@ fn float_value(t: &Ty, value: &TokenStream) -> TokenStream {
 
 /// Returns the range and `multipleOf` for an integer type with bounds as integers of
 /// that type. Fractional bounds are rounded inward. Bounds that cannot be represented are dropped.
-fn integer_checks(t: &Ty, c: &Constraints, value: &TokenStream, path: &TokenStream) -> TokenStream {
+pub(super) fn integer_checks(t: &Ty, c: &Constraints, value: &TokenStream, path: &TokenStream) -> TokenStream {
     let val = deref(value);
     let ranges: [(Ty, i128, i128); 7] = [
         (Ty::I8, i8::MIN.into(), i8::MAX.into()),
@@ -516,7 +516,7 @@ const fn whole(r: f64) -> i128 {
     r as i128
 }
 
-fn float_checks(c: &Constraints, value: &TokenStream, path: &TokenStream) -> TokenStream {
+pub(super) fn float_checks(c: &Constraints, value: &TokenStream, path: &TokenStream) -> TokenStream {
     let val = deref(value);
     let bound = |n: Option<&Number>| match n.and_then(Number::as_f64).filter(|f| f.is_finite()) {
         Some(f) => {

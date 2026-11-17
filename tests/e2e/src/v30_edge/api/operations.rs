@@ -13,11 +13,23 @@
 )]
 macro_rules! validate_impl {
     ($t:ty) => {
-        impl runtime::Validate for $t { fn validate(& self, path : &
-        runtime::InstancePath < '_ >, out : & mut Vec < runtime::Violation >) {
-        runtime::check_format(out, & runtime::InstancePath::Key(&
-        runtime::InstancePath::Key(path, "path"), "orderId"), self.order_id.as_str(),
-        "uuid"); } }
+        impl runtime::Validate for $t {
+            fn validate(
+                &self,
+                path: &runtime::InstancePath<'_>,
+                out: &mut Vec<runtime::Violation>,
+            ) {
+                runtime::check_format(
+                    out,
+                    &runtime::InstancePath::Key(
+                        &runtime::InstancePath::Key(path, "path"),
+                        "orderId",
+                    ),
+                    self.order_id.as_str(),
+                    "uuid",
+                );
+            }
+        }
     };
 }
 use super::runtime;
@@ -38,7 +50,7 @@ pub mod list_orders {
     pub struct Params {
         pub status: Option<Vec<types::Status>>,
         pub created_after: Option<String>,
-        pub limit: i32,
+        pub limit: types::ListOrdersLimit,
         pub sort: types::ListOrdersSort,
         pub cursor: Option<types::ListOrdersCursor>,
     }
@@ -48,7 +60,7 @@ pub mod list_orders {
             Self {
                 status: None,
                 created_after: None,
-                limit: 20i32,
+                limit: types::ListOrdersLimit(20i32),
                 sort: types::ListOrdersSort::Newest,
                 cursor: None,
             }
@@ -76,15 +88,6 @@ pub mod list_orders {
                     "date-time",
                 );
             }
-            runtime::check_range(
-                out,
-                &runtime::InstancePath::Key(
-                    &runtime::InstancePath::Key(path, "query"),
-                    "limit",
-                ),
-                self.limit,
-                [Some(1), Some(100), None, None],
-            );
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]

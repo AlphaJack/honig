@@ -13,15 +13,20 @@
 )]
 macro_rules! deserialize_impl {
     ($t:ty) => {
-        impl < 'de > serde::Deserialize < 'de > for $t { fn deserialize < D :
-        serde::Deserializer < 'de > > (d : D) -> Result < Self, D::Error > {
-        Self::deserialize(runtime::NoSeq(d)) } }
+        impl<'de> serde::Deserialize<'de> for $t {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                Self::deserialize(runtime::NoSeq(d))
+            }
+        }
     };
 }
 macro_rules! serialize_impl {
     ($t:ty) => {
-        impl serde::Serialize for $t { fn serialize < S : serde::Serializer > (& self, s
-        : S) -> Result < S::Ok, S::Error > { Self::serialize(self, s) } }
+        impl serde::Serialize for $t {
+            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                Self::serialize(self, s)
+            }
+        }
     };
 }
 macro_rules! validate_impl {
@@ -31,11 +36,126 @@ macro_rules! validate_impl {
 }
 macro_rules! serialize_impl_2 {
     ($t:ty) => {
-        impl serde::Serialize for $t { fn serialize < S : serde::Serializer > (& self, s
-        : S) -> Result < S::Ok, S::Error > { s.serialize_str(Self::VALUE) } }
+        impl serde::Serialize for $t {
+            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                s.serialize_str(Self::VALUE)
+            }
+        }
     };
 }
 use super::runtime;
+macro_rules! checked_str_impls {
+    ($n:ident) => {
+        impl $n {
+            #[must_use]
+            pub fn as_str(&self) -> &str {
+                &self.0
+            }
+            #[must_use]
+            pub fn into_inner(self) -> String {
+                self.0
+            }
+        }
+        impl TryFrom<&str> for $n {
+            type Error = String;
+            fn try_from(value: &str) -> Result<Self, String> {
+                Self::try_from(value.to_owned())
+            }
+        }
+        impl std::str::FromStr for $n {
+            type Err = String;
+            fn from_str(s: &str) -> Result<Self, String> {
+                Self::try_from(s)
+            }
+        }
+        impl std::ops::Deref for $n {
+            type Target = str;
+            fn deref(&self) -> &str {
+                &self.0
+            }
+        }
+        impl AsRef<str> for $n {
+            fn as_ref(&self) -> &str {
+                &self.0
+            }
+        }
+        impl std::fmt::Display for $n {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                f.write_str(&self.0)
+            }
+        }
+        impl PartialEq<str> for $n {
+            fn eq(&self, other: &str) -> bool {
+                self.0 == other
+            }
+        }
+        impl PartialEq<&str> for $n {
+            fn eq(&self, other: &&str) -> bool {
+                self.0 == *other
+            }
+        }
+        impl From<$n> for String {
+            fn from(value: $n) -> Self {
+                value.0
+            }
+        }
+        impl<'de> serde::Deserialize<'de> for $n {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                let s = <String as serde::Deserialize>::deserialize(d)?;
+                Self::try_from(s).map_err(serde::de::Error::custom)
+            }
+        }
+    };
+}
+macro_rules! checked_num_impls {
+    ($n:ident, $t:ty) => {
+        impl $n {
+            #[must_use]
+            pub const fn get(self) -> $t {
+                self.0
+            }
+        }
+        impl std::str::FromStr for $n {
+            type Err = String;
+            fn from_str(s: &str) -> Result<Self, String> {
+                let v: $t = s.parse().map_err(|e| format!("{e}"))?;
+                Self::try_from(v)
+            }
+        }
+        impl std::ops::Deref for $n {
+            type Target = $t;
+            fn deref(&self) -> &$t {
+                &self.0
+            }
+        }
+        impl std::fmt::Display for $n {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                std::fmt::Display::fmt(&self.0, f)
+            }
+        }
+        impl PartialEq<$t> for $n {
+            fn eq(&self, other: &$t) -> bool {
+                self.0 == *other
+            }
+        }
+        impl PartialOrd<$t> for $n {
+            fn partial_cmp(&self, other: &$t) -> Option<std::cmp::Ordering> {
+                self.0.partial_cmp(other)
+            }
+        }
+        impl From<$n> for $t {
+            fn from(value: $n) -> Self {
+                value.0
+            }
+        }
+        impl<'de> serde::Deserialize<'de> for $n {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                let v = <$t as serde::Deserialize>::deserialize(d)?;
+                Self::try_from(v).map_err(serde::de::Error::custom)
+            }
+        }
+    };
+}
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Product {
     Physical(Physical),
@@ -244,62 +364,37 @@ validate_impl!(PhysicalKind);
 /// Stock keeping unit
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
-pub struct PhysicalSku(String);
+pub struct PhysicalSku(pub(super) String);
 impl PhysicalSku {
     pub const PATTERN: &'static str = "^[A-Z]{3}-[0-9]{4}$";
-    #[must_use]
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
-    #[must_use]
-    pub fn into_inner(self) -> String {
-        self.0
-    }
 }
 impl TryFrom<String> for PhysicalSku {
     type Error = String;
     fn try_from(value: String) -> Result<Self, String> {
-        static RE: runtime::Pattern = runtime::Pattern::new();
-        let mut out = Vec::new();
-        runtime::check_len(
-            &mut out,
-            &runtime::InstancePath::Root,
-            value.chars().count(),
-            None,
-            None,
-            "characters",
-        );
-        if let Some(v) = out.first() {
-            return Err(v.message.clone());
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            runtime::check(
+                out,
+                &runtime::InstancePath::Root,
+                runtime::pattern_matches(
+                    {
+                        static RE: runtime::Pattern = runtime::Pattern::new();
+                        &RE
+                    },
+                    "^[A-Z]{3}-[0-9]{4}$",
+                    value.as_str(),
+                ),
+                "does not match `^[A-Z]{3}-[0-9]{4}$`",
+            );
         }
-        if !runtime::pattern_matches(&RE, Self::PATTERN, &value) {
-            return Err(format!("`{value}` does not match `{}`", Self::PATTERN));
+        match violations.into_iter().next() {
+            Some(v) => Err(v.message),
+            None => Ok(Self(value)),
         }
-        Ok(Self(value))
     }
 }
-impl TryFrom<&str> for PhysicalSku {
-    type Error = String;
-    fn try_from(value: &str) -> Result<Self, String> {
-        Self::try_from(value.to_owned())
-    }
-}
-impl AsRef<str> for PhysicalSku {
-    fn as_ref(&self) -> &str {
-        &self.0
-    }
-}
-impl std::fmt::Display for PhysicalSku {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&self.0)
-    }
-}
-impl<'de> serde::Deserialize<'de> for PhysicalSku {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let s = <String as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(s).map_err(serde::de::Error::custom)
-    }
-}
+checked_str_impls!(PhysicalSku);
 validate_impl!(PhysicalSku);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 pub struct DigitalKind;
@@ -314,3 +409,27 @@ impl<'de> serde::Deserialize<'de> for DigitalKind {
     }
 }
 validate_impl!(DigitalKind);
+#[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
+#[serde(transparent)]
+pub struct ListProductsLimit(pub(super) i32);
+impl TryFrom<i32> for ListProductsLimit {
+    type Error = String;
+    fn try_from(value: i32) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            runtime::check_range(
+                out,
+                &runtime::InstancePath::Root,
+                value,
+                [None, Some(100), None, None],
+            );
+        }
+        match violations.into_iter().next() {
+            Some(v) => Err(v.message),
+            None => Ok(Self(value)),
+        }
+    }
+}
+checked_num_impls!(ListProductsLimit, i32);
+validate_impl!(ListProductsLimit);

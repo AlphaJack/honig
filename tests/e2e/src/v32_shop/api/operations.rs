@@ -14,7 +14,11 @@
 )]
 macro_rules! default_impl {
     ($t:ty) => {
-        impl Default for $t { fn default() -> Self { Self::new() } }
+        impl Default for $t {
+            fn default() -> Self {
+                Self::new()
+            }
+        }
     };
 }
 macro_rules! validate_impl {
@@ -24,19 +28,44 @@ macro_rules! validate_impl {
 }
 macro_rules! validate_impl_2 {
     ($t:ty) => {
-        impl runtime::Validate for $t { fn validate(& self, path : &
-        runtime::InstancePath < '_ >, out : & mut Vec < runtime::Violation >) { if let
-        Some(body) = & self.body { match body { Body::Json(x) | Body::Xml(x) => {
-        runtime::Validate::validate(x, & runtime::InstancePath::Key(path, "body"), out);
-        } } } } }
+        impl runtime::Validate for $t {
+            fn validate(
+                &self,
+                path: &runtime::InstancePath<'_>,
+                out: &mut Vec<runtime::Violation>,
+            ) {
+                if let Some(body) = &self.body {
+                    match body {
+                        Body::Json(x) | Body::Xml(x) => {
+                            runtime::Validate::validate(
+                                x,
+                                &runtime::InstancePath::Key(path, "body"),
+                                out,
+                            );
+                        }
+                    }
+                }
+            }
+        }
     };
 }
 macro_rules! validate_impl_3 {
     ($t:ty) => {
-        impl runtime::Validate for $t { fn validate(& self, path : &
-        runtime::InstancePath < '_ >, out : & mut Vec < runtime::Violation >) { if let
-        Some(v) = & self.body { runtime::Validate::validate(v, &
-        runtime::InstancePath::Key(path, "body"), out); } } }
+        impl runtime::Validate for $t {
+            fn validate(
+                &self,
+                path: &runtime::InstancePath<'_>,
+                out: &mut Vec<runtime::Violation>,
+            ) {
+                if let Some(v) = &self.body {
+                    runtime::Validate::validate(
+                        v,
+                        &runtime::InstancePath::Key(path, "body"),
+                        out,
+                    );
+                }
+            }
+        }
     };
 }
 use super::runtime;
@@ -349,19 +378,7 @@ pub mod query_products {
             Self { body }
         }
     }
-    impl runtime::Validate for Params {
-        fn validate(
-            &self,
-            path: &runtime::InstancePath<'_>,
-            out: &mut Vec<runtime::Violation>,
-        ) {
-            runtime::Validate::validate(
-                &self.body,
-                &runtime::InstancePath::Key(path, "body"),
-                out,
-            );
-        }
-    }
+    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq)]
     pub enum Response {
         /// Matching products
@@ -397,24 +414,7 @@ pub mod search_products {
         }
     }
     default_impl!(Params);
-    impl runtime::Validate for Params {
-        fn validate(
-            &self,
-            path: &runtime::InstancePath<'_>,
-            out: &mut Vec<runtime::Violation>,
-        ) {
-            if let Some(v) = &self.filter {
-                runtime::Validate::validate(
-                    v,
-                    &runtime::InstancePath::Key(
-                        &runtime::InstancePath::Key(path, "query"),
-                        "filter",
-                    ),
-                    out,
-                );
-            }
-        }
-    }
+    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq)]
     pub enum Response {
         /// Matching products

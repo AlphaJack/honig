@@ -295,11 +295,20 @@ pub(crate) enum Kind {
     /// A single allowed value (`const` with a string, number or bool). It is a unit
     /// struct. So no other value can be built.
     Const(Value),
-    /// A string with a `pattern`. It is a newtype that only `TryFrom`
-    /// (and decoding) build. They check the pattern and the length limits.
-    Pattern(Box<Constraints>),
+    /// A string, integer or number with validation keywords of its own (`pattern`, `maxLength`, `minimum`, ...). It is
+    /// a newtype that only `TryFrom` (and decoding) build. They check the keywords.
+    Checked(Box<Checked>),
     /// Placeholder while a component is being converted.
     Pending,
+}
+
+#[derive(Debug, Clone)]
+/// A scalar that holds only the values its keywords allow.
+pub(crate) struct Checked {
+    /// The type of the value: `String`, an integer, a float or `Decimal`.
+    pub base: Ty,
+    /// The keywords that every value meets.
+    pub constraints: Constraints,
 }
 
 #[derive(Debug, Clone)]

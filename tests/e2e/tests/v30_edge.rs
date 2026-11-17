@@ -37,7 +37,7 @@ fn open_objects_keep_unknown_keys() {
 /// decodes again: its decoder refuses a name written twice.
 #[test]
 fn an_extra_entry_named_like_a_field_is_written_once() {
-    let mut customer = types::Customer::new("Ann".to_owned());
+    let mut customer = types::Customer::new("Ann".try_into().expect("a valid name"));
     customer.additional_properties.insert("name".to_owned(), json!("Bob"));
     customer.additional_properties.insert("vip".to_owned(), json!(true));
     let text = serde_json::to_string(&customer).expect("encodes");
@@ -65,7 +65,7 @@ impl api::Api for Seen {
         _: &api::Context<'_>,
     ) -> impl Future<Output = Result<ops::list_orders::Response, api::ApiError>> + Send {
         if let Ok(mut s) = self.0.lock() {
-            *s = Some(p.limit);
+            *s = Some(p.limit.get());
         }
         std::future::ready(Err(api::ApiError::new(api::http::StatusCode::IM_A_TEAPOT, "seen")))
     }
@@ -111,7 +111,10 @@ fn the_client_leaves_out_a_parameter_at_its_default() {
     }))
     .with_bearer("t");
     for limit in [20, 5] {
-        let params = ops::list_orders::Params { limit, ..ops::list_orders::Params::default() };
+        let params = ops::list_orders::Params {
+            limit: limit.try_into().expect("a valid limit"),
+            ..ops::list_orders::Params::default()
+        };
         drop(api::block_on(client.list_orders(params)));
     }
     // An enum default too (Matrix's `kind=user` on `/register`).

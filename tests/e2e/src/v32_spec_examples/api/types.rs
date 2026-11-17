@@ -13,15 +13,20 @@
 )]
 macro_rules! deserialize_impl {
     ($t:ty) => {
-        impl < 'de > serde::Deserialize < 'de > for $t { fn deserialize < D :
-        serde::Deserializer < 'de > > (d : D) -> Result < Self, D::Error > {
-        Self::deserialize(runtime::NoSeq(d)) } }
+        impl<'de> serde::Deserialize<'de> for $t {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                Self::deserialize(runtime::NoSeq(d))
+            }
+        }
     };
 }
 macro_rules! serialize_impl {
     ($t:ty) => {
-        impl serde::Serialize for $t { fn serialize < S : serde::Serializer > (& self, s
-        : S) -> Result < S::Ok, S::Error > { Self::serialize(self, s) } }
+        impl serde::Serialize for $t {
+            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                Self::serialize(self, s)
+            }
+        }
     };
 }
 macro_rules! validate_impl {
@@ -29,61 +34,162 @@ macro_rules! validate_impl {
         impl runtime::Validate for $t {}
     };
 }
-macro_rules! validate_impl_2 {
-    ($t:ty) => {
-        impl runtime::Validate for $t { fn validate(& self, path : &
-        runtime::InstancePath < '_ >, out : & mut Vec < runtime::Violation >) { if let
-        Some(v) = & self.retry { runtime::check_range(out, &
-        runtime::InstancePath::Key(path, "retry"), * v, [Some(0), None, None, None]); } }
-        }
-    };
-}
 macro_rules! try_from_impl {
     ($t:ty) => {
-        impl TryFrom < String > for $t { type Error = String; fn try_from(value : String)
-        -> Result < Self, String > { static RE : runtime::Pattern =
-        runtime::Pattern::new(); let mut out = Vec::new(); runtime::check_len(& mut out,
-        & runtime::InstancePath::Root, value.chars().count(), None, None, "characters");
-        if let Some(v) = out.first() { return Err(v.message.clone()); } if !
-        runtime::pattern_matches(& RE, Self::PATTERN, & value) { return
-        Err(format!("`{value}` does not match `{}`", Self::PATTERN)); } Ok(Self(value)) }
+        impl TryFrom<i64> for $t {
+            type Error = String;
+            fn try_from(value: i64) -> Result<Self, String> {
+                let mut violations: Vec<runtime::Violation> = Vec::new();
+                {
+                    let out = &mut violations;
+                    runtime::check_range(
+                        out,
+                        &runtime::InstancePath::Root,
+                        value,
+                        [Some(0), None, None, None],
+                    );
+                }
+                match violations.into_iter().next() {
+                    Some(v) => Err(v.message),
+                    None => Ok(Self(value)),
+                }
+            }
         }
     };
 }
-macro_rules! try_from_impl_2 {
+macro_rules! validate_impl_2 {
     ($t:ty) => {
-        impl TryFrom < & str > for $t { type Error = String; fn try_from(value : & str)
-        -> Result < Self, String > { Self::try_from(value.to_owned()) } }
-    };
-}
-macro_rules! as_ref_impl {
-    ($t:ty) => {
-        impl AsRef < str > for $t { fn as_ref(& self) -> & str { & self.0 } }
-    };
-}
-macro_rules! display_impl {
-    ($t:ty) => {
-        impl std::fmt::Display for $t { fn fmt(& self, f : & mut std::fmt::Formatter < '_
-        >) -> std::fmt::Result { f.write_str(& self.0) } }
-    };
-}
-macro_rules! deserialize_impl_2 {
-    ($t:ty) => {
-        impl < 'de > serde::Deserialize < 'de > for $t { fn deserialize < D :
-        serde::Deserializer < 'de > > (d : D) -> Result < Self, D::Error > { let s = <
-        String as serde::Deserialize > ::deserialize(d) ?; Self::try_from(s)
-        .map_err(serde::de::Error::custom) } }
-    };
-}
-macro_rules! validate_impl_3 {
-    ($t:ty) => {
-        impl runtime::Validate for $t { fn validate(& self, path : &
-        runtime::InstancePath < '_ >, out : & mut Vec < runtime::Violation >) { if let
-        Some(v) = & self.id { runtime::check_format(out, &
-        runtime::InstancePath::Key(path, "id"), v.as_str(), "uuid"); } } }
+        impl runtime::Validate for $t {
+            fn validate(
+                &self,
+                path: &runtime::InstancePath<'_>,
+                out: &mut Vec<runtime::Violation>,
+            ) {
+                if let Some(v) = &self.id {
+                    runtime::check_format(
+                        out,
+                        &runtime::InstancePath::Key(path, "id"),
+                        v.as_str(),
+                        "uuid",
+                    );
+                }
+            }
+        }
     };
 }
 use super::runtime;
+macro_rules! checked_str_impls {
+    ($n:ident) => {
+        impl $n {
+            #[must_use]
+            pub fn as_str(&self) -> &str {
+                &self.0
+            }
+            #[must_use]
+            pub fn into_inner(self) -> String {
+                self.0
+            }
+        }
+        impl TryFrom<&str> for $n {
+            type Error = String;
+            fn try_from(value: &str) -> Result<Self, String> {
+                Self::try_from(value.to_owned())
+            }
+        }
+        impl std::str::FromStr for $n {
+            type Err = String;
+            fn from_str(s: &str) -> Result<Self, String> {
+                Self::try_from(s)
+            }
+        }
+        impl std::ops::Deref for $n {
+            type Target = str;
+            fn deref(&self) -> &str {
+                &self.0
+            }
+        }
+        impl AsRef<str> for $n {
+            fn as_ref(&self) -> &str {
+                &self.0
+            }
+        }
+        impl std::fmt::Display for $n {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                f.write_str(&self.0)
+            }
+        }
+        impl PartialEq<str> for $n {
+            fn eq(&self, other: &str) -> bool {
+                self.0 == other
+            }
+        }
+        impl PartialEq<&str> for $n {
+            fn eq(&self, other: &&str) -> bool {
+                self.0 == *other
+            }
+        }
+        impl From<$n> for String {
+            fn from(value: $n) -> Self {
+                value.0
+            }
+        }
+        impl<'de> serde::Deserialize<'de> for $n {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                let s = <String as serde::Deserialize>::deserialize(d)?;
+                Self::try_from(s).map_err(serde::de::Error::custom)
+            }
+        }
+    };
+}
+macro_rules! checked_num_impls {
+    ($n:ident, $t:ty) => {
+        impl $n {
+            #[must_use]
+            pub const fn get(self) -> $t {
+                self.0
+            }
+        }
+        impl std::str::FromStr for $n {
+            type Err = String;
+            fn from_str(s: &str) -> Result<Self, String> {
+                let v: $t = s.parse().map_err(|e| format!("{e}"))?;
+                Self::try_from(v)
+            }
+        }
+        impl std::ops::Deref for $n {
+            type Target = $t;
+            fn deref(&self) -> &$t {
+                &self.0
+            }
+        }
+        impl std::fmt::Display for $n {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                std::fmt::Display::fmt(&self.0, f)
+            }
+        }
+        impl PartialEq<$t> for $n {
+            fn eq(&self, other: &$t) -> bool {
+                self.0 == *other
+            }
+        }
+        impl PartialOrd<$t> for $n {
+            fn partial_cmp(&self, other: &$t) -> Option<std::cmp::Ordering> {
+                self.0.partial_cmp(other)
+            }
+        }
+        impl From<$n> for $t {
+            fn from(value: $n) -> Self {
+                value.0
+            }
+        }
+        impl<'de> serde::Deserialize<'de> for $n {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                let v = <$t as serde::Deserialize>::deserialize(d)?;
+                Self::try_from(v).map_err(serde::de::Error::custom)
+            }
+        }
+    };
+}
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Address {
@@ -233,7 +339,7 @@ pub struct LogEntry {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub level: Option<i64>,
+    pub level: Option<LogEntryLevel>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
@@ -267,14 +373,6 @@ impl runtime::Validate for LogEntry {
                 "date-time",
             );
         }
-        if let Some(v) = &self.level {
-            runtime::check_range(
-                out,
-                &runtime::InstancePath::Key(path, "level"),
-                *v,
-                [Some(0), None, None, None],
-            );
-        }
     }
 }
 pub type Log = Vec<LogEntry>;
@@ -299,7 +397,7 @@ pub struct Event {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub retry: Option<i64>,
+    pub retry: Option<EventRetry>,
 }
 deserialize_impl!(Event);
 serialize_impl!(Event);
@@ -314,7 +412,7 @@ impl Event {
         }
     }
 }
-validate_impl_2!(Event);
+validate_impl!(Event);
 pub type SimpleLinkContext = Vec<SimpleLinkContextItem>;
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -333,23 +431,37 @@ validate_impl!(CollectionLinks);
 pub type FormDataCode = FormDataCode2;
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
-pub struct FormDataCode2(String);
+pub struct FormDataCode2(pub(super) String);
 impl FormDataCode2 {
     pub const PATTERN: &'static str = "1";
-    #[must_use]
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
-    #[must_use]
-    pub fn into_inner(self) -> String {
-        self.0
+}
+impl TryFrom<String> for FormDataCode2 {
+    type Error = String;
+    fn try_from(value: String) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            runtime::check(
+                out,
+                &runtime::InstancePath::Root,
+                runtime::pattern_matches(
+                    {
+                        static RE: runtime::Pattern = runtime::Pattern::new();
+                        &RE
+                    },
+                    "1",
+                    value.as_str(),
+                ),
+                "does not match `1`",
+            );
+        }
+        match violations.into_iter().next() {
+            Some(v) => Err(v.message),
+            None => Ok(Self(value)),
+        }
     }
 }
-try_from_impl!(FormDataCode2);
-try_from_impl_2!(FormDataCode2);
-as_ref_impl!(FormDataCode2);
-display_impl!(FormDataCode2);
-deserialize_impl_2!(FormDataCode2);
+checked_str_impls!(FormDataCode2);
 validate_impl!(FormDataCode2);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -370,6 +482,18 @@ impl FormDataExtra {
     }
 }
 validate_impl!(FormDataExtra);
+#[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
+#[serde(transparent)]
+pub struct LogEntryLevel(pub(super) i64);
+try_from_impl!(LogEntryLevel);
+checked_num_impls!(LogEntryLevel, i64);
+validate_impl!(LogEntryLevel);
+#[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
+#[serde(transparent)]
+pub struct EventRetry(pub(super) i64);
+try_from_impl!(EventRetry);
+checked_num_impls!(EventRetry, i64);
+validate_impl!(EventRetry);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct SimpleLinkContextItem {
@@ -439,7 +563,7 @@ pub struct ParameterExamplesCookie {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub code: Option<i64>,
+    pub code: Option<ParameterExamplesCookieCode>,
 }
 deserialize_impl!(ParameterExamplesCookie);
 serialize_impl!(ParameterExamplesCookie);
@@ -449,22 +573,13 @@ impl ParameterExamplesCookie {
         Self { greeting: None, code: None }
     }
 }
-impl runtime::Validate for ParameterExamplesCookie {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        if let Some(v) = &self.code {
-            runtime::check_range(
-                out,
-                &runtime::InstancePath::Key(path, "code"),
-                *v,
-                [Some(0), None, None, None],
-            );
-        }
-    }
-}
+validate_impl!(ParameterExamplesCookie);
+#[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
+#[serde(transparent)]
+pub struct ParameterExamplesCookieCode(pub(super) i64);
+try_from_impl!(ParameterExamplesCookieCode);
+checked_num_impls!(ParameterExamplesCookieCode, i64);
+validate_impl!(ParameterExamplesCookieCode);
 #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct ParameterExamplesCoordinates {
@@ -564,7 +679,7 @@ impl BasicMultipartFormBody {
         }
     }
 }
-validate_impl_3!(BasicMultipartFormBody);
+validate_impl_2!(BasicMultipartFormBody);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct MultipartFormWithEncodingObjectsBody {
@@ -608,7 +723,7 @@ impl MultipartFormWithEncodingObjectsBody {
         }
     }
 }
-validate_impl_3!(MultipartFormWithEncodingObjectsBody);
+validate_impl_2!(MultipartFormWithEncodingObjectsBody);
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MultipartFormWithEncodingObjectsBodyAlias {
     String(MultipartFormWithEncodingObjectsBodyAliasString),
@@ -641,23 +756,37 @@ impl<'de> serde::Deserialize<'de> for MultipartFormWithEncodingObjectsBodyAlias 
 validate_impl!(MultipartFormWithEncodingObjectsBodyAlias);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
-pub struct MultipartFormWithEncodingObjectsBodyAliasString(String);
+pub struct MultipartFormWithEncodingObjectsBodyAliasString(pub(super) String);
 impl MultipartFormWithEncodingObjectsBodyAliasString {
     pub const PATTERN: &'static str = "^[A-Z][a-z]*$";
-    #[must_use]
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
-    #[must_use]
-    pub fn into_inner(self) -> String {
-        self.0
+}
+impl TryFrom<String> for MultipartFormWithEncodingObjectsBodyAliasString {
+    type Error = String;
+    fn try_from(value: String) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            runtime::check(
+                out,
+                &runtime::InstancePath::Root,
+                runtime::pattern_matches(
+                    {
+                        static RE: runtime::Pattern = runtime::Pattern::new();
+                        &RE
+                    },
+                    "^[A-Z][a-z]*$",
+                    value.as_str(),
+                ),
+                "does not match `^[A-Z][a-z]*$`",
+            );
+        }
+        match violations.into_iter().next() {
+            Some(v) => Err(v.message),
+            None => Ok(Self(value)),
+        }
     }
 }
-try_from_impl!(MultipartFormWithEncodingObjectsBodyAliasString);
-try_from_impl_2!(MultipartFormWithEncodingObjectsBodyAliasString);
-as_ref_impl!(MultipartFormWithEncodingObjectsBodyAliasString);
-display_impl!(MultipartFormWithEncodingObjectsBodyAliasString);
-deserialize_impl_2!(MultipartFormWithEncodingObjectsBodyAliasString);
+checked_str_impls!(MultipartFormWithEncodingObjectsBodyAliasString);
 validate_impl!(MultipartFormWithEncodingObjectsBodyAliasString);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -804,25 +933,7 @@ impl<'de> runtime::TaggedUnion<'de> for ServerSentEventStreamsBodyItem {
         }
     }
 }
-impl runtime::Validate for ServerSentEventStreamsBodyItem {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        match self {
-            Self::Event(x) => {
-                runtime::Validate::validate(x, path, out);
-            }
-            Self::AddInt64(x) => {
-                runtime::Validate::validate(x, path, out);
-            }
-            Self::AddJson(x) => {
-                runtime::Validate::validate(x, path, out);
-            }
-        }
-    }
-}
+validate_impl!(ServerSentEventStreamsBodyItem);
 /// event
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -845,7 +956,7 @@ pub struct ServerSentEventStreamsBodyItemEvent {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub retry: Option<i64>,
+    pub retry: Option<ServerSentEventStreamsBodyItemEventRetry>,
 }
 deserialize_impl!(ServerSentEventStreamsBodyItemEvent);
 serialize_impl!(ServerSentEventStreamsBodyItemEvent);
@@ -860,7 +971,8 @@ impl ServerSentEventStreamsBodyItemEvent {
         }
     }
 }
-validate_impl_2!(ServerSentEventStreamsBodyItemEvent);
+validate_impl!(ServerSentEventStreamsBodyItemEvent);
+pub type ServerSentEventStreamsBodyItemEventRetry = EventRetry;
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct ServerSentEventStreamsBodyItemAddInt64 {
@@ -882,7 +994,7 @@ pub struct ServerSentEventStreamsBodyItemAddInt64 {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub retry: Option<i64>,
+    pub retry: Option<ServerSentEventStreamsBodyItemAddInt64Retry>,
 }
 deserialize_impl!(ServerSentEventStreamsBodyItemAddInt64);
 serialize_impl!(ServerSentEventStreamsBodyItemAddInt64);
@@ -897,7 +1009,8 @@ impl ServerSentEventStreamsBodyItemAddInt64 {
         }
     }
 }
-validate_impl_2!(ServerSentEventStreamsBodyItemAddInt64);
+validate_impl!(ServerSentEventStreamsBodyItemAddInt64);
+pub type ServerSentEventStreamsBodyItemAddInt64Retry = EventRetry;
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct ServerSentEventStreamsBodyItemAddJson {
@@ -919,7 +1032,7 @@ pub struct ServerSentEventStreamsBodyItemAddJson {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub retry: Option<i64>,
+    pub retry: Option<ServerSentEventStreamsBodyItemAddJsonRetry>,
 }
 deserialize_impl!(ServerSentEventStreamsBodyItemAddJson);
 serialize_impl!(ServerSentEventStreamsBodyItemAddJson);
@@ -934,4 +1047,5 @@ impl ServerSentEventStreamsBodyItemAddJson {
         }
     }
 }
-validate_impl_2!(ServerSentEventStreamsBodyItemAddJson);
+validate_impl!(ServerSentEventStreamsBodyItemAddJson);
+pub type ServerSentEventStreamsBodyItemAddJsonRetry = EventRetry;

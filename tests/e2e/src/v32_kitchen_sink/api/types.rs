@@ -14,64 +14,136 @@
 )]
 macro_rules! deserialize_impl {
     ($t:ty) => {
-        impl < 'de > serde::Deserialize < 'de > for $t { fn deserialize < D :
-        serde::Deserializer < 'de > > (d : D) -> Result < Self, D::Error > {
-        Self::deserialize(runtime::NoSeq(d)) } }
+        impl<'de> serde::Deserialize<'de> for $t {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                Self::deserialize(runtime::NoSeq(d))
+            }
+        }
     };
 }
 macro_rules! serialize_impl {
     ($t:ty) => {
-        impl serde::Serialize for $t { fn serialize < S : serde::Serializer > (& self, s
-        : S) -> Result < S::Ok, S::Error > { Self::serialize(self, s) } }
+        impl serde::Serialize for $t {
+            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                Self::serialize(self, s)
+            }
+        }
     };
 }
 macro_rules! validate_impl {
     ($t:ty) => {
-        impl runtime::Validate for $t { fn validate(& self, path : &
-        runtime::InstancePath < '_ >, out : & mut Vec < runtime::Violation >) {
-        runtime::check_range(out, & runtime::InstancePath::Key(path, "id"), self.id,
-        [Some(0), None, None, Some(9_007_199_254_740_991)]); if let Some(v) = & self.tags
-        { { static SCHEMA : std::sync::OnceLock < serde_json::Value > =
-        std::sync::OnceLock::new(); let value = runtime::to_value(v).unwrap_or_default();
-        runtime::check_schema(out, & runtime::InstancePath::Key(path, "tags"), & value,
-        SCHEMA.get_or_init(| |
-        serde_json::from_str("{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"uniqueItems\":true,\"minItems\":0,\"maxItems\":10,\"contains\":{\"const\":\"vip\"},\"minContains\":0,\"maxContains\":1}")
-        .unwrap_or_default())); } } if let Some(v) = & self.point { { static SCHEMA :
-        std::sync::OnceLock < serde_json::Value > = std::sync::OnceLock::new(); let value
-        = runtime::to_value(v).unwrap_or_default(); runtime::check_schema(out, &
-        runtime::InstancePath::Key(path, "point"), & value, SCHEMA.get_or_init(| |
-        serde_json::from_str("{\"type\":\"array\",\"prefixItems\":[{\"type\":\"number\"},{\"type\":\"number\"}],\"items\":false,\"unevaluatedItems\":false}")
-        .unwrap_or_default())); } } if let Some(v) = & self.attrs { { static SCHEMA :
-        std::sync::OnceLock < serde_json::Value > = std::sync::OnceLock::new(); let value
-        = runtime::to_value(v).unwrap_or_default(); runtime::check_schema(out, &
-        runtime::InstancePath::Key(path, "attrs"), & value, SCHEMA.get_or_init(| |
-        serde_json::from_str("{\"type\":\"object\",\"patternProperties\":{\"^x_\":{\"type\":\"string\"}},\"propertyNames\":{\"pattern\":\"^[a-z_]+$\"},\"minProperties\":0,\"maxProperties\":20,\"unevaluatedProperties\":false}")
-        .unwrap_or_default())); } } if let Some(v) = & self.weight {
-        runtime::check_range(out, & runtime::InstancePath::Key(path, "weight"), * v,
-        [None, None, Some(0.0), None]); let q = * v / 0.01; if (q - q.round()).abs() >
-        1e-9 { runtime::violation(out, & runtime::InstancePath::Key(path, "weight"),
-        "is not a multiple of 0.01"); } } if let Some(v) = & self.owner { { static SCHEMA
-        : std::sync::OnceLock < serde_json::Value > = std::sync::OnceLock::new(); let
-        value = runtime::to_value(v).unwrap_or_default(); runtime::check_schema(out, &
-        runtime::InstancePath::Key(path, "owner"), & value, SCHEMA.get_or_init(| |
-        serde_json::from_str("{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":true}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}")
-        .unwrap_or_default())); } } } }
+        impl runtime::Validate for $t {
+            fn validate(
+                &self,
+                path: &runtime::InstancePath<'_>,
+                out: &mut Vec<runtime::Violation>,
+            ) {
+                if let Some(v) = &self.tags {
+                    {
+                        static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                        let value = runtime::to_value(v).unwrap_or_default();
+                        runtime::check_schema(
+                            out,
+                            &runtime::InstancePath::Key(path, "tags"),
+                            &value,
+                            SCHEMA
+                                .get_or_init(|| {
+                                    serde_json::from_str(
+                                            "{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"uniqueItems\":true,\"minItems\":0,\"maxItems\":10,\"contains\":{\"const\":\"vip\"},\"minContains\":0,\"maxContains\":1}",
+                                        )
+                                        .unwrap_or_default()
+                                }),
+                        );
+                    }
+                }
+                if let Some(v) = &self.point {
+                    {
+                        static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                        let value = runtime::to_value(v).unwrap_or_default();
+                        runtime::check_schema(
+                            out,
+                            &runtime::InstancePath::Key(path, "point"),
+                            &value,
+                            SCHEMA
+                                .get_or_init(|| {
+                                    serde_json::from_str(
+                                            "{\"type\":\"array\",\"prefixItems\":[{\"type\":\"number\"},{\"type\":\"number\"}],\"items\":false,\"unevaluatedItems\":false}",
+                                        )
+                                        .unwrap_or_default()
+                                }),
+                        );
+                    }
+                }
+                if let Some(v) = &self.attrs {
+                    {
+                        static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                        let value = runtime::to_value(v).unwrap_or_default();
+                        runtime::check_schema(
+                            out,
+                            &runtime::InstancePath::Key(path, "attrs"),
+                            &value,
+                            SCHEMA
+                                .get_or_init(|| {
+                                    serde_json::from_str(
+                                            "{\"type\":\"object\",\"patternProperties\":{\"^x_\":{\"type\":\"string\"}},\"propertyNames\":{\"pattern\":\"^[a-z_]+$\"},\"minProperties\":0,\"maxProperties\":20,\"unevaluatedProperties\":false}",
+                                        )
+                                        .unwrap_or_default()
+                                }),
+                        );
+                    }
+                }
+                if let Some(v) = &self.owner {
+                    {
+                        static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                        let value = runtime::to_value(v).unwrap_or_default();
+                        runtime::check_schema(
+                            out,
+                            &runtime::InstancePath::Key(path, "owner"),
+                            &value,
+                            SCHEMA
+                                .get_or_init(|| {
+                                    serde_json::from_str(
+                                            "{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":true}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}",
+                                        )
+                                        .unwrap_or_default()
+                                }),
+                        );
+                    }
+                }
+            }
+        }
     };
 }
 macro_rules! serialize_impl_2 {
     ($t:ty) => {
-        impl serde::Serialize for $t { fn serialize < S : serde::Serializer > (& self, s
-        : S) -> Result < S::Ok, S::Error > { match self { Self::Book(v) =>
-        serde::Serialize::serialize(v, s), Self::Gadget(v) =>
-        serde::Serialize::serialize(v, s), } } }
+        impl serde::Serialize for $t {
+            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                match self {
+                    Self::Book(v) => serde::Serialize::serialize(v, s),
+                    Self::Gadget(v) => serde::Serialize::serialize(v, s),
+                }
+            }
+        }
     };
 }
 macro_rules! validate_impl_2 {
     ($t:ty) => {
-        impl runtime::Validate for $t { fn validate(& self, path : &
-        runtime::InstancePath < '_ >, out : & mut Vec < runtime::Violation >) { match
-        self { Self::Book(x) => { runtime::Validate::validate(x, path, out); },
-        Self::Gadget(x) => { runtime::Validate::validate(x, path, out); }, } } }
+        impl runtime::Validate for $t {
+            fn validate(
+                &self,
+                path: &runtime::InstancePath<'_>,
+                out: &mut Vec<runtime::Violation>,
+            ) {
+                match self {
+                    Self::Book(x) => {
+                        runtime::Validate::validate(x, path, out);
+                    }
+                    Self::Gadget(x) => {
+                        runtime::Validate::validate(x, path, out);
+                    }
+                }
+            }
+        }
     };
 }
 macro_rules! validate_impl_3 {
@@ -81,100 +153,339 @@ macro_rules! validate_impl_3 {
 }
 macro_rules! validate_impl_4 {
     ($t:ty) => {
-        impl runtime::Validate for $t { fn validate(& self, path : &
-        runtime::InstancePath < '_ >, out : & mut Vec < runtime::Violation >) { if let
-        Some(v) = & self.meta { { static SCHEMA : std::sync::OnceLock < serde_json::Value
-        > = std::sync::OnceLock::new(); let value = runtime::to_value(v)
-        .unwrap_or_default(); runtime::check_schema(out, &
-        runtime::InstancePath::Key(path, "meta"), & value, SCHEMA.get_or_init(| |
-        serde_json::from_str("{\"$id\":\"https://example.com/schemas/product\",\"$schema\":\"https://spec.openapis.org/oas/3.2/dialect/2025-09-17\",\"$comment\":\"A product\",\"type\":\"object\",\"required\":[\"name\",\"kind\"],\"properties\":{\"id\":{\"type\":\"integer\",\"format\":\"int64\",\"readOnly\":true,\"minimum\":0,\"exclusiveMaximum\":9007199254740991},\"name\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":64,\"pattern\":\"^[A-Za-z ]+$\"},\"kind\":{\"type\":\"string\",\"enum\":[\"book\",\"gadget\"]},\"nickname\":{\"type\":[\"string\",\"null\"],\"default\":null},\"secret\":{\"type\":\"string\",\"writeOnly\":true,\"deprecated\":true},\"tags\":{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"uniqueItems\":true,\"minItems\":0,\"maxItems\":10,\"contains\":{\"const\":\"vip\"},\"minContains\":0,\"maxContains\":1},\"point\":{\"type\":\"array\",\"prefixItems\":[{\"type\":\"number\"},{\"type\":\"number\"}],\"items\":false,\"unevaluatedItems\":false},\"attrs\":{\"type\":\"object\",\"patternProperties\":{\"^x_\":{\"type\":\"string\"}},\"propertyNames\":{\"pattern\":\"^[a-z_]+$\"},\"minProperties\":0,\"maxProperties\":20,\"unevaluatedProperties\":false},\"weight\":{\"type\":\"number\",\"multipleOf\":0.01,\"exclusiveMinimum\":0},\"owner\":{\"allOf\":[{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":true}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}]}},\"dependentRequired\":{\"nickname\":[\"name\"]},\"dependentSchemas\":{\"secret\":{\"required\":[]}},\"x-rust-type\":{\"crate\":\"products\",\"version\":\"1\",\"path\":\"products::Product\"}}")
-        .unwrap_or_default())); } } } }
+        impl runtime::Validate for $t {
+            fn validate(
+                &self,
+                path: &runtime::InstancePath<'_>,
+                out: &mut Vec<runtime::Violation>,
+            ) {
+                {
+                    static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                    let value = runtime::to_value(&self.kind).unwrap_or_default();
+                    runtime::check_schema(
+                        out,
+                        &runtime::InstancePath::Key(path, "kind"),
+                        &value,
+                        SCHEMA
+                            .get_or_init(|| {
+                                serde_json::from_str("{\"const\":\"gadget\"}")
+                                    .unwrap_or_default()
+                            }),
+                    );
+                }
+                if let Some(v) = &self.tags {
+                    {
+                        static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                        let value = runtime::to_value(v).unwrap_or_default();
+                        runtime::check_schema(
+                            out,
+                            &runtime::InstancePath::Key(path, "tags"),
+                            &value,
+                            SCHEMA
+                                .get_or_init(|| {
+                                    serde_json::from_str(
+                                            "{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"uniqueItems\":true,\"minItems\":0,\"maxItems\":10,\"contains\":{\"const\":\"vip\"},\"minContains\":0,\"maxContains\":1}",
+                                        )
+                                        .unwrap_or_default()
+                                }),
+                        );
+                    }
+                }
+                if let Some(v) = &self.point {
+                    {
+                        static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                        let value = runtime::to_value(v).unwrap_or_default();
+                        runtime::check_schema(
+                            out,
+                            &runtime::InstancePath::Key(path, "point"),
+                            &value,
+                            SCHEMA
+                                .get_or_init(|| {
+                                    serde_json::from_str(
+                                            "{\"type\":\"array\",\"prefixItems\":[{\"type\":\"number\"},{\"type\":\"number\"}],\"items\":false,\"unevaluatedItems\":false}",
+                                        )
+                                        .unwrap_or_default()
+                                }),
+                        );
+                    }
+                }
+                if let Some(v) = &self.attrs {
+                    {
+                        static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                        let value = runtime::to_value(v).unwrap_or_default();
+                        runtime::check_schema(
+                            out,
+                            &runtime::InstancePath::Key(path, "attrs"),
+                            &value,
+                            SCHEMA
+                                .get_or_init(|| {
+                                    serde_json::from_str(
+                                            "{\"type\":\"object\",\"patternProperties\":{\"^x_\":{\"type\":\"string\"}},\"propertyNames\":{\"pattern\":\"^[a-z_]+$\"},\"minProperties\":0,\"maxProperties\":20,\"unevaluatedProperties\":false}",
+                                        )
+                                        .unwrap_or_default()
+                                }),
+                        );
+                    }
+                }
+                if let Some(v) = &self.owner {
+                    {
+                        static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                        let value = runtime::to_value(v).unwrap_or_default();
+                        runtime::check_schema(
+                            out,
+                            &runtime::InstancePath::Key(path, "owner"),
+                            &value,
+                            SCHEMA
+                                .get_or_init(|| {
+                                    serde_json::from_str(
+                                            "{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":true}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}",
+                                        )
+                                        .unwrap_or_default()
+                                }),
+                        );
+                    }
+                }
+            }
+        }
     };
 }
 macro_rules! validate_impl_5 {
     ($t:ty) => {
-        impl runtime::Validate for $t { fn validate(& self, path : &
-        runtime::InstancePath < '_ >, out : & mut Vec < runtime::Violation >) {
-        runtime::Validate::validate(& self.data, & runtime::InstancePath::Key(path,
-        "data"), out); } }
-    };
-}
-macro_rules! serialize_impl_3 {
-    ($t:ty) => {
-        impl serde::Serialize for $t { fn serialize < S : serde::Serializer > (& self, s
-        : S) -> Result < S::Ok, S::Error > { let text = serde_json::to_string(& self.0)
-        .map_err(serde::ser::Error::custom) ?; s.serialize_str(& text) } }
-    };
-}
-macro_rules! deserialize_impl_2 {
-    ($t:ty) => {
-        impl < 'de > serde::Deserialize < 'de > for $t { fn deserialize < D :
-        serde::Deserializer < 'de > > (d : D) -> Result < Self, D::Error > { let text = <
-        String as serde::Deserialize > ::deserialize(d) ?; runtime::json_text(& text)
-        .map(Self).map_err(serde::de::Error::custom) } }
+        impl runtime::Validate for $t {
+            fn validate(
+                &self,
+                path: &runtime::InstancePath<'_>,
+                out: &mut Vec<runtime::Violation>,
+            ) {
+                if let Some(v) = &self.meta {
+                    {
+                        static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                        let value = runtime::to_value(v).unwrap_or_default();
+                        runtime::check_schema(
+                            out,
+                            &runtime::InstancePath::Key(path, "meta"),
+                            &value,
+                            SCHEMA
+                                .get_or_init(|| {
+                                    serde_json::from_str(
+                                            "{\"$id\":\"https://example.com/schemas/product\",\"$schema\":\"https://spec.openapis.org/oas/3.2/dialect/2025-09-17\",\"$comment\":\"A product\",\"type\":\"object\",\"required\":[\"name\",\"kind\"],\"properties\":{\"id\":{\"type\":\"integer\",\"format\":\"int64\",\"readOnly\":true,\"minimum\":0,\"exclusiveMaximum\":9007199254740991},\"name\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":64,\"pattern\":\"^[A-Za-z ]+$\"},\"kind\":{\"type\":\"string\",\"enum\":[\"book\",\"gadget\"]},\"nickname\":{\"type\":[\"string\",\"null\"],\"default\":null},\"secret\":{\"type\":\"string\",\"writeOnly\":true,\"deprecated\":true},\"tags\":{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"uniqueItems\":true,\"minItems\":0,\"maxItems\":10,\"contains\":{\"const\":\"vip\"},\"minContains\":0,\"maxContains\":1},\"point\":{\"type\":\"array\",\"prefixItems\":[{\"type\":\"number\"},{\"type\":\"number\"}],\"items\":false,\"unevaluatedItems\":false},\"attrs\":{\"type\":\"object\",\"patternProperties\":{\"^x_\":{\"type\":\"string\"}},\"propertyNames\":{\"pattern\":\"^[a-z_]+$\"},\"minProperties\":0,\"maxProperties\":20,\"unevaluatedProperties\":false},\"weight\":{\"type\":\"number\",\"multipleOf\":0.01,\"exclusiveMinimum\":0},\"owner\":{\"allOf\":[{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":true}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}]}},\"dependentRequired\":{\"nickname\":[\"name\"]},\"dependentSchemas\":{\"secret\":{\"required\":[]}},\"x-rust-type\":{\"crate\":\"products\",\"version\":\"1\",\"path\":\"products::Product\"}}",
+                                        )
+                                        .unwrap_or_default()
+                                }),
+                        );
+                    }
+                }
+            }
+        }
     };
 }
 macro_rules! validate_impl_6 {
     ($t:ty) => {
-        impl runtime::Validate for $t { fn validate(& self, path : &
-        runtime::InstancePath < '_ >, out : & mut Vec < runtime::Violation >) {
-        runtime::Validate::validate(& self.0, path, out); } }
+        impl runtime::Validate for $t {
+            fn validate(
+                &self,
+                path: &runtime::InstancePath<'_>,
+                out: &mut Vec<runtime::Violation>,
+            ) {
+                runtime::Validate::validate(
+                    &self.data,
+                    &runtime::InstancePath::Key(path, "data"),
+                    out,
+                );
+            }
+        }
+    };
+}
+macro_rules! serialize_impl_3 {
+    ($t:ty) => {
+        impl serde::Serialize for $t {
+            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                let text = serde_json::to_string(&self.0).map_err(serde::ser::Error::custom)?;
+                s.serialize_str(&text)
+            }
+        }
+    };
+}
+macro_rules! deserialize_impl_2 {
+    ($t:ty) => {
+        impl<'de> serde::Deserialize<'de> for $t {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                let text = <String as serde::Deserialize>::deserialize(d)?;
+                runtime::json_text(&text).map(Self).map_err(serde::de::Error::custom)
+            }
+        }
     };
 }
 macro_rules! validate_impl_7 {
     ($t:ty) => {
-        impl runtime::Validate for $t { fn validate(& self, path : &
-        runtime::InstancePath < '_ >, out : & mut Vec < runtime::Violation >) { if let
-        Some(v) = & self.tags { { static SCHEMA : std::sync::OnceLock < serde_json::Value
-        > = std::sync::OnceLock::new(); let value = runtime::to_value(v)
-        .unwrap_or_default(); runtime::check_schema(out, &
-        runtime::InstancePath::Key(path, "tags"), & value, SCHEMA.get_or_init(| |
-        serde_json::from_str("{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"uniqueItems\":true,\"minItems\":0,\"maxItems\":10,\"contains\":{\"const\":\"vip\"},\"minContains\":0,\"maxContains\":1}")
-        .unwrap_or_default())); } } if let Some(v) = & self.point { { static SCHEMA :
-        std::sync::OnceLock < serde_json::Value > = std::sync::OnceLock::new(); let value
-        = runtime::to_value(v).unwrap_or_default(); runtime::check_schema(out, &
-        runtime::InstancePath::Key(path, "point"), & value, SCHEMA.get_or_init(| |
-        serde_json::from_str("{\"type\":\"array\",\"prefixItems\":[{\"type\":\"number\"},{\"type\":\"number\"}],\"items\":false,\"unevaluatedItems\":false}")
-        .unwrap_or_default())); } } if let Some(v) = & self.attrs { { static SCHEMA :
-        std::sync::OnceLock < serde_json::Value > = std::sync::OnceLock::new(); let value
-        = runtime::to_value(v).unwrap_or_default(); runtime::check_schema(out, &
-        runtime::InstancePath::Key(path, "attrs"), & value, SCHEMA.get_or_init(| |
-        serde_json::from_str("{\"type\":\"object\",\"patternProperties\":{\"^x_\":{\"type\":\"string\"}},\"propertyNames\":{\"pattern\":\"^[a-z_]+$\"},\"minProperties\":0,\"maxProperties\":20,\"unevaluatedProperties\":false}")
-        .unwrap_or_default())); } } if let Some(v) = & self.weight {
-        runtime::check_range(out, & runtime::InstancePath::Key(path, "weight"), * v,
-        [None, None, Some(0.0), None]); let q = * v / 0.01; if (q - q.round()).abs() >
-        1e-9 { runtime::violation(out, & runtime::InstancePath::Key(path, "weight"),
-        "is not a multiple of 0.01"); } } if let Some(v) = & self.owner { { static SCHEMA
-        : std::sync::OnceLock < serde_json::Value > = std::sync::OnceLock::new(); let
-        value = runtime::to_value(v).unwrap_or_default(); runtime::check_schema(out, &
-        runtime::InstancePath::Key(path, "owner"), & value, SCHEMA.get_or_init(| |
-        serde_json::from_str("{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":true}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}")
-        .unwrap_or_default())); } } } }
+        impl runtime::Validate for $t {
+            fn validate(
+                &self,
+                path: &runtime::InstancePath<'_>,
+                out: &mut Vec<runtime::Violation>,
+            ) {
+                runtime::Validate::validate(&self.0, path, out);
+            }
+        }
     };
 }
 use super::runtime;
 macro_rules! str_enum_impls {
     ($n:ident) => {
-        impl std::fmt::Display for $n { fn fmt(& self, f : & mut std::fmt::Formatter < '_
-        >) -> std::fmt::Result { f.write_str(self.as_str()) } } impl std::str::FromStr
-        for $n { type Err = String; fn from_str(s : & str) -> Result < Self, Self::Err >
-        { Self::try_from(s) } } impl serde::Serialize for $n { fn serialize < S :
-        serde::Serializer > (& self, s : S) -> Result < S::Ok, S::Error > { s
-        .serialize_str(self.as_str()) } } impl < 'de > serde::Deserialize < 'de > for $n
-        { fn deserialize < D : serde::Deserializer < 'de >> (d : D) -> Result < Self,
-        D::Error > { let s = < std::borrow::Cow < 'de, str > as serde::Deserialize >
-        ::deserialize(d) ?; Self::try_from(& * s).map_err(serde::de::Error::custom) } }
+        impl std::fmt::Display for $n {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                f.write_str(self.as_str())
+            }
+        }
+        impl std::str::FromStr for $n {
+            type Err = String;
+            fn from_str(s: &str) -> Result<Self, Self::Err> {
+                Self::try_from(s)
+            }
+        }
+        impl serde::Serialize for $n {
+            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                s.serialize_str(self.as_str())
+            }
+        }
+        impl<'de> serde::Deserialize<'de> for $n {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                let s = <std::borrow::Cow<'de, str> as serde::Deserialize>::deserialize(d)?;
+                Self::try_from(&*s).map_err(serde::de::Error::custom)
+            }
+        }
     };
 }
 macro_rules! int_enum_impls {
     ($n:ident) => {
-        impl std::fmt::Display for $n { fn fmt(& self, f : & mut std::fmt::Formatter < '_
-        >) -> std::fmt::Result { write!(f, "{}", self.value()) } } impl serde::Serialize
-        for $n { fn serialize < S : serde::Serializer > (& self, s : S) -> Result <
-        S::Ok, S::Error > { s.serialize_i64(self.value()) } } impl < 'de >
-        serde::Deserialize < 'de > for $n { fn deserialize < D : serde::Deserializer <
-        'de >> (d : D) -> Result < Self, D::Error > { let v = < i64 as serde::Deserialize
-        > ::deserialize(d) ?; Self::try_from(v).map_err(serde::de::Error::custom) } }
+        impl std::fmt::Display for $n {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(f, "{}", self.value())
+            }
+        }
+        impl serde::Serialize for $n {
+            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                s.serialize_i64(self.value())
+            }
+        }
+        impl<'de> serde::Deserialize<'de> for $n {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                let v = <i64 as serde::Deserialize>::deserialize(d)?;
+                Self::try_from(v).map_err(serde::de::Error::custom)
+            }
+        }
+    };
+}
+macro_rules! checked_str_impls {
+    ($n:ident) => {
+        impl $n {
+            #[must_use]
+            pub fn as_str(&self) -> &str {
+                &self.0
+            }
+            #[must_use]
+            pub fn into_inner(self) -> String {
+                self.0
+            }
+        }
+        impl TryFrom<&str> for $n {
+            type Error = String;
+            fn try_from(value: &str) -> Result<Self, String> {
+                Self::try_from(value.to_owned())
+            }
+        }
+        impl std::str::FromStr for $n {
+            type Err = String;
+            fn from_str(s: &str) -> Result<Self, String> {
+                Self::try_from(s)
+            }
+        }
+        impl std::ops::Deref for $n {
+            type Target = str;
+            fn deref(&self) -> &str {
+                &self.0
+            }
+        }
+        impl AsRef<str> for $n {
+            fn as_ref(&self) -> &str {
+                &self.0
+            }
+        }
+        impl std::fmt::Display for $n {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                f.write_str(&self.0)
+            }
+        }
+        impl PartialEq<str> for $n {
+            fn eq(&self, other: &str) -> bool {
+                self.0 == other
+            }
+        }
+        impl PartialEq<&str> for $n {
+            fn eq(&self, other: &&str) -> bool {
+                self.0 == *other
+            }
+        }
+        impl From<$n> for String {
+            fn from(value: $n) -> Self {
+                value.0
+            }
+        }
+        impl<'de> serde::Deserialize<'de> for $n {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                let s = <String as serde::Deserialize>::deserialize(d)?;
+                Self::try_from(s).map_err(serde::de::Error::custom)
+            }
+        }
+    };
+}
+macro_rules! checked_num_impls {
+    ($n:ident, $t:ty) => {
+        impl $n {
+            #[must_use]
+            pub const fn get(self) -> $t {
+                self.0
+            }
+        }
+        impl std::str::FromStr for $n {
+            type Err = String;
+            fn from_str(s: &str) -> Result<Self, String> {
+                let v: $t = s.parse().map_err(|e| format!("{e}"))?;
+                Self::try_from(v)
+            }
+        }
+        impl std::ops::Deref for $n {
+            type Target = $t;
+            fn deref(&self) -> &$t {
+                &self.0
+            }
+        }
+        impl std::fmt::Display for $n {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                std::fmt::Display::fmt(&self.0, f)
+            }
+        }
+        impl PartialEq<$t> for $n {
+            fn eq(&self, other: &$t) -> bool {
+                self.0 == *other
+            }
+        }
+        impl PartialOrd<$t> for $n {
+            fn partial_cmp(&self, other: &$t) -> Option<std::cmp::Ordering> {
+                self.0.partial_cmp(other)
+            }
+        }
+        impl From<$n> for $t {
+            fn from(value: $n) -> Self {
+                value.0
+            }
+        }
+        impl<'de> serde::Deserialize<'de> for $n {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                let v = <$t as serde::Deserialize>::deserialize(d)?;
+                Self::try_from(v).map_err(serde::de::Error::custom)
+            }
+        }
     };
 }
 /// Product
@@ -185,7 +496,7 @@ macro_rules! int_enum_impls {
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Product {
-    pub id: i64,
+    pub id: ProductId,
     pub name: ProductName,
     pub kind: ProductKind,
     #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
@@ -213,7 +524,7 @@ pub struct Product {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub weight: Option<f64>,
+    pub weight: Option<ProductWeight>,
     /// Overrides description
     #[serde(
         default,
@@ -226,7 +537,7 @@ deserialize_impl!(Product);
 serialize_impl!(Product);
 impl Product {
     #[must_use]
-    pub const fn new(id: i64, name: ProductName, kind: ProductKind) -> Self {
+    pub const fn new(id: ProductId, name: ProductName, kind: ProductKind) -> Self {
         Self {
             id,
             name,
@@ -244,7 +555,7 @@ validate_impl!(Product);
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Book {
-    pub id: i64,
+    pub id: BookId,
     pub name: BookName,
     pub kind: BookKind,
     #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
@@ -272,7 +583,7 @@ pub struct Book {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub weight: Option<f64>,
+    pub weight: Option<BookWeight>,
     /// Overrides description
     #[serde(
         default,
@@ -291,7 +602,7 @@ deserialize_impl!(Book);
 serialize_impl!(Book);
 impl Book {
     #[must_use]
-    pub const fn new(id: i64, name: BookName, kind: BookKind) -> Self {
+    pub const fn new(id: BookId, name: BookName, kind: BookKind) -> Self {
         Self {
             id,
             name,
@@ -432,64 +743,74 @@ impl Error {
 validate_impl_3!(Error);
 pub type Anything = serde_json::Value;
 pub type Nothing = serde_json::Value;
+#[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
+#[serde(transparent)]
+pub struct ProductId(pub(super) i64);
+impl TryFrom<i64> for ProductId {
+    type Error = String;
+    fn try_from(value: i64) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            runtime::check_range(
+                out,
+                &runtime::InstancePath::Root,
+                value,
+                [Some(0), None, None, Some(9_007_199_254_740_991)],
+            );
+        }
+        match violations.into_iter().next() {
+            Some(v) => Err(v.message),
+            None => Ok(Self(value)),
+        }
+    }
+}
+checked_num_impls!(ProductId, i64);
+validate_impl_3!(ProductId);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
-pub struct ProductName(String);
+pub struct ProductName(pub(super) String);
 impl ProductName {
     pub const PATTERN: &'static str = "^[A-Za-z ]+$";
-    #[must_use]
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
-    #[must_use]
-    pub fn into_inner(self) -> String {
-        self.0
-    }
 }
 impl TryFrom<String> for ProductName {
     type Error = String;
     fn try_from(value: String) -> Result<Self, String> {
-        static RE: runtime::Pattern = runtime::Pattern::new();
-        let mut out = Vec::new();
-        runtime::check_len(
-            &mut out,
-            &runtime::InstancePath::Root,
-            value.chars().count(),
-            Some(1u64),
-            Some(64u64),
-            "characters",
-        );
-        if let Some(v) = out.first() {
-            return Err(v.message.clone());
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            let n = (value.as_str()).chars().count();
+            runtime::check_len(
+                out,
+                &runtime::InstancePath::Root,
+                n,
+                Some(1),
+                Some(64),
+                "characters",
+            );
+            if n <= 64 {
+                runtime::check(
+                    out,
+                    &runtime::InstancePath::Root,
+                    runtime::pattern_matches(
+                        {
+                            static RE: runtime::Pattern = runtime::Pattern::new();
+                            &RE
+                        },
+                        "^[A-Za-z ]+$",
+                        value.as_str(),
+                    ),
+                    "does not match `^[A-Za-z ]+$`",
+                );
+            }
         }
-        if !runtime::pattern_matches(&RE, Self::PATTERN, &value) {
-            return Err(format!("`{value}` does not match `{}`", Self::PATTERN));
+        match violations.into_iter().next() {
+            Some(v) => Err(v.message),
+            None => Ok(Self(value)),
         }
-        Ok(Self(value))
     }
 }
-impl TryFrom<&str> for ProductName {
-    type Error = String;
-    fn try_from(value: &str) -> Result<Self, String> {
-        Self::try_from(value.to_owned())
-    }
-}
-impl AsRef<str> for ProductName {
-    fn as_ref(&self) -> &str {
-        &self.0
-    }
-}
-impl std::fmt::Display for ProductName {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&self.0)
-    }
-}
-impl<'de> serde::Deserialize<'de> for ProductName {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let s = <String as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(s).map_err(serde::de::Error::custom)
-    }
-}
+checked_str_impls!(ProductName);
 validate_impl_3!(ProductName);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum ProductKind {
@@ -517,12 +838,46 @@ impl TryFrom<&str> for ProductKind {
 }
 str_enum_impls!(ProductKind);
 validate_impl_3!(ProductKind);
+#[derive(Debug, Clone, PartialEq, Copy, PartialOrd, serde::Serialize)]
+#[serde(transparent)]
+pub struct ProductWeight(pub(super) f64);
+impl TryFrom<f64> for ProductWeight {
+    type Error = String;
+    fn try_from(value: f64) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            runtime::check_range(
+                out,
+                &runtime::InstancePath::Root,
+                value,
+                [None, None, Some(0.0), None],
+            );
+            let q = value / 0.01;
+            if (q - q.round()).abs() > 1e-9 {
+                runtime::violation(
+                    out,
+                    &runtime::InstancePath::Root,
+                    "is not a multiple of 0.01",
+                );
+            }
+        }
+        match violations.into_iter().next() {
+            Some(v) => Err(v.message),
+            None => Ok(Self(value)),
+        }
+    }
+}
+checked_num_impls!(ProductWeight, f64);
+validate_impl_3!(ProductWeight);
+pub type BookId = ProductId;
 pub type BookName = ProductName;
 pub type BookKind = ProductKind;
+pub type BookWeight = ProductWeight;
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Gadget2 {
-    pub id: i64,
+    pub id: Gadget2Id,
     pub name: Gadget2Name,
     pub kind: Gadget2Kind,
     #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
@@ -550,7 +905,7 @@ pub struct Gadget2 {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub weight: Option<f64>,
+    pub weight: Option<Gadget2Weight>,
     /// Overrides description
     #[serde(
         default,
@@ -563,7 +918,7 @@ deserialize_impl!(Gadget2);
 serialize_impl!(Gadget2);
 impl Gadget2 {
     #[must_use]
-    pub const fn new(id: i64, name: Gadget2Name, kind: Gadget2Kind) -> Self {
+    pub const fn new(id: Gadget2Id, name: Gadget2Name, kind: Gadget2Kind) -> Self {
         Self {
             id,
             name,
@@ -577,122 +932,8 @@ impl Gadget2 {
         }
     }
 }
-impl runtime::Validate for Gadget2 {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        runtime::check_range(
-            out,
-            &runtime::InstancePath::Key(path, "id"),
-            self.id,
-            [Some(0), None, None, Some(9_007_199_254_740_991)],
-        );
-        {
-            static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-            let value = runtime::to_value(&self.kind).unwrap_or_default();
-            runtime::check_schema(
-                out,
-                &runtime::InstancePath::Key(path, "kind"),
-                &value,
-                SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str("{\"const\":\"gadget\"}")
-                            .unwrap_or_default()
-                    }),
-            );
-        }
-        if let Some(v) = &self.tags {
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(v).unwrap_or_default();
-                runtime::check_schema(
-                    out,
-                    &runtime::InstancePath::Key(path, "tags"),
-                    &value,
-                    SCHEMA
-                        .get_or_init(|| {
-                            serde_json::from_str(
-                                    "{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"uniqueItems\":true,\"minItems\":0,\"maxItems\":10,\"contains\":{\"const\":\"vip\"},\"minContains\":0,\"maxContains\":1}",
-                                )
-                                .unwrap_or_default()
-                        }),
-                );
-            }
-        }
-        if let Some(v) = &self.point {
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(v).unwrap_or_default();
-                runtime::check_schema(
-                    out,
-                    &runtime::InstancePath::Key(path, "point"),
-                    &value,
-                    SCHEMA
-                        .get_or_init(|| {
-                            serde_json::from_str(
-                                    "{\"type\":\"array\",\"prefixItems\":[{\"type\":\"number\"},{\"type\":\"number\"}],\"items\":false,\"unevaluatedItems\":false}",
-                                )
-                                .unwrap_or_default()
-                        }),
-                );
-            }
-        }
-        if let Some(v) = &self.attrs {
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(v).unwrap_or_default();
-                runtime::check_schema(
-                    out,
-                    &runtime::InstancePath::Key(path, "attrs"),
-                    &value,
-                    SCHEMA
-                        .get_or_init(|| {
-                            serde_json::from_str(
-                                    "{\"type\":\"object\",\"patternProperties\":{\"^x_\":{\"type\":\"string\"}},\"propertyNames\":{\"pattern\":\"^[a-z_]+$\"},\"minProperties\":0,\"maxProperties\":20,\"unevaluatedProperties\":false}",
-                                )
-                                .unwrap_or_default()
-                        }),
-                );
-            }
-        }
-        if let Some(v) = &self.weight {
-            runtime::check_range(
-                out,
-                &runtime::InstancePath::Key(path, "weight"),
-                *v,
-                [None, None, Some(0.0), None],
-            );
-            let q = *v / 0.01;
-            if (q - q.round()).abs() > 1e-9 {
-                runtime::violation(
-                    out,
-                    &runtime::InstancePath::Key(path, "weight"),
-                    "is not a multiple of 0.01",
-                );
-            }
-        }
-        if let Some(v) = &self.owner {
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(v).unwrap_or_default();
-                runtime::check_schema(
-                    out,
-                    &runtime::InstancePath::Key(path, "owner"),
-                    &value,
-                    SCHEMA
-                        .get_or_init(|| {
-                            serde_json::from_str(
-                                    "{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":true}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}",
-                                )
-                                .unwrap_or_default()
-                        }),
-                );
-            }
-        }
-    }
-}
+validate_impl_4!(Gadget2);
+pub type Gadget2Id = ProductId;
 pub type Gadget2Name = ProductName;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 pub struct Gadget2Kind;
@@ -711,6 +952,7 @@ impl<'de> serde::Deserialize<'de> for Gadget2Kind {
     }
 }
 validate_impl_3!(Gadget2Kind);
+pub type Gadget2Weight = ProductWeight;
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct SubmitFormBody {
@@ -820,6 +1062,30 @@ impl PutBlobOkXQuota {
     }
 }
 validate_impl_3!(PutBlobOkXQuota);
+#[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
+#[serde(transparent)]
+pub struct ListProductsLimit(pub(super) i32);
+impl TryFrom<i32> for ListProductsLimit {
+    type Error = String;
+    fn try_from(value: i32) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            runtime::check_range(
+                out,
+                &runtime::InstancePath::Root,
+                value,
+                [Some(1), Some(100), None, None],
+            );
+        }
+        match violations.into_iter().next() {
+            Some(v) => Err(v.message),
+            None => Ok(Self(value)),
+        }
+    }
+}
+checked_num_impls!(ListProductsLimit, i32);
+validate_impl_3!(ListProductsLimit);
 #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct CreateProductBody {
@@ -844,7 +1110,7 @@ impl CreateProductBody {
         Self { meta: None, photo: None }
     }
 }
-validate_impl_4!(CreateProductBody);
+validate_impl_5!(CreateProductBody);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct SearchQ {
@@ -916,12 +1182,12 @@ impl SearchOkItem {
         }
     }
 }
-validate_impl_5!(SearchOkItem);
+validate_impl_6!(SearchOkItem);
 #[derive(Debug, Clone, PartialEq)]
 pub struct SearchOkItemData(pub Product);
 serialize_impl_3!(SearchOkItemData);
 deserialize_impl_2!(SearchOkItemData);
-validate_impl_6!(SearchOkItemData);
+validate_impl_7!(SearchOkItemData);
 /// Product
 ///
 /// A product
@@ -964,7 +1230,7 @@ pub struct ProductRequest {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub weight: Option<f64>,
+    pub weight: Option<ProductWeight>,
     /// Overrides description
     #[serde(
         default,
@@ -991,7 +1257,7 @@ impl ProductRequest {
         }
     }
 }
-validate_impl_7!(ProductRequest);
+validate_impl!(ProductRequest);
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct BookRequest {
@@ -1029,7 +1295,7 @@ pub struct BookRequest {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub weight: Option<f64>,
+    pub weight: Option<BookWeight>,
     /// Overrides description
     #[serde(
         default,
@@ -1063,7 +1329,7 @@ impl BookRequest {
         }
     }
 }
-validate_impl_7!(BookRequest);
+validate_impl!(BookRequest);
 pub type GadgetRequest = Gadget2Request;
 #[derive(Debug, Clone, PartialEq)]
 pub enum ShapeRequest {
@@ -1155,7 +1421,7 @@ pub struct Gadget2Request {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub weight: Option<f64>,
+    pub weight: Option<Gadget2Weight>,
     /// Overrides description
     #[serde(
         default,
@@ -1182,116 +1448,7 @@ impl Gadget2Request {
         }
     }
 }
-impl runtime::Validate for Gadget2Request {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        {
-            static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-            let value = runtime::to_value(&self.kind).unwrap_or_default();
-            runtime::check_schema(
-                out,
-                &runtime::InstancePath::Key(path, "kind"),
-                &value,
-                SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str("{\"const\":\"gadget\"}")
-                            .unwrap_or_default()
-                    }),
-            );
-        }
-        if let Some(v) = &self.tags {
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(v).unwrap_or_default();
-                runtime::check_schema(
-                    out,
-                    &runtime::InstancePath::Key(path, "tags"),
-                    &value,
-                    SCHEMA
-                        .get_or_init(|| {
-                            serde_json::from_str(
-                                    "{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"uniqueItems\":true,\"minItems\":0,\"maxItems\":10,\"contains\":{\"const\":\"vip\"},\"minContains\":0,\"maxContains\":1}",
-                                )
-                                .unwrap_or_default()
-                        }),
-                );
-            }
-        }
-        if let Some(v) = &self.point {
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(v).unwrap_or_default();
-                runtime::check_schema(
-                    out,
-                    &runtime::InstancePath::Key(path, "point"),
-                    &value,
-                    SCHEMA
-                        .get_or_init(|| {
-                            serde_json::from_str(
-                                    "{\"type\":\"array\",\"prefixItems\":[{\"type\":\"number\"},{\"type\":\"number\"}],\"items\":false,\"unevaluatedItems\":false}",
-                                )
-                                .unwrap_or_default()
-                        }),
-                );
-            }
-        }
-        if let Some(v) = &self.attrs {
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(v).unwrap_or_default();
-                runtime::check_schema(
-                    out,
-                    &runtime::InstancePath::Key(path, "attrs"),
-                    &value,
-                    SCHEMA
-                        .get_or_init(|| {
-                            serde_json::from_str(
-                                    "{\"type\":\"object\",\"patternProperties\":{\"^x_\":{\"type\":\"string\"}},\"propertyNames\":{\"pattern\":\"^[a-z_]+$\"},\"minProperties\":0,\"maxProperties\":20,\"unevaluatedProperties\":false}",
-                                )
-                                .unwrap_or_default()
-                        }),
-                );
-            }
-        }
-        if let Some(v) = &self.weight {
-            runtime::check_range(
-                out,
-                &runtime::InstancePath::Key(path, "weight"),
-                *v,
-                [None, None, Some(0.0), None],
-            );
-            let q = *v / 0.01;
-            if (q - q.round()).abs() > 1e-9 {
-                runtime::violation(
-                    out,
-                    &runtime::InstancePath::Key(path, "weight"),
-                    "is not a multiple of 0.01",
-                );
-            }
-        }
-        if let Some(v) = &self.owner {
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(v).unwrap_or_default();
-                runtime::check_schema(
-                    out,
-                    &runtime::InstancePath::Key(path, "owner"),
-                    &value,
-                    SCHEMA
-                        .get_or_init(|| {
-                            serde_json::from_str(
-                                    "{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":true}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}",
-                                )
-                                .unwrap_or_default()
-                        }),
-                );
-            }
-        }
-    }
-}
+validate_impl_4!(Gadget2Request);
 #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct CreateProductBodyRequest {
@@ -1316,7 +1473,7 @@ impl CreateProductBodyRequest {
         Self { meta: None, photo: None }
     }
 }
-validate_impl_4!(CreateProductBodyRequest);
+validate_impl_5!(CreateProductBodyRequest);
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct SearchOkItemRequest {
@@ -1353,9 +1510,9 @@ impl SearchOkItemRequest {
         }
     }
 }
-validate_impl_5!(SearchOkItemRequest);
+validate_impl_6!(SearchOkItemRequest);
 #[derive(Debug, Clone, PartialEq)]
 pub struct SearchOkItemDataRequest(pub ProductRequest);
 serialize_impl_3!(SearchOkItemDataRequest);
 deserialize_impl_2!(SearchOkItemDataRequest);
-validate_impl_6!(SearchOkItemDataRequest);
+validate_impl_7!(SearchOkItemDataRequest);

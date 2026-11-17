@@ -121,9 +121,9 @@ pub fn at(size: usize) -> (Head, Base) {
         ..Default::default()
     };
     let user = val::api::types::User {
-        name: val::api::types::UserName::try_from("Alice".to_owned()).expect("a valid name"),
+        name: "Alice".try_into().expect("a valid name"),
         handle: None,
-        age: Some(30),
+        age: Some(30.try_into().expect("a valid age")),
         score: None,
         tags: None,
         role: val::api::types::UserRole::Admin,

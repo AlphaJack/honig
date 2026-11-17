@@ -186,7 +186,7 @@ impl Products {
 
 fn lamp() -> types::Product {
     let name = types::ProductName::try_from("Lamp").unwrap_or_else(|e| panic!("{e}"));
-    types::Product::new(7, name, types::ProductKind::Book)
+    types::Product::new(7.try_into().unwrap_or_else(|e| panic!("{e}")), name, types::ProductKind::Book)
 }
 
 type Ctx<'a> = api::Context<'a, Option<()>>;
@@ -240,7 +240,13 @@ impl api::Api for Products {
 
     async fn get_product(&self, p: ops::get_product::Params, _: &Ctx<'_>) -> Answer<ops::get_product::Response> {
         self.keep(&p);
-        Ok(ops::get_product::Response::Ok(types::Product { id: p.product_id, ..lamp() }))
+        Ok(ops::get_product::Response::Ok(types::Product {
+            id: p
+                .product_id
+                .try_into()
+                .map_err(|e: String| api::ApiError::new(api::http::StatusCode::BAD_REQUEST, e))?,
+            ..lamp()
+        }))
     }
 
     async fn put_product(&self, p: ops::put_product::Params, _: &Ctx<'_>) -> Answer<ops::put_product::Response> {
@@ -318,7 +324,10 @@ fn each_method_reaches_its_operation() {
     let client = served(&products);
     assert_eq!(
         api::block_on(client.get_product(ops::get_product::Params { product_id: 9 })).ok(),
-        Some(ops::get_product::Response::Ok(types::Product { id: 9, ..lamp() }))
+        Some(ops::get_product::Response::Ok(types::Product {
+            id: 9.try_into().unwrap_or_else(|e| panic!("{e}")),
+            ..lamp()
+        }))
     );
     assert_eq!(products.last(), Some(ops::get_product::Params { product_id: 9 }));
     assert_eq!(
@@ -384,7 +393,7 @@ fn list_products_answers_in_the_media_type_asked_for() {
         (ops::list_products::Media::Jsonl, ops::list_products::OkBody::Jsonl(vec![lamp()].into())),
     ] {
         let sent = ops::list_products::Params {
-            limit: Some(5),
+            limit: Some(5.try_into().unwrap_or_else(|e| panic!("{e}"))),
             tags: Some(vec!["a".to_owned(), "b c".to_owned()]),
             filter: Some([("color".to_owned(), "red".to_owned())].into()),
             session: Some("s1".to_owned()),

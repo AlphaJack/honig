@@ -9,7 +9,9 @@ use crate::emit::rust::names::{pascal, snake};
 use crate::emit::rust::space::Space;
 use crate::emit::rust::syntax::{pascal_ident, snake_ident};
 use crate::ir::names::Name;
-use crate::ir::types::{EnumValue, Field, JsonKind, Kind, Struct, Ty, TypeDef, TypeId, Union, UnionMode, def_types};
+use crate::ir::types::{
+    Checked, EnumValue, Field, JsonKind, Kind, Struct, Ty, TypeDef, TypeId, Union, UnionMode, def_types,
+};
 
 /// Returns `aliases`: from [`aliases`]. They are declared as `pub type` of the type that they repeat.
 pub(super) fn emit(
@@ -45,7 +47,7 @@ pub(super) fn emit(
             Kind::StrEnum(values) => str_enum(&mut items, def, values),
             Kind::IntEnum(values) => int_enum(&mut items, def, values),
             Kind::Const(value) => constant(&mut items, def, value),
-            Kind::Pattern(c) => pattern_type(&mut items, def, c),
+            Kind::Checked(c) => checked_type(&mut items, space, def, c),
             Kind::Union(u) => union(&mut items, space, aliases, def, u),
             Kind::Alias(t) => {
                 let doc = doc_opt(def.doc.as_deref());
@@ -77,13 +79,14 @@ pub(super) fn emit(
     let unused = binary.then(|| quote!(#![allow(dead_code, reason = "a binary may build none of the types by hand")]));
     let header = quote!(#allow #unused);
     let enum_macros = enum_macros(space);
+    let checked_macros = checked_macros(space);
     // A description without schemas has no type to validate.
     let runtime_import = (!items.is_empty()).then(|| {
         quote!(
             use super::runtime;
         )
     });
-    quote! { #header #runtime_import #enum_macros #(#items)* }
+    quote! { #header #runtime_import #enum_macros #checked_macros #(#items)* }
 }
 
 /// Inlines types declared as an alias of an identical earlier one (one inline schema per operation): index to the
@@ -198,7 +201,7 @@ fn canonical_kind(kind: &Kind, canon: &dyn Fn(TypeId) -> TypeId) -> Kind {
             }
         }
         Kind::Alias(t) | Kind::Newtype(t) => *t = canonical_ty(t, canon),
-        Kind::StrEnum(_) | Kind::IntEnum(_) | Kind::Const(_) | Kind::Pattern(_) | Kind::Pending => {}
+        Kind::StrEnum(_) | Kind::IntEnum(_) | Kind::Const(_) | Kind::Checked(_) | Kind::Pending => {}
     }
     kind
 }
@@ -216,7 +219,7 @@ fn canonical_ty(t: &Ty, canon: &dyn Fn(TypeId) -> TypeId) -> Ty {
     out
 }
 
-/// Returns the trait impls that every string or integer enum shares. Each is written once as a macro. So generated code
+/// Returns the trait impls that every string or integer enum, and every checked newtype of one base, shares. Each is written once as a macro. So generated code
 /// holds no two identical function bodies. Only the kinds that the description has.
 fn enum_macros(space: &Space<'_>) -> TokenStream {
     let has = |f: fn(&Kind) -> bool| space.types.defs.iter().any(|d| f(&d.kind));
@@ -277,6 +280,227 @@ fn enum_macros(space: &Space<'_>) -> TokenStream {
     quote!(#str_enums #int_enums)
 }
 
+/// Returns the trait impls that every checked newtype of one base shares, one macro per base. Only the bases that the
+/// description has.
+fn checked_macros(space: &Space<'_>) -> TokenStream {
+    let checked =
+        |base: Base| space.types.defs.iter().any(|d| matches!(&d.kind, Kind::Checked(c) if Base::of(&c.base) == base));
+    let checked_str = checked(Base::Str).then(checked_str_macro);
+    let checked_num = (checked(Base::Int) || checked(Base::Float)).then(checked_num_macro);
+    let checked_decimal = checked(Base::Decimal).then(checked_decimal_macro);
+    quote!(#checked_str #checked_num #checked_decimal)
+}
+
+/// Returns the macro of the impls of a checked string.
+fn checked_str_macro() -> TokenStream {
+    quote! {
+        macro_rules! checked_str_impls {
+            ($n:ident) => {
+                impl $n {
+                    #[must_use]
+                    pub fn as_str(&self) -> &str {
+                        &self.0
+                    }
+                    #[must_use]
+                    pub fn into_inner(self) -> String {
+                        self.0
+                    }
+                }
+                impl TryFrom<&str> for $n {
+                    type Error = String;
+                    fn try_from(value: &str) -> Result<Self, String> {
+                        Self::try_from(value.to_owned())
+                    }
+                }
+                impl std::str::FromStr for $n {
+                    type Err = String;
+                    fn from_str(s: &str) -> Result<Self, String> {
+                        Self::try_from(s)
+                    }
+                }
+                impl std::ops::Deref for $n {
+                    type Target = str;
+                    fn deref(&self) -> &str {
+                        &self.0
+                    }
+                }
+                impl AsRef<str> for $n {
+                    fn as_ref(&self) -> &str {
+                        &self.0
+                    }
+                }
+                impl std::fmt::Display for $n {
+                    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                        f.write_str(&self.0)
+                    }
+                }
+                impl PartialEq<str> for $n {
+                    fn eq(&self, other: &str) -> bool {
+                        self.0 == other
+                    }
+                }
+                impl PartialEq<&str> for $n {
+                    fn eq(&self, other: &&str) -> bool {
+                        self.0 == *other
+                    }
+                }
+                impl From<$n> for String {
+                    fn from(value: $n) -> Self {
+                        value.0
+                    }
+                }
+                impl<'de> serde::Deserialize<'de> for $n {
+                    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                        let s = <String as serde::Deserialize>::deserialize(d)?;
+                        Self::try_from(s).map_err(serde::de::Error::custom)
+                    }
+                }
+            };
+        }
+    }
+}
+
+/// Returns the macro of the impls of a checked integer or float.
+fn checked_num_macro() -> TokenStream {
+    quote! {
+        macro_rules! checked_num_impls {
+            ($n:ident, $t:ty) => {
+                impl $n {
+                    #[must_use]
+                    pub const fn get(self) -> $t {
+                        self.0
+                    }
+                }
+                impl std::str::FromStr for $n {
+                    type Err = String;
+                    fn from_str(s: &str) -> Result<Self, String> {
+                        let v: $t = s.parse().map_err(|e| format!("{e}"))?;
+                        Self::try_from(v)
+                    }
+                }
+                impl std::ops::Deref for $n {
+                    type Target = $t;
+                    fn deref(&self) -> &$t {
+                        &self.0
+                    }
+                }
+                impl std::fmt::Display for $n {
+                    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                        std::fmt::Display::fmt(&self.0, f)
+                    }
+                }
+                impl PartialEq<$t> for $n {
+                    fn eq(&self, other: &$t) -> bool {
+                        self.0 == *other
+                    }
+                }
+                impl PartialOrd<$t> for $n {
+                    fn partial_cmp(&self, other: &$t) -> Option<std::cmp::Ordering> {
+                        self.0.partial_cmp(other)
+                    }
+                }
+                impl From<$n> for $t {
+                    fn from(value: $n) -> Self {
+                        value.0
+                    }
+                }
+                impl<'de> serde::Deserialize<'de> for $n {
+                    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                        let v = <$t as serde::Deserialize>::deserialize(d)?;
+                        Self::try_from(v).map_err(serde::de::Error::custom)
+                    }
+                }
+            };
+        }
+    }
+}
+
+/// Returns the macro of the impls of a checked decimal.
+fn checked_decimal_macro() -> TokenStream {
+    quote! {
+        macro_rules! checked_decimal_impls {
+            ($n:ident) => {
+                impl $n {
+                    #[must_use]
+                    pub fn into_inner(self) -> runtime::Decimal {
+                        self.0
+                    }
+                }
+                impl std::str::FromStr for $n {
+                    type Err = String;
+                    fn from_str(s: &str) -> Result<Self, String> {
+                        let v: runtime::Decimal = s.parse().map_err(|e| format!("{e}"))?;
+                        Self::try_from(v)
+                    }
+                }
+                impl std::ops::Deref for $n {
+                    type Target = runtime::Decimal;
+                    fn deref(&self) -> &runtime::Decimal {
+                        &self.0
+                    }
+                }
+                impl std::fmt::Display for $n {
+                    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                        std::fmt::Display::fmt(&self.0, f)
+                    }
+                }
+                impl From<$n> for runtime::Decimal {
+                    fn from(value: $n) -> Self {
+                        value.0
+                    }
+                }
+                impl<'de> serde::Deserialize<'de> for $n {
+                    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                        let v = <runtime::Decimal as serde::Deserialize>::deserialize(d)?;
+                        Self::try_from(v).map_err(serde::de::Error::custom)
+                    }
+                }
+            };
+        }
+    }
+}
+
+/// The base of a checked newtype as its impls tell it apart.
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Base {
+    Str,
+    Int,
+    Float,
+    Decimal,
+}
+
+impl Base {
+    /// Returns the base of `t`. The builder makes checked types of strings, integers and numbers only.
+    const fn of(t: &Ty) -> Self {
+        match t {
+            Ty::String => Self::Str,
+            Ty::F32 | Ty::F64 => Self::Float,
+            Ty::Decimal => Self::Decimal,
+            Ty::I8
+            | Ty::I16
+            | Ty::I32
+            | Ty::I64
+            | Ty::U8
+            | Ty::U16
+            | Ty::U32
+            | Ty::U64
+            | Ty::Bool
+            | Ty::Bytes
+            | Ty::Binary
+            | Ty::Format(_)
+            | Ty::Any
+            | Ty::Unit
+            | Ty::Named(_)
+            | Ty::Vec(_)
+            | Ty::Array(..)
+            | Ty::Tuple(_)
+            | Ty::Map(_)
+            | Ty::Option(_)
+            | Ty::Indirect(_) => Self::Int,
+        }
+    }
+}
+
 /// Emits `x-rust-type` as `pub type Name = your::Type;`. Validation of its constraints
 /// is yours (a no-op `Validate`).
 fn external(items: &mut Vec<TokenStream>, def: &TypeDef, path: &str) {
@@ -314,7 +538,7 @@ fn extra_derives(def: &TypeDef, derives: &[(String, Vec<String>)]) -> Option<Tok
             "Serialize",
             "Deserialize",
         ],
-        Kind::Alias(_) | Kind::Pattern(_) | Kind::Pending => return None,
+        Kind::Alias(_) | Kind::Checked(_) | Kind::Pending => return None,
     };
     let mut paths: Vec<&str> = vec![];
     for (key, list) in derives {
@@ -469,7 +693,16 @@ pub(super) fn default_expr(space: &Space<'_>, t: &Ty, v: &serde_json::Value, qua
             let l = Literal::f32_suffixed(n.as_f64()? as f32);
             quote!(#l)
         }
-        (Ty::Named(id), _) => return enum_default(&space.types.get(*id).kind, &ty(space, t, qualify), v),
+        (Ty::Named(id), _) => {
+            let kind = &space.types.get(*id).kind;
+            if let Kind::Checked(c) = kind {
+                // The builder keeps only a default that meets the keywords: it is built without the checks.
+                let inner = default_expr(space, &c.base, v, qualify)?;
+                let t = ty(space, t, qualify);
+                return Some(quote!(#t(#inner)));
+            }
+            return enum_default(kind, &ty(space, t, qualify), v);
+        }
         _ => return None,
     })
 }
@@ -551,7 +784,7 @@ fn ty_default(space: &Space<'_>, t: &Ty, seen: &mut Vec<TypeId>) -> bool {
             // The unit struct's only value.
             Kind::Const(_) => true,
             // A checked newtype has no valid empty value.
-            Kind::Pattern(_)
+            Kind::Checked(_)
             | Kind::StrEnum(_)
             | Kind::IntEnum(_)
             | Kind::Union(_)
@@ -835,72 +1068,6 @@ fn one_of(values: impl Iterator<Item = String>) -> String {
     format!("`{{other}}` is not one of {}", allowed.replace('{', "{{").replace('}', "}}"))
 }
 
-/// Returns a `const`. It is a unit struct that serializes to the value and decodes only it.
-/// The pattern newtype and its `TryFrom`, `AsRef<str>`, `Display` and `Deserialize`.
-/// No `Deref`. It would put every `str` method on the type next to `as_str`.
-fn pattern_impls(
-    n: &proc_macro2::Ident,
-    doc: &TokenStream,
-    pat: &proc_macro2::Literal,
-    min: &TokenStream,
-    max: &TokenStream,
-) -> TokenStream {
-    quote! {
-        #doc
-        #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
-        #[serde(transparent)]
-        pub struct #n(String);
-        impl #n {
-            pub const PATTERN: &'static str = #pat;
-            #[must_use]
-            pub fn as_str(&self) -> &str {
-                &self.0
-            }
-            #[must_use]
-            pub fn into_inner(self) -> String {
-                self.0
-            }
-        }
-        impl TryFrom<String> for #n {
-            type Error = String;
-            fn try_from(value: String) -> Result<Self, String> {
-                static RE: runtime::Pattern = runtime::Pattern::new();
-                let mut out = Vec::new();
-                runtime::check_len(&mut out, &runtime::InstancePath::Root, value.chars().count(), #min, #max, "characters");
-                if let Some(v) = out.first() {
-                    return Err(v.message.clone());
-                }
-                if !runtime::pattern_matches(&RE, Self::PATTERN, &value) {
-                    return Err(format!("`{value}` does not match `{}`", Self::PATTERN));
-                }
-                Ok(Self(value))
-            }
-        }
-        impl TryFrom<&str> for #n {
-            type Error = String;
-            fn try_from(value: &str) -> Result<Self, String> {
-                Self::try_from(value.to_owned())
-            }
-        }
-        impl AsRef<str> for #n {
-            fn as_ref(&self) -> &str {
-                &self.0
-            }
-        }
-        impl std::fmt::Display for #n {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                f.write_str(&self.0)
-            }
-        }
-        impl<'de> serde::Deserialize<'de> for #n {
-            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-                let s = <String as serde::Deserialize>::deserialize(d)?;
-                Self::try_from(s).map_err(serde::de::Error::custom)
-            }
-        }
-    }
-}
-
 /// Emits `pub struct Name(pub T);` that is transparent on the wire.
 fn newtype(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, def: &TypeDef, t: &Ty) {
     let name = pascal_ident(&def.name);
@@ -920,18 +1087,70 @@ fn newtype(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, def: &Ty
     });
 }
 
-/// Emits a string with a `pattern`. It is a newtype that only `TryFrom` and decoding build. They check the pattern and
-/// the length limits. So an invalid value cannot exist.
-fn pattern_type(items: &mut Vec<TokenStream>, def: &TypeDef, c: &crate::ir::types::Constraints) {
+/// Emits a checked newtype: a scalar that only `TryFrom` and decoding build. Both check the keywords of its schema and
+/// return the first that the value breaks. The impls shared by every checked type of one base are a macro (see
+/// `checked_macros`).
+fn checked_type(items: &mut Vec<TokenStream>, space: &Space<'_>, def: &TypeDef, c: &Checked) {
     let n = pascal_ident(&def.name);
     let doc = doc_opt(def.doc.as_deref());
-    let pattern = c.pattern.as_deref().unwrap_or_default();
-    let pat = lit(pattern);
-    let opt = |v: Option<u64>| v.map_or_else(|| quote!(None), |m| quote!(Some(#m)));
-    let (min, max) = (opt(c.min_length), opt(c.max_length));
-    items.push(pattern_impls(&n, &doc, &pat, &min, &max));
+    let path = quote!(&runtime::InstancePath::Root);
+    let base = ty(space, &c.base, false);
+    let (checks, derive, consts) = match Base::of(&c.base) {
+        Base::Str => {
+            let pat = c.constraints.pattern.as_deref().map(|p| {
+                let p = lit(p);
+                quote!(impl #n { pub const PATTERN: &'static str = #p; })
+            });
+            let checks = super::validate::string_checks(&c.constraints, &quote!(value.as_str()), &path);
+            (checks, quote!(Eq, Hash, PartialOrd, Ord,), pat)
+        }
+        Base::Float => {
+            let checks = super::validate::float_checks(&c.constraints, &quote!(&value), &path);
+            (checks, quote!(Copy, PartialOrd,), None)
+        }
+        Base::Decimal => {
+            let checks = super::validate::float_checks(
+                &c.constraints,
+                &super::validate::float_value(&c.base, &quote!(&value)),
+                &path,
+            );
+            (checks, quote!(Eq, Hash,), None)
+        }
+        Base::Int => {
+            let checks = super::validate::integer_checks(&c.base, &c.constraints, &quote!(&value), &path);
+            (checks, quote!(Copy, Eq, Hash, PartialOrd, Ord,), None)
+        }
+    };
+    let shared = match Base::of(&c.base) {
+        Base::Str => quote!(checked_str_impls!(#n);),
+        Base::Decimal => quote!(checked_decimal_impls!(#n);),
+        Base::Int | Base::Float => quote!(checked_num_impls!(#n, #base);),
+    };
+    items.push(quote! {
+        #doc
+        #[derive(Debug, Clone, PartialEq, #derive serde::Serialize)]
+        #[serde(transparent)]
+        pub struct #n(pub(super) #base);
+        #consts
+        impl TryFrom<#base> for #n {
+            type Error = String;
+            fn try_from(value: #base) -> Result<Self, String> {
+                let mut violations: Vec<runtime::Violation> = Vec::new();
+                {
+                    let out = &mut violations;
+                    #checks
+                }
+                match violations.into_iter().next() {
+                    Some(v) => Err(v.message),
+                    None => Ok(Self(value)),
+                }
+            }
+        }
+        #shared
+    });
 }
 
+/// Returns a `const`. It is a unit struct that serializes to the value and decodes only it.
 fn constant(items: &mut Vec<TokenStream>, def: &TypeDef, value: &serde_json::Value) {
     let n = pascal_ident(&def.name);
     let doc = doc_opt(def.doc.as_deref());
@@ -1392,7 +1611,7 @@ fn reads_several_kinds(space: &Space<'_>, t: &Ty, depth: usize) -> bool {
             Kind::Struct(_)
             | Kind::StrEnum(_)
             | Kind::IntEnum(_)
-            | Kind::Pattern(_)
+            | Kind::Checked(_)
             | Kind::Const(_)
             | Kind::Union(_)
             | Kind::Pending => false,

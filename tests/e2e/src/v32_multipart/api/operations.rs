@@ -23,13 +23,16 @@ pub mod upload {
     pub const PATH: &str = "/photos";
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct Params {
-        pub image_x_checksum: String,
+        pub image_x_checksum: types::UploadImageXChecksum,
         pub meta_x_revision: Option<i64>,
         pub body: types::UploadBody,
     }
     impl Params {
         #[must_use]
-        pub const fn new(image_x_checksum: String, body: types::UploadBody) -> Self {
+        pub const fn new(
+            image_x_checksum: types::UploadImageXChecksum,
+            body: types::UploadBody,
+        ) -> Self {
             Self {
                 image_x_checksum,
                 meta_x_revision: None,
@@ -37,29 +40,7 @@ pub mod upload {
             }
         }
     }
-    impl runtime::Validate for Params {
-        fn validate(
-            &self,
-            path: &runtime::InstancePath<'_>,
-            out: &mut Vec<runtime::Violation>,
-        ) {
-            let n = self.image_x_checksum.chars().count();
-            runtime::check_len(
-                out,
-                &runtime::InstancePath::Key(
-                    &runtime::InstancePath::Key(
-                        &runtime::InstancePath::Key(path, "body"),
-                        "image",
-                    ),
-                    "X-Checksum",
-                ),
-                n,
-                Some(4),
-                None,
-                "characters",
-            );
-        }
-    }
+    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Stored.

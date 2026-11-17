@@ -130,10 +130,20 @@ JSON the description leaves untyped is a `serde_json::Value`:
 
 A number in such a value rounds when it is past `u64`. It also rounds when it has more significant digits than an `f64` holds, which is about 17. RFC 8259 section 6 allows this. A client that reads such an object and writes it back can change that number. To keep a number exact declare it with `format: decimal`.
 
-A string with a `pattern` is a type of its own. Only valid values can be that type. The `regress` feature of the runtime checks it. `generate` turns the feature on when the description uses `pattern`:
+## Checked types
+
+A string with a `pattern`, `minLength` or `maxLength` is a type of its own. So is an integer or number with `minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum` or `multipleOf`. Only valid values can be that type: `try_from` and decoding check the keywords and return the first one that the value breaks. The `regress` feature of the runtime checks `pattern`. `generate` turns the feature on when the description uses it:
 
 ```rust
 {{#include ../../../tests/e2e/tests/v32_catalog/schemas.rs:pattern}}
 ```
 
-Decoding checks in the same way. So a request with a bad value gets `400`.
+So a request with a bad value gets `400`, and a client reading a response with one gets a decode error.
+
+Where the field type is known, `try_into` builds the value. A spec `default` is filled in already checked:
+
+```rust
+{{#include ../../../tests/e2e/tests/v32_catalog/schemas.rs:try-into}}
+```
+
+A checked type reads as its value: a string one derefs to `str` and compares with `&str`, a number one derefs to its number and compares with it. `get` and `into_inner` return the value, and `parse` reads one from text.

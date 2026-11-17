@@ -259,7 +259,81 @@ pub(crate) fn print(file: &str, tokens: TokenStream, binary: bool) -> Result<Str
     if binary {
         CrateOnly.visit_file_mut(&mut file);
     }
-    Ok(prettyplease::unparse(&file))
+    Ok(unparse(file))
+}
+
+/// The prefix of a metavariable of a macro body while it is printed as plain items: `$n` is `__honig_n`.
+const METAVAR: &str = "__honig_";
+
+/// Returns `file` printed by `prettyplease`, with the body of each top-level `macro_rules!` printed as the items it
+/// expands to. `prettyplease` prints a macro body as raw tokens, one space between each: a body of trait impls would
+/// read as one long line. A body that is not items stays as raw tokens.
+pub(crate) fn unparse(mut file: syn::File) -> String {
+    let mut bodies = Vec::new();
+    for item in &mut file.items {
+        let syn::Item::Macro(m) = item else { continue };
+        let Some(text) = macro_rules_text(m) else { continue };
+        let marker = quote::format_ident!("__HONIG_MACRO_{}", bodies.len());
+        let attrs = &m.attrs;
+        let Ok(placeholder) = syn::parse2::<syn::Item>(quote!(#(#attrs)* const #marker: () = ();)) else { continue };
+        *item = placeholder;
+        bodies.push((format!("const {marker}: () = ();"), text));
+    }
+    let mut out = prettyplease::unparse(&file);
+    for (marker, text) in bodies {
+        out = out.replacen(&marker, text.trim_end(), 1);
+    }
+    out
+}
+
+/// Returns a macro body with each metavariable `$x` as the identifier `__honig_x`. So it parses as items.
+fn hide_metavars(tokens: TokenStream) -> TokenStream {
+    use proc_macro2::TokenTree;
+    let mut out = Vec::new();
+    let mut it = tokens.into_iter().peekable();
+    while let Some(t) = it.next() {
+        match t {
+            TokenTree::Punct(p) if p.as_char() == '$' && matches!(it.peek(), Some(TokenTree::Ident(_))) => {
+                if let Some(TokenTree::Ident(i)) = it.next() {
+                    out.push(TokenTree::Ident(quote::format_ident!("{METAVAR}{i}")));
+                }
+            }
+            TokenTree::Group(g) => {
+                let mut inner = proc_macro2::Group::new(g.delimiter(), hide_metavars(g.stream()));
+                inner.set_span(g.span());
+                out.push(TokenTree::Group(inner));
+            }
+            other @ (TokenTree::Ident(_) | TokenTree::Punct(_) | TokenTree::Literal(_)) => out.push(other),
+        }
+    }
+    out.into_iter().collect()
+}
+
+/// Returns `macro_rules! name { (matcher) => { body }; }` with its body printed as items. `None` for any other macro
+/// or for a body that does not parse as items.
+fn macro_rules_text(m: &syn::ItemMacro) -> Option<String> {
+    use proc_macro2::TokenTree;
+    if !m.mac.path.is_ident("macro_rules") {
+        return None;
+    }
+    let name = m.ident.as_ref()?;
+    let tokens: Vec<TokenTree> = m.mac.tokens.clone().into_iter().collect();
+    // One rule: a matcher, `=>`, a braced body and an optional `;`.
+    let [TokenTree::Group(matcher), TokenTree::Punct(eq), TokenTree::Punct(gt), TokenTree::Group(body), rest @ ..] =
+        tokens.as_slice()
+    else {
+        return None;
+    };
+    let semi = |t: &TokenTree| matches!(t, TokenTree::Punct(p) if p.as_char() == ';');
+    if eq.as_char() != '=' || gt.as_char() != '>' || !rest.iter().all(semi) || rest.len() > 1 {
+        return None;
+    }
+    let items: syn::File = syn::parse2(hide_metavars(body.stream())).ok()?;
+    let printed = prettyplease::unparse(&items).replace(METAVAR, "$");
+    let body: String =
+        printed.lines().map(|l| if l.is_empty() { "\n".to_owned() } else { format!("        {l}\n") }).collect();
+    let matcher = matcher.stream().to_string().replace("$ ", "$").replace(" : ", ":").replace(" , ", ", ");
+    Some(format!("macro_rules! {name} {{\n    ({matcher}) => {{\n{body}    }};\n}}\n"))
 }
 
 /// Writes once a trait impl that several types share word for word. Examples are the `Validate` of the JSON,
@@ -843,7 +917,8 @@ fn size_in(space: &Space<'_>, ty: &Ty, depth: usize) -> usize {
                     .sum::<usize>()
                     + if s.additional.is_some() { COLLECTION } else { 0 }
             }
-            Kind::StrEnum(_) | Kind::IntEnum(_) | Kind::Pattern(_) => COLLECTION,
+            Kind::StrEnum(_) | Kind::IntEnum(_) => COLLECTION,
+            Kind::Checked(c) => size_in(space, &c.base, depth + 1),
             Kind::Const(_) => 0,
             Kind::Union(u) => {
                 u.variants.iter().map(|v| size_in(space, &v.ty, depth + 1)).max().unwrap_or(0).max(JSON_VALUE) + WORD

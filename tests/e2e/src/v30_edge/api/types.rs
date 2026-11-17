@@ -18,75 +18,181 @@ macro_rules! validate_impl {
 }
 macro_rules! deserialize_impl {
     ($t:ty) => {
-        impl < 'de > serde::Deserialize < 'de > for $t { fn deserialize < D :
-        serde::Deserializer < 'de > > (d : D) -> Result < Self, D::Error > {
-        Self::deserialize(runtime::NoSeq(d)) } }
+        impl<'de> serde::Deserialize<'de> for $t {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                Self::deserialize(runtime::NoSeq(d))
+            }
+        }
     };
 }
 macro_rules! serialize_impl {
     ($t:ty) => {
-        impl serde::Serialize for $t { fn serialize < S : serde::Serializer > (& self, s
-        : S) -> Result < S::Ok, S::Error > { Self::serialize(self, s) } }
+        impl serde::Serialize for $t {
+            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                Self::serialize(self, s)
+            }
+        }
     };
 }
 macro_rules! validate_impl_2 {
     ($t:ty) => {
-        impl runtime::Validate for $t { fn validate(& self, path : &
-        runtime::InstancePath < '_ >, out : & mut Vec < runtime::Violation >) { { let
-        base = & runtime::InstancePath::Key(path, "items"); for (i, v) in self.items
-        .iter().enumerate() { runtime::Validate::validate(v, &
-        runtime::InstancePath::Index(base, i), out); } } } }
-    };
-}
-macro_rules! try_from_impl {
-    ($t:ty) => {
-        impl TryFrom < String > for $t { type Error = String; fn try_from(value : String)
-        -> Result < Self, String > { static RE : runtime::Pattern =
-        runtime::Pattern::new(); let mut out = Vec::new(); runtime::check_len(& mut out,
-        & runtime::InstancePath::Root, value.chars().count(), None, None, "characters");
-        if let Some(v) = out.first() { return Err(v.message.clone()); } if !
-        runtime::pattern_matches(& RE, Self::PATTERN, & value) { return
-        Err(format!("`{value}` does not match `{}`", Self::PATTERN)); } Ok(Self(value)) }
+        impl runtime::Validate for $t {
+            fn validate(
+                &self,
+                path: &runtime::InstancePath<'_>,
+                out: &mut Vec<runtime::Violation>,
+            ) {
+                {
+                    let base = &runtime::InstancePath::Key(path, "items");
+                    for (i, v) in self.items.iter().enumerate() {
+                        runtime::Validate::validate(
+                            v,
+                            &runtime::InstancePath::Index(base, i),
+                            out,
+                        );
+                    }
+                }
+            }
         }
-    };
-}
-macro_rules! try_from_impl_2 {
-    ($t:ty) => {
-        impl TryFrom < & str > for $t { type Error = String; fn try_from(value : & str)
-        -> Result < Self, String > { Self::try_from(value.to_owned()) } }
-    };
-}
-macro_rules! as_ref_impl {
-    ($t:ty) => {
-        impl AsRef < str > for $t { fn as_ref(& self) -> & str { & self.0 } }
-    };
-}
-macro_rules! display_impl {
-    ($t:ty) => {
-        impl std::fmt::Display for $t { fn fmt(& self, f : & mut std::fmt::Formatter < '_
-        >) -> std::fmt::Result { f.write_str(& self.0) } }
-    };
-}
-macro_rules! deserialize_impl_2 {
-    ($t:ty) => {
-        impl < 'de > serde::Deserialize < 'de > for $t { fn deserialize < D :
-        serde::Deserializer < 'de > > (d : D) -> Result < Self, D::Error > { let s = <
-        String as serde::Deserialize > ::deserialize(d) ?; Self::try_from(s)
-        .map_err(serde::de::Error::custom) } }
     };
 }
 use super::runtime;
 macro_rules! str_enum_impls {
     ($n:ident) => {
-        impl std::fmt::Display for $n { fn fmt(& self, f : & mut std::fmt::Formatter < '_
-        >) -> std::fmt::Result { f.write_str(self.as_str()) } } impl std::str::FromStr
-        for $n { type Err = String; fn from_str(s : & str) -> Result < Self, Self::Err >
-        { Self::try_from(s) } } impl serde::Serialize for $n { fn serialize < S :
-        serde::Serializer > (& self, s : S) -> Result < S::Ok, S::Error > { s
-        .serialize_str(self.as_str()) } } impl < 'de > serde::Deserialize < 'de > for $n
-        { fn deserialize < D : serde::Deserializer < 'de >> (d : D) -> Result < Self,
-        D::Error > { let s = < std::borrow::Cow < 'de, str > as serde::Deserialize >
-        ::deserialize(d) ?; Self::try_from(& * s).map_err(serde::de::Error::custom) } }
+        impl std::fmt::Display for $n {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                f.write_str(self.as_str())
+            }
+        }
+        impl std::str::FromStr for $n {
+            type Err = String;
+            fn from_str(s: &str) -> Result<Self, Self::Err> {
+                Self::try_from(s)
+            }
+        }
+        impl serde::Serialize for $n {
+            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                s.serialize_str(self.as_str())
+            }
+        }
+        impl<'de> serde::Deserialize<'de> for $n {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                let s = <std::borrow::Cow<'de, str> as serde::Deserialize>::deserialize(d)?;
+                Self::try_from(&*s).map_err(serde::de::Error::custom)
+            }
+        }
+    };
+}
+macro_rules! checked_str_impls {
+    ($n:ident) => {
+        impl $n {
+            #[must_use]
+            pub fn as_str(&self) -> &str {
+                &self.0
+            }
+            #[must_use]
+            pub fn into_inner(self) -> String {
+                self.0
+            }
+        }
+        impl TryFrom<&str> for $n {
+            type Error = String;
+            fn try_from(value: &str) -> Result<Self, String> {
+                Self::try_from(value.to_owned())
+            }
+        }
+        impl std::str::FromStr for $n {
+            type Err = String;
+            fn from_str(s: &str) -> Result<Self, String> {
+                Self::try_from(s)
+            }
+        }
+        impl std::ops::Deref for $n {
+            type Target = str;
+            fn deref(&self) -> &str {
+                &self.0
+            }
+        }
+        impl AsRef<str> for $n {
+            fn as_ref(&self) -> &str {
+                &self.0
+            }
+        }
+        impl std::fmt::Display for $n {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                f.write_str(&self.0)
+            }
+        }
+        impl PartialEq<str> for $n {
+            fn eq(&self, other: &str) -> bool {
+                self.0 == other
+            }
+        }
+        impl PartialEq<&str> for $n {
+            fn eq(&self, other: &&str) -> bool {
+                self.0 == *other
+            }
+        }
+        impl From<$n> for String {
+            fn from(value: $n) -> Self {
+                value.0
+            }
+        }
+        impl<'de> serde::Deserialize<'de> for $n {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                let s = <String as serde::Deserialize>::deserialize(d)?;
+                Self::try_from(s).map_err(serde::de::Error::custom)
+            }
+        }
+    };
+}
+macro_rules! checked_num_impls {
+    ($n:ident, $t:ty) => {
+        impl $n {
+            #[must_use]
+            pub const fn get(self) -> $t {
+                self.0
+            }
+        }
+        impl std::str::FromStr for $n {
+            type Err = String;
+            fn from_str(s: &str) -> Result<Self, String> {
+                let v: $t = s.parse().map_err(|e| format!("{e}"))?;
+                Self::try_from(v)
+            }
+        }
+        impl std::ops::Deref for $n {
+            type Target = $t;
+            fn deref(&self) -> &$t {
+                &self.0
+            }
+        }
+        impl std::fmt::Display for $n {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                std::fmt::Display::fmt(&self.0, f)
+            }
+        }
+        impl PartialEq<$t> for $n {
+            fn eq(&self, other: &$t) -> bool {
+                self.0 == *other
+            }
+        }
+        impl PartialOrd<$t> for $n {
+            fn partial_cmp(&self, other: &$t) -> Option<std::cmp::Ordering> {
+                self.0.partial_cmp(other)
+            }
+        }
+        impl From<$n> for $t {
+            fn from(value: $n) -> Self {
+                value.0
+            }
+        }
+        impl<'de> serde::Deserialize<'de> for $n {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                let v = <$t as serde::Deserialize>::deserialize(d)?;
+                Self::try_from(v).map_err(serde::de::Error::custom)
+            }
+        }
     };
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -136,10 +242,10 @@ impl Money {
     }
 }
 validate_impl!(Money);
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Customer {
-    pub name: String,
+    pub name: CustomerName,
     #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
     pub email: runtime::Nullable<String>,
     #[serde(flatten)]
@@ -153,7 +259,7 @@ impl serde::Serialize for Customer {
 }
 impl Customer {
     #[must_use]
-    pub const fn new(name: String) -> Self {
+    pub const fn new(name: CustomerName) -> Self {
         Self {
             name,
             email: runtime::Nullable::Absent,
@@ -161,53 +267,21 @@ impl Customer {
         }
     }
 }
-impl runtime::Validate for Customer {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        let n = self.name.chars().count();
-        runtime::check_len(
-            out,
-            &runtime::InstancePath::Key(path, "name"),
-            n,
-            Some(1),
-            None,
-            "characters",
-        );
-    }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+validate_impl!(Customer);
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Card {
-    pub last4: String,
+    pub last4: CardLast4,
 }
 deserialize_impl!(Card);
 serialize_impl!(Card);
 impl Card {
     #[must_use]
-    pub const fn new(last4: String) -> Self {
+    pub const fn new(last4: CardLast4) -> Self {
         Self { last4 }
     }
 }
-impl runtime::Validate for Card {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        let n = self.last4.chars().count();
-        runtime::check_len(
-            out,
-            &runtime::InstancePath::Key(path, "last4"),
-            n,
-            Some(4),
-            Some(4),
-            "characters",
-        );
-    }
-}
+validate_impl!(Card);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Sepa {
@@ -515,24 +589,92 @@ impl Default for Problem {
 validate_impl!(Problem);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
-pub struct MoneyCurrency(String);
+pub struct MoneyCurrency(pub(super) String);
 impl MoneyCurrency {
     pub const PATTERN: &'static str = "^[A-Z]{3}$";
-    #[must_use]
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
-    #[must_use]
-    pub fn into_inner(self) -> String {
-        self.0
+}
+impl TryFrom<String> for MoneyCurrency {
+    type Error = String;
+    fn try_from(value: String) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            runtime::check(
+                out,
+                &runtime::InstancePath::Root,
+                runtime::pattern_matches(
+                    {
+                        static RE: runtime::Pattern = runtime::Pattern::new();
+                        &RE
+                    },
+                    "^[A-Z]{3}$",
+                    value.as_str(),
+                ),
+                "does not match `^[A-Z]{3}$`",
+            );
+        }
+        match violations.into_iter().next() {
+            Some(v) => Err(v.message),
+            None => Ok(Self(value)),
+        }
     }
 }
-try_from_impl!(MoneyCurrency);
-try_from_impl_2!(MoneyCurrency);
-as_ref_impl!(MoneyCurrency);
-display_impl!(MoneyCurrency);
-deserialize_impl_2!(MoneyCurrency);
+checked_str_impls!(MoneyCurrency);
 validate_impl!(MoneyCurrency);
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
+#[serde(transparent)]
+pub struct CustomerName(pub(super) String);
+impl TryFrom<String> for CustomerName {
+    type Error = String;
+    fn try_from(value: String) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            let n = (value.as_str()).chars().count();
+            runtime::check_len(
+                out,
+                &runtime::InstancePath::Root,
+                n,
+                Some(1),
+                None,
+                "characters",
+            );
+        }
+        match violations.into_iter().next() {
+            Some(v) => Err(v.message),
+            None => Ok(Self(value)),
+        }
+    }
+}
+checked_str_impls!(CustomerName);
+validate_impl!(CustomerName);
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
+#[serde(transparent)]
+pub struct CardLast4(pub(super) String);
+impl TryFrom<String> for CardLast4 {
+    type Error = String;
+    fn try_from(value: String) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            let n = (value.as_str()).chars().count();
+            runtime::check_len(
+                out,
+                &runtime::InstancePath::Root,
+                n,
+                Some(4),
+                Some(4),
+                "characters",
+            );
+        }
+        match violations.into_iter().next() {
+            Some(v) => Err(v.message),
+            None => Ok(Self(value)),
+        }
+    }
+}
+checked_str_impls!(CardLast4);
+validate_impl!(CardLast4);
 pub type OrderCustomer = OrderCustomer2;
 pub type OrderCustomer2 = Customer;
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -573,20 +715,7 @@ impl<'de> serde::Deserialize<'de> for OrderPayment {
         first.ok_or_else(|| serde::de::Error::custom("matches no variant"))
     }
 }
-impl runtime::Validate for OrderPayment {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        match self {
-            Self::Card(x) => {
-                runtime::Validate::validate(x, path, out);
-            }
-            Self::Sepa(_) => {}
-        }
-    }
-}
+validate_impl!(OrderPayment);
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OrderDiscount {
     Money(Money),
@@ -623,6 +752,30 @@ impl<'de> serde::Deserialize<'de> for OrderDiscount {
     }
 }
 validate_impl!(OrderDiscount);
+#[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
+#[serde(transparent)]
+pub struct ListOrdersLimit(pub(super) i32);
+impl TryFrom<i32> for ListOrdersLimit {
+    type Error = String;
+    fn try_from(value: i32) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            runtime::check_range(
+                out,
+                &runtime::InstancePath::Root,
+                value,
+                [Some(1), Some(100), None, None],
+            );
+        }
+        match violations.into_iter().next() {
+            Some(v) => Err(v.message),
+            None => Ok(Self(value)),
+        }
+    }
+}
+checked_num_impls!(ListOrdersLimit, i32);
+validate_impl!(ListOrdersLimit);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum ListOrdersSort {
     Newest,
@@ -651,23 +804,37 @@ str_enum_impls!(ListOrdersSort);
 validate_impl!(ListOrdersSort);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
-pub struct ListOrdersCursor(String);
+pub struct ListOrdersCursor(pub(super) String);
 impl ListOrdersCursor {
     pub const PATTERN: &'static str = "^[A-Za-z0-9_-]+$";
-    #[must_use]
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
-    #[must_use]
-    pub fn into_inner(self) -> String {
-        self.0
+}
+impl TryFrom<String> for ListOrdersCursor {
+    type Error = String;
+    fn try_from(value: String) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            runtime::check(
+                out,
+                &runtime::InstancePath::Root,
+                runtime::pattern_matches(
+                    {
+                        static RE: runtime::Pattern = runtime::Pattern::new();
+                        &RE
+                    },
+                    "^[A-Za-z0-9_-]+$",
+                    value.as_str(),
+                ),
+                "does not match `^[A-Za-z0-9_-]+$`",
+            );
+        }
+        match violations.into_iter().next() {
+            Some(v) => Err(v.message),
+            None => Ok(Self(value)),
+        }
     }
 }
-try_from_impl!(ListOrdersCursor);
-try_from_impl_2!(ListOrdersCursor);
-as_ref_impl!(ListOrdersCursor);
-display_impl!(ListOrdersCursor);
-deserialize_impl_2!(ListOrdersCursor);
+checked_str_impls!(ListOrdersCursor);
 validate_impl!(ListOrdersCursor);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]

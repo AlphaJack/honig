@@ -11,17 +11,34 @@
     clippy::missing_errors_doc,
     reason = "generated docs hold only the description's own prose"
 )]
-macro_rules! deserialize_impl {
-    ($t:ty) => {
-        impl < 'de > serde::Deserialize < 'de > for $t { fn deserialize < D :
-        serde::Deserializer < 'de > > (d : D) -> Result < Self, D::Error > {
-        Self::deserialize(runtime::NoSeq(d)) } }
-    };
-}
 macro_rules! serialize_impl {
     ($t:ty) => {
-        impl serde::Serialize for $t { fn serialize < S : serde::Serializer > (& self, s
-        : S) -> Result < S::Ok, S::Error > { Self::serialize(self, s) } }
+        impl serde::Serialize for $t {
+            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                match self {
+                    Self::Variant1(v) => serde::Serialize::serialize(v, s),
+                    Self::Variant2(v) => serde::Serialize::serialize(v, s),
+                }
+            }
+        }
+    };
+}
+macro_rules! deserialize_impl {
+    ($t:ty) => {
+        impl<'de> serde::Deserialize<'de> for $t {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                Self::deserialize(runtime::NoSeq(d))
+            }
+        }
+    };
+}
+macro_rules! serialize_impl_2 {
+    ($t:ty) => {
+        impl serde::Serialize for $t {
+            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                Self::serialize(self, s)
+            }
+        }
     };
 }
 macro_rules! validate_impl {
@@ -31,74 +48,263 @@ macro_rules! validate_impl {
 }
 macro_rules! validate_impl_2 {
     ($t:ty) => {
-        impl runtime::Validate for $t { fn validate(& self, path : &
-        runtime::InstancePath < '_ >, out : & mut Vec < runtime::Violation >) { let n =
-        self.label.chars().count(); runtime::check_len(out, &
-        runtime::InstancePath::Key(path, "label"), n, None, Some(5), "characters"); {
-        static SCHEMA : std::sync::OnceLock < serde_json::Value > =
-        std::sync::OnceLock::new(); let value = runtime::to_value(& self.holders)
-        .unwrap_or_default(); runtime::check_schema(out, &
-        runtime::InstancePath::Key(path, "holders"), & value, SCHEMA.get_or_init(| |
-        serde_json::from_str("{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"contains\":{\"const\":\"owner\"}}")
-        .unwrap_or_default())); } } }
+        impl runtime::Validate for $t {
+            fn validate(
+                &self,
+                path: &runtime::InstancePath<'_>,
+                out: &mut Vec<runtime::Violation>,
+            ) {
+                {
+                    static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                    let value = runtime::to_value(&self.holders).unwrap_or_default();
+                    runtime::check_schema(
+                        out,
+                        &runtime::InstancePath::Key(path, "holders"),
+                        &value,
+                        SCHEMA
+                            .get_or_init(|| {
+                                serde_json::from_str(
+                                        "{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"contains\":{\"const\":\"owner\"}}",
+                                    )
+                                    .unwrap_or_default()
+                            }),
+                    );
+                }
+            }
+        }
     };
 }
 macro_rules! validate_impl_3 {
     ($t:ty) => {
-        impl runtime::Validate for $t { fn validate(& self, path : &
-        runtime::InstancePath < '_ >, out : & mut Vec < runtime::Violation >) { { let
-        base = & runtime::InstancePath::Key(path, "items"); for (i, v) in self.items
-        .iter().enumerate() { { static SCHEMA : std::sync::OnceLock < serde_json::Value >
-        = std::sync::OnceLock::new(); let value = runtime::to_value(v)
-        .unwrap_or_default(); runtime::check_schema(out, &
-        runtime::InstancePath::Index(base, i), & value, SCHEMA.get_or_init(| |
-        serde_json::from_str("{\"oneOf\":[{\"type\":\"object\",\"required\":[\"items\",\"x\"],\"properties\":{\"items\":{\"type\":\"array\",\"items\":{\"$ref\":\"#/$defs/~1components~1schemas~1Tree\"}},\"x\":{\"type\":\"string\"}}},{\"type\":\"object\",\"required\":[\"items\",\"x\"],\"properties\":{\"items\":{\"type\":\"array\",\"items\":{\"$ref\":\"#/$defs/~1components~1schemas~1Tree\"}},\"x\":{\"type\":\"integer\"}}}],\"$defs\":{\"~1components~1schemas~1Tree\":{\"oneOf\":[{\"type\":\"object\",\"required\":[\"items\",\"x\"],\"properties\":{\"items\":{\"type\":\"array\",\"items\":{\"$ref\":\"#/$defs/~1components~1schemas~1Tree\"}},\"x\":{\"type\":\"string\"}}},{\"type\":\"object\",\"required\":[\"items\",\"x\"],\"properties\":{\"items\":{\"type\":\"array\",\"items\":{\"$ref\":\"#/$defs/~1components~1schemas~1Tree\"}},\"x\":{\"type\":\"integer\"}}}]}}}")
-        .unwrap_or_default())); } } } } }
-    };
-}
-macro_rules! serialize_impl_2 {
-    ($t:ty) => {
-        impl serde::Serialize for $t { fn serialize < S : serde::Serializer > (& self, s
-        : S) -> Result < S::Ok, S::Error > { s.serialize_str(Self::VALUE) } }
+        impl runtime::Validate for $t {
+            fn validate(
+                &self,
+                path: &runtime::InstancePath<'_>,
+                out: &mut Vec<runtime::Violation>,
+            ) {
+                {
+                    let base = &runtime::InstancePath::Key(path, "items");
+                    for (i, v) in self.items.iter().enumerate() {
+                        {
+                            static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                            let value = runtime::to_value(v).unwrap_or_default();
+                            runtime::check_schema(
+                                out,
+                                &runtime::InstancePath::Index(base, i),
+                                &value,
+                                SCHEMA
+                                    .get_or_init(|| {
+                                        serde_json::from_str(
+                                                "{\"oneOf\":[{\"type\":\"object\",\"required\":[\"items\",\"x\"],\"properties\":{\"items\":{\"type\":\"array\",\"items\":{\"$ref\":\"#/$defs/~1components~1schemas~1Tree\"}},\"x\":{\"type\":\"string\"}}},{\"type\":\"object\",\"required\":[\"items\",\"x\"],\"properties\":{\"items\":{\"type\":\"array\",\"items\":{\"$ref\":\"#/$defs/~1components~1schemas~1Tree\"}},\"x\":{\"type\":\"integer\"}}}],\"$defs\":{\"~1components~1schemas~1Tree\":{\"oneOf\":[{\"type\":\"object\",\"required\":[\"items\",\"x\"],\"properties\":{\"items\":{\"type\":\"array\",\"items\":{\"$ref\":\"#/$defs/~1components~1schemas~1Tree\"}},\"x\":{\"type\":\"string\"}}},{\"type\":\"object\",\"required\":[\"items\",\"x\"],\"properties\":{\"items\":{\"type\":\"array\",\"items\":{\"$ref\":\"#/$defs/~1components~1schemas~1Tree\"}},\"x\":{\"type\":\"integer\"}}}]}}}",
+                                            )
+                                            .unwrap_or_default()
+                                    }),
+                            );
+                        }
+                    }
+                }
+            }
+        }
     };
 }
 macro_rules! try_from_impl {
     ($t:ty) => {
-        impl TryFrom < & str > for $t { type Error = String; fn try_from(value : & str)
-        -> Result < Self, String > { Self::try_from(value.to_owned()) } }
+        impl TryFrom<String> for $t {
+            type Error = String;
+            fn try_from(value: String) -> Result<Self, String> {
+                let mut violations: Vec<runtime::Violation> = Vec::new();
+                {
+                    let out = &mut violations;
+                    let n = (value.as_str()).chars().count();
+                    runtime::check_len(
+                        out,
+                        &runtime::InstancePath::Root,
+                        n,
+                        None,
+                        Some(3),
+                        "characters",
+                    );
+                }
+                match violations.into_iter().next() {
+                    Some(v) => Err(v.message),
+                    None => Ok(Self(value)),
+                }
+            }
+        }
     };
 }
-macro_rules! as_ref_impl {
+macro_rules! serialize_impl_3 {
     ($t:ty) => {
-        impl AsRef < str > for $t { fn as_ref(& self) -> & str { & self.0 } }
+        impl serde::Serialize for $t {
+            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                s.serialize_str(Self::VALUE)
+            }
+        }
     };
 }
-macro_rules! display_impl {
+macro_rules! try_from_impl_2 {
     ($t:ty) => {
-        impl std::fmt::Display for $t { fn fmt(& self, f : & mut std::fmt::Formatter < '_
-        >) -> std::fmt::Result { f.write_str(& self.0) } }
-    };
-}
-macro_rules! deserialize_impl_2 {
-    ($t:ty) => {
-        impl < 'de > serde::Deserialize < 'de > for $t { fn deserialize < D :
-        serde::Deserializer < 'de > > (d : D) -> Result < Self, D::Error > { let s = <
-        String as serde::Deserialize > ::deserialize(d) ?; Self::try_from(s)
-        .map_err(serde::de::Error::custom) } }
+        impl TryFrom<String> for $t {
+            type Error = String;
+            fn try_from(value: String) -> Result<Self, String> {
+                let mut violations: Vec<runtime::Violation> = Vec::new();
+                {
+                    let out = &mut violations;
+                    let n = (value.as_str()).chars().count();
+                    runtime::check_len(
+                        out,
+                        &runtime::InstancePath::Root,
+                        n,
+                        None,
+                        Some(5),
+                        "characters",
+                    );
+                }
+                match violations.into_iter().next() {
+                    Some(v) => Err(v.message),
+                    None => Ok(Self(value)),
+                }
+            }
+        }
     };
 }
 use super::runtime;
 macro_rules! str_enum_impls {
     ($n:ident) => {
-        impl std::fmt::Display for $n { fn fmt(& self, f : & mut std::fmt::Formatter < '_
-        >) -> std::fmt::Result { f.write_str(self.as_str()) } } impl std::str::FromStr
-        for $n { type Err = String; fn from_str(s : & str) -> Result < Self, Self::Err >
-        { Self::try_from(s) } } impl serde::Serialize for $n { fn serialize < S :
-        serde::Serializer > (& self, s : S) -> Result < S::Ok, S::Error > { s
-        .serialize_str(self.as_str()) } } impl < 'de > serde::Deserialize < 'de > for $n
-        { fn deserialize < D : serde::Deserializer < 'de >> (d : D) -> Result < Self,
-        D::Error > { let s = < std::borrow::Cow < 'de, str > as serde::Deserialize >
-        ::deserialize(d) ?; Self::try_from(& * s).map_err(serde::de::Error::custom) } }
+        impl std::fmt::Display for $n {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                f.write_str(self.as_str())
+            }
+        }
+        impl std::str::FromStr for $n {
+            type Err = String;
+            fn from_str(s: &str) -> Result<Self, Self::Err> {
+                Self::try_from(s)
+            }
+        }
+        impl serde::Serialize for $n {
+            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                s.serialize_str(self.as_str())
+            }
+        }
+        impl<'de> serde::Deserialize<'de> for $n {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                let s = <std::borrow::Cow<'de, str> as serde::Deserialize>::deserialize(d)?;
+                Self::try_from(&*s).map_err(serde::de::Error::custom)
+            }
+        }
+    };
+}
+macro_rules! checked_str_impls {
+    ($n:ident) => {
+        impl $n {
+            #[must_use]
+            pub fn as_str(&self) -> &str {
+                &self.0
+            }
+            #[must_use]
+            pub fn into_inner(self) -> String {
+                self.0
+            }
+        }
+        impl TryFrom<&str> for $n {
+            type Error = String;
+            fn try_from(value: &str) -> Result<Self, String> {
+                Self::try_from(value.to_owned())
+            }
+        }
+        impl std::str::FromStr for $n {
+            type Err = String;
+            fn from_str(s: &str) -> Result<Self, String> {
+                Self::try_from(s)
+            }
+        }
+        impl std::ops::Deref for $n {
+            type Target = str;
+            fn deref(&self) -> &str {
+                &self.0
+            }
+        }
+        impl AsRef<str> for $n {
+            fn as_ref(&self) -> &str {
+                &self.0
+            }
+        }
+        impl std::fmt::Display for $n {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                f.write_str(&self.0)
+            }
+        }
+        impl PartialEq<str> for $n {
+            fn eq(&self, other: &str) -> bool {
+                self.0 == other
+            }
+        }
+        impl PartialEq<&str> for $n {
+            fn eq(&self, other: &&str) -> bool {
+                self.0 == *other
+            }
+        }
+        impl From<$n> for String {
+            fn from(value: $n) -> Self {
+                value.0
+            }
+        }
+        impl<'de> serde::Deserialize<'de> for $n {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                let s = <String as serde::Deserialize>::deserialize(d)?;
+                Self::try_from(s).map_err(serde::de::Error::custom)
+            }
+        }
+    };
+}
+macro_rules! checked_num_impls {
+    ($n:ident, $t:ty) => {
+        impl $n {
+            #[must_use]
+            pub const fn get(self) -> $t {
+                self.0
+            }
+        }
+        impl std::str::FromStr for $n {
+            type Err = String;
+            fn from_str(s: &str) -> Result<Self, String> {
+                let v: $t = s.parse().map_err(|e| format!("{e}"))?;
+                Self::try_from(v)
+            }
+        }
+        impl std::ops::Deref for $n {
+            type Target = $t;
+            fn deref(&self) -> &$t {
+                &self.0
+            }
+        }
+        impl std::fmt::Display for $n {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                std::fmt::Display::fmt(&self.0, f)
+            }
+        }
+        impl PartialEq<$t> for $n {
+            fn eq(&self, other: &$t) -> bool {
+                self.0 == *other
+            }
+        }
+        impl PartialOrd<$t> for $n {
+            fn partial_cmp(&self, other: &$t) -> Option<std::cmp::Ordering> {
+                self.0.partial_cmp(other)
+            }
+        }
+        impl From<$n> for $t {
+            fn from(value: $n) -> Self {
+                value.0
+            }
+        }
+        impl<'de> serde::Deserialize<'de> for $n {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                let v = <$t as serde::Deserialize>::deserialize(d)?;
+                Self::try_from(v).map_err(serde::de::Error::custom)
+            }
+        }
     };
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -106,14 +312,7 @@ pub enum Tree {
     Variant1(TreeVariant1),
     Variant2(TreeVariant2),
 }
-impl serde::Serialize for Tree {
-    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        match self {
-            Self::Variant1(v) => serde::Serialize::serialize(v, s),
-            Self::Variant2(v) => serde::Serialize::serialize(v, s),
-        }
-    }
-}
+serialize_impl!(Tree);
 impl<'de> serde::Deserialize<'de> for Tree {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         let v = <runtime::Content<'de> as serde::Deserialize>::deserialize(d)?;
@@ -178,7 +377,7 @@ pub struct Ledger {
     pub entries: Option<Vec<Entry>>,
 }
 deserialize_impl!(Ledger);
-serialize_impl!(Ledger);
+serialize_impl_2!(Ledger);
 impl Ledger {
     #[must_use]
     pub const fn new() -> Self {
@@ -233,7 +432,7 @@ pub struct Entry {
     pub id: Option<i64>,
 }
 deserialize_impl!(Entry);
-serialize_impl!(Entry);
+serialize_impl_2!(Entry);
 impl Entry {
     #[must_use]
     pub const fn new() -> Self {
@@ -274,41 +473,22 @@ pub struct EntryFields {
     pub lines: Option<Vec<Line>>,
 }
 deserialize_impl!(EntryFields);
-serialize_impl!(EntryFields);
+serialize_impl_2!(EntryFields);
 impl EntryFields {
     #[must_use]
     pub const fn new() -> Self {
         Self { lines: None }
     }
 }
-impl runtime::Validate for EntryFields {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        if let Some(v) = &self.lines {
-            {
-                let base = &runtime::InstancePath::Key(path, "lines");
-                for (i, v) in v.iter().enumerate() {
-                    runtime::Validate::validate(
-                        v,
-                        &runtime::InstancePath::Index(base, i),
-                        out,
-                    );
-                }
-            }
-        }
-    }
-}
+validate_impl!(EntryFields);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Line {
     #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
-    pub note: runtime::Nullable<String>,
+    pub note: runtime::Nullable<LineNote>,
 }
 deserialize_impl!(Line);
-serialize_impl!(Line);
+serialize_impl_2!(Line);
 impl Line {
     #[must_use]
     pub const fn new() -> Self {
@@ -317,25 +497,7 @@ impl Line {
         }
     }
 }
-impl runtime::Validate for Line {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        if let runtime::Nullable::Value(v) = &self.note {
-            let n = v.chars().count();
-            runtime::check_len(
-                out,
-                &runtime::InstancePath::Key(path, "note"),
-                n,
-                None,
-                Some(3),
-                "characters",
-            );
-        }
-    }
-}
+validate_impl!(Line);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Refusal {
@@ -343,7 +505,7 @@ pub struct Refusal {
     pub object: RefusalObject,
 }
 deserialize_impl!(Refusal);
-serialize_impl!(Refusal);
+serialize_impl_2!(Refusal);
 impl Refusal {
     #[must_use]
     pub const fn new(message: String, object: RefusalObject) -> Self {
@@ -360,7 +522,7 @@ pub struct Problem {
     pub detail: String,
 }
 deserialize_impl!(Problem);
-serialize_impl!(Problem);
+serialize_impl_2!(Problem);
 impl Problem {
     #[must_use]
     pub const fn new(code: ProblemCode, status: i32, detail: String) -> Self {
@@ -373,7 +535,7 @@ validate_impl!(Problem);
 #[serde(deny_unknown_fields)]
 pub struct NoOptions {}
 deserialize_impl!(NoOptions);
-serialize_impl!(NoOptions);
+serialize_impl_2!(NoOptions);
 impl NoOptions {
     #[must_use]
     pub const fn new() -> Self {
@@ -381,18 +543,18 @@ impl NoOptions {
     }
 }
 validate_impl!(NoOptions);
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Badge {
     pub id: i64,
-    pub label: String,
+    pub label: BadgeLabel,
     pub holders: Vec<String>,
 }
 deserialize_impl!(Badge);
-serialize_impl!(Badge);
+serialize_impl_2!(Badge);
 impl Badge {
     #[must_use]
-    pub const fn new(id: i64, label: String, holders: Vec<String>) -> Self {
+    pub const fn new(id: i64, label: BadgeLabel, holders: Vec<String>) -> Self {
         Self { id, label, holders }
     }
 }
@@ -404,7 +566,7 @@ pub struct Login {
     pub token: String,
 }
 deserialize_impl!(Login);
-serialize_impl!(Login);
+serialize_impl_2!(Login);
 impl Login {
     #[must_use]
     pub const fn new(user: String, token: String) -> Self {
@@ -488,7 +650,7 @@ pub struct Price {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub amount: Option<f64>,
+    pub amount: Option<PriceAmount>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
@@ -497,7 +659,7 @@ pub struct Price {
     pub retired: Option<()>,
 }
 deserialize_impl!(Price);
-serialize_impl!(Price);
+serialize_impl_2!(Price);
 impl Price {
     #[must_use]
     pub const fn new() -> Self {
@@ -507,24 +669,7 @@ impl Price {
         }
     }
 }
-impl runtime::Validate for Price {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        if let Some(v) = &self.amount {
-            let q = *v / 0.01;
-            if (q - q.round()).abs() > 1e-9 {
-                runtime::violation(
-                    out,
-                    &runtime::InstancePath::Key(path, "amount"),
-                    "is not a multiple of 0.01",
-                );
-            }
-        }
-    }
-}
+validate_impl!(Price);
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct User {
@@ -540,19 +685,19 @@ pub struct User {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub age: Option<i64>,
+    pub age: Option<UserAge>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub score: Option<f64>,
+    pub score: Option<UserScore>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub tags: Option<Vec<String>>,
+    pub tags: Option<Vec<UserTagsItem>>,
     pub role: UserRole,
     #[serde(
         default,
@@ -582,7 +727,7 @@ pub struct User {
     pub note: runtime::Nullable<UserNote>,
 }
 deserialize_impl!(User);
-serialize_impl!(User);
+serialize_impl_2!(User);
 impl User {
     #[must_use]
     pub const fn new(name: UserName, role: UserRole) -> Self {
@@ -607,24 +752,6 @@ impl runtime::Validate for User {
         path: &runtime::InstancePath<'_>,
         out: &mut Vec<runtime::Violation>,
     ) {
-        if let Some(v) = &self.age {
-            runtime::check_range(
-                out,
-                &runtime::InstancePath::Key(path, "age"),
-                *v,
-                [Some(0), None, None, Some(150)],
-            );
-        }
-        if let Some(v) = &self.score {
-            let q = *v / 0.5;
-            if (q - q.round()).abs() > 1e-9 {
-                runtime::violation(
-                    out,
-                    &runtime::InstancePath::Key(path, "score"),
-                    "is not a multiple of 0.5",
-                );
-            }
-        }
         if let Some(v) = &self.tags {
             runtime::check_len(
                 out,
@@ -635,20 +762,6 @@ impl runtime::Validate for User {
                 "items",
             );
             runtime::check_unique(out, &runtime::InstancePath::Key(path, "tags"), v);
-            {
-                let base = &runtime::InstancePath::Key(path, "tags");
-                for (i, v) in v.iter().enumerate() {
-                    let n = v.chars().count();
-                    runtime::check_len(
-                        out,
-                        &runtime::InstancePath::Index(base, i),
-                        n,
-                        None,
-                        Some(3),
-                        "characters",
-                    );
-                }
-            }
         }
         if let Some(v) = &self.meta {
             runtime::check_len(
@@ -660,24 +773,6 @@ impl runtime::Validate for User {
                 "properties",
             );
         }
-        if let Some(v) = &self.loyalty {
-            runtime::Validate::validate(
-                v,
-                &runtime::InstancePath::Key(path, "loyalty"),
-                out,
-            );
-        }
-        if let runtime::Nullable::Value(v) = &self.note {
-            let n = v.chars().count();
-            runtime::check_len(
-                out,
-                &runtime::InstancePath::Key(path, "note"),
-                n,
-                None,
-                Some(5),
-                "characters",
-            );
-        }
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
@@ -687,7 +782,7 @@ pub struct TreeVariant1 {
     pub x: String,
 }
 deserialize_impl!(TreeVariant1);
-serialize_impl!(TreeVariant1);
+serialize_impl_2!(TreeVariant1);
 impl TreeVariant1 {
     #[must_use]
     pub const fn new(items: Vec<Tree>, x: String) -> Self {
@@ -702,7 +797,7 @@ pub struct TreeVariant2 {
     pub x: i64,
 }
 deserialize_impl!(TreeVariant2);
-serialize_impl!(TreeVariant2);
+serialize_impl_2!(TreeVariant2);
 impl TreeVariant2 {
     #[must_use]
     pub const fn new(items: Vec<Tree>, x: i64) -> Self {
@@ -710,12 +805,18 @@ impl TreeVariant2 {
     }
 }
 validate_impl_3!(TreeVariant2);
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
+#[serde(transparent)]
+pub struct LineNote(pub(super) String);
+try_from_impl!(LineNote);
+checked_str_impls!(LineNote);
+validate_impl!(LineNote);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 pub struct RefusalObject;
 impl RefusalObject {
     pub const VALUE: &'static str = "error";
 }
-serialize_impl_2!(RefusalObject);
+serialize_impl_3!(RefusalObject);
 impl<'de> serde::Deserialize<'de> for RefusalObject {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         runtime::expect_const(d, &serde_json::Value::String("error".to_owned()))
@@ -749,6 +850,39 @@ impl TryFrom<&str> for ProblemCode {
 }
 str_enum_impls!(ProblemCode);
 validate_impl!(ProblemCode);
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
+#[serde(transparent)]
+pub struct BadgeLabel(pub(super) String);
+try_from_impl_2!(BadgeLabel);
+checked_str_impls!(BadgeLabel);
+validate_impl!(BadgeLabel);
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
+#[serde(transparent)]
+pub struct LoginPassword(pub(super) String);
+impl TryFrom<String> for LoginPassword {
+    type Error = String;
+    fn try_from(value: String) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            let n = (value.as_str()).chars().count();
+            runtime::check_len(
+                out,
+                &runtime::InstancePath::Root,
+                n,
+                Some(8),
+                None,
+                "characters",
+            );
+        }
+        match violations.into_iter().next() {
+            Some(v) => Err(v.message),
+            None => Ok(Self(value)),
+        }
+    }
+}
+checked_str_impls!(LoginPassword);
+validate_impl!(LoginPassword);
 #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct ShipmentInternational {
@@ -789,18 +923,18 @@ pub struct ShipmentInternational {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub label: Option<String>,
+    pub label: Option<ShipmentInternationalLabel>,
     pub parcels: Vec<ParcelsItem>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub scores: Option<std::collections::BTreeMap<String, i64>>,
+    pub scores: Option<std::collections::BTreeMap<String, ScoresValue>>,
     #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
-    pub priority: runtime::Nullable<f64>,
+    pub priority: runtime::Nullable<ShipmentInternationalPriority>,
     #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
-    pub weight: runtime::Nullable<i64>,
+    pub weight: runtime::Nullable<ShipmentInternationalWeight>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
@@ -809,7 +943,7 @@ pub struct ShipmentInternational {
     pub labels: Option<std::collections::BTreeMap<String, String>>,
 }
 deserialize_impl!(ShipmentInternational);
-serialize_impl!(ShipmentInternational);
+serialize_impl_2!(ShipmentInternational);
 impl ShipmentInternational {
     #[must_use]
     pub const fn new(
@@ -869,17 +1003,6 @@ impl runtime::Validate for ShipmentInternational {
                 );
             }
         }
-        if let Some(v) = &self.label {
-            let n = v.chars().count();
-            runtime::check_len(
-                out,
-                &runtime::InstancePath::Key(path, "label"),
-                n,
-                Some(4),
-                None,
-                "characters",
-            );
-        }
         {
             static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
             let value = runtime::to_value(&self.parcels).unwrap_or_default();
@@ -914,22 +1037,6 @@ impl runtime::Validate for ShipmentInternational {
                 );
             }
         }
-        if let runtime::Nullable::Value(v) = &self.priority {
-            runtime::check_range(
-                out,
-                &runtime::InstancePath::Key(path, "priority"),
-                *v,
-                [Some(0.0), Some(2.0), None, None],
-            );
-        }
-        if let runtime::Nullable::Value(v) = &self.weight {
-            runtime::check_range(
-                out,
-                &runtime::InstancePath::Key(path, "weight"),
-                *v,
-                [Some(256), None, None, None],
-            );
-        }
         if let Some(v) = &self.labels {
             {
                 static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
@@ -955,7 +1062,7 @@ pub struct ShipmentInternationalKind;
 impl ShipmentInternationalKind {
     pub const VALUE: &'static str = "international";
 }
-serialize_impl_2!(ShipmentInternationalKind);
+serialize_impl_3!(ShipmentInternationalKind);
 impl<'de> serde::Deserialize<'de> for ShipmentInternationalKind {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         runtime::expect_const(d, &serde_json::Value::String("international".to_owned()))
@@ -1002,7 +1109,7 @@ pub struct MetaObject {
     pub count: Option<i64>,
 }
 deserialize_impl!(MetaObject);
-serialize_impl!(MetaObject);
+serialize_impl_2!(MetaObject);
 impl MetaObject {
     #[must_use]
     pub const fn new() -> Self {
@@ -1010,6 +1117,33 @@ impl MetaObject {
     }
 }
 validate_impl!(MetaObject);
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
+#[serde(transparent)]
+pub struct ShipmentInternationalLabel(pub(super) String);
+impl TryFrom<String> for ShipmentInternationalLabel {
+    type Error = String;
+    fn try_from(value: String) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            let n = (value.as_str()).chars().count();
+            runtime::check_len(
+                out,
+                &runtime::InstancePath::Root,
+                n,
+                Some(4),
+                None,
+                "characters",
+            );
+        }
+        match violations.into_iter().next() {
+            Some(v) => Err(v.message),
+            None => Ok(Self(value)),
+        }
+    }
+}
+checked_str_impls!(ShipmentInternationalLabel);
+validate_impl!(ShipmentInternationalLabel);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct ParcelsItem {
@@ -1021,7 +1155,7 @@ pub struct ParcelsItem {
     pub fragile: Option<bool>,
 }
 deserialize_impl!(ParcelsItem);
-serialize_impl!(ParcelsItem);
+serialize_impl_2!(ParcelsItem);
 impl ParcelsItem {
     #[must_use]
     pub const fn new() -> Self {
@@ -1029,6 +1163,78 @@ impl ParcelsItem {
     }
 }
 validate_impl!(ParcelsItem);
+#[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
+#[serde(transparent)]
+pub struct ScoresValue(pub(super) i64);
+impl TryFrom<i64> for ScoresValue {
+    type Error = String;
+    fn try_from(value: i64) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            runtime::check_range(
+                out,
+                &runtime::InstancePath::Root,
+                value,
+                [Some(0), None, None, None],
+            );
+        }
+        match violations.into_iter().next() {
+            Some(v) => Err(v.message),
+            None => Ok(Self(value)),
+        }
+    }
+}
+checked_num_impls!(ScoresValue, i64);
+validate_impl!(ScoresValue);
+#[derive(Debug, Clone, PartialEq, Copy, PartialOrd, serde::Serialize)]
+#[serde(transparent)]
+pub struct ShipmentInternationalPriority(pub(super) f64);
+impl TryFrom<f64> for ShipmentInternationalPriority {
+    type Error = String;
+    fn try_from(value: f64) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            runtime::check_range(
+                out,
+                &runtime::InstancePath::Root,
+                value,
+                [Some(0.0), Some(2.0), None, None],
+            );
+        }
+        match violations.into_iter().next() {
+            Some(v) => Err(v.message),
+            None => Ok(Self(value)),
+        }
+    }
+}
+checked_num_impls!(ShipmentInternationalPriority, f64);
+validate_impl!(ShipmentInternationalPriority);
+#[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
+#[serde(transparent)]
+pub struct ShipmentInternationalWeight(pub(super) i64);
+impl TryFrom<i64> for ShipmentInternationalWeight {
+    type Error = String;
+    fn try_from(value: i64) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            runtime::check_range(
+                out,
+                &runtime::InstancePath::Root,
+                value,
+                [Some(256), None, None, None],
+            );
+        }
+        match violations.into_iter().next() {
+            Some(v) => Err(v.message),
+            None => Ok(Self(value)),
+        }
+    }
+}
+checked_num_impls!(ShipmentInternationalWeight, i64);
+validate_impl!(ShipmentInternationalWeight);
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct ShipmentOtherwise {
@@ -1074,18 +1280,18 @@ pub struct ShipmentOtherwise {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub label: Option<String>,
+    pub label: Option<ShipmentOtherwiseLabel>,
     pub parcels: Vec<ShipmentOtherwiseParcelsItem>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub scores: Option<std::collections::BTreeMap<String, i64>>,
+    pub scores: Option<std::collections::BTreeMap<String, ShipmentOtherwiseScoresValue>>,
     #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
-    pub priority: runtime::Nullable<f64>,
+    pub priority: runtime::Nullable<ShipmentOtherwisePriority>,
     #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
-    pub weight: runtime::Nullable<i64>,
+    pub weight: runtime::Nullable<ShipmentOtherwiseWeight>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
@@ -1094,7 +1300,7 @@ pub struct ShipmentOtherwise {
     pub labels: Option<std::collections::BTreeMap<String, String>>,
 }
 deserialize_impl!(ShipmentOtherwise);
-serialize_impl!(ShipmentOtherwise);
+serialize_impl_2!(ShipmentOtherwise);
 impl ShipmentOtherwise {
     #[must_use]
     pub const fn new(
@@ -1139,17 +1345,6 @@ impl runtime::Validate for ShipmentOtherwise {
                 );
             }
         }
-        if let Some(v) = &self.label {
-            let n = v.chars().count();
-            runtime::check_len(
-                out,
-                &runtime::InstancePath::Key(path, "label"),
-                n,
-                Some(4),
-                None,
-                "characters",
-            );
-        }
         {
             static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
             let value = runtime::to_value(&self.parcels).unwrap_or_default();
@@ -1183,22 +1378,6 @@ impl runtime::Validate for ShipmentOtherwise {
                         }),
                 );
             }
-        }
-        if let runtime::Nullable::Value(v) = &self.priority {
-            runtime::check_range(
-                out,
-                &runtime::InstancePath::Key(path, "priority"),
-                *v,
-                [Some(0.0), Some(2.0), None, None],
-            );
-        }
-        if let runtime::Nullable::Value(v) = &self.weight {
-            runtime::check_range(
-                out,
-                &runtime::InstancePath::Key(path, "weight"),
-                *v,
-                [Some(256), None, None, None],
-            );
         }
         if let Some(v) = &self.labels {
             {
@@ -1248,89 +1427,183 @@ str_enum_impls!(ShipmentOtherwiseKind);
 validate_impl!(ShipmentOtherwiseKind);
 pub type ShipmentOtherwiseMeta = ShipmentInternationalMeta;
 pub type ShipmentOtherwiseMetaObject = MetaObject;
+pub type ShipmentOtherwiseLabel = ShipmentInternationalLabel;
 pub type ShipmentOtherwiseParcelsItem = ParcelsItem;
+pub type ShipmentOtherwiseScoresValue = ScoresValue;
+pub type ShipmentOtherwisePriority = ShipmentInternationalPriority;
+pub type ShipmentOtherwiseWeight = ShipmentInternationalWeight;
+#[derive(Debug, Clone, PartialEq, Copy, PartialOrd, serde::Serialize)]
+#[serde(transparent)]
+pub struct PriceAmount(pub(super) f64);
+impl TryFrom<f64> for PriceAmount {
+    type Error = String;
+    fn try_from(value: f64) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            let q = value / 0.01;
+            if (q - q.round()).abs() > 1e-9 {
+                runtime::violation(
+                    out,
+                    &runtime::InstancePath::Root,
+                    "is not a multiple of 0.01",
+                );
+            }
+        }
+        match violations.into_iter().next() {
+            Some(v) => Err(v.message),
+            None => Ok(Self(value)),
+        }
+    }
+}
+checked_num_impls!(PriceAmount, f64);
+validate_impl!(PriceAmount);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
-pub struct UserName(String);
+pub struct UserName(pub(super) String);
 impl UserName {
     pub const PATTERN: &'static str = "^\\p{Lu}";
-    #[must_use]
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
-    #[must_use]
-    pub fn into_inner(self) -> String {
-        self.0
-    }
 }
 impl TryFrom<String> for UserName {
     type Error = String;
     fn try_from(value: String) -> Result<Self, String> {
-        static RE: runtime::Pattern = runtime::Pattern::new();
-        let mut out = Vec::new();
-        runtime::check_len(
-            &mut out,
-            &runtime::InstancePath::Root,
-            value.chars().count(),
-            Some(2u64),
-            Some(10u64),
-            "characters",
-        );
-        if let Some(v) = out.first() {
-            return Err(v.message.clone());
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            let n = (value.as_str()).chars().count();
+            runtime::check_len(
+                out,
+                &runtime::InstancePath::Root,
+                n,
+                Some(2),
+                Some(10),
+                "characters",
+            );
+            if n <= 10 {
+                runtime::check(
+                    out,
+                    &runtime::InstancePath::Root,
+                    runtime::pattern_matches(
+                        {
+                            static RE: runtime::Pattern = runtime::Pattern::new();
+                            &RE
+                        },
+                        "^\\p{Lu}",
+                        value.as_str(),
+                    ),
+                    "does not match `^\\p{Lu}`",
+                );
+            }
         }
-        if !runtime::pattern_matches(&RE, Self::PATTERN, &value) {
-            return Err(format!("`{value}` does not match `{}`", Self::PATTERN));
+        match violations.into_iter().next() {
+            Some(v) => Err(v.message),
+            None => Ok(Self(value)),
         }
-        Ok(Self(value))
     }
 }
-try_from_impl!(UserName);
-as_ref_impl!(UserName);
-display_impl!(UserName);
-deserialize_impl_2!(UserName);
+checked_str_impls!(UserName);
 validate_impl!(UserName);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
-pub struct UserHandle(String);
+pub struct UserHandle(pub(super) String);
 impl UserHandle {
     pub const PATTERN: &'static str = "^(a+)+$";
-    #[must_use]
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
-    #[must_use]
-    pub fn into_inner(self) -> String {
-        self.0
-    }
 }
 impl TryFrom<String> for UserHandle {
     type Error = String;
     fn try_from(value: String) -> Result<Self, String> {
-        static RE: runtime::Pattern = runtime::Pattern::new();
-        let mut out = Vec::new();
-        runtime::check_len(
-            &mut out,
-            &runtime::InstancePath::Root,
-            value.chars().count(),
-            None,
-            Some(20u64),
-            "characters",
-        );
-        if let Some(v) = out.first() {
-            return Err(v.message.clone());
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            let n = (value.as_str()).chars().count();
+            runtime::check_len(
+                out,
+                &runtime::InstancePath::Root,
+                n,
+                None,
+                Some(20),
+                "characters",
+            );
+            if n <= 20 {
+                runtime::check(
+                    out,
+                    &runtime::InstancePath::Root,
+                    runtime::pattern_matches(
+                        {
+                            static RE: runtime::Pattern = runtime::Pattern::new();
+                            &RE
+                        },
+                        "^(a+)+$",
+                        value.as_str(),
+                    ),
+                    "does not match `^(a+)+$`",
+                );
+            }
         }
-        if !runtime::pattern_matches(&RE, Self::PATTERN, &value) {
-            return Err(format!("`{value}` does not match `{}`", Self::PATTERN));
+        match violations.into_iter().next() {
+            Some(v) => Err(v.message),
+            None => Ok(Self(value)),
         }
-        Ok(Self(value))
     }
 }
-try_from_impl!(UserHandle);
-as_ref_impl!(UserHandle);
-display_impl!(UserHandle);
-deserialize_impl_2!(UserHandle);
+checked_str_impls!(UserHandle);
 validate_impl!(UserHandle);
+#[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
+#[serde(transparent)]
+pub struct UserAge(pub(super) i64);
+impl TryFrom<i64> for UserAge {
+    type Error = String;
+    fn try_from(value: i64) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            runtime::check_range(
+                out,
+                &runtime::InstancePath::Root,
+                value,
+                [Some(0), None, None, Some(150)],
+            );
+        }
+        match violations.into_iter().next() {
+            Some(v) => Err(v.message),
+            None => Ok(Self(value)),
+        }
+    }
+}
+checked_num_impls!(UserAge, i64);
+validate_impl!(UserAge);
+#[derive(Debug, Clone, PartialEq, Copy, PartialOrd, serde::Serialize)]
+#[serde(transparent)]
+pub struct UserScore(pub(super) f64);
+impl TryFrom<f64> for UserScore {
+    type Error = String;
+    fn try_from(value: f64) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            let q = value / 0.5;
+            if (q - q.round()).abs() > 1e-9 {
+                runtime::violation(
+                    out,
+                    &runtime::InstancePath::Root,
+                    "is not a multiple of 0.5",
+                );
+            }
+        }
+        match violations.into_iter().next() {
+            Some(v) => Err(v.message),
+            None => Ok(Self(value)),
+        }
+    }
+}
+checked_num_impls!(UserScore, f64);
+validate_impl!(UserScore);
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
+#[serde(transparent)]
+pub struct UserTagsItem(pub(super) String);
+try_from_impl!(UserTagsItem);
+checked_str_impls!(UserTagsItem);
+validate_impl!(UserTagsItem);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum UserRole {
     Admin,
@@ -1359,23 +1632,16 @@ str_enum_impls!(UserRole);
 validate_impl!(UserRole);
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum UserLoyalty {
-    Integer(i64),
-    String(String),
+    Variant1(UserLoyaltyVariant1),
+    Variant2(UserLoyaltyVariant2),
 }
-impl serde::Serialize for UserLoyalty {
-    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        match self {
-            Self::Integer(v) => serde::Serialize::serialize(v, s),
-            Self::String(v) => serde::Serialize::serialize(v, s),
-        }
-    }
-}
+serialize_impl!(UserLoyalty);
 impl<'de> serde::Deserialize<'de> for UserLoyalty {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         let v = <runtime::Content<'de> as serde::Deserialize>::deserialize(d)?;
         match v.kind() {
-            runtime::Kind::Integer => v.decode_into(Self::Integer),
-            runtime::Kind::String => v.decode_into(Self::String),
+            runtime::Kind::Integer => v.decode_into(Self::Variant1),
+            runtime::Kind::String => v.decode_into(Self::Variant2),
             runtime::Kind::Null
             | runtime::Kind::Bool
             | runtime::Kind::Number
@@ -1386,108 +1652,129 @@ impl<'de> serde::Deserialize<'de> for UserLoyalty {
         }
     }
 }
-impl runtime::Validate for UserLoyalty {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        match self {
-            Self::Integer(x) => {
-                runtime::check_range(out, path, *x, [Some(1), Some(10), None, None]);
-            }
-            Self::String(x) => {
-                let n = x.chars().count();
-                runtime::check_len(out, path, n, None, Some(3), "characters");
-            }
+validate_impl!(UserLoyalty);
+#[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
+#[serde(transparent)]
+pub struct UserLoyaltyVariant1(pub(super) i64);
+impl TryFrom<i64> for UserLoyaltyVariant1 {
+    type Error = String;
+    fn try_from(value: i64) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            runtime::check_range(
+                out,
+                &runtime::InstancePath::Root,
+                value,
+                [Some(1), Some(10), None, None],
+            );
+        }
+        match violations.into_iter().next() {
+            Some(v) => Err(v.message),
+            None => Ok(Self(value)),
         }
     }
 }
-pub type UserNote = String;
+checked_num_impls!(UserLoyaltyVariant1, i64);
+validate_impl!(UserLoyaltyVariant1);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
-pub struct CreateUserXTeam(String);
+pub struct UserLoyaltyVariant2(pub(super) String);
+try_from_impl!(UserLoyaltyVariant2);
+checked_str_impls!(UserLoyaltyVariant2);
+validate_impl!(UserLoyaltyVariant2);
+pub type UserNote = UserNote2;
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
+#[serde(transparent)]
+pub struct UserNote2(pub(super) String);
+try_from_impl_2!(UserNote2);
+checked_str_impls!(UserNote2);
+validate_impl!(UserNote2);
+#[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
+#[serde(transparent)]
+pub struct CreateUserLimit(pub(super) i64);
+impl TryFrom<i64> for CreateUserLimit {
+    type Error = String;
+    fn try_from(value: i64) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            runtime::check_range(
+                out,
+                &runtime::InstancePath::Root,
+                value,
+                [Some(1), Some(100), None, None],
+            );
+        }
+        match violations.into_iter().next() {
+            Some(v) => Err(v.message),
+            None => Ok(Self(value)),
+        }
+    }
+}
+checked_num_impls!(CreateUserLimit, i64);
+validate_impl!(CreateUserLimit);
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
+#[serde(transparent)]
+pub struct CreateUserXTeam(pub(super) String);
 impl CreateUserXTeam {
     pub const PATTERN: &'static str = "^[a-z]+$";
-    #[must_use]
-    pub fn as_str(&self) -> &str {
-        &self.0
-    }
-    #[must_use]
-    pub fn into_inner(self) -> String {
-        self.0
-    }
 }
 impl TryFrom<String> for CreateUserXTeam {
     type Error = String;
     fn try_from(value: String) -> Result<Self, String> {
-        static RE: runtime::Pattern = runtime::Pattern::new();
-        let mut out = Vec::new();
-        runtime::check_len(
-            &mut out,
-            &runtime::InstancePath::Root,
-            value.chars().count(),
-            None,
-            None,
-            "characters",
-        );
-        if let Some(v) = out.first() {
-            return Err(v.message.clone());
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            runtime::check(
+                out,
+                &runtime::InstancePath::Root,
+                runtime::pattern_matches(
+                    {
+                        static RE: runtime::Pattern = runtime::Pattern::new();
+                        &RE
+                    },
+                    "^[a-z]+$",
+                    value.as_str(),
+                ),
+                "does not match `^[a-z]+$`",
+            );
         }
-        if !runtime::pattern_matches(&RE, Self::PATTERN, &value) {
-            return Err(format!("`{value}` does not match `{}`", Self::PATTERN));
+        match violations.into_iter().next() {
+            Some(v) => Err(v.message),
+            None => Ok(Self(value)),
         }
-        Ok(Self(value))
     }
 }
-try_from_impl!(CreateUserXTeam);
-as_ref_impl!(CreateUserXTeam);
-display_impl!(CreateUserXTeam);
-deserialize_impl_2!(CreateUserXTeam);
+checked_str_impls!(CreateUserXTeam);
 validate_impl!(CreateUserXTeam);
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct BadgeRequest {
-    pub label: String,
+    pub label: BadgeLabel,
     pub holders: Vec<String>,
 }
 deserialize_impl!(BadgeRequest);
-serialize_impl!(BadgeRequest);
+serialize_impl_2!(BadgeRequest);
 impl BadgeRequest {
     #[must_use]
-    pub const fn new(label: String, holders: Vec<String>) -> Self {
+    pub const fn new(label: BadgeLabel, holders: Vec<String>) -> Self {
         Self { label, holders }
     }
 }
 validate_impl_2!(BadgeRequest);
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct LoginRequest {
     pub user: String,
-    pub password: String,
+    pub password: LoginPassword,
 }
 deserialize_impl!(LoginRequest);
-serialize_impl!(LoginRequest);
+serialize_impl_2!(LoginRequest);
 impl LoginRequest {
     #[must_use]
-    pub const fn new(user: String, password: String) -> Self {
+    pub const fn new(user: String, password: LoginPassword) -> Self {
         Self { user, password }
     }
 }
-impl runtime::Validate for LoginRequest {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        let n = self.password.chars().count();
-        runtime::check_len(
-            out,
-            &runtime::InstancePath::Key(path, "password"),
-            n,
-            Some(8),
-            None,
-            "characters",
-        );
-    }
-}
+validate_impl!(LoginRequest);

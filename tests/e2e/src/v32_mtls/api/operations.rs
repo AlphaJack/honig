@@ -13,7 +13,11 @@
 )]
 macro_rules! default_impl {
     ($t:ty) => {
-        impl Default for $t { fn default() -> Self { Self::new() } }
+        impl Default for $t {
+            fn default() -> Self {
+                Self::new()
+            }
+        }
     };
 }
 macro_rules! validate_impl {

@@ -7,8 +7,8 @@ use serde_json::Value;
 use super::cycles::break_cycles;
 use super::rewrite::{FALLBACK, conditional_union, request_view};
 use super::{
-    Access, Constraints, EnumValue, Field, Format, JsonKind, Kind, Struct, Ty, TypeDef, TypeId, TypeSpace, Union,
-    UnionMode, Variant, XmlHint,
+    Access, Checked, Constraints, EnumValue, Field, Format, JsonKind, Kind, Struct, Ty, TypeDef, TypeId, TypeSpace,
+    Union, UnionMode, Variant, XmlHint,
 };
 use crate::diag::Diagnostics;
 use crate::ir::names::{Name, Reserved, reserved, unique};
@@ -158,19 +158,32 @@ fn int_format(format: &str) -> Option<Ty> {
     })
 }
 
-/// Returns a string schema with a `pattern` and no other typing (`enum`, `const`,
-/// a typed `format`, composition).
-pub(crate) fn pattern_string(o: &serde_json::Map<String, Value>) -> bool {
+/// Returns a string, integer or number schema with keywords of its own for its type (`pattern`, `maxLength`,
+/// `minimum`, `multipleOf`, ...) and no other typing (`enum`, `const`, a typed `format`, composition). Its type
+/// holds only the values that they allow.
+pub(crate) fn checked_scalar(o: &serde_json::Map<String, Value>) -> bool {
     let (types, _) = type_set(o);
-    let string = types.iter().filter(|t| *t != "null").all(|t| t == "string") && !types.is_empty();
-    let typed_format = o
-        .get("format")
-        .and_then(Value::as_str)
-        .is_some_and(|f| string_format(f).is_some() || matches!(f, "binary" | "byte"));
+    let mut non_null = types.iter().filter(|t| *t != "null");
+    let (Some(t), None) = (non_null.next(), non_null.next()) else { return false };
     let shaped = ["oneOf", "anyOf", "allOf", "enum", "const", "if", "not", "contentEncoding", "contentMediaType"]
         .iter()
         .any(|k| o.contains_key(*k));
-    string && o.get("pattern").is_some_and(Value::is_string) && !typed_format && !shaped
+    if shaped {
+        return false;
+    }
+    let format = o.get("format").and_then(Value::as_str);
+    match t.as_str() {
+        "string" => {
+            let typed_format = format.is_some_and(|f| string_format(f).is_some() || matches!(f, "binary" | "byte"));
+            !typed_format
+                && (o.get("pattern").is_some_and(Value::is_string)
+                    || ["minLength", "maxLength"].iter().any(|k| o.get(*k).and_then(json::count).is_some()))
+        }
+        "integer" | "number" => ["minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "multipleOf"]
+            .iter()
+            .any(|k| o.get(*k).is_some_and(Value::is_number)),
+        _ => false,
+    }
 }
 
 /// Returns a `const` with a type of its own. That is a string, number or bool.
@@ -727,8 +740,9 @@ impl<'a> Builder<'a> {
         if let Some(c) = scalar_const(o) {
             return Some(Kind::Const(c.clone()));
         }
-        if pattern_string(o) {
-            return Some(Kind::Pattern(Box::new(Constraints::own(s))));
+        if checked_scalar(o) {
+            let base = self.scalar(o, ptr, name);
+            return Some(Kind::Checked(Box::new(Checked { base, constraints: Constraints::own(s) })));
         }
         if let Some(Value::Object(u)) = self.sibling_union(o, ptr) {
             return self.union(&u, ptr, name);
@@ -850,7 +864,17 @@ impl<'a> Builder<'a> {
     pub(crate) fn literal_type(&self, t: &Ty) -> bool {
         let t = unalias(&self.defs, t);
         if let Ty::Named(id) = t {
-            return matches!(self.defs[id.0].kind, Kind::StrEnum(_) | Kind::IntEnum(_));
+            return match &self.defs[id.0].kind {
+                Kind::StrEnum(_) | Kind::IntEnum(_) => true,
+                // `literal_default` keeps only a default that meets the keywords.
+                Kind::Checked(c) => self.literal_type(&c.base),
+                Kind::Struct(_)
+                | Kind::Union(_)
+                | Kind::Alias(_)
+                | Kind::Newtype(_)
+                | Kind::Const(_)
+                | Kind::Pending => false,
+            };
         }
         matches!(
             t,
@@ -871,7 +895,7 @@ impl<'a> Builder<'a> {
     }
 
     fn needs_item(o: &serde_json::Map<String, Value>) -> bool {
-        if scalar_const(o).is_some() || pattern_string(o) || inferred_kind(o).is_some() {
+        if scalar_const(o).is_some() || checked_scalar(o) || inferred_kind(o).is_some() {
             return true;
         }
         if o.contains_key("oneOf")
@@ -2050,7 +2074,8 @@ pub(crate) fn kind_in(defs: &[TypeDef], ty: &Ty, depth: usize) -> JsonKind {
         Ty::Option(t) | Ty::Indirect(t) => kind_in(defs, t, depth + 1),
         Ty::Named(id) => match &defs[id.0].kind {
             Kind::Struct(_) => JsonKind::Object,
-            Kind::StrEnum(_) | Kind::Pattern(_) => JsonKind::String,
+            Kind::StrEnum(_) => JsonKind::String,
+            Kind::Checked(c) => kind_in(defs, &c.base, depth + 1),
             Kind::IntEnum(_) => JsonKind::Integer,
             Kind::Const(v) => value_kind(v),
             // A closed union whose variants share a kind has that kind. An open one takes any value.

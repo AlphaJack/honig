@@ -180,27 +180,25 @@ fn valid_requests_reach_the_handler() {
     assert_eq!(r.status().as_u16(), 201, "{}", String::from_utf8_lossy(r.body().bytes()));
 }
 
+/// Decoding stops at the first value that breaks its schema. The request is refused for that value, at its path.
 #[test]
-fn every_violation_is_reported_with_its_path() {
-    // `X-Team` and `name` have a `pattern`. They are checked types and valid here
-    // (see `pattern_fields_are_checked_types`).
-    let r = send(
-        "limit=0",
-        "core",
-        &json!({"name":"Ann","role":"admin","age":150,"score":1.2,"tags":["abcd","x","x"],"meta":{"a":"1","b":"2","c":"3"}}),
-    );
-    assert_eq!(r.status().as_u16(), 400);
-    let v: serde_json::Value = serde_json::from_slice(r.body().bytes()).unwrap();
-    let paths: Vec<&str> = v["violations"].as_array().unwrap().iter().map(|x| x["path"].as_str().unwrap()).collect();
-    for want in ["/query/limit", "/body/age", "/body/score", "/body/tags", "/body/tags/0", "/body/meta"] {
-        assert!(paths.contains(&want), "missing {want} in {v:#}");
-    }
+fn the_first_violation_is_reported_with_its_path() {
+    let first = |query: &str, body: &serde_json::Value| -> serde_json::Value {
+        let r = send(query, "core", body);
+        assert_eq!(r.status().as_u16(), 400);
+        let v: serde_json::Value = serde_json::from_slice(r.body().bytes()).unwrap();
+        v["violations"].clone()
+    };
+    let ok = json!({"name": "Ann", "role": "admin"});
+    assert_eq!(first("limit=0", &ok), json!([{"path": "/query/limit", "message": "0 is less than the minimum 1"}]));
+    let old = json!({"name": "Ann", "role": "admin", "age": 150, "score": 1.2});
+    assert_eq!(first("limit=5", &old)[0]["path"], "/body/age");
 }
 
 /// An enum is closed: a value that it does not list fails to decode. The request is refused for that value alone.
 #[test]
 fn an_unlisted_enum_value_is_a_bad_request() {
-    let r = send("limit=0", "core", &json!({"name":"Ann","role":"root","age":150}));
+    let r = send("limit=5", "core", &json!({"name":"Ann","role":"root","age":150}));
     assert_eq!(r.status().as_u16(), 400);
     let v: serde_json::Value = serde_json::from_slice(r.body().bytes()).unwrap();
     assert_eq!(v["violations"], json!([{"path": "/body/role", "message": "`root` is not one of `admin`, `user`"}]));
@@ -301,7 +299,7 @@ fn one_wide_event_per_request() {
     let bad = &events[1];
     assert_eq!(bad["status"], 400);
     assert_eq!(bad["error"], "invalid");
-    assert_eq!(bad["violations"], 2);
+    assert_eq!(bad["violations"], 1);
     assert!(bad.get("tenant").is_none(), "the handler must not run");
 }
 
@@ -311,7 +309,7 @@ fn pattern_properties_type_their_values() {
         serde_json::from_value(json!({"kind":"domestic","parcels":[{"fragile":true}],"scores":{"speed":3}})).unwrap();
     // `if kind == international then customs is required`: a domestic shipment is the `Otherwise` variant.
     let types::Shipment::Otherwise(s) = s else { panic!("a domestic shipment") };
-    let scores: std::collections::BTreeMap<String, i64> = s.scores.expect("present");
+    let scores = s.scores.expect("present");
     assert_eq!(scores["speed"], 3);
     let bad = shipment(&json!({"kind":"domestic","parcels":[{"fragile":true}],"scores":{"Speed":-1}}));
     assert_eq!(bad.status().as_u16(), 400, "key pattern and value minimum are both checked");
@@ -453,15 +451,10 @@ fn mail_addresses_and_host_names_are_types() {
 /// `multipleOf` on a number divides and allows 1e-9: decimal multiples a binary float cannot hold exactly pass.
 #[test]
 fn a_decimal_multiple_passes_although_its_float_is_inexact() {
-    let price = |p: f64| {
-        let price: types::Price = serde_json::from_value(json!({"amount": p})).unwrap();
-        let mut out = vec![];
-        api::Validate::validate(&price, &api::InstancePath::Root, &mut out);
-        out.into_iter().map(|v| v.path).collect::<Vec<_>>()
-    };
-    assert_eq!(price(0.07), Vec::<String>::new(), "0.07 / 0.01 is 7.000000000000001");
-    assert_eq!(price(19.99), Vec::<String>::new());
-    assert_eq!(price(0.015), ["/amount"]);
+    let price = |p: f64| serde_json::from_value::<types::Price>(json!({"amount": p})).map_err(|e| e.to_string());
+    assert!(price(0.07).is_ok(), "0.07 / 0.01 is 7.000000000000001");
+    assert!(price(19.99).is_ok());
+    assert_eq!(price(0.015).err(), Some("is not a multiple of 0.01".to_owned()));
 }
 
 /// A refusal of the server goes out in the schema that its operation declares, its `const` at its value.
