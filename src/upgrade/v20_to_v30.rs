@@ -646,6 +646,26 @@ mod tests {
         upgrade(doc, &mut Diagnostics::default())
     }
 
+    /// Kubernetes names properties `default`, `enum` and `example`. They hold schemas whose references move too.
+    #[test]
+    fn a_property_named_like_a_keyword_has_its_reference_rewritten() {
+        let out = up(json!({
+            "swagger": "2.0", "info": {"title": "t", "version": "1"}, "paths": {},
+            "definitions": {
+                "JSON": {"description": "any JSON value"},
+                "Props": {"type": "object", "properties": {
+                    "default": {"$ref": "#/definitions/JSON"},
+                    "enum": {"type": "array", "items": {"$ref": "#/definitions/JSON"}},
+                    "example": {"$ref": "#/definitions/JSON"}
+                }}
+            }
+        }));
+        let props = &out["components"]["schemas"]["Props"]["properties"];
+        assert_eq!(props["default"]["$ref"], "#/components/schemas/JSON");
+        assert_eq!(props["enum"]["items"]["$ref"], "#/components/schemas/JSON");
+        assert_eq!(props["example"]["$ref"], "#/components/schemas/JSON");
+    }
+
     #[test]
     fn host_and_base_path_become_servers() {
         let out = up(json!({"swagger": "2.0", "host": "api.x.com", "basePath": "/v1", "schemes": ["https", "http"]}));
