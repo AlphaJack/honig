@@ -295,7 +295,7 @@ impl runtime::Validate for Book {
                     SCHEMA
                         .get_or_init(|| {
                             serde_json::from_str(
-                                    "{\"allOf\":[{\"type\":\"object\",\"required\":[\"isbn\"],\"properties\":{\"isbn\":{\"type\":\"string\"},\"pages\":{\"type\":\"integer\"}}}]}",
+                                    "{\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Meta\"}],\"$defs\":{\"/components/schemas/Meta\":{\"type\":\"object\",\"required\":[\"isbn\"],\"properties\":{\"isbn\":{\"type\":\"string\"},\"pages\":{\"type\":\"integer\"}}}}}",
                                 )
                                 .unwrap_or_default()
                         }),

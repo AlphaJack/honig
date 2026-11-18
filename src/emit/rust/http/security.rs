@@ -35,14 +35,13 @@ impl Securities {
         quote!(ops::#name)
     }
 
-    /// Returns the constants. A binary may call none of the operations that use one.
-    pub(crate) fn consts(&self, binary: bool) -> TokenStream {
+    /// Returns the constants. In a binary, `operations.rs` allows the ones that no operation it calls names.
+    pub(crate) fn consts(&self) -> TokenStream {
         let mut sets: Vec<&(usize, TokenStream)> = self.0.values().collect();
         sets.sort_by_key(|(n, _)| *n);
-        let allow = binary.then(|| quote!(#[allow(dead_code, reason = "a binary may call none of its operations")]));
         let consts = sets.iter().map(|(n, alts)| {
             let name = format_ident!("SECURITY_{n}");
-            quote!(#[doc(hidden)] #allow pub const #name: &[&[runtime::Requirement]] = #alts;)
+            quote!(#[doc(hidden)] pub const #name: &[&[runtime::Requirement]] = #alts;)
         });
         if sets.is_empty() {
             return TokenStream::new();

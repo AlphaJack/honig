@@ -1013,8 +1013,8 @@ fn struct_new(space: &Space<'_>, name: &proc_macro2::Ident, s: &Struct, extra: &
     quote! {
         impl #name {
             #[must_use]
-            #many
             pub #constness fn new(#(#args),*) -> Self {
+                #many
                 Self { #(#inits)* #extra_init }
             }
         }
@@ -1062,8 +1062,8 @@ fn builder(space: &Space<'_>, name: &proc_macro2::Ident, s: &Struct) -> TokenStr
     quote! {
         impl super::#name {
             /// Starts a builder from the required properties.
-            #many
             pub fn builder(#(#params),*) -> #name {
+                #many
                 #name(runtime::Builder::start(|| Ok(Self::new(#(#converted),*))))
             }
         }
@@ -1079,10 +1079,12 @@ fn builder(space: &Space<'_>, name: &proc_macro2::Ident, s: &Struct) -> TokenStr
     }
 }
 
-/// Returns the `allow` of a constructor that takes `count` required properties, past what clippy allows.
+/// Returns the `allow` of a constructor that takes `count` required properties, past what clippy allows. It goes inside
+/// the body: `clippy::allow_attributes` leaves an inner `#![allow]` alone, and an `#[expect]` would fail a crate that
+/// raises `too-many-arguments-threshold`.
 fn many_arguments(count: usize) -> Option<TokenStream> {
     (count > super::syntax::MAX_ARGUMENTS)
-        .then(|| quote!(#[allow(clippy::too_many_arguments, reason = "one argument per required property")]))
+        .then(|| quote!(#![allow(clippy::too_many_arguments, reason = "one argument per required property")]))
 }
 
 fn extra_field(s: &Struct) -> String {
@@ -1200,11 +1202,7 @@ fn checked_type(items: &mut Vec<TokenStream>, space: &Space<'_>, def: &TypeDef, 
             (checks, quote!(Copy, PartialOrd,), None)
         }
         Base::Decimal => {
-            let checks = super::validate::float_checks(
-                &c.constraints,
-                &super::validate::float_value(&c.base, &quote!(&value)),
-                &path,
-            );
+            let checks = super::validate::decimal_checks(&c.constraints, &quote!(&value), &path);
             (checks, quote!(Eq, Hash,), None)
         }
         Base::Int => {

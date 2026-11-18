@@ -21,33 +21,32 @@ use crate::ir::types::{Kind, Ty};
 
 /// Returns `conveniences`: `METHOD`, `PATH`, `Params::new` and the `tags` modules for code that calls the API. A binary
 /// that only serves it (no client) never names them. So they are left out and not left unused. `binary`: a binary
-/// crate, where an item that nothing names is dead code. `defaults`: `allow_unimplemented = true`. In a binary an
-/// operation left to its default answers `501` and builds none of its responses.
+/// crate, where an item that nothing names is dead code. `serves`: the server is generated. In a binary a handler may
+/// build only some of the responses of its operation, or none when it is left to its `501` default.
 pub(crate) fn operations(
     api: &Api,
     space: &Space<'_>,
     aliases: &std::collections::BTreeMap<usize, usize>,
     conveniences: bool,
     binary: bool,
-    defaults: bool,
+    serves: bool,
 ) -> TokenStream {
     let live = crate::emit::rust::validate::live_types(space, aliases);
     let mods = api.http.operations.iter().map(|op| operation_mod(api, space, aliases, op, &live, conveniences));
     let allow = crate::emit::rust::syntax::file_allow(crate::emit::rust::syntax::has_deprecated(api));
-    let dead_code = match (binary && defaults, binary && conveniences) {
-        (true, _) => Some(
-            "with `allow_unimplemented = true`, an operation left to its default answers 501 and builds none of its responses",
-        ),
-        (false, true) => {
+    let dead_code = match (binary, serves, conveniences) {
+        (false, ..) => None,
+        (true, true, _) => Some("a handler may build only some of the responses of its operation"),
+        (true, false, true) => {
             Some("a binary calls part of the client: its `Params::new`, `METHOD` and `PATH` may go unused")
         }
-        (false, false) => None,
+        (true, false, false) => Some("without a client or a server a binary names none of the operations"),
     };
     let defaults = dead_code.map(|reason| quote!(#![allow(dead_code, reason = #reason)]));
     let header = quote!(#allow #defaults);
     let tags = conveniences.then(|| tags_mod(api)).flatten();
     let responses = responses_mod(space, &api.http.operations);
-    let security = super::security::Securities::new(api).consts(!conveniences);
+    let security = super::security::Securities::new(api).consts();
     quote! { #header #security #(#mods)* #responses #tags }
 }
 
@@ -520,8 +519,10 @@ pub(crate) fn params_new(space: &Space<'_>, op: &Operation) -> TokenStream {
     let part_types_init = crate::emit::rust::http::shared::part_types_init(op);
     let media_init = crate::emit::rust::http::shared::media_init(op);
     let all_args = arg_list.chain(body_arg);
+    // Inside the body: `clippy::allow_attributes` leaves an inner `#![allow]` alone, and an `#[expect]` would fail a
+    // crate that raises `too-many-arguments-threshold`.
     let many = (count > crate::emit::rust::syntax::MAX_ARGUMENTS)
-        .then(|| quote!(#[allow(clippy::too_many_arguments, reason = "one argument per required parameter")]));
+        .then(|| quote!(#![allow(clippy::too_many_arguments, reason = "one argument per required parameter")]));
     // Every other field starts as `None`: nothing to evaluate at run time.
     let constness = op.params.iter().filter(|p| !is_arg(p)).all(|p| const_default(space, p)).then(|| quote!(const));
     let default = (count == 0).then(|| {
@@ -534,8 +535,8 @@ pub(crate) fn params_new(space: &Space<'_>, op: &Operation) -> TokenStream {
     quote! {
         impl Params {
             #[must_use]
-            #many
             pub #constness fn new(#(#all_args),*) -> Self {
+                #many
                 Self { #(#inits)* #body_init #part_types_init #media_init }
             }
         }

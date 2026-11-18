@@ -48,6 +48,23 @@ paths:
               examples:
                 ref: {$ref: '#/components/examples/Hi'}
                 file: {$ref: '#/components/examples/HiFile'}
+  # More required parameters and properties than clippy allows: `Params::new` and `Box::new` say why they take them.
+  /boxes:
+    get:
+      operationId: findBox
+      parameters:
+        - {name: width, in: query, required: true, schema: {type: integer}}
+        - {name: height, in: query, required: true, schema: {type: integer}}
+        - {name: depth, in: query, required: true, schema: {type: integer}}
+        - {name: weight, in: query, required: true, schema: {type: integer}}
+        - {name: color, in: query, required: true, schema: {type: integer}}
+        - {name: shelf, in: query, required: true, schema: {type: integer}}
+        - {name: row, in: query, required: true, schema: {type: integer}}
+        - {name: bin, in: query, required: true, schema: {type: integer}}
+      responses:
+        "200":
+          description: The box.
+          content: {application/json: {schema: {$ref: '#/components/schemas/Box'}}}
 components:
   requestBodies:
     NoteBody:
@@ -57,6 +74,18 @@ components:
     Hi: {summary: A text note, description: The smallest note, value: {kind: text, text: hi}}
     HiFile: {summary: 'The same, from a file', externalValue: examples/note.json}
   schemas:
+    Box:
+      type: object
+      required: [width, height, depth, weight, color, shelf, row, bin]
+      properties:
+        width: {type: integer}
+        height: {type: integer}
+        depth: {type: integer}
+        weight: {type: integer}
+        color: {type: integer}
+        shelf: {type: integer}
+        row: {type: integer}
+        bin: {type: integer}
     Note:
       type: object
       properties:

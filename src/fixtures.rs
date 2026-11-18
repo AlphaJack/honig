@@ -11,6 +11,7 @@ use crate::error::Error;
 /// workspace checks them.
 const LINTS: &[&str] = &[
     "clippy::pedantic",
+    "clippy::allow_attributes",
     "clippy::allow_attributes_without_reason",
     "clippy::clone_on_ref_ptr",
     "clippy::indexing_slicing",

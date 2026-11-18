@@ -45,6 +45,49 @@ macro_rules! serialize_impl_2 {
     };
 }
 use super::runtime;
+#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct Box2 {
+    pub width: i64,
+    pub height: i64,
+    pub depth: i64,
+    pub weight: i64,
+    pub color: i64,
+    pub shelf: i64,
+    pub row: i64,
+    pub bin: i64,
+}
+deserialize_impl!(Box2);
+serialize_impl!(Box2);
+impl Box2 {
+    #[must_use]
+    pub const fn new(
+        width: i64,
+        height: i64,
+        depth: i64,
+        weight: i64,
+        color: i64,
+        shelf: i64,
+        row: i64,
+        bin: i64,
+    ) -> Self {
+        #![allow(
+            clippy::too_many_arguments,
+            reason = "one argument per required property"
+        )]
+        Self {
+            width,
+            height,
+            depth,
+            weight,
+            color,
+            shelf,
+            row,
+            bin,
+        }
+    }
+}
+validate_impl!(Box2);
 #[derive(Debug, Clone, PartialEq)]
 pub enum Note {
     TextNote(NoteTextNote),
@@ -252,7 +295,7 @@ impl runtime::Validate for ImageNote {
                 SCHEMA
                     .get_or_init(|| {
                         serde_json::from_str(
-                                "{\"default\":64,\"allOf\":[{\"type\":\"integer\"}]}",
+                                "{\"default\":64,\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Pixels\"}],\"$defs\":{\"/components/schemas/Pixels\":{\"type\":\"integer\"}}}",
                             )
                             .unwrap_or_default()
                     }),
@@ -447,7 +490,7 @@ impl runtime::Validate for NoteImageNote {
                 SCHEMA
                     .get_or_init(|| {
                         serde_json::from_str(
-                                "{\"default\":64,\"allOf\":[{\"type\":\"integer\"}]}",
+                                "{\"default\":64,\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Pixels\"}],\"$defs\":{\"/components/schemas/Pixels\":{\"type\":\"integer\"}}}",
                             )
                             .unwrap_or_default()
                     }),
@@ -598,6 +641,46 @@ validate_impl!(AddNoteCreatedXTags);
 pub mod builders {
     use super as types;
     use super::runtime;
+    impl super::Box2 {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            width: impl TryInto<i64, Error: std::fmt::Display>,
+            height: impl TryInto<i64, Error: std::fmt::Display>,
+            depth: impl TryInto<i64, Error: std::fmt::Display>,
+            weight: impl TryInto<i64, Error: std::fmt::Display>,
+            color: impl TryInto<i64, Error: std::fmt::Display>,
+            shelf: impl TryInto<i64, Error: std::fmt::Display>,
+            row: impl TryInto<i64, Error: std::fmt::Display>,
+            bin: impl TryInto<i64, Error: std::fmt::Display>,
+        ) -> Box2 {
+            #![allow(
+                clippy::too_many_arguments,
+                reason = "one argument per required property"
+            )]
+            Box2(
+                runtime::Builder::start(|| Ok(
+                    Self::new(
+                        runtime::field("width", width)?,
+                        runtime::field("height", height)?,
+                        runtime::field("depth", depth)?,
+                        runtime::field("weight", weight)?,
+                        runtime::field("color", color)?,
+                        runtime::field("shelf", shelf)?,
+                        runtime::field("row", row)?,
+                        runtime::field("bin", bin)?,
+                    ),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct Box2(runtime::Builder<super::Box2>);
+    impl Box2 {
+        /// Returns the value.
+        pub fn build(self) -> Result<super::Box2, runtime::BuildError> {
+            self.0.build()
+        }
+    }
     impl super::TextNote {
         /// Starts a builder from the required properties.
         pub fn builder(
