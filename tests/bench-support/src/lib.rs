@@ -1,8 +1,9 @@
-//! What the benches of the generator and of the runtime share: the [`Path`] a bench times, [`callgrind::main`], which
-//! fails when the cost of a path grows faster than its input allows, and the [`table`] that the benches print.
+//! What the benches of the generator and of the runtime share: the [`Path`] a bench times, or the [`Phased`] path whose
+//! phases it counts apart, [`callgrind::main`] and [`callgrind::main_phased`], which fail when the cost grows faster
+//! than its input allows, and the [`table`] that the benches print.
 
 pub mod callgrind;
 mod path;
 pub mod table;
 
-pub use path::{Path, Work};
+pub use path::{Path, Phased, Work, phase};

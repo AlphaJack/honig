@@ -300,21 +300,27 @@ jobs:
         with:
           toolchain: "stable"
       # One cache each: rust-cache keys on the job and not on the bench.
+      # The packages of valgrind are cached beside the target: the mirror is slow, and drops the version of libc6-dbg
+      # that the runner's libc needs.
       - name: Cache cargo registry and target
         if: steps.changed.outputs.run == 'true'
         uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
           key: ${{ matrix.bench }}
           save-if: ${{ github.ref == 'refs/heads/main' }}
-      # The runner's package index can name packages that the mirror has dropped. Only then is it updated: that takes
-      # half a minute.
+          cache-directories: ${{ matrix.valgrind && '~/valgrind-debs' || '' }}
+      # apt reads cached packages first and downloads only what the image moved past. The runner's package index can
+      # name packages that the mirror has dropped: only then is it updated. needrestart would scan and restart services
+      # after libc6 is upgraded: nothing here needs that.
       - name: Install valgrind
         if: steps.changed.outputs.run == 'true' && matrix.valgrind
         run: |
-          sudo apt-get install -y --no-install-recommends valgrind || {
-            sudo apt-get update -qq
-            sudo apt-get install -y --no-install-recommends valgrind
+          mkdir -p ~/valgrind-debs/partial
+          install() {
+            sudo NEEDRESTART_SUSPEND=1 apt-get install -y --no-install-recommends \
+              -o Dir::Cache::Archives="$HOME/valgrind-debs" valgrind
           }
+          install || { sudo apt-get update -qq; install; }
       - name: Bench
         if: steps.changed.outputs.run == 'true'
         env:

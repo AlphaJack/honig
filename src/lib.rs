@@ -47,4 +47,8 @@ pub mod __private {
     pub use crate::error::Error;
     pub use crate::fixtures::{e2e_files, fixtures};
     pub use crate::generate::{generate, generate_all};
+    /// The phases of [`generate_all`] one at a time: the scaling bench measures each alone.
+    pub mod phases {
+        pub use crate::generate::{Ir, Loaded, Trees, emit, ir, load, print};
+    }
 }
