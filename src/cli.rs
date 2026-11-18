@@ -329,6 +329,7 @@ fn generate_modules(manifest: &settings::Manifest, only: Option<&str>, args: &Ar
             tests: cfg.tests,
             allow_unimplemented: cfg.allow_unimplemented,
             keep_unknown: cfg.keep_unknown,
+            strict_client: cfg.strict_client,
             client_operations: cfg.client_operations.clone(),
             overlays: cfg.overlay_paths(),
             rust: crate::emit::rust::Options {

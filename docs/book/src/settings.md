@@ -27,6 +27,7 @@ Each table `[package.metadata.honig.<module>]` is one module and sets what is ge
 | `client = true` | the client; you bring a transport of your own | `client` |
 | `client = { adapters = ["reqwest"] }` | the client and `ReqwestTransport` | `client`, `reqwest` |
 | `client = { adapters = ["reqwest"], operations = ["getOrder"] }` | the client with one operation | `client`, `reqwest` |
+| `client = { strict = false }` | the client; a response reads an enum value or a property of a closed object that the server added, as `Other` and by ignoring it. Requests stay strict: each such type gets a `<Name>Request` copy that is closed | `client` |
 | `server = { adapters = ["axum", "tracing"] }` | the server, `into_axum` and a span per request | `server`, `axum`, `tracing` |
 | `server = { allow_unimplemented = true }` | the server; a method you do not write answers 501 | `server` |
 

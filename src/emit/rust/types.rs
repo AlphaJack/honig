@@ -234,7 +234,9 @@ fn canonical_ty(t: &Ty, canon: &dyn Fn(TypeId) -> TypeId) -> Ty {
 /// holds no two identical function bodies. Only the kinds that the description has.
 fn enum_macros(space: &Space<'_>) -> TokenStream {
     let has = |f: fn(&Kind) -> bool| space.types.defs.iter().any(|d| f(&d.kind));
-    let str_enums = has(|k| matches!(k, Kind::StrEnum(_))).then(|| {
+    // A lenient string enum implements its own: its `as_str` borrows the unknown value.
+    let closed_str_enum = space.types.defs.iter().any(|d| matches!(d.kind, Kind::StrEnum(_)) && !d.lenient);
+    let str_enums = closed_str_enum.then(|| {
         quote! {
             macro_rules! str_enum_impls {
                 ($n:ident) => {
@@ -966,7 +968,8 @@ fn structure(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, s: &St
     });
     // `additionalProperties: false`: an undeclared property is a decode error,
     // so a server answers 400 and a client reports a server off its contract.
-    let closed = (s.closed && s.additional.is_none()).then(|| quote!(#[serde(deny_unknown_fields)]));
+    // A lenient client's response type reads a property that the server added. Its request copy refuses it.
+    let closed = (s.closed && s.additional.is_none() && !def.lenient).then(|| quote!(#[serde(deny_unknown_fields)]));
     // `remote = "Self"` turns the derives into inherent functions. The trait impls call them, decoding through
     // `NoSeq`: a derived struct would also read a JSON array field by field, and `type: object` allows none.
     // An extra map encodes through `UniqueKeys`: an entry named like a declared field would write the name twice.
@@ -1246,17 +1249,29 @@ fn int_enum(items: &mut Vec<TokenStream>, def: &TypeDef, values: &[(Name, i64)])
     let names: Vec<_> = values.iter().map(|(v, _)| pascal_ident(v)).collect();
     let nums: Vec<_> = values.iter().map(|(_, x)| proc_macro2::Literal::i64_unsuffixed(*x)).collect();
     let allowed = lit(&one_of(values.iter().map(|(_, v)| v.to_string())));
+    // A lenient client's response reads a value that the server added as `Other`. Its request copy is closed.
+    let (unknown, unknown_value, other) = if def.lenient {
+        (
+            quote!(#[doc = #OTHER_DOC] Other(i64),),
+            quote!(Self::Other(v) => v,),
+            quote!(other => Ok(Self::Other(other)),),
+        )
+    } else {
+        (TokenStream::new(), TokenStream::new(), quote!(other => Err(runtime::BuildError::value(format!(#allowed))),))
+    };
     items.push(quote! {
         #doc
         #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
         pub enum #n {
             #(#names,)*
+            #unknown
         }
         impl #n {
             #[must_use]
             pub const fn value(self) -> i64 {
                 match self {
                     #(Self::#names => #nums,)*
+                    #unknown_value
                 }
             }
         }
@@ -1265,7 +1280,7 @@ fn int_enum(items: &mut Vec<TokenStream>, def: &TypeDef, values: &[(Name, i64)])
             fn try_from(v: i64) -> Result<Self, runtime::BuildError> {
                 match v {
                     #(#nums => Ok(Self::#names),)*
-                    other => Err(runtime::BuildError::value(format!(#allowed))),
+                    #other
                 }
             }
         }
@@ -1421,6 +1436,9 @@ fn constant(items: &mut Vec<TokenStream>, def: &TypeDef, value: &serde_json::Val
 }
 
 fn str_enum(items: &mut Vec<TokenStream>, def: &TypeDef, values: &[EnumValue]) {
+    if def.lenient {
+        return open_str_enum(items, def, values);
+    }
     let n = pascal_ident(&def.name);
     let doc = doc_opt(def.doc.as_deref());
     let variants = values.iter().map(|v| {
@@ -1456,6 +1474,64 @@ fn str_enum(items: &mut Vec<TokenStream>, def: &TypeDef, values: &[EnumValue]) {
             }
         }
         str_enum_impls!(#n);
+    });
+}
+
+/// The doc of the variant that a lenient client reads an unlisted value into.
+const OTHER_DOC: &str = " A value that the description does not list: the server added it. It is sent back as it came.";
+
+/// Emits the string enum of a lenient client's response: a value that it does not list is `Other`, so a value that
+/// the server added reads instead of failing the response. Its request copy is closed.
+fn open_str_enum(items: &mut Vec<TokenStream>, def: &TypeDef, values: &[EnumValue]) {
+    let n = pascal_ident(&def.name);
+    let doc = doc_opt(def.doc.as_deref());
+    let variants = values.iter().map(|v| {
+        let (d, name) = (doc_opt(v.doc.as_deref()), pascal_ident(&v.name));
+        quote!(#d #name,)
+    });
+    let names: Vec<_> = values.iter().map(|v| pascal_ident(&v.name)).collect();
+    let wires: Vec<_> = values.iter().map(|v| lit(&v.wire)).collect();
+    items.push(quote! {
+        #doc
+        #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+        pub enum #n {
+            #(#variants)*
+            #[doc = #OTHER_DOC]
+            Other(String),
+        }
+        impl #n {
+            #[must_use]
+            pub fn as_str(&self) -> &str {
+                match self {
+                    #(Self::#names => #wires,)*
+                    Self::Other(other) => other,
+                }
+            }
+        }
+        impl From<&str> for #n {
+            fn from(s: &str) -> Self {
+                match s {
+                    #(#wires => Self::#names,)*
+                    other => Self::Other(other.to_owned()),
+                }
+            }
+        }
+        impl std::fmt::Display for #n {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                f.write_str(self.as_str())
+            }
+        }
+        impl serde::Serialize for #n {
+            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                s.serialize_str(self.as_str())
+            }
+        }
+        impl<'de> serde::Deserialize<'de> for #n {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                let s = <std::borrow::Cow<'de, str> as serde::Deserialize>::deserialize(d)?;
+                Ok(Self::from(&*s))
+            }
+        }
     });
 }
 

@@ -70,6 +70,7 @@ pub fn e2e_files(e2e: &Path, root: &Path) -> Result<Vec<(PathBuf, String)>, Erro
     }
     let mut features = vec![];
     for (module, spec) in fixtures(root)? {
+        let opts = crate::emit::Options { strict_client: strict_client(&spec)?, ..opts.clone() };
         let generated = crate::generate::generate(&spec, &opts)
             .map_err(|problems| Error::Fixture { spec: spec.clone(), problems })?;
         let api = Path::new("src").join(&module).join("api");
@@ -83,4 +84,15 @@ pub fn e2e_files(e2e: &Path, root: &Path) -> Result<Vec<(PathBuf, String)>, Erro
     doc["dependencies"]["honig"]["path"] = toml_edit::value("../../runtime");
     files.push((PathBuf::from("Cargo.toml"), doc.to_string()));
     Ok(files)
+}
+
+/// Returns the `strict` of the `client` table in `<fixture>.toml` beside `spec`: `true` without one. The fixture of a
+/// lenient client sets `client = { strict = false }` there.
+fn strict_client(spec: &Path) -> Result<bool, Error> {
+    let sidecar = spec.with_extension("toml");
+    if !crate::disk::is_file(&sidecar) {
+        return Ok(true);
+    }
+    let table: toml_edit::DocumentMut = crate::disk::read(&sidecar)?.parse()?;
+    Ok(table.get("client").and_then(|c| c.get("strict")).and_then(toml_edit::Item::as_bool).unwrap_or(true))
 }

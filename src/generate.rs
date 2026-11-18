@@ -66,6 +66,7 @@ pub fn generate_all(specs: &[std::path::PathBuf], opts: &Options) -> Result<Gene
         from_v20,
         rust::names::RESERVED,
         &opts.rust.crates,
+        !opts.strict_client,
     );
     let files = match rust::module(&api, opts) {
         Ok(files) => files,
