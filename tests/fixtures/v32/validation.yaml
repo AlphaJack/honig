@@ -68,6 +68,19 @@ paths:
       responses:
         "201":
           description: Created.
+  # A closed object is closed in every media type: an unknown field is a bad request.
+  /closed:
+    post:
+      operationId: addClosed
+      requestBody:
+        required: true
+        content:
+          application/json: {schema: {$ref: '#/components/schemas/Closed'}}
+          application/x-www-form-urlencoded: {schema: {$ref: '#/components/schemas/Closed'}}
+          application/xml: {schema: {$ref: '#/components/schemas/Closed'}}
+      responses:
+        "201":
+          description: Created.
   /badges:
     post:
       operationId: addBadge
@@ -80,6 +93,22 @@ paths:
           description: Created.
 components:
   schemas:
+    # A decimal keeps its digits: its range and `multipleOf` hold on them, past what an `f64` tells apart.
+    Exact:
+      type: object
+      properties:
+        tenth: {type: number, format: decimal, minimum: 0.1}
+        cents: {type: number, format: decimal, multipleOf: 0.01}
+    # Integer keywords checked exactly. A bound that no value of the type meets leaves none, and `multipleOf: 2.5`
+    # takes the integers that are multiples of 5.
+    Degenerate:
+      type: object
+      properties:
+        never: {type: integer, format: uint8, maximum: -1}
+        huge: {type: integer, minimum: 1e40}
+        fives: {type: integer, multipleOf: 2.5}
+        zero: {type: integer, format: uint8, multipleOf: 1000}
+        half: {type: integer, minimum: 0.5, exclusiveMaximum: 3.5}
     # Branches told apart only by the type of a field after a recursive one. Each branch that cannot fit is skipped
     # before its nested trees are decoded: tried in turn, decoding took twice as long per level. The check of
     # `oneOf` follows the recursion through `$defs`: inlined, it doubled the generated code per level.
@@ -131,6 +160,13 @@ components:
         code: {type: string, enum: [INVALID, TAKEN]}
         status: {type: integer, format: int32}
         detail: {type: string}
+    Closed:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: {type: string}
+      xml: {name: closed}
     # No property allowed: only `{}` is valid (Oxide's `SubnetCreateDefaults`).
     NoOptions:
       type: object

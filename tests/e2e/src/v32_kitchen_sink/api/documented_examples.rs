@@ -12,7 +12,7 @@
     clippy::missing_errors_doc,
     reason = "generated docs hold only the description's own prose"
 )]
-#[allow(
+#![allow(
     unused_imports,
     reason = "which of them the examples need depends on the description"
 )]

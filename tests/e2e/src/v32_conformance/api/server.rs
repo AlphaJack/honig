@@ -528,33 +528,114 @@ fn post_product_params(
                             "oneOf".to_owned(),
                             serde_json::Value::Array(
                                 vec![
-                                    serde_json::Value::Object(serde_json::Map::from_iter([("type"
-                                    .to_owned(), serde_json::Value::String("object"
-                                    .to_owned())), ("required".to_owned(),
-                                    serde_json::Value::Array(vec![serde_json::Value::String("kind"
-                                    .to_owned())])), ("properties".to_owned(),
-                                    serde_json::Value::Object(serde_json::Map::from_iter([("kind"
+                                    serde_json::Value::Object(serde_json::Map::from_iter([("$ref"
                                     .to_owned(),
-                                    serde_json::Value::Object(serde_json::Map::from_iter([("const"
-                                    .to_owned(), serde_json::Value::String("Gadget"
-                                    .to_owned()))]))), ("purrs".to_owned(),
-                                    serde_json::Value::Object(serde_json::Map::from_iter([("type"
-                                    .to_owned(), serde_json::Value::String("boolean"
-                                    .to_owned()))])))])))])),
-                                    serde_json::Value::Object(serde_json::Map::from_iter([("type"
-                                    .to_owned(), serde_json::Value::String("object"
-                                    .to_owned())), ("required".to_owned(),
-                                    serde_json::Value::Array(vec![serde_json::Value::String("kind"
-                                    .to_owned())])), ("properties".to_owned(),
-                                    serde_json::Value::Object(serde_json::Map::from_iter([("kind"
+                                    serde_json::Value::String("#/$defs/~1components~1schemas~1Gadget"
+                                    .to_owned()))])),
+                                    serde_json::Value::Object(serde_json::Map::from_iter([("$ref"
                                     .to_owned(),
-                                    serde_json::Value::Object(serde_json::Map::from_iter([("const"
-                                    .to_owned(), serde_json::Value::String("Book"
-                                    .to_owned()))]))), ("barks".to_owned(),
-                                    serde_json::Value::Object(serde_json::Map::from_iter([("type"
-                                    .to_owned(), serde_json::Value::String("boolean"
-                                    .to_owned()))])))])))]))
+                                    serde_json::Value::String("#/$defs/~1components~1schemas~1Book"
+                                    .to_owned()))]))
                                 ],
+                            ),
+                        ),
+                        (
+                            "$defs".to_owned(),
+                            serde_json::Value::Object(
+                                serde_json::Map::from_iter([
+                                    (
+                                        "/components/schemas/Gadget".to_owned(),
+                                        serde_json::Value::Object(
+                                            serde_json::Map::from_iter([
+                                                (
+                                                    "type".to_owned(),
+                                                    serde_json::Value::String("object".to_owned()),
+                                                ),
+                                                (
+                                                    "required".to_owned(),
+                                                    serde_json::Value::Array(
+                                                        vec![serde_json::Value::String("kind".to_owned())],
+                                                    ),
+                                                ),
+                                                (
+                                                    "properties".to_owned(),
+                                                    serde_json::Value::Object(
+                                                        serde_json::Map::from_iter([
+                                                            (
+                                                                "kind".to_owned(),
+                                                                serde_json::Value::Object(
+                                                                    serde_json::Map::from_iter([
+                                                                        (
+                                                                            "const".to_owned(),
+                                                                            serde_json::Value::String("Gadget".to_owned()),
+                                                                        ),
+                                                                    ]),
+                                                                ),
+                                                            ),
+                                                            (
+                                                                "purrs".to_owned(),
+                                                                serde_json::Value::Object(
+                                                                    serde_json::Map::from_iter([
+                                                                        (
+                                                                            "type".to_owned(),
+                                                                            serde_json::Value::String("boolean".to_owned()),
+                                                                        ),
+                                                                    ]),
+                                                                ),
+                                                            ),
+                                                        ]),
+                                                    ),
+                                                ),
+                                            ]),
+                                        ),
+                                    ),
+                                    (
+                                        "/components/schemas/Book".to_owned(),
+                                        serde_json::Value::Object(
+                                            serde_json::Map::from_iter([
+                                                (
+                                                    "type".to_owned(),
+                                                    serde_json::Value::String("object".to_owned()),
+                                                ),
+                                                (
+                                                    "required".to_owned(),
+                                                    serde_json::Value::Array(
+                                                        vec![serde_json::Value::String("kind".to_owned())],
+                                                    ),
+                                                ),
+                                                (
+                                                    "properties".to_owned(),
+                                                    serde_json::Value::Object(
+                                                        serde_json::Map::from_iter([
+                                                            (
+                                                                "kind".to_owned(),
+                                                                serde_json::Value::Object(
+                                                                    serde_json::Map::from_iter([
+                                                                        (
+                                                                            "const".to_owned(),
+                                                                            serde_json::Value::String("Book".to_owned()),
+                                                                        ),
+                                                                    ]),
+                                                                ),
+                                                            ),
+                                                            (
+                                                                "barks".to_owned(),
+                                                                serde_json::Value::Object(
+                                                                    serde_json::Map::from_iter([
+                                                                        (
+                                                                            "type".to_owned(),
+                                                                            serde_json::Value::String("boolean".to_owned()),
+                                                                        ),
+                                                                    ]),
+                                                                ),
+                                                            ),
+                                                        ]),
+                                                    ),
+                                                ),
+                                            ]),
+                                        ),
+                                    ),
+                                ]),
                             ),
                         ),
                     ]),

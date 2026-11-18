@@ -1,5 +1,6 @@
 //! Reading schemas into the type graph: the `Builder` and the schema keywords it understands.
 
+use std::cell::RefCell;
 use std::collections::{BTreeMap, BTreeSet};
 
 use serde_json::Value;
@@ -23,12 +24,11 @@ const MAX_ALIAS_HOPS: usize = 16;
 /// Subschemas read for constraints or inlined for run-time checks before the rest is left unchecked.
 const MAX_SCHEMA_DEPTH: usize = 8;
 
-/// Where an inlining walk is: the dynamic scope that it entered, the pointers that it is expanding, the cycles that it
-/// cut into `$defs`, whether it may cut them, and whether it met a `$dynamicRef`.
+/// Where an inlining walk is: the dynamic scope that it entered, the targets that it moved into `$defs`, whether it
+/// may move them, and whether it met a `$dynamicRef`.
 #[derive(Default)]
 struct Walk {
     scope: Vec<String>,
-    expanding: Vec<String>,
     cuts: Vec<String>,
     cut: bool,
     dynamic: bool,
@@ -88,6 +88,8 @@ impl Constraints {
             unique_items: s.get("uniqueItems") == Some(&Value::Bool(true)),
             min_properties: u("minProperties"),
             max_properties: u("maxProperties"),
+            decimal128: s.get("format").and_then(Value::as_str) == Some("decimal128")
+                && s.as_object().is_some_and(|o| type_set(o).0.iter().any(|t| t == "number")),
             items: None,
             schema: None,
         }
@@ -101,6 +103,7 @@ impl Constraints {
         take!(min_length, max_length, pattern, minimum, maximum, exclusive_minimum, exclusive_maximum, multiple_of);
         take!(min_items, max_items, min_properties, max_properties, items);
         self.unique_items |= other.unique_items;
+        self.decimal128 |= other.decimal128;
         self.schema = match (self.schema.take(), other.schema) {
             (Some(a), Some(b)) => Some(serde_json::json!({ "allOf": [a, b] })),
             (a, b) => a.or(b),
@@ -386,6 +389,11 @@ pub(crate) struct Builder<'a> {
     pub crates: Vec<String>,
     /// The description was Swagger 2.0: an optional property reads `null` as absent ([`Field::null_as_absent`]).
     pub from_v20: bool,
+    /// The `$ref` targets whose keywords are being read: one met again is a cycle, whose keywords its own type holds.
+    reading: RefCell<Vec<String>>,
+    /// Where a schema was cut short at `MAX_SCHEMA_DEPTH`, by pointer: what is deeper is not checked. Reported once
+    /// each by `finish`.
+    cut_short: RefCell<BTreeMap<String, String>>,
 }
 
 /// Returns `ty` with its aliases in `defs` followed at most 16 deep. An alias chain can loop.
@@ -417,7 +425,20 @@ impl<'a> Builder<'a> {
             keep_unknown: false,
             crates: vec![],
             from_v20: false,
+            reading: RefCell::new(vec![]),
+            cut_short: RefCell::new(BTreeMap::new()),
         }
+    }
+
+    /// Records that the schema at `at`, reached past `MAX_SCHEMA_DEPTH` nested schemas of a schema checked whole, is
+    /// not checked there.
+    fn cut_short(&self, at: &str) {
+        self.cut_short.borrow_mut().entry(at.to_owned()).or_insert_with(|| {
+            format!(
+                "reached past {MAX_SCHEMA_DEPTH} nested schemas of a schema checked whole: a value there is not checked \
+                 against it"
+            )
+        });
     }
 
     /// Registers and convert every `components.schemas` entry and keep their names.
@@ -538,6 +559,8 @@ impl<'a> Builder<'a> {
     }
 
     fn constraints_at(&self, s: &Value, depth: usize, at: Option<&str>) -> Constraints {
+        // Keywords further down belong to the named types on the way, which hold them. Only a schema checked whole
+        // loses what it cuts (`inline_scoped`).
         if depth > MAX_SCHEMA_DEPTH {
             return Constraints::default();
         }
@@ -584,10 +607,14 @@ impl<'a> Builder<'a> {
         }
         // One hop: a target that has keywords beside its own `$ref` (3.1) keeps them. Following the whole chain
         // would skip them.
+        // A target that is being read already is a cycle: its type holds its keywords where it recurs.
         if let Some(p) = s.get("$ref").and_then(Value::as_str).and_then(|r| self.doc.local_pointer(r))
             && let Some(target) = pointer(&self.doc.root, &p)
+            && !self.reading.borrow().contains(&p)
         {
+            self.reading.borrow_mut().push(p.clone());
             c.merge(self.constraints_at(target, depth + 1, Some(&p)));
+            self.reading.borrow_mut().pop();
         }
         // `anyOf: [{type: integer, maximum: 10}, {type: null}]` is typed as its one other branch. So that branch's
         // keywords are the value's.
@@ -973,7 +1000,19 @@ impl<'a> Builder<'a> {
             Some("string") if o.get("contentEncoding").and_then(Value::as_str) == Some("base64url") => {
                 Ty::Format(Format::Base64Url)
             }
-            Some("string") => string_format(format).map_or(Ty::String, Ty::Format),
+            Some("string") => match string_format(format) {
+                Some(f) => {
+                    // The format's type decides the value: `generate` does not check a `pattern` beside it.
+                    if let Some(p) = o.get("pattern").and_then(Value::as_str) {
+                        self.diags.warning(
+                            join(ptr, "pattern"),
+                            format!("pattern `{p}` is not checked: the value is the type of `format: {format}`"),
+                        );
+                    }
+                    Ty::Format(f)
+                }
+                None => Ty::String,
+            },
             Some("null") => Ty::Unit,
             Some("array") => self.array(o, ptr, hint),
             Some("object") | None => {
@@ -1038,13 +1077,12 @@ impl<'a> Builder<'a> {
 
     /// Returns `s` with its references inlined for run-time checks, from the dynamic scope `scope`.
     ///
-    /// A reference back to a schema that the walk is inside is a cycle: it points into `$defs` at the root, which
-    /// holds each such target once. So a recursive schema stays its own size, and the run-time check follows it as
-    /// deep as the value goes. A `$dynamicRef` resolves by where evaluation came from: with one in reach, cycles are
-    /// inlined to `MAX_SCHEMA_DEPTH` as before.
+    /// A reference points into `$defs` at the root, which holds each target once. So the fragment grows with the
+    /// schemas it reaches and not with the paths to them, a recursive schema stays its own size, and the run-time check
+    /// follows it as deep as the value goes. A `$dynamicRef` resolves by where evaluation came from: with one in reach,
+    /// references are inlined to `MAX_SCHEMA_DEPTH` as before.
     fn inlined(&self, s: &Value, at: Option<&str>, scope: Vec<String>) -> Value {
-        let expanding = at.map(|p| vec![p.to_owned()]).unwrap_or_default();
-        let mut walk = Walk { scope: scope.clone(), expanding, cut: true, ..Walk::default() };
+        let mut walk = Walk { scope: scope.clone(), cut: true, ..Walk::default() };
         let mut root = self.inline_scoped(s, 0, at, &mut walk);
         if walk.dynamic {
             return self.inline_scoped(s, 0, at, &mut Walk { scope, ..Walk::default() });
@@ -1053,9 +1091,9 @@ impl<'a> Builder<'a> {
         let mut i = 0;
         while let Some(p) = walk.cuts.get(i).cloned() {
             let target = pointer(&self.doc.root, &p).cloned().unwrap_or(Value::Bool(true));
-            walk.expanding = vec![p.clone()];
             walk.scope = vec![self.dynamic.resource_of(&p)];
-            defs.insert(escape_token(&p), self.inline_scoped(&target, 1, Some(&p), &mut walk));
+            // The key is the pointer itself: the reference escapes it as one token, and a reader unescapes it.
+            defs.insert(p.clone(), self.inline_scoped(&target, 1, Some(&p), &mut walk));
             i += 1;
         }
         if let (Value::Object(o), false) = (&mut root, defs.is_empty()) {
@@ -1089,14 +1127,19 @@ impl<'a> Builder<'a> {
                     .cloned();
                 walk.dynamic |= o.contains_key("$dynamicRef");
                 let target_ptr = dynamically.or(statically);
-                let mut target = match target_ptr.as_deref().filter(|_| depth < MAX_SCHEMA_DEPTH) {
-                    // A reference back to a schema that this walk is inside: a cycle. Expanding it again doubles the
-                    // fragment at each turn. It becomes a reference into `$defs`, which holds the target once.
-                    Some(p) if walk.cut && walk.expanding.iter().any(|e| e == p) => {
+                let mut target = match target_ptr.as_deref() {
+                    // Each target goes into `$defs` once, at any depth. Copying it at each reference copies a shared
+                    // target once per path to it: Stripe reaches 917 schemas over 35 million paths. A cycle ends there
+                    // too, and is checked as deep as the value goes.
+                    Some(p) if walk.cut => {
                         if !walk.cuts.iter().any(|c| c == p) {
                             walk.cuts.push(p.to_owned());
                         }
                         serde_json::json!({ "$ref": format!("#/$defs/{}", escape_token(p)) })
+                    }
+                    Some(p) if depth >= MAX_SCHEMA_DEPTH => {
+                        self.cut_short(p);
+                        Value::Bool(true)
                     }
                     Some(p) => match pointer(&self.doc.root, p) {
                         Some(t) => {
@@ -1106,9 +1149,7 @@ impl<'a> Builder<'a> {
                             if entered {
                                 walk.scope.push(resource);
                             }
-                            walk.expanding.push(p.to_owned());
                             let inlined = self.inline_scoped(t, depth + 1, Some(p), walk);
-                            walk.expanding.pop();
                             if entered {
                                 walk.scope.pop();
                             }
@@ -1736,6 +1777,9 @@ impl<'a> Builder<'a> {
     /// Returns finish. Resolve placeholders, drop defaults that the type of their field cannot hold and break cycles
     /// with `Box`.
     pub(crate) fn finish(mut self) -> TypeSpace {
+        for (at, message) in std::mem::take(self.cut_short.get_mut()) {
+            self.diags.warning(at, message);
+        }
         for d in &mut self.defs {
             if matches!(d.kind, Kind::Pending) {
                 d.kind = Kind::Alias(Ty::Any);
@@ -2109,6 +2153,78 @@ mod tests {
         s.defs.iter().find(|d| d.name == Name::new(n)).unwrap_or_else(|| panic!("no {n}"))
     }
 
+    /// A schema that refers back to itself is checked whole with the cycle in `$defs`. Its reference must reach the
+    /// definition: a reader unescapes the token of `#/$defs/~1components~1schemas~1Rec` to the key.
+    #[test]
+    fn a_cycle_in_a_checked_schema_resolves_to_its_definition() {
+        let rec = json!({
+            "type": "array",
+            "prefixItems": [{"type": "string"}, {"oneOf": [{"$ref": "#/components/schemas/Rec"}, {"type": "null"}]}],
+            "items": false,
+            "minItems": 2,
+        });
+        let doc = Doc::new(json!({"openapi": "3.2.0", "components": {"schemas": {"Rec": rec}}}));
+        let mut d = Diagnostics::default();
+        let b = Builder::new(&doc, &mut d, Reserved::default());
+        let schema = b.constraints(&rec).schema.expect("checked whole");
+        let defs = schema.get("$defs").and_then(Value::as_object).expect("the cycle is in `$defs`");
+        assert_eq!(defs.keys().collect::<Vec<_>>(), ["/components/schemas/Rec"]);
+        let mut out = vec![];
+        runtime::__private::check_schema(&mut out, &runtime::InstancePath::Root, &json!(["a", null]), &schema);
+        assert!(out.is_empty(), "`null` matches only the second branch: {out:?}");
+        runtime::__private::check_schema(&mut out, &runtime::InstancePath::Root, &json!(["a", ["b", 1]]), &schema);
+        assert!(!out.is_empty(), "the nested pair needs a string or `null` second");
+    }
+
+    /// A document whose `Top` tuple reaches the recursive tuple `Rec` through a chain of `n` references.
+    fn chained(n: usize) -> Value {
+        let mut schemas = serde_json::Map::new();
+        let link = |i: usize| json!({"$ref": format!("#/components/schemas/{}", if i == n { "Rec".to_owned() } else { format!("L{i}") })});
+        schemas.insert("Top".into(), json!({"type": "array", "prefixItems": [link(0)], "items": false, "minItems": 1}));
+        for i in 0..n {
+            schemas.insert(format!("L{i}"), link(i + 1));
+        }
+        schemas.insert(
+            "Rec".into(),
+            json!({
+                "type": "array",
+                "prefixItems": [{"type": "string"}, {"oneOf": [{"$ref": "#/components/schemas/Rec"}, {"type": "null"}]}],
+                "items": false,
+                "minItems": 2,
+            }),
+        );
+        json!({"openapi": "3.2.0", "components": {"schemas": schemas}})
+    }
+
+    /// A cycle is cut into `$defs` however deep the walk met it: it is checked as deep as the value goes. So is a chain
+    /// of plain references longer than `MAX_SCHEMA_DEPTH`. With a `$dynamicRef` in reach, the walk copies each
+    /// reference: past `MAX_SCHEMA_DEPTH` it is cut short, and generation says so.
+    #[test]
+    fn a_schema_checked_whole_is_checked_through_its_cycles_or_says_where_it_stops() {
+        let deep_bad = json!([["a", ["b", ["c", 1]]]]);
+        for n in 0..MAX_SCHEMA_DEPTH + 3 {
+            let doc = Doc::new(chained(n));
+            let mut d = Diagnostics::default();
+            let b = Builder::new(&doc, &mut d, Reserved::default());
+            let top = pointer(&doc.root, "/components/schemas/Top").cloned().expect("Top");
+            let schema = b.constraints(&top).schema.expect("a tuple is checked whole");
+            let mut out = vec![];
+            runtime::__private::check_schema(&mut out, &runtime::InstancePath::Root, &deep_bad, &schema);
+            assert!(!out.is_empty(), "{n} references: the `1` three levels down is neither a string nor `null`");
+            b.finish();
+            assert!(d.is_empty(), "{n} references: nothing is cut short: {d:?}");
+        }
+        let mut chain = chained(MAX_SCHEMA_DEPTH + 2);
+        chain["components"]["schemas"]["Top"]["prefixItems"][0] = json!({"$dynamicRef": "#/components/schemas/L0"});
+        let doc = Doc::new(chain);
+        let mut d = Diagnostics::default();
+        let b = Builder::new(&doc, &mut d, Reserved::default());
+        let top = pointer(&doc.root, "/components/schemas/Top").cloned().expect("Top");
+        drop(b.constraints(&top));
+        b.finish();
+        assert!(d.iter().any(|w| w.message.contains("a value there is not checked against it")), "{d:?}");
+    }
+
     #[test]
     fn a_component_pointing_at_a_bundled_schema_names_it() {
         let doc = Doc::new(json!({"openapi": "3.2.0",
@@ -2143,6 +2259,32 @@ mod tests {
             variants,
             [(Name::new("Item"), &["Item".to_owned()][..]), (Name::new("Gadget"), &["Gadget".to_owned()][..])]
         );
+    }
+
+    #[test]
+    fn a_schema_reached_by_many_paths_is_inlined_once() {
+        // Each layer refers twice to the next: 16 paths reach `L4`.
+        let mut schemas = serde_json::Map::new();
+        for i in 0..4 {
+            let next = json!({"$ref": format!("#/components/schemas/L{}", i + 1)});
+            schemas.insert(format!("L{i}"), json!({"type": "object", "properties": {"a": next, "b": next}}));
+        }
+        schemas.insert("L4".to_owned(), json!({"type": "string", "minLength": 7}));
+        let doc = Doc::new(json!({"openapi": "3.2.0", "components": {"schemas": schemas}}));
+        let mut d = Diagnostics::default();
+        let b = Builder::new(&doc, &mut d, Reserved::default());
+        // A keyword beside the `$ref`: the schema is checked whole at run time.
+        let c = b.constraints(&json!({"$ref": "#/components/schemas/L0", "minProperties": 1}));
+        let schema = c.schema.expect("checked at run time");
+        let text = schema.to_string();
+        assert_eq!(text.matches(r#""minLength":7"#).count(), 1, "{text}");
+        // The references still reach it: a short string at the bottom fails.
+        let value = |leaf: &str| json!({"b": {"a": {"b": {"a": leaf}}}});
+        let mut out = vec![];
+        runtime::__private::check_schema(&mut out, &runtime::InstancePath::Root, &value("1234567"), &schema);
+        assert!(out.is_empty(), "{out:?}");
+        runtime::__private::check_schema(&mut out, &runtime::InstancePath::Root, &value("123"), &schema);
+        assert!(!out.is_empty(), "`L4` needs 7 characters");
     }
 
     #[test]

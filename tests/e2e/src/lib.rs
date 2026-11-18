@@ -1,5 +1,6 @@
 //! Every fixture description in `tests/fixtures/<version>/<name>.yaml`, as `<version>_<name>::api`.
 #![warn(clippy::pedantic)]
+#![warn(clippy::allow_attributes)]
 #![warn(clippy::allow_attributes_without_reason)]
 #![warn(clippy::clone_on_ref_ptr)]
 #![warn(clippy::indexing_slicing)]

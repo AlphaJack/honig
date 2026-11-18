@@ -29,3 +29,4 @@
 | `relative-json-pointer` | `String` | `String` | `String` |
 | `regex` | `String` | `String` | `String` |
 | `uri-template` | `String` | `String` | `String` |
+| `decimal128` | `String` | `String` | `String` |

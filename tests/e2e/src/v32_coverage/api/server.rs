@@ -38,6 +38,11 @@ pub trait Api: Send + Sync + 'static {
         params: ops::add_note::Params,
         ctx: &Context<'_, ()>,
     ) -> impl Future<Output = Result<ops::add_note::Response, runtime::ApiError>> + Send;
+    fn find_box(
+        &self,
+        params: ops::find_box::Params,
+        ctx: &Context<'_, ()>,
+    ) -> impl Future<Output = Result<ops::find_box::Response, runtime::ApiError>> + Send;
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Operation {
@@ -45,6 +50,7 @@ pub enum Operation {
     Archive,
     Unarchive,
     AddNote,
+    FindBox,
 }
 impl runtime::Operation for Operation {
     fn op(self) -> &'static runtime::Op {
@@ -53,6 +59,7 @@ impl runtime::Operation for Operation {
             Self::Archive => &ARCHIVE_OP,
             Self::Unarchive => &UNARCHIVE_OP,
             Self::AddNote => &ADD_NOTE_OP,
+            Self::FindBox => &FIND_BOX_OP,
         }
     }
 }
@@ -87,10 +94,11 @@ static METHODS: &[&[(&str, (Op, Operation))]] = &[
         ("DELETE", (Op::O2, Operation::Unarchive)),
     ],
     &[("POST", (Op::O3, Operation::AddNote))],
+    &[("GET", (Op::O4, Operation::FindBox))],
 ];
 static ROUTES: &[runtime::Node] = &[
     runtime::node(
-        &[("ping", 1), ("notes", 3), ("archive", 2)],
+        &[("ping", 1), ("boxes", 4), ("notes", 3), ("archive", 2)],
         &[],
         runtime::Node::NONE,
         runtime::Node::NONE,
@@ -98,8 +106,9 @@ static ROUTES: &[runtime::Node] = &[
     runtime::node(&[], &[], runtime::Node::NONE, 0),
     runtime::node(&[], &[], runtime::Node::NONE, 1),
     runtime::node(&[], &[], runtime::Node::NONE, 2),
+    runtime::node(&[], &[], runtime::Node::NONE, 3),
 ];
-static PATHS: &[&str] = &["/archive", "/notes", "/ping"];
+static PATHS: &[&str] = &["/archive", "/boxes", "/notes", "/ping"];
 pub struct Routes<A>(std::sync::Arc<A>);
 /// The server of this API: `Server::new(your_api)`, or `Server::new(arc)` to keep a handle on it. Add layers,
 /// then `into_axum` or `into_service`.
@@ -172,6 +181,7 @@ enum Op {
     O1,
     O2,
     O3,
+    O4,
 }
 async fn dispatch<A: Api>(
     api: &A,
@@ -184,6 +194,7 @@ async fn dispatch<A: Api>(
         Op::O1 => Box::pin(archive(api, routed, call)).await,
         Op::O2 => Box::pin(unarchive(api, routed, call)).await,
         Op::O3 => Box::pin(add_note(api, routed, call)).await,
+        Op::O4 => Box::pin(find_box(api, routed, call)).await,
     }
 }
 static PING_OP: runtime::Op = runtime::Op {
@@ -378,97 +389,303 @@ fn add_note_params(
                             "oneOf".to_owned(),
                             serde_json::Value::Array(
                                 vec![
-                                    serde_json::Value::Object(serde_json::Map::from_iter([("type"
-                                    .to_owned(), serde_json::Value::String("object"
-                                    .to_owned())), ("required".to_owned(),
-                                    serde_json::Value::Array(vec![serde_json::Value::String("text"
-                                    .to_owned())])), ("properties".to_owned(),
-                                    serde_json::Value::Object(serde_json::Map::from_iter([("kind"
+                                    serde_json::Value::Object(serde_json::Map::from_iter([("$ref"
                                     .to_owned(),
-                                    serde_json::Value::Object(serde_json::Map::from_iter([("const"
-                                    .to_owned(), serde_json::Value::String("text"
-                                    .to_owned()))]))), ("text".to_owned(),
-                                    serde_json::Value::Object(serde_json::Map::from_iter([("type"
-                                    .to_owned(), serde_json::Value::String("string"
-                                    .to_owned()))]))), ("point".to_owned(),
-                                    serde_json::Value::Object(serde_json::Map::from_iter([("type"
-                                    .to_owned(), serde_json::Value::String("array".to_owned())),
-                                    ("items".to_owned(),
-                                    serde_json::Value::Object(serde_json::Map::from_iter([("type"
-                                    .to_owned(), serde_json::Value::String("number"
-                                    .to_owned()))]))), ("minItems".to_owned(),
-                                    serde_json::Value::from(2i64)), ("maxItems".to_owned(),
-                                    serde_json::Value::from(2i64))]))), ("rgb".to_owned(),
-                                    serde_json::Value::Object(serde_json::Map::from_iter([("type"
-                                    .to_owned(), serde_json::Value::String("array".to_owned())),
-                                    ("items".to_owned(),
-                                    serde_json::Value::Object(serde_json::Map::from_iter([("type"
-                                    .to_owned(), serde_json::Value::String("integer"
-                                    .to_owned())), ("format".to_owned(),
-                                    serde_json::Value::String("uint8".to_owned()))]))),
-                                    ("minItems".to_owned(), serde_json::Value::from(3i64)),
-                                    ("maxItems".to_owned(), serde_json::Value::from(3i64)),
-                                    ("uniqueItems".to_owned(),
-                                    serde_json::Value::Bool(true))])))]))), ("if".to_owned(),
-                                    serde_json::Value::Object(serde_json::Map::from_iter([("required"
-                                    .to_owned(),
-                                    serde_json::Value::Array(vec![serde_json::Value::String("size"
-                                    .to_owned())]))]))), ("then".to_owned(),
-                                    serde_json::Value::Object(serde_json::Map::from_iter([("properties"
-                                    .to_owned(),
-                                    serde_json::Value::Object(serde_json::Map::from_iter([("size"
-                                    .to_owned(),
-                                    serde_json::Value::Object(serde_json::Map::from_iter([("maximum"
-                                    .to_owned(), serde_json::Value::from(10i64))])))])))]))),
-                                    ("else".to_owned(),
-                                    serde_json::Value::Object(serde_json::Map::from_iter([("properties"
-                                    .to_owned(),
-                                    serde_json::Value::Object(serde_json::Map::from_iter([("text"
-                                    .to_owned(),
-                                    serde_json::Value::Object(serde_json::Map::from_iter([("maxLength"
-                                    .to_owned(), serde_json::Value::from(5i64))])))])))])))])),
-                                    serde_json::Value::Object(serde_json::Map::from_iter([("type"
-                                    .to_owned(), serde_json::Value::String("object"
-                                    .to_owned())), ("required".to_owned(),
-                                    serde_json::Value::Array(vec![serde_json::Value::String("kind"
-                                    .to_owned()), serde_json::Value::String("url"
-                                    .to_owned())])), ("properties".to_owned(),
-                                    serde_json::Value::Object(serde_json::Map::from_iter([("kind"
-                                    .to_owned(),
-                                    serde_json::Value::Object(serde_json::Map::from_iter([("const"
-                                    .to_owned(), serde_json::Value::String("image"
-                                    .to_owned()))]))), ("url".to_owned(),
-                                    serde_json::Value::Object(serde_json::Map::from_iter([("type"
-                                    .to_owned(), serde_json::Value::String("string"
-                                    .to_owned()))]))), ("width".to_owned(),
-                                    serde_json::Value::Object(serde_json::Map::from_iter([("default"
-                                    .to_owned(), serde_json::Value::from(64i64)), ("allOf"
-                                    .to_owned(),
-                                    serde_json::Value::Array(vec![serde_json::Value::Object(serde_json::Map::from_iter([("type"
-                                    .to_owned(), serde_json::Value::String("integer"
-                                    .to_owned()))]))]))]))), ("crop".to_owned(),
-                                    serde_json::Value::Object(serde_json::Map::from_iter([("oneOf"
-                                    .to_owned(),
-                                    serde_json::Value::Array(vec![serde_json::Value::Object(serde_json::Map::from_iter([("type"
-                                    .to_owned(), serde_json::Value::String("string"
+                                    serde_json::Value::String("#/$defs/~1components~1schemas~1TextNote"
                                     .to_owned()))])),
-                                    serde_json::Value::Object(serde_json::Map::from_iter([("oneOf"
+                                    serde_json::Value::Object(serde_json::Map::from_iter([("$ref"
                                     .to_owned(),
-                                    serde_json::Value::Array(vec![serde_json::Value::Object(serde_json::Map::from_iter([("type"
-                                    .to_owned(), serde_json::Value::String("integer"
-                                    .to_owned()))])),
-                                    serde_json::Value::Object(serde_json::Map::from_iter([("type"
-                                    .to_owned(), serde_json::Value::String("object"
-                                    .to_owned())), ("properties".to_owned(),
-                                    serde_json::Value::Object(serde_json::Map::from_iter([("x"
-                                    .to_owned(),
-                                    serde_json::Value::Object(serde_json::Map::from_iter([("type"
-                                    .to_owned(), serde_json::Value::String("integer"
-                                    .to_owned()))]))), ("y".to_owned(),
-                                    serde_json::Value::Object(serde_json::Map::from_iter([("type"
-                                    .to_owned(), serde_json::Value::String("integer"
-                                    .to_owned()))])))])))]))]))]))]))])))])))]))
+                                    serde_json::Value::String("#/$defs/~1components~1schemas~1ImageNote"
+                                    .to_owned()))]))
                                 ],
+                            ),
+                        ),
+                        (
+                            "$defs".to_owned(),
+                            serde_json::Value::Object(
+                                serde_json::Map::from_iter([
+                                    (
+                                        "/components/schemas/TextNote".to_owned(),
+                                        serde_json::Value::Object(
+                                            serde_json::Map::from_iter([
+                                                (
+                                                    "type".to_owned(),
+                                                    serde_json::Value::String("object".to_owned()),
+                                                ),
+                                                (
+                                                    "required".to_owned(),
+                                                    serde_json::Value::Array(
+                                                        vec![serde_json::Value::String("text".to_owned())],
+                                                    ),
+                                                ),
+                                                (
+                                                    "properties".to_owned(),
+                                                    serde_json::Value::Object(
+                                                        serde_json::Map::from_iter([
+                                                            (
+                                                                "kind".to_owned(),
+                                                                serde_json::Value::Object(
+                                                                    serde_json::Map::from_iter([
+                                                                        (
+                                                                            "const".to_owned(),
+                                                                            serde_json::Value::String("text".to_owned()),
+                                                                        ),
+                                                                    ]),
+                                                                ),
+                                                            ),
+                                                            (
+                                                                "text".to_owned(),
+                                                                serde_json::Value::Object(
+                                                                    serde_json::Map::from_iter([
+                                                                        (
+                                                                            "type".to_owned(),
+                                                                            serde_json::Value::String("string".to_owned()),
+                                                                        ),
+                                                                    ]),
+                                                                ),
+                                                            ),
+                                                            (
+                                                                "point".to_owned(),
+                                                                serde_json::Value::Object(
+                                                                    serde_json::Map::from_iter([
+                                                                        (
+                                                                            "type".to_owned(),
+                                                                            serde_json::Value::String("array".to_owned()),
+                                                                        ),
+                                                                        (
+                                                                            "items".to_owned(),
+                                                                            serde_json::Value::Object(
+                                                                                serde_json::Map::from_iter([
+                                                                                    (
+                                                                                        "type".to_owned(),
+                                                                                        serde_json::Value::String("number".to_owned()),
+                                                                                    ),
+                                                                                ]),
+                                                                            ),
+                                                                        ),
+                                                                        ("minItems".to_owned(), serde_json::Value::from(2i64)),
+                                                                        ("maxItems".to_owned(), serde_json::Value::from(2i64)),
+                                                                    ]),
+                                                                ),
+                                                            ),
+                                                            (
+                                                                "rgb".to_owned(),
+                                                                serde_json::Value::Object(
+                                                                    serde_json::Map::from_iter([
+                                                                        (
+                                                                            "type".to_owned(),
+                                                                            serde_json::Value::String("array".to_owned()),
+                                                                        ),
+                                                                        (
+                                                                            "items".to_owned(),
+                                                                            serde_json::Value::Object(
+                                                                                serde_json::Map::from_iter([
+                                                                                    (
+                                                                                        "type".to_owned(),
+                                                                                        serde_json::Value::String("integer".to_owned()),
+                                                                                    ),
+                                                                                    (
+                                                                                        "format".to_owned(),
+                                                                                        serde_json::Value::String("uint8".to_owned()),
+                                                                                    ),
+                                                                                ]),
+                                                                            ),
+                                                                        ),
+                                                                        ("minItems".to_owned(), serde_json::Value::from(3i64)),
+                                                                        ("maxItems".to_owned(), serde_json::Value::from(3i64)),
+                                                                        ("uniqueItems".to_owned(), serde_json::Value::Bool(true)),
+                                                                    ]),
+                                                                ),
+                                                            ),
+                                                        ]),
+                                                    ),
+                                                ),
+                                                (
+                                                    "if".to_owned(),
+                                                    serde_json::Value::Object(
+                                                        serde_json::Map::from_iter([
+                                                            (
+                                                                "required".to_owned(),
+                                                                serde_json::Value::Array(
+                                                                    vec![serde_json::Value::String("size".to_owned())],
+                                                                ),
+                                                            ),
+                                                        ]),
+                                                    ),
+                                                ),
+                                                (
+                                                    "then".to_owned(),
+                                                    serde_json::Value::Object(
+                                                        serde_json::Map::from_iter([
+                                                            (
+                                                                "properties".to_owned(),
+                                                                serde_json::Value::Object(
+                                                                    serde_json::Map::from_iter([
+                                                                        (
+                                                                            "size".to_owned(),
+                                                                            serde_json::Value::Object(
+                                                                                serde_json::Map::from_iter([
+                                                                                    ("maximum".to_owned(), serde_json::Value::from(10i64)),
+                                                                                ]),
+                                                                            ),
+                                                                        ),
+                                                                    ]),
+                                                                ),
+                                                            ),
+                                                        ]),
+                                                    ),
+                                                ),
+                                                (
+                                                    "else".to_owned(),
+                                                    serde_json::Value::Object(
+                                                        serde_json::Map::from_iter([
+                                                            (
+                                                                "properties".to_owned(),
+                                                                serde_json::Value::Object(
+                                                                    serde_json::Map::from_iter([
+                                                                        (
+                                                                            "text".to_owned(),
+                                                                            serde_json::Value::Object(
+                                                                                serde_json::Map::from_iter([
+                                                                                    ("maxLength".to_owned(), serde_json::Value::from(5i64)),
+                                                                                ]),
+                                                                            ),
+                                                                        ),
+                                                                    ]),
+                                                                ),
+                                                            ),
+                                                        ]),
+                                                    ),
+                                                ),
+                                            ]),
+                                        ),
+                                    ),
+                                    (
+                                        "/components/schemas/ImageNote".to_owned(),
+                                        serde_json::Value::Object(
+                                            serde_json::Map::from_iter([
+                                                (
+                                                    "type".to_owned(),
+                                                    serde_json::Value::String("object".to_owned()),
+                                                ),
+                                                (
+                                                    "required".to_owned(),
+                                                    serde_json::Value::Array(
+                                                        vec![
+                                                            serde_json::Value::String("kind".to_owned()),
+                                                            serde_json::Value::String("url".to_owned())
+                                                        ],
+                                                    ),
+                                                ),
+                                                (
+                                                    "properties".to_owned(),
+                                                    serde_json::Value::Object(
+                                                        serde_json::Map::from_iter([
+                                                            (
+                                                                "kind".to_owned(),
+                                                                serde_json::Value::Object(
+                                                                    serde_json::Map::from_iter([
+                                                                        (
+                                                                            "const".to_owned(),
+                                                                            serde_json::Value::String("image".to_owned()),
+                                                                        ),
+                                                                    ]),
+                                                                ),
+                                                            ),
+                                                            (
+                                                                "url".to_owned(),
+                                                                serde_json::Value::Object(
+                                                                    serde_json::Map::from_iter([
+                                                                        (
+                                                                            "type".to_owned(),
+                                                                            serde_json::Value::String("string".to_owned()),
+                                                                        ),
+                                                                    ]),
+                                                                ),
+                                                            ),
+                                                            (
+                                                                "width".to_owned(),
+                                                                serde_json::Value::Object(
+                                                                    serde_json::Map::from_iter([
+                                                                        ("default".to_owned(), serde_json::Value::from(64i64)),
+                                                                        (
+                                                                            "allOf".to_owned(),
+                                                                            serde_json::Value::Array(
+                                                                                vec![
+                                                                                    serde_json::Value::Object(serde_json::Map::from_iter([("$ref"
+                                                                                    .to_owned(),
+                                                                                    serde_json::Value::String("#/$defs/~1components~1schemas~1Pixels"
+                                                                                    .to_owned()))]))
+                                                                                ],
+                                                                            ),
+                                                                        ),
+                                                                    ]),
+                                                                ),
+                                                            ),
+                                                            (
+                                                                "crop".to_owned(),
+                                                                serde_json::Value::Object(
+                                                                    serde_json::Map::from_iter([
+                                                                        (
+                                                                            "$ref".to_owned(),
+                                                                            serde_json::Value::String(
+                                                                                "#/$defs/~1components~1schemas~1Crop".to_owned(),
+                                                                            ),
+                                                                        ),
+                                                                    ]),
+                                                                ),
+                                                            ),
+                                                        ]),
+                                                    ),
+                                                ),
+                                            ]),
+                                        ),
+                                    ),
+                                    (
+                                        "/components/schemas/Pixels".to_owned(),
+                                        serde_json::Value::Object(
+                                            serde_json::Map::from_iter([
+                                                (
+                                                    "type".to_owned(),
+                                                    serde_json::Value::String("integer".to_owned()),
+                                                ),
+                                            ]),
+                                        ),
+                                    ),
+                                    (
+                                        "/components/schemas/Crop".to_owned(),
+                                        serde_json::Value::Object(
+                                            serde_json::Map::from_iter([
+                                                (
+                                                    "oneOf".to_owned(),
+                                                    serde_json::Value::Array(
+                                                        vec![
+                                                            serde_json::Value::Object(serde_json::Map::from_iter([("type"
+                                                            .to_owned(), serde_json::Value::String("string"
+                                                            .to_owned()))])),
+                                                            serde_json::Value::Object(serde_json::Map::from_iter([("oneOf"
+                                                            .to_owned(),
+                                                            serde_json::Value::Array(vec![serde_json::Value::Object(serde_json::Map::from_iter([("type"
+                                                            .to_owned(), serde_json::Value::String("integer"
+                                                            .to_owned()))])),
+                                                            serde_json::Value::Object(serde_json::Map::from_iter([("type"
+                                                            .to_owned(), serde_json::Value::String("object"
+                                                            .to_owned())), ("properties".to_owned(),
+                                                            serde_json::Value::Object(serde_json::Map::from_iter([("x"
+                                                            .to_owned(),
+                                                            serde_json::Value::Object(serde_json::Map::from_iter([("type"
+                                                            .to_owned(), serde_json::Value::String("integer"
+                                                            .to_owned()))]))), ("y".to_owned(),
+                                                            serde_json::Value::Object(serde_json::Map::from_iter([("type"
+                                                            .to_owned(), serde_json::Value::String("integer"
+                                                            .to_owned()))])))])))]))]))]))
+                                                        ],
+                                                    ),
+                                                ),
+                                            ]),
+                                        ),
+                                    ),
+                                ]),
                             ),
                         ),
                     ]),
@@ -495,4 +712,73 @@ fn add_note_encode(
         );
         r
     })
+}
+static FIND_BOX_OP: runtime::Op = runtime::Op {
+    name: "find_box",
+    method: "GET",
+    route: "/boxes",
+    span: "GET /boxes",
+    security: &[],
+    takes_body: false,
+    produces: &["application/json"],
+    ranges: false,
+    errors: error_schema,
+};
+async fn find_box<A: Api>(
+    api: &A,
+    routed: runtime::Routed<'_>,
+    call: runtime::Call<'_, Option<A::Principal>, Operation>,
+) -> runtime::Response {
+    let steps = runtime::Steps {
+        api,
+        decode: |i| find_box_params(&i),
+        call: |a, p, c| Box::pin(a.find_box(p, c)),
+        encode: |r, _| find_box_encode(r),
+    };
+    runtime::serve(routed, call.public(), &steps).await
+}
+fn find_box_params(
+    incoming: &runtime::Incoming<'_>,
+) -> Result<ops::find_box::Params, runtime::Reason> {
+    let runtime::Incoming { query, .. } = *incoming;
+    Ok(ops::find_box::Params {
+        width: runtime::from_text(
+            runtime::query_text(query, "width", "/query/width")?,
+            "/query/width",
+        )?,
+        height: runtime::from_text(
+            runtime::query_text(query, "height", "/query/height")?,
+            "/query/height",
+        )?,
+        depth: runtime::from_text(
+            runtime::query_text(query, "depth", "/query/depth")?,
+            "/query/depth",
+        )?,
+        weight: runtime::from_text(
+            runtime::query_text(query, "weight", "/query/weight")?,
+            "/query/weight",
+        )?,
+        color: runtime::from_text(
+            runtime::query_text(query, "color", "/query/color")?,
+            "/query/color",
+        )?,
+        shelf: runtime::from_text(
+            runtime::query_text(query, "shelf", "/query/shelf")?,
+            "/query/shelf",
+        )?,
+        row: runtime::from_text(
+            runtime::query_text(query, "row", "/query/row")?,
+            "/query/row",
+        )?,
+        bin: runtime::from_text(
+            runtime::query_text(query, "bin", "/query/bin")?,
+            "/query/bin",
+        )?,
+    })
+}
+fn find_box_encode(
+    resp: ops::find_box::Response,
+) -> Result<runtime::Response, runtime::Error> {
+    let ops::find_box::Response::Ok(body) = resp;
+    Ok(runtime::body_response(200, "application/json", runtime::json_encode(&body)?))
 }

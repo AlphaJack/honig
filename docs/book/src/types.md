@@ -147,3 +147,5 @@ Where the field type is known, `try_into` builds the value. A spec `default` is 
 ```
 
 A checked type reads as its value: a string one derefs to `str` and compares with `&str`, a number one derefs to its number and compares with it. `get` and `into_inner` return the value, and `parse` reads one from text.
+
+Integer keywords are exact. A fractional bound rounds inward, `multipleOf: 2.5` takes the integers that are multiples of 5, and a bound that no value of the type meets refuses every value: `maximum: -1` on a `uint8` leaves none.
