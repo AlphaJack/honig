@@ -16,7 +16,7 @@ paths:
               schema: {$ref: '#/components/schemas/Event'}
 components:
   schemas:
-    # Required addresses: `std::net::Ipv4Addr` has no `Default`, so neither may the struct (Oxide's `Ipv4Range`).
+    # Required addresses: `std::net::Ipv4Addr` has no `Default`, so neither may the struct.
     StoreNetwork:
       type: object
       required: [first, last]

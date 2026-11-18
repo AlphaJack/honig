@@ -26,7 +26,7 @@ Values that outer tower layers attach also reach `authenticate`. So does the add
 
 ## Signatures over the body
 
-Some schemes sign the body: webhooks (`X-Hub-Signature-256`, `Stripe-Signature`) and Matrix federation (`X-Matrix`). The layer that checks the signature reads the body with `api::read_body(&mut req).await`. The operation decodes the same bytes and reads nothing again:
+Some schemes sign the body, such as webhooks that carry a signature of the body in a header. The layer that checks the signature reads the body with `api::read_body(&mut req).await`. The operation decodes the same bytes and reads nothing again:
 
 ```rust
 {{#include ../../../tests/e2e/tests/v32_catalog/layers.rs:signed-body}}

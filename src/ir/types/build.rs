@@ -517,7 +517,7 @@ impl<'a> Builder<'a> {
         self.defs[id.0].json_string = matches!(self.defs[id.0].kind, Kind::Newtype(_))
             && schema.as_object().is_some_and(|o| json_string_schema(o).is_some());
         // `x-rust-type: crate::domain::Money` reuses your type. So does typify's object form `{crate, version, path}`
-        // (Oxide's `SledUuid`) when the crate is a dependency: `generate` checks that. An invalid path is ignored.
+        // when the crate is a dependency: `generate` checks that. An invalid path is ignored.
         let (path, krate) = match schema.get("x-rust-type") {
             Some(Value::String(p)) => (Some(p.as_str()), None),
             Some(Value::Object(o)) => (o.get("path").and_then(Value::as_str), o.get("crate").and_then(Value::as_str)),
@@ -1132,7 +1132,8 @@ impl<'a> Builder<'a> {
                 let target_ptr = dynamically.or(statically);
                 let mut target = match target_ptr.as_deref() {
                     // Each target goes into `$defs` once, at any depth. Copying it at each reference copies a shared
-                    // target once per path to it: Stripe reaches 917 schemas over 35 million paths. A cycle ends there
+                    // target once per path to it: a large description reaches hundreds of schemas over millions of
+                    // paths. A cycle ends there
                     // too, and is checked as deep as the value goes.
                     Some(p) if walk.cut => {
                         if !walk.cuts.iter().any(|c| c == p) {
@@ -2028,8 +2029,8 @@ fn types_value(types: &[String]) -> Value {
 }
 
 /// Returns an object that admits no property at all: `additionalProperties: false` with nothing declared and no
-/// `patternProperties` or `unevaluatedProperties` to admit a name. Only `{}` is valid (Oxide's
-/// `SubnetCreateDefaults`). It is an empty closed struct and not a map of anything.
+/// `patternProperties` or `unevaluatedProperties` to admit a name. Only `{}` is valid. It is an empty closed struct
+/// and not a map of anything.
 fn only_empty(o: &serde_json::Map<String, Value>) -> bool {
     o.get("additionalProperties") == Some(&Value::Bool(false))
         && json::object(o, "properties").is_none_or(serde_json::Map::is_empty)

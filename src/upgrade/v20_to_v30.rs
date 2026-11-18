@@ -646,7 +646,7 @@ mod tests {
         upgrade(doc, &mut Diagnostics::default())
     }
 
-    /// Kubernetes names properties `default`, `enum` and `example`. They hold schemas whose references move too.
+    /// A description may name properties `default`, `enum` and `example`. They hold schemas whose references move too.
     #[test]
     fn a_property_named_like_a_keyword_has_its_reference_rewritten() {
         let out = up(json!({
