@@ -2,6 +2,7 @@
 
 use super::common;
 
+use crate::ir::types::Format;
 use crate::settings::{DateLib, FormatLibs};
 use serde_json::json;
 
@@ -123,4 +124,30 @@ fn a_pattern_beside_a_typed_format_is_reported_unchecked() {
     assert_eq!(at.len(), 1, "{w:#?}");
     assert!(at[0].starts_with("/components/schemas/Order/properties/id/pattern:"), "{at:?}");
     assert!(at[0].contains("format: uuid"), "{at:?}");
+}
+
+/// A type that the `formats` table names takes the place of a library for its format. Its text is checked first, as a
+/// library's is: the type may read more than the format allows. It has no `Default` that honig could know of.
+#[test]
+fn a_named_type_holds_its_format_with_the_text_checked() {
+    let doc = common::spec(
+        "3.2.0",
+        &json!({}),
+        &json!({"schemas": {"Order": {"type": "object", "required": ["placed", "day"], "properties": {
+            "placed": {"type": "string", "format": "date-time"},
+            "day": {"type": "string", "format": "date"},
+            "contact": {"type": "string", "format": "email"}
+        }}}}),
+    );
+    let named = |text: &str| crate::settings::NamedType::new(text).unwrap();
+    let mut libs = FormatLibs { dates: Some(DateLib::Chrono), ..FormatLibs::default() };
+    libs.named.insert(Format::DateTime, named("time::OffsetDateTime"));
+    libs.named.insert(Format::Email, named("crate::Mail"));
+    let opts =
+        crate::emit::Options { rust: crate::emit::rust::Options { libs, ..Default::default() }, ..Default::default() };
+    let t = common::file(&common::generate("named-format", &doc, &opts), "types.rs").to_owned();
+    assert!(t.contains("pub placed: time::OffsetDateTime"), "{t}");
+    assert!(t.contains("pub day: chrono::NaiveDate"), "the other date formats keep the library: {t}");
+    assert!(t.contains("pub contact: Option<crate::Mail>"), "{t}");
+    assert!(t.contains("format::DateTime") && t.contains("format::Email"), "each text is checked: {t}");
 }

@@ -19,6 +19,13 @@ pub(crate) fn ident(s: &str) -> Ident {
     Ident::new(s, Span::call_site())
 }
 
+/// Returns the type at `p`, a path of identifiers such as `crate::ids::OrderId` or `::time::Date`.
+pub(crate) fn path(p: &str) -> TokenStream {
+    let lead = p.starts_with("::").then(|| quote!(::));
+    let segs = p.trim_start_matches("::").split("::").map(ident);
+    quote!(#lead #(#segs)::*)
+}
+
 /// Returns a [`Name`] as a `snake_case` identifier for fields, parameters and functions.
 pub(crate) fn snake_ident(n: &Name) -> Ident {
     ident(&snake(n))
@@ -115,7 +122,7 @@ fn ty_with(space: &Space<'_>, t: &Ty, named: &dyn Fn(TypeId) -> TokenStream) -> 
 }
 
 /// Returns rust type of a string format. That is the library of the target crate or `String`.
-pub(crate) fn format_ty(libs: FormatLibs, f: Format) -> TokenStream {
+pub(crate) fn format_ty(libs: &FormatLibs, f: Format) -> TokenStream {
     library_ty(libs, f).unwrap_or_else(|| text_ty(f))
 }
 
@@ -159,13 +166,16 @@ fn text_ty(f: Format) -> TokenStream {
 }
 
 /// Returns a format that the target crate has no library for. It is a `runtime::Formatted` text, which checks it.
-pub(crate) fn untyped(libs: FormatLibs, f: Format) -> bool {
+pub(crate) fn untyped(libs: &FormatLibs, f: Format) -> bool {
     library_ty(libs, f).is_none()
 }
 
 /// Returns the type that a format takes from the standard library, the runtime or the library of the target crate.
 /// `None` for its text.
-fn library_ty(libs: FormatLibs, f: Format) -> Option<TokenStream> {
+fn library_ty(libs: &FormatLibs, f: Format) -> Option<TokenStream> {
+    if let Some(named) = libs.named.get(&f) {
+        return Some(path(named.path()));
+    }
     match (f, libs.uuid, libs.dates) {
         (Format::Char, ..) => Some(quote!(char)),
         (Format::Uri, ..) if libs.url => Some(quote!(url::Url)),
@@ -217,20 +227,16 @@ fn library_ty(libs: FormatLibs, f: Format) -> Option<TokenStream> {
 
 /// Returns the marker in `runtime::formats::format` of a format whose library type reads more than the format allows.
 /// `jiff` reads `2024-06-19 08:30Z` as a `date-time` and `uuid` reads `{...}`. `None` for text, the standard library's
-/// addresses and the runtime's own types: those read only valid values.
-fn validated_format(libs: FormatLibs, f: Format) -> Option<Ident> {
-    let marker = match (f, libs.dates) {
-        (Format::DateTime, Some(_)) => "DateTime",
-        (Format::DateTimeLocal, Some(_)) => "DateTimeLocal",
-        (Format::TimeLocal, Some(_)) => "TimeLocal",
-        (Format::Date, Some(_)) => "Date",
-        (Format::Uuid, _) if libs.uuid => "Uuid",
-        (Format::Uri, _) if libs.url => "Uri",
-        (Format::Ipv4Cidr, _) if libs.ipnet => "Ipv4Cidr",
-        (Format::Ipv6Cidr, _) if libs.ipnet => "Ipv6Cidr",
-        _ => return None,
-    };
-    Some(ident(marker))
+/// addresses and the runtime's own types: those read only valid values. A type that the table names reads text that
+/// honig checked first.
+fn validated_format(libs: &FormatLibs, f: Format) -> Option<Ident> {
+    let checked = libs.named.contains_key(&f)
+        || (libs.dates.is_some()
+            && matches!(f, Format::DateTime | Format::DateTimeLocal | Format::TimeLocal | Format::Date))
+        || (libs.uuid && f == Format::Uuid)
+        || (libs.url && f == Format::Uri)
+        || (libs.ipnet && matches!(f, Format::Ipv4Cidr | Format::Ipv6Cidr));
+    f.marker().filter(|_| checked).map(ident)
 }
 
 /// Returns how `t` holds the text of its checked formats: a `runtime::formats::Holds` that reads it with each text

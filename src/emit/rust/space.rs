@@ -11,7 +11,7 @@ pub(crate) struct Space<'a> {
     /// Every named type.
     pub types: &'a TypeSpace,
     /// Libraries the target crate provides for `Ty::Format`.
-    pub libs: FormatLibs,
+    pub libs: &'a FormatLibs,
     /// Which definitions hold a float somewhere by `TypeId`.
     floats: Vec<bool>,
     /// Which definitions hold a `Decimal` somewhere by `TypeId`.
@@ -55,7 +55,7 @@ impl<'a> Space<'a> {
     }
 
     /// Creates the view of the emitter on `types` for a crate with `libs`.
-    pub(crate) fn new(types: &'a TypeSpace, libs: FormatLibs) -> Self {
+    pub(crate) fn new(types: &'a TypeSpace, libs: &'a FormatLibs) -> Self {
         let floats = reaching(types, |d| d.rust_type.is_some() || def_types(&d.kind).iter().any(|t| float_here(t)));
         let decimals = reaching(types, |d| def_types(&d.kind).iter().any(|t| decimal_here(t)));
         Self { types, libs, floats, decimals, kinds: types.kinds(), sizes: def_sizes(types) }

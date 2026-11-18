@@ -57,6 +57,9 @@ pub mod v32_mtls {
 pub mod v32_multipart {
     pub mod api;
 }
+pub mod v32_named_formats {
+    pub mod api;
+}
 pub mod v32_routing {
     pub mod api;
 }

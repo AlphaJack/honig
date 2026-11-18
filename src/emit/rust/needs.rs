@@ -17,7 +17,7 @@ use crate::settings::{
 /// it.
 pub(crate) fn runtime_features(
     api: &Api,
-    libs: FormatLibs,
+    libs: &FormatLibs,
     client: bool,
     server: bool,
     uses: Uses,
@@ -68,12 +68,15 @@ fn codecs(api: &Api, server: bool) -> Vec<&'static str> {
 
 /// Returns the runtime features of the string formats that a description uses. `idn` is for the types of mail addresses
 /// and host names. `regress` checks `regex` without its library type.
-fn format_checks(api: &Api, libs: FormatLibs) -> Vec<&'static str> {
+fn format_checks(api: &Api, libs: &FormatLibs) -> Vec<&'static str> {
     let mut used = BTreeSet::new();
     for ty in every_ty(api) {
         formats_in(ty, &mut used);
     }
-    let checked = |formats: &[Format]| formats.iter().any(|f| used.contains(f) && untyped(libs, *f));
+    // A type that the table names reads text that the runtime checked first.
+    let checked = |formats: &[Format]| {
+        formats.iter().any(|f| used.contains(f) && (untyped(libs, *f) || libs.named.contains_key(f)))
+    };
     let mail = [Format::Email, Format::IdnEmail, Format::Hostname, Format::IdnHostname];
     let needed = [
         // The types of mail addresses and host names are the runtime's own.
