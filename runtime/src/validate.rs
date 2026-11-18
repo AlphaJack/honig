@@ -61,7 +61,10 @@ pub fn violation(out: &mut Vec<Violation>, path: &InstancePath<'_>, message: imp
 /// The runtime checks each format by its own grammar: `uuid`, the dates and times, `uri`, the CIDR blocks, `decimal`
 /// and the rest. `regex` needs the feature `regress`, and mail addresses and host names the feature `idn`. A format
 /// that it does not know passes.
-#[cfg_attr(feature = "idn", doc = "\nThose types are [`Email`](crate::Email) and [`Hostname`](crate::Hostname).")]
+#[cfg_attr(
+    feature = "idn",
+    doc = "\nThose types are [`EmailText`](crate::EmailText) and [`HostnameText`](crate::HostnameText)."
+)]
 pub fn check_format(out: &mut Vec<Violation>, path: &InstancePath<'_>, value: &str, format: &str) {
     if !is_format(value, format) {
         violation(out, path, format!("is not a valid {format}"));
@@ -1192,15 +1195,18 @@ mod mail {
     #[cfg(test)]
     mod tests {
         use super::{email, hostname};
-        use crate::{Email, IdnHostname};
+        use crate::{EmailText, IdnHostnameText};
 
         #[test]
         fn only_a_valid_value_is_one() {
-            assert_eq!(Email::try_from("ann@example.com").map(Email::into_inner), Ok("ann@example.com".to_owned()));
-            assert_eq!(Email::try_from("x"), Err(crate::BuildError::value("`x` is not a valid email".to_owned())));
-            let decoded: Result<Email, _> = serde_json::from_str("\"x\"");
+            assert_eq!(
+                EmailText::try_from("ann@example.com").map(EmailText::into_inner),
+                Ok("ann@example.com".to_owned())
+            );
+            assert_eq!(EmailText::try_from("x"), Err(crate::BuildError::value("`x` is not a valid email".to_owned())));
+            let decoded: Result<EmailText, _> = serde_json::from_str("\"x\"");
             assert!(decoded.unwrap_err().to_string().contains("is not a valid email"));
-            let site: IdnHostname = serde_json::from_str("\"bücher.example\"").unwrap();
+            let site: IdnHostnameText = serde_json::from_str("\"bücher.example\"").unwrap();
             assert_eq!(serde_json::to_string(&site).unwrap(), "\"bücher.example\"", "the value as written");
         }
 

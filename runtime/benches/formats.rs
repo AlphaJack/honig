@@ -3,7 +3,7 @@
 
 use divan::Bencher;
 use honig::__private::check_format;
-use honig::{Email, Hostname, IdnEmail, IdnHostname, InstancePath};
+use honig::{EmailText, HostnameText, IdnEmailText, IdnHostnameText, InstancePath};
 
 fn main() {
     // Without its runtime feature a format is not checked. Its bench would then time nothing.
@@ -28,10 +28,10 @@ type Check = fn(&str) -> bool;
 const CASES: [(&str, Check); 8] = [
     ("uuid", |v| text("uuid", v)),
     ("date-time", |v| text("date-time", v)),
-    ("email", |v| Email::try_from(v).is_ok()),
-    ("idn-email", |v| IdnEmail::try_from(v).is_ok()),
-    ("hostname", |v| Hostname::try_from(v).is_ok()),
-    ("idn-hostname", |v| IdnHostname::try_from(v).is_ok()),
+    ("email", |v| EmailText::try_from(v).is_ok()),
+    ("idn-email", |v| IdnEmailText::try_from(v).is_ok()),
+    ("hostname", |v| HostnameText::try_from(v).is_ok()),
+    ("idn-hostname", |v| IdnHostnameText::try_from(v).is_ok()),
     ("uri", |v| text("uri", v)),
     ("ipv6-cidr", |v| text("ipv6-cidr", v)),
 ];

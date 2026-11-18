@@ -178,10 +178,10 @@ fn library_ty(libs: FormatLibs, f: Format) -> Option<TokenStream> {
         (Format::Ipv6, ..) => Some(quote!(std::net::Ipv6Addr)),
         (Format::Base64Url, ..) => Some(quote!(runtime::Base64Url)),
         // Types that only a valid value can be. The `idn` feature of the runtime has them. The description turns it on.
-        (Format::Email, ..) => Some(quote!(runtime::Email)),
-        (Format::IdnEmail, ..) => Some(quote!(runtime::IdnEmail)),
-        (Format::Hostname, ..) => Some(quote!(runtime::Hostname)),
-        (Format::IdnHostname, ..) => Some(quote!(runtime::IdnHostname)),
+        (Format::Email, ..) => Some(quote!(runtime::EmailText)),
+        (Format::IdnEmail, ..) => Some(quote!(runtime::IdnEmailText)),
+        (Format::Hostname, ..) => Some(quote!(runtime::HostnameText)),
+        (Format::IdnHostname, ..) => Some(quote!(runtime::IdnHostnameText)),
         // `time` has an offset: neither library has a type for it. The runtime holds it in `jiff` types.
         // Neither date library has a time with an offset. The runtime's holds plain numbers, with any setting.
         (Format::Time, ..) => Some(quote!(runtime::FullTime)),

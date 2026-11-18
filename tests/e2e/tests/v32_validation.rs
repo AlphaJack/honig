@@ -454,7 +454,7 @@ fn an_unfillable_error_schema_falls_back_to_rfc_9457() {
     assert_eq!(violations(&r), ["/body/age 200 must be less than 150"], "{body}");
 }
 
-/// `email` and `idn-hostname` are types that only a valid value can be (`api::Email` and `api::IdnHostname`). A
+/// `email` and `idn-hostname` are types that only a valid value can be (`api::EmailText` and `api::IdnHostnameText`). A
 /// request that holds another value is refused while decoding.
 #[test]
 fn mail_addresses_and_host_names_are_types() {
@@ -468,7 +468,7 @@ fn mail_addresses_and_host_names_are_types() {
         let text = String::from_utf8_lossy(r.body().bytes());
         assert!(text.contains(&format!("`{bad}` is not a valid")), "{text}");
     }
-    assert!(api::Email::try_from("x").is_err(), "nor can a handler build one");
+    assert!(api::EmailText::try_from("x").is_err(), "nor can a handler build one");
 }
 
 /// `multipleOf` on a number divides and allows 1e-9: decimal multiples a binary float cannot hold exactly pass.

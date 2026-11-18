@@ -10,10 +10,10 @@
 | `uri` | `api::UriText` | `uri`: an absolute RFC 3986 URI. |
 | `ipv4-cidr` | `api::Ipv4CidrText` | `ipv4-cidr`: an IPv4 address block. |
 | `ipv6-cidr` | `api::Ipv6CidrText` | `ipv6-cidr`: an IPv6 address block. |
-| `email` | `api::Email` | `email`: an RFC 5321 mail address. An ASCII dot-atom or quoted local part, then `@`, then a host name or an address literal. |
-| `idn-email` | `api::IdnEmail` | `idn-email`: an RFC 6531 mail address, an `email` that may hold UTF-8. |
-| `hostname` | `api::Hostname` | `hostname`: an RFC 1123 host name with ASCII labels. A punycode label must decode to a valid name. |
-| `idn-hostname` | `api::IdnHostname` | `idn-hostname`: an IDNA2008 host name, a `hostname` whose labels may be Unicode. |
+| `email` | `api::EmailText` | `email`: an RFC 5321 mail address. An ASCII dot-atom or quoted local part, then `@`, then a host name or an address literal. |
+| `idn-email` | `api::IdnEmailText` | `idn-email`: an RFC 6531 mail address, an `email` that may hold UTF-8. |
+| `hostname` | `api::HostnameText` | `hostname`: an RFC 1123 host name with ASCII labels. A punycode label must decode to a valid name. |
+| `idn-hostname` | `api::IdnHostnameText` | `idn-hostname`: an IDNA2008 host name, a `hostname` whose labels may be Unicode. |
 | `decimal` | `api::DecimalText` | `decimal` on a string: the digits of a decimal number. |
 | `decimal128` | `api::Decimal128Text` | `decimal128` on a string: a decimal number that IEEE 754 decimal128 holds exactly. |
 | `http-date` | `api::HttpDateText` | `http-date`: one of the three forms of RFC 9110 section 5.6.7. |
