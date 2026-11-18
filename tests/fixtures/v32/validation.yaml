@@ -96,6 +96,10 @@ components:
     # `anyOf` of two strings: the first branch that decodes, with its keywords, is the answer.
     Slug:
       anyOf: [{type: string, enum: [""]}, {type: string, pattern: '^[a-z]+$'}]
+    # A boolean that may only be `true`: a typed constant.
+    AlwaysTrue:
+      type: boolean
+      enum: [true]
     # `oneOf` of two strings: exactly one branch may take a value.
     Code:
       oneOf: [{type: string, maxLength: 3}, {type: string, pattern: '^[a-z]+$'}]

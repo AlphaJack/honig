@@ -644,3 +644,11 @@ fn a_one_of_takes_a_value_that_exactly_one_branch_takes() {
     assert!(both.contains("matches 2 of `oneOf`, not exactly one"), "{both}");
     assert!(serde_json::from_str::<types::Code>(r#""ABCD""#).is_err(), "neither");
 }
+
+/// `enum: [true]` is a constant: it decodes `true` and nothing else, with no check of the whole value.
+#[test]
+fn a_one_value_enum_is_a_constant() {
+    assert!(serde_json::from_str::<types::AlwaysTrue>("true").is_ok());
+    assert!(serde_json::from_str::<types::AlwaysTrue>("false").is_err());
+    const { assert!(types::AlwaysTrue::VALUE) };
+}
