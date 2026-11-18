@@ -120,7 +120,7 @@ Mail addresses and host names are types of the runtime. Only a valid value can b
 It reads the exact text wherever the number is. This includes `oneOf` branches. It rounds only in the `Other` of an open union. That variant holds a value that no branch takes as a `serde_json::Value`.
 
 For arithmetic parse its digits into a decimal type with `d.as_str().parse::<rust_decimal::Decimal>()`.
-`{type: string, format: decimal}` is `api::DecimalText` with every digit, checked as a decimal. Use it past the 28 significant digits that `rust_decimal` holds.
+`{type: string, format: decimal}` is `api::DecimalText` with every digit, checked as a decimal. `decimal128` keeps every digit too, as a number or as `api::Decimal128Text`, and holds the limits of IEEE 754 decimal128: at most 34 significant digits within its exponent range. Use it past the 28 significant digits that `rust_decimal` holds.
 
 JSON the description leaves untyped is a `serde_json::Value`:
 
@@ -157,3 +157,13 @@ The error names the field as the description spells it: `` `age`: 150 must be le
 A checked type reads as its value: a string one derefs to `str` and compares with `&str`, a number one derefs to its number and compares with it. `get` and `into_inner` return the value, and `parse` reads one from text.
 
 Integer keywords are exact. A fractional bound rounds inward, `multipleOf: 2.5` takes the integers that are multiples of 5, and a bound that no value of the type meets refuses every value: `maximum: -1` on a `uint8` leaves none.
+
+## Whole schemas
+
+Some keywords say what no Rust type can: `not`, `contains`, `dependentRequired`, `if`/`then` beyond the constants of one property, the one branch that a `oneOf` takes, tuples and `$dynamicRef`. A struct or union whose own schema has them is a checked type of its shape: `Product` holds a `ProductFields`, `Vehicle` holds a `VehicleVariants`. It reads as its shape. `try_from` and decoding check the whole schema. Its builder fills the fields and checks the whole value in `build`:
+
+```rust
+{{#include ../../../tests/e2e/tests/v32_kitchen_sink.rs:whole-schema}}
+```
+
+A property, parameter or body with such keywords of its own has a checked type named after it, such as `ProductAttrs`. A type of yours (`x-rust-type`) is never wrapped: it keeps its own invariants.

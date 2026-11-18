@@ -11,11 +11,10 @@
     clippy::missing_errors_doc,
     reason = "generated docs hold only the description's own prose"
 )]
-macro_rules! validate_impl {
-    ($t:ty) => {
-        impl runtime::Validate for $t {}
-    };
-}
+#![allow(
+    clippy::init_numbered_fields,
+    reason = "a spec default builds its checked type as `Type { 0: value }`, which also works through the alias of a twin"
+)]
 macro_rules! display_impl {
     ($t:ty) => {
         impl std::fmt::Display for $t {
@@ -34,7 +33,6 @@ macro_rules! error_impl {
 }
 pub mod matrix_fs {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/matrix-f-s/{color}";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -47,7 +45,6 @@ pub mod matrix_fs {
             Self { color }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Done.
@@ -66,7 +63,6 @@ pub mod matrix_fs {
 }
 pub mod matrix_fa {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/matrix-f-a/{color}";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -79,7 +75,6 @@ pub mod matrix_fa {
             Self { color }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Done.
@@ -98,7 +93,6 @@ pub mod matrix_fa {
 }
 pub mod matrix_fo {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/matrix-f-o/{color}";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -111,7 +105,6 @@ pub mod matrix_fo {
             Self { color }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Done.
@@ -130,7 +123,6 @@ pub mod matrix_fo {
 }
 pub mod matrix_ta {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/matrix-t-a/{color}";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -143,7 +135,6 @@ pub mod matrix_ta {
             Self { color }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Done.
@@ -162,7 +153,6 @@ pub mod matrix_ta {
 }
 pub mod matrix_to {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/matrix-t-o/{color}";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -175,7 +165,6 @@ pub mod matrix_to {
             Self { color }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Done.
@@ -194,7 +183,6 @@ pub mod matrix_to {
 }
 pub mod label_fs {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/label-f-s/{color}";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -207,7 +195,6 @@ pub mod label_fs {
             Self { color }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Done.
@@ -226,7 +213,6 @@ pub mod label_fs {
 }
 pub mod label_fa {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/label-f-a/{color}";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -239,7 +225,6 @@ pub mod label_fa {
             Self { color }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Done.
@@ -258,7 +243,6 @@ pub mod label_fa {
 }
 pub mod label_fo {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/label-f-o/{color}";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -271,7 +255,6 @@ pub mod label_fo {
             Self { color }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Done.
@@ -290,7 +273,6 @@ pub mod label_fo {
 }
 pub mod label_ta {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/label-t-a/{color}";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -303,7 +285,6 @@ pub mod label_ta {
             Self { color }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Done.
@@ -322,7 +303,6 @@ pub mod label_ta {
 }
 pub mod label_to {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/label-t-o/{color}";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -335,7 +315,6 @@ pub mod label_to {
             Self { color }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Done.
@@ -354,7 +333,6 @@ pub mod label_to {
 }
 pub mod simple_fa {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/simple-f-a/{color}";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -367,7 +345,6 @@ pub mod simple_fa {
             Self { color }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Done.
@@ -386,7 +363,6 @@ pub mod simple_fa {
 }
 pub mod simple_fo {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/simple-f-o/{color}";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -399,7 +375,6 @@ pub mod simple_fo {
             Self { color }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Done.
@@ -418,7 +393,6 @@ pub mod simple_fo {
 }
 pub mod simple_ta {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/simple-t-a/{color}";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -431,7 +405,6 @@ pub mod simple_ta {
             Self { color }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Done.
@@ -450,7 +423,6 @@ pub mod simple_ta {
 }
 pub mod simple_to {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/simple-t-o/{color}";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -463,7 +435,6 @@ pub mod simple_to {
             Self { color }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Done.
@@ -482,7 +453,6 @@ pub mod simple_to {
 }
 pub mod form_fa {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/form-f-a";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -495,7 +465,6 @@ pub mod form_fa {
             Self { color }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Done.
@@ -514,7 +483,6 @@ pub mod form_fa {
 }
 pub mod form_fo {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/form-f-o";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -527,7 +495,6 @@ pub mod form_fo {
             Self { color }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Done.
@@ -546,7 +513,6 @@ pub mod form_fo {
 }
 pub mod form_ta {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/form-t-a";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -559,7 +525,6 @@ pub mod form_ta {
             Self { color }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Done.
@@ -578,7 +543,6 @@ pub mod form_ta {
 }
 pub mod form_to {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/form-t-o";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -591,7 +555,6 @@ pub mod form_to {
             Self { color }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Done.
@@ -610,7 +573,6 @@ pub mod form_to {
 }
 pub mod space_fa {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/space-f-a";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -623,7 +585,6 @@ pub mod space_fa {
             Self { color }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Done.
@@ -642,7 +603,6 @@ pub mod space_fa {
 }
 pub mod space_fo {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/space-f-o";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -655,7 +615,6 @@ pub mod space_fo {
             Self { color }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Done.
@@ -674,7 +633,6 @@ pub mod space_fo {
 }
 pub mod pipe_fa {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/pipe-f-a";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -687,7 +645,6 @@ pub mod pipe_fa {
             Self { color }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Done.
@@ -706,7 +663,6 @@ pub mod pipe_fa {
 }
 pub mod pipe_fo {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/pipe-f-o";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -719,7 +675,6 @@ pub mod pipe_fo {
             Self { color }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Done.
@@ -738,7 +693,6 @@ pub mod pipe_fo {
 }
 pub mod deep_o {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/deep-o";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -751,7 +705,6 @@ pub mod deep_o {
             Self { color }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Done.
@@ -770,7 +723,6 @@ pub mod deep_o {
 }
 pub mod header_fa {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/header-f-a";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -783,7 +735,6 @@ pub mod header_fa {
             Self { color }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Done.
@@ -802,7 +753,6 @@ pub mod header_fa {
 }
 pub mod header_fo {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/header-f-o";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -815,7 +765,6 @@ pub mod header_fo {
             Self { color }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Done.
@@ -834,7 +783,6 @@ pub mod header_fo {
 }
 pub mod header_ta {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/header-t-a";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -847,7 +795,6 @@ pub mod header_ta {
             Self { color }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Done.
@@ -866,7 +813,6 @@ pub mod header_ta {
 }
 pub mod header_to {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/header-t-o";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -879,7 +825,6 @@ pub mod header_to {
             Self { color }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Done.
@@ -898,7 +843,6 @@ pub mod header_to {
 }
 pub mod cookie_form_fa {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/cookie-form-f-a";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -911,7 +855,6 @@ pub mod cookie_form_fa {
             Self { color }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Done.
@@ -930,7 +873,6 @@ pub mod cookie_form_fa {
 }
 pub mod cookie_form_fo {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/cookie-form-f-o";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -943,7 +885,6 @@ pub mod cookie_form_fo {
             Self { color }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Done.
@@ -962,7 +903,6 @@ pub mod cookie_form_fo {
 }
 pub mod cookie_fa {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/cookie-f-a";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -975,7 +915,6 @@ pub mod cookie_fa {
             Self { color }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Done.
@@ -994,7 +933,6 @@ pub mod cookie_fa {
 }
 pub mod cookie_fo {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/cookie-f-o";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1007,7 +945,6 @@ pub mod cookie_fo {
             Self { color }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Done.
@@ -1026,7 +963,6 @@ pub mod cookie_fo {
 }
 pub mod cookie_ta {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/cookie-t-a";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1039,7 +975,6 @@ pub mod cookie_ta {
             Self { color }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Done.
@@ -1058,7 +993,6 @@ pub mod cookie_ta {
 }
 pub mod cookie_to {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/cookie-t-o";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1071,7 +1005,6 @@ pub mod cookie_to {
             Self { color }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Done.

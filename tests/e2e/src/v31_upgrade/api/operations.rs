@@ -11,11 +11,10 @@
     clippy::missing_errors_doc,
     reason = "generated docs hold only the description's own prose"
 )]
-macro_rules! validate_impl {
-    ($t:ty) => {
-        impl runtime::Validate for $t {}
-    };
-}
+#![allow(
+    clippy::init_numbered_fields,
+    reason = "a spec default builds its checked type as `Type { 0: value }`, which also works through the alias of a twin"
+)]
 macro_rules! error_impl {
     ($t:ty) => {
         impl std::error::Error for $t {}
@@ -23,7 +22,6 @@ macro_rules! error_impl {
 }
 pub mod get_file {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/files/{path}";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -42,7 +40,6 @@ pub mod get_file {
             }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// The file.
@@ -66,7 +63,6 @@ pub mod get_file {
     }
 }
 pub mod admin {
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/admin";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -82,7 +78,6 @@ pub mod admin {
             Self::new()
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Done.

@@ -11,6 +11,10 @@
     clippy::missing_errors_doc,
     reason = "generated docs hold only the description's own prose"
 )]
+#![allow(
+    clippy::init_numbered_fields,
+    reason = "a spec default builds its checked type as `Type { 0: value }`, which also works through the alias of a twin"
+)]
 macro_rules! default_impl {
     ($t:ty) => {
         impl Default for $t {
@@ -18,11 +22,6 @@ macro_rules! default_impl {
                 Self::new()
             }
         }
-    };
-}
-macro_rules! validate_impl {
-    ($t:ty) => {
-        impl runtime::Validate for $t {}
     };
 }
 macro_rules! display_impl {
@@ -52,7 +51,6 @@ pub const SECURITY_1: &[&[runtime::Requirement]] = &[
     &[(runtime::Scheme::Bearer("pat"), &["issues:write"])],
 ];
 pub mod list_issues {
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/issues";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -64,7 +62,6 @@ pub mod list_issues {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Listed.
@@ -82,7 +79,6 @@ pub mod list_issues {
     }
 }
 pub mod create_issue {
-    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/issues";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -94,7 +90,6 @@ pub mod create_issue {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Created.
@@ -112,7 +107,6 @@ pub mod create_issue {
     }
 }
 pub mod open {
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/public";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -124,7 +118,6 @@ pub mod open {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Open.

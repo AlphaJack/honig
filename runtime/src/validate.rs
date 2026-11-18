@@ -37,6 +37,20 @@ impl fmt::Display for InstancePath<'_> {
     }
 }
 
+/// Returns the first violation as the error of a checked type's `try_from`: its message, after its pointer when it is
+/// inside the value (`/2: at least 1 characters required, found 0`).
+///
+/// # Errors
+///
+/// `violations` is not empty.
+pub fn first(violations: Vec<Violation>) -> Result<(), String> {
+    match violations.into_iter().next() {
+        None => Ok(()),
+        Some(v) if v.path.is_empty() => Err(v.message),
+        Some(v) => Err(format!("{}: {}", v.path, v.message)),
+    }
+}
+
 /// Records a violation.
 pub fn violation(out: &mut Vec<Violation>, path: &InstancePath<'_>, message: impl Into<String>) {
     out.push(Violation { path: path.to_string(), message: message.into() });
@@ -1026,63 +1040,6 @@ fn type_is(v: &Value, t: &str) -> bool {
     }
 }
 
-/// Check the schema constraints of a value (generated per type).
-pub trait Validate {
-    /// Appends every violation under `path` to `out`. Default: nothing can fail.
-    fn validate(&self, _path: &InstancePath<'_>, _out: &mut Vec<Violation>) {}
-}
-
-/// Does `value` pass every check? An untagged union takes a branch only when it does: a branch that decodes but fails
-/// its checks leaves the value to the branches after it.
-#[must_use]
-pub fn is_valid<T: Validate + ?Sized>(value: &T) -> bool {
-    let mut out = Vec::new();
-    value.validate(&InstancePath::Root, &mut out);
-    out.is_empty()
-}
-
-impl<T: Validate> Validate for Option<T> {
-    fn validate(&self, path: &InstancePath<'_>, out: &mut Vec<Violation>) {
-        if let Some(v) = self {
-            v.validate(path, out);
-        }
-    }
-}
-
-impl<T: Validate> Validate for Box<T> {
-    fn validate(&self, path: &InstancePath<'_>, out: &mut Vec<Violation>) {
-        (**self).validate(path, out);
-    }
-}
-
-impl<T: Validate> Validate for [T] {
-    fn validate(&self, path: &InstancePath<'_>, out: &mut Vec<Violation>) {
-        for (i, v) in self.iter().enumerate() {
-            v.validate(&InstancePath::Index(path, i), out);
-        }
-    }
-}
-
-impl<T: Validate> Validate for Vec<T> {
-    fn validate(&self, path: &InstancePath<'_>, out: &mut Vec<Violation>) {
-        self.as_slice().validate(path, out);
-    }
-}
-
-impl<T: Validate> Validate for BTreeMap<String, T> {
-    fn validate(&self, path: &InstancePath<'_>, out: &mut Vec<Violation>) {
-        for (k, v) in self {
-            v.validate(&InstancePath::Key(path, k), out);
-        }
-    }
-}
-
-impl<T: Validate, const N: usize> Validate for [T; N] {
-    fn validate(&self, path: &InstancePath<'_>, out: &mut Vec<Violation>) {
-        self.as_slice().validate(path, out);
-    }
-}
-
 #[cfg(feature = "idn")]
 pub use mail::{Email, Hostname, IdnEmail, IdnHostname};
 
@@ -1520,18 +1477,11 @@ mod tests {
     }
 
     #[test]
-    fn a_map_validates_each_value_under_its_key() {
-        struct Bad(&'static str);
-        impl super::Validate for Bad {
-            fn validate(&self, path: &super::InstancePath<'_>, out: &mut Vec<super::Violation>) {
-                super::violation(out, path, self.0);
-            }
-        }
-        let map = std::collections::BTreeMap::from([("x".to_owned(), Bad("bad"))]);
-        let mut out = vec![];
-        super::Validate::validate(&map, &super::InstancePath::Root, &mut out);
-        let found: Vec<String> = out.iter().map(|v| format!("{} {}", v.path, v.message)).collect();
-        assert_eq!(found, ["/x bad"]);
+    fn the_first_violation_is_the_error_with_its_pointer_inside_the_value() {
+        assert_eq!(super::first(vec![]), Ok(()));
+        let at = |path: &str, message: &str| super::Violation { path: path.to_owned(), message: message.to_owned() };
+        assert_eq!(super::first(vec![at("", "too short"), at("/1", "later")]), Err("too short".to_owned()));
+        assert_eq!(super::first(vec![at("/2", "not a uuid")]), Err("/2: not a uuid".to_owned()));
     }
 
     #[test]

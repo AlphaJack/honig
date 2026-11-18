@@ -26,6 +26,7 @@ const NOT_EMITTED: &[(&str, &str, &str)] = &[
     ("OpenApi", "$self", "by design: the base URI resolves `$ref`s at load; the loaded document has local ones"),
     ("SecurityScheme", "bearerFormat", "by design: generated docs hold only the description's own prose"),
     ("Tag", "kind", "by design: generated docs hold only the description's own prose"),
+    ("Schema", "example", "by design: an annotation next to a `$ref`, which checks nothing"),
 ];
 
 /// Fields that the model declares by object kind (the `src/spec` struct name).

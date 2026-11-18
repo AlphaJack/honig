@@ -12,6 +12,10 @@
     clippy::missing_errors_doc,
     reason = "generated docs hold only the description's own prose"
 )]
+#![allow(
+    clippy::init_numbered_fields,
+    reason = "a spec default builds its checked type as `Type { 0: value }`, which also works through the alias of a twin"
+)]
 macro_rules! deserialize_impl {
     ($t:ty) => {
         impl<'de> serde::Deserialize<'de> for $t {
@@ -30,11 +34,6 @@ macro_rules! serialize_impl {
         }
     };
 }
-macro_rules! validate_impl {
-    ($t:ty) => {
-        impl runtime::Validate for $t {}
-    };
-}
 macro_rules! serialize_impl_2 {
     ($t:ty) => {
         impl serde::Serialize for $t {
@@ -45,6 +44,32 @@ macro_rules! serialize_impl_2 {
     };
 }
 use super::runtime;
+macro_rules! checked_impls {
+    ($n:ident, $t:ty) => {
+        impl $n {
+            #[must_use]
+            pub fn into_inner(self) -> $t {
+                self.0
+            }
+        }
+        impl std::ops::Deref for $n {
+            type Target = $t;
+            fn deref(&self) -> &$t {
+                &self.0
+            }
+        }
+        impl AsRef<$t> for $n {
+            fn as_ref(&self) -> &$t {
+                &self.0
+            }
+        }
+        impl From<$n> for $t {
+            fn from(value: $n) -> Self {
+                value.0
+            }
+        }
+    };
+}
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Box2 {
@@ -87,142 +112,82 @@ impl Box2 {
         }
     }
 }
-validate_impl!(Box2);
-#[derive(Debug, Clone, PartialEq)]
-pub enum Note {
-    TextNote(NoteTextNote),
-    ImageNote(NoteImageNote),
-}
-impl serde::Serialize for Note {
-    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        match self {
-            Self::TextNote(v) => {
-                let mut j = serde_json::to_value(v).map_err(serde::ser::Error::custom)?;
-                if let serde_json::Value::Object(m) = &mut j {
-                    m.insert(
-                        "kind".to_owned(),
-                        serde_json::Value::String("text".to_owned()),
-                    );
-                }
-                serde::Serialize::serialize(&j, s)
-            }
-            Self::ImageNote(v) => serde::Serialize::serialize(v, s),
-        }
-    }
-}
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+#[serde(transparent)]
+pub struct Note(pub(super) NoteVariants);
 impl<'de> serde::Deserialize<'de> for Note {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        runtime::tagged::<D, Self>(d)
+        let value = <NoteVariants as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
     }
 }
-impl<'de> runtime::TaggedUnion<'de> for Note {
-    const TAG: &'static str = "kind";
-    fn knows(tag: &str) -> bool {
-        matches!(tag, "text" | "image")
-    }
-    fn from_tag<D: serde::Deserializer<'de>>(tag: &str, d: D) -> Result<Self, D::Error> {
-        match tag {
-            "text" => {
-                <NoteTextNote as serde::Deserialize>::deserialize(d).map(Self::TextNote)
-            }
-            "image" => {
-                <NoteImageNote as serde::Deserialize>::deserialize(d)
-                    .map(Self::ImageNote)
-            }
-            _ => Err(serde::de::Error::custom("unknown discriminator")),
-        }
-    }
-    fn from_content(v: runtime::Content<'de>) -> Result<Self, serde_json::Error> {
-        let which = match v.tag("kind").as_deref() {
-            Some("image") => 0,
-            _ => 1,
-        };
-        match which {
-            0 => v.decode_into(Self::ImageNote),
-            _ => v.decode_into(Self::TextNote),
-        }
-    }
-}
-impl runtime::Validate for Note {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        match self {
-            Self::TextNote(x) => {
-                runtime::Validate::validate(x, path, out);
-            }
-            Self::ImageNote(x) => {
-                runtime::Validate::validate(x, path, out);
-            }
-        }
-    }
-}
-#[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct TextNote {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub kind: Option<TextNoteKind>,
-    pub text: String,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub point: Option<[f64; 2]>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub rgb: Option<[u8; 3]>,
-}
-deserialize_impl!(TextNote);
-serialize_impl!(TextNote);
-impl TextNote {
-    #[must_use]
-    pub const fn new(text: String) -> Self {
-        Self {
-            kind: None,
-            text,
-            point: None,
-            rgb: None,
-        }
-    }
-}
-impl runtime::Validate for TextNote {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        if let Some(v) = &self.kind {
+impl TryFrom<NoteVariants> for Note {
+    type Error = String;
+    fn try_from(value: NoteVariants) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
             {
                 static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(v).unwrap_or_default();
+                let value = runtime::to_value(&value).unwrap_or_default();
                 let schema = SCHEMA
                     .get_or_init(|| {
-                        serde_json::from_str("{\"const\":\"text\"}").unwrap_or_default()
+                        serde_json::from_str(
+                                "{\"type\":\"object\",\"properties\":{\"kind\":{\"type\":\"string\"},\"text\":{\"type\":\"string\"},\"size\":{\"type\":\"integer\"}},\"oneOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1TextNote\"},{\"$ref\":\"#/$defs/~1components~1schemas~1ImageNote\"}]}",
+                            )
+                            .unwrap_or_default()
                     });
                 runtime::check_schema_in(
                     out,
-                    &runtime::InstancePath::Key(path, "kind"),
+                    &runtime::InstancePath::Root,
                     &value,
                     schema,
                     runtime::schema_defs(),
                 );
             }
         }
-        if let Some(v) = &self.rgb {
-            runtime::check_unique(out, &runtime::InstancePath::Key(path, "rgb"), v);
-        }
+        runtime::first(violations).map(|()| Self(value))
     }
 }
+checked_impls!(Note, NoteVariants);
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+#[serde(transparent)]
+pub struct TextNote(pub(super) TextNoteFields);
+impl<'de> serde::Deserialize<'de> for TextNote {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <TextNoteFields as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
+    }
+}
+impl TryFrom<TextNoteFields> for TextNote {
+    type Error = String;
+    fn try_from(value: TextNoteFields) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            {
+                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                let value = runtime::to_value(&value).unwrap_or_default();
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"type\":\"object\",\"required\":[\"text\"],\"properties\":{\"kind\":{\"const\":\"text\"},\"text\":{\"type\":\"string\"},\"point\":{\"type\":\"array\",\"items\":{\"type\":\"number\"},\"minItems\":2,\"maxItems\":2},\"rgb\":{\"type\":\"array\",\"items\":{\"type\":\"integer\",\"format\":\"uint8\"},\"minItems\":3,\"maxItems\":3,\"uniqueItems\":true}},\"if\":{\"required\":[\"size\"]},\"then\":{\"properties\":{\"size\":{\"maximum\":10}}},\"else\":{\"properties\":{\"text\":{\"maxLength\":5}}}}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
+                    out,
+                    &runtime::InstancePath::Root,
+                    &value,
+                    schema,
+                    runtime::schema_defs(),
+                );
+            }
+        }
+        runtime::first(violations).map(|()| Self(value))
+    }
+}
+checked_impls!(TextNote, TextNoteFields);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct ImageNote {
@@ -267,248 +232,25 @@ impl Default for ImageNote {
         }
     }
 }
-impl runtime::Validate for ImageNote {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        {
-            static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-            let value = runtime::to_value(&self.kind).unwrap_or_default();
-            let schema = SCHEMA
-                .get_or_init(|| {
-                    serde_json::from_str("{\"const\":\"image\"}").unwrap_or_default()
-                });
-            runtime::check_schema_in(
-                out,
-                &runtime::InstancePath::Key(path, "kind"),
-                &value,
-                schema,
-                runtime::schema_defs(),
-            );
-        }
-        {
-            static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-            let value = runtime::to_value(&self.width).unwrap_or_default();
-            let schema = SCHEMA
-                .get_or_init(|| {
-                    serde_json::from_str(
-                            "{\"default\":64,\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Pixels\"}]}",
-                        )
-                        .unwrap_or_default()
-                });
-            runtime::check_schema_in(
-                out,
-                &runtime::InstancePath::Key(path, "width"),
-                &value,
-                schema,
-                runtime::schema_defs(),
-            );
-        }
-        if let Some(v) = &self.crop {
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(v).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"oneOf\":[{\"type\":\"string\"},{\"oneOf\":[{\"type\":\"integer\"},{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"integer\"},\"y\":{\"type\":\"integer\"}}}]}]}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Key(path, "crop"),
-                    &value,
-                    schema,
-                    runtime::schema_defs(),
-                );
-            }
-        }
-    }
-}
 pub type Pixels = i64;
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Crop {
-    String(String),
-    Variant2(CropVariant2),
-}
-impl serde::Serialize for Crop {
-    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        match self {
-            Self::String(v) => serde::Serialize::serialize(v, s),
-            Self::Variant2(v) => serde::Serialize::serialize(v, s),
-        }
-    }
-}
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
+pub struct Crop(pub(super) CropVariants);
 impl<'de> serde::Deserialize<'de> for Crop {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let v = <runtime::Content<'de> as serde::Deserialize>::deserialize(d)?;
-        let fit_0 = v.kind() == runtime::Kind::String;
-        let mut first = None;
-        if fit_0 && let Ok(x) = v.decode_ref::<String>() {
-            let picked = Self::String(x);
-            if runtime::is_valid(&picked) {
-                return Ok(picked);
-            }
-            first.get_or_insert(picked);
-        }
-        if let Ok(x) = v.decode_ref::<CropVariant2>() {
-            let picked = Self::Variant2(x);
-            if first.is_none() || runtime::is_valid(&picked) {
-                return Ok(picked);
-            }
-            first.get_or_insert(picked);
-        }
-        first.ok_or_else(|| serde::de::Error::custom("matches no variant"))
+        let value = <CropVariants as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
     }
 }
-validate_impl!(Crop);
-/// `TextNote`
-#[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct NoteTextNote {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub kind: Option<String>,
-    pub text: String,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub point: Option<[f64; 2]>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub rgb: Option<[u8; 3]>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub size: Option<i64>,
-}
-deserialize_impl!(NoteTextNote);
-serialize_impl!(NoteTextNote);
-impl NoteTextNote {
-    #[must_use]
-    pub const fn new(text: String) -> Self {
-        Self {
-            kind: None,
-            text,
-            point: None,
-            rgb: None,
-            size: None,
-        }
-    }
-}
-impl runtime::Validate for NoteTextNote {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        if let Some(v) = &self.rgb {
-            runtime::check_unique(out, &runtime::InstancePath::Key(path, "rgb"), v);
-        }
-    }
-}
-/// `ImageNote`
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct NoteImageNote {
-    pub kind: String,
-    pub url: String,
-    #[serde(default = "NoteImageNote::default_width")]
-    pub width: Pixels,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub crop: Option<Crop>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub text: Option<String>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub size: Option<i64>,
-}
-deserialize_impl!(NoteImageNote);
-serialize_impl!(NoteImageNote);
-impl NoteImageNote {
-    #[must_use]
-    pub const fn new(kind: String, url: String) -> Self {
-        Self {
-            kind,
-            url,
-            width: Self::default_width(),
-            crop: None,
-            text: None,
-            size: None,
-        }
-    }
-}
-impl NoteImageNote {
-    #[doc(hidden)]
-    #[must_use]
-    pub const fn default_width() -> Pixels {
-        64i64
-    }
-}
-impl Default for NoteImageNote {
-    fn default() -> Self {
-        Self {
-            kind: <String>::default(),
-            url: <String>::default(),
-            width: Self::default_width(),
-            crop: <Option<Crop>>::default(),
-            text: <Option<String>>::default(),
-            size: <Option<i64>>::default(),
-        }
-    }
-}
-impl runtime::Validate for NoteImageNote {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
+impl TryFrom<CropVariants> for Crop {
+    type Error = String;
+    fn try_from(value: CropVariants) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
         {
-            static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-            let value = runtime::to_value(&self.width).unwrap_or_default();
-            let schema = SCHEMA
-                .get_or_init(|| {
-                    serde_json::from_str(
-                            "{\"default\":64,\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Pixels\"}]}",
-                        )
-                        .unwrap_or_default()
-                });
-            runtime::check_schema_in(
-                out,
-                &runtime::InstancePath::Key(path, "width"),
-                &value,
-                schema,
-                runtime::schema_defs(),
-            );
-        }
-        if let Some(v) = &self.crop {
+            let out = &mut violations;
             {
                 static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(v).unwrap_or_default();
+                let value = runtime::to_value(&value).unwrap_or_default();
                 let schema = SCHEMA
                     .get_or_init(|| {
                         serde_json::from_str(
@@ -518,15 +260,95 @@ impl runtime::Validate for NoteImageNote {
                     });
                 runtime::check_schema_in(
                     out,
-                    &runtime::InstancePath::Key(path, "crop"),
+                    &runtime::InstancePath::Root,
                     &value,
                     schema,
                     runtime::schema_defs(),
                 );
             }
         }
+        runtime::first(violations).map(|()| Self(value))
     }
 }
+checked_impls!(Crop, CropVariants);
+/// `TextNote`
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+#[serde(transparent)]
+pub struct NoteTextNote(pub(super) NoteTextNoteFields);
+impl<'de> serde::Deserialize<'de> for NoteTextNote {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <NoteTextNoteFields as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
+    }
+}
+impl TryFrom<NoteTextNoteFields> for NoteTextNote {
+    type Error = String;
+    fn try_from(value: NoteTextNoteFields) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            {
+                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                let value = runtime::to_value(&value).unwrap_or_default();
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"allOf\":[{\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1TextNote\"},{\"type\":\"object\",\"properties\":{\"kind\":{\"type\":\"string\"},\"text\":{\"type\":\"string\"},\"size\":{\"type\":\"integer\"}}}]},{\"type\":\"object\",\"required\":[\"text\"],\"properties\":{\"kind\":{\"const\":\"text\"},\"text\":{\"type\":\"string\"},\"point\":{\"type\":\"array\",\"items\":{\"type\":\"number\"},\"minItems\":2,\"maxItems\":2},\"rgb\":{\"type\":\"array\",\"items\":{\"type\":\"integer\",\"format\":\"uint8\"},\"minItems\":3,\"maxItems\":3,\"uniqueItems\":true}},\"if\":{\"required\":[\"size\"]},\"then\":{\"properties\":{\"size\":{\"maximum\":10}}},\"else\":{\"properties\":{\"text\":{\"maxLength\":5}}}}]}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
+                    out,
+                    &runtime::InstancePath::Root,
+                    &value,
+                    schema,
+                    runtime::schema_defs(),
+                );
+            }
+        }
+        runtime::first(violations).map(|()| Self(value))
+    }
+}
+checked_impls!(NoteTextNote, NoteTextNoteFields);
+/// `ImageNote`
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
+pub struct NoteImageNote(pub(super) NoteImageNoteFields);
+impl<'de> serde::Deserialize<'de> for NoteImageNote {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <NoteImageNoteFields as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
+    }
+}
+impl TryFrom<NoteImageNoteFields> for NoteImageNote {
+    type Error = String;
+    fn try_from(value: NoteImageNoteFields) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            {
+                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                let value = runtime::to_value(&value).unwrap_or_default();
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1ImageNote\"},{\"type\":\"object\",\"properties\":{\"kind\":{\"type\":\"string\"},\"text\":{\"type\":\"string\"},\"size\":{\"type\":\"integer\"}}}]}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
+                    out,
+                    &runtime::InstancePath::Root,
+                    &value,
+                    schema,
+                    runtime::schema_defs(),
+                );
+            }
+        }
+        runtime::first(violations).map(|()| Self(value))
+    }
+}
+checked_impls!(NoteImageNote, NoteImageNoteFields);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 pub struct TextNoteKind;
 impl TextNoteKind {
@@ -539,7 +361,6 @@ impl<'de> serde::Deserialize<'de> for TextNoteKind {
             .map(|()| Self)
     }
 }
-validate_impl!(TextNoteKind);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 pub struct ImageNoteKind;
 impl ImageNoteKind {
@@ -552,7 +373,6 @@ impl<'de> serde::Deserialize<'de> for ImageNoteKind {
             .map(|()| Self)
     }
 }
-validate_impl!(ImageNoteKind);
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CropVariant2 {
     Integer(i64),
@@ -580,7 +400,6 @@ impl<'de> serde::Deserialize<'de> for CropVariant2 {
         }
     }
 }
-validate_impl!(CropVariant2);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct CropVariant2Variant2 {
@@ -605,7 +424,6 @@ impl CropVariant2Variant2 {
         Self { x: None, y: None }
     }
 }
-validate_impl!(CropVariant2Variant2);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct ArchiveConflict {
@@ -620,7 +438,6 @@ impl ArchiveConflict {
         Self { code, message }
     }
 }
-validate_impl!(ArchiveConflict);
 pub type UnarchiveConflict = ArchiveConflict;
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -646,7 +463,274 @@ impl AddNoteCreatedXTags {
         Self { a: None, b: None }
     }
 }
-validate_impl!(AddNoteCreatedXTags);
+#[derive(Debug, Clone, PartialEq)]
+pub enum NoteVariants {
+    TextNote(NoteTextNote),
+    ImageNote(NoteImageNote),
+}
+impl serde::Serialize for NoteVariants {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        match self {
+            Self::TextNote(v) => {
+                let mut j = serde_json::to_value(v).map_err(serde::ser::Error::custom)?;
+                if let serde_json::Value::Object(m) = &mut j {
+                    m.insert(
+                        "kind".to_owned(),
+                        serde_json::Value::String("text".to_owned()),
+                    );
+                }
+                serde::Serialize::serialize(&j, s)
+            }
+            Self::ImageNote(v) => {
+                let mut j = serde_json::to_value(v).map_err(serde::ser::Error::custom)?;
+                if let serde_json::Value::Object(m) = &mut j {
+                    m.insert(
+                        "kind".to_owned(),
+                        serde_json::Value::String("image".to_owned()),
+                    );
+                }
+                serde::Serialize::serialize(&j, s)
+            }
+        }
+    }
+}
+impl<'de> serde::Deserialize<'de> for NoteVariants {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        runtime::tagged::<D, Self>(d)
+    }
+}
+impl<'de> runtime::TaggedUnion<'de> for NoteVariants {
+    const TAG: &'static str = "kind";
+    fn knows(tag: &str) -> bool {
+        matches!(tag, "text" | "image")
+    }
+    fn from_tag<D: serde::Deserializer<'de>>(tag: &str, d: D) -> Result<Self, D::Error> {
+        match tag {
+            "text" => {
+                <NoteTextNote as serde::Deserialize>::deserialize(d).map(Self::TextNote)
+            }
+            "image" => {
+                <NoteImageNote as serde::Deserialize>::deserialize(d)
+                    .map(Self::ImageNote)
+            }
+            _ => Err(serde::de::Error::custom("unknown discriminator")),
+        }
+    }
+    fn from_content(v: runtime::Content<'de>) -> Result<Self, serde_json::Error> {
+        let which = match v.tag("kind").as_deref() {
+            Some("image") => 0,
+            _ => 1,
+        };
+        match which {
+            0 => v.decode_into(Self::ImageNote),
+            _ => v.decode_into(Self::TextNote),
+        }
+    }
+}
+#[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct TextNoteFields {
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub kind: Option<TextNoteKind>,
+    pub text: String,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub point: Option<[f64; 2]>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub rgb: Option<TextNoteRgb>,
+}
+deserialize_impl!(TextNoteFields);
+serialize_impl!(TextNoteFields);
+impl TextNoteFields {
+    #[must_use]
+    pub const fn new(text: String) -> Self {
+        Self {
+            kind: None,
+            text,
+            point: None,
+            rgb: None,
+        }
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CropVariants {
+    String(String),
+    Variant2(CropVariant2),
+}
+impl serde::Serialize for CropVariants {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        match self {
+            Self::String(v) => serde::Serialize::serialize(v, s),
+            Self::Variant2(v) => serde::Serialize::serialize(v, s),
+        }
+    }
+}
+impl<'de> serde::Deserialize<'de> for CropVariants {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let v = <runtime::Content<'de> as serde::Deserialize>::deserialize(d)?;
+        let fit_0 = v.kind() == runtime::Kind::String;
+        let mut first: Option<String> = None;
+        if fit_0 {
+            match v.decode_ref::<String>() {
+                Ok(x) => return Ok(Self::String(x)),
+                Err(e) => {
+                    first.get_or_insert(e.to_string());
+                }
+            }
+        }
+        {
+            match v.decode_ref::<CropVariant2>() {
+                Ok(x) => return Ok(Self::Variant2(x)),
+                Err(e) => {
+                    first.get_or_insert(e.to_string());
+                }
+            }
+        }
+        Err(
+            serde::de::Error::custom(
+                first.unwrap_or_else(|| "matches no variant".to_owned()),
+            ),
+        )
+    }
+}
+/// `TextNote`
+#[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct NoteTextNoteFields {
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub kind: Option<String>,
+    pub text: String,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub point: Option<[f64; 2]>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub rgb: Option<NoteTextNoteRgb>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub size: Option<i64>,
+}
+deserialize_impl!(NoteTextNoteFields);
+serialize_impl!(NoteTextNoteFields);
+impl NoteTextNoteFields {
+    #[must_use]
+    pub const fn new(text: String) -> Self {
+        Self {
+            kind: None,
+            text,
+            point: None,
+            rgb: None,
+            size: None,
+        }
+    }
+}
+/// `ImageNote`
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct NoteImageNoteFields {
+    pub kind: String,
+    pub url: String,
+    #[serde(default = "NoteImageNoteFields::default_width")]
+    pub width: Pixels,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub crop: Option<Crop>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub text: Option<String>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub size: Option<i64>,
+}
+deserialize_impl!(NoteImageNoteFields);
+serialize_impl!(NoteImageNoteFields);
+impl NoteImageNoteFields {
+    #[must_use]
+    pub const fn new(kind: String, url: String) -> Self {
+        Self {
+            kind,
+            url,
+            width: Self::default_width(),
+            crop: None,
+            text: None,
+            size: None,
+        }
+    }
+}
+impl NoteImageNoteFields {
+    #[doc(hidden)]
+    #[must_use]
+    pub const fn default_width() -> Pixels {
+        64i64
+    }
+}
+impl Default for NoteImageNoteFields {
+    fn default() -> Self {
+        Self {
+            kind: <String>::default(),
+            url: <String>::default(),
+            width: Self::default_width(),
+            crop: <Option<Crop>>::default(),
+            text: <Option<String>>::default(),
+            size: <Option<i64>>::default(),
+        }
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
+pub struct TextNoteRgb(pub(super) [u8; 3]);
+impl<'de> serde::Deserialize<'de> for TextNoteRgb {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <[u8; 3] as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
+    }
+}
+impl TryFrom<[u8; 3]> for TextNoteRgb {
+    type Error = String;
+    fn try_from(value: [u8; 3]) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            runtime::check_unique(out, &runtime::InstancePath::Root, &value);
+        }
+        runtime::first(violations).map(|()| Self(value))
+    }
+}
+checked_impls!(TextNoteRgb, [u8; 3]);
+pub type NoteTextNoteRgb = TextNoteRgb;
 /// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
 /// its field. `build` returns the first field that did not convert.
 pub mod builders {
@@ -698,12 +782,14 @@ pub mod builders {
             text: impl TryInto<String, Error: std::fmt::Display>,
         ) -> TextNote {
             TextNote(
-                runtime::Builder::start(|| Ok(Self::new(runtime::field("text", text)?))),
+                runtime::Builder::start(|| Ok(
+                    super::TextNoteFields::new(runtime::field("text", text)?),
+                )),
             )
         }
     }
     #[must_use = "a builder does nothing until `build`"]
-    pub struct TextNote(runtime::Builder<super::TextNote>);
+    pub struct TextNote(runtime::Builder<super::TextNoteFields>);
     impl TextNote {
         pub fn kind(
             self,
@@ -719,13 +805,17 @@ pub mod builders {
         }
         pub fn rgb(
             self,
-            value: impl TryInto<[u8; 3], Error: std::fmt::Display>,
+            value: impl TryInto<types::TextNoteRgb, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("rgb", value, |s, v| s.rgb = Some(v)))
         }
-        /// Returns the value.
+        /// Returns the value once its whole schema holds.
         pub fn build(self) -> Result<super::TextNote, runtime::BuildError> {
-            self.0.build()
+            self.0
+                .build()
+                .and_then(|v| {
+                    super::TextNote::try_from(v).map_err(runtime::BuildError::value)
+                })
         }
     }
     impl super::ImageNote {
@@ -767,12 +857,14 @@ pub mod builders {
             text: impl TryInto<String, Error: std::fmt::Display>,
         ) -> NoteTextNote {
             NoteTextNote(
-                runtime::Builder::start(|| Ok(Self::new(runtime::field("text", text)?))),
+                runtime::Builder::start(|| Ok(
+                    super::NoteTextNoteFields::new(runtime::field("text", text)?),
+                )),
             )
         }
     }
     #[must_use = "a builder does nothing until `build`"]
-    pub struct NoteTextNote(runtime::Builder<super::NoteTextNote>);
+    pub struct NoteTextNote(runtime::Builder<super::NoteTextNoteFields>);
     impl NoteTextNote {
         pub fn kind(
             self,
@@ -788,16 +880,20 @@ pub mod builders {
         }
         pub fn rgb(
             self,
-            value: impl TryInto<[u8; 3], Error: std::fmt::Display>,
+            value: impl TryInto<types::NoteTextNoteRgb, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("rgb", value, |s, v| s.rgb = Some(v)))
         }
         pub fn size(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
             Self(self.0.set("size", value, |s, v| s.size = Some(v)))
         }
-        /// Returns the value.
+        /// Returns the value once its whole schema holds.
         pub fn build(self) -> Result<super::NoteTextNote, runtime::BuildError> {
-            self.0.build()
+            self.0
+                .build()
+                .and_then(|v| {
+                    super::NoteTextNote::try_from(v).map_err(runtime::BuildError::value)
+                })
         }
     }
     impl super::NoteImageNote {
@@ -808,13 +904,16 @@ pub mod builders {
         ) -> NoteImageNote {
             NoteImageNote(
                 runtime::Builder::start(|| Ok(
-                    Self::new(runtime::field("kind", kind)?, runtime::field("url", url)?),
+                    super::NoteImageNoteFields::new(
+                        runtime::field("kind", kind)?,
+                        runtime::field("url", url)?,
+                    ),
                 )),
             )
         }
     }
     #[must_use = "a builder does nothing until `build`"]
-    pub struct NoteImageNote(runtime::Builder<super::NoteImageNote>);
+    pub struct NoteImageNote(runtime::Builder<super::NoteImageNoteFields>);
     impl NoteImageNote {
         pub fn width(
             self,
@@ -837,9 +936,13 @@ pub mod builders {
         pub fn size(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
             Self(self.0.set("size", value, |s, v| s.size = Some(v)))
         }
-        /// Returns the value.
+        /// Returns the value once its whole schema holds.
         pub fn build(self) -> Result<super::NoteImageNote, runtime::BuildError> {
-            self.0.build()
+            self.0
+                .build()
+                .and_then(|v| {
+                    super::NoteImageNote::try_from(v).map_err(runtime::BuildError::value)
+                })
         }
     }
     impl super::CropVariant2Variant2 {
@@ -903,6 +1006,123 @@ pub mod builders {
         }
         /// Returns the value.
         pub fn build(self) -> Result<super::AddNoteCreatedXTags, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::TextNoteFields {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            text: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> TextNoteFields {
+            TextNoteFields(
+                runtime::Builder::start(|| Ok(Self::new(runtime::field("text", text)?))),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct TextNoteFields(runtime::Builder<super::TextNoteFields>);
+    impl TextNoteFields {
+        pub fn kind(
+            self,
+            value: impl TryInto<types::TextNoteKind, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("kind", value, |s, v| s.kind = Some(v)))
+        }
+        pub fn point(
+            self,
+            value: impl TryInto<[f64; 2], Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("point", value, |s, v| s.point = Some(v)))
+        }
+        pub fn rgb(
+            self,
+            value: impl TryInto<types::TextNoteRgb, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("rgb", value, |s, v| s.rgb = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::TextNoteFields, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::NoteTextNoteFields {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            text: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> NoteTextNoteFields {
+            NoteTextNoteFields(
+                runtime::Builder::start(|| Ok(Self::new(runtime::field("text", text)?))),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct NoteTextNoteFields(runtime::Builder<super::NoteTextNoteFields>);
+    impl NoteTextNoteFields {
+        pub fn kind(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("kind", value, |s, v| s.kind = Some(v)))
+        }
+        pub fn point(
+            self,
+            value: impl TryInto<[f64; 2], Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("point", value, |s, v| s.point = Some(v)))
+        }
+        pub fn rgb(
+            self,
+            value: impl TryInto<types::NoteTextNoteRgb, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("rgb", value, |s, v| s.rgb = Some(v)))
+        }
+        pub fn size(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("size", value, |s, v| s.size = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::NoteTextNoteFields, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::NoteImageNoteFields {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            kind: impl TryInto<String, Error: std::fmt::Display>,
+            url: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> NoteImageNoteFields {
+            NoteImageNoteFields(
+                runtime::Builder::start(|| Ok(
+                    Self::new(runtime::field("kind", kind)?, runtime::field("url", url)?),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct NoteImageNoteFields(runtime::Builder<super::NoteImageNoteFields>);
+    impl NoteImageNoteFields {
+        pub fn width(
+            self,
+            value: impl TryInto<types::Pixels, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("width", value, |s, v| s.width = v))
+        }
+        pub fn crop(
+            self,
+            value: impl TryInto<types::Crop, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("crop", value, |s, v| s.crop = Some(v)))
+        }
+        pub fn text(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("text", value, |s, v| s.text = Some(v)))
+        }
+        pub fn size(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("size", value, |s, v| s.size = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::NoteImageNoteFields, runtime::BuildError> {
             self.0.build()
         }
     }

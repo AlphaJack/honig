@@ -15,7 +15,7 @@ use crate::{ApiError, Context, Message, Response, joined_header};
 /// conditions of the request with them.
 ///
 /// These are the HTTP validators of RFC 9110 section 8.8 (`ETag` and `Last-Modified`). They have nothing to do with
-/// schema validation ([`Validate`](crate::Validate)).
+/// the keywords of a schema.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct Validators<'a> {
     /// The `ETag` header value with its quotes, such as `"33a64df5"` or `W/"33a64df5"`.

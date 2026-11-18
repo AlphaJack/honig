@@ -12,6 +12,10 @@
     clippy::missing_errors_doc,
     reason = "generated docs hold only the description's own prose"
 )]
+#![allow(
+    clippy::init_numbered_fields,
+    reason = "a spec default builds its checked type as `Type { 0: value }`, which also works through the alias of a twin"
+)]
 macro_rules! deserialize_impl {
     ($t:ty) => {
         impl<'de> serde::Deserialize<'de> for $t {
@@ -30,292 +34,7 @@ macro_rules! serialize_impl {
         }
     };
 }
-macro_rules! validate_impl {
-    ($t:ty) => {
-        impl runtime::Validate for $t {
-            fn validate(
-                &self,
-                path: &runtime::InstancePath<'_>,
-                out: &mut Vec<runtime::Violation>,
-            ) {
-                if let Some(v) = &self.tags {
-                    {
-                        static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                        let value = runtime::to_value(v).unwrap_or_default();
-                        let schema = SCHEMA
-                            .get_or_init(|| {
-                                serde_json::from_str(
-                                        "{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"uniqueItems\":true,\"minItems\":0,\"maxItems\":10,\"contains\":{\"const\":\"vip\"},\"minContains\":0,\"maxContains\":1}",
-                                    )
-                                    .unwrap_or_default()
-                            });
-                        runtime::check_schema_in(
-                            out,
-                            &runtime::InstancePath::Key(path, "tags"),
-                            &value,
-                            schema,
-                            runtime::schema_defs(),
-                        );
-                    }
-                }
-                if let Some(v) = &self.point {
-                    {
-                        static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                        let value = runtime::to_value(v).unwrap_or_default();
-                        let schema = SCHEMA
-                            .get_or_init(|| {
-                                serde_json::from_str(
-                                        "{\"type\":\"array\",\"prefixItems\":[{\"type\":\"number\"},{\"type\":\"number\"}],\"items\":false,\"unevaluatedItems\":false}",
-                                    )
-                                    .unwrap_or_default()
-                            });
-                        runtime::check_schema_in(
-                            out,
-                            &runtime::InstancePath::Key(path, "point"),
-                            &value,
-                            schema,
-                            runtime::schema_defs(),
-                        );
-                    }
-                }
-                if let Some(v) = &self.attrs {
-                    {
-                        static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                        let value = runtime::to_value(v).unwrap_or_default();
-                        let schema = SCHEMA
-                            .get_or_init(|| {
-                                serde_json::from_str(
-                                        "{\"type\":\"object\",\"patternProperties\":{\"^x_\":{\"type\":\"string\"}},\"propertyNames\":{\"pattern\":\"^[a-z_]+$\"},\"minProperties\":0,\"maxProperties\":20,\"unevaluatedProperties\":false}",
-                                    )
-                                    .unwrap_or_default()
-                            });
-                        runtime::check_schema_in(
-                            out,
-                            &runtime::InstancePath::Key(path, "attrs"),
-                            &value,
-                            schema,
-                            runtime::schema_defs(),
-                        );
-                    }
-                }
-                if let Some(v) = &self.owner {
-                    {
-                        static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                        let value = runtime::to_value(v).unwrap_or_default();
-                        let schema = SCHEMA
-                            .get_or_init(|| {
-                                serde_json::from_str(
-                                        "{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":true}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}",
-                                    )
-                                    .unwrap_or_default()
-                            });
-                        runtime::check_schema_in(
-                            out,
-                            &runtime::InstancePath::Key(path, "owner"),
-                            &value,
-                            schema,
-                            runtime::schema_defs(),
-                        );
-                    }
-                }
-            }
-        }
-    };
-}
 macro_rules! serialize_impl_2 {
-    ($t:ty) => {
-        impl serde::Serialize for $t {
-            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-                match self {
-                    Self::Book(v) => serde::Serialize::serialize(v, s),
-                    Self::Gadget(v) => serde::Serialize::serialize(v, s),
-                }
-            }
-        }
-    };
-}
-macro_rules! validate_impl_2 {
-    ($t:ty) => {
-        impl runtime::Validate for $t {
-            fn validate(
-                &self,
-                path: &runtime::InstancePath<'_>,
-                out: &mut Vec<runtime::Violation>,
-            ) {
-                match self {
-                    Self::Book(x) => {
-                        runtime::Validate::validate(x, path, out);
-                    }
-                    Self::Gadget(x) => {
-                        runtime::Validate::validate(x, path, out);
-                    }
-                }
-            }
-        }
-    };
-}
-macro_rules! validate_impl_3 {
-    ($t:ty) => {
-        impl runtime::Validate for $t {}
-    };
-}
-macro_rules! validate_impl_4 {
-    ($t:ty) => {
-        impl runtime::Validate for $t {
-            fn validate(
-                &self,
-                path: &runtime::InstancePath<'_>,
-                out: &mut Vec<runtime::Violation>,
-            ) {
-                {
-                    static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                    let value = runtime::to_value(&self.kind).unwrap_or_default();
-                    let schema = SCHEMA
-                        .get_or_init(|| {
-                            serde_json::from_str("{\"const\":\"gadget\"}").unwrap_or_default()
-                        });
-                    runtime::check_schema_in(
-                        out,
-                        &runtime::InstancePath::Key(path, "kind"),
-                        &value,
-                        schema,
-                        runtime::schema_defs(),
-                    );
-                }
-                if let Some(v) = &self.tags {
-                    {
-                        static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                        let value = runtime::to_value(v).unwrap_or_default();
-                        let schema = SCHEMA
-                            .get_or_init(|| {
-                                serde_json::from_str(
-                                        "{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"uniqueItems\":true,\"minItems\":0,\"maxItems\":10,\"contains\":{\"const\":\"vip\"},\"minContains\":0,\"maxContains\":1}",
-                                    )
-                                    .unwrap_or_default()
-                            });
-                        runtime::check_schema_in(
-                            out,
-                            &runtime::InstancePath::Key(path, "tags"),
-                            &value,
-                            schema,
-                            runtime::schema_defs(),
-                        );
-                    }
-                }
-                if let Some(v) = &self.point {
-                    {
-                        static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                        let value = runtime::to_value(v).unwrap_or_default();
-                        let schema = SCHEMA
-                            .get_or_init(|| {
-                                serde_json::from_str(
-                                        "{\"type\":\"array\",\"prefixItems\":[{\"type\":\"number\"},{\"type\":\"number\"}],\"items\":false,\"unevaluatedItems\":false}",
-                                    )
-                                    .unwrap_or_default()
-                            });
-                        runtime::check_schema_in(
-                            out,
-                            &runtime::InstancePath::Key(path, "point"),
-                            &value,
-                            schema,
-                            runtime::schema_defs(),
-                        );
-                    }
-                }
-                if let Some(v) = &self.attrs {
-                    {
-                        static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                        let value = runtime::to_value(v).unwrap_or_default();
-                        let schema = SCHEMA
-                            .get_or_init(|| {
-                                serde_json::from_str(
-                                        "{\"type\":\"object\",\"patternProperties\":{\"^x_\":{\"type\":\"string\"}},\"propertyNames\":{\"pattern\":\"^[a-z_]+$\"},\"minProperties\":0,\"maxProperties\":20,\"unevaluatedProperties\":false}",
-                                    )
-                                    .unwrap_or_default()
-                            });
-                        runtime::check_schema_in(
-                            out,
-                            &runtime::InstancePath::Key(path, "attrs"),
-                            &value,
-                            schema,
-                            runtime::schema_defs(),
-                        );
-                    }
-                }
-                if let Some(v) = &self.owner {
-                    {
-                        static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                        let value = runtime::to_value(v).unwrap_or_default();
-                        let schema = SCHEMA
-                            .get_or_init(|| {
-                                serde_json::from_str(
-                                        "{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":true}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}",
-                                    )
-                                    .unwrap_or_default()
-                            });
-                        runtime::check_schema_in(
-                            out,
-                            &runtime::InstancePath::Key(path, "owner"),
-                            &value,
-                            schema,
-                            runtime::schema_defs(),
-                        );
-                    }
-                }
-            }
-        }
-    };
-}
-macro_rules! validate_impl_5 {
-    ($t:ty) => {
-        impl runtime::Validate for $t {
-            fn validate(
-                &self,
-                path: &runtime::InstancePath<'_>,
-                out: &mut Vec<runtime::Violation>,
-            ) {
-                if let Some(v) = &self.meta {
-                    {
-                        static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                        let value = runtime::to_value(v).unwrap_or_default();
-                        let schema = SCHEMA
-                            .get_or_init(|| {
-                                serde_json::from_str(
-                                        "{\"$id\":\"https://example.com/schemas/product\",\"$schema\":\"https://spec.openapis.org/oas/3.2/dialect/2025-09-17\",\"$comment\":\"A product\",\"type\":\"object\",\"required\":[\"name\",\"kind\"],\"properties\":{\"id\":{\"type\":\"integer\",\"format\":\"int64\",\"readOnly\":true,\"minimum\":0,\"exclusiveMaximum\":9007199254740991},\"name\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":64,\"pattern\":\"^[A-Za-z ]+$\"},\"kind\":{\"type\":\"string\",\"enum\":[\"book\",\"gadget\"]},\"nickname\":{\"type\":[\"string\",\"null\"],\"default\":null},\"secret\":{\"type\":\"string\",\"writeOnly\":true,\"deprecated\":true},\"tags\":{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"uniqueItems\":true,\"minItems\":0,\"maxItems\":10,\"contains\":{\"const\":\"vip\"},\"minContains\":0,\"maxContains\":1},\"point\":{\"type\":\"array\",\"prefixItems\":[{\"type\":\"number\"},{\"type\":\"number\"}],\"items\":false,\"unevaluatedItems\":false},\"attrs\":{\"type\":\"object\",\"patternProperties\":{\"^x_\":{\"type\":\"string\"}},\"propertyNames\":{\"pattern\":\"^[a-z_]+$\"},\"minProperties\":0,\"maxProperties\":20,\"unevaluatedProperties\":false},\"weight\":{\"type\":\"number\",\"multipleOf\":0.01,\"exclusiveMinimum\":0},\"owner\":{\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Owner\"}]}},\"dependentRequired\":{\"nickname\":[\"name\"]},\"dependentSchemas\":{\"secret\":{\"required\":[]}},\"x-rust-type\":{\"crate\":\"products\",\"version\":\"1\",\"path\":\"products::Product\"}}",
-                                    )
-                                    .unwrap_or_default()
-                            });
-                        runtime::check_schema_in(
-                            out,
-                            &runtime::InstancePath::Key(path, "meta"),
-                            &value,
-                            schema,
-                            runtime::schema_defs(),
-                        );
-                    }
-                }
-            }
-        }
-    };
-}
-macro_rules! validate_impl_6 {
-    ($t:ty) => {
-        impl runtime::Validate for $t {
-            fn validate(
-                &self,
-                path: &runtime::InstancePath<'_>,
-                out: &mut Vec<runtime::Violation>,
-            ) {
-                runtime::Validate::validate(
-                    &self.data,
-                    &runtime::InstancePath::Key(path, "data"),
-                    out,
-                );
-            }
-        }
-    };
-}
-macro_rules! serialize_impl_3 {
     ($t:ty) => {
         impl serde::Serialize for $t {
             fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
@@ -335,15 +54,24 @@ macro_rules! deserialize_impl_2 {
         }
     };
 }
-macro_rules! validate_impl_7 {
+macro_rules! serialize_impl_3 {
     ($t:ty) => {
-        impl runtime::Validate for $t {
-            fn validate(
-                &self,
-                path: &runtime::InstancePath<'_>,
-                out: &mut Vec<runtime::Violation>,
-            ) {
-                runtime::Validate::validate(&self.0, path, out);
+        impl serde::Serialize for $t {
+            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                match self {
+                    Self::Book(v) => serde::Serialize::serialize(v, s),
+                    Self::Gadget(v) => serde::Serialize::serialize(v, s),
+                }
+            }
+        }
+    };
+}
+macro_rules! deserialize_impl_3 {
+    ($t:ty) => {
+        impl<'de> serde::Deserialize<'de> for $t {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                let value = <Vec<serde_json::Value> as serde::Deserialize>::deserialize(d)?;
+                Self::try_from(value).map_err(serde::de::Error::custom)
             }
         }
     };
@@ -507,236 +235,190 @@ macro_rules! checked_num_impls {
         }
     };
 }
+macro_rules! checked_impls {
+    ($n:ident, $t:ty) => {
+        impl $n {
+            #[must_use]
+            pub fn into_inner(self) -> $t {
+                self.0
+            }
+        }
+        impl std::ops::Deref for $n {
+            type Target = $t;
+            fn deref(&self) -> &$t {
+                &self.0
+            }
+        }
+        impl AsRef<$t> for $n {
+            fn as_ref(&self) -> &$t {
+                &self.0
+            }
+        }
+        impl From<$n> for $t {
+            fn from(value: $n) -> Self {
+                value.0
+            }
+        }
+    };
+}
 /// Product
 ///
 /// A product
 ///
 /// See also: <https://example.com/product>
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct Product {
-    pub id: ProductId,
-    pub name: ProductName,
-    pub kind: ProductKind,
-    #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
-    pub nickname: runtime::Nullable<String>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub tags: Option<Vec<String>>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub point: Option<Vec<serde_json::Value>>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub attrs: Option<std::collections::BTreeMap<String, String>>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub weight: Option<ProductWeight>,
-    /// Overrides description
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub owner: Option<Owner>,
-}
-deserialize_impl!(Product);
-serialize_impl!(Product);
-impl Product {
-    #[must_use]
-    pub const fn new(id: ProductId, name: ProductName, kind: ProductKind) -> Self {
-        Self {
-            id,
-            name,
-            kind,
-            nickname: runtime::Nullable::Absent,
-            tags: None,
-            point: None,
-            attrs: None,
-            weight: None,
-            owner: None,
-        }
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+#[serde(transparent)]
+pub struct Product(pub(super) ProductFields);
+impl<'de> serde::Deserialize<'de> for Product {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <ProductFields as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
     }
 }
-validate_impl!(Product);
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct Book {
-    pub id: BookId,
-    pub name: BookName,
-    pub kind: BookKind,
-    #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
-    pub nickname: runtime::Nullable<String>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub tags: Option<Vec<String>>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub point: Option<Vec<serde_json::Value>>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub attrs: Option<std::collections::BTreeMap<String, String>>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub weight: Option<BookWeight>,
-    /// Overrides description
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub owner: Option<Owner>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub hardcover: Option<bool>,
-}
-deserialize_impl!(Book);
-serialize_impl!(Book);
-impl Book {
-    #[must_use]
-    pub const fn new(id: BookId, name: BookName, kind: BookKind) -> Self {
-        Self {
-            id,
-            name,
-            kind,
-            nickname: runtime::Nullable::Absent,
-            tags: None,
-            point: None,
-            attrs: None,
-            weight: None,
-            owner: None,
-            hardcover: None,
-        }
-    }
-}
-validate_impl!(Book);
-pub type Gadget = Gadget2;
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct Owner {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub children: Option<Vec<serde_json::Value>>,
-}
-deserialize_impl!(Owner);
-serialize_impl!(Owner);
-impl Owner {
-    #[must_use]
-    pub const fn new() -> Self {
-        Self { children: None }
-    }
-}
-impl runtime::Validate for Owner {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        if let Some(v) = &self.children {
+impl TryFrom<ProductFields> for Product {
+    type Error = String;
+    fn try_from(value: ProductFields) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
             {
                 static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(v).unwrap_or_default();
+                let value = runtime::to_value(&value).unwrap_or_default();
                 let schema = SCHEMA
                     .get_or_init(|| {
                         serde_json::from_str(
-                                "{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":true}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}",
+                                "{\"$id\":\"https://example.com/schemas/product\",\"$schema\":\"https://spec.openapis.org/oas/3.2/dialect/2025-09-17\",\"$comment\":\"A product\",\"type\":\"object\",\"required\":[\"name\",\"kind\"],\"properties\":{\"id\":{\"type\":\"integer\",\"format\":\"int64\",\"readOnly\":true,\"minimum\":0,\"exclusiveMaximum\":9007199254740991},\"name\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":64,\"pattern\":\"^[A-Za-z ]+$\"},\"kind\":{\"type\":\"string\",\"enum\":[\"book\",\"gadget\"]},\"nickname\":{\"type\":[\"string\",\"null\"],\"default\":null},\"secret\":{\"type\":\"string\",\"writeOnly\":true,\"deprecated\":true},\"tags\":{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"uniqueItems\":true,\"minItems\":0,\"maxItems\":10,\"contains\":{\"const\":\"vip\"},\"minContains\":0,\"maxContains\":1},\"point\":{\"type\":\"array\",\"prefixItems\":[{\"type\":\"number\"},{\"type\":\"number\"}],\"items\":false,\"unevaluatedItems\":false},\"attrs\":{\"type\":\"object\",\"patternProperties\":{\"^x_\":{\"type\":\"string\"}},\"propertyNames\":{\"pattern\":\"^[a-z_]+$\"},\"minProperties\":0,\"maxProperties\":20,\"unevaluatedProperties\":false},\"weight\":{\"type\":\"number\",\"multipleOf\":0.01,\"exclusiveMinimum\":0},\"owner\":{\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Owner\"}]}},\"dependentRequired\":{\"nickname\":[\"name\"]},\"dependentSchemas\":{\"secret\":{\"required\":[]}},\"x-rust-type\":{\"crate\":\"products\",\"version\":\"1\",\"path\":\"products::Product\"}}",
                             )
                             .unwrap_or_default()
                     });
                 runtime::check_schema_in(
                     out,
-                    &runtime::InstancePath::Key(path, "children"),
+                    &runtime::InstancePath::Root,
                     &value,
                     schema,
                     runtime::schema_defs(),
                 );
             }
         }
+        runtime::first(violations).map(|()| Self(value))
     }
 }
-#[derive(Debug, Clone, PartialEq)]
-pub enum Shape {
-    Book(Book),
-    Gadget(Gadget),
+checked_impls!(Product, ProductFields);
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+#[serde(transparent)]
+pub struct Book(pub(super) BookFields);
+impl<'de> serde::Deserialize<'de> for Book {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <BookFields as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
+    }
 }
-serialize_impl_2!(Shape);
+impl TryFrom<BookFields> for Book {
+    type Error = String;
+    fn try_from(value: BookFields) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            {
+                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                let value = runtime::to_value(&value).unwrap_or_default();
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"$id\":\"https://example.com/schemas/product\",\"$schema\":\"https://spec.openapis.org/oas/3.2/dialect/2025-09-17\",\"$comment\":\"A product\",\"type\":\"object\",\"required\":[\"name\",\"kind\"],\"properties\":{\"id\":{\"type\":\"integer\",\"format\":\"int64\",\"readOnly\":true,\"minimum\":0,\"exclusiveMaximum\":9007199254740991},\"name\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":64,\"pattern\":\"^[A-Za-z ]+$\"},\"kind\":{\"type\":\"string\",\"enum\":[\"book\",\"gadget\"]},\"nickname\":{\"type\":[\"string\",\"null\"],\"default\":null},\"secret\":{\"type\":\"string\",\"writeOnly\":true,\"deprecated\":true},\"tags\":{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"uniqueItems\":true,\"minItems\":0,\"maxItems\":10,\"contains\":{\"const\":\"vip\"},\"minContains\":0,\"maxContains\":1},\"point\":{\"type\":\"array\",\"prefixItems\":[{\"type\":\"number\"},{\"type\":\"number\"}],\"items\":false,\"unevaluatedItems\":false},\"attrs\":{\"type\":\"object\",\"patternProperties\":{\"^x_\":{\"type\":\"string\"}},\"propertyNames\":{\"pattern\":\"^[a-z_]+$\"},\"minProperties\":0,\"maxProperties\":20,\"unevaluatedProperties\":false},\"weight\":{\"type\":\"number\",\"multipleOf\":0.01,\"exclusiveMinimum\":0},\"owner\":{\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Owner\"}]}},\"dependentRequired\":{\"nickname\":[\"name\"]},\"dependentSchemas\":{\"secret\":{\"required\":[]}},\"x-rust-type\":{\"crate\":\"products\",\"version\":\"1\",\"path\":\"products::Product\"}}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
+                    out,
+                    &runtime::InstancePath::Root,
+                    &value,
+                    schema,
+                    runtime::schema_defs(),
+                );
+            }
+        }
+        runtime::first(violations).map(|()| Self(value))
+    }
+}
+checked_impls!(Book, BookFields);
+pub type Gadget = Gadget2;
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
+pub struct Owner(pub(super) OwnerFields);
+impl<'de> serde::Deserialize<'de> for Owner {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <OwnerFields as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
+    }
+}
+impl TryFrom<OwnerFields> for Owner {
+    type Error = String;
+    fn try_from(value: OwnerFields) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            {
+                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                let value = runtime::to_value(&value).unwrap_or_default();
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":true}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
+                    out,
+                    &runtime::InstancePath::Root,
+                    &value,
+                    schema,
+                    runtime::schema_defs(),
+                );
+            }
+        }
+        runtime::first(violations).map(|()| Self(value))
+    }
+}
+checked_impls!(Owner, OwnerFields);
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+#[serde(transparent)]
+pub struct Shape(pub(super) ShapeVariants);
 impl<'de> serde::Deserialize<'de> for Shape {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let v = <runtime::Content<'de> as serde::Deserialize>::deserialize(d)?;
-        let fit_0 = v.kind() == runtime::Kind::Object
-            && runtime::fits(
-                &v,
-                &[
-                    ("id", true, &[runtime::Kind::Integer, runtime::Kind::Number]),
-                    ("name", true, &[runtime::Kind::String]),
-                    ("kind", true, &[runtime::Kind::String]),
-                    ("nickname", false, &[runtime::Kind::String, runtime::Kind::Null]),
-                    ("tags", false, &[runtime::Kind::Array, runtime::Kind::Null]),
-                    ("point", false, &[runtime::Kind::Array, runtime::Kind::Null]),
-                    ("attrs", false, &[runtime::Kind::Object, runtime::Kind::Null]),
-                    (
-                        "weight",
-                        false,
-                        &[
-                            runtime::Kind::Integer,
-                            runtime::Kind::Number,
-                            runtime::Kind::Null,
-                        ],
-                    ),
-                    ("owner", false, &[runtime::Kind::Object, runtime::Kind::Null]),
-                    ("hardcover", false, &[runtime::Kind::Bool, runtime::Kind::Null]),
-                ],
-            );
-        let fit_1 = v.kind() == runtime::Kind::Object;
-        let mut first = None;
-        if fit_0 && let Ok(x) = v.decode_ref::<Book>() {
-            let picked = Self::Book(x);
-            if (first.is_none() && !(fit_1)) || runtime::is_valid(&picked) {
-                return Ok(picked);
-            }
-            first.get_or_insert(picked);
-        }
-        if fit_1 && let Ok(x) = v.decode_ref::<Gadget>() {
-            let picked = Self::Gadget(x);
-            if first.is_none() || runtime::is_valid(&picked) {
-                return Ok(picked);
-            }
-            first.get_or_insert(picked);
-        }
-        first.ok_or_else(|| serde::de::Error::custom("matches no variant"))
+        let value = <ShapeVariants as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
     }
 }
-validate_impl_2!(Shape);
+impl TryFrom<ShapeVariants> for Shape {
+    type Error = String;
+    fn try_from(value: ShapeVariants) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            {
+                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                let value = runtime::to_value(&value).unwrap_or_default();
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"oneOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Book\"},{\"$ref\":\"#/$defs/~1components~1schemas~1Gadget\"}],\"anyOf\":[true]}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
+                    out,
+                    &runtime::InstancePath::Root,
+                    &value,
+                    schema,
+                    runtime::schema_defs(),
+                );
+            }
+        }
+        runtime::first(violations).map(|()| Self(value))
+    }
+}
+checked_impls!(Shape, ShapeVariants);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Error {
@@ -761,7 +443,6 @@ impl Error {
         Self { code: None, message: None }
     }
 }
-validate_impl_3!(Error);
 pub type Anything = serde_json::Value;
 pub type Nothing = serde_json::Value;
 #[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
@@ -780,14 +461,10 @@ impl TryFrom<i64> for ProductId {
                 [Some(0), None, None, Some(9_007_199_254_740_991)],
             );
         }
-        match violations.into_iter().next() {
-            Some(v) => Err(v.message),
-            None => Ok(Self(value)),
-        }
+        runtime::first(violations).map(|()| Self(value))
     }
 }
 checked_num_impls!(ProductId, i64);
-validate_impl_3!(ProductId);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct ProductName(pub(super) String);
@@ -825,14 +502,10 @@ impl TryFrom<String> for ProductName {
                 );
             }
         }
-        match violations.into_iter().next() {
-            Some(v) => Err(v.message),
-            None => Ok(Self(value)),
-        }
+        runtime::first(violations).map(|()| Self(value))
     }
 }
 checked_str_impls!(ProductName);
-validate_impl_3!(ProductName);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum ProductKind {
     Book,
@@ -858,7 +531,6 @@ impl TryFrom<&str> for ProductKind {
     }
 }
 str_enum_impls!(ProductKind);
-validate_impl_3!(ProductKind);
 #[derive(Debug, Clone, PartialEq, Copy, PartialOrd, serde::Serialize)]
 #[serde(transparent)]
 pub struct ProductWeight(pub(super) f64);
@@ -876,77 +548,52 @@ impl TryFrom<f64> for ProductWeight {
             );
             runtime::check_multiple(out, &runtime::InstancePath::Root, value, "0.01");
         }
-        match violations.into_iter().next() {
-            Some(v) => Err(v.message),
-            None => Ok(Self(value)),
-        }
+        runtime::first(violations).map(|()| Self(value))
     }
 }
 checked_num_impls!(ProductWeight, f64);
-validate_impl_3!(ProductWeight);
 pub type BookId = ProductId;
 pub type BookName = ProductName;
 pub type BookKind = ProductKind;
 pub type BookWeight = ProductWeight;
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct Gadget2 {
-    pub id: Gadget2Id,
-    pub name: Gadget2Name,
-    pub kind: Gadget2Kind,
-    #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
-    pub nickname: runtime::Nullable<String>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub tags: Option<Vec<String>>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub point: Option<Vec<serde_json::Value>>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub attrs: Option<std::collections::BTreeMap<String, String>>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub weight: Option<Gadget2Weight>,
-    /// Overrides description
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub owner: Option<Owner>,
-}
-deserialize_impl!(Gadget2);
-serialize_impl!(Gadget2);
-impl Gadget2 {
-    #[must_use]
-    pub const fn new(id: Gadget2Id, name: Gadget2Name, kind: Gadget2Kind) -> Self {
-        Self {
-            id,
-            name,
-            kind,
-            nickname: runtime::Nullable::Absent,
-            tags: None,
-            point: None,
-            attrs: None,
-            weight: None,
-            owner: None,
-        }
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+#[serde(transparent)]
+pub struct Gadget2(pub(super) Gadget2Fields);
+impl<'de> serde::Deserialize<'de> for Gadget2 {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <Gadget2Fields as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
     }
 }
-validate_impl_4!(Gadget2);
+impl TryFrom<Gadget2Fields> for Gadget2 {
+    type Error = String;
+    fn try_from(value: Gadget2Fields) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            {
+                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                let value = runtime::to_value(&value).unwrap_or_default();
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"allOf\":[{\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Product\"}],\"type\":\"object\",\"properties\":{\"kind\":{\"const\":\"gadget\"}},\"required\":[\"name\",\"kind\"]},{\"$id\":\"https://example.com/schemas/product\",\"$schema\":\"https://spec.openapis.org/oas/3.2/dialect/2025-09-17\",\"$comment\":\"A product\",\"type\":\"object\",\"required\":[\"name\",\"kind\"],\"properties\":{\"id\":{\"type\":\"integer\",\"format\":\"int64\",\"readOnly\":true,\"minimum\":0,\"exclusiveMaximum\":9007199254740991},\"name\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":64,\"pattern\":\"^[A-Za-z ]+$\"},\"kind\":{\"type\":\"string\",\"enum\":[\"book\",\"gadget\"]},\"nickname\":{\"type\":[\"string\",\"null\"],\"default\":null},\"secret\":{\"type\":\"string\",\"writeOnly\":true,\"deprecated\":true},\"tags\":{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"uniqueItems\":true,\"minItems\":0,\"maxItems\":10,\"contains\":{\"const\":\"vip\"},\"minContains\":0,\"maxContains\":1},\"point\":{\"type\":\"array\",\"prefixItems\":[{\"type\":\"number\"},{\"type\":\"number\"}],\"items\":false,\"unevaluatedItems\":false},\"attrs\":{\"type\":\"object\",\"patternProperties\":{\"^x_\":{\"type\":\"string\"}},\"propertyNames\":{\"pattern\":\"^[a-z_]+$\"},\"minProperties\":0,\"maxProperties\":20,\"unevaluatedProperties\":false},\"weight\":{\"type\":\"number\",\"multipleOf\":0.01,\"exclusiveMinimum\":0},\"owner\":{\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Owner\"}]}},\"dependentRequired\":{\"nickname\":[\"name\"]},\"dependentSchemas\":{\"secret\":{\"required\":[]}},\"x-rust-type\":{\"crate\":\"products\",\"version\":\"1\",\"path\":\"products::Product\"}}]}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
+                    out,
+                    &runtime::InstancePath::Root,
+                    &value,
+                    schema,
+                    runtime::schema_defs(),
+                );
+            }
+        }
+        runtime::first(violations).map(|()| Self(value))
+    }
+}
+checked_impls!(Gadget2, Gadget2Fields);
 pub type Gadget2Id = ProductId;
 pub type Gadget2Name = ProductName;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
@@ -965,7 +612,6 @@ impl<'de> serde::Deserialize<'de> for Gadget2Kind {
             .map(|()| Self)
     }
 }
-validate_impl_3!(Gadget2Kind);
 pub type Gadget2Weight = ProductWeight;
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -1006,7 +652,6 @@ impl SubmitFormBody {
         }
     }
 }
-validate_impl_3!(SubmitFormBody);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct SubmitFormBodyFilter {
@@ -1026,7 +671,6 @@ impl SubmitFormBodyFilter {
         Self { a, b: None }
     }
 }
-validate_impl_3!(SubmitFormBodyFilter);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum SubmitFormBodyPriority {
     N1,
@@ -1055,7 +699,6 @@ impl TryFrom<i64> for SubmitFormBodyPriority {
     }
 }
 int_enum_impls!(SubmitFormBodyPriority);
-validate_impl_3!(SubmitFormBodyPriority);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct PutBlobOkXQuota {
@@ -1075,7 +718,6 @@ impl PutBlobOkXQuota {
         Self { limit, scope: None }
     }
 }
-validate_impl_3!(PutBlobOkXQuota);
 #[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct ListProductsLimit(pub(super) i32);
@@ -1092,14 +734,10 @@ impl TryFrom<i32> for ListProductsLimit {
                 [Some(1), Some(100), None, None],
             );
         }
-        match violations.into_iter().next() {
-            Some(v) => Err(v.message),
-            None => Ok(Self(value)),
-        }
+        runtime::first(violations).map(|()| Self(value))
     }
 }
 checked_num_impls!(ListProductsLimit, i32);
-validate_impl_3!(ListProductsLimit);
 #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct CreateProductBody {
@@ -1124,7 +762,6 @@ impl CreateProductBody {
         Self { meta: None, photo: None }
     }
 }
-validate_impl_5!(CreateProductBody);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct SearchQ {
@@ -1159,7 +796,6 @@ impl SearchQ {
         }
     }
 }
-validate_impl_3!(SearchQ);
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct SearchOkItem {
@@ -1196,273 +832,168 @@ impl SearchOkItem {
         }
     }
 }
-validate_impl_6!(SearchOkItem);
 #[derive(Debug, Clone, PartialEq)]
 pub struct SearchOkItemData(pub Product);
-serialize_impl_3!(SearchOkItemData);
+serialize_impl_2!(SearchOkItemData);
 deserialize_impl_2!(SearchOkItemData);
-validate_impl_7!(SearchOkItemData);
 /// Product
 ///
 /// A product
 ///
 /// See also: <https://example.com/product>
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct ProductRequest {
-    pub name: ProductName,
-    pub kind: ProductKind,
-    #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
-    pub nickname: runtime::Nullable<String>,
-    #[deprecated]
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub secret: Option<String>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub tags: Option<Vec<String>>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub point: Option<Vec<serde_json::Value>>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub attrs: Option<std::collections::BTreeMap<String, String>>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub weight: Option<ProductWeight>,
-    /// Overrides description
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub owner: Option<Owner>,
-}
-deserialize_impl!(ProductRequest);
-serialize_impl!(ProductRequest);
-impl ProductRequest {
-    #[must_use]
-    pub const fn new(name: ProductName, kind: ProductKind) -> Self {
-        Self {
-            name,
-            kind,
-            nickname: runtime::Nullable::Absent,
-            secret: None,
-            tags: None,
-            point: None,
-            attrs: None,
-            weight: None,
-            owner: None,
-        }
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+#[serde(transparent)]
+pub struct ProductRequest(pub(super) ProductRequestFields);
+impl<'de> serde::Deserialize<'de> for ProductRequest {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <ProductRequestFields as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
     }
 }
-validate_impl!(ProductRequest);
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct BookRequest {
-    pub name: BookName,
-    pub kind: BookKind,
-    #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
-    pub nickname: runtime::Nullable<String>,
-    #[deprecated]
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub secret: Option<String>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub tags: Option<Vec<String>>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub point: Option<Vec<serde_json::Value>>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub attrs: Option<std::collections::BTreeMap<String, String>>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub weight: Option<BookWeight>,
-    /// Overrides description
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub owner: Option<Owner>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub hardcover: Option<bool>,
-}
-deserialize_impl!(BookRequest);
-serialize_impl!(BookRequest);
-impl BookRequest {
-    #[must_use]
-    pub const fn new(name: BookName, kind: BookKind) -> Self {
-        Self {
-            name,
-            kind,
-            nickname: runtime::Nullable::Absent,
-            secret: None,
-            tags: None,
-            point: None,
-            attrs: None,
-            weight: None,
-            owner: None,
-            hardcover: None,
+impl TryFrom<ProductRequestFields> for ProductRequest {
+    type Error = String;
+    fn try_from(value: ProductRequestFields) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            {
+                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                let value = runtime::to_value(&value).unwrap_or_default();
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"$id\":\"https://example.com/schemas/product\",\"$schema\":\"https://spec.openapis.org/oas/3.2/dialect/2025-09-17\",\"$comment\":\"A product\",\"type\":\"object\",\"required\":[\"name\",\"kind\"],\"properties\":{\"id\":{\"type\":\"integer\",\"format\":\"int64\",\"readOnly\":true,\"minimum\":0,\"exclusiveMaximum\":9007199254740991},\"name\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":64,\"pattern\":\"^[A-Za-z ]+$\"},\"kind\":{\"type\":\"string\",\"enum\":[\"book\",\"gadget\"]},\"nickname\":{\"type\":[\"string\",\"null\"],\"default\":null},\"secret\":{\"type\":\"string\",\"writeOnly\":true,\"deprecated\":true},\"tags\":{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"uniqueItems\":true,\"minItems\":0,\"maxItems\":10,\"contains\":{\"const\":\"vip\"},\"minContains\":0,\"maxContains\":1},\"point\":{\"type\":\"array\",\"prefixItems\":[{\"type\":\"number\"},{\"type\":\"number\"}],\"items\":false,\"unevaluatedItems\":false},\"attrs\":{\"type\":\"object\",\"patternProperties\":{\"^x_\":{\"type\":\"string\"}},\"propertyNames\":{\"pattern\":\"^[a-z_]+$\"},\"minProperties\":0,\"maxProperties\":20,\"unevaluatedProperties\":false},\"weight\":{\"type\":\"number\",\"multipleOf\":0.01,\"exclusiveMinimum\":0},\"owner\":{\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Owner\"}]}},\"dependentRequired\":{\"nickname\":[\"name\"]},\"dependentSchemas\":{\"secret\":{\"required\":[]}},\"x-rust-type\":{\"crate\":\"products\",\"version\":\"1\",\"path\":\"products::Product\"}}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
+                    out,
+                    &runtime::InstancePath::Root,
+                    &value,
+                    schema,
+                    runtime::schema_defs(),
+                );
+            }
         }
+        runtime::first(violations).map(|()| Self(value))
     }
 }
-validate_impl!(BookRequest);
+checked_impls!(ProductRequest, ProductRequestFields);
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+#[serde(transparent)]
+pub struct BookRequest(pub(super) BookRequestFields);
+impl<'de> serde::Deserialize<'de> for BookRequest {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <BookRequestFields as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
+    }
+}
+impl TryFrom<BookRequestFields> for BookRequest {
+    type Error = String;
+    fn try_from(value: BookRequestFields) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            {
+                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                let value = runtime::to_value(&value).unwrap_or_default();
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"$id\":\"https://example.com/schemas/product\",\"$schema\":\"https://spec.openapis.org/oas/3.2/dialect/2025-09-17\",\"$comment\":\"A product\",\"type\":\"object\",\"required\":[\"name\",\"kind\"],\"properties\":{\"id\":{\"type\":\"integer\",\"format\":\"int64\",\"readOnly\":true,\"minimum\":0,\"exclusiveMaximum\":9007199254740991},\"name\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":64,\"pattern\":\"^[A-Za-z ]+$\"},\"kind\":{\"type\":\"string\",\"enum\":[\"book\",\"gadget\"]},\"nickname\":{\"type\":[\"string\",\"null\"],\"default\":null},\"secret\":{\"type\":\"string\",\"writeOnly\":true,\"deprecated\":true},\"tags\":{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"uniqueItems\":true,\"minItems\":0,\"maxItems\":10,\"contains\":{\"const\":\"vip\"},\"minContains\":0,\"maxContains\":1},\"point\":{\"type\":\"array\",\"prefixItems\":[{\"type\":\"number\"},{\"type\":\"number\"}],\"items\":false,\"unevaluatedItems\":false},\"attrs\":{\"type\":\"object\",\"patternProperties\":{\"^x_\":{\"type\":\"string\"}},\"propertyNames\":{\"pattern\":\"^[a-z_]+$\"},\"minProperties\":0,\"maxProperties\":20,\"unevaluatedProperties\":false},\"weight\":{\"type\":\"number\",\"multipleOf\":0.01,\"exclusiveMinimum\":0},\"owner\":{\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Owner\"}]}},\"dependentRequired\":{\"nickname\":[\"name\"]},\"dependentSchemas\":{\"secret\":{\"required\":[]}},\"x-rust-type\":{\"crate\":\"products\",\"version\":\"1\",\"path\":\"products::Product\"}}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
+                    out,
+                    &runtime::InstancePath::Root,
+                    &value,
+                    schema,
+                    runtime::schema_defs(),
+                );
+            }
+        }
+        runtime::first(violations).map(|()| Self(value))
+    }
+}
+checked_impls!(BookRequest, BookRequestFields);
 pub type GadgetRequest = Gadget2Request;
-#[derive(Debug, Clone, PartialEq)]
-pub enum ShapeRequest {
-    Book(BookRequest),
-    Gadget(GadgetRequest),
-}
-serialize_impl_2!(ShapeRequest);
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+#[serde(transparent)]
+pub struct ShapeRequest(pub(super) ShapeRequestVariants);
 impl<'de> serde::Deserialize<'de> for ShapeRequest {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let v = <runtime::Content<'de> as serde::Deserialize>::deserialize(d)?;
-        let fit_0 = v.kind() == runtime::Kind::Object
-            && runtime::fits(
-                &v,
-                &[
-                    ("name", true, &[runtime::Kind::String]),
-                    ("kind", true, &[runtime::Kind::String]),
-                    ("nickname", false, &[runtime::Kind::String, runtime::Kind::Null]),
-                    ("secret", false, &[runtime::Kind::String, runtime::Kind::Null]),
-                    ("tags", false, &[runtime::Kind::Array, runtime::Kind::Null]),
-                    ("point", false, &[runtime::Kind::Array, runtime::Kind::Null]),
-                    ("attrs", false, &[runtime::Kind::Object, runtime::Kind::Null]),
-                    (
-                        "weight",
-                        false,
-                        &[
-                            runtime::Kind::Integer,
-                            runtime::Kind::Number,
-                            runtime::Kind::Null,
-                        ],
-                    ),
-                    ("owner", false, &[runtime::Kind::Object, runtime::Kind::Null]),
-                    ("hardcover", false, &[runtime::Kind::Bool, runtime::Kind::Null]),
-                ],
-            );
-        let fit_1 = v.kind() == runtime::Kind::Object;
-        let mut first = None;
-        if fit_0 && let Ok(x) = v.decode_ref::<BookRequest>() {
-            let picked = Self::Book(x);
-            if (first.is_none() && !(fit_1)) || runtime::is_valid(&picked) {
-                return Ok(picked);
-            }
-            first.get_or_insert(picked);
-        }
-        if fit_1 && let Ok(x) = v.decode_ref::<GadgetRequest>() {
-            let picked = Self::Gadget(x);
-            if first.is_none() || runtime::is_valid(&picked) {
-                return Ok(picked);
-            }
-            first.get_or_insert(picked);
-        }
-        first.ok_or_else(|| serde::de::Error::custom("matches no variant"))
+        let value = <ShapeRequestVariants as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
     }
 }
-validate_impl_2!(ShapeRequest);
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct Gadget2Request {
-    pub name: Gadget2Name,
-    pub kind: Gadget2Kind,
-    #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
-    pub nickname: runtime::Nullable<String>,
-    #[deprecated]
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub secret: Option<String>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub tags: Option<Vec<String>>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub point: Option<Vec<serde_json::Value>>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub attrs: Option<std::collections::BTreeMap<String, String>>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub weight: Option<Gadget2Weight>,
-    /// Overrides description
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub owner: Option<Owner>,
-}
-deserialize_impl!(Gadget2Request);
-serialize_impl!(Gadget2Request);
-impl Gadget2Request {
-    #[must_use]
-    pub const fn new(name: Gadget2Name, kind: Gadget2Kind) -> Self {
-        Self {
-            name,
-            kind,
-            nickname: runtime::Nullable::Absent,
-            secret: None,
-            tags: None,
-            point: None,
-            attrs: None,
-            weight: None,
-            owner: None,
+impl TryFrom<ShapeRequestVariants> for ShapeRequest {
+    type Error = String;
+    fn try_from(value: ShapeRequestVariants) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            {
+                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                let value = runtime::to_value(&value).unwrap_or_default();
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"oneOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Book\"},{\"$ref\":\"#/$defs/~1components~1schemas~1Gadget\"}],\"anyOf\":[true]}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
+                    out,
+                    &runtime::InstancePath::Root,
+                    &value,
+                    schema,
+                    runtime::schema_defs(),
+                );
+            }
         }
+        runtime::first(violations).map(|()| Self(value))
     }
 }
-validate_impl_4!(Gadget2Request);
+checked_impls!(ShapeRequest, ShapeRequestVariants);
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+#[serde(transparent)]
+pub struct Gadget2Request(pub(super) Gadget2RequestFields);
+impl<'de> serde::Deserialize<'de> for Gadget2Request {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <Gadget2RequestFields as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
+    }
+}
+impl TryFrom<Gadget2RequestFields> for Gadget2Request {
+    type Error = String;
+    fn try_from(value: Gadget2RequestFields) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            {
+                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                let value = runtime::to_value(&value).unwrap_or_default();
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"allOf\":[{\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Product\"}],\"type\":\"object\",\"properties\":{\"kind\":{\"const\":\"gadget\"}},\"required\":[\"name\",\"kind\"]},{\"$id\":\"https://example.com/schemas/product\",\"$schema\":\"https://spec.openapis.org/oas/3.2/dialect/2025-09-17\",\"$comment\":\"A product\",\"type\":\"object\",\"required\":[\"name\",\"kind\"],\"properties\":{\"id\":{\"type\":\"integer\",\"format\":\"int64\",\"readOnly\":true,\"minimum\":0,\"exclusiveMaximum\":9007199254740991},\"name\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":64,\"pattern\":\"^[A-Za-z ]+$\"},\"kind\":{\"type\":\"string\",\"enum\":[\"book\",\"gadget\"]},\"nickname\":{\"type\":[\"string\",\"null\"],\"default\":null},\"secret\":{\"type\":\"string\",\"writeOnly\":true,\"deprecated\":true},\"tags\":{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"uniqueItems\":true,\"minItems\":0,\"maxItems\":10,\"contains\":{\"const\":\"vip\"},\"minContains\":0,\"maxContains\":1},\"point\":{\"type\":\"array\",\"prefixItems\":[{\"type\":\"number\"},{\"type\":\"number\"}],\"items\":false,\"unevaluatedItems\":false},\"attrs\":{\"type\":\"object\",\"patternProperties\":{\"^x_\":{\"type\":\"string\"}},\"propertyNames\":{\"pattern\":\"^[a-z_]+$\"},\"minProperties\":0,\"maxProperties\":20,\"unevaluatedProperties\":false},\"weight\":{\"type\":\"number\",\"multipleOf\":0.01,\"exclusiveMinimum\":0},\"owner\":{\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Owner\"}]}},\"dependentRequired\":{\"nickname\":[\"name\"]},\"dependentSchemas\":{\"secret\":{\"required\":[]}},\"x-rust-type\":{\"crate\":\"products\",\"version\":\"1\",\"path\":\"products::Product\"}}]}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
+                    out,
+                    &runtime::InstancePath::Root,
+                    &value,
+                    schema,
+                    runtime::schema_defs(),
+                );
+            }
+        }
+        runtime::first(violations).map(|()| Self(value))
+    }
+}
+checked_impls!(Gadget2Request, Gadget2RequestFields);
 #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct CreateProductBodyRequest {
@@ -1487,7 +1018,6 @@ impl CreateProductBodyRequest {
         Self { meta: None, photo: None }
     }
 }
-validate_impl_5!(CreateProductBodyRequest);
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct SearchOkItemRequest {
@@ -1524,12 +1054,650 @@ impl SearchOkItemRequest {
         }
     }
 }
-validate_impl_6!(SearchOkItemRequest);
 #[derive(Debug, Clone, PartialEq)]
 pub struct SearchOkItemDataRequest(pub ProductRequest);
-serialize_impl_3!(SearchOkItemDataRequest);
+serialize_impl_2!(SearchOkItemDataRequest);
 deserialize_impl_2!(SearchOkItemDataRequest);
-validate_impl_7!(SearchOkItemDataRequest);
+/// Product
+///
+/// A product
+///
+/// See also: <https://example.com/product>
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct ProductFields {
+    pub id: ProductId,
+    pub name: ProductName,
+    pub kind: ProductKind,
+    #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
+    pub nickname: runtime::Nullable<String>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub tags: Option<ProductTags>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub point: Option<ProductPoint>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub attrs: Option<ProductAttrs>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub weight: Option<ProductWeight>,
+    /// Overrides description
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub owner: Option<Owner>,
+}
+deserialize_impl!(ProductFields);
+serialize_impl!(ProductFields);
+impl ProductFields {
+    #[must_use]
+    pub const fn new(id: ProductId, name: ProductName, kind: ProductKind) -> Self {
+        Self {
+            id,
+            name,
+            kind,
+            nickname: runtime::Nullable::Absent,
+            tags: None,
+            point: None,
+            attrs: None,
+            weight: None,
+            owner: None,
+        }
+    }
+}
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct BookFields {
+    pub id: BookId,
+    pub name: BookName,
+    pub kind: BookKind,
+    #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
+    pub nickname: runtime::Nullable<String>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub tags: Option<BookTags>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub point: Option<BookPoint>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub attrs: Option<BookAttrs>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub weight: Option<BookWeight>,
+    /// Overrides description
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub owner: Option<Owner>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub hardcover: Option<bool>,
+}
+deserialize_impl!(BookFields);
+serialize_impl!(BookFields);
+impl BookFields {
+    #[must_use]
+    pub const fn new(id: BookId, name: BookName, kind: BookKind) -> Self {
+        Self {
+            id,
+            name,
+            kind,
+            nickname: runtime::Nullable::Absent,
+            tags: None,
+            point: None,
+            attrs: None,
+            weight: None,
+            owner: None,
+            hardcover: None,
+        }
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct OwnerFields {
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub children: Option<OwnerChildren>,
+}
+deserialize_impl!(OwnerFields);
+serialize_impl!(OwnerFields);
+impl OwnerFields {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self { children: None }
+    }
+}
+#[derive(Debug, Clone, PartialEq)]
+pub enum ShapeVariants {
+    Book(Book),
+    Gadget(Gadget),
+}
+serialize_impl_3!(ShapeVariants);
+impl<'de> serde::Deserialize<'de> for ShapeVariants {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let v = <runtime::Content<'de> as serde::Deserialize>::deserialize(d)?;
+        let fit_0 = v.kind() == runtime::Kind::Object;
+        let fit_1 = v.kind() == runtime::Kind::Object;
+        let mut first: Option<String> = None;
+        if fit_0 {
+            match v.decode_ref::<Book>() {
+                Ok(x) => return Ok(Self::Book(x)),
+                Err(e) => {
+                    first.get_or_insert(e.to_string());
+                }
+            }
+        }
+        if fit_1 {
+            match v.decode_ref::<Gadget>() {
+                Ok(x) => return Ok(Self::Gadget(x)),
+                Err(e) => {
+                    first.get_or_insert(e.to_string());
+                }
+            }
+        }
+        Err(
+            serde::de::Error::custom(
+                first.unwrap_or_else(|| "matches no variant".to_owned()),
+            ),
+        )
+    }
+}
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct Gadget2Fields {
+    pub id: Gadget2Id,
+    pub name: Gadget2Name,
+    pub kind: Gadget2Kind,
+    #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
+    pub nickname: runtime::Nullable<String>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub tags: Option<Gadget2Tags>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub point: Option<Gadget2Point>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub attrs: Option<Gadget2Attrs>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub weight: Option<Gadget2Weight>,
+    /// Overrides description
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub owner: Option<Owner>,
+}
+deserialize_impl!(Gadget2Fields);
+serialize_impl!(Gadget2Fields);
+impl Gadget2Fields {
+    #[must_use]
+    pub const fn new(id: Gadget2Id, name: Gadget2Name, kind: Gadget2Kind) -> Self {
+        Self {
+            id,
+            name,
+            kind,
+            nickname: runtime::Nullable::Absent,
+            tags: None,
+            point: None,
+            attrs: None,
+            weight: None,
+            owner: None,
+        }
+    }
+}
+/// Product
+///
+/// A product
+///
+/// See also: <https://example.com/product>
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct ProductRequestFields {
+    pub name: ProductName,
+    pub kind: ProductKind,
+    #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
+    pub nickname: runtime::Nullable<String>,
+    #[deprecated]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub secret: Option<String>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub tags: Option<ProductRequestTags>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub point: Option<ProductRequestPoint>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub attrs: Option<ProductRequestAttrs>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub weight: Option<ProductWeight>,
+    /// Overrides description
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub owner: Option<Owner>,
+}
+deserialize_impl!(ProductRequestFields);
+serialize_impl!(ProductRequestFields);
+impl ProductRequestFields {
+    #[must_use]
+    pub const fn new(name: ProductName, kind: ProductKind) -> Self {
+        Self {
+            name,
+            kind,
+            nickname: runtime::Nullable::Absent,
+            secret: None,
+            tags: None,
+            point: None,
+            attrs: None,
+            weight: None,
+            owner: None,
+        }
+    }
+}
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct BookRequestFields {
+    pub name: BookName,
+    pub kind: BookKind,
+    #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
+    pub nickname: runtime::Nullable<String>,
+    #[deprecated]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub secret: Option<String>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub tags: Option<BookRequestTags>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub point: Option<BookRequestPoint>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub attrs: Option<BookRequestAttrs>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub weight: Option<BookWeight>,
+    /// Overrides description
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub owner: Option<Owner>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub hardcover: Option<bool>,
+}
+deserialize_impl!(BookRequestFields);
+serialize_impl!(BookRequestFields);
+impl BookRequestFields {
+    #[must_use]
+    pub const fn new(name: BookName, kind: BookKind) -> Self {
+        Self {
+            name,
+            kind,
+            nickname: runtime::Nullable::Absent,
+            secret: None,
+            tags: None,
+            point: None,
+            attrs: None,
+            weight: None,
+            owner: None,
+            hardcover: None,
+        }
+    }
+}
+#[derive(Debug, Clone, PartialEq)]
+pub enum ShapeRequestVariants {
+    Book(BookRequest),
+    Gadget(GadgetRequest),
+}
+serialize_impl_3!(ShapeRequestVariants);
+impl<'de> serde::Deserialize<'de> for ShapeRequestVariants {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let v = <runtime::Content<'de> as serde::Deserialize>::deserialize(d)?;
+        let fit_0 = v.kind() == runtime::Kind::Object;
+        let fit_1 = v.kind() == runtime::Kind::Object;
+        let mut first: Option<String> = None;
+        if fit_0 {
+            match v.decode_ref::<BookRequest>() {
+                Ok(x) => return Ok(Self::Book(x)),
+                Err(e) => {
+                    first.get_or_insert(e.to_string());
+                }
+            }
+        }
+        if fit_1 {
+            match v.decode_ref::<GadgetRequest>() {
+                Ok(x) => return Ok(Self::Gadget(x)),
+                Err(e) => {
+                    first.get_or_insert(e.to_string());
+                }
+            }
+        }
+        Err(
+            serde::de::Error::custom(
+                first.unwrap_or_else(|| "matches no variant".to_owned()),
+            ),
+        )
+    }
+}
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct Gadget2RequestFields {
+    pub name: Gadget2Name,
+    pub kind: Gadget2Kind,
+    #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
+    pub nickname: runtime::Nullable<String>,
+    #[deprecated]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub secret: Option<String>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub tags: Option<Gadget2RequestTags>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub point: Option<Gadget2RequestPoint>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub attrs: Option<Gadget2RequestAttrs>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub weight: Option<Gadget2Weight>,
+    /// Overrides description
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub owner: Option<Owner>,
+}
+deserialize_impl!(Gadget2RequestFields);
+serialize_impl!(Gadget2RequestFields);
+impl Gadget2RequestFields {
+    #[must_use]
+    pub const fn new(name: Gadget2Name, kind: Gadget2Kind) -> Self {
+        Self {
+            name,
+            kind,
+            nickname: runtime::Nullable::Absent,
+            secret: None,
+            tags: None,
+            point: None,
+            attrs: None,
+            weight: None,
+            owner: None,
+        }
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
+pub struct ProductTags(pub(super) Vec<String>);
+impl<'de> serde::Deserialize<'de> for ProductTags {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <Vec<String> as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
+    }
+}
+impl TryFrom<Vec<String>> for ProductTags {
+    type Error = String;
+    fn try_from(value: Vec<String>) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            {
+                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                let value = runtime::to_value(&value).unwrap_or_default();
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"uniqueItems\":true,\"minItems\":0,\"maxItems\":10,\"contains\":{\"const\":\"vip\"},\"minContains\":0,\"maxContains\":1}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
+                    out,
+                    &runtime::InstancePath::Root,
+                    &value,
+                    schema,
+                    runtime::schema_defs(),
+                );
+            }
+        }
+        runtime::first(violations).map(|()| Self(value))
+    }
+}
+checked_impls!(ProductTags, Vec < String >);
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
+pub struct ProductPoint(pub(super) Vec<serde_json::Value>);
+deserialize_impl_3!(ProductPoint);
+impl TryFrom<Vec<serde_json::Value>> for ProductPoint {
+    type Error = String;
+    fn try_from(value: Vec<serde_json::Value>) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            {
+                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                let value = runtime::to_value(&value).unwrap_or_default();
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"type\":\"array\",\"prefixItems\":[{\"type\":\"number\"},{\"type\":\"number\"}],\"items\":false,\"unevaluatedItems\":false}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
+                    out,
+                    &runtime::InstancePath::Root,
+                    &value,
+                    schema,
+                    runtime::schema_defs(),
+                );
+            }
+        }
+        runtime::first(violations).map(|()| Self(value))
+    }
+}
+checked_impls!(ProductPoint, Vec < serde_json::Value >);
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
+pub struct ProductAttrs(pub(super) std::collections::BTreeMap<String, String>);
+impl<'de> serde::Deserialize<'de> for ProductAttrs {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <std::collections::BTreeMap<
+            String,
+            String,
+        > as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
+    }
+}
+impl TryFrom<std::collections::BTreeMap<String, String>> for ProductAttrs {
+    type Error = String;
+    fn try_from(
+        value: std::collections::BTreeMap<String, String>,
+    ) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            {
+                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                let value = runtime::to_value(&value).unwrap_or_default();
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"type\":\"object\",\"patternProperties\":{\"^x_\":{\"type\":\"string\"}},\"propertyNames\":{\"pattern\":\"^[a-z_]+$\"},\"minProperties\":0,\"maxProperties\":20,\"unevaluatedProperties\":false}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
+                    out,
+                    &runtime::InstancePath::Root,
+                    &value,
+                    schema,
+                    runtime::schema_defs(),
+                );
+            }
+        }
+        runtime::first(violations).map(|()| Self(value))
+    }
+}
+checked_impls!(ProductAttrs, std::collections::BTreeMap < String, String >);
+pub type BookTags = ProductTags;
+pub type BookPoint = ProductPoint;
+pub type BookAttrs = ProductAttrs;
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
+pub struct OwnerChildren(pub(super) Vec<serde_json::Value>);
+deserialize_impl_3!(OwnerChildren);
+impl TryFrom<Vec<serde_json::Value>> for OwnerChildren {
+    type Error = String;
+    fn try_from(value: Vec<serde_json::Value>) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            {
+                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                let value = runtime::to_value(&value).unwrap_or_default();
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":true}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
+                    out,
+                    &runtime::InstancePath::Root,
+                    &value,
+                    schema,
+                    runtime::schema_defs(),
+                );
+            }
+        }
+        runtime::first(violations).map(|()| Self(value))
+    }
+}
+checked_impls!(OwnerChildren, Vec < serde_json::Value >);
+pub type Gadget2Tags = ProductTags;
+pub type Gadget2Point = ProductPoint;
+pub type Gadget2Attrs = ProductAttrs;
+pub type ProductRequestTags = ProductTags;
+pub type ProductRequestPoint = ProductPoint;
+pub type ProductRequestAttrs = ProductAttrs;
+pub type BookRequestTags = ProductTags;
+pub type BookRequestPoint = ProductPoint;
+pub type BookRequestAttrs = ProductAttrs;
+pub type Gadget2RequestTags = ProductTags;
+pub type Gadget2RequestPoint = ProductPoint;
+pub type Gadget2RequestAttrs = ProductAttrs;
 /// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
 /// its field. `build` returns the first field that did not convert.
 pub mod builders {
@@ -1544,7 +1712,7 @@ pub mod builders {
         ) -> Product {
             Product(
                 runtime::Builder::start(|| Ok(
-                    Self::new(
+                    super::ProductFields::new(
                         runtime::field("id", id)?,
                         runtime::field("name", name)?,
                         runtime::field("kind", kind)?,
@@ -1554,7 +1722,7 @@ pub mod builders {
         }
     }
     #[must_use = "a builder does nothing until `build`"]
-    pub struct Product(runtime::Builder<super::Product>);
+    pub struct Product(runtime::Builder<super::ProductFields>);
     impl Product {
         pub fn nickname(
             self,
@@ -1572,22 +1740,19 @@ pub mod builders {
         }
         pub fn tags(
             self,
-            value: impl TryInto<Vec<String>, Error: std::fmt::Display>,
+            value: impl TryInto<types::ProductTags, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("tags", value, |s, v| s.tags = Some(v)))
         }
         pub fn point(
             self,
-            value: impl TryInto<Vec<serde_json::Value>, Error: std::fmt::Display>,
+            value: impl TryInto<types::ProductPoint, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("point", value, |s, v| s.point = Some(v)))
         }
         pub fn attrs(
             self,
-            value: impl TryInto<
-                std::collections::BTreeMap<String, String>,
-                Error: std::fmt::Display,
-            >,
+            value: impl TryInto<types::ProductAttrs, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("attrs", value, |s, v| s.attrs = Some(v)))
         }
@@ -1604,9 +1769,13 @@ pub mod builders {
         ) -> Self {
             Self(self.0.set("owner", value, |s, v| s.owner = Some(v)))
         }
-        /// Returns the value.
+        /// Returns the value once its whole schema holds.
         pub fn build(self) -> Result<super::Product, runtime::BuildError> {
-            self.0.build()
+            self.0
+                .build()
+                .and_then(|v| {
+                    super::Product::try_from(v).map_err(runtime::BuildError::value)
+                })
         }
     }
     impl super::Book {
@@ -1618,7 +1787,7 @@ pub mod builders {
         ) -> Book {
             Book(
                 runtime::Builder::start(|| Ok(
-                    Self::new(
+                    super::BookFields::new(
                         runtime::field("id", id)?,
                         runtime::field("name", name)?,
                         runtime::field("kind", kind)?,
@@ -1628,7 +1797,7 @@ pub mod builders {
         }
     }
     #[must_use = "a builder does nothing until `build`"]
-    pub struct Book(runtime::Builder<super::Book>);
+    pub struct Book(runtime::Builder<super::BookFields>);
     impl Book {
         pub fn nickname(
             self,
@@ -1646,22 +1815,19 @@ pub mod builders {
         }
         pub fn tags(
             self,
-            value: impl TryInto<Vec<String>, Error: std::fmt::Display>,
+            value: impl TryInto<types::BookTags, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("tags", value, |s, v| s.tags = Some(v)))
         }
         pub fn point(
             self,
-            value: impl TryInto<Vec<serde_json::Value>, Error: std::fmt::Display>,
+            value: impl TryInto<types::BookPoint, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("point", value, |s, v| s.point = Some(v)))
         }
         pub fn attrs(
             self,
-            value: impl TryInto<
-                std::collections::BTreeMap<String, String>,
-                Error: std::fmt::Display,
-            >,
+            value: impl TryInto<types::BookAttrs, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("attrs", value, |s, v| s.attrs = Some(v)))
         }
@@ -1684,29 +1850,37 @@ pub mod builders {
         ) -> Self {
             Self(self.0.set("hardcover", value, |s, v| s.hardcover = Some(v)))
         }
-        /// Returns the value.
+        /// Returns the value once its whole schema holds.
         pub fn build(self) -> Result<super::Book, runtime::BuildError> {
-            self.0.build()
+            self.0
+                .build()
+                .and_then(|v| {
+                    super::Book::try_from(v).map_err(runtime::BuildError::value)
+                })
         }
     }
     impl super::Owner {
         /// Starts a builder from the required properties.
         pub fn builder() -> Owner {
-            Owner(runtime::Builder::start(|| Ok(Self::new())))
+            Owner(runtime::Builder::start(|| Ok(super::OwnerFields::new())))
         }
     }
     #[must_use = "a builder does nothing until `build`"]
-    pub struct Owner(runtime::Builder<super::Owner>);
+    pub struct Owner(runtime::Builder<super::OwnerFields>);
     impl Owner {
         pub fn children(
             self,
-            value: impl TryInto<Vec<serde_json::Value>, Error: std::fmt::Display>,
+            value: impl TryInto<types::OwnerChildren, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("children", value, |s, v| s.children = Some(v)))
         }
-        /// Returns the value.
+        /// Returns the value once its whole schema holds.
         pub fn build(self) -> Result<super::Owner, runtime::BuildError> {
-            self.0.build()
+            self.0
+                .build()
+                .and_then(|v| {
+                    super::Owner::try_from(v).map_err(runtime::BuildError::value)
+                })
         }
     }
     impl super::Error {
@@ -1741,7 +1915,7 @@ pub mod builders {
         ) -> Gadget2 {
             Gadget2(
                 runtime::Builder::start(|| Ok(
-                    Self::new(
+                    super::Gadget2Fields::new(
                         runtime::field("id", id)?,
                         runtime::field("name", name)?,
                         runtime::field("kind", kind)?,
@@ -1751,7 +1925,7 @@ pub mod builders {
         }
     }
     #[must_use = "a builder does nothing until `build`"]
-    pub struct Gadget2(runtime::Builder<super::Gadget2>);
+    pub struct Gadget2(runtime::Builder<super::Gadget2Fields>);
     impl Gadget2 {
         pub fn nickname(
             self,
@@ -1769,22 +1943,19 @@ pub mod builders {
         }
         pub fn tags(
             self,
-            value: impl TryInto<Vec<String>, Error: std::fmt::Display>,
+            value: impl TryInto<types::Gadget2Tags, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("tags", value, |s, v| s.tags = Some(v)))
         }
         pub fn point(
             self,
-            value: impl TryInto<Vec<serde_json::Value>, Error: std::fmt::Display>,
+            value: impl TryInto<types::Gadget2Point, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("point", value, |s, v| s.point = Some(v)))
         }
         pub fn attrs(
             self,
-            value: impl TryInto<
-                std::collections::BTreeMap<String, String>,
-                Error: std::fmt::Display,
-            >,
+            value: impl TryInto<types::Gadget2Attrs, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("attrs", value, |s, v| s.attrs = Some(v)))
         }
@@ -1801,9 +1972,13 @@ pub mod builders {
         ) -> Self {
             Self(self.0.set("owner", value, |s, v| s.owner = Some(v)))
         }
-        /// Returns the value.
+        /// Returns the value once its whole schema holds.
         pub fn build(self) -> Result<super::Gadget2, runtime::BuildError> {
-            self.0.build()
+            self.0
+                .build()
+                .and_then(|v| {
+                    super::Gadget2::try_from(v).map_err(runtime::BuildError::value)
+                })
         }
     }
     impl super::SubmitFormBody {
@@ -1994,7 +2169,7 @@ pub mod builders {
         ) -> ProductRequest {
             ProductRequest(
                 runtime::Builder::start(|| Ok(
-                    Self::new(
+                    super::ProductRequestFields::new(
                         runtime::field("name", name)?,
                         runtime::field("kind", kind)?,
                     ),
@@ -2003,7 +2178,7 @@ pub mod builders {
         }
     }
     #[must_use = "a builder does nothing until `build`"]
-    pub struct ProductRequest(runtime::Builder<super::ProductRequest>);
+    pub struct ProductRequest(runtime::Builder<super::ProductRequestFields>);
     impl ProductRequest {
         pub fn nickname(
             self,
@@ -2027,22 +2202,19 @@ pub mod builders {
         }
         pub fn tags(
             self,
-            value: impl TryInto<Vec<String>, Error: std::fmt::Display>,
+            value: impl TryInto<types::ProductRequestTags, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("tags", value, |s, v| s.tags = Some(v)))
         }
         pub fn point(
             self,
-            value: impl TryInto<Vec<serde_json::Value>, Error: std::fmt::Display>,
+            value: impl TryInto<types::ProductRequestPoint, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("point", value, |s, v| s.point = Some(v)))
         }
         pub fn attrs(
             self,
-            value: impl TryInto<
-                std::collections::BTreeMap<String, String>,
-                Error: std::fmt::Display,
-            >,
+            value: impl TryInto<types::ProductRequestAttrs, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("attrs", value, |s, v| s.attrs = Some(v)))
         }
@@ -2059,9 +2231,14 @@ pub mod builders {
         ) -> Self {
             Self(self.0.set("owner", value, |s, v| s.owner = Some(v)))
         }
-        /// Returns the value.
+        /// Returns the value once its whole schema holds.
         pub fn build(self) -> Result<super::ProductRequest, runtime::BuildError> {
-            self.0.build()
+            self.0
+                .build()
+                .and_then(|v| {
+                    super::ProductRequest::try_from(v)
+                        .map_err(runtime::BuildError::value)
+                })
         }
     }
     impl super::BookRequest {
@@ -2072,7 +2249,7 @@ pub mod builders {
         ) -> BookRequest {
             BookRequest(
                 runtime::Builder::start(|| Ok(
-                    Self::new(
+                    super::BookRequestFields::new(
                         runtime::field("name", name)?,
                         runtime::field("kind", kind)?,
                     ),
@@ -2081,7 +2258,7 @@ pub mod builders {
         }
     }
     #[must_use = "a builder does nothing until `build`"]
-    pub struct BookRequest(runtime::Builder<super::BookRequest>);
+    pub struct BookRequest(runtime::Builder<super::BookRequestFields>);
     impl BookRequest {
         pub fn nickname(
             self,
@@ -2105,22 +2282,19 @@ pub mod builders {
         }
         pub fn tags(
             self,
-            value: impl TryInto<Vec<String>, Error: std::fmt::Display>,
+            value: impl TryInto<types::BookRequestTags, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("tags", value, |s, v| s.tags = Some(v)))
         }
         pub fn point(
             self,
-            value: impl TryInto<Vec<serde_json::Value>, Error: std::fmt::Display>,
+            value: impl TryInto<types::BookRequestPoint, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("point", value, |s, v| s.point = Some(v)))
         }
         pub fn attrs(
             self,
-            value: impl TryInto<
-                std::collections::BTreeMap<String, String>,
-                Error: std::fmt::Display,
-            >,
+            value: impl TryInto<types::BookRequestAttrs, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("attrs", value, |s, v| s.attrs = Some(v)))
         }
@@ -2143,9 +2317,13 @@ pub mod builders {
         ) -> Self {
             Self(self.0.set("hardcover", value, |s, v| s.hardcover = Some(v)))
         }
-        /// Returns the value.
+        /// Returns the value once its whole schema holds.
         pub fn build(self) -> Result<super::BookRequest, runtime::BuildError> {
-            self.0.build()
+            self.0
+                .build()
+                .and_then(|v| {
+                    super::BookRequest::try_from(v).map_err(runtime::BuildError::value)
+                })
         }
     }
     impl super::Gadget2Request {
@@ -2156,7 +2334,7 @@ pub mod builders {
         ) -> Gadget2Request {
             Gadget2Request(
                 runtime::Builder::start(|| Ok(
-                    Self::new(
+                    super::Gadget2RequestFields::new(
                         runtime::field("name", name)?,
                         runtime::field("kind", kind)?,
                     ),
@@ -2165,7 +2343,7 @@ pub mod builders {
         }
     }
     #[must_use = "a builder does nothing until `build`"]
-    pub struct Gadget2Request(runtime::Builder<super::Gadget2Request>);
+    pub struct Gadget2Request(runtime::Builder<super::Gadget2RequestFields>);
     impl Gadget2Request {
         pub fn nickname(
             self,
@@ -2189,22 +2367,19 @@ pub mod builders {
         }
         pub fn tags(
             self,
-            value: impl TryInto<Vec<String>, Error: std::fmt::Display>,
+            value: impl TryInto<types::Gadget2RequestTags, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("tags", value, |s, v| s.tags = Some(v)))
         }
         pub fn point(
             self,
-            value: impl TryInto<Vec<serde_json::Value>, Error: std::fmt::Display>,
+            value: impl TryInto<types::Gadget2RequestPoint, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("point", value, |s, v| s.point = Some(v)))
         }
         pub fn attrs(
             self,
-            value: impl TryInto<
-                std::collections::BTreeMap<String, String>,
-                Error: std::fmt::Display,
-            >,
+            value: impl TryInto<types::Gadget2RequestAttrs, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("attrs", value, |s, v| s.attrs = Some(v)))
         }
@@ -2221,9 +2396,14 @@ pub mod builders {
         ) -> Self {
             Self(self.0.set("owner", value, |s, v| s.owner = Some(v)))
         }
-        /// Returns the value.
+        /// Returns the value once its whole schema holds.
         pub fn build(self) -> Result<super::Gadget2Request, runtime::BuildError> {
-            self.0.build()
+            self.0
+                .build()
+                .and_then(|v| {
+                    super::Gadget2Request::try_from(v)
+                        .map_err(runtime::BuildError::value)
+                })
         }
     }
     impl super::CreateProductBodyRequest {
@@ -2283,6 +2463,476 @@ pub mod builders {
         }
         /// Returns the value.
         pub fn build(self) -> Result<super::SearchOkItemRequest, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::ProductFields {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            id: impl TryInto<types::ProductId, Error: std::fmt::Display>,
+            name: impl TryInto<types::ProductName, Error: std::fmt::Display>,
+            kind: impl TryInto<types::ProductKind, Error: std::fmt::Display>,
+        ) -> ProductFields {
+            ProductFields(
+                runtime::Builder::start(|| Ok(
+                    Self::new(
+                        runtime::field("id", id)?,
+                        runtime::field("name", name)?,
+                        runtime::field("kind", kind)?,
+                    ),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct ProductFields(runtime::Builder<super::ProductFields>);
+    impl ProductFields {
+        pub fn nickname(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(
+                self
+                    .0
+                    .set(
+                        "nickname",
+                        value,
+                        |s, v| s.nickname = runtime::Nullable::Value(v),
+                    ),
+            )
+        }
+        pub fn tags(
+            self,
+            value: impl TryInto<types::ProductTags, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("tags", value, |s, v| s.tags = Some(v)))
+        }
+        pub fn point(
+            self,
+            value: impl TryInto<types::ProductPoint, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("point", value, |s, v| s.point = Some(v)))
+        }
+        pub fn attrs(
+            self,
+            value: impl TryInto<types::ProductAttrs, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("attrs", value, |s, v| s.attrs = Some(v)))
+        }
+        pub fn weight(
+            self,
+            value: impl TryInto<types::ProductWeight, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("weight", value, |s, v| s.weight = Some(v)))
+        }
+        /// Overrides description
+        pub fn owner(
+            self,
+            value: impl TryInto<types::Owner, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("owner", value, |s, v| s.owner = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::ProductFields, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::BookFields {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            id: impl TryInto<types::BookId, Error: std::fmt::Display>,
+            name: impl TryInto<types::BookName, Error: std::fmt::Display>,
+            kind: impl TryInto<types::BookKind, Error: std::fmt::Display>,
+        ) -> BookFields {
+            BookFields(
+                runtime::Builder::start(|| Ok(
+                    Self::new(
+                        runtime::field("id", id)?,
+                        runtime::field("name", name)?,
+                        runtime::field("kind", kind)?,
+                    ),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct BookFields(runtime::Builder<super::BookFields>);
+    impl BookFields {
+        pub fn nickname(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(
+                self
+                    .0
+                    .set(
+                        "nickname",
+                        value,
+                        |s, v| s.nickname = runtime::Nullable::Value(v),
+                    ),
+            )
+        }
+        pub fn tags(
+            self,
+            value: impl TryInto<types::BookTags, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("tags", value, |s, v| s.tags = Some(v)))
+        }
+        pub fn point(
+            self,
+            value: impl TryInto<types::BookPoint, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("point", value, |s, v| s.point = Some(v)))
+        }
+        pub fn attrs(
+            self,
+            value: impl TryInto<types::BookAttrs, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("attrs", value, |s, v| s.attrs = Some(v)))
+        }
+        pub fn weight(
+            self,
+            value: impl TryInto<types::BookWeight, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("weight", value, |s, v| s.weight = Some(v)))
+        }
+        /// Overrides description
+        pub fn owner(
+            self,
+            value: impl TryInto<types::Owner, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("owner", value, |s, v| s.owner = Some(v)))
+        }
+        pub fn hardcover(
+            self,
+            value: impl TryInto<bool, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("hardcover", value, |s, v| s.hardcover = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::BookFields, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::OwnerFields {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> OwnerFields {
+            OwnerFields(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct OwnerFields(runtime::Builder<super::OwnerFields>);
+    impl OwnerFields {
+        pub fn children(
+            self,
+            value: impl TryInto<types::OwnerChildren, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("children", value, |s, v| s.children = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::OwnerFields, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::Gadget2Fields {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            id: impl TryInto<types::Gadget2Id, Error: std::fmt::Display>,
+            name: impl TryInto<types::Gadget2Name, Error: std::fmt::Display>,
+            kind: impl TryInto<types::Gadget2Kind, Error: std::fmt::Display>,
+        ) -> Gadget2Fields {
+            Gadget2Fields(
+                runtime::Builder::start(|| Ok(
+                    Self::new(
+                        runtime::field("id", id)?,
+                        runtime::field("name", name)?,
+                        runtime::field("kind", kind)?,
+                    ),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct Gadget2Fields(runtime::Builder<super::Gadget2Fields>);
+    impl Gadget2Fields {
+        pub fn nickname(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(
+                self
+                    .0
+                    .set(
+                        "nickname",
+                        value,
+                        |s, v| s.nickname = runtime::Nullable::Value(v),
+                    ),
+            )
+        }
+        pub fn tags(
+            self,
+            value: impl TryInto<types::Gadget2Tags, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("tags", value, |s, v| s.tags = Some(v)))
+        }
+        pub fn point(
+            self,
+            value: impl TryInto<types::Gadget2Point, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("point", value, |s, v| s.point = Some(v)))
+        }
+        pub fn attrs(
+            self,
+            value: impl TryInto<types::Gadget2Attrs, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("attrs", value, |s, v| s.attrs = Some(v)))
+        }
+        pub fn weight(
+            self,
+            value: impl TryInto<types::Gadget2Weight, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("weight", value, |s, v| s.weight = Some(v)))
+        }
+        /// Overrides description
+        pub fn owner(
+            self,
+            value: impl TryInto<types::Owner, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("owner", value, |s, v| s.owner = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::Gadget2Fields, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::ProductRequestFields {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            name: impl TryInto<types::ProductName, Error: std::fmt::Display>,
+            kind: impl TryInto<types::ProductKind, Error: std::fmt::Display>,
+        ) -> ProductRequestFields {
+            ProductRequestFields(
+                runtime::Builder::start(|| Ok(
+                    Self::new(
+                        runtime::field("name", name)?,
+                        runtime::field("kind", kind)?,
+                    ),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct ProductRequestFields(runtime::Builder<super::ProductRequestFields>);
+    impl ProductRequestFields {
+        pub fn nickname(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(
+                self
+                    .0
+                    .set(
+                        "nickname",
+                        value,
+                        |s, v| s.nickname = runtime::Nullable::Value(v),
+                    ),
+            )
+        }
+        pub fn secret(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("secret", value, |s, v| s.secret = Some(v)))
+        }
+        pub fn tags(
+            self,
+            value: impl TryInto<types::ProductRequestTags, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("tags", value, |s, v| s.tags = Some(v)))
+        }
+        pub fn point(
+            self,
+            value: impl TryInto<types::ProductRequestPoint, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("point", value, |s, v| s.point = Some(v)))
+        }
+        pub fn attrs(
+            self,
+            value: impl TryInto<types::ProductRequestAttrs, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("attrs", value, |s, v| s.attrs = Some(v)))
+        }
+        pub fn weight(
+            self,
+            value: impl TryInto<types::ProductWeight, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("weight", value, |s, v| s.weight = Some(v)))
+        }
+        /// Overrides description
+        pub fn owner(
+            self,
+            value: impl TryInto<types::Owner, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("owner", value, |s, v| s.owner = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::ProductRequestFields, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::BookRequestFields {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            name: impl TryInto<types::BookName, Error: std::fmt::Display>,
+            kind: impl TryInto<types::BookKind, Error: std::fmt::Display>,
+        ) -> BookRequestFields {
+            BookRequestFields(
+                runtime::Builder::start(|| Ok(
+                    Self::new(
+                        runtime::field("name", name)?,
+                        runtime::field("kind", kind)?,
+                    ),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct BookRequestFields(runtime::Builder<super::BookRequestFields>);
+    impl BookRequestFields {
+        pub fn nickname(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(
+                self
+                    .0
+                    .set(
+                        "nickname",
+                        value,
+                        |s, v| s.nickname = runtime::Nullable::Value(v),
+                    ),
+            )
+        }
+        pub fn secret(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("secret", value, |s, v| s.secret = Some(v)))
+        }
+        pub fn tags(
+            self,
+            value: impl TryInto<types::BookRequestTags, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("tags", value, |s, v| s.tags = Some(v)))
+        }
+        pub fn point(
+            self,
+            value: impl TryInto<types::BookRequestPoint, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("point", value, |s, v| s.point = Some(v)))
+        }
+        pub fn attrs(
+            self,
+            value: impl TryInto<types::BookRequestAttrs, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("attrs", value, |s, v| s.attrs = Some(v)))
+        }
+        pub fn weight(
+            self,
+            value: impl TryInto<types::BookWeight, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("weight", value, |s, v| s.weight = Some(v)))
+        }
+        /// Overrides description
+        pub fn owner(
+            self,
+            value: impl TryInto<types::Owner, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("owner", value, |s, v| s.owner = Some(v)))
+        }
+        pub fn hardcover(
+            self,
+            value: impl TryInto<bool, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("hardcover", value, |s, v| s.hardcover = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::BookRequestFields, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::Gadget2RequestFields {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            name: impl TryInto<types::Gadget2Name, Error: std::fmt::Display>,
+            kind: impl TryInto<types::Gadget2Kind, Error: std::fmt::Display>,
+        ) -> Gadget2RequestFields {
+            Gadget2RequestFields(
+                runtime::Builder::start(|| Ok(
+                    Self::new(
+                        runtime::field("name", name)?,
+                        runtime::field("kind", kind)?,
+                    ),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct Gadget2RequestFields(runtime::Builder<super::Gadget2RequestFields>);
+    impl Gadget2RequestFields {
+        pub fn nickname(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(
+                self
+                    .0
+                    .set(
+                        "nickname",
+                        value,
+                        |s, v| s.nickname = runtime::Nullable::Value(v),
+                    ),
+            )
+        }
+        pub fn secret(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("secret", value, |s, v| s.secret = Some(v)))
+        }
+        pub fn tags(
+            self,
+            value: impl TryInto<types::Gadget2RequestTags, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("tags", value, |s, v| s.tags = Some(v)))
+        }
+        pub fn point(
+            self,
+            value: impl TryInto<types::Gadget2RequestPoint, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("point", value, |s, v| s.point = Some(v)))
+        }
+        pub fn attrs(
+            self,
+            value: impl TryInto<types::Gadget2RequestAttrs, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("attrs", value, |s, v| s.attrs = Some(v)))
+        }
+        pub fn weight(
+            self,
+            value: impl TryInto<types::Gadget2Weight, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("weight", value, |s, v| s.weight = Some(v)))
+        }
+        /// Overrides description
+        pub fn owner(
+            self,
+            value: impl TryInto<types::Owner, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("owner", value, |s, v| s.owner = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::Gadget2RequestFields, runtime::BuildError> {
             self.0.build()
         }
     }

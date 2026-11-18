@@ -52,8 +52,7 @@ pub trait BodySource: MaybeSend + 'static {
                     | Error::Decode { .. }
                     | Error::UnexpectedMedia { .. }
                     | Error::NotModified { .. }
-                    | Error::UnexpectedStatus { .. }
-                    | Error::Invalid(_)) => BodyError::Unreadable(other.to_string()),
+                    | Error::UnexpectedStatus { .. }) => BodyError::Unreadable(other.to_string()),
                 })?;
                 if out.len() + piece.len() > limit {
                     return Err(BodyError::TooLarge);

@@ -12,6 +12,10 @@
     clippy::missing_errors_doc,
     reason = "generated docs hold only the description's own prose"
 )]
+#![allow(
+    clippy::init_numbered_fields,
+    reason = "a spec default builds its checked type as `Type { 0: value }`, which also works through the alias of a twin"
+)]
 macro_rules! deserialize_impl {
     ($t:ty) => {
         impl<'de> serde::Deserialize<'de> for $t {
@@ -30,12 +34,59 @@ macro_rules! serialize_impl {
         }
     };
 }
-macro_rules! validate_impl {
+macro_rules! try_from_impl {
     ($t:ty) => {
-        impl runtime::Validate for $t {}
+        impl TryFrom<&str> for $t {
+            type Error = String;
+            fn try_from(s: &str) -> Result<Self, String> {
+                match s {
+                    "hardware" => Ok(Self::Hardware),
+                    "software" => Ok(Self::Software),
+                    "service" => Ok(Self::Service),
+                    "accessory" => Ok(Self::Accessory),
+                    "subscription" => Ok(Self::Subscription),
+                    other => {
+                        Err(
+                            format!(
+                                "`{other}` is not one of `hardware`, `software`, `service`, `accessory`, `subscription`"
+                            ),
+                        )
+                    }
+                }
+            }
+        }
     };
 }
 macro_rules! serialize_impl_2 {
+    ($t:ty) => {
+        impl serde::Serialize for $t {
+            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                Self::serialize(self, runtime::UniqueKeys(s))
+            }
+        }
+    };
+}
+macro_rules! try_from_impl_2 {
+    ($t:ty) => {
+        impl TryFrom<f32> for $t {
+            type Error = String;
+            fn try_from(value: f32) -> Result<Self, String> {
+                let mut violations: Vec<runtime::Violation> = Vec::new();
+                {
+                    let out = &mut violations;
+                    runtime::check_range(
+                        out,
+                        &runtime::InstancePath::Root,
+                        value,
+                        [None, None, Some(0.0), None],
+                    );
+                }
+                runtime::first(violations).map(|()| Self(value))
+            }
+        }
+    };
+}
+macro_rules! serialize_impl_3 {
     ($t:ty) => {
         impl serde::Serialize for $t {
             fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
@@ -70,98 +121,6 @@ macro_rules! deserialize_impl_2 {
         impl<'de> serde::Deserialize<'de> for $t {
             fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
                 runtime::tagged::<D, Self>(d)
-            }
-        }
-    };
-}
-macro_rules! try_from_impl {
-    ($t:ty) => {
-        impl TryFrom<&str> for $t {
-            type Error = String;
-            fn try_from(s: &str) -> Result<Self, String> {
-                match s {
-                    "hardware" => Ok(Self::Hardware),
-                    "software" => Ok(Self::Software),
-                    "service" => Ok(Self::Service),
-                    "accessory" => Ok(Self::Accessory),
-                    "subscription" => Ok(Self::Subscription),
-                    other => {
-                        Err(
-                            format!(
-                                "`{other}` is not one of `hardware`, `software`, `service`, `accessory`, `subscription`"
-                            ),
-                        )
-                    }
-                }
-            }
-        }
-    };
-}
-macro_rules! serialize_impl_3 {
-    ($t:ty) => {
-        impl serde::Serialize for $t {
-            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-                Self::serialize(self, runtime::UniqueKeys(s))
-            }
-        }
-    };
-}
-macro_rules! try_from_impl_2 {
-    ($t:ty) => {
-        impl TryFrom<f32> for $t {
-            type Error = String;
-            fn try_from(value: f32) -> Result<Self, String> {
-                let mut violations: Vec<runtime::Violation> = Vec::new();
-                {
-                    let out = &mut violations;
-                    runtime::check_range(
-                        out,
-                        &runtime::InstancePath::Root,
-                        value,
-                        [None, None, Some(0.0), None],
-                    );
-                }
-                match violations.into_iter().next() {
-                    Some(v) => Err(v.message),
-                    None => Ok(Self(value)),
-                }
-            }
-        }
-    };
-}
-macro_rules! validate_impl_2 {
-    ($t:ty) => {
-        impl runtime::Validate for $t {
-            fn validate(
-                &self,
-                path: &runtime::InstancePath<'_>,
-                out: &mut Vec<runtime::Violation>,
-            ) {
-                if let Some(v) = &self.data {
-                    {
-                        let base = &runtime::InstancePath::Key(path, "data");
-                        for (i, v) in v.iter().enumerate() {
-                            {
-                                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                                let value = runtime::to_value(v).unwrap_or_default();
-                                let schema = SCHEMA
-                                    .get_or_init(|| {
-                                        serde_json::from_str(
-                                                "{\"$dynamicAnchor\":\"itemType\",\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Product\"}]}",
-                                            )
-                                            .unwrap_or_default()
-                                    });
-                                runtime::check_schema_in(
-                                    out,
-                                    &runtime::InstancePath::Index(base, i),
-                                    &value,
-                                    schema,
-                                    runtime::schema_defs(),
-                                );
-                            }
-                        }
-                    }
-                }
             }
         }
     };
@@ -242,6 +201,32 @@ macro_rules! checked_num_impls {
         }
     };
 }
+macro_rules! checked_impls {
+    ($n:ident, $t:ty) => {
+        impl $n {
+            #[must_use]
+            pub fn into_inner(self) -> $t {
+                self.0
+            }
+        }
+        impl std::ops::Deref for $n {
+            type Target = $t;
+            fn deref(&self) -> &$t {
+                &self.0
+            }
+        }
+        impl AsRef<$t> for $n {
+            fn as_ref(&self) -> &$t {
+                &self.0
+            }
+        }
+        impl From<$n> for $t {
+            fn from(value: $n) -> Self {
+                value.0
+            }
+        }
+    };
+}
 /// A user
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -311,7 +296,6 @@ impl runtime::XmlShape for User {
         &NODE
     }
 }
-validate_impl!(User);
 /// Credentials to authenticate a user
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -354,7 +338,6 @@ impl runtime::XmlShape for Credentials {
         &NODE
     }
 }
-validate_impl!(Credentials);
 /// A token to authenticate a user
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -402,48 +385,45 @@ impl runtime::XmlShape for Token {
         &NODE
     }
 }
-validate_impl!(Token);
 /// A item which can be either a product or a variant
-#[derive(Debug, Clone, PartialEq)]
-pub enum Item {
-    Product(Product),
-    Variant(Variant),
-}
-serialize_impl_2!(Item);
-deserialize_impl_2!(Item);
-impl<'de> runtime::TaggedUnion<'de> for Item {
-    const TAG: &'static str = "type";
-    fn knows(tag: &str) -> bool {
-        matches!(
-            tag, "hardware" | "software" | "service" | "accessory" | "subscription" |
-            "size" | "color" | "edition"
-        )
-    }
-    fn from_tag<D: serde::Deserializer<'de>>(tag: &str, d: D) -> Result<Self, D::Error> {
-        match tag {
-            "hardware" | "software" | "service" | "accessory" | "subscription" => {
-                <Product as serde::Deserialize>::deserialize(d).map(Self::Product)
-            }
-            "size" | "color" | "edition" => {
-                <Variant as serde::Deserialize>::deserialize(d).map(Self::Variant)
-            }
-            _ => Err(serde::de::Error::custom("unknown discriminator")),
-        }
-    }
-    fn from_content(v: runtime::Content<'de>) -> Result<Self, serde_json::Error> {
-        let which = match v.tag("type").as_deref() {
-            Some("hardware" | "software" | "service" | "accessory" | "subscription") => 0,
-            Some("size" | "color" | "edition") => 1,
-            _ => 2,
-        };
-        match which {
-            0 => v.decode_into(Self::Product),
-            1 => v.decode_into(Self::Variant),
-            _ => Err(serde::de::Error::custom("matches no variant")),
-        }
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+#[serde(transparent)]
+pub struct Item(pub(super) ItemVariants);
+impl<'de> serde::Deserialize<'de> for Item {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <ItemVariants as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
     }
 }
-validate_impl!(Item);
+impl TryFrom<ItemVariants> for Item {
+    type Error = String;
+    fn try_from(value: ItemVariants) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            {
+                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                let value = runtime::to_value(&value).unwrap_or_default();
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"oneOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Product\"},{\"$ref\":\"#/$defs/~1components~1schemas~1Variant\"}]}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
+                    out,
+                    &runtime::InstancePath::Root,
+                    &value,
+                    schema,
+                    runtime::schema_defs(),
+                );
+            }
+        }
+        runtime::first(violations).map(|()| Self(value))
+    }
+}
+checked_impls!(Item, ItemVariants);
 /// A product in the shop
 #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -806,7 +786,6 @@ impl runtime::XmlShape for Product {
         &NODE
     }
 }
-validate_impl!(Product);
 /// Every variant in the shop
 #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -964,7 +943,6 @@ impl runtime::XmlShape for Variant {
         &NODE
     }
 }
-validate_impl!(Variant);
 /// A structured query for the product catalog, sent either as the body of a QUERY request or as a `querystring` parameter.
 #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -1089,7 +1067,6 @@ impl runtime::XmlShape for ProductQuery {
         &NODE
     }
 }
-validate_impl!(ProductQuery);
 /// A single event emitted on the product stream. Each item in a `text/event-stream`, `application/jsonl` or `application/json-seq` response validates against this schema.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -1224,7 +1201,6 @@ impl runtime::XmlShape for ProductEvent {
         &NODE
     }
 }
-validate_impl!(ProductEvent);
 /// A short, localized message. Demonstrates the `OpenAPI` 3.2 XML `nodeType` values `attribute` and `text`, which serialize as `<message lang="en">A new product has appeared</message>`.
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -1296,7 +1272,6 @@ impl runtime::XmlShape for ShopMessage {
         &NODE
     }
 }
-validate_impl!(ShopMessage);
 /// Metadata describing a batch of uploaded photos
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -1390,104 +1365,45 @@ impl runtime::XmlShape for PhotoBatchMeta {
         &NODE
     }
 }
-validate_impl!(PhotoBatchMeta);
 /// A generic paginated resource. Specializing schemas bind the item type by declaring a `$dynamicAnchor` named `itemType`, the JSON Schema 2020-12 way to express `PaginatedResource<T>`.
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct PaginatedResource {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub data: Option<Vec<serde_json::Value>>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub meta: Option<PaginatedResourceMeta>,
-}
-deserialize_impl!(PaginatedResource);
-serialize_impl!(PaginatedResource);
-impl PaginatedResource {
-    #[must_use]
-    pub const fn new() -> Self {
-        Self { data: None, meta: None }
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
+pub struct PaginatedResource(pub(super) PaginatedResourceFields);
+impl<'de> serde::Deserialize<'de> for PaginatedResource {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <PaginatedResourceFields as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
     }
 }
-impl runtime::XmlShape for PaginatedResource {
-    fn xml() -> &'static runtime::XmlNode {
-        static NODE: runtime::XmlNode = runtime::XmlNode {
-            name: "PaginatedResource",
-            namespace: "",
-            prefix: "",
-            fields: &[
-                runtime::XmlField {
-                    wire: "data",
-                    name: "data",
-                    prefix: "",
-                    attribute: false,
-                    text: false,
-                    list: true,
-                    wrapped: false,
-                    required: false,
-                    item: "data",
-                    child: None,
-                    cdata: false,
-                    inline: false,
-                    nullable: false,
-                    object: false,
-                },
-                runtime::XmlField {
-                    wire: "meta",
-                    name: "meta",
-                    prefix: "",
-                    attribute: false,
-                    text: false,
-                    list: false,
-                    wrapped: false,
-                    required: false,
-                    item: "meta",
-                    child: Some(<PaginatedResourceMeta as runtime::XmlShape>::xml),
-                    cdata: false,
-                    inline: false,
-                    nullable: false,
-                    object: false,
-                },
-            ],
-        };
-        &NODE
-    }
-}
-impl runtime::Validate for PaginatedResource {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        if let Some(v) = &self.data {
+impl TryFrom<PaginatedResourceFields> for PaginatedResource {
+    type Error = String;
+    fn try_from(value: PaginatedResourceFields) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
             {
                 static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(v).unwrap_or_default();
+                let value = runtime::to_value(&value).unwrap_or_default();
                 let schema = SCHEMA
                     .get_or_init(|| {
                         serde_json::from_str(
-                                "{\"type\":\"array\",\"items\":{\"$dynamicAnchor\":\"itemType\",\"not\":{}}}",
+                                "{\"$id\":\"https://shop.example.com/schemas/PaginatedResource\",\"$defs\":{\"itemType\":{\"$dynamicAnchor\":\"itemType\",\"not\":{}}},\"type\":\"object\",\"properties\":{\"data\":{\"type\":\"array\",\"items\":{\"$dynamicAnchor\":\"itemType\",\"not\":{}}},\"meta\":{\"type\":\"object\",\"properties\":{\"limit\":{\"type\":\"integer\",\"format\":\"int64\"},\"offset\":{\"type\":\"integer\",\"format\":\"int64\"},\"total\":{\"type\":\"integer\",\"format\":\"int64\"},\"next\":{\"type\":[\"string\",\"null\"]}}}}}",
                             )
                             .unwrap_or_default()
                     });
                 runtime::check_schema_in(
                     out,
-                    &runtime::InstancePath::Key(path, "data"),
+                    &runtime::InstancePath::Root,
                     &value,
                     schema,
                     runtime::schema_defs(),
                 );
             }
         }
+        runtime::first(violations).map(|()| Self(value))
     }
 }
+checked_impls!(PaginatedResource, PaginatedResourceFields);
 /// Message about an image upload
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -1637,7 +1553,6 @@ impl runtime::XmlShape for ImageUploadedMessage {
         &NODE
     }
 }
-validate_impl!(ImageUploadedMessage);
 /// RFC 7807 (<https://datatracker.ietf.org/doc/html/rfc7807>)
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -1757,7 +1672,6 @@ impl runtime::XmlShape for BadRequestError {
         &NODE
     }
 }
-validate_impl!(BadRequestError);
 /// Error response for forbidden access (RFC 7807). Returned when the user does not have permission to access the requested resource.
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -1877,7 +1791,6 @@ impl runtime::XmlShape for ForbiddenError {
         &NODE
     }
 }
-validate_impl!(ForbiddenError);
 /// Error response for resource not found (RFC 7807). Returned when the requested resource does not exist.
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -1997,7 +1910,6 @@ impl runtime::XmlShape for NotFoundError {
         &NODE
     }
 }
-validate_impl!(NotFoundError);
 /// Error response for unauthorized access (RFC 7807). Returned when authentication is required or has failed.
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -2117,7 +2029,6 @@ impl runtime::XmlShape for UnauthorizedError {
         &NODE
     }
 }
-validate_impl!(UnauthorizedError);
 /// Error response for resource conflicts (RFC 7807). Returned when the request conflicts with the current state of the resource.
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -2237,7 +2148,6 @@ impl runtime::XmlShape for Conflict {
         &NODE
     }
 }
-validate_impl!(Conflict);
 /// Error response for unprocessable entity (RFC 7807). Returned when the request is well-formed but contains semantic errors.
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -2357,7 +2267,6 @@ impl runtime::XmlShape for UnprocessableEntity {
         &NODE
     }
 }
-validate_impl!(UnprocessableEntity);
 /// Error response for rate limiting (RFC 7807). Returned when the client has exceeded the rate limit for requests.
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -2477,7 +2386,6 @@ impl runtime::XmlShape for TooManyRequestsError {
         &NODE
     }
 }
-validate_impl!(TooManyRequestsError);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum ProductType {
     Hardware,
@@ -2500,7 +2408,6 @@ impl ProductType {
 }
 try_from_impl!(ProductType);
 str_enum_impls!(ProductType);
-validate_impl!(ProductType);
 /// A score from 0 to 1 indicating how customers rate it
 #[derive(Debug, Clone, PartialEq, Copy, PartialOrd, serde::Serialize)]
 #[serde(transparent)]
@@ -2518,14 +2425,10 @@ impl TryFrom<f32> for ProductRating {
                 [Some(0.0), Some(1.0), None, None],
             );
         }
-        match violations.into_iter().next() {
-            Some(v) => Err(v.message),
-            None => Ok(Self(value)),
-        }
+        runtime::first(violations).map(|()| Self(value))
     }
 }
 checked_num_impls!(ProductRating, f32);
-validate_impl!(ProductRating);
 #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct ProductDimensions {
@@ -2560,7 +2463,7 @@ pub struct ProductDimensions {
     pub additional_properties: std::collections::BTreeMap<String, f32>,
 }
 deserialize_impl!(ProductDimensions);
-serialize_impl_3!(ProductDimensions);
+serialize_impl_2!(ProductDimensions);
 impl ProductDimensions {
     #[must_use]
     pub const fn new() -> Self {
@@ -2649,21 +2552,18 @@ impl runtime::XmlShape for ProductDimensions {
         &NODE
     }
 }
-validate_impl!(ProductDimensions);
 /// Weight in kilograms (must be greater than 0)
 #[derive(Debug, Clone, PartialEq, Copy, PartialOrd, serde::Serialize)]
 #[serde(transparent)]
 pub struct ProductDimensionsWeight(pub(super) f32);
 try_from_impl_2!(ProductDimensionsWeight);
 checked_num_impls!(ProductDimensionsWeight, f32);
-validate_impl!(ProductDimensionsWeight);
 /// Width in centimetres (must be greater than 0)
 #[derive(Debug, Clone, PartialEq, Copy, PartialOrd, serde::Serialize)]
 #[serde(transparent)]
 pub struct ProductDimensionsWidth(pub(super) f32);
 try_from_impl_2!(ProductDimensionsWidth);
 checked_num_impls!(ProductDimensionsWidth, f32);
-validate_impl!(ProductDimensionsWidth);
 #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct ProductDimensionsPrice {
@@ -2692,7 +2592,7 @@ pub struct ProductDimensionsPrice {
     pub additional_properties: std::collections::BTreeMap<String, f32>,
 }
 deserialize_impl!(ProductDimensionsPrice);
-serialize_impl_3!(ProductDimensionsPrice);
+serialize_impl_2!(ProductDimensionsPrice);
 impl ProductDimensionsPrice {
     #[must_use]
     pub const fn new() -> Self {
@@ -2764,7 +2664,6 @@ impl runtime::XmlShape for ProductDimensionsPrice {
         &NODE
     }
 }
-validate_impl!(ProductDimensionsPrice);
 #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct ProductMaterialsItem {
@@ -2784,7 +2683,7 @@ pub struct ProductMaterialsItem {
     pub additional_properties: std::collections::BTreeMap<String, String>,
 }
 deserialize_impl!(ProductMaterialsItem);
-serialize_impl_3!(ProductMaterialsItem);
+serialize_impl_2!(ProductMaterialsItem);
 impl ProductMaterialsItem {
     #[must_use]
     pub const fn new() -> Self {
@@ -2839,7 +2738,6 @@ impl runtime::XmlShape for ProductMaterialsItem {
         &NODE
     }
 }
-validate_impl!(ProductMaterialsItem);
 #[derive(Debug, Clone, PartialEq, Copy, PartialOrd, serde::Serialize)]
 #[serde(transparent)]
 pub struct ProductMaterialsItemPercentage(pub(super) f32);
@@ -2856,14 +2754,10 @@ impl TryFrom<f32> for ProductMaterialsItemPercentage {
                 [None, None, None, Some(100.0)],
             );
         }
-        match violations.into_iter().next() {
-            Some(v) => Err(v.message),
-            None => Ok(Self(value)),
-        }
+        runtime::first(violations).map(|()| Self(value))
     }
 }
 checked_num_impls!(ProductMaterialsItemPercentage, f32);
-validate_impl!(ProductMaterialsItemPercentage);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum VariantType {
     Size,
@@ -2892,7 +2786,6 @@ impl TryFrom<&str> for VariantType {
     }
 }
 str_enum_impls!(VariantType);
-validate_impl!(VariantType);
 #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct VariantShipping {
@@ -2990,7 +2883,6 @@ impl runtime::XmlShape for VariantShipping {
         &NODE
     }
 }
-validate_impl!(VariantShipping);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum ProductQueryTypeItem {
     Hardware,
@@ -3013,7 +2905,6 @@ impl ProductQueryTypeItem {
 }
 try_from_impl!(ProductQueryTypeItem);
 str_enum_impls!(ProductQueryTypeItem);
-validate_impl!(ProductQueryTypeItem);
 /// Only return products at or above this rating
 pub type ProductQueryMinRating = ProductRating;
 /// Sort field; prefix with `-` for descending order
@@ -3054,7 +2945,6 @@ impl TryFrom<&str> for ProductQuerySort {
     }
 }
 str_enum_impls!(ProductQuerySort);
-validate_impl!(ProductQuerySort);
 /// The kind of change that occurred
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum ProductEventEvent {
@@ -3093,7 +2983,6 @@ impl TryFrom<&str> for ProductEventEvent {
     }
 }
 str_enum_impls!(ProductEventEvent);
-validate_impl!(ProductEventEvent);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct PaginatedResourceMeta {
@@ -3207,7 +3096,6 @@ impl runtime::XmlShape for PaginatedResourceMeta {
         &NODE
     }
 }
-validate_impl!(PaginatedResourceMeta);
 /// A generic paginated resource. Specializing schemas bind the item type by declaring a `$dynamicAnchor` named `itemType`, the JSON Schema 2020-12 way to express `PaginatedResource<T>`.
 #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -3217,7 +3105,7 @@ pub struct GetAllDataOk {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub data: Option<Vec<Product>>,
+    pub data: Option<OkData>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
@@ -3246,11 +3134,11 @@ impl runtime::XmlShape for GetAllDataOk {
                     prefix: "",
                     attribute: false,
                     text: false,
-                    list: true,
+                    list: false,
                     wrapped: false,
                     required: false,
                     item: "product",
-                    child: Some(<Product as runtime::XmlShape>::xml),
+                    child: None,
                     cdata: false,
                     inline: false,
                     nullable: false,
@@ -3277,7 +3165,6 @@ impl runtime::XmlShape for GetAllDataOk {
         &NODE
     }
 }
-validate_impl_2!(GetAllDataOk);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct GetAllDataOkMeta {
@@ -3391,7 +3278,6 @@ impl runtime::XmlShape for GetAllDataOkMeta {
         &NODE
     }
 }
-validate_impl!(GetAllDataOkMeta);
 /// A generic paginated resource. Specializing schemas bind the item type by declaring a `$dynamicAnchor` named `itemType`, the JSON Schema 2020-12 way to express `PaginatedResource<T>`.
 #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -3401,7 +3287,7 @@ pub struct GetAllDataOk2 {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub data: Option<Vec<Product>>,
+    pub data: Option<GetAllDataOk2Data>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
@@ -3430,11 +3316,11 @@ impl runtime::XmlShape for GetAllDataOk2 {
                     prefix: "",
                     attribute: false,
                     text: false,
-                    list: true,
+                    list: false,
                     wrapped: false,
                     required: false,
                     item: "product",
-                    child: Some(<Product as runtime::XmlShape>::xml),
+                    child: None,
                     cdata: false,
                     inline: false,
                     nullable: false,
@@ -3461,7 +3347,6 @@ impl runtime::XmlShape for GetAllDataOk2 {
         &NODE
     }
 }
-validate_impl_2!(GetAllDataOk2);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct GetAllDataOk2Meta {
@@ -3575,7 +3460,6 @@ impl runtime::XmlShape for GetAllDataOk2Meta {
         &NODE
     }
 }
-validate_impl!(GetAllDataOk2Meta);
 /// A generic paginated resource. Specializing schemas bind the item type by declaring a `$dynamicAnchor` named `itemType`, the JSON Schema 2020-12 way to express `PaginatedResource<T>`.
 #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -3585,7 +3469,7 @@ pub struct QueryProductsOk {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub data: Option<Vec<Product>>,
+    pub data: Option<QueryProductsOkData>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
@@ -3614,11 +3498,11 @@ impl runtime::XmlShape for QueryProductsOk {
                     prefix: "",
                     attribute: false,
                     text: false,
-                    list: true,
+                    list: false,
                     wrapped: false,
                     required: false,
                     item: "product",
-                    child: Some(<Product as runtime::XmlShape>::xml),
+                    child: None,
                     cdata: false,
                     inline: false,
                     nullable: false,
@@ -3645,7 +3529,6 @@ impl runtime::XmlShape for QueryProductsOk {
         &NODE
     }
 }
-validate_impl_2!(QueryProductsOk);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct QueryProductsOkMeta {
@@ -3759,7 +3642,6 @@ impl runtime::XmlShape for QueryProductsOkMeta {
         &NODE
     }
 }
-validate_impl!(QueryProductsOkMeta);
 /// A generic paginated resource. Specializing schemas bind the item type by declaring a `$dynamicAnchor` named `itemType`, the JSON Schema 2020-12 way to express `PaginatedResource<T>`.
 #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -3769,7 +3651,7 @@ pub struct SearchProductsOk {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub data: Option<Vec<Product>>,
+    pub data: Option<SearchProductsOkData>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
@@ -3798,11 +3680,11 @@ impl runtime::XmlShape for SearchProductsOk {
                     prefix: "",
                     attribute: false,
                     text: false,
-                    list: true,
+                    list: false,
                     wrapped: false,
                     required: false,
                     item: "product",
-                    child: Some(<Product as runtime::XmlShape>::xml),
+                    child: None,
                     cdata: false,
                     inline: false,
                     nullable: false,
@@ -3829,7 +3711,6 @@ impl runtime::XmlShape for SearchProductsOk {
         &NODE
     }
 }
-validate_impl_2!(SearchProductsOk);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct SearchProductsOkMeta {
@@ -3943,7 +3824,6 @@ impl runtime::XmlShape for SearchProductsOkMeta {
         &NODE
     }
 }
-validate_impl!(SearchProductsOkMeta);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct UploadImageBody {
@@ -3991,7 +3871,6 @@ impl runtime::XmlShape for UploadImageBody {
         &NODE
     }
 }
-validate_impl!(UploadImageBody);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct UploadPhotosAccepted {
@@ -4065,7 +3944,6 @@ impl runtime::XmlShape for UploadPhotosAccepted {
         &NODE
     }
 }
-validate_impl!(UploadPhotosAccepted);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct CreateUserBody {
@@ -4155,7 +4033,6 @@ impl runtime::XmlShape for CreateUserBody {
         &NODE
     }
 }
-validate_impl!(CreateUserBody);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct CreateUserBody2 {
@@ -4245,7 +4122,6 @@ impl runtime::XmlShape for CreateUserBody2 {
         &NODE
     }
 }
-validate_impl!(CreateUserBody2);
 /// A user
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -4293,7 +4169,6 @@ impl runtime::XmlShape for UserRequest {
         &NODE
     }
 }
-validate_impl!(UserRequest);
 /// Credentials to authenticate a user
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -4353,48 +4228,45 @@ impl runtime::XmlShape for CredentialsRequest {
         &NODE
     }
 }
-validate_impl!(CredentialsRequest);
 /// A item which can be either a product or a variant
-#[derive(Debug, Clone, PartialEq)]
-pub enum ItemRequest {
-    Product(ProductRequest),
-    Variant(VariantRequest),
-}
-serialize_impl_2!(ItemRequest);
-deserialize_impl_2!(ItemRequest);
-impl<'de> runtime::TaggedUnion<'de> for ItemRequest {
-    const TAG: &'static str = "type";
-    fn knows(tag: &str) -> bool {
-        matches!(
-            tag, "hardware" | "software" | "service" | "accessory" | "subscription" |
-            "size" | "color" | "edition"
-        )
-    }
-    fn from_tag<D: serde::Deserializer<'de>>(tag: &str, d: D) -> Result<Self, D::Error> {
-        match tag {
-            "hardware" | "software" | "service" | "accessory" | "subscription" => {
-                <ProductRequest as serde::Deserialize>::deserialize(d).map(Self::Product)
-            }
-            "size" | "color" | "edition" => {
-                <VariantRequest as serde::Deserialize>::deserialize(d).map(Self::Variant)
-            }
-            _ => Err(serde::de::Error::custom("unknown discriminator")),
-        }
-    }
-    fn from_content(v: runtime::Content<'de>) -> Result<Self, serde_json::Error> {
-        let which = match v.tag("type").as_deref() {
-            Some("hardware" | "software" | "service" | "accessory" | "subscription") => 0,
-            Some("size" | "color" | "edition") => 1,
-            _ => 2,
-        };
-        match which {
-            0 => v.decode_into(Self::Product),
-            1 => v.decode_into(Self::Variant),
-            _ => Err(serde::de::Error::custom("matches no variant")),
-        }
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+#[serde(transparent)]
+pub struct ItemRequest(pub(super) ItemRequestVariants);
+impl<'de> serde::Deserialize<'de> for ItemRequest {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <ItemRequestVariants as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
     }
 }
-validate_impl!(ItemRequest);
+impl TryFrom<ItemRequestVariants> for ItemRequest {
+    type Error = String;
+    fn try_from(value: ItemRequestVariants) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            {
+                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                let value = runtime::to_value(&value).unwrap_or_default();
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"oneOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Product\"},{\"$ref\":\"#/$defs/~1components~1schemas~1Variant\"}]}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
+                    out,
+                    &runtime::InstancePath::Root,
+                    &value,
+                    schema,
+                    runtime::schema_defs(),
+                );
+            }
+        }
+        runtime::first(violations).map(|()| Self(value))
+    }
+}
+checked_impls!(ItemRequest, ItemRequestVariants);
 /// A product in the shop
 #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -4715,7 +4587,6 @@ impl runtime::XmlShape for ProductRequest {
         &NODE
     }
 }
-validate_impl!(ProductRequest);
 /// Every variant in the shop
 #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -4850,7 +4721,6 @@ impl runtime::XmlShape for VariantRequest {
         &NODE
     }
 }
-validate_impl!(VariantRequest);
 /// A single event emitted on the product stream. Each item in a `text/event-stream`, `application/jsonl` or `application/json-seq` response validates against this schema.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -4985,7 +4855,6 @@ impl runtime::XmlShape for ProductEventRequest {
         &NODE
     }
 }
-validate_impl!(ProductEventRequest);
 #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct VariantShippingRequest {
@@ -5083,7 +4952,6 @@ impl runtime::XmlShape for VariantShippingRequest {
         &NODE
     }
 }
-validate_impl!(VariantShippingRequest);
 /// A generic paginated resource. Specializing schemas bind the item type by declaring a `$dynamicAnchor` named `itemType`, the JSON Schema 2020-12 way to express `PaginatedResource<T>`.
 #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -5093,7 +4961,7 @@ pub struct GetAllDataOkRequest {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub data: Option<Vec<ProductRequest>>,
+    pub data: Option<OkRequestData>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
@@ -5122,11 +4990,11 @@ impl runtime::XmlShape for GetAllDataOkRequest {
                     prefix: "",
                     attribute: false,
                     text: false,
-                    list: true,
+                    list: false,
                     wrapped: false,
                     required: false,
                     item: "product",
-                    child: Some(<ProductRequest as runtime::XmlShape>::xml),
+                    child: None,
                     cdata: false,
                     inline: false,
                     nullable: false,
@@ -5153,7 +5021,6 @@ impl runtime::XmlShape for GetAllDataOkRequest {
         &NODE
     }
 }
-validate_impl_2!(GetAllDataOkRequest);
 /// A generic paginated resource. Specializing schemas bind the item type by declaring a `$dynamicAnchor` named `itemType`, the JSON Schema 2020-12 way to express `PaginatedResource<T>`.
 #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -5163,7 +5030,7 @@ pub struct GetAllDataOk2Request {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub data: Option<Vec<ProductRequest>>,
+    pub data: Option<GetAllDataOk2RequestData>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
@@ -5192,11 +5059,11 @@ impl runtime::XmlShape for GetAllDataOk2Request {
                     prefix: "",
                     attribute: false,
                     text: false,
-                    list: true,
+                    list: false,
                     wrapped: false,
                     required: false,
                     item: "product",
-                    child: Some(<ProductRequest as runtime::XmlShape>::xml),
+                    child: None,
                     cdata: false,
                     inline: false,
                     nullable: false,
@@ -5223,7 +5090,6 @@ impl runtime::XmlShape for GetAllDataOk2Request {
         &NODE
     }
 }
-validate_impl_2!(GetAllDataOk2Request);
 /// A generic paginated resource. Specializing schemas bind the item type by declaring a `$dynamicAnchor` named `itemType`, the JSON Schema 2020-12 way to express `PaginatedResource<T>`.
 #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -5233,7 +5099,7 @@ pub struct QueryProductsOkRequest {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub data: Option<Vec<ProductRequest>>,
+    pub data: Option<QueryProductsOkRequestData>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
@@ -5262,11 +5128,11 @@ impl runtime::XmlShape for QueryProductsOkRequest {
                     prefix: "",
                     attribute: false,
                     text: false,
-                    list: true,
+                    list: false,
                     wrapped: false,
                     required: false,
                     item: "product",
-                    child: Some(<ProductRequest as runtime::XmlShape>::xml),
+                    child: None,
                     cdata: false,
                     inline: false,
                     nullable: false,
@@ -5293,7 +5159,6 @@ impl runtime::XmlShape for QueryProductsOkRequest {
         &NODE
     }
 }
-validate_impl_2!(QueryProductsOkRequest);
 /// A generic paginated resource. Specializing schemas bind the item type by declaring a `$dynamicAnchor` named `itemType`, the JSON Schema 2020-12 way to express `PaginatedResource<T>`.
 #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -5303,7 +5168,7 @@ pub struct SearchProductsOkRequest {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub data: Option<Vec<ProductRequest>>,
+    pub data: Option<SearchProductsOkRequestData>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
@@ -5332,11 +5197,11 @@ impl runtime::XmlShape for SearchProductsOkRequest {
                     prefix: "",
                     attribute: false,
                     text: false,
-                    list: true,
+                    list: false,
                     wrapped: false,
                     required: false,
                     item: "product",
-                    child: Some(<ProductRequest as runtime::XmlShape>::xml),
+                    child: None,
                     cdata: false,
                     inline: false,
                     nullable: false,
@@ -5363,7 +5228,6 @@ impl runtime::XmlShape for SearchProductsOkRequest {
         &NODE
     }
 }
-validate_impl_2!(SearchProductsOkRequest);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct CreateUserBodyRequest {
@@ -5448,7 +5312,6 @@ impl runtime::XmlShape for CreateUserBodyRequest {
         &NODE
     }
 }
-validate_impl!(CreateUserBodyRequest);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct CreateUserBody2Request {
@@ -5533,7 +5396,326 @@ impl runtime::XmlShape for CreateUserBody2Request {
         &NODE
     }
 }
-validate_impl!(CreateUserBody2Request);
+/// A item which can be either a product or a variant
+#[derive(Debug, Clone, PartialEq)]
+pub enum ItemVariants {
+    Product(Product),
+    Variant(Variant),
+}
+serialize_impl_3!(ItemVariants);
+deserialize_impl_2!(ItemVariants);
+impl<'de> runtime::TaggedUnion<'de> for ItemVariants {
+    const TAG: &'static str = "type";
+    fn knows(tag: &str) -> bool {
+        matches!(
+            tag, "hardware" | "software" | "service" | "accessory" | "subscription" |
+            "size" | "color" | "edition"
+        )
+    }
+    fn from_tag<D: serde::Deserializer<'de>>(tag: &str, d: D) -> Result<Self, D::Error> {
+        match tag {
+            "hardware" | "software" | "service" | "accessory" | "subscription" => {
+                <Product as serde::Deserialize>::deserialize(d).map(Self::Product)
+            }
+            "size" | "color" | "edition" => {
+                <Variant as serde::Deserialize>::deserialize(d).map(Self::Variant)
+            }
+            _ => Err(serde::de::Error::custom("unknown discriminator")),
+        }
+    }
+    fn from_content(v: runtime::Content<'de>) -> Result<Self, serde_json::Error> {
+        let which = match v.tag("type").as_deref() {
+            Some("hardware" | "software" | "service" | "accessory" | "subscription") => 0,
+            Some("size" | "color" | "edition") => 1,
+            _ => 2,
+        };
+        match which {
+            0 => v.decode_into(Self::Product),
+            1 => v.decode_into(Self::Variant),
+            _ => Err(serde::de::Error::custom("matches no variant")),
+        }
+    }
+}
+/// A generic paginated resource. Specializing schemas bind the item type by declaring a `$dynamicAnchor` named `itemType`, the JSON Schema 2020-12 way to express `PaginatedResource<T>`.
+#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct PaginatedResourceFields {
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub data: Option<PaginatedResourceData>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub meta: Option<PaginatedResourceMeta>,
+}
+deserialize_impl!(PaginatedResourceFields);
+serialize_impl!(PaginatedResourceFields);
+impl PaginatedResourceFields {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self { data: None, meta: None }
+    }
+}
+impl runtime::XmlShape for PaginatedResourceFields {
+    fn xml() -> &'static runtime::XmlNode {
+        static NODE: runtime::XmlNode = runtime::XmlNode {
+            name: "PaginatedResourceFields",
+            namespace: "",
+            prefix: "",
+            fields: &[
+                runtime::XmlField {
+                    wire: "data",
+                    name: "data",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "data",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "meta",
+                    name: "meta",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "meta",
+                    child: Some(<PaginatedResourceMeta as runtime::XmlShape>::xml),
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+            ],
+        };
+        &NODE
+    }
+}
+/// A item which can be either a product or a variant
+#[derive(Debug, Clone, PartialEq)]
+pub enum ItemRequestVariants {
+    Product(ProductRequest),
+    Variant(VariantRequest),
+}
+serialize_impl_3!(ItemRequestVariants);
+deserialize_impl_2!(ItemRequestVariants);
+impl<'de> runtime::TaggedUnion<'de> for ItemRequestVariants {
+    const TAG: &'static str = "type";
+    fn knows(tag: &str) -> bool {
+        matches!(
+            tag, "hardware" | "software" | "service" | "accessory" | "subscription" |
+            "size" | "color" | "edition"
+        )
+    }
+    fn from_tag<D: serde::Deserializer<'de>>(tag: &str, d: D) -> Result<Self, D::Error> {
+        match tag {
+            "hardware" | "software" | "service" | "accessory" | "subscription" => {
+                <ProductRequest as serde::Deserialize>::deserialize(d).map(Self::Product)
+            }
+            "size" | "color" | "edition" => {
+                <VariantRequest as serde::Deserialize>::deserialize(d).map(Self::Variant)
+            }
+            _ => Err(serde::de::Error::custom("unknown discriminator")),
+        }
+    }
+    fn from_content(v: runtime::Content<'de>) -> Result<Self, serde_json::Error> {
+        let which = match v.tag("type").as_deref() {
+            Some("hardware" | "software" | "service" | "accessory" | "subscription") => 0,
+            Some("size" | "color" | "edition") => 1,
+            _ => 2,
+        };
+        match which {
+            0 => v.decode_into(Self::Product),
+            1 => v.decode_into(Self::Variant),
+            _ => Err(serde::de::Error::custom("matches no variant")),
+        }
+    }
+}
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+#[serde(transparent)]
+pub struct OkData(pub(super) Vec<Product>);
+impl<'de> serde::Deserialize<'de> for OkData {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <Vec<Product> as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
+    }
+}
+impl TryFrom<Vec<Product>> for OkData {
+    type Error = String;
+    fn try_from(value: Vec<Product>) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            {
+                let base = &runtime::InstancePath::Root;
+                for (i, v) in value.iter().enumerate() {
+                    {
+                        static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                        let value = runtime::to_value(v).unwrap_or_default();
+                        let schema = SCHEMA
+                            .get_or_init(|| {
+                                serde_json::from_str(
+                                        "{\"$dynamicAnchor\":\"itemType\",\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Product\"}]}",
+                                    )
+                                    .unwrap_or_default()
+                            });
+                        runtime::check_schema_in(
+                            out,
+                            &runtime::InstancePath::Index(base, i),
+                            &value,
+                            schema,
+                            runtime::schema_defs(),
+                        );
+                    }
+                }
+            }
+        }
+        runtime::first(violations).map(|()| Self(value))
+    }
+}
+checked_impls!(OkData, Vec < Product >);
+pub type GetAllDataOk2Data = OkData;
+pub type QueryProductsOkData = OkData;
+pub type SearchProductsOkData = OkData;
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+#[serde(transparent)]
+pub struct OkRequestData(pub(super) Vec<ProductRequest>);
+impl<'de> serde::Deserialize<'de> for OkRequestData {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <Vec<ProductRequest> as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
+    }
+}
+impl TryFrom<Vec<ProductRequest>> for OkRequestData {
+    type Error = String;
+    fn try_from(value: Vec<ProductRequest>) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            {
+                let base = &runtime::InstancePath::Root;
+                for (i, v) in value.iter().enumerate() {
+                    {
+                        static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                        let value = runtime::to_value(v).unwrap_or_default();
+                        let schema = SCHEMA
+                            .get_or_init(|| {
+                                serde_json::from_str(
+                                        "{\"$dynamicAnchor\":\"itemType\",\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Product\"}]}",
+                                    )
+                                    .unwrap_or_default()
+                            });
+                        runtime::check_schema_in(
+                            out,
+                            &runtime::InstancePath::Index(base, i),
+                            &value,
+                            schema,
+                            runtime::schema_defs(),
+                        );
+                    }
+                }
+            }
+        }
+        runtime::first(violations).map(|()| Self(value))
+    }
+}
+checked_impls!(OkRequestData, Vec < ProductRequest >);
+pub type GetAllDataOk2RequestData = OkRequestData;
+pub type QueryProductsOkRequestData = OkRequestData;
+pub type SearchProductsOkRequestData = OkRequestData;
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
+pub struct PaginatedResourceData(pub(super) Vec<serde_json::Value>);
+impl<'de> serde::Deserialize<'de> for PaginatedResourceData {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <Vec<serde_json::Value> as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
+    }
+}
+impl TryFrom<Vec<serde_json::Value>> for PaginatedResourceData {
+    type Error = String;
+    fn try_from(value: Vec<serde_json::Value>) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            {
+                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                let value = runtime::to_value(&value).unwrap_or_default();
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"type\":\"array\",\"items\":{\"$dynamicAnchor\":\"itemType\",\"not\":{}}}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
+                    out,
+                    &runtime::InstancePath::Root,
+                    &value,
+                    schema,
+                    runtime::schema_defs(),
+                );
+            }
+        }
+        runtime::first(violations).map(|()| Self(value))
+    }
+}
+checked_impls!(PaginatedResourceData, Vec < serde_json::Value >);
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
+pub struct UploadPhotosBody(pub(super) (PhotoBatchMeta, Vec<runtime::Binary>));
+impl<'de> serde::Deserialize<'de> for UploadPhotosBody {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <(
+            PhotoBatchMeta,
+            Vec<runtime::Binary>,
+        ) as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
+    }
+}
+impl TryFrom<(PhotoBatchMeta, Vec<runtime::Binary>)> for UploadPhotosBody {
+    type Error = String;
+    fn try_from(value: (PhotoBatchMeta, Vec<runtime::Binary>)) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            {
+                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                let value = runtime::to_value(&value).unwrap_or_default();
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"type\":\"array\",\"prefixItems\":[{\"$ref\":\"#/$defs/~1components~1schemas~1PhotoBatchMeta\"}],\"items\":{\"type\":\"string\",\"format\":\"binary\"}}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
+                    out,
+                    &runtime::InstancePath::Root,
+                    &value,
+                    schema,
+                    runtime::schema_defs(),
+                );
+            }
+        }
+        runtime::first(violations).map(|()| Self(value))
+    }
+}
+checked_impls!(UploadPhotosBody, (PhotoBatchMeta, Vec < runtime::Binary >,));
 /// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
 /// its field. `build` returns the first field that did not convert.
 pub mod builders {
@@ -5932,15 +6114,17 @@ pub mod builders {
     impl super::PaginatedResource {
         /// Starts a builder from the required properties.
         pub fn builder() -> PaginatedResource {
-            PaginatedResource(runtime::Builder::start(|| Ok(Self::new())))
+            PaginatedResource(
+                runtime::Builder::start(|| Ok(super::PaginatedResourceFields::new())),
+            )
         }
     }
     #[must_use = "a builder does nothing until `build`"]
-    pub struct PaginatedResource(runtime::Builder<super::PaginatedResource>);
+    pub struct PaginatedResource(runtime::Builder<super::PaginatedResourceFields>);
     impl PaginatedResource {
         pub fn data(
             self,
-            value: impl TryInto<Vec<serde_json::Value>, Error: std::fmt::Display>,
+            value: impl TryInto<types::PaginatedResourceData, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("data", value, |s, v| s.data = Some(v)))
         }
@@ -5950,9 +6134,14 @@ pub mod builders {
         ) -> Self {
             Self(self.0.set("meta", value, |s, v| s.meta = Some(v)))
         }
-        /// Returns the value.
+        /// Returns the value once its whole schema holds.
         pub fn build(self) -> Result<super::PaginatedResource, runtime::BuildError> {
-            self.0.build()
+            self.0
+                .build()
+                .and_then(|v| {
+                    super::PaginatedResource::try_from(v)
+                        .map_err(runtime::BuildError::value)
+                })
         }
     }
     impl super::ImageUploadedMessage {
@@ -6420,7 +6609,7 @@ pub mod builders {
     impl GetAllDataOk {
         pub fn data(
             self,
-            value: impl TryInto<Vec<types::Product>, Error: std::fmt::Display>,
+            value: impl TryInto<types::OkData, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("data", value, |s, v| s.data = Some(v)))
         }
@@ -6475,7 +6664,7 @@ pub mod builders {
     impl GetAllDataOk2 {
         pub fn data(
             self,
-            value: impl TryInto<Vec<types::Product>, Error: std::fmt::Display>,
+            value: impl TryInto<types::GetAllDataOk2Data, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("data", value, |s, v| s.data = Some(v)))
         }
@@ -6530,7 +6719,7 @@ pub mod builders {
     impl QueryProductsOk {
         pub fn data(
             self,
-            value: impl TryInto<Vec<types::Product>, Error: std::fmt::Display>,
+            value: impl TryInto<types::QueryProductsOkData, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("data", value, |s, v| s.data = Some(v)))
         }
@@ -6585,7 +6774,7 @@ pub mod builders {
     impl SearchProductsOk {
         pub fn data(
             self,
-            value: impl TryInto<Vec<types::Product>, Error: std::fmt::Display>,
+            value: impl TryInto<types::SearchProductsOkData, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("data", value, |s, v| s.data = Some(v)))
         }
@@ -7040,7 +7229,7 @@ pub mod builders {
     impl GetAllDataOkRequest {
         pub fn data(
             self,
-            value: impl TryInto<Vec<types::ProductRequest>, Error: std::fmt::Display>,
+            value: impl TryInto<types::OkRequestData, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("data", value, |s, v| s.data = Some(v)))
         }
@@ -7066,7 +7255,10 @@ pub mod builders {
     impl GetAllDataOk2Request {
         pub fn data(
             self,
-            value: impl TryInto<Vec<types::ProductRequest>, Error: std::fmt::Display>,
+            value: impl TryInto<
+                types::GetAllDataOk2RequestData,
+                Error: std::fmt::Display,
+            >,
         ) -> Self {
             Self(self.0.set("data", value, |s, v| s.data = Some(v)))
         }
@@ -7092,7 +7284,10 @@ pub mod builders {
     impl QueryProductsOkRequest {
         pub fn data(
             self,
-            value: impl TryInto<Vec<types::ProductRequest>, Error: std::fmt::Display>,
+            value: impl TryInto<
+                types::QueryProductsOkRequestData,
+                Error: std::fmt::Display,
+            >,
         ) -> Self {
             Self(self.0.set("data", value, |s, v| s.data = Some(v)))
         }
@@ -7120,7 +7315,10 @@ pub mod builders {
     impl SearchProductsOkRequest {
         pub fn data(
             self,
-            value: impl TryInto<Vec<types::ProductRequest>, Error: std::fmt::Display>,
+            value: impl TryInto<
+                types::SearchProductsOkRequestData,
+                Error: std::fmt::Display,
+            >,
         ) -> Self {
             Self(self.0.set("data", value, |s, v| s.data = Some(v)))
         }
@@ -7196,6 +7394,34 @@ pub mod builders {
         pub fn build(
             self,
         ) -> Result<super::CreateUserBody2Request, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::PaginatedResourceFields {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> PaginatedResourceFields {
+            PaginatedResourceFields(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct PaginatedResourceFields(runtime::Builder<super::PaginatedResourceFields>);
+    impl PaginatedResourceFields {
+        pub fn data(
+            self,
+            value: impl TryInto<types::PaginatedResourceData, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("data", value, |s, v| s.data = Some(v)))
+        }
+        pub fn meta(
+            self,
+            value: impl TryInto<types::PaginatedResourceMeta, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("meta", value, |s, v| s.meta = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(
+            self,
+        ) -> Result<super::PaginatedResourceFields, runtime::BuildError> {
             self.0.build()
         }
     }

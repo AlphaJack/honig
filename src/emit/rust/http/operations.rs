@@ -23,16 +23,8 @@ use crate::ir::types::{Kind, Ty};
 /// that only serves it (no client) never names them. So they are left out and not left unused. `binary`: a binary
 /// crate, where an item that nothing names is dead code. `serves`: the server is generated. In a binary a handler may
 /// build only some of the responses of its operation, or none when it is left to its `501` default.
-pub(crate) fn operations(
-    api: &Api,
-    space: &Space<'_>,
-    aliases: &std::collections::BTreeMap<usize, usize>,
-    conveniences: bool,
-    binary: bool,
-    serves: bool,
-) -> TokenStream {
-    let live = crate::emit::rust::validate::live_types(space, aliases);
-    let mods = api.http.operations.iter().map(|op| operation_mod(api, space, aliases, op, &live, conveniences));
+pub(crate) fn operations(api: &Api, space: &Space<'_>, conveniences: bool, binary: bool, serves: bool) -> TokenStream {
+    let mods = api.http.operations.iter().map(|op| operation_mod(api, space, op, conveniences));
     let allow = crate::emit::rust::syntax::file_allow(crate::emit::rust::syntax::has_deprecated(api));
     let dead_code = match (binary, serves, conveniences) {
         (false, ..) => None,
@@ -91,11 +83,7 @@ fn responses_mod(space: &Space<'_>, ops: &[Operation]) -> Option<TokenStream> {
         }
     }
     let types_import = types_import(uses_types);
-    let runtime_import = uses_runtime.then(|| {
-        quote!(
-            use super::super::runtime;
-        )
-    });
+    let runtime_import = runtime_import(uses_runtime);
     (!items.is_empty()).then(|| {
         quote! {
             pub mod responses {
@@ -161,29 +149,29 @@ pub(crate) fn tags_mod(api: &Api) -> Option<TokenStream> {
     })
 }
 
+/// Returns `use super::super::runtime;` for a module of an operation that names the runtime.
+fn runtime_import(uses: bool) -> Option<TokenStream> {
+    uses.then(|| {
+        quote!(
+            use super::super::runtime;
+        )
+    })
+}
+
 /// Returns `pub mod <operation>` with constants, `Params`, `Response` and body enums.
-pub(crate) fn operation_mod(
-    api: &Api,
-    space: &Space<'_>,
-    aliases: &std::collections::BTreeMap<usize, usize>,
-    op: &Operation,
-    live: &[bool],
-    conveniences: bool,
-) -> TokenStream {
+pub(crate) fn operation_mod(api: &Api, space: &Space<'_>, op: &Operation, conveniences: bool) -> TokenStream {
     let bx = boxing(space, op);
     let params = params_struct(space, op, conveniences);
-    let validate = crate::emit::rust::validate::params_impl(
-        crate::emit::rust::validate::Cx { space, aliases, live },
-        op,
-        &bx.body_enum,
-    );
-    let mut items = vec![params, validate];
+    let mut items = vec![params];
     if let Some(body) = &op.body
         && body.contents.len() > 1
     {
         items.push(content_enum(space, "Body", &body.contents, &bx.body_enum));
     }
     response_enum(&mut items, space, op, &bx);
+    // `Params`, the bodies and the responses name the runtime when they need one of its types or helpers. The links
+    // and callbacks below import it for themselves.
+    let uses_runtime = quote!(#(#items)*).to_string().contains("runtime ::");
     items.extend(links_mod(api, space, op));
     items.extend(callbacks_mod(api, op));
     // Imports follow from the types used and not from a scan of the text.
@@ -197,10 +185,7 @@ pub(crate) fn operation_mod(
         );
     let (uses_types, _) = all_tys.map(mentions).fold((false, false), |a, b| (a.0 || b.0, a.1 || b.1));
     let types_import = types_import(uses_types);
-    // `Params` always implements `runtime::Validate`.
-    let runtime_import = quote!(
-        use super::super::runtime;
-    );
+    let runtime_import = runtime_import(uses_runtime);
     let doc = doc_opt(op.doc.as_deref());
     let name = snake_ident(&op.name);
     quote! {

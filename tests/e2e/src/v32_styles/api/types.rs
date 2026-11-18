@@ -11,6 +11,10 @@
     clippy::missing_errors_doc,
     reason = "generated docs hold only the description's own prose"
 )]
+#![allow(
+    clippy::init_numbered_fields,
+    reason = "a spec default builds its checked type as `Type { 0: value }`, which also works through the alias of a twin"
+)]
 use super::runtime;
 pub type Str = String;
 pub type Arr = Vec<String>;
@@ -40,7 +44,6 @@ impl Obj {
         Self { r, g, b }
     }
 }
-impl runtime::Validate for Obj {}
 /// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
 /// its field. `build` returns the first field that did not convert.
 pub mod builders {

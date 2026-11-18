@@ -12,11 +12,10 @@
     clippy::missing_errors_doc,
     reason = "generated docs hold only the description's own prose"
 )]
-macro_rules! validate_impl {
-    ($t:ty) => {
-        impl runtime::Validate for $t {}
-    };
-}
+#![allow(
+    clippy::init_numbered_fields,
+    reason = "a spec default builds its checked type as `Type { 0: value }`, which also works through the alias of a twin"
+)]
 macro_rules! display_impl {
     ($t:ty) => {
         impl std::fmt::Display for $t {
@@ -64,38 +63,6 @@ macro_rules! display_impl_3 {
         }
     };
 }
-macro_rules! validate_impl_2 {
-    ($t:ty) => {
-        impl runtime::Validate for $t {
-            fn validate(
-                &self,
-                path: &runtime::InstancePath<'_>,
-                out: &mut Vec<runtime::Violation>,
-            ) {
-                if let Some(v) = &self.body {
-                    {
-                        static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                        let value = runtime::to_value(v).unwrap_or_default();
-                        let schema = SCHEMA
-                            .get_or_init(|| {
-                                serde_json::from_str(
-                                        "{\"$id\":\"https://example.com/schemas/product\",\"$schema\":\"https://spec.openapis.org/oas/3.2/dialect/2025-09-17\",\"$comment\":\"A product\",\"type\":\"object\",\"required\":[\"name\",\"kind\"],\"properties\":{\"id\":{\"type\":\"integer\",\"format\":\"int64\",\"readOnly\":true,\"minimum\":0,\"exclusiveMaximum\":9007199254740991},\"name\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":64,\"pattern\":\"^[A-Za-z ]+$\"},\"kind\":{\"type\":\"string\",\"enum\":[\"book\",\"gadget\"]},\"nickname\":{\"type\":[\"string\",\"null\"],\"default\":null},\"secret\":{\"type\":\"string\",\"writeOnly\":true,\"deprecated\":true},\"tags\":{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"uniqueItems\":true,\"minItems\":0,\"maxItems\":10,\"contains\":{\"const\":\"vip\"},\"minContains\":0,\"maxContains\":1},\"point\":{\"type\":\"array\",\"prefixItems\":[{\"type\":\"number\"},{\"type\":\"number\"}],\"items\":false,\"unevaluatedItems\":false},\"attrs\":{\"type\":\"object\",\"patternProperties\":{\"^x_\":{\"type\":\"string\"}},\"propertyNames\":{\"pattern\":\"^[a-z_]+$\"},\"minProperties\":0,\"maxProperties\":20,\"unevaluatedProperties\":false},\"weight\":{\"type\":\"number\",\"multipleOf\":0.01,\"exclusiveMinimum\":0},\"owner\":{\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Owner\"}]}},\"dependentRequired\":{\"nickname\":[\"name\"]},\"dependentSchemas\":{\"secret\":{\"required\":[]}},\"x-rust-type\":{\"crate\":\"products\",\"version\":\"1\",\"path\":\"products::Product\"}}",
-                                    )
-                                    .unwrap_or_default()
-                            });
-                        runtime::check_schema_in(
-                            out,
-                            &runtime::InstancePath::Key(path, "body"),
-                            &value,
-                            schema,
-                            runtime::schema_defs(),
-                        );
-                    }
-                }
-            }
-        }
-    };
-}
 use super::runtime;
 #[doc(hidden)]
 pub const SECURITY_0: &[&[runtime::Requirement]] = &[
@@ -127,7 +94,6 @@ pub mod submit_form {
             Self { body }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Accepted.
@@ -166,7 +132,6 @@ pub mod put_blob {
             Self { id, legacy: None, body }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Stored
@@ -251,7 +216,6 @@ pub mod list_products {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq)]
     pub enum Response {
         /// A page of products
@@ -344,45 +308,6 @@ pub mod create_product {
             }
         }
     }
-    impl runtime::Validate for Params {
-        fn validate(
-            &self,
-            path: &runtime::InstancePath<'_>,
-            out: &mut Vec<runtime::Violation>,
-        ) {
-            {
-                let body = &self.body;
-                match body {
-                    Body::Json(x) => {
-                        static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                        let value = runtime::to_value(x).unwrap_or_default();
-                        let schema = SCHEMA
-                            .get_or_init(|| {
-                                serde_json::from_str(
-                                        "{\"$id\":\"https://example.com/schemas/product\",\"$schema\":\"https://spec.openapis.org/oas/3.2/dialect/2025-09-17\",\"$comment\":\"A product\",\"type\":\"object\",\"required\":[\"name\",\"kind\"],\"properties\":{\"id\":{\"type\":\"integer\",\"format\":\"int64\",\"readOnly\":true,\"minimum\":0,\"exclusiveMaximum\":9007199254740991},\"name\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":64,\"pattern\":\"^[A-Za-z ]+$\"},\"kind\":{\"type\":\"string\",\"enum\":[\"book\",\"gadget\"]},\"nickname\":{\"type\":[\"string\",\"null\"],\"default\":null},\"secret\":{\"type\":\"string\",\"writeOnly\":true,\"deprecated\":true},\"tags\":{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"uniqueItems\":true,\"minItems\":0,\"maxItems\":10,\"contains\":{\"const\":\"vip\"},\"minContains\":0,\"maxContains\":1},\"point\":{\"type\":\"array\",\"prefixItems\":[{\"type\":\"number\"},{\"type\":\"number\"}],\"items\":false,\"unevaluatedItems\":false},\"attrs\":{\"type\":\"object\",\"patternProperties\":{\"^x_\":{\"type\":\"string\"}},\"propertyNames\":{\"pattern\":\"^[a-z_]+$\"},\"minProperties\":0,\"maxProperties\":20,\"unevaluatedProperties\":false},\"weight\":{\"type\":\"number\",\"multipleOf\":0.01,\"exclusiveMinimum\":0},\"owner\":{\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Owner\"}]}},\"dependentRequired\":{\"nickname\":[\"name\"]},\"dependentSchemas\":{\"secret\":{\"required\":[]}},\"x-rust-type\":{\"crate\":\"products\",\"version\":\"1\",\"path\":\"products::Product\"}}",
-                                    )
-                                    .unwrap_or_default()
-                            });
-                        runtime::check_schema_in(
-                            out,
-                            &runtime::InstancePath::Key(path, "body"),
-                            &value,
-                            schema,
-                            runtime::schema_defs(),
-                        );
-                    }
-                    Body::FormData(x) => {
-                        runtime::Validate::validate(
-                            x,
-                            &runtime::InstancePath::Key(path, "body"),
-                            out,
-                        );
-                    }
-                    Body::Mixed(_) => {}
-                }
-            }
-        }
-    }
     #[derive(Debug, Clone, PartialEq)]
     pub enum Body {
         Json(types::ProductRequest),
@@ -455,7 +380,6 @@ pub mod search_products {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq)]
     pub enum Response {
         /// Products
@@ -492,7 +416,6 @@ pub mod copy_products {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Copied
@@ -511,7 +434,6 @@ pub mod copy_products {
 }
 pub mod get_product {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/products/{productId}";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -524,7 +446,6 @@ pub mod get_product {
             Self { product_id }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq)]
     pub enum Response {
         /// ok
@@ -542,7 +463,6 @@ pub mod get_product {
     }
 }
 pub mod put_product {
-    use super::super::runtime;
     pub const METHOD: &str = "PUT";
     pub const PATH: &str = "/products/{productId}";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -555,7 +475,6 @@ pub mod put_product {
             Self { product_id }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// ok
@@ -573,7 +492,6 @@ pub mod put_product {
     }
 }
 pub mod delete_product {
-    use super::super::runtime;
     pub const METHOD: &str = "DELETE";
     pub const PATH: &str = "/products/{productId}";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -586,7 +504,6 @@ pub mod delete_product {
             Self { product_id }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// deleted
@@ -604,7 +521,6 @@ pub mod delete_product {
     }
 }
 pub mod options_product {
-    use super::super::runtime;
     pub const METHOD: &str = "OPTIONS";
     pub const PATH: &str = "/products/{productId}";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -617,7 +533,6 @@ pub mod options_product {
             Self { product_id }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// ok
@@ -635,7 +550,6 @@ pub mod options_product {
     }
 }
 pub mod head_product {
-    use super::super::runtime;
     pub const METHOD: &str = "HEAD";
     pub const PATH: &str = "/products/{productId}";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -648,7 +562,6 @@ pub mod head_product {
             Self { product_id }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// ok
@@ -666,7 +579,6 @@ pub mod head_product {
     }
 }
 pub mod patch_product {
-    use super::super::runtime;
     pub const METHOD: &str = "PATCH";
     pub const PATH: &str = "/products/{productId}";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -679,7 +591,6 @@ pub mod patch_product {
             Self { product_id }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// ok
@@ -697,7 +608,6 @@ pub mod patch_product {
     }
 }
 pub mod trace_product {
-    use super::super::runtime;
     pub const METHOD: &str = "TRACE";
     pub const PATH: &str = "/products/{productId}";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -710,7 +620,6 @@ pub mod trace_product {
             Self { product_id }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// ok
@@ -743,7 +652,6 @@ pub mod search {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq)]
     pub enum Response {
         /// Events
@@ -762,7 +670,6 @@ pub mod search {
 }
 pub mod new_product_post {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "";
     #[derive(Debug, Clone, PartialEq)]
@@ -776,7 +683,6 @@ pub mod new_product_post {
         }
     }
     default_impl!(Params);
-    validate_impl_2!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// ok
@@ -795,7 +701,6 @@ pub mod new_product_post {
 }
 pub mod create_product_on_adopt_post {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "";
     #[derive(Debug, Clone, PartialEq)]
@@ -809,7 +714,6 @@ pub mod create_product_on_adopt_post {
         }
     }
     default_impl!(Params);
-    validate_impl_2!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// ack
@@ -827,7 +731,6 @@ pub mod create_product_on_adopt_post {
     }
 }
 pub mod create_product_shared_post {
-    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -839,7 +742,6 @@ pub mod create_product_shared_post {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// ok

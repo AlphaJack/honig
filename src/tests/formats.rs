@@ -57,10 +57,9 @@ fn a_decimal_number_keeps_its_digits() {
     let (_, diags) = common::build("decimal-number", &doc, &[]);
     assert!(diags.is_empty(), "{diags:#?}");
     let t = types_rs_of("decimal-number-types", &doc);
-    assert!(
-        t.contains("pub amount: Option<runtime::Decimal>") && t.contains("pub total: Option<runtime::Decimal>"),
-        "{t}"
-    );
+    assert!(t.contains("pub amount: Option<runtime::Decimal>"), "{t}");
+    // `decimal128` keeps its digits too, as a checked type held to the limits of IEEE 754 decimal128.
+    assert!(t.contains("pub total: Option<PriceTotal>") && t.contains("runtime::check_decimal128("), "{t}");
     assert!(t.contains("pub label: Option<runtime::DecimalText>"), "{t}");
 }
 

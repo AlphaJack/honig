@@ -11,6 +11,10 @@
     clippy::missing_errors_doc,
     reason = "generated docs hold only the description's own prose"
 )]
+#![allow(
+    clippy::init_numbered_fields,
+    reason = "a spec default builds its checked type as `Type { 0: value }`, which also works through the alias of a twin"
+)]
 macro_rules! deserialize_impl {
     ($t:ty) => {
         impl<'de> serde::Deserialize<'de> for $t {
@@ -27,11 +31,6 @@ macro_rules! serialize_impl {
                 Self::serialize(self, s)
             }
         }
-    };
-}
-macro_rules! validate_impl {
-    ($t:ty) => {
-        impl runtime::Validate for $t {}
     };
 }
 use super::runtime;
@@ -103,7 +102,6 @@ impl runtime::XmlShape for Person {
         &NODE
     }
 }
-validate_impl!(Person);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Documentation {
@@ -150,7 +148,6 @@ impl runtime::XmlShape for Documentation {
         &NODE
     }
 }
-validate_impl!(Documentation);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct NoXmlObjectOk {
@@ -197,7 +194,6 @@ impl runtime::XmlShape for NoXmlObjectOk {
         &NODE
     }
 }
-validate_impl!(NoXmlObjectOk);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct NoXmlObjectArrayOk {
@@ -244,7 +240,6 @@ impl runtime::XmlShape for NoXmlObjectArrayOk {
         &NODE
     }
 }
-validate_impl!(NoXmlObjectArrayOk);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct XmlArrayItemNamesOk {
@@ -291,7 +286,6 @@ impl runtime::XmlShape for XmlArrayItemNamesOk {
         &NODE
     }
 }
-validate_impl!(XmlArrayItemNamesOk);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct XmlArrayNameWithoutWrapperOk {
@@ -338,7 +332,6 @@ impl runtime::XmlShape for XmlArrayNameWithoutWrapperOk {
         &NODE
     }
 }
-validate_impl!(XmlArrayNameWithoutWrapperOk);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct XmlArrayWrappedOk {
@@ -385,7 +378,6 @@ impl runtime::XmlShape for XmlArrayWrappedOk {
         &NODE
     }
 }
-validate_impl!(XmlArrayWrappedOk);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct XmlArrayWrappedItemNamesOk {
@@ -432,7 +424,6 @@ impl runtime::XmlShape for XmlArrayWrappedItemNamesOk {
         &NODE
     }
 }
-validate_impl!(XmlArrayWrappedItemNamesOk);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct XmlArrayWrappedRenamedOk {
@@ -479,7 +470,6 @@ impl runtime::XmlShape for XmlArrayWrappedRenamedOk {
         &NODE
     }
 }
-validate_impl!(XmlArrayWrappedRenamedOk);
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ElementsWithAttributesAndTextOkItem {
     Object(ElementsWithAttributesAndTextOkItemObject),
@@ -507,7 +497,6 @@ impl<'de> serde::Deserialize<'de> for ElementsWithAttributesAndTextOkItem {
         }
     }
 }
-validate_impl!(ElementsWithAttributesAndTextOkItem);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct ElementsWithAttributesAndTextOkItemObject {
@@ -576,7 +565,6 @@ impl runtime::XmlShape for ElementsWithAttributesAndTextOkItemObject {
         &NODE
     }
 }
-validate_impl!(ElementsWithAttributesAndTextOkItemObject);
 #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct XmlWithNullValuesOk {
@@ -685,7 +673,6 @@ impl runtime::XmlShape for XmlWithNullValuesOk {
         &NODE
     }
 }
-validate_impl!(XmlWithNullValuesOk);
 /// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
 /// its field. `build` returns the first field that did not convert.
 pub mod builders {

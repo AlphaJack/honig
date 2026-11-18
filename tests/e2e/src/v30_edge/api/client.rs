@@ -11,6 +11,10 @@
     clippy::missing_errors_doc,
     reason = "generated docs hold only the description's own prose"
 )]
+#![allow(
+    clippy::init_numbered_fields,
+    reason = "a spec default builds its checked type as `Type { 0: value }`, which also works through the alias of a twin"
+)]
 use super::{operations as ops, runtime};
 #[derive(Debug, Clone)]
 pub struct Client<T> {
@@ -78,7 +82,7 @@ impl<T: runtime::Transport> Client<T> {
         )?;
         let default = {
             use super::types;
-            types::ListOrdersLimit(20i32)
+            types::ListOrdersLimit { 0: 20i32 }
         };
         if p.limit != default {
             runtime::encode_query(&mut query, "limit", &p.limit, runtime::Enc::FORM)?;

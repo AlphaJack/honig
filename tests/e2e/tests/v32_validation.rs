@@ -322,8 +322,8 @@ fn pattern_properties_type_their_values() {
     let s: types::Shipment =
         serde_json::from_value(json!({"kind":"domestic","parcels":[{"fragile":true}],"scores":{"speed":3}})).unwrap();
     // `if kind == international then customs is required`: a domestic shipment is the `Otherwise` variant.
-    let types::Shipment::Otherwise(s) = s else { panic!("a domestic shipment") };
-    let scores = s.scores.expect("present");
+    let types::ShipmentVariants::Otherwise(s) = s.into_inner() else { panic!("a domestic shipment") };
+    let scores = s.scores.as_ref().expect("present");
     assert_eq!(scores["speed"], 3);
     let bad = shipment(&json!({"kind":"domestic","parcels":[{"fragile":true}],"scores":{"Speed":-1}}));
     assert_eq!(bad.status().as_u16(), 400, "key pattern and value minimum are both checked");
@@ -407,7 +407,7 @@ fn a_lone_if_then_types_its_requirement() {
     let s: types::Shipment =
         serde_json::from_value(json!({"kind": "international", "customs": "cn22", "parcels": [{"fragile": true}]}))
             .unwrap();
-    assert_matches!(&s, types::Shipment::International(i) if i.customs == "cn22");
+    assert_matches!(&*s, types::ShipmentVariants::International(i) if i.customs == "cn22");
 }
 
 fn create_user(body: &serde_json::Value) -> api::Response {
@@ -506,14 +506,15 @@ fn a_null_only_property_takes_only_null() {
 #[test]
 fn a_whole_checked_schema_keeps_its_deep_keywords() {
     let check = |lines: serde_json::Value| {
-        let ledger: types::Ledger = serde_json::from_value(json!({"entries": [{"id": 1, "lines": lines}]})).unwrap();
-        let mut out = vec![];
-        api::Validate::validate(&ledger, &api::InstancePath::Root, &mut out);
-        out.into_iter().map(|v| format!("{} {}", v.path, v.message)).collect::<Vec<_>>()
+        serde_json::from_value::<types::Ledger>(json!({"entries": [{"id": 1, "lines": lines}]}))
+            .map(drop)
+            .map_err(|e| e.to_string())
     };
-    assert_eq!(check(json!([{"note": "ok"}, {"note": null}])), Vec::<String>::new());
-    assert_eq!(check(json!([{"note": "long"}])), ["/entries/0/lines/0/note at most 3 characters allowed, found 4"]);
-    assert_eq!(check(json!([{}, {}, {}])), ["/entries/0/lines at most 2 items allowed, found 3"]);
+    assert_eq!(check(json!([{"note": "ok"}, {"note": null}])), Ok(()));
+    let long = check(json!([{"note": "long"}])).expect_err("past maxLength");
+    assert!(long.starts_with("/lines/0/note: at most 3 characters allowed, found 4"), "{long}");
+    let many = check(json!([{}, {}, {}])).expect_err("past maxItems");
+    assert!(many.starts_with("at most 2 items allowed, found 3"), "{many}");
 }
 
 /// `^(a+)+$` takes exponential time on a long value that almost matches. `handle` is a pattern type: past `maxLength`

@@ -26,7 +26,6 @@ pub(super) fn emit(
     let mut builders = vec![];
     // Whether a builder names a generated type: then the module imports `types`.
     let mut builders_name_types = false;
-    let cx = super::validate::Cx { space, aliases, live: &super::validate::live_types(space, aliases) };
     for (i, def) in space.types.defs.iter().enumerate() {
         let id = TypeId(i);
         if let Some(path) = &def.rust_type {
@@ -43,8 +42,8 @@ pub(super) fn emit(
         match &def.kind {
             Kind::Struct(s) => {
                 structure(&mut items, space, id, s);
-                builders.push(builder(space, &name, s));
-                builders_name_types |= s.fields.iter().any(|f| super::syntax::mentions(&f.ty).0);
+                builders.push(builder(space, &name, &name, s));
+                builders_name_types |= names_types(s);
                 if xml {
                     items.push(xml_shape(space, def, s));
                 }
@@ -52,7 +51,13 @@ pub(super) fn emit(
             Kind::StrEnum(values) => str_enum(&mut items, def, values),
             Kind::IntEnum(values) => int_enum(&mut items, def, values),
             Kind::Const(value) => constant(&mut items, def, value),
-            Kind::Checked(c) => checked_type(&mut items, space, def, c),
+            Kind::Checked(c) => {
+                checked_type(&mut items, space, id, def, c);
+                if let Some((b, names_types)) = checked_builder(space, &name, c) {
+                    builders.push(b);
+                    builders_name_types |= names_types;
+                }
+            }
             Kind::Union(u) => union(&mut items, space, aliases, def, u),
             Kind::Alias(t) => {
                 let doc = doc_opt(def.doc.as_deref());
@@ -76,8 +81,6 @@ pub(super) fn emit(
         {
             *item = quote!(#[deprecated] #item);
         }
-        // After the declaration so that the type reads first.
-        items.extend(super::validate::type_impl(cx, def));
     }
     let allow = super::syntax::file_allow(deprecated);
     // A library exports the constructors. A binary may build a type only by decoding it.
@@ -91,24 +94,7 @@ pub(super) fn emit(
             use super::runtime;
         )
     });
-    // Builders sit in a module of their own: `builders::User` cannot clash with a schema named `UserBuilder`.
-    // A builder takes the name of its type: the types are named through `types::`.
-    let types_import = builders_name_types.then(|| {
-        quote!(
-            use super as types;
-        )
-    });
-    let builders = (!builders.is_empty()).then(|| {
-        quote! {
-            /// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
-            /// its field. `build` returns the first field that did not convert.
-            pub mod builders {
-                #types_import
-                use super::runtime;
-                #(#builders)*
-            }
-        }
-    });
+    let builders = builders_mod(&builders, builders_name_types);
     quote! { #header #runtime_import #enum_macros #checked_macros #(#items)* #builders }
 }
 
@@ -134,7 +120,7 @@ pub(super) fn shared_names(
     for (&twin, &first) in aliases {
         groups.entry(first).or_insert_with(|| vec![first]).push(twin);
     }
-    let mut taken: std::collections::BTreeSet<String> = defs.iter().map(|d| d.name.key()).collect();
+    let mut taken = space.types.name_keys();
     let mut out = vec![];
     let mut groups: Vec<(usize, Vec<usize>)> = groups.into_iter().collect();
     groups.sort_by_key(|(first, members)| (std::cmp::Reverse(members.len()), *first));
@@ -307,11 +293,12 @@ fn enum_macros(space: &Space<'_>) -> TokenStream {
 /// description has.
 fn checked_macros(space: &Space<'_>) -> TokenStream {
     let checked =
-        |base: Base| space.types.defs.iter().any(|d| matches!(&d.kind, Kind::Checked(c) if Base::of(&c.base) == base));
+        |base: Base| space.types.defs.iter().any(|d| matches!(&d.kind, Kind::Checked(c) if Base::of(c) == base));
     let checked_str = checked(Base::Str).then(checked_str_macro);
     let checked_num = (checked(Base::Int) || checked(Base::Float)).then(checked_num_macro);
     let checked_decimal = checked(Base::Decimal).then(checked_decimal_macro);
-    quote!(#checked_str #checked_num #checked_decimal)
+    let checked_other = checked(Base::Other).then(checked_other_macro);
+    quote!(#checked_str #checked_num #checked_decimal #checked_other)
 }
 
 /// Returns the macro of the impls of a checked string.
@@ -438,6 +425,39 @@ fn checked_num_macro() -> TokenStream {
     }
 }
 
+/// Returns the macro of the impls of a checked value of any other base. Its `Deserialize` is its own: the base may hold
+/// the text of a library format, read through `runtime::validated`.
+fn checked_other_macro() -> TokenStream {
+    quote! {
+        macro_rules! checked_impls {
+            ($n:ident, $t:ty) => {
+                impl $n {
+                    #[must_use]
+                    pub fn into_inner(self) -> $t {
+                        self.0
+                    }
+                }
+                impl std::ops::Deref for $n {
+                    type Target = $t;
+                    fn deref(&self) -> &$t {
+                        &self.0
+                    }
+                }
+                impl AsRef<$t> for $n {
+                    fn as_ref(&self) -> &$t {
+                        &self.0
+                    }
+                }
+                impl From<$n> for $t {
+                    fn from(value: $n) -> Self {
+                        value.0
+                    }
+                }
+            };
+        }
+    }
+}
+
 /// Returns the macro of the impls of a checked decimal.
 fn checked_decimal_macro() -> TokenStream {
     quote! {
@@ -490,24 +510,22 @@ enum Base {
     Int,
     Float,
     Decimal,
+    /// Any other base, or keywords checked on the whole value (`if`, `not`, ...): its checks are those of `checks`.
+    Other,
 }
 
 impl Base {
-    /// Returns the base of `t`. The builder makes checked types of strings, integers and numbers only.
-    const fn of(t: &Ty) -> Self {
-        match t {
+    /// Returns how the checked type `c` is written.
+    const fn of(c: &Checked) -> Self {
+        if c.constraints.schema.is_some() {
+            return Self::Other;
+        }
+        match &c.base {
             Ty::String => Self::Str,
             Ty::F32 | Ty::F64 => Self::Float,
             Ty::Decimal => Self::Decimal,
-            Ty::I8
-            | Ty::I16
-            | Ty::I32
-            | Ty::I64
-            | Ty::U8
-            | Ty::U16
-            | Ty::U32
-            | Ty::U64
-            | Ty::Bool
+            Ty::I8 | Ty::I16 | Ty::I32 | Ty::I64 | Ty::U8 | Ty::U16 | Ty::U32 | Ty::U64 => Self::Int,
+            Ty::Bool
             | Ty::Bytes
             | Ty::Binary
             | Ty::Format(_)
@@ -519,7 +537,7 @@ impl Base {
             | Ty::Tuple(_)
             | Ty::Map(_)
             | Ty::Option(_)
-            | Ty::Indirect(_) => Self::Int,
+            | Ty::Indirect(_) => Self::Other,
         }
     }
 }
@@ -722,7 +740,8 @@ pub(super) fn default_expr(space: &Space<'_>, t: &Ty, v: &serde_json::Value, qua
                 // The builder keeps only a default that meets the keywords: it is built without the checks.
                 let inner = default_expr(space, &c.base, v, qualify)?;
                 let t = ty(space, t, qualify);
-                return Some(quote!(#t(#inner)));
+                // Brace syntax: a twin of the type is declared as an alias of it, and no alias is a tuple constructor.
+                return Some(quote!(#t { 0: #inner }));
             }
             return enum_default(kind, &ty(space, t, qualify), v);
         }
@@ -1023,10 +1042,49 @@ fn struct_new(space: &Space<'_>, name: &proc_macro2::Ident, s: &Struct, extra: &
     }
 }
 
+/// Returns the `builders` module. Builders sit in a module of their own: `builders::User` cannot clash with a schema
+/// named `UserBuilder`. A builder takes the name of its type: the types are named through `types::`.
+fn builders_mod(builders: &[TokenStream], names_types: bool) -> Option<TokenStream> {
+    let types_import = names_types.then(|| {
+        quote!(
+            use super as types;
+        )
+    });
+    (!builders.is_empty()).then(|| {
+        quote! {
+            /// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
+            /// its field. `build` returns the first field that did not convert.
+            pub mod builders {
+                #types_import
+                use super::runtime;
+                #(#builders)*
+            }
+        }
+    })
+}
+
+/// Does a field of `s` name a generated type? Then its builder names it through `types::`.
+fn names_types(s: &Struct) -> bool {
+    s.fields.iter().any(|f| super::syntax::mentions(&f.ty).0)
+}
+
+/// Returns the builder of a checked type whose base is a struct, and whether it names a generated type. A struct whose
+/// schema checks the whole value builds through its fields.
+fn checked_builder(space: &Space<'_>, name: &proc_macro2::Ident, c: &Checked) -> Option<(TokenStream, bool)> {
+    let Ty::Named(shape) = &c.base else { return None };
+    let Kind::Struct(s) = &space.types.get(*shape).kind else { return None };
+    let fields = pascal_ident(&space.types.get(*shape).name);
+    let names_types = names_types(s);
+    Some((builder(space, name, &fields, s), names_types))
+}
+
 /// Returns `builder(required...)` on the struct and its builder for the `builders` module. `builder` takes the
 /// arguments of `new`, so a missing required property stays a compile error. Every argument and setter takes anything
 /// that converts to the type of its field.
-fn builder(space: &Space<'_>, name: &proc_macro2::Ident, s: &Struct) -> TokenStream {
+///
+/// `name` is the type that `build` returns. `shape` is the struct that holds the fields: `name` itself, or the fields of
+/// a checked type whose `try_from` then checks the whole value.
+fn builder(space: &Space<'_>, name: &proc_macro2::Ident, shape: &proc_macro2::Ident, s: &Struct) -> TokenStream {
     let args: Vec<&Field> = s.fields.iter().filter(|f| is_arg(space, f)).collect();
     let params = args.iter().map(|f| {
         let (n, t) = (snake_ident(&f.name), field_ty_in(space, f, true));
@@ -1061,22 +1119,36 @@ fn builder(space: &Space<'_>, name: &proc_macro2::Ident, s: &Struct) -> TokenStr
             }
         }
     });
+    // In the impl of the struct itself its `new` is `Self::new` (clippy `use_self`).
+    let new = if name == shape { quote!(Self::new) } else { quote!(super::#shape::new) };
+    let build = if name == shape {
+        quote! {
+            /// Returns the value.
+            pub fn build(self) -> Result<super::#name, runtime::BuildError> {
+                self.0.build()
+            }
+        }
+    } else {
+        quote! {
+            /// Returns the value once its whole schema holds.
+            pub fn build(self) -> Result<super::#name, runtime::BuildError> {
+                self.0.build().and_then(|v| super::#name::try_from(v).map_err(runtime::BuildError::value))
+            }
+        }
+    };
     quote! {
         impl super::#name {
             /// Starts a builder from the required properties.
             pub fn builder(#(#params),*) -> #name {
                 #many
-                #name(runtime::Builder::start(|| Ok(Self::new(#(#converted),*))))
+                #name(runtime::Builder::start(|| Ok(#new(#(#converted),*))))
             }
         }
         #[must_use = "a builder does nothing until `build`"]
-        pub struct #name(runtime::Builder<super::#name>);
+        pub struct #name(runtime::Builder<super::#shape>);
         impl #name {
             #(#setters)*
-            /// Returns the value.
-            pub fn build(self) -> Result<super::#name, runtime::BuildError> {
-                self.0.build()
-            }
+            #build
         }
     }
 }
@@ -1185,12 +1257,13 @@ fn newtype(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, def: &Ty
 /// Emits a checked newtype: a scalar that only `TryFrom` and decoding build. Both check the keywords of its schema and
 /// return the first that the value breaks. The impls shared by every checked type of one base are a macro (see
 /// `checked_macros`).
-fn checked_type(items: &mut Vec<TokenStream>, space: &Space<'_>, def: &TypeDef, c: &Checked) {
+fn checked_type(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, def: &TypeDef, c: &Checked) {
     let n = pascal_ident(&def.name);
     let doc = doc_opt(def.doc.as_deref());
     let path = quote!(&runtime::InstancePath::Root);
     let base = ty(space, &c.base, false);
-    let (checks, derive, consts) = match Base::of(&c.base) {
+    let kind = Base::of(c);
+    let (checks, derive, consts) = match kind {
         Base::Str => {
             let pat = c.constraints.pattern.as_deref().map(|p| {
                 let p = lit(p);
@@ -1211,11 +1284,30 @@ fn checked_type(items: &mut Vec<TokenStream>, space: &Space<'_>, def: &TypeDef, 
             let checks = super::validate::integer_checks(&c.base, &c.constraints, &quote!(&value), &path);
             (checks, quote!(Copy, Eq, Hash, PartialOrd, Ord,), None)
         }
+        Base::Other => {
+            let checks = super::validate::checks(space, &c.base, &c.constraints, &quote!(&value), &path);
+            let eq = (!has_float(space, &Ty::Named(id))).then(|| quote!(Eq,));
+            // The base reads the text of its library formats checked, as a field of it would.
+            let read = match holds(space, &c.base) {
+                Some(h) => quote!(runtime::validated::read::<_, #base, #h>(d)?),
+                None => quote!(<#base as serde::Deserialize>::deserialize(d)?),
+            };
+            let de = quote! {
+                impl<'de> serde::Deserialize<'de> for #n {
+                    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                        let value = #read;
+                        Self::try_from(value).map_err(serde::de::Error::custom)
+                    }
+                }
+            };
+            (checks, quote!(#eq), Some(de))
+        }
     };
-    let shared = match Base::of(&c.base) {
+    let shared = match kind {
         Base::Str => quote!(checked_str_impls!(#n);),
         Base::Decimal => quote!(checked_decimal_impls!(#n);),
         Base::Int | Base::Float => quote!(checked_num_impls!(#n, #base);),
+        Base::Other => quote!(checked_impls!(#n, #base);),
     };
     items.push(quote! {
         #doc
@@ -1231,10 +1323,7 @@ fn checked_type(items: &mut Vec<TokenStream>, space: &Space<'_>, def: &TypeDef, 
                     let out = &mut violations;
                     #checks
                 }
-                match violations.into_iter().next() {
-                    Some(v) => Err(v.message),
-                    None => Ok(Self(value)),
-                }
+                runtime::first(violations).map(|()| Self(value))
             }
         }
         #shared
@@ -1597,59 +1686,45 @@ fn untagged(space: &Space<'_>, u: &Union) -> TokenStream {
         let (inner, boxed) = if let Ty::Indirect(i) = &v.ty { (i.as_ref(), true) } else { (&v.ty, false) };
         let union =
             matches!(inner, Ty::Named(id) if matches!(&space.types.get(*id).kind, Kind::Union(x) if has_other(x)));
-        let guard = guards[i].as_ref().map(|_| {
-            let f = fit(i);
-            quote!(#f &&)
-        });
-        let decoded = if union {
+        let attempt = if union {
             let it = ty(space, inner, false);
             let x = if boxed { quote!(x.as_ref()) } else { quote!(x) };
-            quote!(#guard let Ok(x) = v.decode_ref::<#t>() && !matches!(#x, #it::Other(_)))
+            quote! {
+                match v.decode_ref::<#t>() {
+                    Ok(x) if !matches!(#x, #it::Other(_)) => return Ok(Self::#name(x)),
+                    Ok(_) => {}
+                    Err(e) => { first.get_or_insert(e.to_string()); }
+                }
+            }
         } else {
             let decoded = decode_ref(space, &v.ty);
-            quote!(#guard let Ok(x) = #decoded)
+            quote! {
+                match #decoded {
+                    Ok(x) => return Ok(Self::#name(x)),
+                    Err(e) => { first.get_or_insert(e.to_string()); }
+                }
+            }
         };
-        // A branch that decodes but fails its checks (an open enum, a `format`) is not a match: the union's
-        // own checks of that variant decide, and the branches after it get their turn. A closed union keeps
-        // the first that decoded, so that its violations name what is wrong. So when no later branch can fit,
-        // a closed union's choice does not depend on the checks: it skips them. Validated at every level, a
-        // recursive union checked each nested value once per level above it.
-        let later = &guards[i + 1..];
-        let checked = if u.open || later.iter().any(Option::is_none) {
-            quote!(runtime::is_valid(&picked))
+        // Decoding checks every keyword: the first branch that decodes is the answer. A branch whose shape fits but
+        // that does not decode keeps its error, so that a closed union says what is wrong with the closest one.
+        if guards[i].is_some() {
+            let f = fit(i);
+            quote!(if #f { #attempt })
         } else {
-            // Nothing held from an earlier branch and no later branch that can fit: this one is the answer.
-            let fits = (i + 1..guards.len()).map(fit);
-            if later.is_empty() {
-                quote!(first.is_none() || runtime::is_valid(&picked))
-            } else {
-                quote!((first.is_none() && !(#(#fits)||*)) || runtime::is_valid(&picked))
-            }
-        };
-        let keep = (!u.open).then(|| quote!(first.get_or_insert(picked);));
-        let body = quote! {
-            let picked = Self::#name(x);
-            if #checked {
-                return Ok(picked);
-            }
-            #keep
-        };
-        quote! {
-            if #decoded {
-                #body
-            }
+            quote!({ #attempt })
         }
     });
-    // When none passes, an open union has a branch that takes any value: `Other` holds it.
-    if u.open {
-        quote! { #(#lets)* #(#tries)* Ok(Self::Other(v.into_value())) }
+    // When none decodes, an open union has a branch that takes any value: `Other` holds it.
+    let end = if u.open {
+        quote!(Ok(Self::Other(v.into_value())))
     } else {
-        quote! {
-            #(#lets)*
-            let mut first = None;
-            #(#tries)*
-            first.ok_or_else(|| serde::de::Error::custom("matches no variant"))
-        }
+        quote!(Err(serde::de::Error::custom(first.unwrap_or_else(|| "matches no variant".to_owned()))))
+    };
+    quote! {
+        #(#lets)*
+        let mut first: Option<String> = None;
+        #(#tries)*
+        #end
     }
 }
 
@@ -1759,17 +1834,14 @@ fn by_kind(space: &Space<'_>, u: &Union) -> TokenStream {
         covered.extend(&fresh);
         let pats = fresh.iter().map(|k| k.path());
         let c = if u.open {
-            // An open union has a branch that takes any value. A value of this kind that does not fit the
-            // variant, or fails its checks, is that branch's: `Other` holds it.
+            // An open union has a branch that takes any value. A value of this kind that does not decode as the
+            // variant, which checks its keywords, is that branch's: `Other` holds it.
             let (vn, decoded) = (ident(&name), decode_ref(space, vty));
             quote!({
-                if let Ok(x) = #decoded {
-                    let picked = Self::#vn(x);
-                    if runtime::is_valid(&picked) {
-                        return Ok(picked);
-                    }
+                match #decoded {
+                    Ok(x) => Ok(Self::#vn(x)),
+                    Err(_) => Ok(Self::Other(v.into_value())),
                 }
-                Ok(Self::Other(v.into_value()))
             })
         } else {
             conv(space, &name, vty)

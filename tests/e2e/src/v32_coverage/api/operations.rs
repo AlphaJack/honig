@@ -12,6 +12,10 @@
     clippy::missing_errors_doc,
     reason = "generated docs hold only the description's own prose"
 )]
+#![allow(
+    clippy::init_numbered_fields,
+    reason = "a spec default builds its checked type as `Type { 0: value }`, which also works through the alias of a twin"
+)]
 macro_rules! default_impl {
     ($t:ty) => {
         impl Default for $t {
@@ -19,11 +23,6 @@ macro_rules! default_impl {
                 Self::new()
             }
         }
-    };
-}
-macro_rules! validate_impl {
-    ($t:ty) => {
-        impl runtime::Validate for $t {}
     };
 }
 macro_rules! error_impl {
@@ -56,7 +55,6 @@ pub mod ping {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         Default { status: runtime::http::StatusCode },
@@ -74,7 +72,6 @@ pub mod ping {
 }
 pub mod archive {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/archive";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -86,7 +83,6 @@ pub mod archive {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Archived.
@@ -108,7 +104,6 @@ pub mod archive {
 }
 pub mod unarchive {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "DELETE";
     pub const PATH: &str = "/archive";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -120,7 +115,6 @@ pub mod unarchive {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Restored.
@@ -142,7 +136,6 @@ pub mod unarchive {
 }
 pub mod add_note {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/notes";
     #[derive(Debug, Clone, PartialEq)]
@@ -153,32 +146,6 @@ pub mod add_note {
         #[must_use]
         pub const fn new(body: types::Note) -> Self {
             Self { body }
-        }
-    }
-    impl runtime::Validate for Params {
-        fn validate(
-            &self,
-            path: &runtime::InstancePath<'_>,
-            out: &mut Vec<runtime::Violation>,
-        ) {
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&self.body).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"type\":\"object\",\"properties\":{\"kind\":{\"type\":\"string\"},\"text\":{\"type\":\"string\"},\"size\":{\"type\":\"integer\"}},\"oneOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1TextNote\"},{\"$ref\":\"#/$defs/~1components~1schemas~1ImageNote\"}]}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Key(path, "body"),
-                    &value,
-                    schema,
-                    runtime::schema_defs(),
-                );
-            }
         }
     }
     #[derive(Debug, Clone, PartialEq)]
@@ -214,7 +181,6 @@ pub mod add_note {
 }
 pub mod find_box {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/boxes";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -256,7 +222,6 @@ pub mod find_box {
             }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// The box.

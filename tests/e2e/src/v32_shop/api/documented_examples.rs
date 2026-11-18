@@ -13,6 +13,10 @@
     reason = "generated docs hold only the description's own prose"
 )]
 #![allow(
+    clippy::init_numbered_fields,
+    reason = "a spec default builds its checked type as `Type { 0: value }`, which also works through the alias of a twin"
+)]
+#![allow(
     unused_imports,
     reason = "which of them the examples need depends on the description"
 )]

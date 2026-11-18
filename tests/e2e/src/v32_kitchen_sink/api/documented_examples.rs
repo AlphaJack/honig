@@ -13,6 +13,10 @@
     reason = "generated docs hold only the description's own prose"
 )]
 #![allow(
+    clippy::init_numbered_fields,
+    reason = "a spec default builds its checked type as `Type { 0: value }`, which also works through the alias of a twin"
+)]
+#![allow(
     unused_imports,
     reason = "which of them the examples need depends on the description"
 )]
@@ -50,19 +54,6 @@ fn wire(
 #[test]
 fn documented_examples_decode() {
     let mut bad = vec![];
-    value::<
-        types::Product,
-    >(
-        &mut bad,
-        "/components/schemas/Product/example",
-        serde_json::Value::Object(
-            serde_json::Map::from_iter([
-                ("id".to_owned(), serde_json::Value::from(1i64)),
-                ("name".to_owned(), serde_json::Value::String("Lamp".to_owned())),
-                ("kind".to_owned(), serde_json::Value::String("book".to_owned())),
-            ]),
-        ),
-    );
     value::<
         types::ProductName,
     >(
