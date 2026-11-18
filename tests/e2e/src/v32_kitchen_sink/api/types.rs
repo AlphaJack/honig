@@ -538,14 +538,7 @@ impl TryFrom<f64> for ProductWeight {
                 value,
                 [None, None, Some(0.0), None],
             );
-            let q = value / 0.01;
-            if (q - q.round()).abs() > 1e-9 {
-                runtime::violation(
-                    out,
-                    &runtime::InstancePath::Root,
-                    "is not a multiple of 0.01",
-                );
-            }
+            runtime::check_multiple(out, &runtime::InstancePath::Root, value, "0.01");
         }
         runtime::first(violations).map(|()| Self(value))
     }

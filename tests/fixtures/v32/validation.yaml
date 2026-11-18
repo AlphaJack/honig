@@ -90,6 +90,9 @@ components:
         fives: {type: integer, multipleOf: 2.5}
         zero: {type: integer, format: uint8, multipleOf: 1000}
         half: {type: integer, minimum: 0.5, exclusiveMaximum: 3.5}
+        # A decimal keeps its digits: its range and `multipleOf` hold on them, past what an `f64` tells apart.
+        tenth: {type: number, format: decimal, minimum: 0.1}
+        cents: {type: number, format: decimal, multipleOf: 0.01}
     # Branches told apart only by the type of a field after a recursive one. Each branch that cannot fit is skipped
     # before its nested trees are decoded: tried in turn, decoding took twice as long per level. The check of
     # `oneOf` follows the recursion through `$defs`: inlined, it doubled the generated code per level.

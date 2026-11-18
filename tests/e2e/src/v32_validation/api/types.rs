@@ -262,6 +262,45 @@ macro_rules! checked_num_impls {
         }
     };
 }
+macro_rules! checked_decimal_impls {
+    ($n:ident) => {
+        impl $n {
+            #[must_use]
+            pub fn into_inner(self) -> runtime::Decimal {
+                self.0
+            }
+        }
+        impl std::str::FromStr for $n {
+            type Err = String;
+            fn from_str(s: &str) -> Result<Self, String> {
+                let v: runtime::Decimal = s.parse().map_err(|e| format!("{e}"))?;
+                Self::try_from(v)
+            }
+        }
+        impl std::ops::Deref for $n {
+            type Target = runtime::Decimal;
+            fn deref(&self) -> &runtime::Decimal {
+                &self.0
+            }
+        }
+        impl std::fmt::Display for $n {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                std::fmt::Display::fmt(&self.0, f)
+            }
+        }
+        impl From<$n> for runtime::Decimal {
+            fn from(value: $n) -> Self {
+                value.0
+            }
+        }
+        impl<'de> serde::Deserialize<'de> for $n {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                let v = <runtime::Decimal as serde::Deserialize>::deserialize(d)?;
+                Self::try_from(v).map_err(serde::de::Error::custom)
+            }
+        }
+    };
+}
 macro_rules! checked_impls {
     ($n:ident, $t:ty) => {
         impl $n {
@@ -321,6 +360,18 @@ pub struct Degenerate {
         deserialize_with = "runtime::not_null"
     )]
     pub half: Option<DegenerateHalf>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub tenth: Option<DegenerateTenth>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub cents: Option<DegenerateCents>,
 }
 deserialize_impl!(Degenerate);
 serialize_impl!(Degenerate);
@@ -333,6 +384,8 @@ impl Degenerate {
             fives: None,
             zero: None,
             half: None,
+            tenth: None,
+            cents: None,
         }
     }
 }
@@ -770,6 +823,46 @@ impl TryFrom<i64> for DegenerateHalf {
     }
 }
 checked_num_impls!(DegenerateHalf, i64);
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize)]
+#[serde(transparent)]
+pub struct DegenerateTenth(pub(super) runtime::Decimal);
+impl TryFrom<runtime::Decimal> for DegenerateTenth {
+    type Error = String;
+    fn try_from(value: runtime::Decimal) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            runtime::check_decimal_range(
+                out,
+                &runtime::InstancePath::Root,
+                value.as_str(),
+                [Some("0.1"), None, None, None],
+            );
+        }
+        runtime::first(violations).map(|()| Self(value))
+    }
+}
+checked_decimal_impls!(DegenerateTenth);
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize)]
+#[serde(transparent)]
+pub struct DegenerateCents(pub(super) runtime::Decimal);
+impl TryFrom<runtime::Decimal> for DegenerateCents {
+    type Error = String;
+    fn try_from(value: runtime::Decimal) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            runtime::check_multiple_text(
+                out,
+                &runtime::InstancePath::Root,
+                value.as_str(),
+                "0.01",
+            );
+        }
+        runtime::first(violations).map(|()| Self(value))
+    }
+}
+checked_decimal_impls!(DegenerateCents);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct TreeVariant1 {
@@ -1139,14 +1232,7 @@ impl TryFrom<f64> for PriceAmount {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
-            let q = value / 0.01;
-            if (q - q.round()).abs() > 1e-9 {
-                runtime::violation(
-                    out,
-                    &runtime::InstancePath::Root,
-                    "is not a multiple of 0.01",
-                );
-            }
+            runtime::check_multiple(out, &runtime::InstancePath::Root, value, "0.01");
         }
         runtime::first(violations).map(|()| Self(value))
     }
@@ -1263,14 +1349,7 @@ impl TryFrom<f64> for UserScore {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
-            let q = value / 0.5;
-            if (q - q.round()).abs() > 1e-9 {
-                runtime::violation(
-                    out,
-                    &runtime::InstancePath::Root,
-                    "is not a multiple of 0.5",
-                );
-            }
+            runtime::check_multiple(out, &runtime::InstancePath::Root, value, "0.5");
         }
         runtime::first(violations).map(|()| Self(value))
     }
@@ -2133,6 +2212,18 @@ pub mod builders {
             value: impl TryInto<types::DegenerateHalf, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("half", value, |s, v| s.half = Some(v)))
+        }
+        pub fn tenth(
+            self,
+            value: impl TryInto<types::DegenerateTenth, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("tenth", value, |s, v| s.tenth = Some(v)))
+        }
+        pub fn cents(
+            self,
+            value: impl TryInto<types::DegenerateCents, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("cents", value, |s, v| s.cents = Some(v)))
         }
         /// Returns the value.
         pub fn build(self) -> Result<super::Degenerate, runtime::BuildError> {

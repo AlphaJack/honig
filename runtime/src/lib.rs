@@ -16,6 +16,7 @@ mod decimal;
 mod duration;
 mod error;
 mod escape;
+mod exact;
 mod finite;
 mod formats;
 mod formatted;

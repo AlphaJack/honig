@@ -563,3 +563,17 @@ fn integer_keywords_are_exact() {
         assert_eq!(decodes(json!({"half": half})).is_ok(), ok, "{half} in [0.5, 3.5)");
     }
 }
+
+/// A decimal is checked on its digits: `0.09999999999999999999` is below `minimum: 0.1` although its nearest `f64` is
+/// `0.1`, and `100000000000000000.001` is not a multiple of `0.01` although every `f64` quotient that large is whole.
+#[test]
+fn decimal_keywords_are_exact() {
+    let decodes = |v: &str| serde_json::from_str::<types::Degenerate>(v).map_err(|e| e.to_string());
+    assert!(decodes(r#"{"tenth": 0.1}"#).is_ok());
+    let below = decodes(r#"{"tenth": 0.09999999999999999999}"#).expect_err("below 0.1");
+    assert!(below.starts_with("0.09999999999999999999 is less than the minimum 0.1"), "{below}");
+    assert!(decodes(r#"{"cents": 100000000000000000.01}"#).is_ok());
+    let past = decodes(r#"{"cents": 100000000000000000.001}"#).expect_err("not a multiple of 0.01");
+    assert!(past.starts_with("is not a multiple of 0.01"), "{past}");
+    assert!(decodes(r#"{"cents": 0.07}"#).is_ok(), "0.07 / 0.01 is not a whole f64");
+}

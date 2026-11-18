@@ -139,7 +139,7 @@ pub(super) fn checks(
         Ty::I8 | Ty::I16 | Ty::I32 | Ty::I64 | Ty::U8 | Ty::U16 | Ty::U32 | Ty::U64 => {
             integer_checks(t, c, value, path)
         }
-        Ty::F32 | Ty::F64 => float_checks(c, &float_value(t, value), path),
+        Ty::F32 | Ty::F64 => float_checks(c, value, path),
         Ty::Decimal => decimal_checks(c, value, path),
         Ty::Vec(x) => {
             let len = (c.min_items.is_some() || c.max_items.is_some()).then(|| {
@@ -194,17 +194,6 @@ fn opt_u64(v: Option<u64>) -> TokenStream {
             quote!(Some(#n))
         }
         None => quote!(None),
-    }
-}
-
-/// Returns the value of a float as `float_checks` reads it. A decimal compares by its nearest `f64` (a range and not
-/// the value).
-pub(super) fn float_value(t: &Ty, value: &TokenStream) -> TokenStream {
-    if *t == Ty::Decimal {
-        let r = receiver(value);
-        quote!(&#r.as_f64())
-    } else {
-        value.clone()
     }
 }
 
@@ -388,25 +377,41 @@ pub(super) fn float_checks(c: &Constraints, value: &TokenStream, path: &TokenStr
             let (xmin, xmax) = (bound(c.exclusive_minimum.as_ref()), bound(c.exclusive_maximum.as_ref()));
             quote!(runtime::check_range(out, #path, #val, [#min, #max, #xmin, #xmax]);)
         });
-    let multiple = c.multiple_of.as_ref().and_then(Number::as_f64).filter(|m| m.is_finite() && *m > 0.0).map(|m| {
-        let l = Literal::f64_unsuffixed(m);
-        let msg = lit(&format!("is not a multiple of {m}"));
-        quote! {
-            let q = #val / #l;
-            if (q - q.round()).abs() > 1e-9 { runtime::violation(out, #path, #msg); }
-        }
+    // Exact, through the decimal text of the value and of `multipleOf`: `0.07` is a multiple of `0.01`.
+    let multiple = positive(c.multiple_of.as_ref()).map(|m| {
+        let m = lit(&m.to_string());
+        quote!(runtime::check_multiple(out, #path, #val, #m);)
     });
     quote!(#range #multiple)
 }
 
-/// Returns the checks of a `Decimal` value (an `&Decimal` expression): its range and `multipleOf` by its nearest `f64`,
-/// and the limits of IEEE 754 decimal128 on its digits for `format: decimal128`.
-pub(super) fn decimal_checks(c: &Constraints, value: &TokenStream, path: &TokenStream) -> TokenStream {
-    let range = float_checks(c, &float_value(&Ty::Decimal, value), path);
-    let r = receiver(value);
-    let limits = c.decimal128.then(|| quote!(runtime::check_decimal128(out, #path, #r.as_str());));
-    quote!(#range #limits)
+/// Returns a `multipleOf` that is a positive number. JSON Schema allows no other.
+fn positive(m: Option<&Number>) -> Option<&Number> {
+    m.filter(|m| m.as_f64().is_some_and(|f| f.is_finite() && f > 0.0))
 }
 
+/// Returns the checks of a `Decimal` value (an `&Decimal` expression): its range and `multipleOf` exactly on its digits,
+/// and the limits of IEEE 754 decimal128 on them for `format: decimal128`.
+pub(super) fn decimal_checks(c: &Constraints, value: &TokenStream, path: &TokenStream) -> TokenStream {
+    let r = receiver(value);
+    let bound = |n: Option<&Number>| match n {
+        Some(n) => {
+            let t = lit(&n.to_string());
+            quote!(Some(#t))
+        }
+        None => quote!(None),
+    };
+    let bounds = [&c.minimum, &c.maximum, &c.exclusive_minimum, &c.exclusive_maximum];
+    let range = bounds.iter().any(|b| b.is_some()).then(|| {
+        let [min, max, xmin, xmax] = bounds.map(|b| bound(b.as_ref()));
+        quote!(runtime::check_decimal_range(out, #path, #r.as_str(), [#min, #max, #xmin, #xmax]);)
+    });
+    let multiple = positive(c.multiple_of.as_ref()).map(|m| {
+        let m = lit(&m.to_string());
+        quote!(runtime::check_multiple_text(out, #path, #r.as_str(), #m);)
+    });
+    let limits = c.decimal128.then(|| quote!(runtime::check_decimal128(out, #path, #r.as_str());));
+    quote!(#range #multiple #limits)
+}
 /// Bounds past this have no whole `i128` worth writing: they are left unchecked.
 const MAX_WHOLE: f64 = 1e30;

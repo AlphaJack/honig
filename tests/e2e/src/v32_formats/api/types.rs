@@ -455,11 +455,11 @@ impl TryFrom<runtime::Decimal> for EventAmount {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
-            runtime::check_range(
+            runtime::check_decimal_range(
                 out,
                 &runtime::InstancePath::Root,
-                value.as_f64(),
-                [Some(0.0), None, None, None],
+                value.as_str(),
+                [Some("0"), None, None, None],
             );
         }
         runtime::first(violations).map(|()| Self(value))
