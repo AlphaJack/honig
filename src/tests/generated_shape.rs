@@ -581,3 +581,16 @@ fn a_body_of_your_own_type_is_left_to_it() {
     assert!(!ops.contains("check_schema"), "{ops}");
     assert!(!server.contains("check_raw_json"), "{server}");
 }
+
+/// The body of a generated `macro_rules!` is printed as the items it expands to, one per line, and not as one line of
+/// tokens.
+#[test]
+fn a_macro_body_reads_as_items() {
+    let doc = common::spec("3.1.0", &json!({}), &json!({"schemas": {"Kind": {"type": "string", "enum": ["a", "b"]}}}));
+    let files = common::generate("shape-macro-body", &doc, &crate::emit::Options::default());
+    let types = common::file(&files, "types.rs");
+    assert!(
+        types.contains("macro_rules! str_enum_impls {\n    ($n:ident) => {\n        impl std::fmt::Display for $n {\n"),
+        "{types}"
+    );
+}

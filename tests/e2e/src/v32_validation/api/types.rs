@@ -13,15 +13,20 @@
 )]
 macro_rules! deserialize_impl {
     ($t:ty) => {
-        impl < 'de > serde::Deserialize < 'de > for $t { fn deserialize < D :
-        serde::Deserializer < 'de > > (d : D) -> Result < Self, D::Error > {
-        Self::deserialize(runtime::NoSeq(d)) } }
+        impl<'de> serde::Deserialize<'de> for $t {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                Self::deserialize(runtime::NoSeq(d))
+            }
+        }
     };
 }
 macro_rules! serialize_impl {
     ($t:ty) => {
-        impl serde::Serialize for $t { fn serialize < S : serde::Serializer > (& self, s
-        : S) -> Result < S::Ok, S::Error > { Self::serialize(self, s) } }
+        impl serde::Serialize for $t {
+            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                Self::serialize(self, s)
+            }
+        }
     };
 }
 macro_rules! validate_impl {
@@ -31,74 +36,146 @@ macro_rules! validate_impl {
 }
 macro_rules! validate_impl_2 {
     ($t:ty) => {
-        impl runtime::Validate for $t { fn validate(& self, path : &
-        runtime::InstancePath < '_ >, out : & mut Vec < runtime::Violation >) { let n =
-        self.label.chars().count(); runtime::check_len(out, &
-        runtime::InstancePath::Key(path, "label"), n, None, Some(5), "characters"); {
-        static SCHEMA : std::sync::OnceLock < serde_json::Value > =
-        std::sync::OnceLock::new(); let value = runtime::to_value(& self.holders)
-        .unwrap_or_default(); runtime::check_schema(out, &
-        runtime::InstancePath::Key(path, "holders"), & value, SCHEMA.get_or_init(| |
-        serde_json::from_str("{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"contains\":{\"const\":\"owner\"}}")
-        .unwrap_or_default())); } } }
+        impl runtime::Validate for $t {
+            fn validate(
+                &self,
+                path: &runtime::InstancePath<'_>,
+                out: &mut Vec<runtime::Violation>,
+            ) {
+                let n = self.label.chars().count();
+                runtime::check_len(
+                    out,
+                    &runtime::InstancePath::Key(path, "label"),
+                    n,
+                    None,
+                    Some(5),
+                    "characters",
+                );
+                {
+                    static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                    let value = runtime::to_value(&self.holders).unwrap_or_default();
+                    runtime::check_schema(
+                        out,
+                        &runtime::InstancePath::Key(path, "holders"),
+                        &value,
+                        SCHEMA
+                            .get_or_init(|| {
+                                serde_json::from_str(
+                                        "{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"contains\":{\"const\":\"owner\"}}",
+                                    )
+                                    .unwrap_or_default()
+                            }),
+                    );
+                }
+            }
+        }
     };
 }
 macro_rules! validate_impl_3 {
     ($t:ty) => {
-        impl runtime::Validate for $t { fn validate(& self, path : &
-        runtime::InstancePath < '_ >, out : & mut Vec < runtime::Violation >) { { let
-        base = & runtime::InstancePath::Key(path, "items"); for (i, v) in self.items
-        .iter().enumerate() { { static SCHEMA : std::sync::OnceLock < serde_json::Value >
-        = std::sync::OnceLock::new(); let value = runtime::to_value(v)
-        .unwrap_or_default(); runtime::check_schema(out, &
-        runtime::InstancePath::Index(base, i), & value, SCHEMA.get_or_init(| |
-        serde_json::from_str("{\"oneOf\":[{\"type\":\"object\",\"required\":[\"items\",\"x\"],\"properties\":{\"items\":{\"type\":\"array\",\"items\":{\"$ref\":\"#/$defs/~1components~1schemas~1Tree\"}},\"x\":{\"type\":\"string\"}}},{\"type\":\"object\",\"required\":[\"items\",\"x\"],\"properties\":{\"items\":{\"type\":\"array\",\"items\":{\"$ref\":\"#/$defs/~1components~1schemas~1Tree\"}},\"x\":{\"type\":\"integer\"}}}],\"$defs\":{\"/components/schemas/Tree\":{\"oneOf\":[{\"type\":\"object\",\"required\":[\"items\",\"x\"],\"properties\":{\"items\":{\"type\":\"array\",\"items\":{\"$ref\":\"#/$defs/~1components~1schemas~1Tree\"}},\"x\":{\"type\":\"string\"}}},{\"type\":\"object\",\"required\":[\"items\",\"x\"],\"properties\":{\"items\":{\"type\":\"array\",\"items\":{\"$ref\":\"#/$defs/~1components~1schemas~1Tree\"}},\"x\":{\"type\":\"integer\"}}}]}}}")
-        .unwrap_or_default())); } } } } }
+        impl runtime::Validate for $t {
+            fn validate(
+                &self,
+                path: &runtime::InstancePath<'_>,
+                out: &mut Vec<runtime::Violation>,
+            ) {
+                {
+                    let base = &runtime::InstancePath::Key(path, "items");
+                    for (i, v) in self.items.iter().enumerate() {
+                        {
+                            static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                            let value = runtime::to_value(v).unwrap_or_default();
+                            runtime::check_schema(
+                                out,
+                                &runtime::InstancePath::Index(base, i),
+                                &value,
+                                SCHEMA
+                                    .get_or_init(|| {
+                                        serde_json::from_str(
+                                                "{\"oneOf\":[{\"type\":\"object\",\"required\":[\"items\",\"x\"],\"properties\":{\"items\":{\"type\":\"array\",\"items\":{\"$ref\":\"#/$defs/~1components~1schemas~1Tree\"}},\"x\":{\"type\":\"string\"}}},{\"type\":\"object\",\"required\":[\"items\",\"x\"],\"properties\":{\"items\":{\"type\":\"array\",\"items\":{\"$ref\":\"#/$defs/~1components~1schemas~1Tree\"}},\"x\":{\"type\":\"integer\"}}}],\"$defs\":{\"/components/schemas/Tree\":{\"oneOf\":[{\"type\":\"object\",\"required\":[\"items\",\"x\"],\"properties\":{\"items\":{\"type\":\"array\",\"items\":{\"$ref\":\"#/$defs/~1components~1schemas~1Tree\"}},\"x\":{\"type\":\"string\"}}},{\"type\":\"object\",\"required\":[\"items\",\"x\"],\"properties\":{\"items\":{\"type\":\"array\",\"items\":{\"$ref\":\"#/$defs/~1components~1schemas~1Tree\"}},\"x\":{\"type\":\"integer\"}}}]}}}",
+                                            )
+                                            .unwrap_or_default()
+                                    }),
+                            );
+                        }
+                    }
+                }
+            }
+        }
     };
 }
 macro_rules! serialize_impl_2 {
     ($t:ty) => {
-        impl serde::Serialize for $t { fn serialize < S : serde::Serializer > (& self, s
-        : S) -> Result < S::Ok, S::Error > { s.serialize_str(Self::VALUE) } }
+        impl serde::Serialize for $t {
+            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                s.serialize_str(Self::VALUE)
+            }
+        }
     };
 }
 macro_rules! try_from_impl {
     ($t:ty) => {
-        impl TryFrom < & str > for $t { type Error = String; fn try_from(value : & str)
-        -> Result < Self, String > { Self::try_from(value.to_owned()) } }
+        impl TryFrom<&str> for $t {
+            type Error = String;
+            fn try_from(value: &str) -> Result<Self, String> {
+                Self::try_from(value.to_owned())
+            }
+        }
     };
 }
 macro_rules! as_ref_impl {
     ($t:ty) => {
-        impl AsRef < str > for $t { fn as_ref(& self) -> & str { & self.0 } }
+        impl AsRef<str> for $t {
+            fn as_ref(&self) -> &str {
+                &self.0
+            }
+        }
     };
 }
 macro_rules! display_impl {
     ($t:ty) => {
-        impl std::fmt::Display for $t { fn fmt(& self, f : & mut std::fmt::Formatter < '_
-        >) -> std::fmt::Result { f.write_str(& self.0) } }
+        impl std::fmt::Display for $t {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                f.write_str(&self.0)
+            }
+        }
     };
 }
 macro_rules! deserialize_impl_2 {
     ($t:ty) => {
-        impl < 'de > serde::Deserialize < 'de > for $t { fn deserialize < D :
-        serde::Deserializer < 'de > > (d : D) -> Result < Self, D::Error > { let s = <
-        String as serde::Deserialize > ::deserialize(d) ?; Self::try_from(s)
-        .map_err(serde::de::Error::custom) } }
+        impl<'de> serde::Deserialize<'de> for $t {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                let s = <String as serde::Deserialize>::deserialize(d)?;
+                Self::try_from(s).map_err(serde::de::Error::custom)
+            }
+        }
     };
 }
 use super::runtime;
 macro_rules! str_enum_impls {
     ($n:ident) => {
-        impl std::fmt::Display for $n { fn fmt(& self, f : & mut std::fmt::Formatter < '_
-        >) -> std::fmt::Result { f.write_str(self.as_str()) } } impl std::str::FromStr
-        for $n { type Err = std::convert::Infallible; fn from_str(s : & str) -> Result <
-        Self, Self::Err > { Ok(Self::from(s)) } } impl serde::Serialize for $n { fn
-        serialize < S : serde::Serializer > (& self, s : S) -> Result < S::Ok, S::Error >
-        { s.serialize_str(self.as_str()) } } impl < 'de > serde::Deserialize < 'de > for
-        $n { fn deserialize < D : serde::Deserializer < 'de >> (d : D) -> Result < Self,
-        D::Error > { let s = < String as serde::Deserialize > ::deserialize(d) ?;
-        Ok(Self::from(s.as_str())) } }
+        impl std::fmt::Display for $n {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                f.write_str(self.as_str())
+            }
+        }
+        impl std::str::FromStr for $n {
+            type Err = std::convert::Infallible;
+            fn from_str(s: &str) -> Result<Self, Self::Err> {
+                Ok(Self::from(s))
+            }
+        }
+        impl serde::Serialize for $n {
+            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                s.serialize_str(self.as_str())
+            }
+        }
+        impl<'de> serde::Deserialize<'de> for $n {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                let s = <String as serde::Deserialize>::deserialize(d)?;
+                Ok(Self::from(s.as_str()))
+            }
+        }
     };
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
