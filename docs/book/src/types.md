@@ -132,7 +132,7 @@ A number in such a value rounds when it is past `u64`. It also rounds when it ha
 
 ## Checked types
 
-A string with a `pattern`, `minLength` or `maxLength` is a type of its own. So is an integer or number with `minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum` or `multipleOf`. Only valid values can be that type: `try_from` and decoding check the keywords and return the first one that the value breaks. The `regress` feature of the runtime checks `pattern`. `generate` turns the feature on when the description uses it:
+A string with a `pattern`, `minLength` or `maxLength` is a type of its own. So is an integer or number with `minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum` or `multipleOf`. Only valid values can be that type: `try_from` and decoding check the keywords and return the first one that the value breaks. The `regress` feature of the runtime checks `pattern`. `generate` turns the feature on when the description uses it. A `pattern` that is not an ECMA-262 regular expression fails generation: its type could not check it:
 
 ```rust
 {{#include ../../../tests/e2e/tests/v32_catalog/schemas.rs:pattern}}

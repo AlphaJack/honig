@@ -156,7 +156,7 @@ fn most_specific_request_media_type_is_tried_first_in_any_order() {
 }
 
 // `pattern` (JSON Schema 2020-12 section 6.3.3): checked by the runtime's `regress` feature; one it cannot compile
-// is reported.
+// is an error, and generation refuses the document.
 
 #[test]
 fn a_pattern_regress_cannot_compile_is_reported() {
@@ -176,6 +176,22 @@ fn a_pattern_regress_cannot_compile_is_reported() {
     assert!(w.iter().any(|m| m.starts_with("/components/schemas/Bad/pattern:") && m.contains("[z-a]")), "{w:#?}");
     assert!(w.iter().any(|m| m.contains("/patternProperties/(unclosed:")), "{w:#?}");
     assert!(!w.iter().any(|m| m.contains("Good")), "a Unicode property escape is valid ECMA-262: {w:#?}");
+}
+
+/// A type whose `pattern` does not compile would take every value: generation refuses the document and names it.
+#[test]
+fn a_pattern_that_does_not_compile_fails_generation() {
+    let doc = |pattern: &str| {
+        common::spec("3.1.0", &json!({}), &json!({"schemas": {"Code": {"type": "string", "pattern": pattern}}}))
+    };
+    let path = common::write("pattern-refused", &doc("[z-a]"), &[]);
+    let Err(d) = crate::generate::generate(&path, &Options::default()) else {
+        panic!("a pattern that does not compile must fail generation")
+    };
+    assert!(d.has_errors(), "{d:?}");
+    assert!(d.iter().any(|e| e.pointer == "/components/schemas/Code/pattern" && e.message.contains("[z-a]")), "{d:?}");
+    let ok = common::write("pattern-accepted", &doc("^[A-Z]+$"), &[]);
+    assert!(crate::generate::generate(&ok, &Options::default()).is_ok());
 }
 
 /// 3.2 section 4.12.5 Style Values: "Combinations not represented in this table are
