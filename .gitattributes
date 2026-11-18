@@ -1,1 +1,6 @@
 * text=auto eol=lf
+
+# Generated output: collapsed in pull request diffs.
+tests/e2e/src/*/api/** linguist-generated=true
+examples/*/src/api/** linguist-generated=true
+docs/book/src/generated/** linguist-generated=true
