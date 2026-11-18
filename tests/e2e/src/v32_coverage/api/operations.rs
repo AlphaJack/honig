@@ -26,6 +26,23 @@ macro_rules! validate_impl {
         impl runtime::Validate for $t {}
     };
 }
+macro_rules! error_impl {
+    ($t:ty) => {
+        impl std::error::Error for $t {}
+    };
+}
+macro_rules! display_impl {
+    ($t:ty) => {
+        impl std::fmt::Display for $t {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                match self {
+                    Self::NoContent => f.write_str("status 204 (NoContent)"),
+                    Self::Conflict(..) => f.write_str("status 409 (Conflict)"),
+                }
+            }
+        }
+    };
+}
 pub mod ping {
     use super::super::runtime;
     pub const METHOD: &str = "GET";
@@ -44,6 +61,16 @@ pub mod ping {
     pub enum Response {
         Default { status: runtime::http::StatusCode },
     }
+    impl std::fmt::Display for Response {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Self::Default { status, .. } => {
+                    write!(f, "status {} (Default)", status.as_u16())
+                }
+            }
+        }
+    }
+    error_impl!(Response);
 }
 pub mod archive {
     use super::super::types;
@@ -67,6 +94,17 @@ pub mod archive {
         /// Already archived.
         Conflict(types::ArchiveConflict),
     }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+                other @ Self::Conflict(..) => Err(Box::new(other)),
+            }
+        }
+    }
 }
 pub mod unarchive {
     use super::super::types;
@@ -89,6 +127,17 @@ pub mod unarchive {
         NoContent,
         /// Not archived.
         Conflict(types::UnarchiveConflict),
+    }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+                other @ Self::Conflict(..) => Err(Box::new(other)),
+            }
+        }
     }
 }
 pub mod add_note {
@@ -142,6 +191,24 @@ pub mod add_note {
             x_tags: Option<types::AddNoteCreatedXTags>,
         },
     }
+    impl std::fmt::Display for Response {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Self::Created { .. } => f.write_str("status 201 (Created)"),
+            }
+        }
+    }
+    error_impl!(Response);
+    /// The body and headers of the success, in order: what `Response::into_ok` gives.
+    pub type Success = (types::Note, Option<types::AddNoteCreatedXTags>);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<Success, Box<Self>> {
+            match self {
+                Self::Created { body, x_tags } => Ok((body, x_tags)),
+            }
+        }
+    }
 }
 pub mod find_box {
     use super::super::types;
@@ -192,5 +259,21 @@ pub mod find_box {
     pub enum Response {
         /// The box.
         Ok(types::Box2),
+    }
+    impl std::fmt::Display for Response {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Self::Ok(..) => f.write_str("status 200 (Ok)"),
+            }
+        }
+    }
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<types::Box2, Box<Self>> {
+            match self {
+                Self::Ok(body) => Ok(body),
+            }
+        }
     }
 }

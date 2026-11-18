@@ -25,6 +25,22 @@ macro_rules! validate_impl {
         impl runtime::Validate for $t {}
     };
 }
+macro_rules! display_impl {
+    ($t:ty) => {
+        impl std::fmt::Display for $t {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                match self {
+                    Self::Ok(..) => f.write_str("status 200 (Ok)"),
+                }
+            }
+        }
+    };
+}
+macro_rules! error_impl {
+    ($t:ty) => {
+        impl std::error::Error for $t {}
+    };
+}
 pub mod tile_stream {
     use super::super::types;
     use super::super::runtime;
@@ -44,6 +60,16 @@ pub mod tile_stream {
     pub enum Response {
         /// One event per tile update (utoipa style, no itemSchema).
         Ok(runtime::Items<types::TileEvent>),
+    }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<runtime::Items<types::TileEvent>, Box<Self>> {
+            match self {
+                Self::Ok(body) => Ok(body),
+            }
+        }
     }
 }
 pub mod tile_lines {
@@ -66,6 +92,16 @@ pub mod tile_lines {
         /// One line per tile update.
         Ok(runtime::Items<types::TileEvent>),
     }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<runtime::Items<types::TileEvent>, Box<Self>> {
+            match self {
+                Self::Ok(body) => Ok(body),
+            }
+        }
+    }
 }
 pub mod tile_updates {
     use super::super::types;
@@ -87,6 +123,18 @@ pub mod tile_updates {
         /// learn.openapis.org Sequential Media Types: an event with an `id` and an object `data`, both optional. It is written field by field even when `id` is absent.
         Ok(runtime::Items<types::TileUpdatesOkItem>),
     }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(
+            self,
+        ) -> Result<runtime::Items<types::TileUpdatesOkItem>, Box<Self>> {
+            match self {
+                Self::Ok(body) => Ok(body),
+            }
+        }
+    }
 }
 pub mod chat_stream {
     use super::super::runtime;
@@ -106,5 +154,20 @@ pub mod chat_stream {
     pub enum Response {
         /// Untyped events (utoipa `schema: {}`).
         Ok(runtime::Items<std::collections::BTreeMap<String, serde_json::Value>>),
+    }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(
+            self,
+        ) -> Result<
+            runtime::Items<std::collections::BTreeMap<String, serde_json::Value>>,
+            Box<Self>,
+        > {
+            match self {
+                Self::Ok(body) => Ok(body),
+            }
+        }
     }
 }
