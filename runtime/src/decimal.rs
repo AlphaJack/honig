@@ -46,18 +46,6 @@ impl Default for Decimal {
     }
 }
 
-/// Not a JSON number.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct NotADecimal(String);
-
-impl fmt::Display for NotADecimal {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "`{}` is not a decimal number", self.0)
-    }
-}
-
-impl std::error::Error for NotADecimal {}
-
 /// Returns JSON number syntax (RFC 8259 section 6): `-`, digits without a leading zero, a fraction and an exponent.
 pub(crate) fn is_json_number(s: &str) -> bool {
     let b = s.as_bytes();
@@ -93,9 +81,13 @@ pub(crate) fn is_json_number(s: &str) -> bool {
 }
 
 impl FromStr for Decimal {
-    type Err = NotADecimal;
-    fn from_str(s: &str) -> Result<Self, NotADecimal> {
-        if is_json_number(s) { Ok(Self(s.to_owned())) } else { Err(NotADecimal(s.to_owned())) }
+    type Err = crate::BuildError;
+    fn from_str(s: &str) -> Result<Self, crate::BuildError> {
+        if is_json_number(s) {
+            Ok(Self(s.to_owned()))
+        } else {
+            Err(crate::BuildError::value(format!("`{s}` is not a decimal number")))
+        }
     }
 }
 
@@ -174,6 +166,14 @@ impl<'de> Visitor<'de> for DecimalVisitor {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Parsing fails with the error that every way of building a value fails with.
+    #[test]
+    fn a_decimal_that_does_not_parse_is_a_build_error() {
+        let parse = |s: &str| -> Result<Decimal, crate::BuildError> { s.parse() };
+        assert!(parse("1.50").is_ok());
+        assert_eq!(parse("x").unwrap_err().to_string(), "`x` is not a decimal number");
+    }
 
     const WIDE: &str = "12345678901234567.89";
 

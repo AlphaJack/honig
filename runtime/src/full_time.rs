@@ -43,31 +43,17 @@ impl Default for FullTime {
     }
 }
 
-/// Not an RFC 3339 `full-time`.
-#[cfg(feature = "jiff")]
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct NotAFullTime(String);
-
-#[cfg(feature = "jiff")]
-impl std::fmt::Display for NotAFullTime {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "`{}` is not a time with an offset (RFC 3339 `full-time`)", self.0)
-    }
-}
-
-#[cfg(feature = "jiff")]
-impl std::error::Error for NotAFullTime {}
-
 /// Digits of a fraction that a time keeps: nanoseconds. More are cut off.
 #[cfg(feature = "jiff")]
 const NANO_DIGITS: usize = 9;
 
 #[cfg(feature = "jiff")]
 impl std::str::FromStr for FullTime {
-    type Err = NotAFullTime;
+    type Err = crate::BuildError;
 
-    fn from_str(text: &str) -> Result<Self, NotAFullTime> {
-        let wrong = || NotAFullTime(text.to_owned());
+    fn from_str(text: &str) -> Result<Self, crate::BuildError> {
+        let wrong =
+            || crate::BuildError::value(format!("`{text}` is not a time with an offset (RFC 3339 `full-time`)"));
         if !is_full_time(text) {
             return Err(wrong());
         }
