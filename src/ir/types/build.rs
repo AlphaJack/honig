@@ -1031,7 +1031,8 @@ impl<'a> Builder<'a> {
             let target = pointer(&self.doc.root, &p).cloned().unwrap_or(Value::Bool(true));
             walk.expanding = vec![p.clone()];
             walk.scope = vec![self.dynamic.resource_of(&p)];
-            defs.insert(escape_token(&p), self.inline_scoped(&target, 1, Some(&p), &mut walk));
+            // The key is the pointer itself: the reference escapes it as one token, and a reader unescapes it.
+            defs.insert(p.clone(), self.inline_scoped(&target, 1, Some(&p), &mut walk));
             i += 1;
         }
         if let (Value::Object(o), false) = (&mut root, defs.is_empty()) {
@@ -2082,6 +2083,29 @@ mod tests {
 
     fn by_name<'a>(s: &'a TypeSpace, n: &str) -> &'a TypeDef {
         s.defs.iter().find(|d| d.name == Name::new(n)).unwrap_or_else(|| panic!("no {n}"))
+    }
+
+    /// A schema that refers back to itself is checked whole with the cycle in `$defs`. Its reference must reach the
+    /// definition: a reader unescapes the token of `#/$defs/~1components~1schemas~1Rec` to the key.
+    #[test]
+    fn a_cycle_in_a_checked_schema_resolves_to_its_definition() {
+        let rec = json!({
+            "type": "array",
+            "prefixItems": [{"type": "string"}, {"oneOf": [{"$ref": "#/components/schemas/Rec"}, {"type": "null"}]}],
+            "items": false,
+            "minItems": 2,
+        });
+        let doc = Doc::new(json!({"openapi": "3.2.0", "components": {"schemas": {"Rec": rec}}}));
+        let mut d = Diagnostics::default();
+        let b = Builder::new(&doc, &mut d, Reserved::default());
+        let schema = b.constraints(&rec).schema.expect("checked whole");
+        let defs = schema.get("$defs").and_then(Value::as_object).expect("the cycle is in `$defs`");
+        assert_eq!(defs.keys().collect::<Vec<_>>(), ["/components/schemas/Rec"]);
+        let mut out = vec![];
+        runtime::__private::check_schema(&mut out, &runtime::InstancePath::Root, &json!(["a", null]), &schema);
+        assert!(out.is_empty(), "`null` matches only the second branch: {out:?}");
+        runtime::__private::check_schema(&mut out, &runtime::InstancePath::Root, &json!(["a", ["b", 1]]), &schema);
+        assert!(!out.is_empty(), "the nested pair needs a string or `null` second");
     }
 
     #[test]
