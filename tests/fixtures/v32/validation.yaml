@@ -80,6 +80,16 @@ paths:
           description: Created.
 components:
   schemas:
+    # Integer keywords checked exactly. A bound that no value of the type meets leaves none, and `multipleOf: 2.5`
+    # takes the integers that are multiples of 5.
+    Degenerate:
+      type: object
+      properties:
+        never: {type: integer, format: uint8, maximum: -1}
+        huge: {type: integer, minimum: 1e40}
+        fives: {type: integer, multipleOf: 2.5}
+        zero: {type: integer, format: uint8, multipleOf: 1000}
+        half: {type: integer, minimum: 0.5, exclusiveMaximum: 3.5}
     # Branches told apart only by the type of a field after a recursive one. Each branch that cannot fit is skipped
     # before its nested trees are decoded: tried in turn, decoding took twice as long per level. The check of
     # `oneOf` follows the recursion through `$defs`: inlined, it doubled the generated code per level.
