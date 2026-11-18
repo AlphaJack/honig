@@ -140,6 +140,8 @@ A string with a `pattern`, `minLength` or `maxLength` is a type of its own. So i
 
 So a request with a bad value gets `400`, and a client reading a response with one gets a decode error.
 
+Integer keywords are exact. A fractional bound rounds inward, `multipleOf: 2.5` takes the integers that are multiples of 5, and a bound that no value of the type meets refuses every value: `maximum: -1` on a `uint8` leaves none.
+
 Where the field type is known, `try_into` builds the value. A spec `default` is filled in already checked:
 
 ```rust

@@ -288,6 +288,54 @@ macro_rules! checked_impls {
         }
     };
 }
+#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct Degenerate {
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub never: Option<DegenerateNever>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub huge: Option<DegenerateHuge>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub fives: Option<DegenerateFives>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub zero: Option<DegenerateZero>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub half: Option<DegenerateHalf>,
+}
+deserialize_impl!(Degenerate);
+serialize_impl!(Degenerate);
+impl Degenerate {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self {
+            never: None,
+            huge: None,
+            fives: None,
+            zero: None,
+            half: None,
+        }
+    }
+}
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct Tree(pub(super) TreeVariants);
@@ -622,6 +670,106 @@ impl User {
         }
     }
 }
+#[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
+#[serde(transparent)]
+pub struct DegenerateNever(pub(super) u8);
+impl TryFrom<u8> for DegenerateNever {
+    type Error = String;
+    fn try_from(value: u8) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            runtime::violation(
+                out,
+                &runtime::InstancePath::Root,
+                "`maximum: -1` leaves no value of this integer type",
+            );
+        }
+        runtime::first(violations).map(|()| Self(value))
+    }
+}
+checked_num_impls!(DegenerateNever, u8);
+#[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
+#[serde(transparent)]
+pub struct DegenerateHuge(pub(super) i64);
+impl TryFrom<i64> for DegenerateHuge {
+    type Error = String;
+    fn try_from(value: i64) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            runtime::violation(
+                out,
+                &runtime::InstancePath::Root,
+                "`minimum: 1e+40` leaves no value of this integer type",
+            );
+        }
+        runtime::first(violations).map(|()| Self(value))
+    }
+}
+checked_num_impls!(DegenerateHuge, i64);
+#[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
+#[serde(transparent)]
+pub struct DegenerateFives(pub(super) i64);
+impl TryFrom<i64> for DegenerateFives {
+    type Error = String;
+    fn try_from(value: i64) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            if i128::from(value) % 5 != 0 {
+                runtime::violation(
+                    out,
+                    &runtime::InstancePath::Root,
+                    "is not a multiple of 2.5",
+                );
+            }
+        }
+        runtime::first(violations).map(|()| Self(value))
+    }
+}
+checked_num_impls!(DegenerateFives, i64);
+#[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
+#[serde(transparent)]
+pub struct DegenerateZero(pub(super) u8);
+impl TryFrom<u8> for DegenerateZero {
+    type Error = String;
+    fn try_from(value: u8) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            if value != 0 {
+                runtime::violation(
+                    out,
+                    &runtime::InstancePath::Root,
+                    "is not a multiple of 1000",
+                );
+            }
+        }
+        runtime::first(violations).map(|()| Self(value))
+    }
+}
+checked_num_impls!(DegenerateZero, u8);
+#[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
+#[serde(transparent)]
+pub struct DegenerateHalf(pub(super) i64);
+impl TryFrom<i64> for DegenerateHalf {
+    type Error = String;
+    fn try_from(value: i64) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            runtime::check_range(
+                out,
+                &runtime::InstancePath::Root,
+                value,
+                [Some(1), None, None, Some(4)],
+            );
+        }
+        runtime::first(violations).map(|()| Self(value))
+    }
+}
+checked_num_impls!(DegenerateHalf, i64);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct TreeVariant1 {
@@ -1947,6 +2095,50 @@ pub type ShipmentOtherwiseLabels = ShipmentInternationalLabels;
 pub mod builders {
     use super as types;
     use super::runtime;
+    impl super::Degenerate {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> Degenerate {
+            Degenerate(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct Degenerate(runtime::Builder<super::Degenerate>);
+    impl Degenerate {
+        pub fn never(
+            self,
+            value: impl TryInto<types::DegenerateNever, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("never", value, |s, v| s.never = Some(v)))
+        }
+        pub fn huge(
+            self,
+            value: impl TryInto<types::DegenerateHuge, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("huge", value, |s, v| s.huge = Some(v)))
+        }
+        pub fn fives(
+            self,
+            value: impl TryInto<types::DegenerateFives, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("fives", value, |s, v| s.fives = Some(v)))
+        }
+        pub fn zero(
+            self,
+            value: impl TryInto<types::DegenerateZero, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("zero", value, |s, v| s.zero = Some(v)))
+        }
+        pub fn half(
+            self,
+            value: impl TryInto<types::DegenerateHalf, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("half", value, |s, v| s.half = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::Degenerate, runtime::BuildError> {
+            self.0.build()
+        }
+    }
     impl super::Ledger {
         /// Starts a builder from the required properties.
         pub fn builder() -> Ledger {

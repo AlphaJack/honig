@@ -543,3 +543,23 @@ fn a_builder_converts_each_field_and_returns_the_first_error() -> Result<(), Box
     assert!(err.to_string().starts_with("`name`: "), "{err}");
     Ok(())
 }
+
+/// Integer keywords are checked exactly: a bound that no value of the type meets refuses every value, a fractional
+/// `multipleOf` takes the integers that are multiples of it, and one past the type takes only `0`.
+#[test]
+fn integer_keywords_are_exact() {
+    let decodes = |v: serde_json::Value| serde_json::from_value::<types::Degenerate>(v).map_err(|e| e.to_string());
+    for never in [0, 1, 255] {
+        let e = decodes(json!({"never": never})).expect_err("`maximum: -1` leaves no uint8");
+        assert!(e.starts_with("`maximum: -1` leaves no value of this integer type"), "{e}");
+    }
+    assert!(decodes(json!({"huge": i64::MAX})).is_err(), "`minimum: 1e40` leaves no int64");
+    for (fives, ok) in [(0, true), (5, true), (-15, true), (1, false), (2, false), (25, true)] {
+        assert_eq!(decodes(json!({"fives": fives})).is_ok(), ok, "{fives} as a multiple of 2.5");
+    }
+    assert!(decodes(json!({"zero": 0})).is_ok());
+    assert!(decodes(json!({"zero": 200})).is_err(), "a uint8 multiple of 1000 is 0");
+    for (half, ok) in [(0, false), (1, true), (3, true), (4, false)] {
+        assert_eq!(decodes(json!({"half": half})).is_ok(), ok, "{half} in [0.5, 3.5)");
+    }
+}
