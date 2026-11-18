@@ -201,6 +201,13 @@ impl sse::api::Api for Tiles {
     ) -> impl Future<Output = Result<sse::api::operations::chat_stream::Response, sse::api::ApiError>> + Send {
         unused()
     }
+    fn tile_batch(
+        &self,
+        _: sse::api::operations::tile_batch::Params,
+        _: &sse::api::Context<'_>,
+    ) -> impl Future<Output = Result<sse::api::operations::tile_batch::Response, sse::api::ApiError>> + Send {
+        unused()
+    }
 }
 
 struct Books;

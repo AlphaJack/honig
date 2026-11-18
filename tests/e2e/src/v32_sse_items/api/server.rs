@@ -43,6 +43,13 @@ pub trait Api: Send + Sync + 'static {
     ) -> impl Future<
         Output = Result<ops::chat_stream::Response, runtime::ApiError>,
     > + Send;
+    fn tile_batch(
+        &self,
+        params: ops::tile_batch::Params,
+        ctx: &Context<'_, ()>,
+    ) -> impl Future<
+        Output = Result<ops::tile_batch::Response, runtime::ApiError>,
+    > + Send;
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Operation {
@@ -50,6 +57,7 @@ pub enum Operation {
     TileLines,
     TileUpdates,
     ChatStream,
+    TileBatch,
 }
 impl runtime::Operation for Operation {
     fn op(self) -> &'static runtime::Op {
@@ -58,6 +66,7 @@ impl runtime::Operation for Operation {
             Self::TileLines => &TILE_LINES_OP,
             Self::TileUpdates => &TILE_UPDATES_OP,
             Self::ChatStream => &CHAT_STREAM_OP,
+            Self::TileBatch => &TILE_BATCH_OP,
         }
     }
 }
@@ -75,6 +84,7 @@ static METHODS: &[&[(&str, (Op, Operation))]] = &[
     &[("GET", (Op::O1, Operation::TileLines))],
     &[("GET", (Op::O2, Operation::TileUpdates))],
     &[("POST", (Op::O3, Operation::ChatStream))],
+    &[("POST", (Op::O4, Operation::TileBatch))],
 ];
 static ROUTES: &[runtime::Node] = &[
     runtime::node(
@@ -84,7 +94,7 @@ static ROUTES: &[runtime::Node] = &[
         runtime::Node::NONE,
     ),
     runtime::node(
-        &[("lines", 3), ("stream", 2), ("updates", 4)],
+        &[("batch", 7), ("lines", 3), ("stream", 2), ("updates", 4)],
         &[],
         runtime::Node::NONE,
         runtime::Node::NONE,
@@ -94,9 +104,11 @@ static ROUTES: &[runtime::Node] = &[
     runtime::node(&[], &[], runtime::Node::NONE, 2),
     runtime::node(&[("stream", 6)], &[], runtime::Node::NONE, runtime::Node::NONE),
     runtime::node(&[], &[], runtime::Node::NONE, 3),
+    runtime::node(&[], &[], runtime::Node::NONE, 4),
 ];
 static PATHS: &[&str] = &[
     "/chat/stream",
+    "/tiles/batch",
     "/tiles/lines",
     "/tiles/stream",
     "/tiles/updates",
@@ -173,6 +185,7 @@ enum Op {
     O1,
     O2,
     O3,
+    O4,
 }
 async fn dispatch<A: Api>(
     api: &A,
@@ -185,6 +198,7 @@ async fn dispatch<A: Api>(
         Op::O1 => Box::pin(tile_lines(api, routed, call)).await,
         Op::O2 => Box::pin(tile_updates(api, routed, call)).await,
         Op::O3 => Box::pin(chat_stream(api, routed, call)).await,
+        Op::O4 => Box::pin(tile_batch(api, routed, call)).await,
     }
 }
 static TILE_STREAM_OP: runtime::Op = runtime::Op {
@@ -327,4 +341,49 @@ fn chat_stream_encode(
         runtime::set_items(&mut r, "text/event-stream", body, runtime::Framing::Sse)?;
         r
     })
+}
+static TILE_BATCH_OP: runtime::Op = runtime::Op {
+    name: "tile_batch",
+    method: "POST",
+    route: "/tiles/batch",
+    span: "POST /tiles/batch",
+    security: &[],
+    takes_body: true,
+    produces: &[],
+    ranges: false,
+    errors: error_schema,
+};
+async fn tile_batch<A: Api>(
+    api: &A,
+    routed: runtime::Routed<'_>,
+    call: runtime::Call<'_, Option<A::Principal>, Operation>,
+) -> runtime::Response {
+    let steps = runtime::Steps {
+        api,
+        decode: tile_batch_params,
+        call: |a, p, c| Box::pin(a.tile_batch(p, c)),
+        encode: |r, _| Ok(tile_batch_encode(&r)),
+    };
+    runtime::serve(routed, call.public(), &steps).await
+}
+fn tile_batch_params(
+    incoming: runtime::Incoming<'_>,
+) -> Result<ops::tile_batch::Params, runtime::Reason> {
+    let runtime::Incoming { request: req, body, stream, .. } = incoming;
+    runtime::check_media(runtime::Message::content_type(req), &["application/jsonl"])?;
+    Ok(ops::tile_batch::Params {
+        body: runtime::Items::received(&body, &stream, runtime::Framing::JsonLines)
+            .and_then(|items| {
+                items
+                    .limited(runtime::Limits {
+                        min: Some(2),
+                        max: Some(3),
+                        unique: true,
+                    })
+            })?,
+    })
+}
+fn tile_batch_encode(resp: &ops::tile_batch::Response) -> runtime::Response {
+    let ops::tile_batch::Response::NoContent = resp;
+    runtime::new_response(204)
 }

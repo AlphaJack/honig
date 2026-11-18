@@ -202,6 +202,23 @@ impl<T: DeserializeOwned> Items<T> {
         .map(Self::List)
     }
 
+    /// Checks the sequence against `limits`: a list at once, an arriving one as its items arrive.
+    ///
+    /// # Errors
+    /// A list that does not meet them.
+    #[doc(hidden)]
+    pub fn limited(self, limits: Limits) -> Result<Self, Error>
+    where
+        T: Serialize,
+    {
+        Ok(match self {
+            Self::List(items) => Self::List(limit_items(REQUEST, items, limits)?),
+            Self::Stream(items) => Self::Stream(items.limited(limits)),
+            // Items that your code produces are not checked.
+            events @ Self::Events(_) => events,
+        })
+    }
+
     /// Returns [`Items::received`] with the text of the library formats of each item checked first, as `H` says
     /// (`runtime::validated`).
     ///
@@ -628,6 +645,26 @@ impl<T: DeserializeOwned> ItemStream<T> {
         self
     }
 
+    /// Checks the sequence against `limits` as its items arrive.
+    #[doc(hidden)]
+    #[must_use]
+    pub fn limited(self, limits: Limits) -> Self
+    where
+        T: Serialize,
+    {
+        let key: fn(&T) -> Option<String> = crate::validate::unique_key::<T>;
+        self.decoder(|items| {
+            items.counted = Some(Box::new(Counted {
+                limits,
+                count: 0,
+                seen: std::collections::BTreeSet::new(),
+                key,
+                short: false,
+            }));
+        });
+        self
+    }
+
     /// Returns the parts of a `multipart/*` body. It is a response with this status and `Content-Type`. The parts are
     /// decoded as they arrive.
     #[cfg(feature = "multipart")]
@@ -647,7 +684,75 @@ impl<T: DeserializeOwned> Stream for ItemStream<T> {
     type Item = Result<T, Error>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        self.get_mut().poll_with(cx, Decoder::poll_checked)
+        self.get_mut().poll_with(cx, Decoder::poll_limited)
+    }
+}
+
+/// The keywords of a sequence as a whole: `minItems`, `maxItems` and `uniqueItems` of its `schema`. A sequence that
+/// arrives an item at a time is checked as it arrives: the item past `max` and an item met before are an `Err`, and
+/// so is the end of a sequence short of `min`.
+#[doc(hidden)]
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Limits {
+    /// `minItems`.
+    pub min: Option<u64>,
+    /// `maxItems`.
+    pub max: Option<u64>,
+    /// `uniqueItems`.
+    pub unique: bool,
+}
+
+/// Returns `items` once they meet `limits`, as one sequence read whole.
+///
+/// # Errors
+/// They do not: a decode error with this status.
+#[doc(hidden)]
+pub fn limit_items<T: Serialize>(status: u16, items: Vec<T>, limits: Limits) -> Result<Vec<T>, Error> {
+    let mut out = vec![];
+    crate::validate::check_len(&mut out, &InstancePath::Root, items.len(), limits.min, limits.max, "items");
+    if limits.unique {
+        crate::validate::check_unique(&mut out, &InstancePath::Root, &items);
+    }
+    match out.into_iter().next() {
+        Some(v) => Err(limit_error(status, v.message)),
+        None => Ok(items),
+    }
+}
+
+/// Returns the error of a sequence that breaks one of its [`Limits`].
+fn limit_error(status: u16, message: String) -> Error {
+    Error::Decode { status, message, body: bytes::Bytes::new(), pointer: String::new() }
+}
+
+/// What a sequence checked against its [`Limits`] has read so far.
+struct Counted<T> {
+    limits: Limits,
+    count: u64,
+    /// The canonical JSON of each item read: `uniqueItems` only.
+    seen: std::collections::BTreeSet<String>,
+    key: fn(&T) -> Option<String>,
+    /// Whether the end short of `min` was reported: once.
+    short: bool,
+}
+
+impl<T> Counted<T> {
+    /// Returns `item` once it keeps the sequence within its limits.
+    fn admit(&mut self, status: u16, item: T) -> Result<T, Error> {
+        self.count += 1;
+        if let Some(max) = self.limits.max.filter(|max| self.count > *max) {
+            return Err(limit_error(status, format!("at most {max} items allowed, found more")));
+        }
+        if self.limits.unique && (self.key)(&item).is_some_and(|k| !self.seen.insert(k)) {
+            return Err(limit_error(status, "items must be unique".to_owned()));
+        }
+        Ok(item)
+    }
+
+    /// Returns the error of a sequence that ended short of `min`, once.
+    fn at_end(&mut self, status: u16) -> Option<Error> {
+        let min = self.limits.min.filter(|min| self.count < *min && !self.short)?;
+        self.short = true;
+        Some(limit_error(status, format!("at least {min} items required, found {}", self.count)))
     }
 }
 
@@ -689,6 +794,8 @@ pub(crate) struct Decoder<T> {
     read: usize,
     /// Reads one record as an item: as `T`, or with the text of its library formats checked first.
     item: ReadItem<T>,
+    /// The [`Limits`] of the sequence and what it has read: `None` without any.
+    counted: Option<Box<Counted<T>>>,
 }
 
 /// Reads one record as an item.
@@ -760,7 +867,20 @@ impl<T: DeserializeOwned> Decoder<T> {
             check: None,
             read: 0,
             item: decode::<T>,
+            counted: None,
         }
+    }
+
+    /// Returns the next item checked against the [`Limits`] of the sequence, and the error of an end short of them.
+    fn poll_limited(&mut self, cx: &mut Context<'_>) -> Poll<Option<Result<T, Error>>> {
+        let next = ready!(self.poll_checked(cx));
+        let status = self.status;
+        let Some(counted) = self.counted.as_mut() else { return Poll::Ready(next) };
+        Poll::Ready(match next {
+            Some(Ok(item)) => Some(counted.admit(status, item)),
+            None => counted.at_end(status).map(Err),
+            other @ Some(Err(_)) => other,
+        })
     }
 
     /// Returns the bytes received but not yet returned as items. Also the body still to come.

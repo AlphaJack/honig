@@ -307,18 +307,20 @@ fn has_duplicates<T: Serialize>(items: &[T]) -> bool {
     let mut keys: Vec<String> = items
         .iter()
         .enumerate()
-        .map(|(i, x)| match serde_json::to_value(x) {
-            Ok(v) => {
-                let mut key = String::new();
-                canonical(&v, &mut key);
-                key
-            }
-            // Never equal to another item: a key no JSON text starts with.
-            Err(_) => ["\u{0}", itoa::Buffer::new().format(i)].concat(),
-        })
+        // Never equal to another item: a key no JSON text starts with.
+        .map(|(i, x)| unique_key(x).unwrap_or_else(|| ["\u{0}", itoa::Buffer::new().format(i)].concat()))
         .collect();
     keys.sort_unstable();
     keys.windows(2).any(|w| w.first() == w.last())
+}
+
+/// Returns the canonical JSON of `x`: equal for items that `uniqueItems` takes as equal. `None` when it does not
+/// serialize.
+pub(crate) fn unique_key<T: Serialize>(x: &T) -> Option<String> {
+    let v = serde_json::to_value(x).ok()?;
+    let mut key = String::new();
+    canonical(&v, &mut key);
+    Some(key)
 }
 
 /// Writes JSON text that is the same for equal instances. Object keys are sorted. A number is written by its value.
