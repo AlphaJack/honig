@@ -2314,6 +2314,36 @@ mod tests {
         assert!(!out.is_empty(), "`L4` needs 7 characters");
     }
 
+    /// A request leaves out `readOnly` properties: no `required` asks for them, also when the schema that declares them,
+    /// or the one that requires them, is a `$ref` into the `$defs` of a schema checked whole.
+    #[test]
+    fn a_request_checked_whole_does_not_need_a_read_only_property_behind_a_ref() {
+        let doc = Doc::new(json!({"openapi": "3.2.0", "components": {"schemas": {
+            "Base": {"type": "object", "properties": {"id": {"type": "string", "readOnly": true}, "name": {"type": "string"}}},
+            "Named": {"type": "object", "required": ["id", "name"]},
+            "Other": {"type": "object", "required": ["kind"]},
+        }}}));
+        let mut d = Diagnostics::default();
+        let b = Builder::new(&doc, &mut d, Reserved::default());
+        let check = |schema: &Value, value: &Value| {
+            let schema = b.constraints(schema).schema.expect("checked whole");
+            let mut out = vec![];
+            runtime::__private::check_schema(&mut out, &runtime::InstancePath::Root, value, &schema);
+            out.into_iter().map(|v| format!("{} {}", v.path, v.message)).collect::<Vec<_>>()
+        };
+        // The properties are in the referenced schema, the `required` beside the reference.
+        let beside = json!({"$ref": "#/components/schemas/Base", "required": ["id"], "minProperties": 1});
+        assert_eq!(check(&beside, &json!({"name": "x"})), Vec::<String>::new());
+        // The properties are beside a union, the `required` in a referenced branch. `name` is still required.
+        let branch = json!({
+            "type": "object",
+            "properties": {"id": {"type": "string", "readOnly": true}, "name": {"type": "string"}},
+            "anyOf": [{"$ref": "#/components/schemas/Named"}, {"$ref": "#/components/schemas/Other"}],
+        });
+        assert_eq!(check(&branch, &json!({"name": "x"})), Vec::<String>::new());
+        assert_ne!(check(&branch, &json!({})), Vec::<String>::new());
+    }
+
     #[test]
     fn struct_fields_and_inline_types() {
         let s = build(&json!({"Product": {"type": "object", "required": ["id"], "properties": {

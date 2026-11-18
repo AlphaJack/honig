@@ -12,8 +12,24 @@ use crate::json;
 /// `readOnly` properties travel in responses only. So no `required` (at any
 /// depth) asks for them. That is neither the own `required` of the object nor that of a subschema
 /// that applies to the same object (`allOf`, `anyOf`, `oneOf`, `then`, `else`,
-/// `dependentSchemas`).
+/// `dependentSchemas`). A subschema may be a `$ref` into the `$defs` of the root, which holds each schema once for
+/// every place that refers to it: its properties count, and a `required` of its own to strip makes it a copy.
 pub(crate) fn request_view(schema: &mut Value) {
+    let raw = schema.get("$defs").and_then(Value::as_object).cloned().unwrap_or_default();
+    // Each definition as a request sees it first: a subschema that refers to one then sees what is left to strip.
+    let mut defs = raw.clone();
+    defs.values_mut().for_each(|d| view(d, &raw));
+    view(schema, &defs);
+}
+
+/// [`request_view`] with the `$defs` of the root.
+fn view(schema: &mut Value, defs: &serde_json::Map<String, Value>) {
+    // A subschema that is only a `$ref` into `defs`: the schema that it stands for.
+    let target = |s: &Value| -> Option<Value> {
+        let o = s.as_object().filter(|o| o.len() == 1)?;
+        let token = o.get("$ref")?.as_str()?.strip_prefix("#/$defs/")?;
+        defs.get(&json::unescape_token(token)).cloned()
+    };
     match schema {
         Value::Object(o) => {
             let read_only = |o: &serde_json::Map<String, Value>| -> Vec<String> {
@@ -28,13 +44,22 @@ pub(crate) fn request_view(schema: &mut Value) {
             // `required` may sit beside the properties or in an `allOf` member.
             let mut skip = read_only(o);
             for m in o.get("allOf").and_then(Value::as_array).into_iter().flatten() {
-                if let Value::Object(m) = m {
+                if let Value::Object(m) = target(m).as_ref().unwrap_or(m) {
                     skip.extend(read_only(m));
                 }
             }
             if !skip.is_empty() {
                 let keep = |r: &Value| r.as_str().is_none_or(|r| !skip.iter().any(|s| s == r));
                 let strip = |s: &mut Value| {
+                    // The definition is shared: the subschema gets a copy without those requirements.
+                    if let Some(mut t) = target(s)
+                        && t.get("required").and_then(Value::as_array).is_some_and(|req| !req.iter().all(keep))
+                    {
+                        if let Some(Value::Array(req)) = t.get_mut("required") {
+                            req.retain(keep);
+                        }
+                        *s = t;
+                    }
                     if let Some(Value::Array(req)) = s.get_mut("required") {
                         req.retain(keep);
                     }
@@ -54,9 +79,9 @@ pub(crate) fn request_view(schema: &mut Value) {
                     .flatten()
                     .for_each(|(_, s)| strip(s));
             }
-            o.values_mut().for_each(request_view);
+            o.values_mut().for_each(|v| view(v, defs));
         }
-        Value::Array(a) => a.iter_mut().for_each(request_view),
+        Value::Array(a) => a.iter_mut().for_each(|v| view(v, defs)),
         Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_) => {}
     }
 }
