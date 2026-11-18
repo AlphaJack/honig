@@ -160,7 +160,7 @@ impl runtime::Validate for Gadget {
                 &runtime::InstancePath::Key(path, "kind"),
                 &value,
                 schema,
-                None,
+                runtime::schema_defs(),
             );
         }
     }
@@ -202,7 +202,7 @@ impl runtime::Validate for Book {
                 &runtime::InstancePath::Key(path, "kind"),
                 &value,
                 schema,
-                None,
+                runtime::schema_defs(),
             );
         }
     }

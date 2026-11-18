@@ -217,7 +217,7 @@ impl runtime::Validate for TextNote {
                     &runtime::InstancePath::Key(path, "kind"),
                     &value,
                     schema,
-                    None,
+                    runtime::schema_defs(),
                 );
             }
         }
@@ -288,7 +288,7 @@ impl runtime::Validate for ImageNote {
                 &runtime::InstancePath::Key(path, "kind"),
                 &value,
                 schema,
-                None,
+                runtime::schema_defs(),
             );
         }
         {
@@ -325,7 +325,7 @@ impl runtime::Validate for ImageNote {
                     &runtime::InstancePath::Key(path, "crop"),
                     &value,
                     schema,
-                    None,
+                    runtime::schema_defs(),
                 );
             }
         }
@@ -542,7 +542,7 @@ impl runtime::Validate for NoteImageNote {
                     &runtime::InstancePath::Key(path, "crop"),
                     &value,
                     schema,
-                    None,
+                    runtime::schema_defs(),
                 );
             }
         }

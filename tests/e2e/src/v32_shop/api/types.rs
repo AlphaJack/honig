@@ -1648,7 +1648,7 @@ impl runtime::Validate for PaginatedResource {
                     &runtime::InstancePath::Key(path, "data"),
                     &value,
                     schema,
-                    None,
+                    runtime::schema_defs(),
                 );
             }
         }

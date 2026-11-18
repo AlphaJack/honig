@@ -744,28 +744,6 @@ fn create_shipment_params(
                                 ]),
                             ),
                         ),
-                        (
-                            "$defs".to_owned(),
-                            serde_json::Value::Object(
-                                serde_json::Map::from_iter([
-                                    (
-                                        "/components/schemas/NoOptions".to_owned(),
-                                        serde_json::Value::Object(
-                                            serde_json::Map::from_iter([
-                                                (
-                                                    "type".to_owned(),
-                                                    serde_json::Value::String("object".to_owned()),
-                                                ),
-                                                (
-                                                    "additionalProperties".to_owned(),
-                                                    serde_json::Value::Bool(false),
-                                                ),
-                                            ]),
-                                        ),
-                                    ),
-                                ]),
-                            ),
-                        ),
                     ]),
                 )),
         )?;

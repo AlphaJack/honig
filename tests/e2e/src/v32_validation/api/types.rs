@@ -66,7 +66,7 @@ macro_rules! validate_impl_2 {
                         &runtime::InstancePath::Key(path, "holders"),
                         &value,
                         schema,
-                        None,
+                        runtime::schema_defs(),
                     );
                 }
             }
@@ -701,7 +701,7 @@ impl runtime::Validate for Entry {
                     &runtime::InstancePath::Key(path, "lines"),
                     &value,
                     schema,
-                    None,
+                    runtime::schema_defs(),
                 );
             }
         }
@@ -2186,7 +2186,7 @@ impl runtime::Validate for ShipmentInternational {
                 &runtime::InstancePath::Key(path, "kind"),
                 &value,
                 schema,
-                None,
+                runtime::schema_defs(),
             );
         }
         if let Some(v) = &self.rating {
@@ -2202,7 +2202,7 @@ impl runtime::Validate for ShipmentInternational {
                     &runtime::InstancePath::Key(path, "rating"),
                     &value,
                     schema,
-                    None,
+                    runtime::schema_defs(),
                 );
             }
         }
@@ -2232,7 +2232,7 @@ impl runtime::Validate for ShipmentInternational {
                 &runtime::InstancePath::Key(path, "parcels"),
                 &value,
                 schema,
-                None,
+                runtime::schema_defs(),
             );
         }
         if let Some(v) = &self.scores {
@@ -2251,7 +2251,7 @@ impl runtime::Validate for ShipmentInternational {
                     &runtime::InstancePath::Key(path, "scores"),
                     &value,
                     schema,
-                    None,
+                    runtime::schema_defs(),
                 );
             }
         }
@@ -2287,7 +2287,7 @@ impl runtime::Validate for ShipmentInternational {
                     &runtime::InstancePath::Key(path, "labels"),
                     &value,
                     schema,
-                    None,
+                    runtime::schema_defs(),
                 );
             }
         }
@@ -2763,7 +2763,7 @@ impl runtime::Validate for ShipmentOtherwise {
                     &runtime::InstancePath::Key(path, "rating"),
                     &value,
                     schema,
-                    None,
+                    runtime::schema_defs(),
                 );
             }
         }
@@ -2793,7 +2793,7 @@ impl runtime::Validate for ShipmentOtherwise {
                 &runtime::InstancePath::Key(path, "parcels"),
                 &value,
                 schema,
-                None,
+                runtime::schema_defs(),
             );
         }
         if let Some(v) = &self.scores {
@@ -2812,7 +2812,7 @@ impl runtime::Validate for ShipmentOtherwise {
                     &runtime::InstancePath::Key(path, "scores"),
                     &value,
                     schema,
-                    None,
+                    runtime::schema_defs(),
                 );
             }
         }
@@ -2848,7 +2848,7 @@ impl runtime::Validate for ShipmentOtherwise {
                     &runtime::InstancePath::Key(path, "labels"),
                     &value,
                     schema,
-                    None,
+                    runtime::schema_defs(),
                 );
             }
         }

@@ -89,7 +89,7 @@ impl runtime::Validate for Page {
                 &runtime::InstancePath::Key(path, "items"),
                 &value,
                 schema,
-                None,
+                runtime::schema_defs(),
             );
         }
     }
@@ -182,7 +182,7 @@ impl runtime::Validate for Tree {
                 &runtime::InstancePath::Key(path, "value"),
                 &value,
                 schema,
-                None,
+                runtime::schema_defs(),
             );
         }
         if let Some(v) = &self.children {
@@ -204,7 +204,7 @@ impl runtime::Validate for Tree {
                             &runtime::InstancePath::Index(base, i),
                             &value,
                             schema,
-                            None,
+                            runtime::schema_defs(),
                         );
                     }
                 }

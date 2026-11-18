@@ -124,8 +124,10 @@ pub(crate) fn module(api: &Api, opts: &super::Options) -> Result<Vec<(String, St
         let code = syntax::print(name, tokens, opts.rust.binary)?;
         files.push((name.to_owned(), format!("{header}{code}")));
     }
-    // Last: the other files fill the definitions that the module's run-time checks share.
-    let runtime = runtime_reexport(space.shared_defs().as_deref(), opts.rust.binary)?;
+    let shared = &space.types.shared;
+    let defs =
+        (!shared.is_empty()).then(|| serde_json::Value::Object(shared.clone().into_iter().collect()).to_string());
+    let runtime = runtime_reexport(defs.as_deref(), opts.rust.binary)?;
     files.insert(0, ("runtime.rs".to_owned(), format!("{header}{runtime}")));
     Ok(files)
 }

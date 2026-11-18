@@ -65,7 +65,7 @@ macro_rules! validate_impl {
                             &runtime::InstancePath::Key(path, "tags"),
                             &value,
                             schema,
-                            None,
+                            runtime::schema_defs(),
                         );
                     }
                 }
@@ -85,7 +85,7 @@ macro_rules! validate_impl {
                             &runtime::InstancePath::Key(path, "point"),
                             &value,
                             schema,
-                            None,
+                            runtime::schema_defs(),
                         );
                     }
                 }
@@ -105,7 +105,7 @@ macro_rules! validate_impl {
                             &runtime::InstancePath::Key(path, "attrs"),
                             &value,
                             schema,
-                            None,
+                            runtime::schema_defs(),
                         );
                     }
                 }
@@ -139,7 +139,7 @@ macro_rules! validate_impl {
                             &runtime::InstancePath::Key(path, "owner"),
                             &value,
                             schema,
-                            None,
+                            runtime::schema_defs(),
                         );
                     }
                 }
@@ -297,7 +297,7 @@ macro_rules! validate_impl_7 {
                             &runtime::InstancePath::Key(path, "tags"),
                             &value,
                             schema,
-                            None,
+                            runtime::schema_defs(),
                         );
                     }
                 }
@@ -317,7 +317,7 @@ macro_rules! validate_impl_7 {
                             &runtime::InstancePath::Key(path, "point"),
                             &value,
                             schema,
-                            None,
+                            runtime::schema_defs(),
                         );
                     }
                 }
@@ -337,7 +337,7 @@ macro_rules! validate_impl_7 {
                             &runtime::InstancePath::Key(path, "attrs"),
                             &value,
                             schema,
-                            None,
+                            runtime::schema_defs(),
                         );
                     }
                 }
@@ -371,7 +371,7 @@ macro_rules! validate_impl_7 {
                             &runtime::InstancePath::Key(path, "owner"),
                             &value,
                             schema,
-                            None,
+                            runtime::schema_defs(),
                         );
                     }
                 }
@@ -596,7 +596,7 @@ impl runtime::Validate for Owner {
                     &runtime::InstancePath::Key(path, "children"),
                     &value,
                     schema,
-                    None,
+                    runtime::schema_defs(),
                 );
             }
         }
@@ -867,7 +867,7 @@ impl runtime::Validate for Gadget2 {
                 &runtime::InstancePath::Key(path, "kind"),
                 &value,
                 schema,
-                None,
+                runtime::schema_defs(),
             );
         }
         if let Some(v) = &self.tags {
@@ -886,7 +886,7 @@ impl runtime::Validate for Gadget2 {
                     &runtime::InstancePath::Key(path, "tags"),
                     &value,
                     schema,
-                    None,
+                    runtime::schema_defs(),
                 );
             }
         }
@@ -906,7 +906,7 @@ impl runtime::Validate for Gadget2 {
                     &runtime::InstancePath::Key(path, "point"),
                     &value,
                     schema,
-                    None,
+                    runtime::schema_defs(),
                 );
             }
         }
@@ -926,7 +926,7 @@ impl runtime::Validate for Gadget2 {
                     &runtime::InstancePath::Key(path, "attrs"),
                     &value,
                     schema,
-                    None,
+                    runtime::schema_defs(),
                 );
             }
         }
@@ -960,7 +960,7 @@ impl runtime::Validate for Gadget2 {
                     &runtime::InstancePath::Key(path, "owner"),
                     &value,
                     schema,
-                    None,
+                    runtime::schema_defs(),
                 );
             }
         }
@@ -1497,7 +1497,7 @@ impl runtime::Validate for Gadget2Request {
                 &runtime::InstancePath::Key(path, "kind"),
                 &value,
                 schema,
-                None,
+                runtime::schema_defs(),
             );
         }
         if let Some(v) = &self.tags {
@@ -1516,7 +1516,7 @@ impl runtime::Validate for Gadget2Request {
                     &runtime::InstancePath::Key(path, "tags"),
                     &value,
                     schema,
-                    None,
+                    runtime::schema_defs(),
                 );
             }
         }
@@ -1536,7 +1536,7 @@ impl runtime::Validate for Gadget2Request {
                     &runtime::InstancePath::Key(path, "point"),
                     &value,
                     schema,
-                    None,
+                    runtime::schema_defs(),
                 );
             }
         }
@@ -1556,7 +1556,7 @@ impl runtime::Validate for Gadget2Request {
                     &runtime::InstancePath::Key(path, "attrs"),
                     &value,
                     schema,
-                    None,
+                    runtime::schema_defs(),
                 );
             }
         }
@@ -1590,7 +1590,7 @@ impl runtime::Validate for Gadget2Request {
                     &runtime::InstancePath::Key(path, "owner"),
                     &value,
                     schema,
-                    None,
+                    runtime::schema_defs(),
                 );
             }
         }
