@@ -2204,7 +2204,7 @@ fn create_item_params(
                             serde_json::Value::Object(
                                 serde_json::Map::from_iter([
                                     (
-                                        "~1components~1schemas~1Product".to_owned(),
+                                        "/components/schemas/Product".to_owned(),
                                         serde_json::Value::Object(
                                             serde_json::Map::from_iter([
                                                 (
@@ -2890,7 +2890,7 @@ fn create_item_params(
                                         ),
                                     ),
                                     (
-                                        "~1components~1schemas~1Variant".to_owned(),
+                                        "/components/schemas/Variant".to_owned(),
                                         serde_json::Value::Object(
                                             serde_json::Map::from_iter([
                                                 (
