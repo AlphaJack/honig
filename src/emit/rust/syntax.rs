@@ -157,6 +157,7 @@ fn library_ty(libs: FormatLibs, f: Format) -> Option<TokenStream> {
         (Format::Uuid, false, _)
         | (
             Format::Decimal
+            | Format::Decimal128
             | Format::HttpDate
             | Format::Duration
             | Format::UriReference

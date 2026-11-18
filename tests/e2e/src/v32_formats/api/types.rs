@@ -341,6 +341,13 @@ impl runtime::Validate for Event {
                 [Some("0"), None, None, None],
             );
         }
+        if let Some(v) = &self.sum {
+            runtime::check_decimal128(
+                out,
+                &runtime::InstancePath::Key(path, "sum"),
+                v.as_str(),
+            );
+        }
         if let Some(v) = &self.local {
             runtime::check_format(
                 out,
@@ -363,6 +370,14 @@ impl runtime::Validate for Event {
                 &runtime::InstancePath::Key(path, "price"),
                 v.as_str(),
                 "decimal",
+            );
+        }
+        if let Some(v) = &self.total {
+            runtime::check_format(
+                out,
+                &runtime::InstancePath::Key(path, "total"),
+                v.as_str(),
+                "decimal128",
             );
         }
         if let Some(v) = &self.opens {
