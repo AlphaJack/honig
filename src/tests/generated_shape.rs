@@ -625,6 +625,29 @@ fn a_response_of_a_union_of_unions_is_sized_to_the_bottom() {
     assert!(ops.contains("Ok(Box<types::U39>)"), "{ops}");
 }
 
+/// A `$ref` beside an extension (`x-patch-strategy`) is the referenced type: an extension asserts nothing, so nothing
+/// is checked whole. Properties named like keywords (`$ref`, `type`) are field names, not keywords.
+#[test]
+fn a_ref_beside_an_extension_or_keyword_names_is_typed() {
+    let doc = common::spec(
+        "3.1.0",
+        &json!({}),
+        &json!({"schemas": {
+            "Props": {"type": "object", "properties": {
+                "$ref": {"type": "string"},
+                "type": {"type": "string"},
+                "items": {"type": "string"},
+                "not": {"type": "string"},
+                "strategy": {"$ref": "#/components/schemas/Strategy", "x-patch-strategy": "retainKeys"},
+            }},
+            "Strategy": {"type": "object", "properties": {"kind": {"type": "string", "maxLength": 9}}},
+        }}),
+    );
+    let files = common::generate("shape-keyword-names", &doc, &crate::emit::Options::default());
+    let all: String = files.iter().map(|(_, text)| text.as_str()).collect();
+    assert!(!all.contains("check_schema"), "{all}");
+}
+
 /// A schema that many schemas checked whole reach is in the generated code once: in `runtime.rs`, which every
 /// check of the module shares. Each check used to carry its own copy, so the code grew with the product of the two.
 #[test]
