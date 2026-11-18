@@ -216,6 +216,52 @@ impl<T: runtime::Transport> Client<T> {
             })
         }
     }
+    pub async fn add_closed(
+        &self,
+        p: impl runtime::IntoArg<'_, ops::add_closed::Params>,
+    ) -> Result<ops::add_closed::Response, runtime::Error> {
+        let p = runtime::IntoArg::into_arg(p);
+        let path = String::from("/closed");
+        let query = Vec::new();
+        let mut req = runtime::new_request("POST", path, query)?;
+        match &p.body {
+            ops::add_closed::Body::Json(b) => {
+                runtime::Message::set_body(
+                    &mut req,
+                    "application/json",
+                    runtime::json_encode(b)?,
+                );
+            }
+            ops::add_closed::Body::XWwwFormUrlencoded(b) => {
+                runtime::Message::set_body(
+                    &mut req,
+                    "application/x-www-form-urlencoded",
+                    runtime::form_encode(b)?,
+                );
+            }
+            ops::add_closed::Body::Xml(b) => {
+                runtime::Message::set_body(
+                    &mut req,
+                    "application/xml",
+                    runtime::xml_encode(b)?,
+                );
+            }
+        }
+        runtime::apply_auth(&mut req, &self.credentials, &[])?;
+        runtime::propagate_trace(&mut req);
+        let resp = runtime::send(&self.transport, req).await?;
+        let (head, body) = resp.into_parts();
+        let (body, _) = body.into_parts();
+        let status = head.status.as_u16();
+        if status == 201 {
+            Ok(ops::add_closed::Response::Created)
+        } else {
+            Err(runtime::Error::UnexpectedStatus {
+                status: head.status,
+                body,
+            })
+        }
+    }
     pub async fn add_badge(
         &self,
         p: impl runtime::IntoArg<'_, ops::add_badge::Params>,

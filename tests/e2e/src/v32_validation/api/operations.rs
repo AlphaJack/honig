@@ -191,6 +191,34 @@ pub mod add_member {
         Created,
     }
 }
+pub mod add_closed {
+    use super::super::types;
+    use super::super::runtime;
+    pub const METHOD: &str = "POST";
+    pub const PATH: &str = "/closed";
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub struct Params {
+        pub body: Body,
+    }
+    impl Params {
+        #[must_use]
+        pub const fn new(body: Body) -> Self {
+            Self { body }
+        }
+    }
+    impl runtime::Validate for Params {}
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub enum Body {
+        Json(types::Closed),
+        XWwwFormUrlencoded(types::Closed),
+        Xml(types::Closed),
+    }
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub enum Response {
+        /// Created.
+        Created,
+    }
+}
 pub mod add_badge {
     use super::super::types;
     use super::super::runtime;
