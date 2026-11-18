@@ -101,6 +101,106 @@ macro_rules! str_enum_impls {
         Ok(Self::from(s.as_str())) } }
     };
 }
+#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct Degenerate {
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub never: Option<u8>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub huge: Option<i64>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub fives: Option<i64>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub zero: Option<u8>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub half: Option<i64>,
+}
+deserialize_impl!(Degenerate);
+serialize_impl!(Degenerate);
+impl Degenerate {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self {
+            never: None,
+            huge: None,
+            fives: None,
+            zero: None,
+            half: None,
+        }
+    }
+}
+impl runtime::Validate for Degenerate {
+    fn validate(
+        &self,
+        path: &runtime::InstancePath<'_>,
+        out: &mut Vec<runtime::Violation>,
+    ) {
+        if let Some(v) = &self.never {
+            runtime::violation(
+                out,
+                &runtime::InstancePath::Key(path, "never"),
+                format!(
+                    "`maximum: -1` leaves no value of this integer type, not even {}", *
+                    v
+                ),
+            );
+        }
+        if let Some(v) = &self.huge {
+            runtime::violation(
+                out,
+                &runtime::InstancePath::Key(path, "huge"),
+                format!(
+                    "`minimum: 1e+40` leaves no value of this integer type, not even {}",
+                    * v
+                ),
+            );
+        }
+        if let Some(v) = &self.fives {
+            runtime::check(
+                out,
+                &runtime::InstancePath::Key(path, "fives"),
+                i128::from(*v) % 5 == 0,
+                "is not a multiple of 2.5",
+            );
+        }
+        if let Some(v) = &self.zero {
+            runtime::check(
+                out,
+                &runtime::InstancePath::Key(path, "zero"),
+                *v == 0,
+                "is not a multiple of 1000",
+            );
+        }
+        if let Some(v) = &self.half {
+            runtime::check_range(
+                out,
+                &runtime::InstancePath::Key(path, "half"),
+                *v,
+                [Some(1), None, None, Some(4)],
+            );
+        }
+    }
+}
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Tree {
     Variant1(TreeVariant1),

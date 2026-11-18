@@ -243,6 +243,20 @@ pub(crate) fn fixes_one_value(s: &Value) -> bool {
     s.get("const").is_some() || s.get("enum").and_then(Value::as_array).is_some_and(|e| e.len() == 1)
 }
 
+/// Returns a JSON number as the digits of its decimal text and the power of ten they scale by: `2.5` is `(25, -1)`
+/// and `1e3` is `(1, 3)`. `None` for a negative number or more digits than a `u128` holds.
+pub(crate) fn decimal_parts(n: &serde_json::Number) -> Option<(u128, i32)> {
+    let text = n.to_string();
+    let (mantissa, exponent) = text.split_once(['e', 'E']).unwrap_or((&text, "0"));
+    let exponent: i32 = exponent.parse().ok()?;
+    let (whole, fraction) = mantissa.split_once('.').unwrap_or((mantissa, ""));
+    if whole.starts_with('-') {
+        return None;
+    }
+    let digits: u128 = format!("{whole}{fraction}").parse().ok()?;
+    Some((digits, exponent.checked_sub(i32::try_from(fraction.len()).ok()?)?))
+}
+
 #[cfg(test)]
 mod tests {
     use serde_json::json;

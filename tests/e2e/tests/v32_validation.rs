@@ -519,3 +519,30 @@ fn a_recursive_union_decodes_in_time_linear_in_its_depth() {
     }
     assert!(serde_json::from_str::<types::Tree>(&json).is_ok());
 }
+
+/// Integer keywords are checked exactly: a bound that no value of the type meets refuses every value, a fractional
+/// `multipleOf` takes the integers that are multiples of it, and one past the type takes only `0`.
+#[test]
+fn integer_keywords_are_exact() {
+    let violations = |v: serde_json::Value| {
+        let d: types::Degenerate = serde_json::from_value(v).expect("decodes");
+        let mut out = vec![];
+        api::Validate::validate(&d, &api::InstancePath::Root, &mut out);
+        out.into_iter().map(|v| v.message).collect::<Vec<_>>()
+    };
+    for never in [0, 1, 255] {
+        assert_eq!(
+            violations(json!({"never": never})),
+            [format!("`maximum: -1` leaves no value of this integer type, not even {never}")]
+        );
+    }
+    assert_eq!(violations(json!({"huge": i64::MAX})).len(), 1, "`minimum: 1e40` leaves no int64");
+    for (fives, ok) in [(0, true), (5, true), (-15, true), (1, false), (2, false), (25, true)] {
+        assert_eq!(violations(json!({"fives": fives})).is_empty(), ok, "{fives} as a multiple of 2.5");
+    }
+    assert!(violations(json!({"zero": 0})).is_empty());
+    assert!(!violations(json!({"zero": 200})).is_empty(), "a uint8 multiple of 1000 is 0");
+    for (half, ok) in [(0, false), (1, true), (3, true), (4, false)] {
+        assert_eq!(violations(json!({"half": half})).is_empty(), ok, "{half} in [0.5, 3.5)");
+    }
+}
