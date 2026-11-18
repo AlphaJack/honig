@@ -41,6 +41,13 @@ pub trait Api: Send + Sync + 'static {
     ) -> impl Future<
         Output = Result<ops::add_member::Response, runtime::ApiError>,
     > + Send;
+    fn add_closed(
+        &self,
+        params: ops::add_closed::Params,
+        ctx: &Context<'_, ()>,
+    ) -> impl Future<
+        Output = Result<ops::add_closed::Response, runtime::ApiError>,
+    > + Send;
     fn add_badge(
         &self,
         params: ops::add_badge::Params,
@@ -55,6 +62,7 @@ pub enum Operation {
     CreateShipment,
     Login,
     AddMember,
+    AddClosed,
     AddBadge,
 }
 impl runtime::Operation for Operation {
@@ -64,6 +72,7 @@ impl runtime::Operation for Operation {
             Self::CreateShipment => &CREATE_SHIPMENT_OP,
             Self::Login => &LOGIN_OP,
             Self::AddMember => &ADD_MEMBER_OP,
+            Self::AddClosed => &ADD_CLOSED_OP,
             Self::AddBadge => &ADD_BADGE_OP,
         }
     }
@@ -104,11 +113,19 @@ static METHODS: &[&[(&str, (Op, Operation))]] = &[
     &[("POST", (Op::O1, Operation::CreateShipment))],
     &[("POST", (Op::O2, Operation::Login))],
     &[("POST", (Op::O3, Operation::AddMember))],
-    &[("POST", (Op::O4, Operation::AddBadge))],
+    &[("POST", (Op::O4, Operation::AddClosed))],
+    &[("POST", (Op::O5, Operation::AddBadge))],
 ];
 static ROUTES: &[runtime::Node] = &[
     runtime::node(
-        &[("users", 1), ("badges", 5), ("logins", 3), ("members", 4), ("shipments", 2)],
+        &[
+            ("users", 1),
+            ("badges", 6),
+            ("closed", 5),
+            ("logins", 3),
+            ("members", 4),
+            ("shipments", 2),
+        ],
         &[],
         runtime::Node::NONE,
         runtime::Node::NONE,
@@ -118,8 +135,16 @@ static ROUTES: &[runtime::Node] = &[
     runtime::node(&[], &[], runtime::Node::NONE, 2),
     runtime::node(&[], &[], runtime::Node::NONE, 3),
     runtime::node(&[], &[], runtime::Node::NONE, 4),
+    runtime::node(&[], &[], runtime::Node::NONE, 5),
 ];
-static PATHS: &[&str] = &["/badges", "/logins", "/members", "/shipments", "/users"];
+static PATHS: &[&str] = &[
+    "/badges",
+    "/closed",
+    "/logins",
+    "/members",
+    "/shipments",
+    "/users",
+];
 pub struct Routes<A>(std::sync::Arc<A>);
 /// The server of this API: `Server::new(your_api)`, or `Server::new(arc)` to keep a handle on it. Add layers,
 /// then `into_axum` or `into_service`.
@@ -193,6 +218,7 @@ enum Op {
     O2,
     O3,
     O4,
+    O5,
 }
 async fn dispatch<A: Api>(
     api: &A,
@@ -205,7 +231,8 @@ async fn dispatch<A: Api>(
         Op::O1 => Box::pin(create_shipment(api, routed, call)).await,
         Op::O2 => Box::pin(login(api, routed, call)).await,
         Op::O3 => Box::pin(add_member(api, routed, call)).await,
-        Op::O4 => Box::pin(add_badge(api, routed, call)).await,
+        Op::O4 => Box::pin(add_closed(api, routed, call)).await,
+        Op::O5 => Box::pin(add_badge(api, routed, call)).await,
     }
 }
 static CREATE_USER_OP: runtime::Op = runtime::Op {
@@ -852,6 +879,63 @@ fn add_member_params(
 }
 fn add_member_encode(resp: &ops::add_member::Response) -> runtime::Response {
     let ops::add_member::Response::Created = resp;
+    runtime::new_response(201)
+}
+static ADD_CLOSED_OP: runtime::Op = runtime::Op {
+    name: "add_closed",
+    method: "POST",
+    route: "/closed",
+    span: "POST /closed",
+    security: &[],
+    takes_body: false,
+    produces: &[],
+    ranges: false,
+    errors: error_schema,
+};
+async fn add_closed<A: Api>(
+    api: &A,
+    routed: runtime::Routed<'_>,
+    call: runtime::Call<'_, Option<A::Principal>, Operation>,
+) -> runtime::Response {
+    let steps = runtime::Steps {
+        api,
+        decode: add_closed_params,
+        call: |a, p, c| Box::pin(a.add_closed(p, c)),
+        encode: |r, _| Ok(add_closed_encode(&r)),
+    };
+    runtime::serve(routed, call.public(), &steps).await
+}
+fn add_closed_params(
+    incoming: runtime::Incoming<'_>,
+) -> Result<ops::add_closed::Params, runtime::Reason> {
+    let runtime::Incoming { request: req, body, .. } = incoming;
+    runtime::check_media(
+        runtime::Message::content_type(req),
+        &["application/json", "application/x-www-form-urlencoded", "application/xml"],
+    )?;
+    Ok(ops::add_closed::Params {
+        body: if runtime::media_matches(
+            runtime::Message::content_type(req),
+            "application/json",
+        ) {
+            ops::add_closed::Body::Json(runtime::json_decode(0, &body)?)
+        } else if runtime::media_matches(
+            runtime::Message::content_type(req),
+            "application/x-www-form-urlencoded",
+        ) {
+            ops::add_closed::Body::XWwwFormUrlencoded(runtime::form_decode(0, &body)?)
+        } else if runtime::media_matches(
+            runtime::Message::content_type(req),
+            "application/xml",
+        ) {
+            ops::add_closed::Body::Xml(runtime::xml_decode(0, &body)?)
+        } else {
+            ops::add_closed::Body::Json(runtime::json_decode(0, &body)?)
+        },
+    })
+}
+fn add_closed_encode(resp: &ops::add_closed::Response) -> runtime::Response {
+    let ops::add_closed::Response::Created = resp;
     runtime::new_response(201)
 }
 static ADD_BADGE_OP: runtime::Op = runtime::Op {
