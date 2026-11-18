@@ -11,6 +11,11 @@
     clippy::missing_errors_doc,
     reason = "generated docs hold only the description's own prose"
 )]
+macro_rules! error_impl {
+    ($t:ty) => {
+        impl std::error::Error for $t {}
+    };
+}
 use super::runtime;
 #[doc(hidden)]
 pub const SECURITY_0: &[&[runtime::Requirement]] = &[
@@ -63,6 +68,28 @@ pub mod list_products {
         /// Error
         Default { status: runtime::http::StatusCode, body: types::Error },
     }
+    impl std::fmt::Display for Response {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Self::Ok { .. } => f.write_str("status 200 (Ok)"),
+                Self::Default { status, .. } => {
+                    write!(f, "status {} (Default)", status.as_u16())
+                }
+            }
+        }
+    }
+    error_impl!(Response);
+    /// The body and headers of the success, in order: what `Response::into_ok` gives.
+    pub type Success = (Vec<types::Product>, Option<String>);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<Success, Box<Self>> {
+            match self {
+                Self::Ok { body, x_next } => Ok((body, x_next)),
+                other @ Self::Default { .. } => Err(Box::new(other)),
+            }
+        }
+    }
 }
 pub mod create_product {
     use super::super::types;
@@ -99,6 +126,26 @@ pub mod create_product {
         /// Error
         Default { status: runtime::http::StatusCode, body: types::Error },
     }
+    impl std::fmt::Display for Response {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Self::Created(..) => f.write_str("status 201 (Created)"),
+                Self::Default { status, .. } => {
+                    write!(f, "status {} (Default)", status.as_u16())
+                }
+            }
+        }
+    }
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<types::Product, Box<Self>> {
+            match self {
+                Self::Created(body) => Ok(body),
+                other @ Self::Default { .. } => Err(Box::new(other)),
+            }
+        }
+    }
 }
 pub mod get_product {
     use super::super::types;
@@ -122,5 +169,23 @@ pub mod get_product {
         Ok(types::Product),
         /// Not found
         NotFound(types::Error),
+    }
+    impl std::fmt::Display for Response {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Self::Ok(..) => f.write_str("status 200 (Ok)"),
+                Self::NotFound(..) => f.write_str("status 404 (NotFound)"),
+            }
+        }
+    }
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<types::Product, Box<Self>> {
+            match self {
+                Self::Ok(body) => Ok(body),
+                other @ Self::NotFound(..) => Err(Box::new(other)),
+            }
+        }
     }
 }

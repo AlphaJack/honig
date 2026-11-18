@@ -11,9 +11,25 @@
     clippy::missing_errors_doc,
     reason = "generated docs hold only the description's own prose"
 )]
+macro_rules! error_impl {
+    ($t:ty) => {
+        impl std::error::Error for $t {}
+    };
+}
 macro_rules! validate_impl {
     ($t:ty) => {
         impl runtime::Validate for $t {}
+    };
+}
+macro_rules! display_impl {
+    ($t:ty) => {
+        impl std::fmt::Display for $t {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                match self {
+                    Self::NoContent => f.write_str("status 204 (NoContent)"),
+                }
+            }
+        }
     };
 }
 pub mod upload {
@@ -65,6 +81,22 @@ pub mod upload {
         /// Stored.
         Created,
     }
+    impl std::fmt::Display for Response {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Self::Created => f.write_str("status 201 (Created)"),
+            }
+        }
+    }
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::Created => Ok(()),
+            }
+        }
+    }
 }
 pub mod put_icon {
     use super::super::types;
@@ -92,6 +124,16 @@ pub mod put_icon {
         /// Stored.
         NoContent,
     }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
+    }
 }
 pub mod upload_scan {
     use super::super::types;
@@ -114,6 +156,16 @@ pub mod upload_scan {
     pub enum Response {
         /// Stored.
         NoContent,
+    }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
     }
 }
 pub mod deploy {
@@ -141,5 +193,15 @@ pub mod deploy {
     pub enum Response {
         /// Deployed.
         NoContent,
+    }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
     }
 }

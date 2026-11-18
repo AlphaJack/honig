@@ -48,17 +48,19 @@ macro_rules! validate_impl {
                     {
                         static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                         let value = runtime::to_value(v).unwrap_or_default();
-                        runtime::check_schema(
+                        let schema = SCHEMA
+                            .get_or_init(|| {
+                                serde_json::from_str(
+                                        "{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"uniqueItems\":true,\"minItems\":0,\"maxItems\":10,\"contains\":{\"const\":\"vip\"},\"minContains\":0,\"maxContains\":1}",
+                                    )
+                                    .unwrap_or_default()
+                            });
+                        runtime::check_schema_in(
                             out,
                             &runtime::InstancePath::Key(path, "tags"),
                             &value,
-                            SCHEMA
-                                .get_or_init(|| {
-                                    serde_json::from_str(
-                                            "{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"uniqueItems\":true,\"minItems\":0,\"maxItems\":10,\"contains\":{\"const\":\"vip\"},\"minContains\":0,\"maxContains\":1}",
-                                        )
-                                        .unwrap_or_default()
-                                }),
+                            schema,
+                            runtime::schema_defs(),
                         );
                     }
                 }
@@ -66,17 +68,19 @@ macro_rules! validate_impl {
                     {
                         static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                         let value = runtime::to_value(v).unwrap_or_default();
-                        runtime::check_schema(
+                        let schema = SCHEMA
+                            .get_or_init(|| {
+                                serde_json::from_str(
+                                        "{\"type\":\"array\",\"prefixItems\":[{\"type\":\"number\"},{\"type\":\"number\"}],\"items\":false,\"unevaluatedItems\":false}",
+                                    )
+                                    .unwrap_or_default()
+                            });
+                        runtime::check_schema_in(
                             out,
                             &runtime::InstancePath::Key(path, "point"),
                             &value,
-                            SCHEMA
-                                .get_or_init(|| {
-                                    serde_json::from_str(
-                                            "{\"type\":\"array\",\"prefixItems\":[{\"type\":\"number\"},{\"type\":\"number\"}],\"items\":false,\"unevaluatedItems\":false}",
-                                        )
-                                        .unwrap_or_default()
-                                }),
+                            schema,
+                            runtime::schema_defs(),
                         );
                     }
                 }
@@ -84,17 +88,19 @@ macro_rules! validate_impl {
                     {
                         static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                         let value = runtime::to_value(v).unwrap_or_default();
-                        runtime::check_schema(
+                        let schema = SCHEMA
+                            .get_or_init(|| {
+                                serde_json::from_str(
+                                        "{\"type\":\"object\",\"patternProperties\":{\"^x_\":{\"type\":\"string\"}},\"propertyNames\":{\"pattern\":\"^[a-z_]+$\"},\"minProperties\":0,\"maxProperties\":20,\"unevaluatedProperties\":false}",
+                                    )
+                                    .unwrap_or_default()
+                            });
+                        runtime::check_schema_in(
                             out,
                             &runtime::InstancePath::Key(path, "attrs"),
                             &value,
-                            SCHEMA
-                                .get_or_init(|| {
-                                    serde_json::from_str(
-                                            "{\"type\":\"object\",\"patternProperties\":{\"^x_\":{\"type\":\"string\"}},\"propertyNames\":{\"pattern\":\"^[a-z_]+$\"},\"minProperties\":0,\"maxProperties\":20,\"unevaluatedProperties\":false}",
-                                        )
-                                        .unwrap_or_default()
-                                }),
+                            schema,
+                            runtime::schema_defs(),
                         );
                     }
                 }
@@ -116,17 +122,19 @@ macro_rules! validate_impl {
                     {
                         static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                         let value = runtime::to_value(v).unwrap_or_default();
-                        runtime::check_schema(
+                        let schema = SCHEMA
+                            .get_or_init(|| {
+                                serde_json::from_str(
+                                        "{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":true}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}",
+                                    )
+                                    .unwrap_or_default()
+                            });
+                        runtime::check_schema_in(
                             out,
                             &runtime::InstancePath::Key(path, "owner"),
                             &value,
-                            SCHEMA
-                                .get_or_init(|| {
-                                    serde_json::from_str(
-                                            "{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":true}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}",
-                                        )
-                                        .unwrap_or_default()
-                                }),
+                            schema,
+                            runtime::schema_defs(),
                         );
                     }
                 }
@@ -183,17 +191,19 @@ macro_rules! validate_impl_4 {
                     {
                         static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                         let value = runtime::to_value(v).unwrap_or_default();
-                        runtime::check_schema(
+                        let schema = SCHEMA
+                            .get_or_init(|| {
+                                serde_json::from_str(
+                                        "{\"$id\":\"https://example.com/schemas/product\",\"$schema\":\"https://spec.openapis.org/oas/3.2/dialect/2025-09-17\",\"$comment\":\"A product\",\"type\":\"object\",\"required\":[\"name\",\"kind\"],\"properties\":{\"id\":{\"type\":\"integer\",\"format\":\"int64\",\"readOnly\":true,\"minimum\":0,\"exclusiveMaximum\":9007199254740991},\"name\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":64,\"pattern\":\"^[A-Za-z ]+$\"},\"kind\":{\"type\":\"string\",\"enum\":[\"book\",\"gadget\"]},\"nickname\":{\"type\":[\"string\",\"null\"],\"default\":null},\"secret\":{\"type\":\"string\",\"writeOnly\":true,\"deprecated\":true},\"tags\":{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"uniqueItems\":true,\"minItems\":0,\"maxItems\":10,\"contains\":{\"const\":\"vip\"},\"minContains\":0,\"maxContains\":1},\"point\":{\"type\":\"array\",\"prefixItems\":[{\"type\":\"number\"},{\"type\":\"number\"}],\"items\":false,\"unevaluatedItems\":false},\"attrs\":{\"type\":\"object\",\"patternProperties\":{\"^x_\":{\"type\":\"string\"}},\"propertyNames\":{\"pattern\":\"^[a-z_]+$\"},\"minProperties\":0,\"maxProperties\":20,\"unevaluatedProperties\":false},\"weight\":{\"type\":\"number\",\"multipleOf\":0.01,\"exclusiveMinimum\":0},\"owner\":{\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Owner\"}]}},\"dependentRequired\":{\"nickname\":[\"name\"]},\"dependentSchemas\":{\"secret\":{\"required\":[]}},\"x-rust-type\":{\"crate\":\"products\",\"version\":\"1\",\"path\":\"products::Product\"}}",
+                                    )
+                                    .unwrap_or_default()
+                            });
+                        runtime::check_schema_in(
                             out,
                             &runtime::InstancePath::Key(path, "meta"),
                             &value,
-                            SCHEMA
-                                .get_or_init(|| {
-                                    serde_json::from_str(
-                                            "{\"$id\":\"https://example.com/schemas/product\",\"$schema\":\"https://spec.openapis.org/oas/3.2/dialect/2025-09-17\",\"$comment\":\"A product\",\"type\":\"object\",\"required\":[\"name\",\"kind\"],\"properties\":{\"id\":{\"type\":\"integer\",\"format\":\"int64\",\"readOnly\":true,\"minimum\":0,\"exclusiveMaximum\":9007199254740991},\"name\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":64,\"pattern\":\"^[A-Za-z ]+$\"},\"kind\":{\"type\":\"string\",\"enum\":[\"book\",\"gadget\"]},\"nickname\":{\"type\":[\"string\",\"null\"],\"default\":null},\"secret\":{\"type\":\"string\",\"writeOnly\":true,\"deprecated\":true},\"tags\":{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"uniqueItems\":true,\"minItems\":0,\"maxItems\":10,\"contains\":{\"const\":\"vip\"},\"minContains\":0,\"maxContains\":1},\"point\":{\"type\":\"array\",\"prefixItems\":[{\"type\":\"number\"},{\"type\":\"number\"}],\"items\":false,\"unevaluatedItems\":false},\"attrs\":{\"type\":\"object\",\"patternProperties\":{\"^x_\":{\"type\":\"string\"}},\"propertyNames\":{\"pattern\":\"^[a-z_]+$\"},\"minProperties\":0,\"maxProperties\":20,\"unevaluatedProperties\":false},\"weight\":{\"type\":\"number\",\"multipleOf\":0.01,\"exclusiveMinimum\":0},\"owner\":{\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Owner\"}]}},\"dependentRequired\":{\"nickname\":[\"name\"]},\"dependentSchemas\":{\"secret\":{\"required\":[]}},\"x-rust-type\":{\"crate\":\"products\",\"version\":\"1\",\"path\":\"products::Product\"},\"$defs\":{\"/components/schemas/Owner\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$ref\":\"#/$defs/~1components~1schemas~1Owner\"}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}}",
-                                        )
-                                        .unwrap_or_default()
-                                }),
+                            schema,
+                            runtime::schema_defs(),
                         );
                     }
                 }
@@ -263,17 +273,19 @@ macro_rules! validate_impl_7 {
                     {
                         static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                         let value = runtime::to_value(v).unwrap_or_default();
-                        runtime::check_schema(
+                        let schema = SCHEMA
+                            .get_or_init(|| {
+                                serde_json::from_str(
+                                        "{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"uniqueItems\":true,\"minItems\":0,\"maxItems\":10,\"contains\":{\"const\":\"vip\"},\"minContains\":0,\"maxContains\":1}",
+                                    )
+                                    .unwrap_or_default()
+                            });
+                        runtime::check_schema_in(
                             out,
                             &runtime::InstancePath::Key(path, "tags"),
                             &value,
-                            SCHEMA
-                                .get_or_init(|| {
-                                    serde_json::from_str(
-                                            "{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"uniqueItems\":true,\"minItems\":0,\"maxItems\":10,\"contains\":{\"const\":\"vip\"},\"minContains\":0,\"maxContains\":1}",
-                                        )
-                                        .unwrap_or_default()
-                                }),
+                            schema,
+                            runtime::schema_defs(),
                         );
                     }
                 }
@@ -281,17 +293,19 @@ macro_rules! validate_impl_7 {
                     {
                         static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                         let value = runtime::to_value(v).unwrap_or_default();
-                        runtime::check_schema(
+                        let schema = SCHEMA
+                            .get_or_init(|| {
+                                serde_json::from_str(
+                                        "{\"type\":\"array\",\"prefixItems\":[{\"type\":\"number\"},{\"type\":\"number\"}],\"items\":false,\"unevaluatedItems\":false}",
+                                    )
+                                    .unwrap_or_default()
+                            });
+                        runtime::check_schema_in(
                             out,
                             &runtime::InstancePath::Key(path, "point"),
                             &value,
-                            SCHEMA
-                                .get_or_init(|| {
-                                    serde_json::from_str(
-                                            "{\"type\":\"array\",\"prefixItems\":[{\"type\":\"number\"},{\"type\":\"number\"}],\"items\":false,\"unevaluatedItems\":false}",
-                                        )
-                                        .unwrap_or_default()
-                                }),
+                            schema,
+                            runtime::schema_defs(),
                         );
                     }
                 }
@@ -299,17 +313,19 @@ macro_rules! validate_impl_7 {
                     {
                         static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                         let value = runtime::to_value(v).unwrap_or_default();
-                        runtime::check_schema(
+                        let schema = SCHEMA
+                            .get_or_init(|| {
+                                serde_json::from_str(
+                                        "{\"type\":\"object\",\"patternProperties\":{\"^x_\":{\"type\":\"string\"}},\"propertyNames\":{\"pattern\":\"^[a-z_]+$\"},\"minProperties\":0,\"maxProperties\":20,\"unevaluatedProperties\":false}",
+                                    )
+                                    .unwrap_or_default()
+                            });
+                        runtime::check_schema_in(
                             out,
                             &runtime::InstancePath::Key(path, "attrs"),
                             &value,
-                            SCHEMA
-                                .get_or_init(|| {
-                                    serde_json::from_str(
-                                            "{\"type\":\"object\",\"patternProperties\":{\"^x_\":{\"type\":\"string\"}},\"propertyNames\":{\"pattern\":\"^[a-z_]+$\"},\"minProperties\":0,\"maxProperties\":20,\"unevaluatedProperties\":false}",
-                                        )
-                                        .unwrap_or_default()
-                                }),
+                            schema,
+                            runtime::schema_defs(),
                         );
                     }
                 }
@@ -331,17 +347,19 @@ macro_rules! validate_impl_7 {
                     {
                         static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                         let value = runtime::to_value(v).unwrap_or_default();
-                        runtime::check_schema(
+                        let schema = SCHEMA
+                            .get_or_init(|| {
+                                serde_json::from_str(
+                                        "{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":true}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}",
+                                    )
+                                    .unwrap_or_default()
+                            });
+                        runtime::check_schema_in(
                             out,
                             &runtime::InstancePath::Key(path, "owner"),
                             &value,
-                            SCHEMA
-                                .get_or_init(|| {
-                                    serde_json::from_str(
-                                            "{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":true}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}",
-                                        )
-                                        .unwrap_or_default()
-                                }),
+                            schema,
+                            runtime::schema_defs(),
                         );
                     }
                 }
@@ -555,17 +573,19 @@ impl runtime::Validate for Owner {
             {
                 static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                 let value = runtime::to_value(v).unwrap_or_default();
-                runtime::check_schema(
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":true}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
                     out,
                     &runtime::InstancePath::Key(path, "children"),
                     &value,
-                    SCHEMA
-                        .get_or_init(|| {
-                            serde_json::from_str(
-                                    "{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":true}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}",
-                                )
-                                .unwrap_or_default()
-                        }),
+                    schema,
+                    runtime::schema_defs(),
                 );
             }
         }
@@ -811,32 +831,35 @@ impl runtime::Validate for Gadget2 {
         {
             static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
             let value = runtime::to_value(&self.kind).unwrap_or_default();
-            runtime::check_schema(
+            let schema = SCHEMA
+                .get_or_init(|| {
+                    serde_json::from_str("{\"const\":\"gadget\"}").unwrap_or_default()
+                });
+            runtime::check_schema_in(
                 out,
                 &runtime::InstancePath::Key(path, "kind"),
                 &value,
-                SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str("{\"const\":\"gadget\"}")
-                            .unwrap_or_default()
-                    }),
+                schema,
+                runtime::schema_defs(),
             );
         }
         if let Some(v) = &self.tags {
             {
                 static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                 let value = runtime::to_value(v).unwrap_or_default();
-                runtime::check_schema(
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"uniqueItems\":true,\"minItems\":0,\"maxItems\":10,\"contains\":{\"const\":\"vip\"},\"minContains\":0,\"maxContains\":1}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
                     out,
                     &runtime::InstancePath::Key(path, "tags"),
                     &value,
-                    SCHEMA
-                        .get_or_init(|| {
-                            serde_json::from_str(
-                                    "{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"uniqueItems\":true,\"minItems\":0,\"maxItems\":10,\"contains\":{\"const\":\"vip\"},\"minContains\":0,\"maxContains\":1}",
-                                )
-                                .unwrap_or_default()
-                        }),
+                    schema,
+                    runtime::schema_defs(),
                 );
             }
         }
@@ -844,17 +867,19 @@ impl runtime::Validate for Gadget2 {
             {
                 static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                 let value = runtime::to_value(v).unwrap_or_default();
-                runtime::check_schema(
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"type\":\"array\",\"prefixItems\":[{\"type\":\"number\"},{\"type\":\"number\"}],\"items\":false,\"unevaluatedItems\":false}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
                     out,
                     &runtime::InstancePath::Key(path, "point"),
                     &value,
-                    SCHEMA
-                        .get_or_init(|| {
-                            serde_json::from_str(
-                                    "{\"type\":\"array\",\"prefixItems\":[{\"type\":\"number\"},{\"type\":\"number\"}],\"items\":false,\"unevaluatedItems\":false}",
-                                )
-                                .unwrap_or_default()
-                        }),
+                    schema,
+                    runtime::schema_defs(),
                 );
             }
         }
@@ -862,17 +887,19 @@ impl runtime::Validate for Gadget2 {
             {
                 static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                 let value = runtime::to_value(v).unwrap_or_default();
-                runtime::check_schema(
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"type\":\"object\",\"patternProperties\":{\"^x_\":{\"type\":\"string\"}},\"propertyNames\":{\"pattern\":\"^[a-z_]+$\"},\"minProperties\":0,\"maxProperties\":20,\"unevaluatedProperties\":false}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
                     out,
                     &runtime::InstancePath::Key(path, "attrs"),
                     &value,
-                    SCHEMA
-                        .get_or_init(|| {
-                            serde_json::from_str(
-                                    "{\"type\":\"object\",\"patternProperties\":{\"^x_\":{\"type\":\"string\"}},\"propertyNames\":{\"pattern\":\"^[a-z_]+$\"},\"minProperties\":0,\"maxProperties\":20,\"unevaluatedProperties\":false}",
-                                )
-                                .unwrap_or_default()
-                        }),
+                    schema,
+                    runtime::schema_defs(),
                 );
             }
         }
@@ -894,17 +921,19 @@ impl runtime::Validate for Gadget2 {
             {
                 static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                 let value = runtime::to_value(v).unwrap_or_default();
-                runtime::check_schema(
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":true}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
                     out,
                     &runtime::InstancePath::Key(path, "owner"),
                     &value,
-                    SCHEMA
-                        .get_or_init(|| {
-                            serde_json::from_str(
-                                    "{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":true}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}",
-                                )
-                                .unwrap_or_default()
-                        }),
+                    schema,
+                    runtime::schema_defs(),
                 );
             }
         }
@@ -1408,32 +1437,35 @@ impl runtime::Validate for Gadget2Request {
         {
             static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
             let value = runtime::to_value(&self.kind).unwrap_or_default();
-            runtime::check_schema(
+            let schema = SCHEMA
+                .get_or_init(|| {
+                    serde_json::from_str("{\"const\":\"gadget\"}").unwrap_or_default()
+                });
+            runtime::check_schema_in(
                 out,
                 &runtime::InstancePath::Key(path, "kind"),
                 &value,
-                SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str("{\"const\":\"gadget\"}")
-                            .unwrap_or_default()
-                    }),
+                schema,
+                runtime::schema_defs(),
             );
         }
         if let Some(v) = &self.tags {
             {
                 static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                 let value = runtime::to_value(v).unwrap_or_default();
-                runtime::check_schema(
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"uniqueItems\":true,\"minItems\":0,\"maxItems\":10,\"contains\":{\"const\":\"vip\"},\"minContains\":0,\"maxContains\":1}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
                     out,
                     &runtime::InstancePath::Key(path, "tags"),
                     &value,
-                    SCHEMA
-                        .get_or_init(|| {
-                            serde_json::from_str(
-                                    "{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"uniqueItems\":true,\"minItems\":0,\"maxItems\":10,\"contains\":{\"const\":\"vip\"},\"minContains\":0,\"maxContains\":1}",
-                                )
-                                .unwrap_or_default()
-                        }),
+                    schema,
+                    runtime::schema_defs(),
                 );
             }
         }
@@ -1441,17 +1473,19 @@ impl runtime::Validate for Gadget2Request {
             {
                 static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                 let value = runtime::to_value(v).unwrap_or_default();
-                runtime::check_schema(
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"type\":\"array\",\"prefixItems\":[{\"type\":\"number\"},{\"type\":\"number\"}],\"items\":false,\"unevaluatedItems\":false}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
                     out,
                     &runtime::InstancePath::Key(path, "point"),
                     &value,
-                    SCHEMA
-                        .get_or_init(|| {
-                            serde_json::from_str(
-                                    "{\"type\":\"array\",\"prefixItems\":[{\"type\":\"number\"},{\"type\":\"number\"}],\"items\":false,\"unevaluatedItems\":false}",
-                                )
-                                .unwrap_or_default()
-                        }),
+                    schema,
+                    runtime::schema_defs(),
                 );
             }
         }
@@ -1459,17 +1493,19 @@ impl runtime::Validate for Gadget2Request {
             {
                 static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                 let value = runtime::to_value(v).unwrap_or_default();
-                runtime::check_schema(
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"type\":\"object\",\"patternProperties\":{\"^x_\":{\"type\":\"string\"}},\"propertyNames\":{\"pattern\":\"^[a-z_]+$\"},\"minProperties\":0,\"maxProperties\":20,\"unevaluatedProperties\":false}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
                     out,
                     &runtime::InstancePath::Key(path, "attrs"),
                     &value,
-                    SCHEMA
-                        .get_or_init(|| {
-                            serde_json::from_str(
-                                    "{\"type\":\"object\",\"patternProperties\":{\"^x_\":{\"type\":\"string\"}},\"propertyNames\":{\"pattern\":\"^[a-z_]+$\"},\"minProperties\":0,\"maxProperties\":20,\"unevaluatedProperties\":false}",
-                                )
-                                .unwrap_or_default()
-                        }),
+                    schema,
+                    runtime::schema_defs(),
                 );
             }
         }
@@ -1491,17 +1527,19 @@ impl runtime::Validate for Gadget2Request {
             {
                 static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                 let value = runtime::to_value(v).unwrap_or_default();
-                runtime::check_schema(
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":true}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
                     out,
                     &runtime::InstancePath::Key(path, "owner"),
                     &value,
-                    SCHEMA
-                        .get_or_init(|| {
-                            serde_json::from_str(
-                                    "{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":true}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}",
-                                )
-                                .unwrap_or_default()
-                        }),
+                    schema,
+                    runtime::schema_defs(),
                 );
             }
         }

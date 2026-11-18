@@ -46,7 +46,7 @@ Binary request bodies reach the handler as they arrive. A `Blob` is a `Stream` o
 {{#include ../../../tests/e2e/tests/v32_uploads.rs:upload}}
 ```
 
-Sequential responses take `api::Items<T>` in the same way. These are JSON Lines and JSON text sequences and server-sent events. Return `Items::List(vec)`. Or pass any `Stream` of items to `Items::stream`. A sequential request body is a `Stream` of its items too.
+Sequential responses take `api::Items<T>` in the same way. These are JSON Lines and JSON text sequences and server-sent events. Return `Items::List(vec)`. Or pass any `Stream` of items to `Items::stream`. A sequential request body is a `Stream` of its items too. Each item is checked as it is read, and the `minItems`, `maxItems` and `uniqueItems` of the sequence hold as it arrives: the item past `maxItems` and an item met before are an `Err`, and so is an end short of `minItems`. Items that your code produces are not checked.
 
 Server-sent events can also take `Items::events`. Its records carry the `id` and name of an event. They also carry a `retry` and comments. A client that reconnects sends the last `id` back as `Last-Event-ID`:
 

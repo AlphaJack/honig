@@ -4,9 +4,9 @@ use proc_macro2::{Ident, Literal, Span, TokenStream};
 use quote::{ToTokens, quote};
 
 use crate::emit::rust::names::{pascal, snake};
-use crate::emit::rust::space::Space;
+use crate::emit::rust::space::{Space, WORD};
 use crate::ir::names::Name;
-use crate::ir::types::{Format, Kind, Ty};
+use crate::ir::types::{Format, Ty, TypeId};
 use crate::settings::{DateLib, FormatLibs};
 
 /// Returns a Rust string literal with every special character escaped.
@@ -57,7 +57,7 @@ pub(crate) fn doc_opt(d: Option<&str>) -> TokenStream {
 
 /// Returns rust type of `ty`; named types get `types::` when `qualify` is set.
 pub(crate) fn ty(space: &Space<'_>, t: &Ty, qualify: bool) -> TokenStream {
-    let named = |id: crate::ir::types::TypeId| {
+    let named = |id: TypeId| {
         let n = pascal_ident(&space.types.get(id).name);
         if qualify { quote!(types::#n) } else { quote!(#n) }
     };
@@ -65,7 +65,7 @@ pub(crate) fn ty(space: &Space<'_>, t: &Ty, qualify: bool) -> TokenStream {
 }
 
 /// Returns [`ty`] with named types written by `named`.
-fn ty_with(space: &Space<'_>, t: &Ty, named: &dyn Fn(crate::ir::types::TypeId) -> TokenStream) -> TokenStream {
+fn ty_with(space: &Space<'_>, t: &Ty, named: &dyn Fn(TypeId) -> TokenStream) -> TokenStream {
     let inner = |x: &Ty| ty_with(space, x, named);
     match t {
         Ty::Bool => quote!(bool),
@@ -877,69 +877,9 @@ pub(crate) fn has_float(space: &Space<'_>, ty: &Ty) -> bool {
 
 /// Sizes on a 64-bit target written out so that the generated code is the same on every host. That is a pointer or
 /// a word, a `String`, `Vec` or `BTreeMap` (three words) and a `serde_json::Value`.
-pub(crate) const WORD: usize = 8;
-const COLLECTION: usize = 24;
-const JSON_VALUE: usize = 32;
-/// Types nested deeper than this count as a pointer.
-const MAX_SIZE_DEPTH: usize = 16;
 /// How much larger than the next the largest enum variant may be before it is boxed (`clippy::large_enum_variant`
 /// warns past 200).
 const BOX_MARGIN: usize = 128;
-
-/// Returns the rough in-memory size in bytes on a 64-bit target. It decides which enum
-/// variants to box (`clippy::large_enum_variant`).
-pub(crate) fn approx_size(space: &Space<'_>, ty: &Ty) -> usize {
-    size_in(space, ty, 0)
-}
-
-fn size_in(space: &Space<'_>, ty: &Ty, depth: usize) -> usize {
-    if depth > MAX_SIZE_DEPTH {
-        return WORD;
-    }
-    match ty {
-        Ty::Unit => 0,
-        Ty::Bool | Ty::I8 | Ty::U8 => size_of::<u8>(),
-        Ty::I16 | Ty::U16 => size_of::<u16>(),
-        Ty::I32 | Ty::U32 | Ty::F32 => size_of::<u32>(),
-        Ty::I64 | Ty::U64 | Ty::F64 => size_of::<u64>(),
-        Ty::Indirect(_) => WORD,
-        Ty::String | Ty::Bytes | Ty::Binary | Ty::Format(_) | Ty::Vec(_) | Ty::Map(_) | Ty::Decimal => COLLECTION,
-        Ty::Any => JSON_VALUE,
-        Ty::Option(t) => option_size(space, t, depth),
-        Ty::Tuple(ts) => ts.iter().map(|t| size_in(space, t, depth + 1)).sum(),
-        Ty::Array(t, n) => n * size_in(space, t, depth + 1),
-        Ty::Named(id) => match &space.types.get(*id).kind {
-            Kind::Struct(s) => {
-                s.fields
-                    .iter()
-                    .map(|f| {
-                        if f.required { size_in(space, &f.ty, depth + 1) } else { option_size(space, &f.ty, depth + 1) }
-                    })
-                    .sum::<usize>()
-                    + if s.additional.is_some() { COLLECTION } else { 0 }
-            }
-            Kind::StrEnum(_) | Kind::IntEnum(_) | Kind::Pattern(_) => COLLECTION,
-            Kind::Const(_) => 0,
-            Kind::Union(u) => {
-                u.variants.iter().map(|v| size_in(space, &v.ty, depth + 1)).max().unwrap_or(0).max(JSON_VALUE) + WORD
-            }
-            Kind::Alias(t) | Kind::Newtype(t) => size_in(space, t, depth + 1),
-            Kind::Pending => WORD,
-        },
-    }
-}
-
-fn option_size(space: &Space<'_>, t: &Ty, depth: usize) -> usize {
-    let inner = size_in(space, t, depth);
-    if matches!(
-        t,
-        Ty::String | Ty::Bytes | Ty::Binary | Ty::Format(_) | Ty::Vec(_) | Ty::Map(_) | Ty::Indirect(_) | Ty::Named(_)
-    ) {
-        inner
-    } else {
-        inner + WORD
-    }
-}
 
 /// Returns which variants to box so that the largest variant is no more than about
 /// 128 bytes above the next one. `sizes` holds (unboxed size, boxable part size).

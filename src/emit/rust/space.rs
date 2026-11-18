@@ -14,6 +14,8 @@ pub(crate) struct Space<'a> {
     pub libs: FormatLibs,
     /// Which definitions hold a float somewhere by `TypeId`.
     floats: Vec<bool>,
+    /// The rough size of each definition by `TypeId` ([`Space::approx_size`]).
+    sizes: Vec<usize>,
 }
 
 impl<'a> Space<'a> {
@@ -50,7 +52,13 @@ impl<'a> Space<'a> {
 
     /// Creates the view of the emitter on `types` for a crate with `libs`.
     pub(crate) fn new(types: &'a TypeSpace, libs: FormatLibs) -> Self {
-        Self { types, libs, floats: float_defs(types) }
+        Self { types, libs, floats: float_defs(types), sizes: def_sizes(types) }
+    }
+
+    /// Returns the rough in-memory size in bytes of `ty` on a 64-bit target. It decides which enum variants to box
+    /// (`clippy::large_enum_variant`).
+    pub(crate) fn approx_size(&self, ty: &Ty) -> usize {
+        size_in(ty, &mut |id| self.sizes.get(id.0).copied().unwrap_or(WORD))
     }
 
     /// Does `ty` hold a float anywhere (and so cannot derive `Eq`)? Your own type (`x-rust-type`) counts as one:
@@ -110,4 +118,83 @@ fn float_defs(space: &TypeSpace) -> Vec<bool> {
 /// Returns whether `ty` holds a float itself. Named types that it refers to do not count.
 fn float_here(ty: &Ty) -> bool {
     matches!(ty, Ty::F32 | Ty::F64) || ty.children().iter().any(float_here)
+}
+
+/// The size of a pointer, and of a variant that is boxed.
+pub(crate) const WORD: usize = 8;
+const COLLECTION: usize = 24;
+const JSON_VALUE: usize = 32;
+
+/// Where finding the size of a definition is.
+#[derive(Clone, Copy)]
+enum Size {
+    Unknown,
+    /// Met again while it is found, the definition is on a cycle that a `Box` breaks.
+    Finding,
+    Found(usize),
+}
+
+/// Returns [`Space::approx_size`] of every definition of `types`, each found once. A union of unions asks for the size
+/// of each type again on every path to it: found afresh each time, that grows with the paths and not with the types.
+fn def_sizes(types: &TypeSpace) -> Vec<usize> {
+    fn named(types: &TypeSpace, found: &mut [Size], i: usize) -> usize {
+        match found[i] {
+            Size::Found(size) => return size,
+            Size::Finding => return WORD,
+            Size::Unknown => {}
+        }
+        found[i] = Size::Finding;
+        let size = def_size(&types.defs[i].kind, &mut |id| named(types, found, id.0));
+        found[i] = Size::Found(size);
+        size
+    }
+    let mut found = vec![Size::Unknown; types.defs.len()];
+    (0..types.defs.len()).map(|i| named(types, &mut found, i)).collect()
+}
+
+/// Returns the size of a definition of kind `kind`, with the sizes of the definitions it names from `named`.
+fn def_size(kind: &Kind, named: &mut dyn FnMut(TypeId) -> usize) -> usize {
+    match kind {
+        Kind::Struct(s) => {
+            s.fields
+                .iter()
+                .map(|f| if f.required { size_in(&f.ty, named) } else { option_size(&f.ty, named) })
+                .sum::<usize>()
+                + if s.additional.is_some() { COLLECTION } else { 0 }
+        }
+        Kind::StrEnum(_) | Kind::IntEnum(_) | Kind::Pattern(_) => COLLECTION,
+        Kind::Const(_) => 0,
+        Kind::Union(u) => u.variants.iter().map(|v| size_in(&v.ty, named)).max().unwrap_or(0).max(JSON_VALUE) + WORD,
+        Kind::Alias(t) | Kind::Newtype(t) => size_in(t, named),
+        Kind::Pending => WORD,
+    }
+}
+
+fn size_in(ty: &Ty, named: &mut dyn FnMut(TypeId) -> usize) -> usize {
+    match ty {
+        Ty::Unit => 0,
+        Ty::Bool | Ty::I8 | Ty::U8 => size_of::<u8>(),
+        Ty::I16 | Ty::U16 => size_of::<u16>(),
+        Ty::I32 | Ty::U32 | Ty::F32 => size_of::<u32>(),
+        Ty::I64 | Ty::U64 | Ty::F64 => size_of::<u64>(),
+        Ty::Indirect(_) => WORD,
+        Ty::String | Ty::Bytes | Ty::Binary | Ty::Format(_) | Ty::Vec(_) | Ty::Map(_) | Ty::Decimal => COLLECTION,
+        Ty::Any => JSON_VALUE,
+        Ty::Option(t) => option_size(t, named),
+        Ty::Tuple(ts) => ts.iter().map(|t| size_in(t, named)).sum(),
+        Ty::Array(t, n) => n * size_in(t, named),
+        Ty::Named(id) => named(*id),
+    }
+}
+
+fn option_size(t: &Ty, named: &mut dyn FnMut(TypeId) -> usize) -> usize {
+    let inner = size_in(t, named);
+    if matches!(
+        t,
+        Ty::String | Ty::Bytes | Ty::Binary | Ty::Format(_) | Ty::Vec(_) | Ty::Map(_) | Ty::Indirect(_) | Ty::Named(_)
+    ) {
+        inner
+    } else {
+        inner + WORD
+    }
 }

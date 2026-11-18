@@ -8,7 +8,7 @@ use super::multipart::{BOUNDARY, boundary_of, parts};
 use crate::binary::{raw_mark, raw_part, raw_parts};
 use crate::json::to_value;
 use crate::media::json_type;
-use crate::text::{decode_err, lossy, utf8};
+use crate::text::{decode_err, utf8};
 use crate::{Coerce, Error};
 
 /// Encodes positional multipart: one part per array item.
@@ -89,7 +89,7 @@ fn mixed_decode_in<T: DeserializeOwned>(
         let ct = part.header("content-type").map_or_else(|| "text/plain".to_owned(), |v| v.trim().to_ascii_lowercase());
         let data = &part.data[..];
         let value = if json_type(&ct) {
-            serde_json::from_slice(data).unwrap_or_else(|_| Value::String(lossy(data).into_owned()))
+            serde_json::from_slice(data).map_err(|e| decode_err(status, body, format!("a JSON part: {e}")))?
         } else {
             // A binary part is never text: no UTF-8 pass over its bytes.
             match ct.starts_with("text/").then(|| utf8(data)).flatten() {
@@ -108,6 +108,14 @@ fn mixed_decode_in<T: DeserializeOwned>(
 
 #[cfg(test)]
 mod tests {
+    /// A part declared JSON whose bytes are not JSON is a decode error, not the text of a string.
+    #[test]
+    fn a_part_declared_json_that_does_not_parse_is_an_error() {
+        let body = b"--b\r\ncontent-type: application/json\r\n\r\n{not json\r\n--b--\r\n";
+        let decoded = super::mixed_decode::<Vec<serde_json::Value>>(400, "multipart/mixed; boundary=b", body, None);
+        assert!(decoded.is_err(), "{decoded:?}");
+    }
+
     /// A string part declared JSON is a JSON string. Without a declared type it is plain text.
     #[test]
     fn a_string_declared_json_is_quoted() {

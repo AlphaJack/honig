@@ -39,9 +39,36 @@ macro_rules! validate_impl {
         }
     };
 }
+macro_rules! display_impl {
+    ($t:ty) => {
+        impl std::fmt::Display for $t {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                match self {
+                    Self::NoContent => f.write_str("status 204 (NoContent)"),
+                }
+            }
+        }
+    };
+}
+macro_rules! error_impl {
+    ($t:ty) => {
+        impl std::error::Error for $t {}
+    };
+}
 macro_rules! validate_impl_2 {
     ($t:ty) => {
         impl runtime::Validate for $t {}
+    };
+}
+macro_rules! display_impl_2 {
+    ($t:ty) => {
+        impl std::fmt::Display for $t {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                match self {
+                    Self::Ok(..) => f.write_str("status 200 (Ok)"),
+                }
+            }
+        }
     };
 }
 pub mod form_with_xml {
@@ -65,6 +92,16 @@ pub mod form_with_xml {
     pub enum Response {
         /// ok
         NoContent,
+    }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
     }
 }
 pub mod parameter_examples {
@@ -121,6 +158,16 @@ pub mod parameter_examples {
         /// ok
         NoContent,
     }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
+    }
 }
 pub mod querystring_form {
     use super::super::types;
@@ -143,6 +190,16 @@ pub mod querystring_form {
     pub enum Response {
         /// ok
         NoContent,
+    }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
     }
 }
 pub mod querystring_json {
@@ -167,6 +224,16 @@ pub mod querystring_json {
         /// ok
         NoContent,
     }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
+    }
 }
 pub mod basic_multipart_form {
     use super::super::types;
@@ -189,6 +256,16 @@ pub mod basic_multipart_form {
     pub enum Response {
         /// ok
         NoContent,
+    }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
     }
 }
 pub mod multipart_form_with_encoding_objects {
@@ -220,6 +297,16 @@ pub mod multipart_form_with_encoding_objects {
         /// ok
         NoContent,
     }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
+    }
 }
 pub mod multipart_form_with_multiple_files {
     use super::super::types;
@@ -242,6 +329,16 @@ pub mod multipart_form_with_multiple_files {
     pub enum Response {
         /// ok
         NoContent,
+    }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
     }
 }
 pub mod ordered_unnamed_multipart {
@@ -269,17 +366,19 @@ pub mod ordered_unnamed_multipart {
                 {
                     static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                     let value = runtime::to_value(v).unwrap_or_default();
-                    runtime::check_schema(
+                    let schema = SCHEMA
+                        .get_or_init(|| {
+                            serde_json::from_str(
+                                    "{\"type\":\"array\",\"prefixItems\":[{\"type\":\"object\",\"properties\":{\"author\":{\"type\":\"string\"},\"created\":{\"type\":\"string\",\"format\":\"datetime\"},\"copyright\":{\"type\":\"string\"},\"license\":{\"type\":\"string\"}}},{}]}",
+                                )
+                                .unwrap_or_default()
+                        });
+                    runtime::check_schema_in(
                         out,
                         &runtime::InstancePath::Key(path, "body"),
                         &value,
-                        SCHEMA
-                            .get_or_init(|| {
-                                serde_json::from_str(
-                                        "{\"type\":\"array\",\"prefixItems\":[{\"type\":\"object\",\"properties\":{\"author\":{\"type\":\"string\"},\"created\":{\"type\":\"string\",\"format\":\"datetime\"},\"copyright\":{\"type\":\"string\"},\"license\":{\"type\":\"string\"}}},{}]}",
-                                    )
-                                    .unwrap_or_default()
-                            }),
+                        schema,
+                        None,
                     );
                 }
             }
@@ -289,6 +388,16 @@ pub mod ordered_unnamed_multipart {
     pub enum Response {
         /// ok
         NoContent,
+    }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
     }
 }
 pub mod ordered_multipart_with_required_header {
@@ -323,17 +432,19 @@ pub mod ordered_multipart_with_required_header {
                 {
                     static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                     let value = runtime::to_value(v).unwrap_or_default();
-                    runtime::check_schema(
+                    let schema = SCHEMA
+                        .get_or_init(|| {
+                            serde_json::from_str(
+                                    "{\"prefixItems\":[{\"type\":\"string\"}],\"items\":{\"anyOf\":[{\"type\":\"string\"},{\"$comment\":\"To allow binary, this must always pass\"}]}}",
+                                )
+                                .unwrap_or_default()
+                        });
+                    runtime::check_schema_in(
                         out,
                         &runtime::InstancePath::Key(path, "body"),
                         &value,
-                        SCHEMA
-                            .get_or_init(|| {
-                                serde_json::from_str(
-                                        "{\"prefixItems\":[{\"type\":\"string\"}],\"items\":{\"anyOf\":[{\"type\":\"string\"},{\"$comment\":\"To allow binary, this must always pass\"}]}}",
-                                    )
-                                    .unwrap_or_default()
-                            }),
+                        schema,
+                        None,
                     );
                 }
             }
@@ -343,6 +454,16 @@ pub mod ordered_multipart_with_required_header {
     pub enum Response {
         /// ok
         NoContent,
+    }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
     }
 }
 pub mod nested_multipart_mixed {
@@ -370,17 +491,19 @@ pub mod nested_multipart_mixed {
                 {
                     static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                     let value = runtime::to_value(v).unwrap_or_default();
-                    runtime::check_schema(
+                    let schema = SCHEMA
+                        .get_or_init(|| {
+                            serde_json::from_str(
+                                    "{\"type\":\"array\",\"prefixItems\":[{\"type\":\"array\"},{\"type\":\"array\",\"prefixItems\":[{\"type\":\"object\"},{\"type\":\"string\"},{}]}]}",
+                                )
+                                .unwrap_or_default()
+                        });
+                    runtime::check_schema_in(
                         out,
                         &runtime::InstancePath::Key(path, "body"),
                         &value,
-                        SCHEMA
-                            .get_or_init(|| {
-                                serde_json::from_str(
-                                        "{\"type\":\"array\",\"prefixItems\":[{\"type\":\"array\"},{\"type\":\"array\",\"prefixItems\":[{\"type\":\"object\"},{\"type\":\"string\"},{}]}]}",
-                                    )
-                                    .unwrap_or_default()
-                            }),
+                        schema,
+                        None,
                     );
                 }
             }
@@ -390,6 +513,16 @@ pub mod nested_multipart_mixed {
     pub enum Response {
         /// ok
         NoContent,
+    }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
     }
 }
 pub mod streaming_multipart {
@@ -411,6 +544,16 @@ pub mod streaming_multipart {
         /// A device streams its pictures, each processed as it arrives.
         Ok(Vec<runtime::Binary>),
     }
+    display_impl_2!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<Vec<runtime::Binary>, Box<Self>> {
+            match self {
+                Self::Ok(body) => Ok(body),
+            }
+        }
+    }
 }
 pub mod streaming_byte_ranges {
     use super::super::runtime;
@@ -430,6 +573,22 @@ pub mod streaming_byte_ranges {
     pub enum Response {
         /// Byte ranges of a video, each with its Content-Range.
         PartialContent(Vec<runtime::Binary>),
+    }
+    impl std::fmt::Display for Response {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Self::PartialContent(..) => f.write_str("status 206 (PartialContent)"),
+            }
+        }
+    }
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<Vec<runtime::Binary>, Box<Self>> {
+            match self {
+                Self::PartialContent(body) => Ok(body),
+            }
+        }
     }
 }
 pub mod querystring_jsonpath {
@@ -453,6 +612,16 @@ pub mod querystring_jsonpath {
         /// ok
         NoContent,
     }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
+    }
 }
 pub mod collection_with_links {
     use super::super::types;
@@ -473,6 +642,24 @@ pub mod collection_with_links {
     pub enum Response {
         /// A page of a collection, its pagination links in the `Link` header.
         Ok { body: Vec<serde_json::Value>, link: types::CollectionLinks },
+    }
+    impl std::fmt::Display for Response {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Self::Ok { .. } => f.write_str("status 200 (Ok)"),
+            }
+        }
+    }
+    error_impl!(Response);
+    /// The body and headers of the success, in order: what `Response::into_ok` gives.
+    pub type Success = (Vec<serde_json::Value>, types::CollectionLinks);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<Success, Box<Self>> {
+            match self {
+                Self::Ok { body, link } => Ok((body, link)),
+            }
+        }
     }
 }
 pub mod standalone_json_linkset {
@@ -495,6 +682,16 @@ pub mod standalone_json_linkset {
         /// The same links as a JSON document.
         Ok(types::CollectionLinks),
     }
+    display_impl_2!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<types::CollectionLinks, Box<Self>> {
+            match self {
+                Self::Ok(body) => Ok(body),
+            }
+        }
+    }
 }
 pub mod linkset_body {
     use super::super::types;
@@ -516,6 +713,16 @@ pub mod linkset_body {
         /// The links in `Link` header syntax.
         Ok(types::CollectionLinks),
     }
+    display_impl_2!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<types::CollectionLinks, Box<Self>> {
+            match self {
+                Self::Ok(body) => Ok(body),
+            }
+        }
+    }
 }
 pub mod media_type_json {
     use super::super::types;
@@ -536,6 +743,16 @@ pub mod media_type_json {
     pub enum Response {
         /// A product.
         Ok(types::Product),
+    }
+    display_impl_2!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<types::Product, Box<Self>> {
+            match self {
+                Self::Ok(body) => Ok(body),
+            }
+        }
     }
 }
 pub mod log_stream {
@@ -583,6 +800,16 @@ pub mod log_stream {
     pub enum Response {
         /// A stream of JSON-format log messages, in any of the sequential JSON media types.
         Ok(OkBody),
+    }
+    display_impl_2!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<OkBody, Box<Self>> {
+            match self {
+                Self::Ok(body) => Ok(body),
+            }
+        }
     }
     pub type OkBody = super::responses::LogStream;
 }
@@ -632,6 +859,16 @@ pub mod log_excerpt {
         /// No more than 100 log records, in any of the sequential JSON media types.
         Ok(OkBody),
     }
+    display_impl_2!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<OkBody, Box<Self>> {
+            match self {
+                Self::Ok(body) => Ok(body),
+            }
+        }
+    }
     pub type OkBody = super::responses::LogExcerpt;
 }
 pub mod server_sent_event_streams {
@@ -674,6 +911,16 @@ pub mod server_sent_event_streams {
     pub enum Response {
         /// ok
         NoContent,
+    }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
     }
 }
 pub mod responses {

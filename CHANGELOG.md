@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.0.3](https://github.com/AlphaJack/honig/compare/v0.0.2...v0.0.3) - 2026-11-18
+
+### Added
+
+- **generator**: Warn that a pattern beside a typed format is not checked ([#78](https://github.com/AlphaJack/honig/pull/78))
+
+### Fixed
+
+- **generator**: Find the kind and size of each type once ([#84](https://github.com/AlphaJack/honig/pull/84))
+- **generator**: Hold decimal128 to the limits of IEEE 754 decimal128 ([#82](https://github.com/AlphaJack/honig/pull/82))
+- **generator**: Put each schema that a whole check reaches in $defs once ([#81](https://github.com/AlphaJack/honig/pull/81))
+- **generator**: Print the body of a generated macro as items ([#80](https://github.com/AlphaJack/honig/pull/80))
+- **generator**: Check integer bounds and multipleOf exactly ([#76](https://github.com/AlphaJack/honig/pull/76))
+- **generator**: Check a cycle past the depth limit and warn where a whole schema stops ([#75](https://github.com/AlphaJack/honig/pull/75))
+- **generator**: Key a cycle of a schema checked whole by its pointer ([#74](https://github.com/AlphaJack/honig/pull/74))
+- **generator**: Rewrite the $ref of a property named default, enum or example ([#73](https://github.com/AlphaJack/honig/pull/73))
+- **generator**: Let a binary that denies allow_attributes take the generated code ([#71](https://github.com/AlphaJack/honig/pull/71))
+- **runtime**: Check decimal ranges and multipleOf exactly on decimal text ([#77](https://github.com/AlphaJack/honig/pull/77))
+- **runtime**: Name the field of a form body that does not decode ([#79](https://github.com/AlphaJack/honig/pull/79))
+
 ## [0.0.2](https://github.com/AlphaJack/honig/compare/v0.0.1...v0.0.2) - 2026-11-17
 
 ### Added

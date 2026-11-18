@@ -53,17 +53,19 @@ impl runtime::Validate for Route {
         {
             static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
             let value = runtime::to_value(&self.start).unwrap_or_default();
-            runtime::check_schema(
+            let schema = SCHEMA
+                .get_or_init(|| {
+                    serde_json::from_str(
+                            "{\"type\":\"array\",\"prefixItems\":[{\"type\":\"number\"},{\"type\":\"number\"},{\"type\":\"string\"}],\"items\":false,\"minItems\":3}",
+                        )
+                        .unwrap_or_default()
+                });
+            runtime::check_schema_in(
                 out,
                 &runtime::InstancePath::Key(path, "start"),
                 &value,
-                SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"type\":\"array\",\"prefixItems\":[{\"type\":\"number\"},{\"type\":\"number\"},{\"type\":\"string\"}],\"items\":false,\"minItems\":3}",
-                            )
-                            .unwrap_or_default()
-                    }),
+                schema,
+                None,
             );
         }
         {
@@ -72,17 +74,19 @@ impl runtime::Validate for Route {
                 {
                     static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                     let value = runtime::to_value(v).unwrap_or_default();
-                    runtime::check_schema(
+                    let schema = SCHEMA
+                        .get_or_init(|| {
+                            serde_json::from_str(
+                                    "{\"type\":\"array\",\"prefixItems\":[{\"type\":\"number\"},{\"type\":\"number\"},{\"type\":\"string\"}],\"items\":false,\"minItems\":3}",
+                                )
+                                .unwrap_or_default()
+                        });
+                    runtime::check_schema_in(
                         out,
                         &runtime::InstancePath::Index(base, i),
                         &value,
-                        SCHEMA
-                            .get_or_init(|| {
-                                serde_json::from_str(
-                                        "{\"type\":\"array\",\"prefixItems\":[{\"type\":\"number\"},{\"type\":\"number\"},{\"type\":\"string\"}],\"items\":false,\"minItems\":3}",
-                                    )
-                                    .unwrap_or_default()
-                            }),
+                        schema,
+                        None,
                     );
                 }
             }
@@ -91,17 +95,19 @@ impl runtime::Validate for Route {
             {
                 static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                 let value = runtime::to_value(v).unwrap_or_default();
-                runtime::check_schema(
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"type\":\"array\",\"prefixItems\":[{\"type\":\"string\"}]}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
                     out,
                     &runtime::InstancePath::Key(path, "tags"),
                     &value,
-                    SCHEMA
-                        .get_or_init(|| {
-                            serde_json::from_str(
-                                    "{\"type\":\"array\",\"prefixItems\":[{\"type\":\"string\"}]}",
-                                )
-                                .unwrap_or_default()
-                        }),
+                    schema,
+                    None,
                 );
             }
         }

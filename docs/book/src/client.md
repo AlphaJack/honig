@@ -106,6 +106,14 @@ A call returns `Err(api::Error)` when it gets no response the description declar
 
 Every other variant that read a response carries its raw body.
 
+A declared response that is not the success is still `Ok` from the call: the description declares it. `into_ok` turns the response into the success and anything else into an `Err` that `?` takes into any error type:
+
+```rust
+{{#include ../../../tests/e2e/tests/v32_shop/client.rs:into-ok}}
+```
+
+One success gives what it carries: nothing, its body, or its body and headers in order as `Success`. Several successes, or a `2XX` range, give the response itself. The `Err` is the whole response, boxed, so its body stays typed.
+
 ## Browser (WebAssembly)
 
 The client compiles for `wasm32-unknown-unknown` and sends through the browser's `fetch`:
