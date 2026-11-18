@@ -6,7 +6,7 @@
 //! Text from the spec only reaches code through `lit()` (string literals) or
 //! sanitized identifiers.
 
-mod checks;
+mod validate;
 mod http;
 pub(crate) mod names;
 pub(crate) mod needs;

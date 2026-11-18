@@ -1267,27 +1267,27 @@ fn checked_type(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, def
                 let p = lit(p);
                 quote!(impl #n { pub const PATTERN: &'static str = #p; })
             });
-            let checks = super::checks::string_checks(&c.constraints, &quote!(value.as_str()), &path);
+            let checks = super::validate::string_checks(&c.constraints, &quote!(value.as_str()), &path);
             (checks, quote!(Eq, Hash, PartialOrd, Ord,), pat)
         }
         Base::Float => {
-            let checks = super::checks::float_checks(&c.constraints, &quote!(&value), &path);
+            let checks = super::validate::float_checks(&c.constraints, &quote!(&value), &path);
             (checks, quote!(Copy, PartialOrd,), None)
         }
         Base::Decimal => {
-            let checks = super::checks::float_checks(
+            let checks = super::validate::float_checks(
                 &c.constraints,
-                &super::checks::float_value(&c.base, &quote!(&value)),
+                &super::validate::float_value(&c.base, &quote!(&value)),
                 &path,
             );
             (checks, quote!(Eq, Hash,), None)
         }
         Base::Int => {
-            let checks = super::checks::integer_checks(&c.base, &c.constraints, &quote!(&value), &path);
+            let checks = super::validate::integer_checks(&c.base, &c.constraints, &quote!(&value), &path);
             (checks, quote!(Copy, Eq, Hash, PartialOrd, Ord,), None)
         }
         Base::Other => {
-            let checks = super::checks::checks(space, &c.base, &c.constraints, &quote!(&value), &path);
+            let checks = super::validate::checks(space, &c.base, &c.constraints, &quote!(&value), &path);
             let eq = (!has_float(space, &Ty::Named(id))).then(|| quote!(Eq,));
             // The base reads the text of its library formats checked, as a field of it would.
             let read = match holds(space, &c.base) {
