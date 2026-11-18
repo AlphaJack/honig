@@ -582,7 +582,8 @@ impl<'a> Builder<'a> {
                 && ASSERTIONS
                     .iter()
                     .any(|k| !matches!(*k, "items" | "prefixItems" | "additionalProperties") && o.contains_key(*k)))
-                || (o.contains_key("$ref") && o.keys().any(|k| !quiet(k)))
+                // An extension (`x-...`) asserts nothing either.
+                || (o.contains_key("$ref") && o.keys().any(|k| !quiet(k) && !k.starts_with("x-")))
         });
         if typeless_assertions(s)
             || tuple
