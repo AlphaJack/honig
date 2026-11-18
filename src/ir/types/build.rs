@@ -37,8 +37,6 @@ struct Walk {
 const MAX_TYPE_DEPTH: usize = 48;
 /// The most `prefixItems` a tuple takes: std implements the traits up to 12.
 const MAX_TUPLE: usize = 12;
-/// Aliases followed to find a type's JSON kind.
-const MAX_KIND_DEPTH: usize = 32;
 
 /// Keywords `runtime::check_schema` handles that typed checks cannot.
 pub(crate) const UNTYPED_KEYWORDS: [&str; 14] = [
@@ -1731,7 +1729,7 @@ impl<'a> Builder<'a> {
     }
 
     fn space_kind(&self, ty: &Ty) -> JsonKind {
-        kind_in(&self.defs, ty, 0)
+        kind_in(&self.defs, ty)
     }
 
     /// Returns `type: [string, integer]` to union by JSON kind.
@@ -1785,13 +1783,14 @@ impl<'a> Builder<'a> {
 /// by kind, as one built later would. Repeated until nothing changes: a union's kind can depend on another union.
 fn by_kind_when_known(defs: &mut [TypeDef]) {
     loop {
+        let mut known = Kinds::new(defs);
         let settle: Vec<usize> = (0..defs.len())
             .filter(|&i| {
                 let Kind::Union(u) = &defs[i].kind else { return false };
                 if u.mode != UnionMode::Untagged {
                     return false;
                 }
-                let kinds: Vec<JsonKind> = u.variants.iter().map(|v| kind_in(defs, &v.ty, 0)).collect();
+                let kinds: Vec<JsonKind> = u.variants.iter().map(|v| known.of(&v.ty)).collect();
                 let distinct: BTreeSet<&JsonKind> = kinds.iter().collect();
                 !kinds.contains(&JsonKind::Any) && distinct.len() == kinds.len()
             })
@@ -2078,34 +2077,70 @@ pub(crate) fn with_external_docs(doc: Option<String>, s: &Value) -> Option<Strin
     })
 }
 
-pub(crate) fn kind_in(defs: &[TypeDef], ty: &Ty, depth: usize) -> JsonKind {
-    if depth > MAX_KIND_DEPTH {
-        return JsonKind::Any;
+pub(crate) fn kind_in(defs: &[TypeDef], ty: &Ty) -> JsonKind {
+    Kinds::new(defs).of(ty)
+}
+
+/// The JSON kinds of the named types of `defs`, each found once. A union of unions asks for the kind of each type
+/// again on every path to it: found afresh each time, that grows with the paths and not with the types.
+pub(crate) struct Kinds<'d> {
+    defs: &'d [TypeDef],
+    found: Vec<Found>,
+}
+
+/// Where finding the kind of a named type is.
+#[derive(Clone, Copy)]
+enum Found {
+    Unknown,
+    /// Met again while it is found, the type is on a cycle and takes any value.
+    Finding,
+    Kind(JsonKind),
+}
+
+impl<'d> Kinds<'d> {
+    pub(crate) fn new(defs: &'d [TypeDef]) -> Self {
+        Self { defs, found: vec![Found::Unknown; defs.len()] }
     }
-    match ty {
-        Ty::Bool => JsonKind::Bool,
-        Ty::I8 | Ty::I16 | Ty::I32 | Ty::I64 | Ty::U8 | Ty::U16 | Ty::U32 | Ty::U64 => JsonKind::Integer,
-        Ty::F32 | Ty::F64 | Ty::Decimal => JsonKind::Number,
-        Ty::String | Ty::Bytes | Ty::Binary | Ty::Format(_) => JsonKind::String,
-        Ty::Any => JsonKind::Any,
-        Ty::Unit => JsonKind::Null,
-        Ty::Vec(_) | Ty::Array(..) | Ty::Tuple(_) => JsonKind::Array,
-        Ty::Map(_) => JsonKind::Object,
-        Ty::Option(t) | Ty::Indirect(t) => kind_in(defs, t, depth + 1),
-        Ty::Named(id) => match &defs[id.0].kind {
+
+    pub(crate) fn of(&mut self, ty: &Ty) -> JsonKind {
+        match ty {
+            Ty::Bool => JsonKind::Bool,
+            Ty::I8 | Ty::I16 | Ty::I32 | Ty::I64 | Ty::U8 | Ty::U16 | Ty::U32 | Ty::U64 => JsonKind::Integer,
+            Ty::F32 | Ty::F64 | Ty::Decimal => JsonKind::Number,
+            Ty::String | Ty::Bytes | Ty::Binary | Ty::Format(_) => JsonKind::String,
+            Ty::Any => JsonKind::Any,
+            Ty::Unit => JsonKind::Null,
+            Ty::Vec(_) | Ty::Array(..) | Ty::Tuple(_) => JsonKind::Array,
+            Ty::Map(_) => JsonKind::Object,
+            Ty::Option(t) | Ty::Indirect(t) => self.of(t),
+            Ty::Named(id) => self.named(id.0),
+        }
+    }
+
+    fn named(&mut self, i: usize) -> JsonKind {
+        match self.found[i] {
+            Found::Kind(kind) => return kind,
+            Found::Finding => return JsonKind::Any,
+            Found::Unknown => {}
+        }
+        self.found[i] = Found::Finding;
+        let defs = self.defs;
+        let kind = match &defs[i].kind {
             Kind::Struct(_) => JsonKind::Object,
             Kind::StrEnum(_) | Kind::Pattern(_) => JsonKind::String,
             Kind::IntEnum(_) => JsonKind::Integer,
             Kind::Const(v) => value_kind(v),
             // A closed union whose variants share a kind has that kind. An open one takes any value.
             Kind::Union(u) if !u.open => {
-                let mut kinds = u.variants.iter().map(|v| kind_in(defs, &v.ty, depth + 1));
+                let mut kinds = u.variants.iter().map(|v| self.of(&v.ty));
                 let first = kinds.next().unwrap_or(JsonKind::Any);
                 if kinds.all(|k| k == first) { first } else { JsonKind::Any }
             }
             Kind::Union(_) | Kind::Pending => JsonKind::Any,
-            Kind::Alias(t) | Kind::Newtype(t) => kind_in(defs, t, depth + 1),
-        },
+            Kind::Alias(t) | Kind::Newtype(t) => self.of(t),
+        };
+        self.found[i] = Found::Kind(kind);
+        kind
     }
 }
 
@@ -2234,6 +2269,23 @@ mod tests {
             variants,
             [(Name::new("Item"), &["Item".to_owned()][..]), (Name::new("Gadget"), &["Gadget".to_owned()][..])]
         );
+    }
+
+    /// A union of unions: each layer holds the two before it, so 2^40 paths reach the bottom. Each kind is found once,
+    /// and `Top` tells a text from a number however deep the text is.
+    #[test]
+    fn a_union_of_unions_finds_each_kind_once() {
+        let mut schemas = serde_json::Map::new();
+        schemas.insert("U0".into(), json!({"type": "string", "minLength": 1}));
+        schemas.insert("U1".into(), json!({"type": "string", "maxLength": 9}));
+        for i in 2..40 {
+            let r = |j: usize| json!({"$ref": format!("#/components/schemas/U{j}")});
+            schemas.insert(format!("U{i}"), json!({"anyOf": [r(i - 1), r(i - 2)]}));
+        }
+        schemas.insert("Top".into(), json!({"anyOf": [{"$ref": "#/components/schemas/U39"}, {"type": "integer"}]}));
+        let s = build(&Value::Object(schemas));
+        let Kind::Union(top) = &by_name(&s, "Top").kind else { panic!("{:?}", by_name(&s, "Top").kind) };
+        assert_eq!(top.mode, UnionMode::ByKind);
     }
 
     #[test]
