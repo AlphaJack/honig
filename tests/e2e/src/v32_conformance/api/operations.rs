@@ -176,7 +176,7 @@ pub mod post_product {
                     SCHEMA
                         .get_or_init(|| {
                             serde_json::from_str(
-                                    "{\"type\":\"object\",\"required\":[\"kind\"],\"properties\":{\"kind\":{\"type\":\"string\"}},\"oneOf\":[{\"type\":\"object\",\"required\":[\"kind\"],\"properties\":{\"kind\":{\"const\":\"Gadget\"},\"purrs\":{\"type\":\"boolean\"}}},{\"type\":\"object\",\"required\":[\"kind\"],\"properties\":{\"kind\":{\"const\":\"Book\"},\"barks\":{\"type\":\"boolean\"}}}]}",
+                                    "{\"type\":\"object\",\"required\":[\"kind\"],\"properties\":{\"kind\":{\"type\":\"string\"}},\"oneOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Gadget\"},{\"$ref\":\"#/$defs/~1components~1schemas~1Book\"}],\"$defs\":{\"/components/schemas/Gadget\":{\"type\":\"object\",\"required\":[\"kind\"],\"properties\":{\"kind\":{\"const\":\"Gadget\"},\"purrs\":{\"type\":\"boolean\"}}},\"/components/schemas/Book\":{\"type\":\"object\",\"required\":[\"kind\"],\"properties\":{\"kind\":{\"const\":\"Book\"},\"barks\":{\"type\":\"boolean\"}}}}}",
                                 )
                                 .unwrap_or_default()
                         }),

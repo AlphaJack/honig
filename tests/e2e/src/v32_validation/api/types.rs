@@ -433,7 +433,7 @@ impl runtime::Validate for Ledger {
                             SCHEMA
                                 .get_or_init(|| {
                                     serde_json::from_str(
-                                            "{\"allOf\":[{\"type\":\"object\",\"properties\":{\"lines\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"note\":{\"type\":[\"string\",\"null\"],\"maxLength\":3}}}}}},{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"integer\"},\"lines\":{\"maxItems\":2}}}]}",
+                                            "{\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1EntryFields\"},{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"integer\"},\"lines\":{\"maxItems\":2}}}],\"$defs\":{\"/components/schemas/EntryFields\":{\"type\":\"object\",\"properties\":{\"lines\":{\"type\":\"array\",\"items\":{\"$ref\":\"#/$defs/~1components~1schemas~1Line\"}}}},\"/components/schemas/Line\":{\"type\":\"object\",\"properties\":{\"note\":{\"type\":[\"string\",\"null\"],\"maxLength\":3}}}}}",
                                         )
                                         .unwrap_or_default()
                                 }),

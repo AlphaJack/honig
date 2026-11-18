@@ -130,7 +130,7 @@ impl runtime::Validate for ProductPage {
                         SCHEMA
                             .get_or_init(|| {
                                 serde_json::from_str(
-                                        "{\"$dynamicAnchor\":\"item\",\"allOf\":[{\"type\":\"object\",\"required\":[\"name\"],\"properties\":{\"name\":{\"type\":\"string\"}}}]}",
+                                        "{\"$dynamicAnchor\":\"item\",\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Product\"}],\"$defs\":{\"/components/schemas/Product\":{\"type\":\"object\",\"required\":[\"name\"],\"properties\":{\"name\":{\"type\":\"string\"}}}}}",
                                     )
                                     .unwrap_or_default()
                             }),

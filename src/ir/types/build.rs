@@ -24,12 +24,11 @@ const MAX_ALIAS_HOPS: usize = 16;
 /// Subschemas read for constraints or inlined for run-time checks before the rest is left unchecked.
 const MAX_SCHEMA_DEPTH: usize = 8;
 
-/// Where an inlining walk is: the dynamic scope that it entered, the pointers that it is expanding, the cycles that it
-/// cut into `$defs`, whether it may cut them, and whether it met a `$dynamicRef`.
+/// Where an inlining walk is: the dynamic scope that it entered, the targets that it moved into `$defs`, whether it
+/// may move them, and whether it met a `$dynamicRef`.
 #[derive(Default)]
 struct Walk {
     scope: Vec<String>,
-    expanding: Vec<String>,
     cuts: Vec<String>,
     cut: bool,
     dynamic: bool,
@@ -1051,13 +1050,12 @@ impl<'a> Builder<'a> {
 
     /// Returns `s` with its references inlined for run-time checks, from the dynamic scope `scope`.
     ///
-    /// A reference back to a schema that the walk is inside is a cycle: it points into `$defs` at the root, which
-    /// holds each such target once. So a recursive schema stays its own size, and the run-time check follows it as
-    /// deep as the value goes. A `$dynamicRef` resolves by where evaluation came from: with one in reach, cycles are
-    /// inlined to `MAX_SCHEMA_DEPTH` as before.
+    /// A reference points into `$defs` at the root, which holds each target once. So the fragment grows with the
+    /// schemas it reaches and not with the paths to them, a recursive schema stays its own size, and the run-time check
+    /// follows it as deep as the value goes. A `$dynamicRef` resolves by where evaluation came from: with one in reach,
+    /// references are inlined to `MAX_SCHEMA_DEPTH` as before.
     fn inlined(&self, s: &Value, at: Option<&str>, scope: Vec<String>) -> Value {
-        let expanding = at.map(|p| vec![p.to_owned()]).unwrap_or_default();
-        let mut walk = Walk { scope: scope.clone(), expanding, cut: true, ..Walk::default() };
+        let mut walk = Walk { scope: scope.clone(), cut: true, ..Walk::default() };
         let mut root = self.inline_scoped(s, 0, at, &mut walk);
         if walk.dynamic {
             return self.inline_scoped(s, 0, at, &mut Walk { scope, ..Walk::default() });
@@ -1066,7 +1064,6 @@ impl<'a> Builder<'a> {
         let mut i = 0;
         while let Some(p) = walk.cuts.get(i).cloned() {
             let target = pointer(&self.doc.root, &p).cloned().unwrap_or(Value::Bool(true));
-            walk.expanding = vec![p.clone()];
             walk.scope = vec![self.dynamic.resource_of(&p)];
             // The key is the pointer itself: the reference escapes it as one token, and a reader unescapes it.
             defs.insert(p.clone(), self.inline_scoped(&target, 1, Some(&p), &mut walk));
@@ -1104,10 +1101,10 @@ impl<'a> Builder<'a> {
                 walk.dynamic |= o.contains_key("$dynamicRef");
                 let target_ptr = dynamically.or(statically);
                 let mut target = match target_ptr.as_deref() {
-                    // A reference back to a schema that this walk is inside: a cycle. Expanding it again doubles the
-                    // fragment at each turn. It becomes a reference into `$defs`, which holds the target once. At any
-                    // depth: a cycle cut so is checked as deep as the value goes.
-                    Some(p) if walk.cut && walk.expanding.iter().any(|e| e == p) => {
+                    // Each target goes into `$defs` once, at any depth. Copying it at each reference copies a shared
+                    // target once per path to it: Stripe reaches 917 schemas over 35 million paths. A cycle ends there
+                    // too, and is checked as deep as the value goes.
+                    Some(p) if walk.cut => {
                         if !walk.cuts.iter().any(|c| c == p) {
                             walk.cuts.push(p.to_owned());
                         }
@@ -1125,9 +1122,7 @@ impl<'a> Builder<'a> {
                             if entered {
                                 walk.scope.push(resource);
                             }
-                            walk.expanding.push(p.to_owned());
                             let inlined = self.inline_scoped(t, depth + 1, Some(p), walk);
-                            walk.expanding.pop();
                             if entered {
                                 walk.scope.pop();
                             }
@@ -2173,12 +2168,13 @@ mod tests {
         json!({"openapi": "3.2.0", "components": {"schemas": schemas}})
     }
 
-    /// A cycle is cut into `$defs` however deep the walk met it: it is checked as deep as the value goes. A chain of
-    /// plain references past `MAX_SCHEMA_DEPTH` is cut short, and generation says so.
+    /// A cycle is cut into `$defs` however deep the walk met it: it is checked as deep as the value goes. So is a chain
+    /// of plain references longer than `MAX_SCHEMA_DEPTH`. With a `$dynamicRef` in reach, the walk copies each
+    /// reference: past `MAX_SCHEMA_DEPTH` it is cut short, and generation says so.
     #[test]
     fn a_schema_checked_whole_is_checked_through_its_cycles_or_says_where_it_stops() {
         let deep_bad = json!([["a", ["b", ["c", 1]]]]);
-        for n in 0..MAX_SCHEMA_DEPTH {
+        for n in 0..MAX_SCHEMA_DEPTH + 3 {
             let doc = Doc::new(chained(n));
             let mut d = Diagnostics::default();
             let b = Builder::new(&doc, &mut d, Reserved::default());
@@ -2190,7 +2186,9 @@ mod tests {
             b.finish();
             assert!(d.is_empty(), "{n} references: nothing is cut short: {d:?}");
         }
-        let doc = Doc::new(chained(MAX_SCHEMA_DEPTH + 2));
+        let mut chain = chained(MAX_SCHEMA_DEPTH + 2);
+        chain["components"]["schemas"]["Top"]["prefixItems"][0] = json!({"$dynamicRef": "#/components/schemas/L0"});
+        let doc = Doc::new(chain);
         let mut d = Diagnostics::default();
         let b = Builder::new(&doc, &mut d, Reserved::default());
         let top = pointer(&doc.root, "/components/schemas/Top").cloned().expect("Top");
@@ -2233,6 +2231,32 @@ mod tests {
             variants,
             [(Name::new("Item"), &["Item".to_owned()][..]), (Name::new("Gadget"), &["Gadget".to_owned()][..])]
         );
+    }
+
+    #[test]
+    fn a_schema_reached_by_many_paths_is_inlined_once() {
+        // Each layer refers twice to the next: 16 paths reach `L4`.
+        let mut schemas = serde_json::Map::new();
+        for i in 0..4 {
+            let next = json!({"$ref": format!("#/components/schemas/L{}", i + 1)});
+            schemas.insert(format!("L{i}"), json!({"type": "object", "properties": {"a": next, "b": next}}));
+        }
+        schemas.insert("L4".to_owned(), json!({"type": "string", "minLength": 7}));
+        let doc = Doc::new(json!({"openapi": "3.2.0", "components": {"schemas": schemas}}));
+        let mut d = Diagnostics::default();
+        let b = Builder::new(&doc, &mut d, Reserved::default());
+        // A keyword beside the `$ref`: the schema is checked whole at run time.
+        let c = b.constraints(&json!({"$ref": "#/components/schemas/L0", "minProperties": 1}));
+        let schema = c.schema.expect("checked at run time");
+        let text = schema.to_string();
+        assert_eq!(text.matches(r#""minLength":7"#).count(), 1, "{text}");
+        // The references still reach it: a short string at the bottom fails.
+        let value = |leaf: &str| json!({"b": {"a": {"b": {"a": leaf}}}});
+        let mut out = vec![];
+        runtime::__private::check_schema(&mut out, &runtime::InstancePath::Root, &value("1234567"), &schema);
+        assert!(out.is_empty(), "{out:?}");
+        runtime::__private::check_schema(&mut out, &runtime::InstancePath::Root, &value("123"), &schema);
+        assert!(!out.is_empty(), "`L4` needs 7 characters");
     }
 
     #[test]
