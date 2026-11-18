@@ -31,3 +31,21 @@ fn a_request_stays_strict() {
     let added: Result<types::OrderRequest, _> = serde_json::from_str(r#"{"id":"o1","status":"open","added":1}"#);
     assert!(added.is_err(), "{added:?}");
 }
+
+#[test]
+fn a_response_reads_a_union_branch_that_the_server_added() {
+    let client = client_answering(
+        r#"{"id":"o1","status":"open","payment":{"kind":"crypto","wallet":"x"},"note":{"emoji":"ok"}}"#,
+    );
+    let response = api::block_on(client.get_order(ops::get_order::Params::new("o1".to_owned()))).expect("it reads");
+    let ops::get_order::Response::Ok(order) = response;
+    assert_eq!(order.payment, Some(types::Payment::Other(serde_json::json!({"kind": "crypto", "wallet": "x"}))));
+    assert_eq!(order.note, Some(types::Note::Other(serde_json::json!({"emoji": "ok"}))));
+}
+
+#[test]
+fn a_request_union_stays_closed() {
+    let sent: Result<types::OrderRequest, _> =
+        serde_json::from_str(r#"{"id":"o1","status":"open","payment":{"kind":"crypto"}}"#);
+    assert!(sent.is_err(), "{sent:?}");
+}

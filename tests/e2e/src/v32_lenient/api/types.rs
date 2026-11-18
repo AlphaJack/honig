@@ -33,6 +33,15 @@ macro_rules! serialize_impl {
         }
     };
 }
+macro_rules! deserialize_impl_2 {
+    ($t:ty) => {
+        impl<'de> serde::Deserialize<'de> for $t {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                runtime::tagged::<D, Self>(d)
+            }
+        }
+    };
+}
 use super::runtime;
 macro_rules! str_enum_impls {
     ($n:ident) => {
@@ -80,6 +89,32 @@ macro_rules! int_enum_impls {
         }
     };
 }
+macro_rules! checked_impls {
+    ($n:ident, $t:ty) => {
+        impl $n {
+            #[must_use]
+            pub fn into_inner(self) -> $t {
+                self.0
+            }
+        }
+        impl std::ops::Deref for $n {
+            type Target = $t;
+            fn deref(&self) -> &$t {
+                &self.0
+            }
+        }
+        impl AsRef<$t> for $n {
+            fn as_ref(&self) -> &$t {
+                &self.0
+            }
+        }
+        impl From<$n> for $t {
+            fn from(value: $n) -> Self {
+                value.0
+            }
+        }
+    };
+}
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Order {
@@ -91,13 +126,31 @@ pub struct Order {
         deserialize_with = "runtime::not_null"
     )]
     pub priority: Option<OrderPriority>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub payment: Option<Payment>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub note: Option<Note>,
 }
 deserialize_impl!(Order);
 serialize_impl!(Order);
 impl Order {
     #[must_use]
     pub const fn new(id: String, status: Status) -> Self {
-        Self { id, status, priority: None }
+        Self {
+            id,
+            status,
+            priority: None,
+            payment: None,
+            note: None,
+        }
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -142,6 +195,114 @@ impl<'de> serde::Deserialize<'de> for Status {
         Ok(Self::from(&*s))
     }
 }
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Payment {
+    Card(Card),
+    Bank(Bank),
+    Other(serde_json::Value),
+}
+impl serde::Serialize for Payment {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        match self {
+            Self::Card(v) => serde::Serialize::serialize(v, s),
+            Self::Bank(v) => serde::Serialize::serialize(v, s),
+            Self::Other(v) => serde::Serialize::serialize(v, s),
+        }
+    }
+}
+deserialize_impl_2!(Payment);
+impl<'de> runtime::TaggedUnion<'de> for Payment {
+    const TAG: &'static str = "kind";
+    fn knows(tag: &str) -> bool {
+        matches!(tag, "card" | "bank")
+    }
+    fn from_tag<D: serde::Deserializer<'de>>(tag: &str, d: D) -> Result<Self, D::Error> {
+        match tag {
+            "card" => <Card as serde::Deserialize>::deserialize(d).map(Self::Card),
+            "bank" => <Bank as serde::Deserialize>::deserialize(d).map(Self::Bank),
+            _ => Err(serde::de::Error::custom("unknown discriminator")),
+        }
+    }
+    fn from_content(v: runtime::Content<'de>) -> Result<Self, serde_json::Error> {
+        let which = match v.tag("kind").as_deref() {
+            Some("card") => 0,
+            Some("bank") => 1,
+            _ => 2,
+        };
+        match which {
+            0 => v.decode_into(Self::Card),
+            1 => v.decode_into(Self::Bank),
+            _ => Ok(Self::Other(v.into_value())),
+        }
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct Card {
+    pub kind: String,
+    pub last4: String,
+}
+deserialize_impl!(Card);
+serialize_impl!(Card);
+impl Card {
+    #[must_use]
+    pub const fn new(kind: String, last4: String) -> Self {
+        Self { kind, last4 }
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct Bank {
+    pub kind: String,
+    pub iban: String,
+}
+deserialize_impl!(Bank);
+serialize_impl!(Bank);
+impl Bank {
+    #[must_use]
+    pub const fn new(kind: String, iban: String) -> Self {
+        Self { kind, iban }
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Note {
+    String(String),
+    Text(NoteText),
+    Other(serde_json::Value),
+}
+impl serde::Serialize for Note {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        match self {
+            Self::String(v) => serde::Serialize::serialize(v, s),
+            Self::Text(v) => serde::Serialize::serialize(v, s),
+            Self::Other(v) => serde::Serialize::serialize(v, s),
+        }
+    }
+}
+impl<'de> serde::Deserialize<'de> for Note {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let v = <runtime::Content<'de> as serde::Deserialize>::deserialize(d)?;
+        match v.kind() {
+            runtime::Kind::String => {
+                match v.decode_ref::<String>() {
+                    Ok(x) => Ok(Self::String(x)),
+                    Err(_) => Ok(Self::Other(v.into_value())),
+                }
+            }
+            runtime::Kind::Object => {
+                match v.decode_ref::<NoteText>() {
+                    Ok(x) => Ok(Self::Text(x)),
+                    Err(_) => Ok(Self::Other(v.into_value())),
+                }
+            }
+            runtime::Kind::Null
+            | runtime::Kind::Bool
+            | runtime::Kind::Integer
+            | runtime::Kind::Number
+            | runtime::Kind::Array => Ok(Self::Other(v.into_value())),
+        }
+    }
+}
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum OrderPriority {
     N1,
@@ -173,6 +334,19 @@ impl TryFrom<i64> for OrderPriority {
     }
 }
 int_enum_impls!(OrderPriority);
+#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct NoteText {
+    pub text: String,
+}
+deserialize_impl!(NoteText);
+serialize_impl!(NoteText);
+impl NoteText {
+    #[must_use]
+    pub const fn new(text: String) -> Self {
+        Self { text }
+    }
+}
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 #[serde(deny_unknown_fields)]
@@ -185,13 +359,31 @@ pub struct OrderRequest {
         deserialize_with = "runtime::not_null"
     )]
     pub priority: Option<OrderPriorityRequest>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub payment: Option<PaymentRequest>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub note: Option<NoteRequest>,
 }
 deserialize_impl!(OrderRequest);
 serialize_impl!(OrderRequest);
 impl OrderRequest {
     #[must_use]
     pub const fn new(id: String, status: StatusRequest) -> Self {
-        Self { id, status, priority: None }
+        Self {
+            id,
+            status,
+            priority: None,
+            payment: None,
+            note: None,
+        }
     }
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -225,6 +417,71 @@ impl TryFrom<&str> for StatusRequest {
     }
 }
 str_enum_impls!(StatusRequest);
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
+pub struct PaymentRequest(pub(super) PaymentRequestVariants);
+impl<'de> serde::Deserialize<'de> for PaymentRequest {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <PaymentRequestVariants as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
+    }
+}
+impl TryFrom<PaymentRequestVariants> for PaymentRequest {
+    type Error = runtime::BuildError;
+    fn try_from(value: PaymentRequestVariants) -> Result<Self, runtime::BuildError> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            {
+                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                let value = runtime::to_value(&value).unwrap_or_default();
+                runtime::check_schema(
+                    out,
+                    &runtime::InstancePath::Root,
+                    &value,
+                    SCHEMA
+                        .get_or_init(|| {
+                            serde_json::from_str(
+                                    "{\"oneOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Card\"},{\"$ref\":\"#/$defs/~1components~1schemas~1Bank\"}],\"$defs\":{\"/components/schemas/Card\":{\"type\":\"object\",\"required\":[\"kind\",\"last4\"],\"properties\":{\"kind\":{\"type\":\"string\"},\"last4\":{\"type\":\"string\"}}},\"/components/schemas/Bank\":{\"type\":\"object\",\"required\":[\"kind\",\"iban\"],\"properties\":{\"kind\":{\"type\":\"string\"},\"iban\":{\"type\":\"string\"}}}}}",
+                                )
+                                .unwrap_or_default()
+                        }),
+                );
+            }
+        }
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
+    }
+}
+checked_impls!(PaymentRequest, PaymentRequestVariants);
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum NoteRequest {
+    String(String),
+    Text(NoteTextRequest),
+}
+impl serde::Serialize for NoteRequest {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        match self {
+            Self::String(v) => serde::Serialize::serialize(v, s),
+            Self::Text(v) => serde::Serialize::serialize(v, s),
+        }
+    }
+}
+impl<'de> serde::Deserialize<'de> for NoteRequest {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let v = <runtime::Content<'de> as serde::Deserialize>::deserialize(d)?;
+        match v.kind() {
+            runtime::Kind::String => v.decode_into(Self::String),
+            runtime::Kind::Object => v.decode_into(Self::Text),
+            runtime::Kind::Null
+            | runtime::Kind::Bool
+            | runtime::Kind::Integer
+            | runtime::Kind::Number
+            | runtime::Kind::Array => Err(serde::de::Error::custom("matches no variant")),
+        }
+    }
+}
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum OrderPriorityRequest {
     N1,
@@ -259,3 +516,104 @@ impl TryFrom<i64> for OrderPriorityRequest {
     }
 }
 int_enum_impls!(OrderPriorityRequest);
+#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+#[serde(deny_unknown_fields)]
+pub struct NoteTextRequest {
+    pub text: String,
+}
+deserialize_impl!(NoteTextRequest);
+serialize_impl!(NoteTextRequest);
+impl NoteTextRequest {
+    #[must_use]
+    pub const fn new(text: String) -> Self {
+        Self { text }
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PaymentRequestVariants {
+    Card(Card),
+    Bank(Bank),
+}
+impl serde::Serialize for PaymentRequestVariants {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        match self {
+            Self::Card(v) => serde::Serialize::serialize(v, s),
+            Self::Bank(v) => serde::Serialize::serialize(v, s),
+        }
+    }
+}
+deserialize_impl_2!(PaymentRequestVariants);
+impl<'de> runtime::TaggedUnion<'de> for PaymentRequestVariants {
+    const TAG: &'static str = "kind";
+    fn knows(tag: &str) -> bool {
+        matches!(tag, "card" | "bank")
+    }
+    fn from_tag<D: serde::Deserializer<'de>>(tag: &str, d: D) -> Result<Self, D::Error> {
+        match tag {
+            "card" => <Card as serde::Deserialize>::deserialize(d).map(Self::Card),
+            "bank" => <Bank as serde::Deserialize>::deserialize(d).map(Self::Bank),
+            _ => Err(serde::de::Error::custom("unknown discriminator")),
+        }
+    }
+    fn from_content(v: runtime::Content<'de>) -> Result<Self, serde_json::Error> {
+        let which = match v.tag("kind").as_deref() {
+            Some("card") => 0,
+            Some("bank") => 1,
+            _ => 2,
+        };
+        match which {
+            0 => v.decode_into(Self::Card),
+            1 => v.decode_into(Self::Bank),
+            _ => Err(serde::de::Error::custom("matches no variant")),
+        }
+    }
+}
+/// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
+/// its field. `build` returns the first field that did not convert.
+pub mod builders {
+    use super as types;
+    use super::runtime;
+    impl super::OrderRequest {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            id: impl TryInto<String, Error: std::fmt::Display>,
+            status: impl TryInto<types::StatusRequest, Error: std::fmt::Display>,
+        ) -> OrderRequest {
+            OrderRequest(
+                runtime::Builder::start(|| Ok(
+                    Self::new(
+                        runtime::field("id", id)?,
+                        runtime::field("status", status)?,
+                    ),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct OrderRequest(runtime::Builder<super::OrderRequest>);
+    impl OrderRequest {
+        pub fn priority(
+            self,
+            value: impl TryInto<types::OrderPriorityRequest, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("priority", value, |s, v| s.priority = Some(v)))
+        }
+        pub fn payment(
+            self,
+            value: impl TryInto<types::PaymentRequest, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("payment", value, |s, v| s.payment = Some(v)))
+        }
+        pub fn note(
+            self,
+            value: impl TryInto<types::NoteRequest, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("note", value, |s, v| s.note = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::OrderRequest, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+}

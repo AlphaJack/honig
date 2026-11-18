@@ -94,7 +94,9 @@ fn split_own_checks(types: &mut TypeSpace, taken: &mut BTreeSet<String>) -> BTre
             | Kind::Pending => continue,
         };
         let Some(schema) = def.own.schema.clone() else { continue };
-        if def.rust_type.is_some() {
+        // A lenient client's response union is open: its whole schema (`oneOf` takes exactly one) would refuse the
+        // branch that the server added before `Other` takes it. Its request copy keeps the check.
+        if def.rust_type.is_some() || (def.lenient && matches!(def.kind, Kind::Union(_))) {
             continue;
         }
         let raw = TypeId(types.defs.len());
@@ -216,6 +218,8 @@ fn held_by_type(types: &TypeSpace, t: &Ty, schema: &serde_json::Value, hops: usi
             Kind::Alias(x) if hops < MAX_ALIAS_HOPS => held_by_type(types, x, schema, hops + 1),
             Kind::Const(_) | Kind::StrEnum(_) | Kind::IntEnum(_) => only_values,
             Kind::Checked(c) => c.constraints.schema.as_ref() == Some(schema),
+            // A lenient client's response union is open: the branch that the server added is `Other`, not a failure.
+            Kind::Union(_) if types.get(*id).lenient => true,
             Kind::Alias(_) | Kind::Struct(_) | Kind::Union(_) | Kind::Newtype(_) | Kind::Pending => false,
         },
         Ty::Bool

@@ -28,6 +28,23 @@ components:
         id: {type: string}
         status: {$ref: '#/components/schemas/Status'}
         priority: {type: integer, enum: [1, 2, 3]}
+        payment: {$ref: '#/components/schemas/Payment'}
+        note: {$ref: '#/components/schemas/Note'}
     Status:
       type: string
       enum: [open, closed]
+    # Tagged: a `kind` that the server added reads as `Other`.
+    Payment:
+      oneOf: [{$ref: '#/components/schemas/Card'}, {$ref: '#/components/schemas/Bank'}]
+      discriminator: {propertyName: kind, mapping: {card: '#/components/schemas/Card', bank: '#/components/schemas/Bank'}}
+    Card:
+      type: object
+      required: [kind, last4]
+      properties: {kind: {type: string}, last4: {type: string}}
+    Bank:
+      type: object
+      required: [kind, iban]
+      properties: {kind: {type: string}, iban: {type: string}}
+    # Untagged: a shape that no branch takes reads as `Other`.
+    Note:
+      oneOf: [{type: string}, {type: object, required: [text], properties: {text: {type: string}}, additionalProperties: false}]

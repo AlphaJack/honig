@@ -604,22 +604,18 @@ impl TypeSpace {
     /// `writeOnly` properties are dropped and required `readOnly` ones stay
     /// required. The copy is the reverse. Returns the request type of each type.
     ///
-    /// With `lenient` (`client = { strict = false }`) every enum and closed struct splits too, and every original is
-    /// [`TypeDef::lenient`]: a response reads a value that the server added, and a request stays as strict as before.
+    /// With `lenient` (`client = { strict = false }`) every enum, union and closed struct splits too, and every original
+    /// is [`TypeDef::lenient`]: a response reads a value that the server added, and a request stays as strict as
+    /// before. A lenient union is open: a branch that it does not know reads as `Other`.
     pub(crate) fn split_directions(&mut self, lenient: bool) -> Vec<Option<TypeId>> {
         let n = self.defs.len();
         let mut split = vec![false; n];
         for (i, d) in self.defs.iter().enumerate() {
             let open_in_responses = lenient
                 && match &d.kind {
-                    Kind::StrEnum(_) | Kind::IntEnum(_) => true,
+                    Kind::StrEnum(_) | Kind::IntEnum(_) | Kind::Union(_) => true,
                     Kind::Struct(s) => s.closed,
-                    Kind::Union(_)
-                    | Kind::Alias(_)
-                    | Kind::Newtype(_)
-                    | Kind::Const(_)
-                    | Kind::Checked(_)
-                    | Kind::Pending => false,
+                    Kind::Alias(_) | Kind::Newtype(_) | Kind::Const(_) | Kind::Checked(_) | Kind::Pending => false,
                 };
             split[i] = d.rust_type.is_none()
                 && (open_in_responses
@@ -661,6 +657,10 @@ impl TypeSpace {
             let base = std::mem::replace(&mut self.defs[i].kind, Kind::Pending);
             self.defs[i].kind = direction(base, Access::ReadOnly);
             self.defs[i].lenient = lenient;
+            // A branch that the server added reads as `Other`, as a union with a branch that takes any value does.
+            if let (true, Kind::Union(u)) = (lenient, &mut self.defs[i].kind) {
+                u.open = true;
+            }
         }
         request_of
     }
