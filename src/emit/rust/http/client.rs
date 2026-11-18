@@ -379,6 +379,12 @@ pub(crate) fn stream_method(
     let multipart = seq.iter().any(|(_, _, f)| f.to_string().contains("multipart"));
     let validated =
         crate::emit::rust::syntax::holds(space, item).filter(|_| !multipart).map(|h| quote!(.validated::<#h>()));
+    // `minItems`, `maxItems` and `uniqueItems` of the sequence hold on the items as they arrive.
+    let limits = op.responses[ri].contents.iter().find(|c| c.kind.is_sequence()).map(|c| c.item_limits);
+    let validated = match limits.and_then(super::codec::item_limits) {
+        Some(l) => Some(quote!(#validated.limited(#l))),
+        None => validated,
+    };
     let item = ty(space, item, true);
     // The response's `Content-Type` picks the framing; the first one otherwise.
     // Media types sharing a framing share a branch.

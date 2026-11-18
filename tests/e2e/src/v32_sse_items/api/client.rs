@@ -382,4 +382,128 @@ impl<T: runtime::Transport> Client<T> {
             .await;
         Ok(runtime::Streamed::Other(other?))
     }
+    pub async fn tile_batch(
+        &self,
+        p: impl runtime::IntoArg<'_, ops::tile_batch::Params>,
+    ) -> Result<ops::tile_batch::Response, runtime::Error> {
+        let p = runtime::IntoArg::into_arg(p).into_owned();
+        let path = String::from("/tiles/batch");
+        let query = Vec::new();
+        let mut req = runtime::new_request("POST", path, query)?;
+        runtime::set_items(
+            &mut req,
+            "application/jsonl",
+            p.body,
+            runtime::Framing::JsonLines,
+        )?;
+        runtime::apply_auth(&mut req, &self.credentials, &[])?;
+        runtime::propagate_trace(&mut req);
+        let resp = runtime::send(&self.transport, req).await?;
+        let (head, body) = resp.into_parts();
+        let (body, _) = body.into_parts();
+        let status = head.status.as_u16();
+        if status == 204 {
+            Ok(ops::tile_batch::Response::NoContent)
+        } else {
+            Err(runtime::Error::UnexpectedStatus {
+                status: head.status,
+                body,
+            })
+        }
+    }
+    pub async fn tile_top(
+        &self,
+        _p: impl runtime::IntoArg<'_, ops::tile_top::Params>,
+    ) -> Result<ops::tile_top::Response, runtime::Error> {
+        let path = String::from("/tiles/top");
+        let query = Vec::new();
+        let mut req = runtime::new_request("GET", path, query)?;
+        runtime::Message::set_header(&mut req, "Accept", "application/jsonl")?;
+        runtime::apply_auth(&mut req, &self.credentials, &[])?;
+        runtime::propagate_trace(&mut req);
+        let resp = runtime::send(&self.transport, req).await?;
+        let (head, body) = resp.into_parts();
+        let (body, _) = body.into_parts();
+        let status = head.status.as_u16();
+        if status == 200 {
+            {
+                runtime::check_response_media(
+                    status,
+                    runtime::content_type_of(&head.headers),
+                    Some(&body),
+                    &["application/jsonl"],
+                )?;
+                runtime::jsonl_decode(status, &body)
+                    .and_then(|v| runtime::limit_items(
+                        status,
+                        v,
+                        runtime::Limits {
+                            min: None,
+                            max: Some(2),
+                            unique: false,
+                        },
+                    ))
+                    .map(runtime::Items::List)
+                    .map(ops::tile_top::Response::Ok)
+            }
+        } else {
+            Err(runtime::Error::UnexpectedStatus {
+                status: head.status,
+                body,
+            })
+        }
+    }
+    pub async fn tile_top_stream(
+        &self,
+        _p: impl runtime::IntoArg<'_, ops::tile_top::Params>,
+    ) -> Result<
+        runtime::Streamed<
+            runtime::ItemStream<types::TileEvent>,
+            ops::tile_top::Response,
+        >,
+        runtime::Error,
+    > {
+        let path = String::from("/tiles/top");
+        let query = Vec::new();
+        let mut req = runtime::new_request("GET", path, query)?;
+        runtime::Message::set_header(&mut req, "Accept", "application/jsonl")?;
+        runtime::apply_auth(&mut req, &self.credentials, &[])?;
+        runtime::propagate_trace(&mut req);
+        let resp = runtime::send_streaming(&self.transport, req).await?;
+        let status = resp.status().as_u16();
+        if status == 200 {
+            runtime::check_response_media(
+                status,
+                runtime::Message::content_type(&resp),
+                None,
+                &["application/jsonl"],
+            )?;
+            let body = resp.into_body().into_stream();
+            return Ok(
+                runtime::Streamed::Ok(
+                    (runtime::ItemStream::new(status, body, runtime::Framing::JsonLines))
+                        .limited(runtime::Limits {
+                            min: None,
+                            max: Some(2),
+                            unique: false,
+                        }),
+                ),
+            );
+        }
+        let (head, body) = resp.into_parts();
+        let resp = runtime::Response::from_parts(
+            head,
+            runtime::Body::new(body.collect().await?),
+        );
+        let other: Result<ops::tile_top::Response, runtime::Error> = async move {
+            let (head, body) = resp.into_parts();
+            let (body, _) = body.into_parts();
+            Err(runtime::Error::UnexpectedStatus {
+                status: head.status,
+                body,
+            })
+        }
+            .await;
+        Ok(runtime::Streamed::Other(other?))
+    }
 }

@@ -103,3 +103,44 @@ pub mod chat_stream {
         Ok(runtime::Items<std::collections::BTreeMap<String, serde_json::Value>>),
     }
 }
+pub mod tile_batch {
+    use super::super::types;
+    use super::super::runtime;
+    pub const METHOD: &str = "POST";
+    pub const PATH: &str = "/tiles/batch";
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub struct Params {
+        pub body: runtime::Items<types::TileEvent>,
+    }
+    impl Params {
+        #[must_use]
+        pub const fn new(body: runtime::Items<types::TileEvent>) -> Self {
+            Self { body }
+        }
+    }
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub enum Response {
+        /// Taken.
+        NoContent,
+    }
+}
+pub mod tile_top {
+    use super::super::types;
+    use super::super::runtime;
+    pub const METHOD: &str = "GET";
+    pub const PATH: &str = "/tiles/top";
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub struct Params {}
+    impl Params {
+        #[must_use]
+        pub const fn new() -> Self {
+            Self {}
+        }
+    }
+    default_impl!(Params);
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub enum Response {
+        /// At most two tiles.
+        Ok(runtime::Items<types::TileEvent>),
+    }
+}

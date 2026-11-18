@@ -7,7 +7,7 @@ use super::shared::{blob, enc, lists_part_types, send_media, style_variant, wrap
 use crate::emit::rust::space::Space;
 use crate::emit::rust::syntax::pascal_ident;
 use crate::emit::rust::syntax::{holds, ident, lit, ty};
-use crate::ir::http::Content;
+use crate::ir::http::{Content, ItemLimits};
 use crate::ir::media::MediaKind;
 use crate::ir::types::Ty;
 
@@ -283,41 +283,69 @@ pub(crate) fn decode_body(space: &Space<'_>, c: &Content, d: &Decode) -> (TokenS
             );
             (quote!(runtime::mixed_decode(#status, #ct, &#body, #prefix)), true)
         }
-        MediaKind::JsonLines | MediaKind::JsonSeq | MediaKind::Sse => {
-            // A sequential request body the adapter left unread reaches the handler as it arrives.
-            if let (true, Some(stream), Held::OwnedCow) = (c.streams(), &d.stream, d.held) {
-                let framing = framing(c.kind);
-                // Each item has the text of its library formats checked first.
-                let checked = if let Ty::Vec(item) = &c.ty { holds(space, item) } else { None };
-                return match checked {
-                    Some(h) => (quote!(runtime::Items::received_validated::<#h>(&#body, &#stream, #framing)), true),
-                    None => (quote!(runtime::Items::received(&#body, &#stream, #framing)), true),
-                };
-            }
-            let f = format_ident!(
-                "{}",
-                if c.kind == MediaKind::JsonSeq {
-                    "json_seq_decode"
-                } else if c.kind == MediaKind::Sse {
-                    "sse_decode"
-                } else {
-                    "jsonl_decode"
-                }
-            );
-            let items = c.streams().then(|| quote!(.map(runtime::Items::List)));
-            // Each item has the text of its library formats checked first.
-            let item = if let Ty::Vec(item) = &c.ty { Some(item.as_ref()) } else { None };
-            let checked = item.and_then(|item| {
-                holds(space, item).map(|h| {
-                    let item = ty(space, item, true);
-                    quote!(.map(|v: Vec<runtime::validated::Validated<#item, #h>>| {
-                        v.into_iter().map(runtime::validated::Validated::into_inner).collect::<Vec<_>>()
-                    }))
-                })
-            });
-            (quote!(runtime::#f(#status, &#body) #checked #items), true)
-        }
+        MediaKind::JsonLines | MediaKind::JsonSeq | MediaKind::Sse => decode_sequence(space, c, d),
     }
+}
+
+/// Returns the expression that decodes a sequential body (JSON Lines, JSON text sequences, SSE) and whether it is a
+/// `Result`. Each item has the text of its library formats checked first, and the sequence its `minItems`, `maxItems`
+/// and `uniqueItems`.
+fn decode_sequence(space: &Space<'_>, c: &Content, d: &Decode) -> (TokenStream, bool) {
+    let (status, body) = (&d.status, &d.body);
+    // A sequential request body the adapter left unread reaches the handler as it arrives.
+    if let (true, Some(stream), Held::OwnedCow) = (c.streams(), &d.stream, d.held) {
+        let framing = framing(c.kind);
+        // Each item has the text of its library formats checked first.
+        let checked = if let Ty::Vec(item) = &c.ty { holds(space, item) } else { None };
+        let received = match checked {
+            Some(h) => quote!(runtime::Items::received_validated::<#h>(&#body, &#stream, #framing)),
+            None => quote!(runtime::Items::received(&#body, &#stream, #framing)),
+        };
+        // `minItems`, `maxItems` and `uniqueItems` hold on the items as they arrive.
+        return match item_limits(c.item_limits) {
+            Some(l) => (quote!(#received.and_then(|items| items.limited(#l))), true),
+            None => (received, true),
+        };
+    }
+    let f = format_ident!(
+        "{}",
+        if c.kind == MediaKind::JsonSeq {
+            "json_seq_decode"
+        } else if c.kind == MediaKind::Sse {
+            "sse_decode"
+        } else {
+            "jsonl_decode"
+        }
+    );
+    let items = c.streams().then(|| quote!(.map(runtime::Items::List)));
+    // Each item has the text of its library formats checked first.
+    let item = if let Ty::Vec(item) = &c.ty { Some(item.as_ref()) } else { None };
+    let checked = item.and_then(|item| {
+        holds(space, item).map(|h| {
+            let item = ty(space, item, true);
+            quote!(.map(|v: Vec<runtime::validated::Validated<#item, #h>>| {
+                v.into_iter().map(runtime::validated::Validated::into_inner).collect::<Vec<_>>()
+            }))
+        })
+    });
+    let limited = item_limits(c.item_limits).map(|l| quote!(.and_then(|v| runtime::limit_items(#status, v, #l))));
+    (quote!(runtime::#f(#status, &#body) #checked #limited #items), true)
+}
+
+/// Returns `runtime::Limits` of a sequence's `minItems`, `maxItems` and `uniqueItems`. `None` without any.
+pub(crate) fn item_limits(l: ItemLimits) -> Option<TokenStream> {
+    if l.is_empty() {
+        return None;
+    }
+    let count = |n: Option<u64>| match n {
+        Some(n) => {
+            let n = Literal::u64_unsuffixed(n);
+            quote!(Some(#n))
+        }
+        None => quote!(None),
+    };
+    let (min, max, unique) = (count(l.min), count(l.max), l.unique);
+    Some(quote!(runtime::Limits { min: #min, max: #max, unique: #unique }))
 }
 
 /// How general a `content` key is with the most specific first. "Only the most specific key is applicable" (3.2).

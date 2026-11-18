@@ -43,6 +43,35 @@ paths:
           content:
             text/event-stream:
               schema: {}
+  # A sequence as a whole: `minItems`, `maxItems` and `uniqueItems` hold on its items as they arrive.
+  /tiles/batch:
+    post:
+      operationId: tileBatch
+      requestBody:
+        required: true
+        content:
+          application/jsonl:
+            schema:
+              type: array
+              items: {$ref: "#/components/schemas/TileEvent"}
+              minItems: 2
+              maxItems: 3
+              uniqueItems: true
+      responses:
+        "204":
+          description: Taken.
+  /tiles/top:
+    get:
+      operationId: tileTop
+      responses:
+        "200":
+          description: At most two tiles.
+          content:
+            application/jsonl:
+              schema:
+                type: array
+                items: {$ref: "#/components/schemas/TileEvent"}
+                maxItems: 2
 components:
   schemas:
     TileEvent:

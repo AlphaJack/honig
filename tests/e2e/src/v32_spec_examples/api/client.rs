@@ -904,21 +904,57 @@ impl<T: runtime::Transport> Client<T> {
                         if runtime::media_matches(ct, "application/json-seq") {
                             ops::log_excerpt::OkBody::JsonSeq(
                                 runtime::json_seq_decode(status, &body)
+                                    .and_then(|v| runtime::limit_items(
+                                        status,
+                                        v,
+                                        runtime::Limits {
+                                            min: None,
+                                            max: Some(100),
+                                            unique: false,
+                                        },
+                                    ))
                                     .map(runtime::Items::List)?,
                             )
                         } else if runtime::media_matches(ct, "application/jsonl") {
                             ops::log_excerpt::OkBody::Jsonl(
                                 runtime::jsonl_decode(status, &body)
+                                    .and_then(|v| runtime::limit_items(
+                                        status,
+                                        v,
+                                        runtime::Limits {
+                                            min: None,
+                                            max: Some(100),
+                                            unique: false,
+                                        },
+                                    ))
                                     .map(runtime::Items::List)?,
                             )
                         } else if runtime::media_matches(ct, "application/x-ndjson") {
                             ops::log_excerpt::OkBody::XNdjson(
                                 runtime::jsonl_decode(status, &body)
+                                    .and_then(|v| runtime::limit_items(
+                                        status,
+                                        v,
+                                        runtime::Limits {
+                                            min: None,
+                                            max: Some(100),
+                                            unique: false,
+                                        },
+                                    ))
                                     .map(runtime::Items::List)?,
                             )
                         } else {
                             ops::log_excerpt::OkBody::JsonSeq(
                                 runtime::json_seq_decode(status, &body)
+                                    .and_then(|v| runtime::limit_items(
+                                        status,
+                                        v,
+                                        runtime::Limits {
+                                            min: None,
+                                            max: Some(100),
+                                            unique: false,
+                                        },
+                                    ))
                                     .map(runtime::Items::List)?,
                             )
                         },
@@ -973,7 +1009,7 @@ impl<T: runtime::Transport> Client<T> {
             let body = resp.into_body().into_stream();
             return Ok(
                 runtime::Streamed::Ok(
-                    if runtime::media_matches(&ct, "application/json-seq") {
+                    (if runtime::media_matches(&ct, "application/json-seq") {
                         runtime::ItemStream::new(status, body, runtime::Framing::JsonSeq)
                     } else if runtime::media_matches(&ct, "application/jsonl")
                         || runtime::media_matches(&ct, "application/x-ndjson")
@@ -985,7 +1021,12 @@ impl<T: runtime::Transport> Client<T> {
                         )
                     } else {
                         runtime::ItemStream::new(status, body, runtime::Framing::JsonSeq)
-                    },
+                    })
+                        .limited(runtime::Limits {
+                            min: None,
+                            max: Some(100),
+                            unique: false,
+                        }),
                 ),
             );
         }
