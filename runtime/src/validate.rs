@@ -265,8 +265,8 @@ pub fn check_range<T: PartialOrd + fmt::Display + Copy + JsonNumber>(
     }
 }
 
-/// Checks that the number `value` is a multiple of `of`, exactly: both are read as their decimal text
-/// ([`crate::exact`]). An `f64` is its shortest text, the one that it decodes from.
+/// Checks that the number `value` is a multiple of `of`, exactly: both are read as their decimal text.
+/// An `f64` is its shortest text, the one that it decodes from.
 pub fn check_multiple<T: fmt::Display + JsonNumber + Copy>(
     out: &mut Vec<Violation>,
     path: &InstancePath<'_>,
