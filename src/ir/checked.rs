@@ -111,6 +111,8 @@ fn split_own_checks(types: &mut TypeSpace, taken: &mut BTreeSet<String>) -> BTre
             json_string: false,
             component: false,
             own: Constraints::default(),
+            // The shape of a lenient response type reads what the server added, as the type did.
+            lenient: types.defs[i].lenient,
         };
         public.insert(raw.0, types.defs[i].name.clone());
         types.defs.push(shape);
@@ -150,6 +152,7 @@ impl Wrapper<'_> {
             json_string: false,
             component: false,
             own: Constraints::default(),
+            lenient: false,
         });
         Ty::Named(id)
     }

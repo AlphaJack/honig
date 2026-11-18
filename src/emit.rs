@@ -14,6 +14,9 @@ pub struct Options {
     pub tests: bool,
     /// Objects without `additionalProperties` keep unknown keys in `extra`.
     pub keep_unknown: bool,
+    /// `client = { strict = ... }`: `false` reads a response that holds an enum value or a property that the
+    /// description does not list.
+    pub strict_client: bool,
     /// Server operations may be left out: each defaults to `501 Not Implemented`. `false`: every one must be written.
     pub allow_unimplemented: bool,
     /// The only operations that the client calls by `operationId` (or their generated name). `None` means every one.
@@ -31,6 +34,7 @@ impl Default for Options {
             server: true,
             tests: false,
             keep_unknown: false,
+            strict_client: true,
             allow_unimplemented: false,
             client_operations: None,
             overlays: vec![],
