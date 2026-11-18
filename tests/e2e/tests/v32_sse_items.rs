@@ -87,12 +87,20 @@ impl api::Api for Tiles {
         p.body.collect().await.map_err(|e| api::ApiError::new(api::http::StatusCode::BAD_REQUEST, e.to_string()))?;
         Ok(ops::tile_batch::Response::NoContent)
     }
+    async fn tile_top(
+        &self,
+        _: ops::tile_top::Params,
+        _: &api::Context<'_>,
+    ) -> Result<ops::tile_top::Response, api::ApiError> {
+        // Three tiles where the description allows two: the server sends what its code produces.
+        Ok(ops::tile_top::Response::Ok(api::Items::List(vec![tile("a", 1), tile("b", 2), tile("c", 3)])))
+    }
 }
 
-/// `minItems`, `maxItems` and `uniqueItems` of a request body that arrives an item at a time hold as it arrives: the
-/// server refuses a body past them.
+/// `minItems`, `maxItems` and `uniqueItems` of a sequence hold on both sides: the server refuses a request body past
+/// them, and a client reading a response as it arrives gets an `Err` at the item past `maxItems`.
 #[test]
-fn a_streamed_request_body_is_held_to_its_item_limits() {
+fn a_sequence_is_held_to_its_item_limits_on_both_sides() {
     let client = api::Client::new(api::Server::new(Tiles).into_service());
     let batch = |tiles: Vec<types::TileEvent>| {
         api::block_on(client.tile_batch(ops::tile_batch::Params { body: api::Items::List(tiles) }))
@@ -106,4 +114,19 @@ fn a_streamed_request_body_is_held_to_its_item_limits() {
         let refused = batch(tiles).expect_err(why).to_string();
         assert!(refused.contains("400") && refused.contains(why), "{refused}");
     }
+    let read = api::block_on(async {
+        let Ok(api::Streamed::Ok(mut items)) = client.tile_top_stream(ops::tile_top::Params {}).await else {
+            panic!("the stream")
+        };
+        let mut read = vec![];
+        while let Some(item) = items.next().await {
+            read.push(item.map_err(|e| e.to_string()));
+        }
+        read
+    });
+    assert_eq!(read.len(), 3, "{read:?}");
+    assert_eq!(read[1], Ok(tile("b", 2)));
+    assert!(read[2].as_ref().is_err_and(|e| e.contains("at most 2 items allowed")), "{read:?}");
+    let whole = api::block_on(client.tile_top(ops::tile_top::Params {})).expect_err("read whole, three is past two");
+    assert!(whole.to_string().contains("at most 2 items allowed"), "{whole}");
 }

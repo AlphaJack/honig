@@ -203,3 +203,33 @@ pub mod tile_batch {
         }
     }
 }
+pub mod tile_top {
+    use super::super::types;
+    use super::super::runtime;
+    pub const METHOD: &str = "GET";
+    pub const PATH: &str = "/tiles/top";
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub struct Params {}
+    impl Params {
+        #[must_use]
+        pub const fn new() -> Self {
+            Self {}
+        }
+    }
+    default_impl!(Params);
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub enum Response {
+        /// At most two tiles.
+        Ok(runtime::Items<types::TileEvent>),
+    }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<runtime::Items<types::TileEvent>, Box<Self>> {
+            match self {
+                Self::Ok(body) => Ok(body),
+            }
+        }
+    }
+}

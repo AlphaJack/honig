@@ -288,8 +288,8 @@ pub(crate) fn decode_body(space: &Space<'_>, c: &Content, d: &Decode) -> (TokenS
 }
 
 /// Returns the expression that decodes a sequential body (JSON Lines, JSON text sequences, SSE) and whether it is a
-/// `Result`. Each item has the text of its library formats checked first. A sequence read as it arrives holds its
-/// `minItems`, `maxItems` and `uniqueItems` on the items as they do. Read whole, `Validate` checks them.
+/// `Result`. Each item has the text of its library formats checked first, and the sequence its `minItems`, `maxItems`
+/// and `uniqueItems`.
 fn decode_sequence(space: &Space<'_>, c: &Content, d: &Decode) -> (TokenStream, bool) {
     let (status, body) = (&d.status, &d.body);
     // A sequential request body the adapter left unread reaches the handler as it arrives.
@@ -328,11 +328,12 @@ fn decode_sequence(space: &Space<'_>, c: &Content, d: &Decode) -> (TokenStream, 
             }))
         })
     });
-    (quote!(runtime::#f(#status, &#body) #checked #items), true)
+    let limited = item_limits(c.item_limits).map(|l| quote!(.and_then(|v| runtime::limit_items(#status, v, #l))));
+    (quote!(runtime::#f(#status, &#body) #checked #limited #items), true)
 }
 
 /// Returns `runtime::Limits` of a sequence's `minItems`, `maxItems` and `uniqueItems`. `None` without any.
-fn item_limits(l: ItemLimits) -> Option<TokenStream> {
+pub(crate) fn item_limits(l: ItemLimits) -> Option<TokenStream> {
     if l.is_empty() {
         return None;
     }

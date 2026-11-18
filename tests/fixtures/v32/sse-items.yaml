@@ -60,6 +60,18 @@ paths:
       responses:
         "204":
           description: Taken.
+  /tiles/top:
+    get:
+      operationId: tileTop
+      responses:
+        "200":
+          description: At most two tiles.
+          content:
+            application/jsonl:
+              schema:
+                type: array
+                items: {$ref: "#/components/schemas/TileEvent"}
+                maxItems: 2
 components:
   schemas:
     TileEvent:
