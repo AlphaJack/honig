@@ -479,6 +479,14 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/Location",
                         )
+                        .map(
+                            runtime::validated::Validated::<
+                                Option<url::Url>,
+                                runtime::validated::Maybe<
+                                    runtime::validated::Text<runtime::validated::format::Uri>,
+                                >,
+                            >::into_inner,
+                        )
                         .map_err(|e| runtime::Error::Decode {
                             status,
                             message: e.to_string(),
@@ -1148,6 +1156,14 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/Location",
                         )
+                        .map(
+                            runtime::validated::Validated::<
+                                Option<url::Url>,
+                                runtime::validated::Maybe<
+                                    runtime::validated::Text<runtime::validated::format::Uri>,
+                                >,
+                            >::into_inner,
+                        )
                         .map_err(|e| runtime::Error::Decode {
                             status,
                             message: e.to_string(),
@@ -1798,6 +1814,14 @@ impl<T: runtime::Transport> Client<T> {
                                 false,
                             ),
                             "/header/Location",
+                        )
+                        .map(
+                            runtime::validated::Validated::<
+                                Option<url::Url>,
+                                runtime::validated::Maybe<
+                                    runtime::validated::Text<runtime::validated::format::Uri>,
+                                >,
+                            >::into_inner,
                         )
                         .map_err(|e| runtime::Error::Decode {
                             status,

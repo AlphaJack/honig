@@ -1,14 +1,12 @@
 //! Formats whose library type reads more than the format allows. `jiff` reads `2024-06-19 08:30Z` as a `date-time`.
-//! `uuid` reads `{...}` and `url` reads a space. Generated code decodes such a value through [`read`]. While the
-//! server decodes a request ([`Strict`]), the text is validated as
-//! [`check_format`](crate::validate::check_format) validates a string, then the library reads it. A client reading a
-//! response leaves it to the library.
+//! `uuid` reads `{...}` and `url` reads a space. Generated code decodes such a value through [`read`]. The text is
+//! validated as [`check_format`](crate::validate::check_format) validates a string, then the library reads it. A
+//! server decoding a request and a client reading a response decode alike.
 //!
 //! [`Holds`] says where the text sits in the type: the value itself ([`Text`]) or the items of a list, the values of a
 //! map and so on. The types stay those of the library.
 
 use std::borrow::Cow;
-use std::cell::Cell;
 use std::collections::BTreeMap;
 use std::fmt;
 use std::marker::PhantomData;
@@ -17,32 +15,6 @@ use serde::Deserialize;
 use serde::de::{self, DeserializeSeed, Deserializer, MapAccess, SeqAccess, Unexpected, Visitor};
 
 use crate::nullable::Nullable;
-
-thread_local! {
-    /// Whether the text of a library type is validated: while the server decodes a request.
-    static STRICT: Cell<bool> = const { Cell::new(false) };
-}
-
-/// While it lives, the text of a library type is validated before its library reads it.
-///
-/// The server holds one while it decodes a request. A client reading a response holds none: the library alone decides
-/// there.
-#[derive(Debug)]
-pub struct Strict(bool);
-
-impl Strict {
-    /// Validates the text of library types on this thread until it is dropped.
-    #[must_use]
-    pub fn enter() -> Self {
-        Self(STRICT.replace(true))
-    }
-}
-
-impl Drop for Strict {
-    fn drop(&mut self) {
-        STRICT.set(self.0);
-    }
-}
 
 /// A string format that a library type holds.
 pub trait Format {
@@ -212,7 +184,7 @@ impl<'de, T: Deserialize<'de>, F: Format> Visitor<'de> for TextVisitor<T, F> {
     }
 
     fn visit_str<E: de::Error>(self, v: &str) -> Result<T, E> {
-        if STRICT.get() && !crate::validate::is_format(v, F::NAME) {
+        if !crate::validate::is_format(v, F::NAME) {
             return Err(E::invalid_value(Unexpected::Str(v), &self));
         }
         T::deserialize(de::value::StrDeserializer::<E>::new(&F::text(v)))
@@ -435,20 +407,16 @@ mod tests {
     #[serde(transparent)]
     struct Lenient(String);
 
-    /// Reads `json` as the server reads a request.
+    /// Reads `json` as a request or a response is read.
     fn read<'de, T, S: super::Holds<'de, T>>(json: &'de str) -> Result<T, serde_json::Error> {
-        let _strict = super::Strict::enter();
         super::read::<_, T, S>(&mut serde_json::Deserializer::from_str(json))
     }
 
     #[test]
-    fn a_client_leaves_the_text_to_the_library() {
+    fn text_that_the_library_reads_but_the_format_refuses_is_refused() {
         let json = r#""2024-06-19 08:30:06Z""#;
-        let lenient = super::read::<_, Lenient, Text<format::DateTime>>(&mut serde_json::Deserializer::from_str(json));
-        assert_eq!(lenient.unwrap(), Lenient("2024-06-19 08:30:06Z".to_owned()));
-        assert!(read::<Lenient, Text<format::DateTime>>(json).is_err(), "the server validates it");
-        let after = super::read::<_, Lenient, Text<format::DateTime>>(&mut serde_json::Deserializer::from_str(json));
-        assert!(after.is_ok(), "the guard ends with its scope");
+        let read = super::read::<_, Lenient, Text<format::DateTime>>(&mut serde_json::Deserializer::from_str(json));
+        assert!(read.is_err(), "a space for `T` is not RFC 3339");
     }
 
     #[test]
@@ -484,7 +452,6 @@ mod tests {
     #[test]
     fn validated_reads_through_its_shape() {
         type Day = super::Validated<Lenient, Text<format::Date>>;
-        let _strict = super::Strict::enter();
         assert_eq!(
             serde_json::from_str::<Day>(r#""2024-06-19""#).unwrap().into_inner(),
             Lenient("2024-06-19".to_owned())

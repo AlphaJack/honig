@@ -375,6 +375,10 @@ pub(crate) fn stream_method(
 ) -> Option<TokenStream> {
     let Some((ri, item, seq)) = stream_target(op) else { return blob_stream_method(op, p, prelude, respond) };
     let Status::Code(status) = op.responses[ri].status else { return None };
+    // Each item has the text of its library formats checked before the library reads it, as on the server.
+    let multipart = seq.iter().any(|(_, _, f)| f.to_string().contains("multipart"));
+    let validated =
+        crate::emit::rust::syntax::holds(space, item).filter(|_| !multipart).map(|h| quote!(.validated::<#h>()));
     let item = ty(space, item, true);
     // The response's `Content-Type` picks the framing; the first one otherwise.
     // Media types sharing a framing share a branch.
@@ -400,11 +404,12 @@ pub(crate) fn stream_method(
     // One `else if` chain (clippy `collapsible_else_if`).
     let branches = checked.iter().map(|(_, (_, f, ms, _))| quote!(if #(runtime::media_matches(&ct, #ms))||* { #f }));
     let framing = if checked.is_empty() { fallback } else { quote!(#(#branches)else* else { #fallback }) };
+    let framing = match validated {
+        Some(v) => quote!((#framing) #v),
+        None => framing,
+    };
     let ct = (groups.len() > 1).then(|| quote!(let ct = runtime::Message::content_type(&resp).to_owned();));
-    let media = seq
-        .iter()
-        .any(|(_, _, f)| f.to_string().contains("multipart"))
-        .then(|| quote!(let media = runtime::Message::content_type(&resp).to_owned();));
+    let media = multipart.then(|| quote!(let media = runtime::Message::content_type(&resp).to_owned();));
     let all_media = seq.iter().map(|(_, m, _)| lit(m));
     // An event stream reconnects with the request that it sent. It is kept before the send.
     let again = seq
@@ -709,8 +714,10 @@ fn response_arm(
                     quote!(runtime::decode_header(runtime::joined_header(&head.headers, #wire).as_deref(), #s, #explode))
                 };
                 let at = lit(&format!("/header/{}", h.wire.replace('~', "~0").replace('/', "~1")));
+                // A library type has the text of its format checked first, as in a request.
+                let checked = crate::emit::rust::http::codec::validated_map(space, &h.ty);
                 quote! {
-                    #n: runtime::from_param(#raw, #at)
+                    #n: runtime::from_param(#raw, #at) #checked
                         .map_err(|e| runtime::Error::Decode { status, message: e.to_string(), body: body.clone(), pointer: String::new() })?,
                 }
             });
