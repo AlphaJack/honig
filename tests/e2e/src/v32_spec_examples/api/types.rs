@@ -55,6 +55,15 @@ macro_rules! try_from_impl {
         }
     };
 }
+macro_rules! serialize_impl_2 {
+    ($t:ty) => {
+        impl serde::Serialize for $t {
+            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                s.serialize_str(Self::VALUE)
+            }
+        }
+    };
+}
 macro_rules! deserialize_impl_2 {
     ($t:ty) => {
         impl<'de> serde::Deserialize<'de> for $t {
@@ -783,7 +792,7 @@ for OrderedMultipartWithRequiredHeaderBodyItem {
                     &runtime::InstancePath::Root,
                     &value,
                     schema,
-                    runtime::schema_defs(),
+                    None,
                 );
             }
         }
@@ -832,7 +841,7 @@ impl TryFrom<ServerSentEventStreamsBodyItemVariants> for ServerSentEventStreamsB
                     &runtime::InstancePath::Root,
                     &value,
                     schema,
-                    runtime::schema_defs(),
+                    None,
                 );
             }
         }
@@ -843,155 +852,183 @@ impl TryFrom<ServerSentEventStreamsBodyItemVariants> for ServerSentEventStreamsB
 }
 checked_impls!(ServerSentEventStreamsBodyItem, ServerSentEventStreamsBodyItemVariants);
 /// event
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
-#[serde(transparent)]
-pub struct ServerSentEventStreamsBodyItemEvent(
-    pub(super) ServerSentEventStreamsBodyItemEventFields,
-);
-impl<'de> serde::Deserialize<'de> for ServerSentEventStreamsBodyItemEvent {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <ServerSentEventStreamsBodyItemEventFields as serde::Deserialize>::deserialize(
-            d,
-        )?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
-    }
+#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct ServerSentEventStreamsBodyItemEvent {
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub event: Option<ServerSentEventStreamsBodyItemEventEvent>,
+    pub data: String,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub id: Option<String>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub retry: Option<ServerSentEventStreamsBodyItemEventRetry>,
 }
-impl TryFrom<ServerSentEventStreamsBodyItemEventFields>
-for ServerSentEventStreamsBodyItemEvent {
-    type Error = runtime::BuildError;
-    fn try_from(
-        value: ServerSentEventStreamsBodyItemEventFields,
-    ) -> Result<Self, runtime::BuildError> {
-        let mut violations: Vec<runtime::Violation> = Vec::new();
-        {
-            let out = &mut violations;
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&value).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"allOf\":[{\"properties\":{\"event\":{\"const\":\"addString\"}}},{\"$ref\":\"#/$defs/~1components~1schemas~1Event\"}]}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Root,
-                    &value,
-                    schema,
-                    runtime::schema_defs(),
-                );
-            }
+deserialize_impl!(ServerSentEventStreamsBodyItemEvent);
+serialize_impl!(ServerSentEventStreamsBodyItemEvent);
+impl ServerSentEventStreamsBodyItemEvent {
+    #[must_use]
+    pub const fn new(data: String) -> Self {
+        Self {
+            event: None,
+            data,
+            id: None,
+            retry: None,
         }
-        runtime::first(violations)
-            .map(|()| Self(value))
-            .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(
-    ServerSentEventStreamsBodyItemEvent, ServerSentEventStreamsBodyItemEventFields
-);
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
+pub struct ServerSentEventStreamsBodyItemEventEvent;
+impl ServerSentEventStreamsBodyItemEventEvent {
+    pub const VALUE: &'static str = "addString";
+}
+serialize_impl_2!(ServerSentEventStreamsBodyItemEventEvent);
+impl<'de> serde::Deserialize<'de> for ServerSentEventStreamsBodyItemEventEvent {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        runtime::expect_const(d, &serde_json::Value::String("addString".to_owned()))
+            .map(|()| Self)
+    }
+}
 pub type ServerSentEventStreamsBodyItemEventRetry = EventRetry;
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
-#[serde(transparent)]
-pub struct ServerSentEventStreamsBodyItemAddInt64(
-    pub(super) ServerSentEventStreamsBodyItemAddInt64Fields,
-);
-impl<'de> serde::Deserialize<'de> for ServerSentEventStreamsBodyItemAddInt64 {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <ServerSentEventStreamsBodyItemAddInt64Fields as serde::Deserialize>::deserialize(
-            d,
-        )?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
-    }
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct ServerSentEventStreamsBodyItemAddInt64 {
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub event: Option<ServerSentEventStreamsBodyItemAddInt64Event>,
+    pub data: ServerSentEventStreamsBodyItemAddInt64DataChecked,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub id: Option<String>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub retry: Option<ServerSentEventStreamsBodyItemAddInt64Retry>,
 }
-impl TryFrom<ServerSentEventStreamsBodyItemAddInt64Fields>
-for ServerSentEventStreamsBodyItemAddInt64 {
-    type Error = runtime::BuildError;
-    fn try_from(
-        value: ServerSentEventStreamsBodyItemAddInt64Fields,
-    ) -> Result<Self, runtime::BuildError> {
-        let mut violations: Vec<runtime::Violation> = Vec::new();
-        {
-            let out = &mut violations;
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&value).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"allOf\":[{\"properties\":{\"event\":{\"const\":\"addInt64\"},\"data\":{\"format\":\"int64\"}}},{\"$ref\":\"#/$defs/~1components~1schemas~1Event\"}]}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Root,
-                    &value,
-                    schema,
-                    runtime::schema_defs(),
-                );
-            }
+deserialize_impl!(ServerSentEventStreamsBodyItemAddInt64);
+serialize_impl!(ServerSentEventStreamsBodyItemAddInt64);
+impl ServerSentEventStreamsBodyItemAddInt64 {
+    #[must_use]
+    pub const fn new(data: ServerSentEventStreamsBodyItemAddInt64DataChecked) -> Self {
+        Self {
+            event: None,
+            data,
+            id: None,
+            retry: None,
         }
-        runtime::first(violations)
-            .map(|()| Self(value))
-            .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(
-    ServerSentEventStreamsBodyItemAddInt64, ServerSentEventStreamsBodyItemAddInt64Fields
-);
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
+pub struct ServerSentEventStreamsBodyItemAddInt64Event;
+impl ServerSentEventStreamsBodyItemAddInt64Event {
+    pub const VALUE: &'static str = "addInt64";
+}
+serialize_impl_2!(ServerSentEventStreamsBodyItemAddInt64Event);
+impl<'de> serde::Deserialize<'de> for ServerSentEventStreamsBodyItemAddInt64Event {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        runtime::expect_const(d, &serde_json::Value::String("addInt64".to_owned()))
+            .map(|()| Self)
+    }
+}
+pub type ServerSentEventStreamsBodyItemAddInt64Data = String;
 pub type ServerSentEventStreamsBodyItemAddInt64Retry = EventRetry;
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
-#[serde(transparent)]
-pub struct ServerSentEventStreamsBodyItemAddJson(
-    pub(super) ServerSentEventStreamsBodyItemAddJsonFields,
-);
-impl<'de> serde::Deserialize<'de> for ServerSentEventStreamsBodyItemAddJson {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <ServerSentEventStreamsBodyItemAddJsonFields as serde::Deserialize>::deserialize(
-            d,
-        )?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
-    }
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct ServerSentEventStreamsBodyItemAddJson {
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub event: Option<ServerSentEventStreamsBodyItemAddJsonEvent>,
+    pub data: ServerSentEventStreamsBodyItemAddJsonData,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub id: Option<String>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub retry: Option<ServerSentEventStreamsBodyItemAddJsonRetry>,
 }
-impl TryFrom<ServerSentEventStreamsBodyItemAddJsonFields>
-for ServerSentEventStreamsBodyItemAddJson {
-    type Error = runtime::BuildError;
-    fn try_from(
-        value: ServerSentEventStreamsBodyItemAddJsonFields,
-    ) -> Result<Self, runtime::BuildError> {
-        let mut violations: Vec<runtime::Violation> = Vec::new();
-        {
-            let out = &mut violations;
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&value).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"allOf\":[{\"properties\":{\"event\":{\"const\":\"addJSON\"},\"data\":{\"contentMediaType\":\"application/json\",\"contentSchema\":{\"type\":\"object\",\"required\":[\"foo\"],\"properties\":{\"foo\":{\"type\":\"integer\"}}}}}},{\"$ref\":\"#/$defs/~1components~1schemas~1Event\"}]}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Root,
-                    &value,
-                    schema,
-                    runtime::schema_defs(),
-                );
-            }
+deserialize_impl!(ServerSentEventStreamsBodyItemAddJson);
+serialize_impl!(ServerSentEventStreamsBodyItemAddJson);
+impl ServerSentEventStreamsBodyItemAddJson {
+    #[must_use]
+    pub const fn new(data: ServerSentEventStreamsBodyItemAddJsonData) -> Self {
+        Self {
+            event: None,
+            data,
+            id: None,
+            retry: None,
         }
-        runtime::first(violations)
-            .map(|()| Self(value))
-            .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(
-    ServerSentEventStreamsBodyItemAddJson, ServerSentEventStreamsBodyItemAddJsonFields
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
+pub struct ServerSentEventStreamsBodyItemAddJsonEvent;
+impl ServerSentEventStreamsBodyItemAddJsonEvent {
+    pub const VALUE: &'static str = "addJSON";
+}
+serialize_impl_2!(ServerSentEventStreamsBodyItemAddJsonEvent);
+impl<'de> serde::Deserialize<'de> for ServerSentEventStreamsBodyItemAddJsonEvent {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        runtime::expect_const(d, &serde_json::Value::String("addJSON".to_owned()))
+            .map(|()| Self)
+    }
+}
+pub type ServerSentEventStreamsBodyItemAddJsonData = ServerSentEventStreamsBodyItemAddJsonData2;
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ServerSentEventStreamsBodyItemAddJsonData2(
+    pub ServerSentEventStreamsBodyItemAddJsonData2Content,
 );
+impl serde::Serialize for ServerSentEventStreamsBodyItemAddJsonData2 {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        let text = serde_json::to_string(&self.0).map_err(serde::ser::Error::custom)?;
+        s.serialize_str(&text)
+    }
+}
+impl<'de> serde::Deserialize<'de> for ServerSentEventStreamsBodyItemAddJsonData2 {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let text = <String as serde::Deserialize>::deserialize(d)?;
+        runtime::json_text(&text).map(Self).map_err(serde::de::Error::custom)
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct ServerSentEventStreamsBodyItemAddJsonData2Content {
+    pub foo: i64,
+}
+deserialize_impl!(ServerSentEventStreamsBodyItemAddJsonData2Content);
+serialize_impl!(ServerSentEventStreamsBodyItemAddJsonData2Content);
+impl ServerSentEventStreamsBodyItemAddJsonData2Content {
+    #[must_use]
+    pub const fn new(foo: i64) -> Self {
+        Self { foo }
+    }
+}
 pub type ServerSentEventStreamsBodyItemAddJsonRetry = EventRetry;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum OrderedMultipartWithRequiredHeaderBodyItemVariants {
@@ -1116,45 +1153,6 @@ impl<'de> runtime::TaggedUnion<'de> for ServerSentEventStreamsBodyItemVariants {
         }
     }
 }
-/// event
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct ServerSentEventStreamsBodyItemEventFields {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub event: Option<String>,
-    pub data: String,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub id: Option<String>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub retry: Option<ServerSentEventStreamsBodyItemEventRetry>,
-}
-deserialize_impl!(ServerSentEventStreamsBodyItemEventFields);
-serialize_impl!(ServerSentEventStreamsBodyItemEventFields);
-impl ServerSentEventStreamsBodyItemEventFields {
-    #[must_use]
-    pub const fn new(data: String) -> Self {
-        Self {
-            event: None,
-            data,
-            id: None,
-            retry: None,
-        }
-    }
-}
-pub type ServerSentEventStreamsBodyItemAddInt64Fields = ServerSentEventStreamsBodyItemEventFields;
-pub type ServerSentEventStreamsBodyItemAddJsonFields = ServerSentEventStreamsBodyItemEventFields;
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct FormDataCodeChecked(pub(super) FormDataCode);
@@ -1185,7 +1183,7 @@ impl TryFrom<FormDataCode> for FormDataCodeChecked {
                     &runtime::InstancePath::Root,
                     &value,
                     schema,
-                    runtime::schema_defs(),
+                    None,
                 );
             }
         }
@@ -1195,6 +1193,54 @@ impl TryFrom<FormDataCode> for FormDataCodeChecked {
     }
 }
 checked_impls!(FormDataCodeChecked, FormDataCode);
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
+pub struct ServerSentEventStreamsBodyItemAddInt64DataChecked(
+    pub(super) ServerSentEventStreamsBodyItemAddInt64Data,
+);
+impl<'de> serde::Deserialize<'de> for ServerSentEventStreamsBodyItemAddInt64DataChecked {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <ServerSentEventStreamsBodyItemAddInt64Data as serde::Deserialize>::deserialize(
+            d,
+        )?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
+    }
+}
+impl TryFrom<ServerSentEventStreamsBodyItemAddInt64Data>
+for ServerSentEventStreamsBodyItemAddInt64DataChecked {
+    type Error = runtime::BuildError;
+    fn try_from(
+        value: ServerSentEventStreamsBodyItemAddInt64Data,
+    ) -> Result<Self, runtime::BuildError> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            {
+                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                let value = runtime::to_value(&value).unwrap_or_default();
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str("{\"format\":\"int64\"}")
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
+                    out,
+                    &runtime::InstancePath::Root,
+                    &value,
+                    schema,
+                    None,
+                );
+            }
+        }
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
+    }
+}
+checked_impls!(
+    ServerSentEventStreamsBodyItemAddInt64DataChecked,
+    ServerSentEventStreamsBodyItemAddInt64Data
+);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct OrderedUnnamedMultipartBody(pub(super) Vec<serde_json::Value>);
@@ -1220,7 +1266,7 @@ impl TryFrom<Vec<serde_json::Value>> for OrderedUnnamedMultipartBody {
                     &runtime::InstancePath::Root,
                     &value,
                     schema,
-                    runtime::schema_defs(),
+                    None,
                 );
             }
         }
@@ -1268,7 +1314,7 @@ for OrderedMultipartWithRequiredHeaderBody {
                     &runtime::InstancePath::Root,
                     &value,
                     schema,
-                    runtime::schema_defs(),
+                    None,
                 );
             }
         }
@@ -1306,7 +1352,7 @@ impl TryFrom<Vec<serde_json::Value>> for NestedMultipartMixedBody {
                     &runtime::InstancePath::Root,
                     &value,
                     schema,
-                    runtime::schema_defs(),
+                    None,
                 );
             }
         }
@@ -1550,154 +1596,21 @@ pub mod builders {
             data: impl TryInto<String, Error: std::fmt::Display>,
         ) -> ServerSentEventStreamsBodyItemEvent {
             ServerSentEventStreamsBodyItemEvent(
-                runtime::Builder::start(|| Ok(
-                    super::ServerSentEventStreamsBodyItemEventFields::new(
-                        runtime::field("data", data)?,
-                    ),
-                )),
-            )
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct ServerSentEventStreamsBodyItemEvent(
-        runtime::Builder<super::ServerSentEventStreamsBodyItemEventFields>,
-    );
-    impl ServerSentEventStreamsBodyItemEvent {
-        pub fn event(
-            self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("event", value, |s, v| s.event = Some(v)))
-        }
-        pub fn id(self, value: impl TryInto<String, Error: std::fmt::Display>) -> Self {
-            Self(self.0.set("id", value, |s, v| s.id = Some(v)))
-        }
-        pub fn retry(
-            self,
-            value: impl TryInto<
-                types::ServerSentEventStreamsBodyItemEventRetry,
-                Error: std::fmt::Display,
-            >,
-        ) -> Self {
-            Self(self.0.set("retry", value, |s, v| s.retry = Some(v)))
-        }
-        /// Returns the value once its whole schema holds.
-        pub fn build(
-            self,
-        ) -> Result<super::ServerSentEventStreamsBodyItemEvent, runtime::BuildError> {
-            self.0.build().and_then(super::ServerSentEventStreamsBodyItemEvent::try_from)
-        }
-    }
-    impl super::ServerSentEventStreamsBodyItemAddInt64 {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            data: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> ServerSentEventStreamsBodyItemAddInt64 {
-            ServerSentEventStreamsBodyItemAddInt64(
-                runtime::Builder::start(|| Ok(
-                    super::ServerSentEventStreamsBodyItemAddInt64Fields::new(
-                        runtime::field("data", data)?,
-                    ),
-                )),
-            )
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct ServerSentEventStreamsBodyItemAddInt64(
-        runtime::Builder<super::ServerSentEventStreamsBodyItemAddInt64Fields>,
-    );
-    impl ServerSentEventStreamsBodyItemAddInt64 {
-        pub fn event(
-            self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("event", value, |s, v| s.event = Some(v)))
-        }
-        pub fn id(self, value: impl TryInto<String, Error: std::fmt::Display>) -> Self {
-            Self(self.0.set("id", value, |s, v| s.id = Some(v)))
-        }
-        pub fn retry(
-            self,
-            value: impl TryInto<
-                types::ServerSentEventStreamsBodyItemAddInt64Retry,
-                Error: std::fmt::Display,
-            >,
-        ) -> Self {
-            Self(self.0.set("retry", value, |s, v| s.retry = Some(v)))
-        }
-        /// Returns the value once its whole schema holds.
-        pub fn build(
-            self,
-        ) -> Result<super::ServerSentEventStreamsBodyItemAddInt64, runtime::BuildError> {
-            self.0
-                .build()
-                .and_then(super::ServerSentEventStreamsBodyItemAddInt64::try_from)
-        }
-    }
-    impl super::ServerSentEventStreamsBodyItemAddJson {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            data: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> ServerSentEventStreamsBodyItemAddJson {
-            ServerSentEventStreamsBodyItemAddJson(
-                runtime::Builder::start(|| Ok(
-                    super::ServerSentEventStreamsBodyItemAddJsonFields::new(
-                        runtime::field("data", data)?,
-                    ),
-                )),
-            )
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct ServerSentEventStreamsBodyItemAddJson(
-        runtime::Builder<super::ServerSentEventStreamsBodyItemAddJsonFields>,
-    );
-    impl ServerSentEventStreamsBodyItemAddJson {
-        pub fn event(
-            self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("event", value, |s, v| s.event = Some(v)))
-        }
-        pub fn id(self, value: impl TryInto<String, Error: std::fmt::Display>) -> Self {
-            Self(self.0.set("id", value, |s, v| s.id = Some(v)))
-        }
-        pub fn retry(
-            self,
-            value: impl TryInto<
-                types::ServerSentEventStreamsBodyItemAddJsonRetry,
-                Error: std::fmt::Display,
-            >,
-        ) -> Self {
-            Self(self.0.set("retry", value, |s, v| s.retry = Some(v)))
-        }
-        /// Returns the value once its whole schema holds.
-        pub fn build(
-            self,
-        ) -> Result<super::ServerSentEventStreamsBodyItemAddJson, runtime::BuildError> {
-            self.0
-                .build()
-                .and_then(super::ServerSentEventStreamsBodyItemAddJson::try_from)
-        }
-    }
-    impl super::ServerSentEventStreamsBodyItemEventFields {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            data: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> ServerSentEventStreamsBodyItemEventFields {
-            ServerSentEventStreamsBodyItemEventFields(
                 runtime::Builder::start(|| Ok(Self::new(runtime::field("data", data)?))),
             )
         }
     }
     #[must_use = "a builder does nothing until `build`"]
-    pub struct ServerSentEventStreamsBodyItemEventFields(
-        runtime::Builder<super::ServerSentEventStreamsBodyItemEventFields>,
+    pub struct ServerSentEventStreamsBodyItemEvent(
+        runtime::Builder<super::ServerSentEventStreamsBodyItemEvent>,
     );
-    impl ServerSentEventStreamsBodyItemEventFields {
+    impl ServerSentEventStreamsBodyItemEvent {
         pub fn event(
             self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
+            value: impl TryInto<
+                types::ServerSentEventStreamsBodyItemEventEvent,
+                Error: std::fmt::Display,
+            >,
         ) -> Self {
             Self(self.0.set("event", value, |s, v| s.event = Some(v)))
         }
@@ -1716,10 +1629,99 @@ pub mod builders {
         /// Returns the value.
         pub fn build(
             self,
-        ) -> Result<
-            super::ServerSentEventStreamsBodyItemEventFields,
-            runtime::BuildError,
-        > {
+        ) -> Result<super::ServerSentEventStreamsBodyItemEvent, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::ServerSentEventStreamsBodyItemAddInt64 {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            data: impl TryInto<
+                types::ServerSentEventStreamsBodyItemAddInt64DataChecked,
+                Error: std::fmt::Display,
+            >,
+        ) -> ServerSentEventStreamsBodyItemAddInt64 {
+            ServerSentEventStreamsBodyItemAddInt64(
+                runtime::Builder::start(|| Ok(Self::new(runtime::field("data", data)?))),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct ServerSentEventStreamsBodyItemAddInt64(
+        runtime::Builder<super::ServerSentEventStreamsBodyItemAddInt64>,
+    );
+    impl ServerSentEventStreamsBodyItemAddInt64 {
+        pub fn event(
+            self,
+            value: impl TryInto<
+                types::ServerSentEventStreamsBodyItemAddInt64Event,
+                Error: std::fmt::Display,
+            >,
+        ) -> Self {
+            Self(self.0.set("event", value, |s, v| s.event = Some(v)))
+        }
+        pub fn id(self, value: impl TryInto<String, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("id", value, |s, v| s.id = Some(v)))
+        }
+        pub fn retry(
+            self,
+            value: impl TryInto<
+                types::ServerSentEventStreamsBodyItemAddInt64Retry,
+                Error: std::fmt::Display,
+            >,
+        ) -> Self {
+            Self(self.0.set("retry", value, |s, v| s.retry = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(
+            self,
+        ) -> Result<super::ServerSentEventStreamsBodyItemAddInt64, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::ServerSentEventStreamsBodyItemAddJson {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            data: impl TryInto<
+                types::ServerSentEventStreamsBodyItemAddJsonData,
+                Error: std::fmt::Display,
+            >,
+        ) -> ServerSentEventStreamsBodyItemAddJson {
+            ServerSentEventStreamsBodyItemAddJson(
+                runtime::Builder::start(|| Ok(Self::new(runtime::field("data", data)?))),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct ServerSentEventStreamsBodyItemAddJson(
+        runtime::Builder<super::ServerSentEventStreamsBodyItemAddJson>,
+    );
+    impl ServerSentEventStreamsBodyItemAddJson {
+        pub fn event(
+            self,
+            value: impl TryInto<
+                types::ServerSentEventStreamsBodyItemAddJsonEvent,
+                Error: std::fmt::Display,
+            >,
+        ) -> Self {
+            Self(self.0.set("event", value, |s, v| s.event = Some(v)))
+        }
+        pub fn id(self, value: impl TryInto<String, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("id", value, |s, v| s.id = Some(v)))
+        }
+        pub fn retry(
+            self,
+            value: impl TryInto<
+                types::ServerSentEventStreamsBodyItemAddJsonRetry,
+                Error: std::fmt::Display,
+            >,
+        ) -> Self {
+            Self(self.0.set("retry", value, |s, v| s.retry = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(
+            self,
+        ) -> Result<super::ServerSentEventStreamsBodyItemAddJson, runtime::BuildError> {
             self.0.build()
         }
     }

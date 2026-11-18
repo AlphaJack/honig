@@ -167,111 +167,71 @@ impl Book {
     }
 }
 /// Gadget
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
-#[serde(transparent)]
-pub struct ProductGadget(pub(super) ProductGadgetFields);
-impl<'de> serde::Deserialize<'de> for ProductGadget {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <ProductGadgetFields as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
+#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct ProductGadget {
+    pub kind: ProductGadgetKind,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub purrs: Option<bool>,
+}
+deserialize_impl!(ProductGadget);
+serialize_impl!(ProductGadget);
+impl ProductGadget {
+    #[must_use]
+    pub const fn new(kind: ProductGadgetKind) -> Self {
+        Self { kind, purrs: None }
     }
 }
-impl TryFrom<ProductGadgetFields> for ProductGadget {
-    type Error = runtime::BuildError;
-    fn try_from(value: ProductGadgetFields) -> Result<Self, runtime::BuildError> {
-        let mut violations: Vec<runtime::Violation> = Vec::new();
-        {
-            let out = &mut violations;
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&value).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Gadget\"},{\"type\":\"object\",\"required\":[\"kind\"],\"properties\":{\"kind\":{\"type\":\"string\"}}}]}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Root,
-                    &value,
-                    schema,
-                    runtime::schema_defs(),
-                );
-            }
-        }
-        runtime::first(violations)
-            .map(|()| Self(value))
-            .map_err(runtime::BuildError::value)
-    }
-}
-checked_impls!(ProductGadget, ProductGadgetFields);
-/// Book
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
-#[serde(transparent)]
-pub struct ProductBook(pub(super) ProductBookFields);
-impl<'de> serde::Deserialize<'de> for ProductBook {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <ProductBookFields as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
-    }
-}
-impl TryFrom<ProductBookFields> for ProductBook {
-    type Error = runtime::BuildError;
-    fn try_from(value: ProductBookFields) -> Result<Self, runtime::BuildError> {
-        let mut violations: Vec<runtime::Violation> = Vec::new();
-        {
-            let out = &mut violations;
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&value).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Book\"},{\"type\":\"object\",\"required\":[\"kind\"],\"properties\":{\"kind\":{\"type\":\"string\"}}}]}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Root,
-                    &value,
-                    schema,
-                    runtime::schema_defs(),
-                );
-            }
-        }
-        runtime::first(violations)
-            .map(|()| Self(value))
-            .map_err(runtime::BuildError::value)
-    }
-}
-checked_impls!(ProductBook, ProductBookFields);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
-pub struct GadgetKind;
-impl GadgetKind {
+pub struct ProductGadgetKind;
+impl ProductGadgetKind {
     pub const VALUE: &'static str = "Gadget";
 }
-serialize_impl_2!(GadgetKind);
-impl<'de> serde::Deserialize<'de> for GadgetKind {
+serialize_impl_2!(ProductGadgetKind);
+impl<'de> serde::Deserialize<'de> for ProductGadgetKind {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         runtime::expect_const(d, &serde_json::Value::String("Gadget".to_owned()))
             .map(|()| Self)
     }
 }
+/// Book
+#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct ProductBook {
+    pub kind: ProductBookKind,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub barks: Option<bool>,
+}
+deserialize_impl!(ProductBook);
+serialize_impl!(ProductBook);
+impl ProductBook {
+    #[must_use]
+    pub const fn new(kind: ProductBookKind) -> Self {
+        Self { kind, barks: None }
+    }
+}
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
-pub struct BookKind;
-impl BookKind {
+pub struct ProductBookKind;
+impl ProductBookKind {
     pub const VALUE: &'static str = "Book";
 }
-serialize_impl_2!(BookKind);
-impl<'de> serde::Deserialize<'de> for BookKind {
+serialize_impl_2!(ProductBookKind);
+impl<'de> serde::Deserialize<'de> for ProductBookKind {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         runtime::expect_const(d, &serde_json::Value::String("Book".to_owned()))
             .map(|()| Self)
     }
 }
+pub use ProductGadgetKind as GadgetKind;
+pub use ProductBookKind as BookKind;
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct UploadBody {
@@ -398,97 +358,6 @@ impl<'de> runtime::TaggedUnion<'de> for ProductVariants {
             0 => v.decode_into(Self::Gadget),
             1 => v.decode_into(Self::Book),
             _ => Err(serde::de::Error::custom("matches no variant")),
-        }
-    }
-}
-/// Gadget
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct ProductGadgetFields {
-    pub kind: String,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub purrs: Option<bool>,
-}
-deserialize_impl!(ProductGadgetFields);
-serialize_impl!(ProductGadgetFields);
-impl ProductGadgetFields {
-    #[must_use]
-    pub const fn new(kind: String) -> Self {
-        Self { kind, purrs: None }
-    }
-}
-/// Book
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct ProductBookFields {
-    pub kind: String,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub barks: Option<bool>,
-}
-deserialize_impl!(ProductBookFields);
-serialize_impl!(ProductBookFields);
-impl ProductBookFields {
-    #[must_use]
-    pub const fn new(kind: String) -> Self {
-        Self { kind, barks: None }
-    }
-}
-/// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
-/// its field. `build` returns the first field that did not convert.
-pub mod builders {
-    use super::runtime;
-    impl super::ProductGadget {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            kind: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> ProductGadget {
-            ProductGadget(
-                runtime::Builder::start(|| Ok(
-                    super::ProductGadgetFields::new(runtime::field("kind", kind)?),
-                )),
-            )
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct ProductGadget(runtime::Builder<super::ProductGadgetFields>);
-    impl ProductGadget {
-        pub fn purrs(self, value: impl TryInto<bool, Error: std::fmt::Display>) -> Self {
-            Self(self.0.set("purrs", value, |s, v| s.purrs = Some(v)))
-        }
-        /// Returns the value once its whole schema holds.
-        pub fn build(self) -> Result<super::ProductGadget, runtime::BuildError> {
-            self.0.build().and_then(super::ProductGadget::try_from)
-        }
-    }
-    impl super::ProductBook {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            kind: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> ProductBook {
-            ProductBook(
-                runtime::Builder::start(|| Ok(
-                    super::ProductBookFields::new(runtime::field("kind", kind)?),
-                )),
-            )
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct ProductBook(runtime::Builder<super::ProductBookFields>);
-    impl ProductBook {
-        pub fn barks(self, value: impl TryInto<bool, Error: std::fmt::Display>) -> Self {
-            Self(self.0.set("barks", value, |s, v| s.barks = Some(v)))
-        }
-        /// Returns the value once its whole schema holds.
-        pub fn build(self) -> Result<super::ProductBook, runtime::BuildError> {
-            self.0.build().and_then(super::ProductBook::try_from)
         }
     }
 }

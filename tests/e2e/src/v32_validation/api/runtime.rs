@@ -8,7 +8,7 @@ pub fn schema_defs() -> Option<&'static serde_json::Map<String, serde_json::Valu
     static DEFS: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
     DEFS.get_or_init(|| {
             serde_json::from_str(
-                    "{\"/components/schemas/EntryFields\":{\"type\":\"object\",\"properties\":{\"lines\":{\"type\":\"array\",\"items\":{\"$ref\":\"#/$defs/~1components~1schemas~1Line\"}}}},\"/components/schemas/Line\":{\"type\":\"object\",\"properties\":{\"note\":{\"type\":[\"string\",\"null\"],\"maxLength\":3}}},\"/components/schemas/NoOptions\":{\"type\":\"object\",\"additionalProperties\":false}}",
+                    "{\"/components/schemas/NoOptions\":{\"type\":\"object\",\"additionalProperties\":false}}",
                 )
                 .unwrap_or_default()
         })

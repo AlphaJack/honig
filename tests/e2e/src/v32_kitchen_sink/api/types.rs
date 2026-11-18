@@ -34,6 +34,26 @@ macro_rules! serialize_impl {
         }
     };
 }
+macro_rules! try_from_impl {
+    ($t:ty) => {
+        impl TryFrom<&str> for $t {
+            type Error = runtime::BuildError;
+            fn try_from(s: &str) -> Result<Self, runtime::BuildError> {
+                match s {
+                    "book" => Ok(Self::Book),
+                    "gadget" => Ok(Self::Gadget),
+                    other => {
+                        Err(
+                            runtime::BuildError::value(
+                                format!("`{other}` is not one of `book`, `gadget`"),
+                            ),
+                        )
+                    }
+                }
+            }
+        }
+    };
+}
 macro_rules! serialize_impl_2 {
     ($t:ty) => {
         impl serde::Serialize for $t {
@@ -534,22 +554,7 @@ impl ProductKind {
         }
     }
 }
-impl TryFrom<&str> for ProductKind {
-    type Error = runtime::BuildError;
-    fn try_from(s: &str) -> Result<Self, runtime::BuildError> {
-        match s {
-            "book" => Ok(Self::Book),
-            "gadget" => Ok(Self::Gadget),
-            other => {
-                Err(
-                    runtime::BuildError::value(
-                        format!("`{other}` is not one of `book`, `gadget`"),
-                    ),
-                )
-            }
-        }
-    }
-}
+try_from_impl!(ProductKind);
 str_enum_impls!(ProductKind);
 #[derive(Debug, Clone, PartialEq, Copy, PartialOrd, serde::Serialize)]
 #[serde(transparent)]
@@ -599,7 +604,7 @@ impl TryFrom<Gadget2Fields> for Gadget2 {
                 let schema = SCHEMA
                     .get_or_init(|| {
                         serde_json::from_str(
-                                "{\"allOf\":[{\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Product\"}],\"type\":\"object\",\"properties\":{\"kind\":{\"const\":\"gadget\"}},\"required\":[\"name\",\"kind\"]},{\"$id\":\"https://example.com/schemas/product\",\"$schema\":\"https://spec.openapis.org/oas/3.2/dialect/2025-09-17\",\"$comment\":\"A product\",\"type\":\"object\",\"required\":[\"name\",\"kind\"],\"properties\":{\"id\":{\"type\":\"integer\",\"format\":\"int64\",\"readOnly\":true,\"minimum\":0,\"exclusiveMaximum\":9007199254740991},\"name\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":64,\"pattern\":\"^[A-Za-z ]+$\"},\"kind\":{\"type\":\"string\",\"enum\":[\"book\",\"gadget\"]},\"nickname\":{\"type\":[\"string\",\"null\"],\"default\":null},\"secret\":{\"type\":\"string\",\"writeOnly\":true,\"deprecated\":true},\"tags\":{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"uniqueItems\":true,\"minItems\":0,\"maxItems\":10,\"contains\":{\"const\":\"vip\"},\"minContains\":0,\"maxContains\":1},\"point\":{\"type\":\"array\",\"prefixItems\":[{\"type\":\"number\"},{\"type\":\"number\"}],\"items\":false,\"unevaluatedItems\":false},\"attrs\":{\"type\":\"object\",\"patternProperties\":{\"^x_\":{\"type\":\"string\"}},\"propertyNames\":{\"pattern\":\"^[a-z_]+$\"},\"minProperties\":0,\"maxProperties\":20,\"unevaluatedProperties\":false},\"weight\":{\"type\":\"number\",\"multipleOf\":0.01,\"exclusiveMinimum\":0},\"owner\":{\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Owner\"}]}},\"dependentRequired\":{\"nickname\":[\"name\"]},\"dependentSchemas\":{\"secret\":{\"required\":[]}},\"x-rust-type\":{\"crate\":\"products\",\"version\":\"1\",\"path\":\"products::Product\"}}]}",
+                                "{\"$id\":\"https://example.com/schemas/product\",\"$schema\":\"https://spec.openapis.org/oas/3.2/dialect/2025-09-17\",\"$comment\":\"A product\",\"type\":\"object\",\"required\":[\"name\",\"kind\"],\"properties\":{\"id\":{\"type\":\"integer\",\"format\":\"int64\",\"readOnly\":true,\"minimum\":0,\"exclusiveMaximum\":9007199254740991},\"name\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":64,\"pattern\":\"^[A-Za-z ]+$\"},\"kind\":{\"type\":\"string\",\"enum\":[\"book\",\"gadget\"]},\"nickname\":{\"type\":[\"string\",\"null\"],\"default\":null},\"secret\":{\"type\":\"string\",\"writeOnly\":true,\"deprecated\":true},\"tags\":{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"uniqueItems\":true,\"minItems\":0,\"maxItems\":10,\"contains\":{\"const\":\"vip\"},\"minContains\":0,\"maxContains\":1},\"point\":{\"type\":\"array\",\"prefixItems\":[{\"type\":\"number\"},{\"type\":\"number\"}],\"items\":false,\"unevaluatedItems\":false},\"attrs\":{\"type\":\"object\",\"patternProperties\":{\"^x_\":{\"type\":\"string\"}},\"propertyNames\":{\"pattern\":\"^[a-z_]+$\"},\"minProperties\":0,\"maxProperties\":20,\"unevaluatedProperties\":false},\"weight\":{\"type\":\"number\",\"multipleOf\":0.01,\"exclusiveMinimum\":0},\"owner\":{\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Owner\"}]}},\"dependentRequired\":{\"nickname\":[\"name\"]},\"dependentSchemas\":{\"secret\":{\"required\":[]}},\"x-rust-type\":{\"crate\":\"products\",\"version\":\"1\",\"path\":\"products::Product\"}}",
                             )
                             .unwrap_or_default()
                     });
@@ -620,22 +625,23 @@ impl TryFrom<Gadget2Fields> for Gadget2 {
 checked_impls!(Gadget2, Gadget2Fields);
 pub type Gadget2Id = ProductId;
 pub type Gadget2Name = ProductName;
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
-pub struct Gadget2Kind;
-impl Gadget2Kind {
-    pub const VALUE: &'static str = "gadget";
+pub type Gadget2Kind = Gadget2Kind2;
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum Gadget2Kind2 {
+    Book,
+    Gadget,
 }
-impl serde::Serialize for Gadget2Kind {
-    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        s.serialize_str(Self::VALUE)
+impl Gadget2Kind2 {
+    #[must_use]
+    pub const fn as_str(&self) -> &'static str {
+        match self {
+            Self::Book => "book",
+            Self::Gadget => "gadget",
+        }
     }
 }
-impl<'de> serde::Deserialize<'de> for Gadget2Kind {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        runtime::expect_const(d, &serde_json::Value::String("gadget".to_owned()))
-            .map(|()| Self)
-    }
-}
+try_from_impl!(Gadget2Kind2);
+str_enum_impls!(Gadget2Kind2);
 pub type Gadget2Weight = ProductWeight;
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -1015,7 +1021,7 @@ impl TryFrom<Gadget2RequestFields> for Gadget2Request {
                 let schema = SCHEMA
                     .get_or_init(|| {
                         serde_json::from_str(
-                                "{\"allOf\":[{\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Product\"}],\"type\":\"object\",\"properties\":{\"kind\":{\"const\":\"gadget\"}},\"required\":[\"name\",\"kind\"]},{\"$id\":\"https://example.com/schemas/product\",\"$schema\":\"https://spec.openapis.org/oas/3.2/dialect/2025-09-17\",\"$comment\":\"A product\",\"type\":\"object\",\"required\":[\"name\",\"kind\"],\"properties\":{\"id\":{\"type\":\"integer\",\"format\":\"int64\",\"readOnly\":true,\"minimum\":0,\"exclusiveMaximum\":9007199254740991},\"name\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":64,\"pattern\":\"^[A-Za-z ]+$\"},\"kind\":{\"type\":\"string\",\"enum\":[\"book\",\"gadget\"]},\"nickname\":{\"type\":[\"string\",\"null\"],\"default\":null},\"secret\":{\"type\":\"string\",\"writeOnly\":true,\"deprecated\":true},\"tags\":{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"uniqueItems\":true,\"minItems\":0,\"maxItems\":10,\"contains\":{\"const\":\"vip\"},\"minContains\":0,\"maxContains\":1},\"point\":{\"type\":\"array\",\"prefixItems\":[{\"type\":\"number\"},{\"type\":\"number\"}],\"items\":false,\"unevaluatedItems\":false},\"attrs\":{\"type\":\"object\",\"patternProperties\":{\"^x_\":{\"type\":\"string\"}},\"propertyNames\":{\"pattern\":\"^[a-z_]+$\"},\"minProperties\":0,\"maxProperties\":20,\"unevaluatedProperties\":false},\"weight\":{\"type\":\"number\",\"multipleOf\":0.01,\"exclusiveMinimum\":0},\"owner\":{\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Owner\"}]}},\"dependentRequired\":{\"nickname\":[\"name\"]},\"dependentSchemas\":{\"secret\":{\"required\":[]}},\"x-rust-type\":{\"crate\":\"products\",\"version\":\"1\",\"path\":\"products::Product\"}}]}",
+                                "{\"$id\":\"https://example.com/schemas/product\",\"$schema\":\"https://spec.openapis.org/oas/3.2/dialect/2025-09-17\",\"$comment\":\"A product\",\"type\":\"object\",\"required\":[\"name\",\"kind\"],\"properties\":{\"id\":{\"type\":\"integer\",\"format\":\"int64\",\"readOnly\":true,\"minimum\":0,\"exclusiveMaximum\":9007199254740991},\"name\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":64,\"pattern\":\"^[A-Za-z ]+$\"},\"kind\":{\"type\":\"string\",\"enum\":[\"book\",\"gadget\"]},\"nickname\":{\"type\":[\"string\",\"null\"],\"default\":null},\"secret\":{\"type\":\"string\",\"writeOnly\":true,\"deprecated\":true},\"tags\":{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"uniqueItems\":true,\"minItems\":0,\"maxItems\":10,\"contains\":{\"const\":\"vip\"},\"minContains\":0,\"maxContains\":1},\"point\":{\"type\":\"array\",\"prefixItems\":[{\"type\":\"number\"},{\"type\":\"number\"}],\"items\":false,\"unevaluatedItems\":false},\"attrs\":{\"type\":\"object\",\"patternProperties\":{\"^x_\":{\"type\":\"string\"}},\"propertyNames\":{\"pattern\":\"^[a-z_]+$\"},\"minProperties\":0,\"maxProperties\":20,\"unevaluatedProperties\":false},\"weight\":{\"type\":\"number\",\"multipleOf\":0.01,\"exclusiveMinimum\":0},\"owner\":{\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Owner\"}]}},\"dependentRequired\":{\"nickname\":[\"name\"]},\"dependentSchemas\":{\"secret\":{\"required\":[]}},\"x-rust-type\":{\"crate\":\"products\",\"version\":\"1\",\"path\":\"products::Product\"}}",
                             )
                             .unwrap_or_default()
                     });

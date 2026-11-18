@@ -100,6 +100,14 @@ components:
     AlwaysTrue:
       type: boolean
       enum: [true]
+    # A member that narrows a property of another: `at` must be a string of at most 5 characters, never `null`.
+    Stamp:
+      type: object
+      properties: {at: {type: [string, "null"]}}
+    NarrowStamp:
+      allOf:
+        - {$ref: '#/components/schemas/Stamp'}
+        - {type: object, required: [at], properties: {at: {type: string, maxLength: 5}}}
     # `oneOf` of two strings: exactly one branch may take a value.
     Code:
       oneOf: [{type: string, maxLength: 3}, {type: string, pattern: '^[a-z]+$'}]

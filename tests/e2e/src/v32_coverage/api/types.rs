@@ -229,7 +229,7 @@ impl ImageNote {
 impl Default for ImageNote {
     fn default() -> Self {
         Self {
-            kind: ImageNoteKind,
+            kind: ImageNoteKind {},
             url: <String>::default(),
             width: Self::default_width(),
             crop: <Option<Crop>>::default(),
@@ -299,7 +299,7 @@ impl TryFrom<NoteTextNoteFields> for NoteTextNote {
                 let schema = SCHEMA
                     .get_or_init(|| {
                         serde_json::from_str(
-                                "{\"allOf\":[{\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1TextNote\"},{\"type\":\"object\",\"properties\":{\"kind\":{\"type\":\"string\"},\"text\":{\"type\":\"string\"},\"size\":{\"type\":\"integer\"}}}]},{\"type\":\"object\",\"required\":[\"text\"],\"properties\":{\"kind\":{\"const\":\"text\"},\"text\":{\"type\":\"string\"},\"point\":{\"type\":\"array\",\"items\":{\"type\":\"number\"},\"minItems\":2,\"maxItems\":2},\"rgb\":{\"type\":\"array\",\"items\":{\"type\":\"integer\",\"format\":\"uint8\"},\"minItems\":3,\"maxItems\":3,\"uniqueItems\":true}},\"if\":{\"required\":[\"size\"]},\"then\":{\"properties\":{\"size\":{\"maximum\":10}}},\"else\":{\"properties\":{\"text\":{\"maxLength\":5}}}}]}",
+                                "{\"type\":\"object\",\"required\":[\"text\"],\"properties\":{\"kind\":{\"const\":\"text\"},\"text\":{\"type\":\"string\"},\"point\":{\"type\":\"array\",\"items\":{\"type\":\"number\"},\"minItems\":2,\"maxItems\":2},\"rgb\":{\"type\":\"array\",\"items\":{\"type\":\"integer\",\"format\":\"uint8\"},\"minItems\":3,\"maxItems\":3,\"uniqueItems\":true}},\"if\":{\"required\":[\"size\"]},\"then\":{\"properties\":{\"size\":{\"maximum\":10}}},\"else\":{\"properties\":{\"text\":{\"maxLength\":5}}}}",
                             )
                             .unwrap_or_default()
                     });
@@ -318,71 +318,93 @@ impl TryFrom<NoteTextNoteFields> for NoteTextNote {
     }
 }
 checked_impls!(NoteTextNote, NoteTextNoteFields);
-/// `ImageNote`
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
-#[serde(transparent)]
-pub struct NoteImageNote(pub(super) NoteImageNoteFields);
-impl<'de> serde::Deserialize<'de> for NoteImageNote {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <NoteImageNoteFields as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
-    }
-}
-impl TryFrom<NoteImageNoteFields> for NoteImageNote {
-    type Error = runtime::BuildError;
-    fn try_from(value: NoteImageNoteFields) -> Result<Self, runtime::BuildError> {
-        let mut violations: Vec<runtime::Violation> = Vec::new();
-        {
-            let out = &mut violations;
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&value).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1ImageNote\"},{\"type\":\"object\",\"properties\":{\"kind\":{\"type\":\"string\"},\"text\":{\"type\":\"string\"},\"size\":{\"type\":\"integer\"}}}]}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Root,
-                    &value,
-                    schema,
-                    runtime::schema_defs(),
-                );
-            }
-        }
-        runtime::first(violations)
-            .map(|()| Self(value))
-            .map_err(runtime::BuildError::value)
-    }
-}
-checked_impls!(NoteImageNote, NoteImageNoteFields);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
-pub struct TextNoteKind;
-impl TextNoteKind {
+pub struct NoteTextNoteKind;
+impl NoteTextNoteKind {
     pub const VALUE: &'static str = "text";
 }
-serialize_impl_2!(TextNoteKind);
-impl<'de> serde::Deserialize<'de> for TextNoteKind {
+serialize_impl_2!(NoteTextNoteKind);
+impl<'de> serde::Deserialize<'de> for NoteTextNoteKind {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         runtime::expect_const(d, &serde_json::Value::String("text".to_owned()))
             .map(|()| Self)
     }
 }
+/// `ImageNote`
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct NoteImageNote {
+    pub kind: NoteImageNoteKind,
+    pub url: String,
+    #[serde(default = "NoteImageNote::default_width")]
+    pub width: Pixels,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub crop: Option<Crop>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub text: Option<String>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub size: Option<i64>,
+}
+deserialize_impl!(NoteImageNote);
+serialize_impl!(NoteImageNote);
+impl NoteImageNote {
+    #[must_use]
+    pub const fn new(kind: NoteImageNoteKind, url: String) -> Self {
+        Self {
+            kind,
+            url,
+            width: Self::default_width(),
+            crop: None,
+            text: None,
+            size: None,
+        }
+    }
+}
+impl NoteImageNote {
+    #[doc(hidden)]
+    #[must_use]
+    pub const fn default_width() -> Pixels {
+        64i64
+    }
+}
+impl Default for NoteImageNote {
+    fn default() -> Self {
+        Self {
+            kind: NoteImageNoteKind {},
+            url: <String>::default(),
+            width: Self::default_width(),
+            crop: <Option<Crop>>::default(),
+            text: <Option<String>>::default(),
+            size: <Option<i64>>::default(),
+        }
+    }
+}
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
-pub struct ImageNoteKind;
-impl ImageNoteKind {
+pub struct NoteImageNoteKind;
+impl NoteImageNoteKind {
     pub const VALUE: &'static str = "image";
 }
-serialize_impl_2!(ImageNoteKind);
-impl<'de> serde::Deserialize<'de> for ImageNoteKind {
+serialize_impl_2!(NoteImageNoteKind);
+impl<'de> serde::Deserialize<'de> for NoteImageNoteKind {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         runtime::expect_const(d, &serde_json::Value::String("image".to_owned()))
             .map(|()| Self)
     }
 }
+pub use NoteTextNoteKind as TextNoteKind;
+pub use NoteImageNoteKind as ImageNoteKind;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CropVariant2 {
     Integer(i64),
@@ -642,7 +664,7 @@ pub struct NoteTextNoteFields {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub kind: Option<String>,
+    pub kind: Option<NoteTextNoteKind>,
     pub text: String,
     #[serde(
         default,
@@ -674,67 +696,6 @@ impl NoteTextNoteFields {
             point: None,
             rgb: None,
             size: None,
-        }
-    }
-}
-/// `ImageNote`
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct NoteImageNoteFields {
-    pub kind: String,
-    pub url: String,
-    #[serde(default = "NoteImageNoteFields::default_width")]
-    pub width: Pixels,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub crop: Option<Crop>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub text: Option<String>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub size: Option<i64>,
-}
-deserialize_impl!(NoteImageNoteFields);
-serialize_impl!(NoteImageNoteFields);
-impl NoteImageNoteFields {
-    #[must_use]
-    pub const fn new(kind: String, url: String) -> Self {
-        Self {
-            kind,
-            url,
-            width: Self::default_width(),
-            crop: None,
-            text: None,
-            size: None,
-        }
-    }
-}
-impl NoteImageNoteFields {
-    #[doc(hidden)]
-    #[must_use]
-    pub const fn default_width() -> Pixels {
-        64i64
-    }
-}
-impl Default for NoteImageNoteFields {
-    fn default() -> Self {
-        Self {
-            kind: <String>::default(),
-            url: <String>::default(),
-            width: Self::default_width(),
-            crop: <Option<Crop>>::default(),
-            text: <Option<String>>::default(),
-            size: <Option<i64>>::default(),
         }
     }
 }
@@ -855,7 +816,7 @@ pub mod builders {
     impl NoteTextNote {
         pub fn kind(
             self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
+            value: impl TryInto<types::NoteTextNoteKind, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("kind", value, |s, v| s.kind = Some(v)))
         }
@@ -882,21 +843,18 @@ pub mod builders {
     impl super::NoteImageNote {
         /// Starts a builder from the required properties.
         pub fn builder(
-            kind: impl TryInto<String, Error: std::fmt::Display>,
+            kind: impl TryInto<types::NoteImageNoteKind, Error: std::fmt::Display>,
             url: impl TryInto<String, Error: std::fmt::Display>,
         ) -> NoteImageNote {
             NoteImageNote(
                 runtime::Builder::start(|| Ok(
-                    super::NoteImageNoteFields::new(
-                        runtime::field("kind", kind)?,
-                        runtime::field("url", url)?,
-                    ),
+                    Self::new(runtime::field("kind", kind)?, runtime::field("url", url)?),
                 )),
             )
         }
     }
     #[must_use = "a builder does nothing until `build`"]
-    pub struct NoteImageNote(runtime::Builder<super::NoteImageNoteFields>);
+    pub struct NoteImageNote(runtime::Builder<super::NoteImageNote>);
     impl NoteImageNote {
         pub fn width(
             self,
@@ -919,9 +877,9 @@ pub mod builders {
         pub fn size(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
             Self(self.0.set("size", value, |s, v| s.size = Some(v)))
         }
-        /// Returns the value once its whole schema holds.
+        /// Returns the value.
         pub fn build(self) -> Result<super::NoteImageNote, runtime::BuildError> {
-            self.0.build().and_then(super::NoteImageNote::try_from)
+            self.0.build()
         }
     }
     impl super::TextNoteFields {
@@ -975,7 +933,7 @@ pub mod builders {
     impl NoteTextNoteFields {
         pub fn kind(
             self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
+            value: impl TryInto<types::NoteTextNoteKind, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("kind", value, |s, v| s.kind = Some(v)))
         }
@@ -996,48 +954,6 @@ pub mod builders {
         }
         /// Returns the value.
         pub fn build(self) -> Result<super::NoteTextNoteFields, runtime::BuildError> {
-            self.0.build()
-        }
-    }
-    impl super::NoteImageNoteFields {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            kind: impl TryInto<String, Error: std::fmt::Display>,
-            url: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> NoteImageNoteFields {
-            NoteImageNoteFields(
-                runtime::Builder::start(|| Ok(
-                    Self::new(runtime::field("kind", kind)?, runtime::field("url", url)?),
-                )),
-            )
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct NoteImageNoteFields(runtime::Builder<super::NoteImageNoteFields>);
-    impl NoteImageNoteFields {
-        pub fn width(
-            self,
-            value: impl TryInto<types::Pixels, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("width", value, |s, v| s.width = v))
-        }
-        pub fn crop(
-            self,
-            value: impl TryInto<types::Crop, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("crop", value, |s, v| s.crop = Some(v)))
-        }
-        pub fn text(
-            self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("text", value, |s, v| s.text = Some(v)))
-        }
-        pub fn size(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
-            Self(self.0.set("size", value, |s, v| s.size = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::NoteImageNoteFields, runtime::BuildError> {
             self.0.build()
         }
     }

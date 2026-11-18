@@ -46,13 +46,6 @@ fn documented_examples_decode() {
         String,
     >(
         &mut bad,
-        "/components/schemas/Note/oneOf/0/properties/text/examples/0",
-        serde_json::Value::String("hello".to_owned()),
-    );
-    value::<
-        String,
-    >(
-        &mut bad,
         "/components/schemas/Note/oneOf/1/properties/text/examples/0",
         serde_json::Value::String("hello".to_owned()),
     );

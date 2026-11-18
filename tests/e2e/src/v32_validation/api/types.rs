@@ -15,18 +15,6 @@
     clippy::init_numbered_fields,
     reason = "a spec default builds its checked type as `Type { 0: value }`, which also works through the alias of a twin"
 )]
-macro_rules! serialize_impl {
-    ($t:ty) => {
-        impl serde::Serialize for $t {
-            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-                match self {
-                    Self::Variant1(v) => serde::Serialize::serialize(v, s),
-                    Self::Variant2(v) => serde::Serialize::serialize(v, s),
-                }
-            }
-        }
-    };
-}
 macro_rules! deserialize_impl {
     ($t:ty) => {
         impl<'de> serde::Deserialize<'de> for $t {
@@ -36,11 +24,23 @@ macro_rules! deserialize_impl {
         }
     };
 }
-macro_rules! serialize_impl_2 {
+macro_rules! serialize_impl {
     ($t:ty) => {
         impl serde::Serialize for $t {
             fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
                 Self::serialize(self, s)
+            }
+        }
+    };
+}
+macro_rules! serialize_impl_2 {
+    ($t:ty) => {
+        impl serde::Serialize for $t {
+            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                match self {
+                    Self::Variant1(v) => serde::Serialize::serialize(v, s),
+                    Self::Variant2(v) => serde::Serialize::serialize(v, s),
+                }
             }
         }
     };
@@ -97,7 +97,7 @@ macro_rules! try_from_impl_2 {
                         &runtime::InstancePath::Root,
                         n,
                         None,
-                        Some(3),
+                        Some(5),
                         "characters",
                     );
                 }
@@ -122,7 +122,7 @@ macro_rules! try_from_impl_3 {
                         &runtime::InstancePath::Root,
                         n,
                         None,
-                        Some(5),
+                        Some(3),
                         "characters",
                     );
                 }
@@ -141,16 +141,6 @@ macro_rules! deserialize_impl_2 {
                     String,
                     String,
                 > as serde::Deserialize>::deserialize(d)?;
-                Self::try_from(value).map_err(serde::de::Error::custom)
-            }
-        }
-    };
-}
-macro_rules! deserialize_impl_3 {
-    ($t:ty) => {
-        impl<'de> serde::Deserialize<'de> for $t {
-            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-                let value = <serde_json::Value as serde::Deserialize>::deserialize(d)?;
                 Self::try_from(value).map_err(serde::de::Error::custom)
             }
         }
@@ -421,12 +411,97 @@ impl<'de> serde::Deserialize<'de> for AlwaysTrue {
         runtime::expect_const(d, &serde_json::Value::Bool(true)).map(|()| Self)
     }
 }
+#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct Stamp {
+    #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
+    pub at: runtime::Nullable<String>,
+}
+deserialize_impl!(Stamp);
+serialize_impl!(Stamp);
+impl Stamp {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self {
+            at: runtime::Nullable::Absent,
+        }
+    }
+}
+impl runtime::XmlShape for Stamp {
+    fn xml() -> &'static runtime::XmlNode {
+        static NODE: runtime::XmlNode = runtime::XmlNode {
+            name: "Stamp",
+            namespace: "",
+            prefix: "",
+            fields: &[
+                runtime::XmlField {
+                    wire: "at",
+                    name: "at",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "at",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: true,
+                    object: false,
+                },
+            ],
+        };
+        &NODE
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct NarrowStamp {
+    pub at: NarrowStampAt,
+}
+deserialize_impl!(NarrowStamp);
+serialize_impl!(NarrowStamp);
+impl NarrowStamp {
+    #[must_use]
+    pub const fn new(at: NarrowStampAt) -> Self {
+        Self { at }
+    }
+}
+impl runtime::XmlShape for NarrowStamp {
+    fn xml() -> &'static runtime::XmlNode {
+        static NODE: runtime::XmlNode = runtime::XmlNode {
+            name: "NarrowStamp",
+            namespace: "",
+            prefix: "",
+            fields: &[
+                runtime::XmlField {
+                    wire: "at",
+                    name: "at",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: true,
+                    item: "at",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+            ],
+        };
+        &NODE
+    }
+}
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Code {
     Variant1(CodeVariant1),
     Variant2(CodeVariant2),
 }
-serialize_impl!(Code);
+serialize_impl_2!(Code);
 impl<'de> serde::Deserialize<'de> for Code {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         let v = <runtime::Content<'de> as serde::Deserialize>::deserialize(d)?;
@@ -492,7 +567,7 @@ pub struct Exact {
     pub cents: Option<ExactCents>,
 }
 deserialize_impl!(Exact);
-serialize_impl_2!(Exact);
+serialize_impl!(Exact);
 impl Exact {
     #[must_use]
     pub const fn new() -> Self {
@@ -578,7 +653,7 @@ pub struct Degenerate {
     pub half: Option<DegenerateHalf>,
 }
 deserialize_impl!(Degenerate);
-serialize_impl_2!(Degenerate);
+serialize_impl!(Degenerate);
 impl Degenerate {
     #[must_use]
     pub const fn new() -> Self {
@@ -688,7 +763,7 @@ pub enum Tree {
     Variant1(TreeVariant1),
     Variant2(TreeVariant2),
 }
-serialize_impl!(Tree);
+serialize_impl_2!(Tree);
 impl<'de> serde::Deserialize<'de> for Tree {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         let v = <runtime::Content<'de> as serde::Deserialize>::deserialize(d)?;
@@ -762,7 +837,7 @@ pub struct Ledger {
     pub entries: Option<Vec<Entry>>,
 }
 deserialize_impl!(Ledger);
-serialize_impl_2!(Ledger);
+serialize_impl!(Ledger);
 impl Ledger {
     #[must_use]
     pub const fn new() -> Self {
@@ -786,6 +861,74 @@ impl runtime::XmlShape for Ledger {
                     wrapped: false,
                     required: false,
                     item: "entries",
+                    child: Some(<Entry as runtime::XmlShape>::xml),
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+            ],
+        };
+        &NODE
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct Entry {
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub lines: Option<EntryLinesChecked>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub id: Option<i64>,
+}
+deserialize_impl!(Entry);
+serialize_impl!(Entry);
+impl Entry {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self { lines: None, id: None }
+    }
+}
+impl runtime::XmlShape for Entry {
+    fn xml() -> &'static runtime::XmlNode {
+        static NODE: runtime::XmlNode = runtime::XmlNode {
+            name: "Entry",
+            namespace: "",
+            prefix: "",
+            fields: &[
+                runtime::XmlField {
+                    wire: "lines",
+                    name: "lines",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "lines",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "id",
+                    name: "id",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "id",
                     child: None,
                     cdata: false,
                     inline: false,
@@ -797,46 +940,6 @@ impl runtime::XmlShape for Ledger {
         &NODE
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
-#[serde(transparent)]
-pub struct Entry(pub(super) EntryFields2);
-impl<'de> serde::Deserialize<'de> for Entry {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <EntryFields2 as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
-    }
-}
-impl TryFrom<EntryFields2> for Entry {
-    type Error = runtime::BuildError;
-    fn try_from(value: EntryFields2) -> Result<Self, runtime::BuildError> {
-        let mut violations: Vec<runtime::Violation> = Vec::new();
-        {
-            let out = &mut violations;
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&value).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1EntryFields\"},{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"integer\"},\"lines\":{\"maxItems\":2}}}]}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Root,
-                    &value,
-                    schema,
-                    runtime::schema_defs(),
-                );
-            }
-        }
-        runtime::first(violations)
-            .map(|()| Self(value))
-            .map_err(runtime::BuildError::value)
-    }
-}
-checked_impls!(Entry, EntryFields2);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct EntryFields {
@@ -848,7 +951,7 @@ pub struct EntryFields {
     pub lines: Option<Vec<Line>>,
 }
 deserialize_impl!(EntryFields);
-serialize_impl_2!(EntryFields);
+serialize_impl!(EntryFields);
 impl EntryFields {
     #[must_use]
     pub const fn new() -> Self {
@@ -890,7 +993,7 @@ pub struct Line {
     pub note: runtime::Nullable<LineNote>,
 }
 deserialize_impl!(Line);
-serialize_impl_2!(Line);
+serialize_impl!(Line);
 impl Line {
     #[must_use]
     pub const fn new() -> Self {
@@ -934,7 +1037,7 @@ pub struct Refusal {
     pub object: RefusalObject,
 }
 deserialize_impl!(Refusal);
-serialize_impl_2!(Refusal);
+serialize_impl!(Refusal);
 impl Refusal {
     #[must_use]
     pub const fn new(message: String, object: RefusalObject) -> Self {
@@ -994,7 +1097,7 @@ pub struct Problem {
     pub detail: String,
 }
 deserialize_impl!(Problem);
-serialize_impl_2!(Problem);
+serialize_impl!(Problem);
 impl Problem {
     #[must_use]
     pub const fn new(code: ProblemCode, status: i32, detail: String) -> Self {
@@ -1068,7 +1171,7 @@ pub struct Closed {
     pub name: String,
 }
 deserialize_impl!(Closed);
-serialize_impl_2!(Closed);
+serialize_impl!(Closed);
 impl Closed {
     #[must_use]
     pub const fn new(name: String) -> Self {
@@ -1108,7 +1211,7 @@ impl runtime::XmlShape for Closed {
 #[serde(deny_unknown_fields)]
 pub struct NoOptions {}
 deserialize_impl!(NoOptions);
-serialize_impl_2!(NoOptions);
+serialize_impl!(NoOptions);
 impl NoOptions {
     #[must_use]
     pub const fn new() -> Self {
@@ -1134,7 +1237,7 @@ pub struct Badge {
     pub holders: BadgeHolders,
 }
 deserialize_impl!(Badge);
-serialize_impl_2!(Badge);
+serialize_impl!(Badge);
 impl Badge {
     #[must_use]
     pub const fn new(id: i64, label: BadgeLabel, holders: BadgeHolders) -> Self {
@@ -1208,7 +1311,7 @@ pub struct Login {
     pub token: String,
 }
 deserialize_impl!(Login);
-serialize_impl_2!(Login);
+serialize_impl!(Login);
 impl Login {
     #[must_use]
     pub const fn new(user: String, token: String) -> Self {
@@ -1316,7 +1419,7 @@ pub struct Price {
     pub retired: Option<()>,
 }
 deserialize_impl!(Price);
-serialize_impl_2!(Price);
+serialize_impl!(Price);
 impl Price {
     #[must_use]
     pub const fn new() -> Self {
@@ -1427,7 +1530,7 @@ pub struct User {
     pub note: runtime::Nullable<UserNote>,
 }
 deserialize_impl!(User);
-serialize_impl_2!(User);
+serialize_impl!(User);
 impl User {
     #[must_use]
     pub const fn new(name: UserName, role: UserRole) -> Self {
@@ -1656,8 +1759,13 @@ try_from_impl!(SlugVariant2);
 checked_str_impls!(SlugVariant2);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
+pub struct NarrowStampAt(pub(super) String);
+try_from_impl_2!(NarrowStampAt);
+checked_str_impls!(NarrowStampAt);
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
+#[serde(transparent)]
 pub struct CodeVariant1(pub(super) String);
-try_from_impl_2!(CodeVariant1);
+try_from_impl_3!(CodeVariant1);
 checked_str_impls!(CodeVariant1);
 pub type CodeVariant2 = SlugVariant2;
 #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize)]
@@ -1829,7 +1937,7 @@ pub struct TreeVariant1 {
     pub x: String,
 }
 deserialize_impl!(TreeVariant1);
-serialize_impl_2!(TreeVariant1);
+serialize_impl!(TreeVariant1);
 impl TreeVariant1 {
     #[must_use]
     pub const fn new(items: Vec<Tree>, x: String) -> Self {
@@ -1887,7 +1995,7 @@ pub struct TreeVariant2 {
     pub x: i64,
 }
 deserialize_impl!(TreeVariant2);
-serialize_impl_2!(TreeVariant2);
+serialize_impl!(TreeVariant2);
 impl TreeVariant2 {
     #[must_use]
     pub const fn new(items: Vec<Tree>, x: i64) -> Self {
@@ -1938,10 +2046,11 @@ impl runtime::XmlShape for TreeVariant2 {
         &NODE
     }
 }
+pub type EntryLines = Vec<Line>;
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct LineNote(pub(super) String);
-try_from_impl_2!(LineNote);
+try_from_impl_3!(LineNote);
 checked_str_impls!(LineNote);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 pub struct RefusalObject;
@@ -1989,7 +2098,7 @@ str_enum_impls!(ProblemCode);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct BadgeLabel(pub(super) String);
-try_from_impl_3!(BadgeLabel);
+try_from_impl_2!(BadgeLabel);
 checked_str_impls!(BadgeLabel);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
@@ -2108,7 +2217,7 @@ pub struct MetaObject {
     pub count: Option<i64>,
 }
 deserialize_impl!(MetaObject);
-serialize_impl_2!(MetaObject);
+serialize_impl!(MetaObject);
 impl MetaObject {
     #[must_use]
     pub const fn new() -> Self {
@@ -2179,7 +2288,7 @@ pub struct ParcelsItem {
     pub fragile: Option<bool>,
 }
 deserialize_impl!(ParcelsItem);
-serialize_impl_2!(ParcelsItem);
+serialize_impl!(ParcelsItem);
 impl ParcelsItem {
     #[must_use]
     pub const fn new() -> Self {
@@ -2503,7 +2612,7 @@ checked_num_impls!(UserScore, f64);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct UserTagsItem(pub(super) String);
-try_from_impl_2!(UserTagsItem);
+try_from_impl_3!(UserTagsItem);
 checked_str_impls!(UserTagsItem);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum UserRole {
@@ -2541,7 +2650,7 @@ pub enum UserLoyalty {
     Variant1(UserLoyaltyVariant1),
     Variant2(UserLoyaltyVariant2),
 }
-serialize_impl!(UserLoyalty);
+serialize_impl_2!(UserLoyalty);
 impl<'de> serde::Deserialize<'de> for UserLoyalty {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         let v = <runtime::Content<'de> as serde::Deserialize>::deserialize(d)?;
@@ -2583,13 +2692,13 @@ checked_num_impls!(UserLoyaltyVariant1, i64);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct UserLoyaltyVariant2(pub(super) String);
-try_from_impl_2!(UserLoyaltyVariant2);
+try_from_impl_3!(UserLoyaltyVariant2);
 checked_str_impls!(UserLoyaltyVariant2);
 pub type UserNote = UserNote2;
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct UserNote2(pub(super) String);
-try_from_impl_3!(UserNote2);
+try_from_impl_2!(UserNote2);
 checked_str_impls!(UserNote2);
 #[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
@@ -2628,7 +2737,7 @@ pub struct BadgeRequest {
     pub holders: BadgeRequestHolders,
 }
 deserialize_impl!(BadgeRequest);
-serialize_impl_2!(BadgeRequest);
+serialize_impl!(BadgeRequest);
 impl BadgeRequest {
     #[must_use]
     pub const fn new(label: BadgeLabel, holders: BadgeRequestHolders) -> Self {
@@ -2686,7 +2795,7 @@ pub struct LoginRequest {
     pub password: LoginPassword,
 }
 deserialize_impl!(LoginRequest);
-serialize_impl_2!(LoginRequest);
+serialize_impl!(LoginRequest);
 impl LoginRequest {
     #[must_use]
     pub const fn new(user: String, password: LoginPassword) -> Self {
@@ -2726,74 +2835,6 @@ impl runtime::XmlShape for LoginRequest {
                     wrapped: false,
                     required: true,
                     item: "password",
-                    child: None,
-                    cdata: false,
-                    inline: false,
-                    nullable: false,
-                    object: false,
-                },
-            ],
-        };
-        &NODE
-    }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct EntryFields2 {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub lines: Option<EntryLines>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub id: Option<i64>,
-}
-deserialize_impl!(EntryFields2);
-serialize_impl_2!(EntryFields2);
-impl EntryFields2 {
-    #[must_use]
-    pub const fn new() -> Self {
-        Self { lines: None, id: None }
-    }
-}
-impl runtime::XmlShape for EntryFields2 {
-    fn xml() -> &'static runtime::XmlNode {
-        static NODE: runtime::XmlNode = runtime::XmlNode {
-            name: "EntryFields2",
-            namespace: "",
-            prefix: "",
-            fields: &[
-                runtime::XmlField {
-                    wire: "lines",
-                    name: "lines",
-                    prefix: "",
-                    attribute: false,
-                    text: false,
-                    list: false,
-                    wrapped: false,
-                    required: false,
-                    item: "lines",
-                    child: None,
-                    cdata: false,
-                    inline: false,
-                    nullable: false,
-                    object: false,
-                },
-                runtime::XmlField {
-                    wire: "id",
-                    name: "id",
-                    prefix: "",
-                    attribute: false,
-                    text: false,
-                    list: false,
-                    wrapped: false,
-                    required: false,
-                    item: "id",
                     child: None,
                     cdata: false,
                     inline: false,
@@ -2917,7 +2958,7 @@ pub struct ShipmentInternationalFields {
     pub labels: Option<ShipmentInternationalLabels>,
 }
 deserialize_impl!(ShipmentInternationalFields);
-serialize_impl_2!(ShipmentInternationalFields);
+serialize_impl!(ShipmentInternationalFields);
 impl ShipmentInternationalFields {
     #[must_use]
     pub const fn new(
@@ -3227,7 +3268,7 @@ pub struct ShipmentOtherwiseFields {
     pub labels: Option<ShipmentOtherwiseLabels>,
 }
 deserialize_impl!(ShipmentOtherwiseFields);
-serialize_impl_2!(ShipmentOtherwiseFields);
+serialize_impl!(ShipmentOtherwiseFields);
 impl ShipmentOtherwiseFields {
     #[must_use]
     pub const fn new(
@@ -3473,6 +3514,43 @@ impl runtime::XmlShape for ShipmentOtherwiseFields {
 }
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
+pub struct EntryLinesChecked(pub(super) EntryLines);
+impl<'de> serde::Deserialize<'de> for EntryLinesChecked {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <EntryLines as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
+    }
+}
+impl TryFrom<EntryLines> for EntryLinesChecked {
+    type Error = runtime::BuildError;
+    fn try_from(value: EntryLines) -> Result<Self, runtime::BuildError> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            {
+                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                let value = runtime::to_value(&value).unwrap_or_default();
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str("{\"maxItems\":2}").unwrap_or_default()
+                    });
+                runtime::check_schema_in(
+                    out,
+                    &runtime::InstancePath::Root,
+                    &value,
+                    schema,
+                    runtime::schema_defs(),
+                );
+            }
+        }
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
+    }
+}
+checked_impls!(EntryLinesChecked, EntryLines);
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
 pub struct BadgeHolders(pub(super) Vec<String>);
 impl<'de> serde::Deserialize<'de> for BadgeHolders {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
@@ -3572,40 +3650,13 @@ checked_impls!(UserMeta, std::collections::BTreeMap < String, String >);
 pub type BadgeRequestHolders = BadgeHolders;
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
-pub struct EntryLines(pub(super) serde_json::Value);
-deserialize_impl_3!(EntryLines);
-impl TryFrom<serde_json::Value> for EntryLines {
-    type Error = runtime::BuildError;
-    fn try_from(value: serde_json::Value) -> Result<Self, runtime::BuildError> {
-        let mut violations: Vec<runtime::Violation> = Vec::new();
-        {
-            let out = &mut violations;
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&value).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str("{\"maxItems\":2}").unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Root,
-                    &value,
-                    schema,
-                    runtime::schema_defs(),
-                );
-            }
-        }
-        runtime::first(violations)
-            .map(|()| Self(value))
-            .map_err(runtime::BuildError::value)
+pub struct ShipmentInternationalRating(pub(super) serde_json::Value);
+impl<'de> serde::Deserialize<'de> for ShipmentInternationalRating {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <serde_json::Value as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
     }
 }
-checked_impls!(EntryLines, serde_json::Value);
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
-#[serde(transparent)]
-pub struct ShipmentInternationalRating(pub(super) serde_json::Value);
-deserialize_impl_3!(ShipmentInternationalRating);
 impl TryFrom<serde_json::Value> for ShipmentInternationalRating {
     type Error = runtime::BuildError;
     fn try_from(value: serde_json::Value) -> Result<Self, runtime::BuildError> {
@@ -3868,6 +3919,24 @@ pub type ShipmentOtherwiseLabels = ShipmentInternationalLabels;
 pub mod builders {
     use super as types;
     use super::runtime;
+    impl super::NarrowStamp {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            at: impl TryInto<types::NarrowStampAt, Error: std::fmt::Display>,
+        ) -> NarrowStamp {
+            NarrowStamp(
+                runtime::Builder::start(|| Ok(Self::new(runtime::field("at", at)?))),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct NarrowStamp(runtime::Builder<super::NarrowStamp>);
+    impl NarrowStamp {
+        /// Returns the value.
+        pub fn build(self) -> Result<super::NarrowStamp, runtime::BuildError> {
+            self.0.build()
+        }
+    }
     impl super::Exact {
         /// Starts a builder from the required properties.
         pub fn builder() -> Exact {
@@ -3938,47 +4007,27 @@ pub mod builders {
             self.0.build()
         }
     }
-    impl super::Ledger {
-        /// Starts a builder from the required properties.
-        pub fn builder() -> Ledger {
-            Ledger(runtime::Builder::start(|| Ok(Self::new())))
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct Ledger(runtime::Builder<super::Ledger>);
-    impl Ledger {
-        pub fn entries(
-            self,
-            value: impl TryInto<Vec<types::Entry>, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("entries", value, |s, v| s.entries = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::Ledger, runtime::BuildError> {
-            self.0.build()
-        }
-    }
     impl super::Entry {
         /// Starts a builder from the required properties.
         pub fn builder() -> Entry {
-            Entry(runtime::Builder::start(|| Ok(super::EntryFields2::new())))
+            Entry(runtime::Builder::start(|| Ok(Self::new())))
         }
     }
     #[must_use = "a builder does nothing until `build`"]
-    pub struct Entry(runtime::Builder<super::EntryFields2>);
+    pub struct Entry(runtime::Builder<super::Entry>);
     impl Entry {
         pub fn lines(
             self,
-            value: impl TryInto<types::EntryLines, Error: std::fmt::Display>,
+            value: impl TryInto<types::EntryLinesChecked, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("lines", value, |s, v| s.lines = Some(v)))
         }
         pub fn id(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
             Self(self.0.set("id", value, |s, v| s.id = Some(v)))
         }
-        /// Returns the value once its whole schema holds.
+        /// Returns the value.
         pub fn build(self) -> Result<super::Entry, runtime::BuildError> {
-            self.0.build().and_then(super::Entry::try_from)
+            self.0.build()
         }
     }
     impl super::Line {
@@ -4408,29 +4457,6 @@ pub mod builders {
     impl LoginRequest {
         /// Returns the value.
         pub fn build(self) -> Result<super::LoginRequest, runtime::BuildError> {
-            self.0.build()
-        }
-    }
-    impl super::EntryFields2 {
-        /// Starts a builder from the required properties.
-        pub fn builder() -> EntryFields2 {
-            EntryFields2(runtime::Builder::start(|| Ok(Self::new())))
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct EntryFields2(runtime::Builder<super::EntryFields2>);
-    impl EntryFields2 {
-        pub fn lines(
-            self,
-            value: impl TryInto<types::EntryLines, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("lines", value, |s, v| s.lines = Some(v)))
-        }
-        pub fn id(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
-            Self(self.0.set("id", value, |s, v| s.id = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::EntryFields2, runtime::BuildError> {
             self.0.build()
         }
     }
