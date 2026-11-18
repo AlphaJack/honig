@@ -30,7 +30,7 @@ impl api::Api for Catalog {
         params: ops::list_products::Params,
         _: &api::Context<'_>,
     ) -> Result<ops::list_products::Response, api::ApiError> {
-        let limit = params.limit.and_then(|n| usize::try_from(n).ok()).unwrap_or(usize::MAX);
+        let limit = params.limit.and_then(|n| usize::try_from(n.get()).ok()).unwrap_or(usize::MAX);
         let body = self.products()?.iter().take(limit).cloned().collect();
         Ok(ops::list_products::Response::Ok { body, x_next: None })
     }

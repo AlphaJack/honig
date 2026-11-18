@@ -28,7 +28,7 @@ enum Command {
     List {
         /// At most this many products (100 at most)
         #[arg(long)]
-        limit: Option<i32>,
+        limit: Option<types::ListProductsLimit>,
     },
     /// Add a physical product
     AddPhysical {

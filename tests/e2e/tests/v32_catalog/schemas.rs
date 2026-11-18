@@ -11,6 +11,18 @@ fn a_struct_starts_from_its_required_properties() {
 }
 
 #[test]
+fn try_into_builds_a_checked_field() -> Result<(), Box<dyn std::error::Error>> {
+    // ANCHOR: try-into
+    let lamp = types::Physical {
+        sku: Some("LMP-0042".try_into()?),
+        ..types::Physical::new(types::PhysicalKind, "Desk lamp".into())
+    };
+    // ANCHOR_END: try-into
+    assert_eq!(lamp.sku.as_deref(), Some("LMP-0042"));
+    Ok(())
+}
+
+#[test]
 fn a_pattern_string_is_checked_when_it_is_made() -> Result<(), Box<dyn std::error::Error>> {
     // ANCHOR: pattern
     let sku = types::PhysicalSku::try_from("LMP-0042")?; // checks `^[A-Z]{3}-[0-9]{4}$`

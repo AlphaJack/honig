@@ -33,26 +33,23 @@ fn base64url_uses_the_url_safe_alphabet() {
     );
 }
 
-/// Violations of an event as `path message`.
-fn violations(port: i64) -> Vec<String> {
-    let e: types::Event = serde_json::from_value(json!({"id": ID, "at": AT, "port": port})).expect("decodes");
-    let mut out = vec![];
-    api::Validate::validate(&e, &api::InstancePath::Root, &mut out);
-    out.iter().map(|v| format!("{} {}", v.path, v.message)).collect()
+/// The event with a `port`, or the error that decoding it gives.
+fn with_port(port: i64) -> Result<types::Event, String> {
+    serde_json::from_value(json!({"id": ID, "at": AT, "port": port})).map_err(|e| e.to_string())
 }
 
 #[test]
 fn small_integer_formats_are_their_rust_types() {
     let e: types::Event =
         serde_json::from_value(json!({"id": ID, "at": AT, "level": -128, "port": 65_535})).expect("decodes");
-    let (level, port): (Option<i8>, Option<u16>) = (e.level, e.port);
+    let (level, port): (Option<i8>, Option<u16>) = (e.level, e.port.map(types::EventPort::get));
     assert_eq!((level, port), (Some(-128), Some(65_535)));
     for out_of_range in [json!({"id": ID, "at": AT, "level": 300}), json!({"id": ID, "at": AT, "port": 70_000})] {
         assert!(serde_json::from_value::<types::Event>(out_of_range).is_err());
     }
     // The explicit `minimum: 1024` still applies inside `uint16`.
-    assert!(violations(80).iter().any(|m| m.starts_with("/port ")));
-    assert_eq!(violations(1024), Vec::<String>::new());
+    assert_eq!(with_port(80).err(), Some("80 is less than the minimum 1024".to_owned()));
+    assert!(with_port(1024).is_ok());
 }
 
 /// `{type: string, format: decimal}` is a `String`. Every digit of `12345678901234567.89` survives. An `f64` would give
@@ -95,13 +92,11 @@ fn a_decimal_number_keeps_every_digit() {
     let text = serde_json::to_string(&e).expect("encodes");
     assert!(text.contains(r#""amount":12345678901234567.89"#), "{text}");
     assert!(text.contains(r#""sum":0.1000000000000000055511151231257827"#), "{text}");
-    let mut out = vec![];
-    let negative: types::Event = serde_json::from_str(
+    let negative = serde_json::from_str::<types::Event>(
         r#"{"id":"01234567-89ab-4def-8123-456789abcdef","at":"2024-06-01T12:30:00Z","amount":-1}"#,
     )
-    .expect("decodes");
-    api::Validate::validate(&negative, &api::InstancePath::Root, &mut out);
-    assert_eq!(out.len(), 1, "`minimum: 0` still applies: {out:?}");
+    .expect_err("`minimum: 0` still applies");
+    assert!(negative.to_string().starts_with("-1 is less than the minimum 0"), "{negative}");
 }
 
 /// `char`, `uri` (with `url`) and the CIDR formats (with `ipnet`) are typed. Without chrono or jiff the local date
@@ -218,16 +213,11 @@ fn a_union_checks_its_branch_and_refuses_a_value_no_branch_takes() {
         event.as_object_mut().expect("an object").extend(extra.as_object().expect("an object").clone());
         serde_json::from_value::<types::Event>(event)
     };
-    let check = |extra: serde_json::Value| -> Vec<String> {
-        let e = event(extra).expect("decodes");
-        let mut out = vec![];
-        api::Validate::validate(&e, &api::InstancePath::Root, &mut out);
-        out.iter().map(|v| v.path.clone()).collect()
-    };
-    assert_eq!(check(json!({"payment": {"method": "Transfer", "amount": 0}})), Vec::<String>::new());
-    assert_eq!(check(json!({"payment": {"method": "Transfer", "amount": -0.01}})), ["/payment/amount"]);
+    assert!(event(json!({"payment": {"method": "Transfer", "amount": 0}})).is_ok());
+    let below = event(json!({"payment": {"method": "Transfer", "amount": -0.01}})).expect_err("below the minimum");
+    assert!(below.to_string().starts_with("-0.01 is less than the minimum 0"), "{below}");
     assert!(event(json!({"payment": {"method": "Cash", "amount": 1}})).is_err());
-    assert_eq!(check(json!({"charge": {"refund": 1}})), Vec::<String>::new());
+    assert!(event(json!({"charge": {"refund": 1}})).is_ok());
     assert!(event(json!({"charge": {"neither": 1}})).is_err());
 }
 

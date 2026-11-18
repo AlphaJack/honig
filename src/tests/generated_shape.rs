@@ -117,7 +117,7 @@ fn pattern_strings_are_always_checked_newtypes() {
     let g = crate::generate::generate(&common::write("shape-pattern", &doc, &[]), &crate::emit::Options::default())
         .expect("generates");
     let types = common::file(&g.files, "types.rs");
-    assert!(types.contains("pub struct TeamSlug(String);"), "{types}");
+    assert!(types.contains("pub struct TeamSlug(pub(super) String);"), "{types}");
     assert!(types.contains("impl TryFrom<String> for TeamSlug"), "{types}");
     assert!(g.runtime_features.contains(&crate::settings::REGRESS), "{:?}", g.runtime_features);
     // No `pattern`: no `regress`.

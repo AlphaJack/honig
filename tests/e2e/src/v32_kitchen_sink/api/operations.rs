@@ -226,7 +226,7 @@ pub mod list_products {
     pub const SERVER_VARIABLES: &[&[runtime::ServerVar]] = &[&[]];
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct Params {
-        pub limit: Option<i32>,
+        pub limit: Option<types::ListProductsLimit>,
         pub tags: Option<Vec<String>>,
         pub filter: Option<std::collections::BTreeMap<String, String>>,
         pub session: Option<String>,
@@ -274,36 +274,7 @@ pub mod list_products {
         }
     }
     default_impl!(Params);
-    impl runtime::Validate for Params {
-        fn validate(
-            &self,
-            path: &runtime::InstancePath<'_>,
-            out: &mut Vec<runtime::Violation>,
-        ) {
-            if let Some(v) = &self.limit {
-                runtime::check_range(
-                    out,
-                    &runtime::InstancePath::Key(
-                        &runtime::InstancePath::Key(path, "query"),
-                        "limit",
-                    ),
-                    *v,
-                    [Some(1), Some(100), None, None],
-                );
-            }
-            if let Some(v) = &self.x_trace {
-                runtime::check_format(
-                    out,
-                    &runtime::InstancePath::Key(
-                        &runtime::InstancePath::Key(path, "header"),
-                        "X-Trace",
-                    ),
-                    v.as_str(),
-                    "uuid",
-                );
-            }
-        }
-    }
+    validate_impl_2!(Params);
     #[derive(Debug, Clone, PartialEq)]
     pub enum Response {
         /// A page of products

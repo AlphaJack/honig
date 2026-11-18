@@ -557,13 +557,9 @@ fn const_default(space: &Space<'_>, p: &Param) -> bool {
     match &space.types.get(*id).kind {
         Kind::StrEnum(values) => values.iter().any(|v| d.as_str() == Some(v.wire.as_str())),
         Kind::IntEnum(values) => values.iter().any(|(_, v)| d.as_i64() == Some(*v)),
-        Kind::Struct(_)
-        | Kind::Alias(_)
-        | Kind::Union(_)
-        | Kind::Newtype(_)
-        | Kind::Const(_)
-        | Kind::Pattern(_)
-        | Kind::Pending => false,
+        // A number default is the tuple of its literal. A string one is built at run time.
+        Kind::Checked(c) => c.base != Ty::String && c.base != Ty::Decimal,
+        Kind::Struct(_) | Kind::Alias(_) | Kind::Union(_) | Kind::Newtype(_) | Kind::Const(_) | Kind::Pending => false,
     }
 }
 

@@ -178,6 +178,29 @@ macro_rules! serialize_impl_3 {
         }
     };
 }
+macro_rules! try_from_impl_2 {
+    ($t:ty) => {
+        impl TryFrom<f32> for $t {
+            type Error = String;
+            fn try_from(value: f32) -> Result<Self, String> {
+                let mut violations: Vec<runtime::Violation> = Vec::new();
+                {
+                    let out = &mut violations;
+                    runtime::check_range(
+                        out,
+                        &runtime::InstancePath::Root,
+                        value,
+                        [None, None, Some(0.0), None],
+                    );
+                }
+                match violations.into_iter().next() {
+                    Some(v) => Err(v.message),
+                    None => Ok(Self(value)),
+                }
+            }
+        }
+    };
+}
 macro_rules! validate_impl_5 {
     ($t:ty) => {
         impl runtime::Validate for $t {
@@ -257,6 +280,55 @@ macro_rules! str_enum_impls {
             fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
                 let s = <std::borrow::Cow<'de, str> as serde::Deserialize>::deserialize(d)?;
                 Self::try_from(&*s).map_err(serde::de::Error::custom)
+            }
+        }
+    };
+}
+macro_rules! checked_num_impls {
+    ($n:ident, $t:ty) => {
+        impl $n {
+            #[must_use]
+            pub const fn get(self) -> $t {
+                self.0
+            }
+        }
+        impl std::str::FromStr for $n {
+            type Err = String;
+            fn from_str(s: &str) -> Result<Self, String> {
+                let v: $t = s.parse().map_err(|e| format!("{e}"))?;
+                Self::try_from(v)
+            }
+        }
+        impl std::ops::Deref for $n {
+            type Target = $t;
+            fn deref(&self) -> &$t {
+                &self.0
+            }
+        }
+        impl std::fmt::Display for $n {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                std::fmt::Display::fmt(&self.0, f)
+            }
+        }
+        impl PartialEq<$t> for $n {
+            fn eq(&self, other: &$t) -> bool {
+                self.0 == *other
+            }
+        }
+        impl PartialOrd<$t> for $n {
+            fn partial_cmp(&self, other: &$t) -> Option<std::cmp::Ordering> {
+                self.0.partial_cmp(other)
+            }
+        }
+        impl From<$n> for $t {
+            fn from(value: $n) -> Self {
+                value.0
+            }
+        }
+        impl<'de> serde::Deserialize<'de> for $n {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                let v = <$t as serde::Deserialize>::deserialize(d)?;
+                Self::try_from(v).map_err(serde::de::Error::custom)
             }
         }
     };
@@ -484,7 +556,7 @@ pub struct Product {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub rating: Option<f32>,
+    pub rating: Option<ProductRating>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
@@ -831,33 +903,6 @@ impl runtime::Validate for Product {
         path: &runtime::InstancePath<'_>,
         out: &mut Vec<runtime::Violation>,
     ) {
-        if let Some(v) = &self.rating {
-            runtime::check_range(
-                out,
-                &runtime::InstancePath::Key(path, "rating"),
-                *v,
-                [Some(0.0), Some(1.0), None, None],
-            );
-        }
-        if let Some(v) = &self.dimensions {
-            runtime::Validate::validate(
-                v,
-                &runtime::InstancePath::Key(path, "dimensions"),
-                out,
-            );
-        }
-        if let Some(v) = &self.materials {
-            {
-                let base = &runtime::InstancePath::Key(path, "materials");
-                for (i, v) in v.iter().enumerate() {
-                    runtime::Validate::validate(
-                        v,
-                        &runtime::InstancePath::Index(base, i),
-                        out,
-                    );
-                }
-            }
-        }
         if let Some(v) = &self.listed_at {
             runtime::check_format(
                 out,
@@ -1072,7 +1117,7 @@ pub struct ProductQuery {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub min_rating: Option<f32>,
+    pub min_rating: Option<ProductQueryMinRating>,
     /// Sort field; prefix with `-` for descending order
     #[serde(
         default,
@@ -1170,22 +1215,7 @@ impl runtime::XmlShape for ProductQuery {
         &NODE
     }
 }
-impl runtime::Validate for ProductQuery {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        if let Some(v) = &self.min_rating {
-            runtime::check_range(
-                out,
-                &runtime::InstancePath::Key(path, "minRating"),
-                *v,
-                [Some(0.0), Some(1.0), None, None],
-            );
-        }
-    }
-}
+validate_impl!(ProductQuery);
 /// A single event emitted on the product stream. Each item in a `text/event-stream`, `application/jsonl` or `application/json-seq` response validates against this schema.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -2627,6 +2657,31 @@ impl ProductType {
 try_from_impl!(ProductType);
 str_enum_impls!(ProductType);
 validate_impl!(ProductType);
+/// A score from 0 to 1 indicating how customers rate it
+#[derive(Debug, Clone, PartialEq, Copy, PartialOrd, serde::Serialize)]
+#[serde(transparent)]
+pub struct ProductRating(pub(super) f32);
+impl TryFrom<f32> for ProductRating {
+    type Error = String;
+    fn try_from(value: f32) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            runtime::check_range(
+                out,
+                &runtime::InstancePath::Root,
+                value,
+                [Some(0.0), Some(1.0), None, None],
+            );
+        }
+        match violations.into_iter().next() {
+            Some(v) => Err(v.message),
+            None => Ok(Self(value)),
+        }
+    }
+}
+checked_num_impls!(ProductRating, f32);
+validate_impl!(ProductRating);
 #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct ProductDimensions {
@@ -2636,14 +2691,14 @@ pub struct ProductDimensions {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub weight: Option<f32>,
+    pub weight: Option<ProductDimensionsWeight>,
     /// Width in centimetres (must be greater than 0)
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub width: Option<f32>,
+    pub width: Option<ProductDimensionsWidth>,
     /// Height in centimetres
     #[serde(
         default,
@@ -2750,30 +2805,21 @@ impl runtime::XmlShape for ProductDimensions {
         &NODE
     }
 }
-impl runtime::Validate for ProductDimensions {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        if let Some(v) = &self.weight {
-            runtime::check_range(
-                out,
-                &runtime::InstancePath::Key(path, "weight"),
-                *v,
-                [None, None, Some(0.0), None],
-            );
-        }
-        if let Some(v) = &self.width {
-            runtime::check_range(
-                out,
-                &runtime::InstancePath::Key(path, "width"),
-                *v,
-                [None, None, Some(0.0), None],
-            );
-        }
-    }
-}
+validate_impl!(ProductDimensions);
+/// Weight in kilograms (must be greater than 0)
+#[derive(Debug, Clone, PartialEq, Copy, PartialOrd, serde::Serialize)]
+#[serde(transparent)]
+pub struct ProductDimensionsWeight(pub(super) f32);
+try_from_impl_2!(ProductDimensionsWeight);
+checked_num_impls!(ProductDimensionsWeight, f32);
+validate_impl!(ProductDimensionsWeight);
+/// Width in centimetres (must be greater than 0)
+#[derive(Debug, Clone, PartialEq, Copy, PartialOrd, serde::Serialize)]
+#[serde(transparent)]
+pub struct ProductDimensionsWidth(pub(super) f32);
+try_from_impl_2!(ProductDimensionsWidth);
+checked_num_impls!(ProductDimensionsWidth, f32);
+validate_impl!(ProductDimensionsWidth);
 #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct ProductDimensionsPrice {
@@ -2889,7 +2935,7 @@ pub struct ProductMaterialsItem {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub percentage: Option<f32>,
+    pub percentage: Option<ProductMaterialsItemPercentage>,
     #[serde(flatten)]
     pub additional_properties: std::collections::BTreeMap<String, String>,
 }
@@ -2949,22 +2995,31 @@ impl runtime::XmlShape for ProductMaterialsItem {
         &NODE
     }
 }
-impl runtime::Validate for ProductMaterialsItem {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        if let Some(v) = &self.percentage {
+validate_impl!(ProductMaterialsItem);
+#[derive(Debug, Clone, PartialEq, Copy, PartialOrd, serde::Serialize)]
+#[serde(transparent)]
+pub struct ProductMaterialsItemPercentage(pub(super) f32);
+impl TryFrom<f32> for ProductMaterialsItemPercentage {
+    type Error = String;
+    fn try_from(value: f32) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
             runtime::check_range(
                 out,
-                &runtime::InstancePath::Key(path, "percentage"),
-                *v,
+                &runtime::InstancePath::Root,
+                value,
                 [None, None, None, Some(100.0)],
             );
         }
+        match violations.into_iter().next() {
+            Some(v) => Err(v.message),
+            None => Ok(Self(value)),
+        }
     }
 }
+checked_num_impls!(ProductMaterialsItemPercentage, f32);
+validate_impl!(ProductMaterialsItemPercentage);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum VariantType {
     Size,
@@ -3115,6 +3170,8 @@ impl ProductQueryTypeItem {
 try_from_impl!(ProductQueryTypeItem);
 str_enum_impls!(ProductQueryTypeItem);
 validate_impl!(ProductQueryTypeItem);
+/// Only return products at or above this rating
+pub type ProductQueryMinRating = ProductRating;
 /// Sort field; prefix with `-` for descending order
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum ProductQuerySort {
@@ -4529,7 +4586,7 @@ pub struct ProductRequest {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub rating: Option<f32>,
+    pub rating: Option<ProductRating>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
@@ -4835,33 +4892,6 @@ impl runtime::Validate for ProductRequest {
         path: &runtime::InstancePath<'_>,
         out: &mut Vec<runtime::Violation>,
     ) {
-        if let Some(v) = &self.rating {
-            runtime::check_range(
-                out,
-                &runtime::InstancePath::Key(path, "rating"),
-                *v,
-                [Some(0.0), Some(1.0), None, None],
-            );
-        }
-        if let Some(v) = &self.dimensions {
-            runtime::Validate::validate(
-                v,
-                &runtime::InstancePath::Key(path, "dimensions"),
-                out,
-            );
-        }
-        if let Some(v) = &self.materials {
-            {
-                let base = &runtime::InstancePath::Key(path, "materials");
-                for (i, v) in v.iter().enumerate() {
-                    runtime::Validate::validate(
-                        v,
-                        &runtime::InstancePath::Index(base, i),
-                        out,
-                    );
-                }
-            }
-        }
         if let Some(v) = &self.listed_at {
             runtime::check_format(
                 out,

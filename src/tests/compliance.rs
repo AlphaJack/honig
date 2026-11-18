@@ -258,7 +258,10 @@ fn a_content_entry_may_reference_a_reusable_media_type() {
     );
     assert!(w.iter().all(|m| !m.contains("does not resolve")), "{w:#?}");
     let p = &api.http.operations[0].params[0];
-    assert_eq!((p.ty.clone(), p.constraints.max_length), (crate::ir::types::Ty::String.option(), Some(4)));
+    let crate::ir::types::Ty::Option(named) = &p.ty else { panic!("optional: {:?}", p.ty) };
+    let crate::ir::types::Ty::Named(id) = named.as_ref() else { panic!("a checked type: {named:?}") };
+    let crate::ir::types::Kind::Checked(c) = &api.types.get(*id).kind else { panic!("checked") };
+    assert_eq!((&c.base, c.constraints.max_length), (&crate::ir::types::Ty::String, Some(4)));
     assert_eq!(api.http.operations[0].responses[0].headers[0].ty, crate::ir::types::Ty::I64);
 }
 

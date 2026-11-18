@@ -11,6 +11,11 @@
     clippy::missing_errors_doc,
     reason = "generated docs hold only the description's own prose"
 )]
+macro_rules! validate_impl {
+    ($t:ty) => {
+        impl runtime::Validate for $t {}
+    };
+}
 macro_rules! deserialize_impl {
     ($t:ty) => {
         impl<'de> serde::Deserialize<'de> for $t {
@@ -29,12 +34,97 @@ macro_rules! serialize_impl {
         }
     };
 }
-macro_rules! validate_impl {
-    ($t:ty) => {
-        impl runtime::Validate for $t {}
+use super::runtime;
+macro_rules! checked_str_impls {
+    ($n:ident) => {
+        impl $n {
+            #[must_use]
+            pub fn as_str(&self) -> &str {
+                &self.0
+            }
+            #[must_use]
+            pub fn into_inner(self) -> String {
+                self.0
+            }
+        }
+        impl TryFrom<&str> for $n {
+            type Error = String;
+            fn try_from(value: &str) -> Result<Self, String> {
+                Self::try_from(value.to_owned())
+            }
+        }
+        impl std::str::FromStr for $n {
+            type Err = String;
+            fn from_str(s: &str) -> Result<Self, String> {
+                Self::try_from(s)
+            }
+        }
+        impl std::ops::Deref for $n {
+            type Target = str;
+            fn deref(&self) -> &str {
+                &self.0
+            }
+        }
+        impl AsRef<str> for $n {
+            fn as_ref(&self) -> &str {
+                &self.0
+            }
+        }
+        impl std::fmt::Display for $n {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                f.write_str(&self.0)
+            }
+        }
+        impl PartialEq<str> for $n {
+            fn eq(&self, other: &str) -> bool {
+                self.0 == other
+            }
+        }
+        impl PartialEq<&str> for $n {
+            fn eq(&self, other: &&str) -> bool {
+                self.0 == *other
+            }
+        }
+        impl From<$n> for String {
+            fn from(value: $n) -> Self {
+                value.0
+            }
+        }
+        impl<'de> serde::Deserialize<'de> for $n {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                let s = <String as serde::Deserialize>::deserialize(d)?;
+                Self::try_from(s).map_err(serde::de::Error::custom)
+            }
+        }
     };
 }
-use super::runtime;
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
+#[serde(transparent)]
+pub struct UploadImageXChecksum(pub(super) String);
+impl TryFrom<String> for UploadImageXChecksum {
+    type Error = String;
+    fn try_from(value: String) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            let n = (value.as_str()).chars().count();
+            runtime::check_len(
+                out,
+                &runtime::InstancePath::Root,
+                n,
+                Some(4),
+                None,
+                "characters",
+            );
+        }
+        match violations.into_iter().next() {
+            Some(v) => Err(v.message),
+            None => Ok(Self(value)),
+        }
+    }
+}
+checked_str_impls!(UploadImageXChecksum);
+validate_impl!(UploadImageXChecksum);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct UploadBody {

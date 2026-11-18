@@ -16,6 +16,11 @@ macro_rules! error_impl {
         impl std::error::Error for $t {}
     };
 }
+macro_rules! validate_impl {
+    ($t:ty) => {
+        impl runtime::Validate for $t {}
+    };
+}
 macro_rules! display_impl {
     ($t:ty) => {
         impl std::fmt::Display for $t {
@@ -34,7 +39,7 @@ pub mod create_user {
     pub const PATH: &str = "/users";
     #[derive(Debug, Clone, PartialEq)]
     pub struct Params {
-        pub limit: Option<i64>,
+        pub limit: Option<types::CreateUserLimit>,
         pub x_team: Option<types::CreateUserXTeam>,
         pub body: types::User,
     }
@@ -54,17 +59,6 @@ pub mod create_user {
             path: &runtime::InstancePath<'_>,
             out: &mut Vec<runtime::Violation>,
         ) {
-            if let Some(v) = &self.limit {
-                runtime::check_range(
-                    out,
-                    &runtime::InstancePath::Key(
-                        &runtime::InstancePath::Key(path, "query"),
-                        "limit",
-                    ),
-                    *v,
-                    [Some(1), Some(100), None, None],
-                );
-            }
             runtime::Validate::validate(
                 &self.body,
                 &runtime::InstancePath::Key(path, "body"),
@@ -182,19 +176,7 @@ pub mod login {
             Self { body }
         }
     }
-    impl runtime::Validate for Params {
-        fn validate(
-            &self,
-            path: &runtime::InstancePath<'_>,
-            out: &mut Vec<runtime::Violation>,
-        ) {
-            runtime::Validate::validate(
-                &self.body,
-                &runtime::InstancePath::Key(path, "body"),
-                out,
-            );
-        }
-    }
+    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Created.
@@ -288,7 +270,7 @@ pub mod add_closed {
             Self { body }
         }
     }
-    impl runtime::Validate for Params {}
+    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Body {
         Json(types::Closed),

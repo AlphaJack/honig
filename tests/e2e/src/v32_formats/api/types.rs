@@ -44,6 +44,94 @@ macro_rules! serialize_impl_2 {
     };
 }
 use super::runtime;
+macro_rules! checked_num_impls {
+    ($n:ident, $t:ty) => {
+        impl $n {
+            #[must_use]
+            pub const fn get(self) -> $t {
+                self.0
+            }
+        }
+        impl std::str::FromStr for $n {
+            type Err = String;
+            fn from_str(s: &str) -> Result<Self, String> {
+                let v: $t = s.parse().map_err(|e| format!("{e}"))?;
+                Self::try_from(v)
+            }
+        }
+        impl std::ops::Deref for $n {
+            type Target = $t;
+            fn deref(&self) -> &$t {
+                &self.0
+            }
+        }
+        impl std::fmt::Display for $n {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                std::fmt::Display::fmt(&self.0, f)
+            }
+        }
+        impl PartialEq<$t> for $n {
+            fn eq(&self, other: &$t) -> bool {
+                self.0 == *other
+            }
+        }
+        impl PartialOrd<$t> for $n {
+            fn partial_cmp(&self, other: &$t) -> Option<std::cmp::Ordering> {
+                self.0.partial_cmp(other)
+            }
+        }
+        impl From<$n> for $t {
+            fn from(value: $n) -> Self {
+                value.0
+            }
+        }
+        impl<'de> serde::Deserialize<'de> for $n {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                let v = <$t as serde::Deserialize>::deserialize(d)?;
+                Self::try_from(v).map_err(serde::de::Error::custom)
+            }
+        }
+    };
+}
+macro_rules! checked_decimal_impls {
+    ($n:ident) => {
+        impl $n {
+            #[must_use]
+            pub fn into_inner(self) -> runtime::Decimal {
+                self.0
+            }
+        }
+        impl std::str::FromStr for $n {
+            type Err = String;
+            fn from_str(s: &str) -> Result<Self, String> {
+                let v: runtime::Decimal = s.parse().map_err(|e| format!("{e}"))?;
+                Self::try_from(v)
+            }
+        }
+        impl std::ops::Deref for $n {
+            type Target = runtime::Decimal;
+            fn deref(&self) -> &runtime::Decimal {
+                &self.0
+            }
+        }
+        impl std::fmt::Display for $n {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                std::fmt::Display::fmt(&self.0, f)
+            }
+        }
+        impl From<$n> for runtime::Decimal {
+            fn from(value: $n) -> Self {
+                value.0
+            }
+        }
+        impl<'de> serde::Deserialize<'de> for $n {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                let v = <runtime::Decimal as serde::Deserialize>::deserialize(d)?;
+                Self::try_from(v).map_err(serde::de::Error::custom)
+            }
+        }
+    };
+}
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct StoreNetwork {
@@ -105,13 +193,13 @@ pub struct Event {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub port: Option<u16>,
+    pub port: Option<EventPort>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub amount: Option<runtime::Decimal>,
+    pub amount: Option<EventAmount>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
@@ -325,22 +413,6 @@ impl runtime::Validate for Event {
                 }
             }
         }
-        if let Some(v) = &self.port {
-            runtime::check_range(
-                out,
-                &runtime::InstancePath::Key(path, "port"),
-                *v,
-                [Some(1024), None, None, None],
-            );
-        }
-        if let Some(v) = &self.amount {
-            runtime::check_decimal_range(
-                out,
-                &runtime::InstancePath::Key(path, "amount"),
-                v.as_str(),
-                [Some("0"), None, None, None],
-            );
-        }
         if let Some(v) = &self.sum {
             runtime::check_decimal128(
                 out,
@@ -489,17 +561,17 @@ impl runtime::Validate for Event {
         }
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Card {
     pub method: CardMethod,
-    pub amount: runtime::Decimal,
+    pub amount: CardAmount,
 }
 deserialize_impl!(Card);
 serialize_impl!(Card);
 impl Card {
     #[must_use]
-    pub const fn new(method: CardMethod, amount: runtime::Decimal) -> Self {
+    pub const fn new(method: CardMethod, amount: CardAmount) -> Self {
         Self { method, amount }
     }
 }
@@ -524,25 +596,19 @@ impl runtime::Validate for Card {
                 None,
             );
         }
-        runtime::check_decimal_range(
-            out,
-            &runtime::InstancePath::Key(path, "amount"),
-            self.amount.as_str(),
-            [Some("0"), None, None, None],
-        );
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Transfer {
     pub method: TransferMethod,
-    pub amount: runtime::Decimal,
+    pub amount: TransferAmount,
 }
 deserialize_impl!(Transfer);
 serialize_impl!(Transfer);
 impl Transfer {
     #[must_use]
-    pub const fn new(method: TransferMethod, amount: runtime::Decimal) -> Self {
+    pub const fn new(method: TransferMethod, amount: TransferAmount) -> Self {
         Self { method, amount }
     }
 }
@@ -567,14 +633,56 @@ impl runtime::Validate for Transfer {
                 None,
             );
         }
-        runtime::check_decimal_range(
-            out,
-            &runtime::InstancePath::Key(path, "amount"),
-            self.amount.as_str(),
-            [Some("0"), None, None, None],
-        );
     }
 }
+#[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
+#[serde(transparent)]
+pub struct EventPort(pub(super) u16);
+impl TryFrom<u16> for EventPort {
+    type Error = String;
+    fn try_from(value: u16) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            runtime::check_range(
+                out,
+                &runtime::InstancePath::Root,
+                value,
+                [Some(1024), None, None, None],
+            );
+        }
+        match violations.into_iter().next() {
+            Some(v) => Err(v.message),
+            None => Ok(Self(value)),
+        }
+    }
+}
+checked_num_impls!(EventPort, u16);
+validate_impl!(EventPort);
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize)]
+#[serde(transparent)]
+pub struct EventAmount(pub(super) runtime::Decimal);
+impl TryFrom<runtime::Decimal> for EventAmount {
+    type Error = String;
+    fn try_from(value: runtime::Decimal) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            runtime::check_decimal_range(
+                out,
+                &runtime::InstancePath::Root,
+                value.as_str(),
+                [Some("0"), None, None, None],
+            );
+        }
+        match violations.into_iter().next() {
+            Some(v) => Err(v.message),
+            None => Ok(Self(value)),
+        }
+    }
+}
+checked_decimal_impls!(EventAmount);
+validate_impl!(EventAmount);
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EventCharge {
     Refund(EventChargeRefund),
@@ -746,6 +854,7 @@ impl<'de> serde::Deserialize<'de> for CardMethod {
     }
 }
 validate_impl!(CardMethod);
+pub type CardAmount = EventAmount;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 pub struct TransferMethod;
 impl TransferMethod {
@@ -759,3 +868,4 @@ impl<'de> serde::Deserialize<'de> for TransferMethod {
     }
 }
 validate_impl!(TransferMethod);
+pub type TransferAmount = EventAmount;

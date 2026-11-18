@@ -30,7 +30,7 @@ pub(crate) fn direction(kind: Kind, keep: Access) -> Kind {
         | Kind::Alias(_)
         | Kind::Newtype(_)
         | Kind::Const(_)
-        | Kind::Pattern(_)
+        | Kind::Checked(_)
         | Kind::Pending) => other,
     }
 }
@@ -46,7 +46,8 @@ pub(crate) fn map_kind(kind: &mut Kind, f: &dyn Fn(&mut Ty)) {
         }
         Kind::Union(u) => u.variants.iter_mut().for_each(|v| f(&mut v.ty)),
         Kind::Alias(t) | Kind::Newtype(t) => f(t),
-        Kind::StrEnum(_) | Kind::IntEnum(_) | Kind::Const(_) | Kind::Pattern(_) | Kind::Pending => {}
+        Kind::Checked(c) => f(&mut c.base),
+        Kind::StrEnum(_) | Kind::IntEnum(_) | Kind::Const(_) | Kind::Pending => {}
     }
 }
 
@@ -72,7 +73,8 @@ pub(crate) fn def_types(kind: &Kind) -> Vec<&Ty> {
         Kind::Struct(s) => s.fields.iter().map(|f| &f.ty).chain(s.additional.iter()).collect(),
         Kind::Union(u) => u.variants.iter().map(|v| &v.ty).collect(),
         Kind::Alias(t) | Kind::Newtype(t) => vec![t],
-        Kind::StrEnum(_) | Kind::IntEnum(_) | Kind::Const(_) | Kind::Pattern(_) | Kind::Pending => vec![],
+        Kind::Checked(c) => vec![&c.base],
+        Kind::StrEnum(_) | Kind::IntEnum(_) | Kind::Const(_) | Kind::Pending => vec![],
     }
 }
 
@@ -195,7 +197,7 @@ pub(crate) fn break_cycles(space: &mut TypeSpace) {
             | Kind::IntEnum(_)
             | Kind::Alias(_)
             | Kind::Const(_)
-            | Kind::Pattern(_)
+            | Kind::Checked(_)
             | Kind::Pending => {}
         }
     }

@@ -135,24 +135,7 @@ pub mod parameter_examples {
             }
         }
     }
-    impl runtime::Validate for Params {
-        fn validate(
-            &self,
-            path: &runtime::InstancePath<'_>,
-            out: &mut Vec<runtime::Violation>,
-        ) {
-            if let Some(v) = &self.cookie {
-                runtime::Validate::validate(
-                    v,
-                    &runtime::InstancePath::Key(
-                        &runtime::InstancePath::Key(path, "cookie"),
-                        "cookie",
-                    ),
-                    out,
-                );
-            }
-        }
-    }
+    validate_impl_2!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// ok
@@ -889,24 +872,7 @@ pub mod server_sent_event_streams {
             Self { body }
         }
     }
-    impl runtime::Validate for Params {
-        fn validate(
-            &self,
-            path: &runtime::InstancePath<'_>,
-            out: &mut Vec<runtime::Violation>,
-        ) {
-            {
-                let body = &self.body;
-                body.check_each(
-                    &runtime::InstancePath::Key(path, "body"),
-                    out,
-                    |item, path, out| {
-                        runtime::Validate::validate(item, path, out);
-                    },
-                );
-            }
-        }
-    }
+    validate_impl_2!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// ok

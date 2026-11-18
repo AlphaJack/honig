@@ -55,7 +55,7 @@ pub mod list_orders {
     pub struct Params {
         pub status: Option<Vec<types::Status>>,
         pub created_after: Option<String>,
-        pub limit: i32,
+        pub limit: types::ListOrdersLimit,
         pub sort: types::ListOrdersSort,
         pub cursor: Option<types::ListOrdersCursor>,
     }
@@ -65,7 +65,7 @@ pub mod list_orders {
             Self {
                 status: None,
                 created_after: None,
-                limit: 20i32,
+                limit: types::ListOrdersLimit(20i32),
                 sort: types::ListOrdersSort::Newest,
                 cursor: None,
             }
@@ -93,15 +93,6 @@ pub mod list_orders {
                     "date-time",
                 );
             }
-            runtime::check_range(
-                out,
-                &runtime::InstancePath::Key(
-                    &runtime::InstancePath::Key(path, "query"),
-                    "limit",
-                ),
-                self.limit,
-                [Some(1), Some(100), None, None],
-            );
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]

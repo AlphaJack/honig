@@ -76,7 +76,10 @@ impl<T: runtime::Transport> Client<T> {
             &p.created_after,
             runtime::Enc::FORM,
         )?;
-        let default = 20i32;
+        let default = {
+            use super::types;
+            types::ListOrdersLimit(20i32)
+        };
         if p.limit != default {
             runtime::encode_query(&mut query, "limit", &p.limit, runtime::Enc::FORM)?;
         }

@@ -162,7 +162,9 @@ fn def_size(kind: &Kind, named: &mut dyn FnMut(TypeId) -> usize) -> usize {
                 .sum::<usize>()
                 + if s.additional.is_some() { COLLECTION } else { 0 }
         }
-        Kind::StrEnum(_) | Kind::IntEnum(_) | Kind::Pattern(_) => COLLECTION,
+        Kind::StrEnum(_) | Kind::IntEnum(_) => COLLECTION,
+        // A checked type holds its base.
+        Kind::Checked(c) => size_in(&c.base, named),
         Kind::Const(_) => 0,
         Kind::Union(u) => u.variants.iter().map(|v| size_in(&v.ty, named)).max().unwrap_or(0).max(JSON_VALUE) + WORD,
         Kind::Alias(t) | Kind::Newtype(t) => size_in(t, named),

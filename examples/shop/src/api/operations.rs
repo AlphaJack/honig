@@ -11,6 +11,11 @@
     clippy::missing_errors_doc,
     reason = "generated docs hold only the description's own prose"
 )]
+macro_rules! validate_impl {
+    ($t:ty) => {
+        impl runtime::Validate for $t {}
+    };
+}
 macro_rules! error_impl {
     ($t:ty) => {
         impl std::error::Error for $t {}
@@ -28,7 +33,7 @@ pub mod list_products {
     pub const PATH: &str = "/products";
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct Params {
-        pub limit: Option<i32>,
+        pub limit: Option<types::ListProductsLimit>,
         pub tags: Option<Vec<String>>,
     }
     impl Params {
@@ -42,25 +47,7 @@ pub mod list_products {
             Self::new()
         }
     }
-    impl runtime::Validate for Params {
-        fn validate(
-            &self,
-            path: &runtime::InstancePath<'_>,
-            out: &mut Vec<runtime::Violation>,
-        ) {
-            if let Some(v) = &self.limit {
-                runtime::check_range(
-                    out,
-                    &runtime::InstancePath::Key(
-                        &runtime::InstancePath::Key(path, "query"),
-                        "limit",
-                    ),
-                    *v,
-                    [None, Some(100), None, None],
-                );
-            }
-        }
-    }
+    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// A page of products
@@ -162,7 +149,7 @@ pub mod get_product {
             Self { product_id }
         }
     }
-    impl runtime::Validate for Params {}
+    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// A product

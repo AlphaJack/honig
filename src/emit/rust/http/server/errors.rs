@@ -175,7 +175,7 @@ fn const_value<'s>(space: &'s Space<'_>, ty: &Ty) -> Option<&'s serde_json::Valu
         | Kind::Newtype(_)
         | Kind::StrEnum(_)
         | Kind::IntEnum(_)
-        | Kind::Pattern(_)
+        | Kind::Checked(_)
         | Kind::Pending => None,
     }
 }
@@ -186,7 +186,7 @@ fn is_enum(space: &Space<'_>, ty: &Ty) -> bool {
     match &space.types.get(*id).kind {
         Kind::StrEnum(_) | Kind::IntEnum(_) => true,
         Kind::Alias(t) => is_enum(space, t),
-        Kind::Struct(_) | Kind::Union(_) | Kind::Newtype(_) | Kind::Const(_) | Kind::Pattern(_) | Kind::Pending => {
+        Kind::Struct(_) | Kind::Union(_) | Kind::Newtype(_) | Kind::Const(_) | Kind::Checked(_) | Kind::Pending => {
             false
         }
     }

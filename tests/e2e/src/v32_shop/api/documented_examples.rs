@@ -117,7 +117,7 @@ fn documented_examples_decode() {
         serde_json::Value::String("hardware".to_owned()),
     );
     value::<
-        f32,
+        types::ProductRating,
     >(
         &mut bad,
         "/components/schemas/Product/properties/rating/examples/0",
@@ -228,7 +228,7 @@ fn documented_examples_decode() {
         ),
     );
     value::<
-        f32,
+        types::ProductQueryMinRating,
     >(
         &mut bad,
         "/components/schemas/ProductQuery/properties/minRating/examples/0",
@@ -553,14 +553,14 @@ fn documented_examples_decode() {
         ),
     );
     value::<
-        f32,
+        types::ProductDimensionsWeight,
     >(
         &mut bad,
         "/components/schemas/Product/properties/dimensions/properties/weight/examples/0",
         serde_json::Value::from(3.5f64),
     );
     value::<
-        f32,
+        types::ProductDimensionsWidth,
     >(
         &mut bad,
         "/components/schemas/Product/properties/dimensions/properties/width/examples/0",
@@ -609,7 +609,7 @@ fn documented_examples_decode() {
         serde_json::Value::String("oak".to_owned()),
     );
     value::<
-        f32,
+        types::ProductMaterialsItemPercentage,
     >(
         &mut bad,
         "/components/schemas/Product/properties/materials/items/properties/percentage/examples/0",
@@ -924,7 +924,7 @@ fn documented_examples_decode() {
         serde_json::Value::String("hardware".to_owned()),
     );
     value::<
-        f32,
+        types::ProductRating,
     >(
         &mut bad,
         "/components/schemas/Product/properties/rating/examples/0",

@@ -470,19 +470,7 @@ pub mod query_products {
             Self { body }
         }
     }
-    impl runtime::Validate for Params {
-        fn validate(
-            &self,
-            path: &runtime::InstancePath<'_>,
-            out: &mut Vec<runtime::Violation>,
-        ) {
-            runtime::Validate::validate(
-                &self.body,
-                &runtime::InstancePath::Key(path, "body"),
-                out,
-            );
-        }
-    }
+    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq)]
     pub enum Response {
         /// Matching products
@@ -538,24 +526,7 @@ pub mod search_products {
         }
     }
     default_impl!(Params);
-    impl runtime::Validate for Params {
-        fn validate(
-            &self,
-            path: &runtime::InstancePath<'_>,
-            out: &mut Vec<runtime::Violation>,
-        ) {
-            if let Some(v) = &self.filter {
-                runtime::Validate::validate(
-                    v,
-                    &runtime::InstancePath::Key(
-                        &runtime::InstancePath::Key(path, "query"),
-                        "filter",
-                    ),
-                    out,
-                );
-            }
-        }
-    }
+    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq)]
     pub enum Response {
         /// Matching products

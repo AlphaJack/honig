@@ -97,7 +97,7 @@ fn type_body(cx: Cx<'_>, def: &TypeDef) -> TokenStream {
         }
         Kind::Newtype(t) => checks(cx, t, &Constraints::default(), &quote!(&self.0), &quote!(path)),
         // Decoding already rejects any other value.
-        Kind::StrEnum(_) | Kind::IntEnum(_) | Kind::Const(_) | Kind::Pattern(_) | Kind::Alias(_) | Kind::Pending => {
+        Kind::StrEnum(_) | Kind::IntEnum(_) | Kind::Const(_) | Kind::Checked(_) | Kind::Alias(_) | Kind::Pending => {
             TokenStream::new()
         }
     }
@@ -303,7 +303,7 @@ fn receiver(value: &TokenStream) -> TokenStream {
 }
 
 /// Returns the length and pattern checks of a `String` value.
-fn string_checks(c: &Constraints, value: &TokenStream, path: &TokenStream) -> TokenStream {
+pub(super) fn string_checks(c: &Constraints, value: &TokenStream, path: &TokenStream) -> TokenStream {
     let pat = c.pattern.as_ref().map(|p| {
         let msg = lit(&format!("does not match `{p}`"));
         let p = lit(p);
@@ -410,7 +410,7 @@ fn checks(cx: Cx<'_>, t: &Ty, c: &Constraints, value: &TokenStream, path: &Token
             | Kind::Union(_)
             | Kind::Newtype(_)
             | Kind::Const(_)
-            | Kind::Pattern(_)
+            | Kind::Checked(_)
             | Kind::Pending => TokenStream::new(),
         },
         Ty::Bool | Ty::Bytes | Ty::Binary | Ty::Format(_) | Ty::Any | Ty::Unit | Ty::Tuple(_) => TokenStream::new(),
@@ -443,7 +443,7 @@ fn named_inside(cx: Cx<'_>, t: &Ty) -> bool {
         | Kind::Union(_)
         | Kind::Newtype(_)
         | Kind::Const(_)
-        | Kind::Pattern(_) => cx.live[id.0],
+        | Kind::Checked(_) => cx.live[id.0],
     }
 }
 
@@ -461,7 +461,7 @@ fn opt_u64(v: Option<u64>) -> TokenStream {
 /// fraction rounds inward. A bound that every value of the type meets is left out. One that no value meets refuses
 /// every value: `maximum: -1` on a `uint8` leaves none. `multipleOf` is exact too, through its decimal text: an
 /// integer is a multiple of `2.5` when it is one of `5`.
-fn integer_checks(t: &Ty, c: &Constraints, value: &TokenStream, path: &TokenStream) -> TokenStream {
+pub(super) fn integer_checks(t: &Ty, c: &Constraints, value: &TokenStream, path: &TokenStream) -> TokenStream {
     let val = deref(value);
     let ranges: [(Ty, i128, i128); 7] = [
         (Ty::I8, i8::MIN.into(), i8::MAX.into()),
@@ -491,7 +491,7 @@ fn integer_checks(t: &Ty, c: &Constraints, value: &TokenStream, path: &TokenStre
             Within::Every => {}
             Within::No => {
                 none.get_or_insert_with(|| {
-                    lit(&format!("`{keyword}: {given}` leaves no value of this integer type, not even {{}}"))
+                    lit(&format!("`{keyword}: {given}` leaves no value of this integer type, not even {{got}}"))
                 });
             }
             Within::Some(whole) => {
@@ -502,7 +502,10 @@ fn integer_checks(t: &Ty, c: &Constraints, value: &TokenStream, path: &TokenStre
     }
     if let Some(msg) = none {
         // No value can be valid: the range and `multipleOf` add nothing.
-        return quote!(runtime::violation(out, #path, format!(#msg, #val)););
+        return quote!({
+            let got = #val;
+            runtime::violation(out, #path, format!(#msg));
+        });
     }
     let range = bounds
         .iter()
@@ -624,7 +627,7 @@ const fn whole(r: f64) -> i128 {
     r as i128
 }
 
-fn float_checks(c: &Constraints, value: &TokenStream, path: &TokenStream) -> TokenStream {
+pub(super) fn float_checks(c: &Constraints, value: &TokenStream, path: &TokenStream) -> TokenStream {
     let val = deref(value);
     let bound = |n: Option<&Number>| match n.and_then(Number::as_f64).filter(|f| f.is_finite()) {
         Some(f) => {
@@ -654,7 +657,7 @@ fn positive(m: Option<&Number>) -> Option<&Number> {
 
 /// Returns the range and `multipleOf` of a `Decimal` value (an `&Decimal` expression), checked exactly on its digits,
 /// and the limits of IEEE 754 decimal128 on them for `format: decimal128`.
-fn decimal_checks(c: &Constraints, value: &TokenStream, path: &TokenStream) -> TokenStream {
+pub(super) fn decimal_checks(c: &Constraints, value: &TokenStream, path: &TokenStream) -> TokenStream {
     let r = receiver(value);
     let bound = |n: Option<&Number>| match n {
         Some(n) => {

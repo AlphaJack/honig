@@ -1,0 +1,7 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc 3d6fcf1a37cdd0712c6ea86685b52439f2c4c9adabad0e59747d71a1a7c77d34 # shrinks to case = Case { method: "GET", target: "/products/-1", headers: [], content_type: None, body: [] }

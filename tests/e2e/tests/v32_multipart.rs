@@ -125,7 +125,7 @@ fn a_part_goes_out_as_the_listed_type_the_caller_picks() {
 
 fn params() -> ops::upload::Params {
     ops::upload::Params {
-        image_x_checksum: "sha1-abcd".to_owned(),
+        image_x_checksum: "sha1-abcd".try_into().expect("4 characters or more"),
         meta_x_revision: Some(7),
         body: types::UploadBody {
             image: api::Binary::from(vec![0x89, b'P', b'N', b'G']),
@@ -242,15 +242,10 @@ fn a_base64_field_travels_transfer_encoded() {
     assert!(text.contains("\r\n\r\naGVsbG8=\r\n"), "{text}");
 }
 
-/// A part header has the limits of its schema: `X-Checksum` needs at least 4 characters.
+/// A part header has the limits of its schema: `X-Checksum` needs at least 4 characters. Only a valid one is a value
+/// of its type.
 #[test]
 fn a_part_header_is_checked_against_its_schema() {
-    let violations = |checksum: &str| {
-        let p = ops::upload::Params { image_x_checksum: checksum.to_owned(), ..params() };
-        let mut out = vec![];
-        api::Validate::validate(&p, &api::InstancePath::Root, &mut out);
-        out.into_iter().map(|v| v.path).collect::<Vec<_>>()
-    };
-    assert_eq!(violations("abcd"), Vec::<String>::new());
-    assert_eq!(violations("abc"), ["/body/image/X-Checksum"]);
+    assert_eq!(types::UploadImageXChecksum::try_from("abcd").map(String::from), Ok("abcd".to_owned()));
+    assert_eq!(types::UploadImageXChecksum::try_from("abc"), Err("at least 4 characters required, found 3".to_owned()));
 }

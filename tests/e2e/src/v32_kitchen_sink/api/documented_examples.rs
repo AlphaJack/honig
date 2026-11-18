@@ -106,7 +106,7 @@ fn documented_examples_decode() {
         serde_json::Value::String("Lamp".to_owned()),
     );
     param::<
-        i32,
+        types::ListProductsLimit,
     >(
         &mut bad,
         "/paths/~1products/get/parameters/0/example",
