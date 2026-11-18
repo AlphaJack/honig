@@ -336,7 +336,7 @@ fn add_note_params(
     runtime::check_media(runtime::Message::content_type(req), &["application/json"])?;
     if !body.is_empty() {
         static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-        runtime::check_raw_json(
+        runtime::check_raw_json_in(
             &body,
             SCHEMA
                 .get_or_init(|| serde_json::Value::Object(
@@ -402,6 +402,7 @@ fn add_note_params(
                         ),
                     ]),
                 )),
+            runtime::schema_defs(),
         )?;
     }
     Ok(ops::add_note::Params {

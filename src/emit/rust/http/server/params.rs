@@ -246,10 +246,12 @@ pub(crate) fn server_params(
             // A type of yours (`x-rust-type`) keeps its own invariants: the body is not checked for it.
             ([c], Some(schema)) if c.kind == MediaKind::Json && !space.is_external(&c.ty) => {
                 let json = json_tokens(schema);
+                // The definitions that it reaches by pointer are in `runtime.rs` once for the whole module.
+                let shared = if space.types.shared.is_empty() { quote!(None) } else { quote!(runtime::schema_defs()) };
                 quote! {
                     if !#body_expr.is_empty() {
                         static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                        runtime::check_raw_json(&#body_expr, SCHEMA.get_or_init(|| #json))?;
+                        runtime::check_raw_json_in(&#body_expr, SCHEMA.get_or_init(|| #json), #shared)?;
                     }
                 }
             }

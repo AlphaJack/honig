@@ -491,7 +491,7 @@ fn post_product_params(
     runtime::check_media(runtime::Message::content_type(req), &["application/json"])?;
     if !body.is_empty() {
         static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-        runtime::check_raw_json(
+        runtime::check_raw_json_in(
             &body,
             SCHEMA
                 .get_or_init(|| serde_json::Value::Object(
@@ -541,6 +541,7 @@ fn post_product_params(
                         ),
                     ]),
                 )),
+            runtime::schema_defs(),
         )?;
     }
     Ok(ops::post_product::Params {
