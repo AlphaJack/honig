@@ -91,8 +91,13 @@ pub(crate) fn join(pointer: &str, token: &str) -> String {
 /// Does `key` (in an object found under `parent`) hold literal data?
 ///
 /// Examples, enum values and schema defaults are data. `default` under
-/// `responses` is the default response. That is structure.
+/// `responses` is the default response. That is structure. Under a map of
+/// names (`properties`, `definitions`, ...) every key is a name: a property
+/// called `default` holds a schema (Kubernetes' `LimitRangeItem`).
 pub(crate) fn is_data(parent: &str, key: &str) -> bool {
+    if matches!(parent, "properties" | "patternProperties" | "definitions" | "$defs" | "dependentSchemas" | "schemas") {
+        return false;
+    }
     match key {
         "example" | "examples" | "enum" | "const" => true,
         "default" => parent != "responses",
