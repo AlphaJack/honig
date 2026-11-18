@@ -211,6 +211,15 @@ fn an_unlisted_enum_value_is_a_bad_request() {
     assert_eq!(v["violations"], json!([{"path": "/body/role", "message": "`root` is not one of `admin`, `user`"}]));
 }
 
+/// An enum is closed: a value that it does not list fails to decode. The request is refused for that value alone.
+#[test]
+fn an_unlisted_enum_value_is_a_bad_request() {
+    let r = send("limit=0", "core", &json!({"name":"Ann","role":"root","age":150}));
+    assert_eq!(r.status().as_u16(), 400);
+    let v: serde_json::Value = serde_json::from_slice(r.body().bytes()).unwrap();
+    assert_eq!(v["violations"], json!([{"path": "/body/role", "message": "`root` is not one of `admin`, `user`"}]));
+}
+
 /// A string with a `pattern` is a type that only `TryFrom` (and decoding) builds.
 /// A bad value is refused where it is made. A request that carries one is a
 /// bad request and not a list of violations.
