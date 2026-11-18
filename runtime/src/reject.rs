@@ -33,8 +33,9 @@ pub enum Reason {
     /// The body could not be read. The connection broke or a read timeout of yours passed. It holds why (400).
     Unreadable(String),
     /// What the request holds is wrong (400): a parameter or a value of the body that is missing, does not decode or
-    /// breaks a constraint. Each violation says where (`/query/limit`, `/body/sku`) and why.
-    Invalid(Vec<Violation>),
+    /// breaks a constraint. The violation says where (`/query/limit`, `/body/sku`) and why. A request is refused at its
+    /// first violation, so there is one.
+    Invalid(Violation),
     /// No security requirement was satisfied (401).
     Unauthorized,
     /// One of your layers refused the request.
@@ -89,15 +90,15 @@ impl Reason {
         r
     }
 
-    /// Returns how many violations the reason holds.
+    /// Returns the violations that the reason holds: one for [`Reason::Invalid`], none otherwise.
     pub(crate) fn violations(&self) -> &[Violation] {
-        if let Self::Invalid(v) = self { v } else { &[] }
+        if let Self::Invalid(v) = self { std::slice::from_ref(v) } else { &[] }
     }
 
     /// Returns [`Reason::Invalid`] with one violation: `path` is a JSON pointer into the request (`/query/limit`).
     #[must_use]
     pub fn invalid(path: impl Into<String>, message: impl Into<String>) -> Self {
-        Self::Invalid(vec![Violation { path: path.into(), message: message.into() }])
+        Self::Invalid(Violation { path: path.into(), message: message.into() })
     }
 
     /// Returns the response for an [`ApiError`] that carries its own body. It goes out as it is.
@@ -153,7 +154,8 @@ impl Reason {
             body.insert("detail".into(), Value::String(d));
         }
         if let Self::Invalid(v) = self {
-            body.insert("violations".into(), serde_json::to_value(v).unwrap_or_default());
+            // A list on the wire, as RFC 9457 extensions and most error schemas hold violations.
+            body.insert("violations".into(), serde_json::to_value([v]).unwrap_or_default());
         }
         let mut r = self.head();
         r.set_body("application/problem+json", serde_json::to_vec(&Value::Object(body)).unwrap_or_default());
@@ -316,16 +318,14 @@ pub fn check_raw_json_in(body: &[u8], schema: &Value, shared: Option<&Map<String
         schema,
         shared,
     );
-    if out.is_empty() { Ok(()) } else { Err(Reason::Invalid(out)) }
+    out.into_iter().next().map_or(Ok(()), |v| Err(Reason::Invalid(v)))
 }
 
 impl From<Error> for Reason {
     fn from(e: Error) -> Self {
         match e {
             // A request body that does not decode: the server decodes requests with status 0.
-            Error::Decode { status: 0, pointer, message, .. } => {
-                Self::Invalid(vec![decode_violation(&pointer, &message)])
-            }
+            Error::Decode { status: 0, pointer, message, .. } => Self::Invalid(decode_violation(&pointer, &message)),
             Error::Transport(why) => Self::Unreadable(why),
             Error::TooLarge(limit) => Self::PayloadTooLarge(limit),
             other @ (Error::Encode(_)
@@ -376,12 +376,7 @@ impl fmt::Display for Reason {
             }
             Self::Body(why) | Self::Encode(why) => f.write_str(why),
             Self::Unreadable(why) => write!(f, "unreadable request body: {why}"),
-            Self::Invalid(v) => {
-                for (i, v) in v.iter().enumerate() {
-                    write!(f, "{}{}: {}", if i == 0 { "" } else { "; " }, v.path, v.message)?;
-                }
-                Ok(())
-            }
+            Self::Invalid(v) => write!(f, "{}: {}", v.path, v.message),
             Self::Unauthorized => f.write_str("no security requirement is satisfied"),
             Self::Denied(e) | Self::Handler(e) => write!(f, "{}: {}", e.status, e.message),
         }
@@ -488,6 +483,15 @@ mod tests {
         assert_eq!(unknown.to_string(), "/body/b: is not allowed (additionalProperties)");
     }
 
+    /// A request is refused at its first violation: the reason holds that one, and the body lists it.
+    #[test]
+    fn an_invalid_request_holds_its_one_violation() {
+        let reason = Reason::invalid("/query/limit", "must be at most 100");
+        let Reason::Invalid(Violation { path, message }) = &reason else { panic!("invalid") };
+        assert_eq!((path.as_str(), message.as_str()), ("/query/limit", "must be at most 100"));
+        assert_eq!(reason.to_string(), "/query/limit: must be at most 100");
+    }
+
     #[test]
     fn a_body_checked_whole_is_judged_as_sent() {
         let schema = serde_json::json!({"properties": {"foo": {}}, "unevaluatedProperties": false});
@@ -495,7 +499,7 @@ mod tests {
         let Err(Reason::Invalid(v)) = check_raw_json(br#"{"foo": 1, "bar": 2}"#, &schema) else {
             panic!("an unevaluated property is refused");
         };
-        assert_eq!(v.first().map(|v| v.path.as_str()), Some("/body/bar"));
+        assert_eq!(v.path, "/body/bar");
         assert!(check_raw_json(b"not json", &schema).is_ok(), "decoding reports it");
     }
 
@@ -507,7 +511,7 @@ mod tests {
             {"type": "object", "not": {"required": ["status"]}, "properties": {"urls": urls}},
         ]});
         let first = |body: &[u8]| match check_raw_json(body, &schema) {
-            Err(Reason::Invalid(v)) => v.into_iter().next().map(|v| (v.path, v.message)),
+            Err(Reason::Invalid(v)) => Some((v.path, v.message)),
             other => panic!("refused as invalid: {other:?}"),
         };
         // The second branch only fails on `urls`: the first also misses `status` and `alerts`.
@@ -519,10 +523,10 @@ mod tests {
         // Each branch misses its own required property: neither got further.
         let charge = serde_json::json!({"oneOf": [{"required": ["refund"]}, {"required": ["fee"]}]});
         let Err(Reason::Invalid(v)) = check_raw_json(br#"{"neither": 1}"#, &charge) else { panic!("refused") };
-        assert_eq!(v.first().map(|v| v.path.as_str()), Some("/body"));
+        assert_eq!(v.path, "/body");
         let any = serde_json::json!({"anyOf": [{"properties": {"a": {"type": "string"}}}, {"type": "array"}]});
         let Err(Reason::Invalid(v)) = check_raw_json(br#"{"a": 1}"#, &any) else { panic!("refused") };
-        assert_eq!(v.first().map(|v| v.path.as_str()), Some("/body/a"));
+        assert_eq!(v.path, "/body/a");
     }
 
     /// A required field that nothing maps to gets the empty value of its type.
