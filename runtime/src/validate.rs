@@ -58,10 +58,9 @@ pub fn violation(out: &mut Vec<Violation>, path: &InstancePath<'_>, message: imp
 
 /// Checks a string `format` the crate has no library type for: what parsing into that type would refuse.
 ///
-/// The runtime checks `decimal` itself. Some formats are checked by the crates that the generator turns on when a
-/// description uses them: `uuid` (`uuid`), the dates and times (`time`), `uri` (`url`) and the CIDR blocks
-/// (`ipnet`). Mail addresses and host names are types of their own (feature `idn`). Decoding checks them. Other
-/// formats are not checked.
+/// The runtime checks each format by its own grammar: `uuid`, the dates and times, `uri`, the CIDR blocks, `decimal`
+/// and the rest. `regex` needs the feature `regress`, and mail addresses and host names the feature `idn`. A format
+/// that it does not know passes.
 #[cfg_attr(feature = "idn", doc = "\nThose types are [`Email`](crate::Email) and [`Hostname`](crate::Hostname).")]
 pub fn check_format(out: &mut Vec<Violation>, path: &InstancePath<'_>, value: &str, format: &str) {
     if !is_format(value, format) {
@@ -97,19 +96,30 @@ pub(crate) fn is_format(value: &str, format: &str) -> bool {
         "uri" => crate::uri::is_reference(value, crate::uri::Chars::Uri, true),
         #[cfg(feature = "idn")]
         "email" | "idn-email" | "hostname" | "idn-hostname" => mail::is(value, format),
-        #[cfg(feature = "ipnet")]
-        "ipv4-cidr" => cidr_address(value, crate::format_checks::is_ipv4) && value.parse::<ipnet::Ipv4Net>().is_ok(),
-        #[cfg(feature = "ipnet")]
-        "ipv6-cidr" => cidr_address(value, crate::format_checks::is_ipv6) && value.parse::<ipnet::Ipv6Net>().is_ok(),
+        "ipv4-cidr" => cidr(value, crate::format_checks::is_ipv4, IPV4_BITS, IPV4_PREFIX_DIGITS),
+        "ipv6-cidr" => cidr(value, crate::format_checks::is_ipv6, IPV6_BITS, IPV6_PREFIX_DIGITS),
         _ => true,
     }
 }
 
-/// Is the address before the `/` of a CIDR block valid? `ipnet` takes leading zeros (`01.2.3.4`) and a `::` that
-/// stands for no group (`1:2:3:4:5:6:7::8`). `ipv4` and `ipv6` refuse both.
-#[cfg(feature = "ipnet")]
-fn cidr_address(value: &str, address: fn(&str) -> bool) -> bool {
-    value.split_once('/').is_some_and(|(a, _)| address(a))
+/// The bits of an IPv4 address: the longest prefix of an `ipv4-cidr`.
+const IPV4_BITS: u8 = 32;
+/// The bits of an IPv6 address: the longest prefix of an `ipv6-cidr`.
+const IPV6_BITS: u8 = 128;
+/// The most digits of an IPv4 prefix length. A leading zero counts: `/08` is one, `/008` is not.
+const IPV4_PREFIX_DIGITS: usize = 2;
+/// The most digits of an IPv6 prefix length: `/000` is one, `/0128` is not.
+const IPV6_PREFIX_DIGITS: usize = 3;
+
+/// Is `value` a CIDR block: an `address`, a `/` and a prefix length of at most `digits` ASCII digits and at most
+/// `bits`? The address is checked as `ipv4` and `ipv6` check one, which refuse a leading zero (`01.2.3.4`) and a `::`
+/// that stands for no group (`1:2:3:4:5:6:7::8`). The prefix reads as the networking libraries read it.
+fn cidr(value: &str, address: fn(&str) -> bool, bits: u8, digits: usize) -> bool {
+    let Some((a, prefix)) = value.split_once('/') else { return false };
+    address(a)
+        && (1..=digits).contains(&prefix.len())
+        && crate::exact::all_digits(prefix)
+        && prefix.parse::<u8>().is_ok_and(|p| p <= bits)
 }
 
 /// The length of a UUID's text and where its hyphens sit (RFC 9562 section 4: 8-4-4-4-12 hex digits).
@@ -1452,14 +1462,13 @@ mod tests {
         };
         assert!(wrong("x", "ipv6") && !wrong("::1", "ipv6"));
         assert!(wrong("x", "uri") && !wrong("https://example.com", "uri"));
-        #[cfg(feature = "ipnet")]
         assert!(wrong("::1", "ipv6-cidr") && !wrong("::1/128", "ipv6-cidr"));
         #[cfg(feature = "idn")]
         assert!(!wrong("ann@example.com", "email"));
     }
 
-    /// The address of a CIDR block is checked as `ipv4` and `ipv6` check one.
-    #[cfg(feature = "ipnet")]
+    /// The address of a CIDR block is checked as `ipv4` and `ipv6` check one, and its prefix length as digits within
+    /// the address's bits.
     #[test]
     fn a_cidr_block_has_a_valid_address() {
         let wrong = |value: &str, format: &str| {
@@ -1474,6 +1483,29 @@ mod tests {
         assert!(!wrong("2001:db8::/32", "ipv6-cidr") && !wrong("::ffff:192.168.0.0/120", "ipv6-cidr"));
         for nine in ["1:2:3:4:5:6:7::8/64", "1:2:3:4::5:6:7:8/64", "::1:2:3:4:5:6:7:8/128"] {
             assert!(wrong(nine, "ipv6-cidr"), "{nine}: `::` stands for at least one group");
+        }
+        // The prefix length: digits within the bits of the address, as the `ipnet` crate reads them.
+        for (block, format, ok) in [
+            ("10.0.0.0/8", "ipv4-cidr", true),
+            ("10.0.0.1/8", "ipv4-cidr", true),
+            ("10.0.0.0/32", "ipv4-cidr", true),
+            ("10.0.0.0/08", "ipv4-cidr", true),
+            ("1.2.3.4/0", "ipv4-cidr", true),
+            ("10.0.0.0/33", "ipv4-cidr", false),
+            ("10.0.0.0/+8", "ipv4-cidr", false),
+            ("10.0.0.0/", "ipv4-cidr", false),
+            ("10.0.0.0", "ipv4-cidr", false),
+            ("10.0.0.0/8/8", "ipv4-cidr", false),
+            ("10.0.0.0/ 8", "ipv4-cidr", false),
+            ("10.0.0.0/008", "ipv4-cidr", false),
+            ("::1/128", "ipv6-cidr", true),
+            ("::/0", "ipv6-cidr", true),
+            ("::/00", "ipv6-cidr", true),
+            ("::1/129", "ipv6-cidr", false),
+            ("::1/0128", "ipv6-cidr", false),
+            ("x", "ipv6-cidr", false),
+        ] {
+            assert_eq!(!wrong(block, format), ok, "{block} as {format}");
         }
     }
 

@@ -673,7 +673,7 @@ impl Trigger {
 /// Every runtime feature and what turns it on.
 ///
 /// The book's table of features shows this one.
-pub(crate) const FEATURES: [(&str, Trigger); 20] = [
+pub(crate) const FEATURES: [(&str, Trigger); 19] = [
     (CLIENT, Trigger::Half(Side::Client)),
     (SERVER, Trigger::Half(Side::Server)),
     ("reqwest", Trigger::Library(Side::Client)),
@@ -686,7 +686,6 @@ pub(crate) const FEATURES: [(&str, Trigger); 20] = [
     (BASE64, Trigger::Description),
     (COOKIE, Trigger::Description),
     (IDN, Trigger::Description),
-    (IPNET, Trigger::Description),
     (JIFF, Trigger::Description),
     (MULTIPART, Trigger::Description),
     (OAUTH, Trigger::Description),
