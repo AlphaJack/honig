@@ -13,7 +13,9 @@ doctest = false
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+# `preserve_order`: the generator turns it on in the workspace. On here too, the crate builds the same in `-p e2e` as in
+# `--workspace`, and its allocation counts with it.
+serde_json = { version = "1", features = ["preserve_order"] }
 # `format: uri` as `url::Url`. `ipv4-cidr` and `ipv6-cidr` as `ipnet` networks.
 url = { version = "2", default-features = false, features = ["std", "serde"] }
 ipnet = { version = "2", default-features = false, features = ["serde"] }

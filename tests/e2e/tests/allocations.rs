@@ -1,12 +1,20 @@
 //! The allocation bench of a pull request: no kind of path makes more than its `max_allocs` times the allocations
 //! of its hand-rolled baseline at any of `cost::BENCH_SIZES`. Counts do not depend on the machine or the build, so it
-//! runs with the other tests. An extra copy of a body or a round trip through `serde_json::Value` shows here.
+//! runs with the other tests. The one exception is the box of each `std::sync::Mutex` on Apple targets: it is taken off
+//! the count of the generated side (`cost::lock_box`), so the budgets set on the CI hold on a Mac too. An extra copy of a body or a round trip through `serde_json::Value` shows here.
 //! `benches/time.rs` times the same paths.
 
 #[path = "../cost/mod.rs"]
 mod cost;
 #[path = "../cost/roundtrip.rs"]
 mod roundtrip;
+
+/// The mutexes that the runtime makes for one request that a generated server answers: the slot of the request body
+/// and the `RequestEvent`. The baselines make none.
+const SERVER_LOCKS: u64 = 2;
+
+/// Those of a roundtrip: the slot of the body that the generated client sends too.
+const ROUNDTRIP_LOCKS: u64 = SERVER_LOCKS + 1;
 
 #[test]
 fn no_generated_path_allocates_much_more_than_its_baseline() {
@@ -21,6 +29,7 @@ fn no_generated_path_allocates_much_more_than_its_baseline() {
                 cost::same_answer(&generated, &baseline, &path).await.unwrap();
                 (cost::heap(&generated, &path).await.0, cost::heap(&baseline, &path).await.0)
             });
+            let allocs = allocs.saturating_sub(SERVER_LOCKS * cost::lock_box());
             let ratio = allocs as f64 / baseline_allocs.max(1) as f64;
             let sides = [allocs.to_string(), baseline_allocs.to_string()];
             rows.push(cost::Measured { path: path.name, size, sides, ratio, max: path.max_allocs });
@@ -50,6 +59,7 @@ fn no_generated_roundtrip_allocates_much_more_than_its_baseline() {
                 });
                 (ours.await.0, theirs.await.0)
             });
+            let allocs = allocs.saturating_sub(ROUNDTRIP_LOCKS * cost::lock_box());
             let ratio = allocs as f64 / baseline_allocs.max(1) as f64;
             let sides = [allocs.to_string(), baseline_allocs.to_string()];
             rows.push(cost::Measured { path: trip.name, size, sides, ratio, max: trip.max_allocs });

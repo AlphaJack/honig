@@ -703,6 +703,18 @@ unsafe impl GlobalAlloc for Counting {
 #[global_allocator]
 static GLOBAL: Counting = Counting;
 
+/// The allocations of a `std::sync::Mutex` on its first lock. Where std builds it on a pthread mutex (Apple targets)
+/// it boxes one: 1. Where it builds it on a futex (Linux, the CI) none: 0. The runtime makes a few per request.
+#[allow(dead_code, reason = "the time bench does not count allocations")]
+pub fn lock_box() -> u64 {
+    let lock = std::sync::Mutex::new(());
+    let before = ALLOCS.with(Cell::get);
+    COUNTING.store(true, Ordering::Relaxed);
+    drop(std::hint::black_box(&lock).lock());
+    COUNTING.store(false, Ordering::Relaxed);
+    ALLOCS.with(Cell::get) - before
+}
+
 /// Tries of one request whose allocations and heap count: the fewest of them. A first request also builds what is
 /// kept for the next.
 const TRIES: usize = 3;
