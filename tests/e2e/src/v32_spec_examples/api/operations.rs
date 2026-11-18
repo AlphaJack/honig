@@ -13,15 +13,30 @@
 )]
 macro_rules! default_impl {
     ($t:ty) => {
-        impl Default for $t { fn default() -> Self { Self::new() } }
+        impl Default for $t {
+            fn default() -> Self {
+                Self::new()
+            }
+        }
     };
 }
 macro_rules! validate_impl {
     ($t:ty) => {
-        impl runtime::Validate for $t { fn validate(& self, path : &
-        runtime::InstancePath < '_ >, out : & mut Vec < runtime::Violation >) { if let
-        Some(v) = & self.body { runtime::Validate::validate(v, &
-        runtime::InstancePath::Key(path, "body"), out); } } }
+        impl runtime::Validate for $t {
+            fn validate(
+                &self,
+                path: &runtime::InstancePath<'_>,
+                out: &mut Vec<runtime::Violation>,
+            ) {
+                if let Some(v) = &self.body {
+                    runtime::Validate::validate(
+                        v,
+                        &runtime::InstancePath::Key(path, "body"),
+                        out,
+                    );
+                }
+            }
+        }
     };
 }
 macro_rules! validate_impl_2 {
