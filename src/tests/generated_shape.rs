@@ -3,7 +3,7 @@
 
 use super::common;
 
-use serde_json::{Value, json};
+use serde_json::json;
 
 /// The `pub mod <op> { ... }` block of `operations.rs`.
 fn op_module<'a>(ops: &'a str, op: &str) -> &'a str {
@@ -650,7 +650,7 @@ fn a_schema_that_many_whole_checks_reach_is_generated_once() {
             }}),
         );
     }
-    let doc = common::spec("3.1.0", &Value::Object(paths), &json!({"schemas": schemas}));
+    let doc = common::spec("3.1.0", &serde_json::Value::Object(paths), &json!({"schemas": schemas}));
     let files = common::generate("shape-shared-defs", &doc, &crate::emit::Options::default());
     let copies: usize = files.iter().map(|(_, text)| text.matches(r#"maxLength\":4242"#).count()).sum();
     assert_eq!(copies, 1, "{files:#?}");
