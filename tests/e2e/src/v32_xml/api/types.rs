@@ -562,3 +562,169 @@ impl runtime::XmlShape for Meta {
     }
 }
 validate_impl!(Meta);
+/// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
+/// its field. `build` returns the first field that did not convert.
+pub mod builders {
+    use super as types;
+    use super::runtime;
+    impl super::Book {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            id: impl TryInto<i64, Error: std::fmt::Display>,
+            title: impl TryInto<String, Error: std::fmt::Display>,
+            authors: impl TryInto<Vec<types::Author>, Error: std::fmt::Display>,
+        ) -> Book {
+            Book(
+                runtime::Builder::start(|| Ok(
+                    Self::new(
+                        runtime::field("id", id)?,
+                        runtime::field("title", title)?,
+                        runtime::field("authors", authors)?,
+                    ),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct Book(runtime::Builder<super::Book>);
+    impl Book {
+        pub fn lang(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("lang", value, |s, v| s.lang = Some(v)))
+        }
+        pub fn subtitle(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(
+                self
+                    .0
+                    .set(
+                        "subtitle",
+                        value,
+                        |s, v| s.subtitle = runtime::Nullable::Value(v),
+                    ),
+            )
+        }
+        pub fn tags(
+            self,
+            value: impl TryInto<Vec<String>, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("tags", value, |s, v| s.tags = Some(v)))
+        }
+        pub fn price(
+            self,
+            value: impl TryInto<types::Price, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("price", value, |s, v| s.price = Some(v)))
+        }
+        pub fn sequel(
+            self,
+            value: impl TryInto<Box<types::Book>, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("sequel", value, |s, v| s.sequel = Some(v)))
+        }
+        pub fn blurb(
+            self,
+            value: impl TryInto<types::Blurb, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("blurb", value, |s, v| s.blurb = Some(v)))
+        }
+        pub fn meta(
+            self,
+            value: impl TryInto<types::Meta, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("meta", value, |s, v| s.meta = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::Book, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::Author {
+        /// Starts a builder from the required properties.
+        pub fn builder(name: impl TryInto<String, Error: std::fmt::Display>) -> Author {
+            Author(
+                runtime::Builder::start(|| Ok(Self::new(runtime::field("name", name)?))),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct Author(runtime::Builder<super::Author>);
+    impl Author {
+        pub fn born(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("born", value, |s, v| s.born = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::Author, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::Price {
+        /// Starts a builder from the required properties.
+        pub fn builder(amount: impl TryInto<String, Error: std::fmt::Display>) -> Price {
+            Price(
+                runtime::Builder::start(|| Ok(
+                    Self::new(runtime::field("amount", amount)?),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct Price(runtime::Builder<super::Price>);
+    impl Price {
+        pub fn currency(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("currency", value, |s, v| s.currency = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::Price, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::Blurb {
+        /// Starts a builder from the required properties.
+        pub fn builder(text: impl TryInto<String, Error: std::fmt::Display>) -> Blurb {
+            Blurb(
+                runtime::Builder::start(|| Ok(Self::new(runtime::field("text", text)?))),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct Blurb(runtime::Builder<super::Blurb>);
+    impl Blurb {
+        pub fn format(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("format", value, |s, v| s.format = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::Blurb, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::Meta {
+        /// Starts a builder from the required properties.
+        pub fn builder(isbn: impl TryInto<String, Error: std::fmt::Display>) -> Meta {
+            Meta(
+                runtime::Builder::start(|| Ok(Self::new(runtime::field("isbn", isbn)?))),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct Meta(runtime::Builder<super::Meta>);
+    impl Meta {
+        pub fn pages(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("pages", value, |s, v| s.pages = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::Meta, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+}

@@ -155,3 +155,71 @@ impl SubscribeBody {
     }
 }
 validate_impl!(SubscribeBody);
+/// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
+/// its field. `build` returns the first field that did not convert.
+pub mod builders {
+    use super as types;
+    use super::runtime;
+    impl super::Product {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            id: impl TryInto<i64, Error: std::fmt::Display>,
+            name: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Product {
+            Product(
+                runtime::Builder::start(|| Ok(
+                    Self::new(runtime::field("id", id)?, runtime::field("name", name)?),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct Product(runtime::Builder<super::Product>);
+    impl Product {
+        /// Returns the value.
+        pub fn build(self) -> Result<super::Product, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::Event {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            kind: impl TryInto<types::EventKind, Error: std::fmt::Display>,
+        ) -> Event {
+            Event(
+                runtime::Builder::start(|| Ok(Self::new(runtime::field("kind", kind)?))),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct Event(runtime::Builder<super::Event>);
+    impl Event {
+        pub fn at(self, value: impl TryInto<String, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("at", value, |s, v| s.at = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::Event, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::SubscribeBody {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            callback_url: impl TryInto<url::Url, Error: std::fmt::Display>,
+        ) -> SubscribeBody {
+            SubscribeBody(
+                runtime::Builder::start(|| Ok(
+                    Self::new(runtime::field("callbackUrl", callback_url)?),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct SubscribeBody(runtime::Builder<super::SubscribeBody>);
+    impl SubscribeBody {
+        /// Returns the value.
+        pub fn build(self) -> Result<super::SubscribeBody, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+}

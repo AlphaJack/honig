@@ -249,3 +249,148 @@ impl UploadScanBody {
     }
 }
 validate_impl!(UploadScanBody);
+/// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
+/// its field. `build` returns the first field that did not convert.
+pub mod builders {
+    use super as types;
+    use super::runtime;
+    impl super::UploadBody {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            image: impl TryInto<runtime::Binary, Error: std::fmt::Display>,
+            meta: impl TryInto<types::UploadBodyMeta, Error: std::fmt::Display>,
+        ) -> UploadBody {
+            UploadBody(
+                runtime::Builder::start(|| Ok(
+                    Self::new(
+                        runtime::field("image", image)?,
+                        runtime::field("meta", meta)?,
+                    ),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct UploadBody(runtime::Builder<super::UploadBody>);
+    impl UploadBody {
+        pub fn tags(
+            self,
+            value: impl TryInto<Vec<String>, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("tags", value, |s, v| s.tags = Some(v)))
+        }
+        pub fn bundle(
+            self,
+            value: impl TryInto<types::UploadBodyBundle, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("bundle", value, |s, v| s.bundle = Some(v)))
+        }
+        pub fn pages(
+            self,
+            value: impl TryInto<Vec<String>, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("pages", value, |s, v| s.pages = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::UploadBody, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::UploadBodyMeta {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            title: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> UploadBodyMeta {
+            UploadBodyMeta(
+                runtime::Builder::start(|| Ok(
+                    Self::new(runtime::field("title", title)?),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct UploadBodyMeta(runtime::Builder<super::UploadBodyMeta>);
+    impl UploadBodyMeta {
+        pub fn width(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("width", value, |s, v| s.width = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::UploadBodyMeta, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::UploadBodyBundle {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> UploadBodyBundle {
+            UploadBodyBundle(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct UploadBodyBundle(runtime::Builder<super::UploadBodyBundle>);
+    impl UploadBodyBundle {
+        pub fn note(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("note", value, |s, v| s.note = Some(v)))
+        }
+        pub fn scan(
+            self,
+            value: impl TryInto<runtime::Binary, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("scan", value, |s, v| s.scan = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::UploadBodyBundle, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::PutIconBody {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            icon: impl TryInto<runtime::Binary, Error: std::fmt::Display>,
+        ) -> PutIconBody {
+            PutIconBody(
+                runtime::Builder::start(|| Ok(Self::new(runtime::field("icon", icon)?))),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct PutIconBody(runtime::Builder<super::PutIconBody>);
+    impl PutIconBody {
+        pub fn name(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("name", value, |s, v| s.name = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::PutIconBody, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::UploadScanBody {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            scan: impl TryInto<runtime::Binary, Error: std::fmt::Display>,
+        ) -> UploadScanBody {
+            UploadScanBody(
+                runtime::Builder::start(|| Ok(Self::new(runtime::field("scan", scan)?))),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct UploadScanBody(runtime::Builder<super::UploadScanBody>);
+    impl UploadScanBody {
+        pub fn label(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("label", value, |s, v| s.label = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::UploadScanBody, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+}

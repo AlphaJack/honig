@@ -45,3 +45,34 @@ impl GetFileOk {
     }
 }
 impl runtime::Validate for GetFileOk {}
+/// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
+/// its field. `build` returns the first field that did not convert.
+pub mod builders {
+    use super::runtime;
+    impl super::GetFileOk {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> GetFileOk {
+            GetFileOk(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct GetFileOk(runtime::Builder<super::GetFileOk>);
+    impl GetFileOk {
+        pub fn path(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("path", value, |s, v| s.path = Some(v)))
+        }
+        pub fn filter(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("filter", value, |s, v| s.filter = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::GetFileOk, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+}

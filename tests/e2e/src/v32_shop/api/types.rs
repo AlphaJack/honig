@@ -5732,3 +5732,1663 @@ impl runtime::XmlShape for CreateUserBody2Request {
     }
 }
 validate_impl!(CreateUserBody2Request);
+/// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
+/// its field. `build` returns the first field that did not convert.
+pub mod builders {
+    use super as types;
+    use super::runtime;
+    impl super::User {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> User {
+            User(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct User(runtime::Builder<super::User>);
+    impl User {
+        pub fn id(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("id", value, |s, v| s.id = Some(v)))
+        }
+        pub fn name(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("name", value, |s, v| s.name = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::User, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::Credentials {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            email: impl TryInto<runtime::Email, Error: std::fmt::Display>,
+        ) -> Credentials {
+            Credentials(
+                runtime::Builder::start(|| Ok(
+                    Self::new(runtime::field("email", email)?),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct Credentials(runtime::Builder<super::Credentials>);
+    impl Credentials {
+        /// Returns the value.
+        pub fn build(self) -> Result<super::Credentials, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::Token {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> Token {
+            Token(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct Token(runtime::Builder<super::Token>);
+    impl Token {
+        pub fn token(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("token", value, |s, v| s.token = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::Token, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::Product {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            id: impl TryInto<i64, Error: std::fmt::Display>,
+            name: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Product {
+            Product(
+                runtime::Builder::start(|| Ok(
+                    Self::new(runtime::field("id", id)?, runtime::field("name", name)?),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct Product(runtime::Builder<super::Product>);
+    impl Product {
+        pub fn description(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(
+                self
+                    .0
+                    .set(
+                        "description",
+                        value,
+                        |s, v| s.description = runtime::Nullable::Value(v),
+                    ),
+            )
+        }
+        pub fn type_(
+            self,
+            value: impl TryInto<types::ProductType, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("type", value, |s, v| s.type_ = Some(v)))
+        }
+        /// A score from 0 to 1 indicating how customers rate it
+        pub fn rating(
+            self,
+            value: impl TryInto<types::ProductRating, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("rating", value, |s, v| s.rating = Some(v)))
+        }
+        pub fn dimensions(
+            self,
+            value: impl TryInto<types::ProductDimensions, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("dimensions", value, |s, v| s.dimensions = Some(v)))
+        }
+        /// Materials it is made of
+        pub fn materials(
+            self,
+            value: impl TryInto<
+                Vec<types::ProductMaterialsItem>,
+                Error: std::fmt::Display,
+            >,
+        ) -> Self {
+            Self(self.0.set("materials", value, |s, v| s.materials = Some(v)))
+        }
+        pub fn listed_at(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("listedAt", value, |s, v| s.listed_at = Some(v)))
+        }
+        pub fn image(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(
+                self.0.set("image", value, |s, v| s.image = runtime::Nullable::Value(v)),
+            )
+        }
+        pub fn variants(
+            self,
+            value: impl TryInto<Vec<types::Variant>, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("variants", value, |s, v| s.variants = Some(v)))
+        }
+        pub fn creator(
+            self,
+            value: impl TryInto<types::User, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("creator", value, |s, v| s.creator = Some(v)))
+        }
+        pub fn tags(
+            self,
+            value: impl TryInto<Vec<String>, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("tags", value, |s, v| s.tags = Some(v)))
+        }
+        pub fn last_updated(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("lastUpdated", value, |s, v| s.last_updated = Some(v)))
+        }
+        /// URL which gets invoked upon a successful operation
+        pub fn success_callback_url(
+            self,
+            value: impl TryInto<url::Url, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(
+                self
+                    .0
+                    .set(
+                        "successCallbackUrl",
+                        value,
+                        |s, v| s.success_callback_url = Some(v),
+                    ),
+            )
+        }
+        /// URL which gets invoked upon a failed operation
+        pub fn failure_callback_url(
+            self,
+            value: impl TryInto<url::Url, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(
+                self
+                    .0
+                    .set(
+                        "failureCallbackUrl",
+                        value,
+                        |s, v| s.failure_callback_url = Some(v),
+                    ),
+            )
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::Product, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::Variant {
+        /// Starts a builder from the required properties.
+        pub fn builder(name: impl TryInto<String, Error: std::fmt::Display>) -> Variant {
+            Variant(
+                runtime::Builder::start(|| Ok(Self::new(runtime::field("name", name)?))),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct Variant(runtime::Builder<super::Variant>);
+    impl Variant {
+        pub fn id(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("id", value, |s, v| s.id = Some(v)))
+        }
+        pub fn description(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(
+                self
+                    .0
+                    .set(
+                        "description",
+                        value,
+                        |s, v| s.description = runtime::Nullable::Value(v),
+                    ),
+            )
+        }
+        /// Length in centimetres
+        pub fn length(self, value: impl TryInto<f32, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("length", value, |s, v| s.length = Some(v)))
+        }
+        pub fn type_(
+            self,
+            value: impl TryInto<types::VariantType, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("type", value, |s, v| s.type_ = Some(v)))
+        }
+        pub fn shipping(
+            self,
+            value: impl TryInto<types::VariantShipping, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("shipping", value, |s, v| s.shipping = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::Variant, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::ProductQuery {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> ProductQuery {
+            ProductQuery(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct ProductQuery(runtime::Builder<super::ProductQuery>);
+    impl ProductQuery {
+        /// Match products whose name contains this text
+        pub fn name(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("name", value, |s, v| s.name = Some(v)))
+        }
+        /// Restrict results to these product types
+        pub fn type_(
+            self,
+            value: impl TryInto<
+                Vec<types::ProductQueryTypeItem>,
+                Error: std::fmt::Display,
+            >,
+        ) -> Self {
+            Self(self.0.set("type", value, |s, v| s.type_ = Some(v)))
+        }
+        /// Only return products at or above this rating
+        pub fn min_rating(
+            self,
+            value: impl TryInto<types::ProductQueryMinRating, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("minRating", value, |s, v| s.min_rating = Some(v)))
+        }
+        /// Sort field; prefix with `-` for descending order
+        pub fn sort(
+            self,
+            value: impl TryInto<types::ProductQuerySort, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("sort", value, |s, v| s.sort = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::ProductQuery, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::ProductEvent {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            event: impl TryInto<types::ProductEventEvent, Error: std::fmt::Display>,
+            product: impl TryInto<types::Product, Error: std::fmt::Display>,
+        ) -> ProductEvent {
+            ProductEvent(
+                runtime::Builder::start(|| Ok(
+                    Self::new(
+                        runtime::field("event", event)?,
+                        runtime::field("product", product)?,
+                    ),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct ProductEvent(runtime::Builder<super::ProductEvent>);
+    impl ProductEvent {
+        /// Unique identifier for the event
+        pub fn id(self, value: impl TryInto<String, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("id", value, |s, v| s.id = Some(v)))
+        }
+        pub fn note(
+            self,
+            value: impl TryInto<types::ShopMessage, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("note", value, |s, v| s.note = Some(v)))
+        }
+        pub fn occurred_at(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("occurredAt", value, |s, v| s.occurred_at = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::ProductEvent, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::ShopMessage {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> ShopMessage {
+            ShopMessage(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct ShopMessage(runtime::Builder<super::ShopMessage>);
+    impl ShopMessage {
+        /// BCP 47 language tag
+        pub fn lang(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("lang", value, |s, v| s.lang = Some(v)))
+        }
+        /// The message text, serialized as the element's text content
+        pub fn value(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("value", value, |s, v| s.value = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::ShopMessage, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::PhotoBatchMeta {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            photographer: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> PhotoBatchMeta {
+            PhotoBatchMeta(
+                runtime::Builder::start(|| Ok(
+                    Self::new(runtime::field("photographer", photographer)?),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct PhotoBatchMeta(runtime::Builder<super::PhotoBatchMeta>);
+    impl PhotoBatchMeta {
+        pub fn taken_at(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("takenAt", value, |s, v| s.taken_at = Some(v)))
+        }
+        /// Number of image parts that follow this metadata part
+        pub fn count(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("count", value, |s, v| s.count = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::PhotoBatchMeta, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::PaginatedResource {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> PaginatedResource {
+            PaginatedResource(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct PaginatedResource(runtime::Builder<super::PaginatedResource>);
+    impl PaginatedResource {
+        pub fn data(
+            self,
+            value: impl TryInto<Vec<serde_json::Value>, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("data", value, |s, v| s.data = Some(v)))
+        }
+        pub fn meta(
+            self,
+            value: impl TryInto<types::PaginatedResourceMeta, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("meta", value, |s, v| s.meta = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::PaginatedResource, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::ImageUploadedMessage {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> ImageUploadedMessage {
+            ImageUploadedMessage(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct ImageUploadedMessage(runtime::Builder<super::ImageUploadedMessage>);
+    impl ImageUploadedMessage {
+        pub fn message(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("message", value, |s, v| s.message = Some(v)))
+        }
+        /// The URL where the uploaded image can be accessed
+        pub fn image_url(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("imageUrl", value, |s, v| s.image_url = Some(v)))
+        }
+        /// Timestamp when the image was uploaded
+        pub fn uploaded_at(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("uploadedAt", value, |s, v| s.uploaded_at = Some(v)))
+        }
+        /// Size of the uploaded image in bytes
+        pub fn file_size(
+            self,
+            value: impl TryInto<i64, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("fileSize", value, |s, v| s.file_size = Some(v)))
+        }
+        /// The content type of the uploaded image
+        pub fn mime_type(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("mimeType", value, |s, v| s.mime_type = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::ImageUploadedMessage, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::BadRequestError {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> BadRequestError {
+            BadRequestError(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct BadRequestError(runtime::Builder<super::BadRequestError>);
+    impl BadRequestError {
+        pub fn type_(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("type", value, |s, v| s.type_ = Some(v)))
+        }
+        pub fn title(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("title", value, |s, v| s.title = Some(v)))
+        }
+        pub fn status(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("status", value, |s, v| s.status = Some(v)))
+        }
+        pub fn detail(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("detail", value, |s, v| s.detail = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::BadRequestError, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::ForbiddenError {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> ForbiddenError {
+            ForbiddenError(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct ForbiddenError(runtime::Builder<super::ForbiddenError>);
+    impl ForbiddenError {
+        pub fn type_(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("type", value, |s, v| s.type_ = Some(v)))
+        }
+        pub fn title(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("title", value, |s, v| s.title = Some(v)))
+        }
+        pub fn status(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("status", value, |s, v| s.status = Some(v)))
+        }
+        pub fn detail(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("detail", value, |s, v| s.detail = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::ForbiddenError, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::NotFoundError {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> NotFoundError {
+            NotFoundError(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct NotFoundError(runtime::Builder<super::NotFoundError>);
+    impl NotFoundError {
+        pub fn type_(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("type", value, |s, v| s.type_ = Some(v)))
+        }
+        pub fn title(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("title", value, |s, v| s.title = Some(v)))
+        }
+        pub fn status(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("status", value, |s, v| s.status = Some(v)))
+        }
+        pub fn detail(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("detail", value, |s, v| s.detail = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::NotFoundError, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::UnauthorizedError {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> UnauthorizedError {
+            UnauthorizedError(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct UnauthorizedError(runtime::Builder<super::UnauthorizedError>);
+    impl UnauthorizedError {
+        pub fn type_(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("type", value, |s, v| s.type_ = Some(v)))
+        }
+        pub fn title(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("title", value, |s, v| s.title = Some(v)))
+        }
+        pub fn status(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("status", value, |s, v| s.status = Some(v)))
+        }
+        pub fn detail(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("detail", value, |s, v| s.detail = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::UnauthorizedError, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::Conflict {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> Conflict {
+            Conflict(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct Conflict(runtime::Builder<super::Conflict>);
+    impl Conflict {
+        pub fn type_(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("type", value, |s, v| s.type_ = Some(v)))
+        }
+        pub fn title(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("title", value, |s, v| s.title = Some(v)))
+        }
+        pub fn status(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("status", value, |s, v| s.status = Some(v)))
+        }
+        pub fn detail(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("detail", value, |s, v| s.detail = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::Conflict, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::UnprocessableEntity {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> UnprocessableEntity {
+            UnprocessableEntity(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct UnprocessableEntity(runtime::Builder<super::UnprocessableEntity>);
+    impl UnprocessableEntity {
+        pub fn type_(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("type", value, |s, v| s.type_ = Some(v)))
+        }
+        pub fn title(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("title", value, |s, v| s.title = Some(v)))
+        }
+        pub fn status(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("status", value, |s, v| s.status = Some(v)))
+        }
+        pub fn detail(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("detail", value, |s, v| s.detail = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::UnprocessableEntity, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::TooManyRequestsError {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> TooManyRequestsError {
+            TooManyRequestsError(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct TooManyRequestsError(runtime::Builder<super::TooManyRequestsError>);
+    impl TooManyRequestsError {
+        pub fn type_(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("type", value, |s, v| s.type_ = Some(v)))
+        }
+        pub fn title(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("title", value, |s, v| s.title = Some(v)))
+        }
+        pub fn status(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("status", value, |s, v| s.status = Some(v)))
+        }
+        pub fn detail(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("detail", value, |s, v| s.detail = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::TooManyRequestsError, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::ProductDimensions {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> ProductDimensions {
+            ProductDimensions(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct ProductDimensions(runtime::Builder<super::ProductDimensions>);
+    impl ProductDimensions {
+        /// Weight in kilograms (must be greater than 0)
+        pub fn weight(
+            self,
+            value: impl TryInto<types::ProductDimensionsWeight, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("weight", value, |s, v| s.weight = Some(v)))
+        }
+        /// Width in centimetres (must be greater than 0)
+        pub fn width(
+            self,
+            value: impl TryInto<types::ProductDimensionsWidth, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("width", value, |s, v| s.width = Some(v)))
+        }
+        /// Height in centimetres
+        pub fn height(self, value: impl TryInto<f32, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("height", value, |s, v| s.height = Some(v)))
+        }
+        pub fn price(
+            self,
+            value: impl TryInto<types::ProductDimensionsPrice, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("price", value, |s, v| s.price = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::ProductDimensions, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::ProductDimensionsPrice {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> ProductDimensionsPrice {
+            ProductDimensionsPrice(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct ProductDimensionsPrice(runtime::Builder<super::ProductDimensionsPrice>);
+    impl ProductDimensionsPrice {
+        /// Lowest price in euros
+        pub fn min(self, value: impl TryInto<f32, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("min", value, |s, v| s.min = Some(v)))
+        }
+        /// Highest price in euros
+        pub fn max(self, value: impl TryInto<f32, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("max", value, |s, v| s.max = Some(v)))
+        }
+        /// Average price in euros
+        pub fn average(
+            self,
+            value: impl TryInto<f32, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("average", value, |s, v| s.average = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(
+            self,
+        ) -> Result<super::ProductDimensionsPrice, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::ProductMaterialsItem {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> ProductMaterialsItem {
+            ProductMaterialsItem(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct ProductMaterialsItem(runtime::Builder<super::ProductMaterialsItem>);
+    impl ProductMaterialsItem {
+        pub fn material(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("material", value, |s, v| s.material = Some(v)))
+        }
+        pub fn percentage(
+            self,
+            value: impl TryInto<
+                types::ProductMaterialsItemPercentage,
+                Error: std::fmt::Display,
+            >,
+        ) -> Self {
+            Self(self.0.set("percentage", value, |s, v| s.percentage = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::ProductMaterialsItem, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::VariantShipping {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> VariantShipping {
+            VariantShipping(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct VariantShipping(runtime::Builder<super::VariantShipping>);
+    impl VariantShipping {
+        pub fn product(
+            self,
+            value: impl TryInto<types::Product, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("product", value, |s, v| s.product = Some(v)))
+        }
+        /// Delivery time in days
+        pub fn delivery_days(
+            self,
+            value: impl TryInto<f32, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("deliveryDays", value, |s, v| s.delivery_days = Some(v)))
+        }
+        /// Average distance from the product in kilometers
+        pub fn distance(
+            self,
+            value: impl TryInto<f32, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("distance", value, |s, v| s.distance = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::VariantShipping, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::PaginatedResourceMeta {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> PaginatedResourceMeta {
+            PaginatedResourceMeta(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct PaginatedResourceMeta(runtime::Builder<super::PaginatedResourceMeta>);
+    impl PaginatedResourceMeta {
+        pub fn limit(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("limit", value, |s, v| s.limit = Some(v)))
+        }
+        pub fn offset(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("offset", value, |s, v| s.offset = Some(v)))
+        }
+        pub fn total(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("total", value, |s, v| s.total = Some(v)))
+        }
+        pub fn next(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("next", value, |s, v| s.next = runtime::Nullable::Value(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::PaginatedResourceMeta, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::GetAllDataOk {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> GetAllDataOk {
+            GetAllDataOk(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct GetAllDataOk(runtime::Builder<super::GetAllDataOk>);
+    impl GetAllDataOk {
+        pub fn data(
+            self,
+            value: impl TryInto<Vec<types::Product>, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("data", value, |s, v| s.data = Some(v)))
+        }
+        pub fn meta(
+            self,
+            value: impl TryInto<types::GetAllDataOkMeta, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("meta", value, |s, v| s.meta = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::GetAllDataOk, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::GetAllDataOkMeta {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> GetAllDataOkMeta {
+            GetAllDataOkMeta(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct GetAllDataOkMeta(runtime::Builder<super::GetAllDataOkMeta>);
+    impl GetAllDataOkMeta {
+        pub fn limit(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("limit", value, |s, v| s.limit = Some(v)))
+        }
+        pub fn offset(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("offset", value, |s, v| s.offset = Some(v)))
+        }
+        pub fn total(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("total", value, |s, v| s.total = Some(v)))
+        }
+        pub fn next(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("next", value, |s, v| s.next = runtime::Nullable::Value(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::GetAllDataOkMeta, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::GetAllDataOk2 {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> GetAllDataOk2 {
+            GetAllDataOk2(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct GetAllDataOk2(runtime::Builder<super::GetAllDataOk2>);
+    impl GetAllDataOk2 {
+        pub fn data(
+            self,
+            value: impl TryInto<Vec<types::Product>, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("data", value, |s, v| s.data = Some(v)))
+        }
+        pub fn meta(
+            self,
+            value: impl TryInto<types::GetAllDataOk2Meta, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("meta", value, |s, v| s.meta = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::GetAllDataOk2, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::GetAllDataOk2Meta {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> GetAllDataOk2Meta {
+            GetAllDataOk2Meta(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct GetAllDataOk2Meta(runtime::Builder<super::GetAllDataOk2Meta>);
+    impl GetAllDataOk2Meta {
+        pub fn limit(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("limit", value, |s, v| s.limit = Some(v)))
+        }
+        pub fn offset(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("offset", value, |s, v| s.offset = Some(v)))
+        }
+        pub fn total(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("total", value, |s, v| s.total = Some(v)))
+        }
+        pub fn next(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("next", value, |s, v| s.next = runtime::Nullable::Value(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::GetAllDataOk2Meta, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::QueryProductsOk {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> QueryProductsOk {
+            QueryProductsOk(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct QueryProductsOk(runtime::Builder<super::QueryProductsOk>);
+    impl QueryProductsOk {
+        pub fn data(
+            self,
+            value: impl TryInto<Vec<types::Product>, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("data", value, |s, v| s.data = Some(v)))
+        }
+        pub fn meta(
+            self,
+            value: impl TryInto<types::QueryProductsOkMeta, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("meta", value, |s, v| s.meta = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::QueryProductsOk, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::QueryProductsOkMeta {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> QueryProductsOkMeta {
+            QueryProductsOkMeta(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct QueryProductsOkMeta(runtime::Builder<super::QueryProductsOkMeta>);
+    impl QueryProductsOkMeta {
+        pub fn limit(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("limit", value, |s, v| s.limit = Some(v)))
+        }
+        pub fn offset(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("offset", value, |s, v| s.offset = Some(v)))
+        }
+        pub fn total(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("total", value, |s, v| s.total = Some(v)))
+        }
+        pub fn next(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("next", value, |s, v| s.next = runtime::Nullable::Value(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::QueryProductsOkMeta, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::SearchProductsOk {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> SearchProductsOk {
+            SearchProductsOk(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct SearchProductsOk(runtime::Builder<super::SearchProductsOk>);
+    impl SearchProductsOk {
+        pub fn data(
+            self,
+            value: impl TryInto<Vec<types::Product>, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("data", value, |s, v| s.data = Some(v)))
+        }
+        pub fn meta(
+            self,
+            value: impl TryInto<types::SearchProductsOkMeta, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("meta", value, |s, v| s.meta = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::SearchProductsOk, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::SearchProductsOkMeta {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> SearchProductsOkMeta {
+            SearchProductsOkMeta(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct SearchProductsOkMeta(runtime::Builder<super::SearchProductsOkMeta>);
+    impl SearchProductsOkMeta {
+        pub fn limit(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("limit", value, |s, v| s.limit = Some(v)))
+        }
+        pub fn offset(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("offset", value, |s, v| s.offset = Some(v)))
+        }
+        pub fn total(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("total", value, |s, v| s.total = Some(v)))
+        }
+        pub fn next(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("next", value, |s, v| s.next = runtime::Nullable::Value(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::SearchProductsOkMeta, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::UploadImageBody {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> UploadImageBody {
+            UploadImageBody(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct UploadImageBody(runtime::Builder<super::UploadImageBody>);
+    impl UploadImageBody {
+        /// The image file to upload
+        pub fn image(
+            self,
+            value: impl TryInto<runtime::Binary, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("image", value, |s, v| s.image = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::UploadImageBody, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::UploadPhotosAccepted {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> UploadPhotosAccepted {
+            UploadPhotosAccepted(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct UploadPhotosAccepted(runtime::Builder<super::UploadPhotosAccepted>);
+    impl UploadPhotosAccepted {
+        /// Number of photo parts accepted
+        pub fn accepted(
+            self,
+            value: impl TryInto<i64, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("accepted", value, |s, v| s.accepted = Some(v)))
+        }
+        pub fn batch_id(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("batchId", value, |s, v| s.batch_id = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::UploadPhotosAccepted, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::CreateUserBody {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            email: impl TryInto<runtime::Email, Error: std::fmt::Display>,
+        ) -> CreateUserBody {
+            CreateUserBody(
+                runtime::Builder::start(|| Ok(
+                    Self::new(runtime::field("email", email)?),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct CreateUserBody(runtime::Builder<super::CreateUserBody>);
+    impl CreateUserBody {
+        pub fn id(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("id", value, |s, v| s.id = Some(v)))
+        }
+        pub fn name(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("name", value, |s, v| s.name = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::CreateUserBody, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::CreateUserBody2 {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            email: impl TryInto<runtime::Email, Error: std::fmt::Display>,
+        ) -> CreateUserBody2 {
+            CreateUserBody2(
+                runtime::Builder::start(|| Ok(
+                    Self::new(runtime::field("email", email)?),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct CreateUserBody2(runtime::Builder<super::CreateUserBody2>);
+    impl CreateUserBody2 {
+        pub fn id(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("id", value, |s, v| s.id = Some(v)))
+        }
+        pub fn name(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("name", value, |s, v| s.name = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::CreateUserBody2, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::UserRequest {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> UserRequest {
+            UserRequest(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct UserRequest(runtime::Builder<super::UserRequest>);
+    impl UserRequest {
+        pub fn name(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("name", value, |s, v| s.name = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::UserRequest, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::CredentialsRequest {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            email: impl TryInto<runtime::Email, Error: std::fmt::Display>,
+            password: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> CredentialsRequest {
+            CredentialsRequest(
+                runtime::Builder::start(|| Ok(
+                    Self::new(
+                        runtime::field("email", email)?,
+                        runtime::field("password", password)?,
+                    ),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct CredentialsRequest(runtime::Builder<super::CredentialsRequest>);
+    impl CredentialsRequest {
+        /// Returns the value.
+        pub fn build(self) -> Result<super::CredentialsRequest, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::ProductRequest {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            name: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> ProductRequest {
+            ProductRequest(
+                runtime::Builder::start(|| Ok(Self::new(runtime::field("name", name)?))),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct ProductRequest(runtime::Builder<super::ProductRequest>);
+    impl ProductRequest {
+        pub fn description(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(
+                self
+                    .0
+                    .set(
+                        "description",
+                        value,
+                        |s, v| s.description = runtime::Nullable::Value(v),
+                    ),
+            )
+        }
+        pub fn type_(
+            self,
+            value: impl TryInto<types::ProductType, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("type", value, |s, v| s.type_ = Some(v)))
+        }
+        /// A score from 0 to 1 indicating how customers rate it
+        pub fn rating(
+            self,
+            value: impl TryInto<types::ProductRating, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("rating", value, |s, v| s.rating = Some(v)))
+        }
+        pub fn dimensions(
+            self,
+            value: impl TryInto<types::ProductDimensions, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("dimensions", value, |s, v| s.dimensions = Some(v)))
+        }
+        /// Materials it is made of
+        pub fn materials(
+            self,
+            value: impl TryInto<
+                Vec<types::ProductMaterialsItem>,
+                Error: std::fmt::Display,
+            >,
+        ) -> Self {
+            Self(self.0.set("materials", value, |s, v| s.materials = Some(v)))
+        }
+        pub fn listed_at(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("listedAt", value, |s, v| s.listed_at = Some(v)))
+        }
+        pub fn image(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(
+                self.0.set("image", value, |s, v| s.image = runtime::Nullable::Value(v)),
+            )
+        }
+        pub fn variants(
+            self,
+            value: impl TryInto<Vec<types::VariantRequest>, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("variants", value, |s, v| s.variants = Some(v)))
+        }
+        pub fn creator(
+            self,
+            value: impl TryInto<types::UserRequest, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("creator", value, |s, v| s.creator = Some(v)))
+        }
+        pub fn tags(
+            self,
+            value: impl TryInto<Vec<String>, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("tags", value, |s, v| s.tags = Some(v)))
+        }
+        /// URL which gets invoked upon a successful operation
+        pub fn success_callback_url(
+            self,
+            value: impl TryInto<url::Url, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(
+                self
+                    .0
+                    .set(
+                        "successCallbackUrl",
+                        value,
+                        |s, v| s.success_callback_url = Some(v),
+                    ),
+            )
+        }
+        /// URL which gets invoked upon a failed operation
+        pub fn failure_callback_url(
+            self,
+            value: impl TryInto<url::Url, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(
+                self
+                    .0
+                    .set(
+                        "failureCallbackUrl",
+                        value,
+                        |s, v| s.failure_callback_url = Some(v),
+                    ),
+            )
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::ProductRequest, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::VariantRequest {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            name: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> VariantRequest {
+            VariantRequest(
+                runtime::Builder::start(|| Ok(Self::new(runtime::field("name", name)?))),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct VariantRequest(runtime::Builder<super::VariantRequest>);
+    impl VariantRequest {
+        pub fn description(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(
+                self
+                    .0
+                    .set(
+                        "description",
+                        value,
+                        |s, v| s.description = runtime::Nullable::Value(v),
+                    ),
+            )
+        }
+        /// Length in centimetres
+        pub fn length(self, value: impl TryInto<f32, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("length", value, |s, v| s.length = Some(v)))
+        }
+        pub fn type_(
+            self,
+            value: impl TryInto<types::VariantType, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("type", value, |s, v| s.type_ = Some(v)))
+        }
+        pub fn shipping(
+            self,
+            value: impl TryInto<types::VariantShippingRequest, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("shipping", value, |s, v| s.shipping = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::VariantRequest, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::ProductEventRequest {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            event: impl TryInto<types::ProductEventEvent, Error: std::fmt::Display>,
+            product: impl TryInto<types::ProductRequest, Error: std::fmt::Display>,
+        ) -> ProductEventRequest {
+            ProductEventRequest(
+                runtime::Builder::start(|| Ok(
+                    Self::new(
+                        runtime::field("event", event)?,
+                        runtime::field("product", product)?,
+                    ),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct ProductEventRequest(runtime::Builder<super::ProductEventRequest>);
+    impl ProductEventRequest {
+        /// Unique identifier for the event
+        pub fn id(self, value: impl TryInto<String, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("id", value, |s, v| s.id = Some(v)))
+        }
+        pub fn note(
+            self,
+            value: impl TryInto<types::ShopMessage, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("note", value, |s, v| s.note = Some(v)))
+        }
+        pub fn occurred_at(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("occurredAt", value, |s, v| s.occurred_at = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::ProductEventRequest, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::VariantShippingRequest {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> VariantShippingRequest {
+            VariantShippingRequest(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct VariantShippingRequest(runtime::Builder<super::VariantShippingRequest>);
+    impl VariantShippingRequest {
+        pub fn product(
+            self,
+            value: impl TryInto<types::ProductRequest, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("product", value, |s, v| s.product = Some(v)))
+        }
+        /// Delivery time in days
+        pub fn delivery_days(
+            self,
+            value: impl TryInto<f32, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("deliveryDays", value, |s, v| s.delivery_days = Some(v)))
+        }
+        /// Average distance from the product in kilometers
+        pub fn distance(
+            self,
+            value: impl TryInto<f32, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("distance", value, |s, v| s.distance = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(
+            self,
+        ) -> Result<super::VariantShippingRequest, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::GetAllDataOkRequest {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> GetAllDataOkRequest {
+            GetAllDataOkRequest(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct GetAllDataOkRequest(runtime::Builder<super::GetAllDataOkRequest>);
+    impl GetAllDataOkRequest {
+        pub fn data(
+            self,
+            value: impl TryInto<Vec<types::ProductRequest>, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("data", value, |s, v| s.data = Some(v)))
+        }
+        pub fn meta(
+            self,
+            value: impl TryInto<types::GetAllDataOkMeta, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("meta", value, |s, v| s.meta = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::GetAllDataOkRequest, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::GetAllDataOk2Request {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> GetAllDataOk2Request {
+            GetAllDataOk2Request(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct GetAllDataOk2Request(runtime::Builder<super::GetAllDataOk2Request>);
+    impl GetAllDataOk2Request {
+        pub fn data(
+            self,
+            value: impl TryInto<Vec<types::ProductRequest>, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("data", value, |s, v| s.data = Some(v)))
+        }
+        pub fn meta(
+            self,
+            value: impl TryInto<types::GetAllDataOk2Meta, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("meta", value, |s, v| s.meta = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::GetAllDataOk2Request, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::QueryProductsOkRequest {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> QueryProductsOkRequest {
+            QueryProductsOkRequest(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct QueryProductsOkRequest(runtime::Builder<super::QueryProductsOkRequest>);
+    impl QueryProductsOkRequest {
+        pub fn data(
+            self,
+            value: impl TryInto<Vec<types::ProductRequest>, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("data", value, |s, v| s.data = Some(v)))
+        }
+        pub fn meta(
+            self,
+            value: impl TryInto<types::QueryProductsOkMeta, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("meta", value, |s, v| s.meta = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(
+            self,
+        ) -> Result<super::QueryProductsOkRequest, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::SearchProductsOkRequest {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> SearchProductsOkRequest {
+            SearchProductsOkRequest(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct SearchProductsOkRequest(runtime::Builder<super::SearchProductsOkRequest>);
+    impl SearchProductsOkRequest {
+        pub fn data(
+            self,
+            value: impl TryInto<Vec<types::ProductRequest>, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("data", value, |s, v| s.data = Some(v)))
+        }
+        pub fn meta(
+            self,
+            value: impl TryInto<types::SearchProductsOkMeta, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("meta", value, |s, v| s.meta = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(
+            self,
+        ) -> Result<super::SearchProductsOkRequest, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::CreateUserBodyRequest {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            email: impl TryInto<runtime::Email, Error: std::fmt::Display>,
+            password: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> CreateUserBodyRequest {
+            CreateUserBodyRequest(
+                runtime::Builder::start(|| Ok(
+                    Self::new(
+                        runtime::field("email", email)?,
+                        runtime::field("password", password)?,
+                    ),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct CreateUserBodyRequest(runtime::Builder<super::CreateUserBodyRequest>);
+    impl CreateUserBodyRequest {
+        pub fn name(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("name", value, |s, v| s.name = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::CreateUserBodyRequest, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::CreateUserBody2Request {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            email: impl TryInto<runtime::Email, Error: std::fmt::Display>,
+            password: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> CreateUserBody2Request {
+            CreateUserBody2Request(
+                runtime::Builder::start(|| Ok(
+                    Self::new(
+                        runtime::field("email", email)?,
+                        runtime::field("password", password)?,
+                    ),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct CreateUserBody2Request(runtime::Builder<super::CreateUserBody2Request>);
+    impl CreateUserBody2Request {
+        pub fn name(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("name", value, |s, v| s.name = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(
+            self,
+        ) -> Result<super::CreateUserBody2Request, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+}

@@ -330,3 +330,168 @@ impl UploadBodyMeta {
     }
 }
 validate_impl!(UploadBodyMeta);
+/// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
+/// its field. `build` returns the first field that did not convert.
+pub mod builders {
+    use super as types;
+    use super::runtime;
+    impl super::Closed {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> Closed {
+            Closed(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct Closed(runtime::Builder<super::Closed>);
+    impl Closed {
+        pub fn a(self, value: impl TryInto<String, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("a", value, |s, v| s.a = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::Closed, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::Gadget {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            kind: impl TryInto<types::GadgetKind, Error: std::fmt::Display>,
+        ) -> Gadget {
+            Gadget(
+                runtime::Builder::start(|| Ok(Self::new(runtime::field("kind", kind)?))),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct Gadget(runtime::Builder<super::Gadget>);
+    impl Gadget {
+        pub fn purrs(self, value: impl TryInto<bool, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("purrs", value, |s, v| s.purrs = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::Gadget, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::Book {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            kind: impl TryInto<types::BookKind, Error: std::fmt::Display>,
+        ) -> Book {
+            Book(
+                runtime::Builder::start(|| Ok(Self::new(runtime::field("kind", kind)?))),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct Book(runtime::Builder<super::Book>);
+    impl Book {
+        pub fn barks(self, value: impl TryInto<bool, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("barks", value, |s, v| s.barks = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::Book, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::ProductGadget {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            kind: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> ProductGadget {
+            ProductGadget(
+                runtime::Builder::start(|| Ok(Self::new(runtime::field("kind", kind)?))),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct ProductGadget(runtime::Builder<super::ProductGadget>);
+    impl ProductGadget {
+        pub fn purrs(self, value: impl TryInto<bool, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("purrs", value, |s, v| s.purrs = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::ProductGadget, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::ProductBook {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            kind: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> ProductBook {
+            ProductBook(
+                runtime::Builder::start(|| Ok(Self::new(runtime::field("kind", kind)?))),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct ProductBook(runtime::Builder<super::ProductBook>);
+    impl ProductBook {
+        pub fn barks(self, value: impl TryInto<bool, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("barks", value, |s, v| s.barks = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::ProductBook, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::UploadBody {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> UploadBody {
+            UploadBody(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct UploadBody(runtime::Builder<super::UploadBody>);
+    impl UploadBody {
+        pub fn name(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("name", value, |s, v| s.name = Some(v)))
+        }
+        pub fn count(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("count", value, |s, v| s.count = Some(v)))
+        }
+        pub fn meta(
+            self,
+            value: impl TryInto<types::UploadBodyMeta, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("meta", value, |s, v| s.meta = Some(v)))
+        }
+        pub fn file(
+            self,
+            value: impl TryInto<runtime::Binary, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("file", value, |s, v| s.file = Some(v)))
+        }
+        pub fn tags(
+            self,
+            value: impl TryInto<Vec<String>, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("tags", value, |s, v| s.tags = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::UploadBody, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::UploadBodyMeta {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> UploadBodyMeta {
+            UploadBodyMeta(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct UploadBodyMeta(runtime::Builder<super::UploadBodyMeta>);
+    impl UploadBodyMeta {
+        pub fn x(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("x", value, |s, v| s.x = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::UploadBodyMeta, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+}

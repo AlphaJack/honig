@@ -1044,3 +1044,406 @@ impl OrderPageRequest {
     }
 }
 validate_impl_2!(OrderPageRequest);
+/// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
+/// its field. `build` returns the first field that did not convert.
+pub mod builders {
+    use super as types;
+    use super::runtime;
+    impl super::Money {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            amount_cents: impl TryInto<i64, Error: std::fmt::Display>,
+            currency: impl TryInto<types::MoneyCurrency, Error: std::fmt::Display>,
+        ) -> Money {
+            Money(
+                runtime::Builder::start(|| Ok(
+                    Self::new(
+                        runtime::field("amountCents", amount_cents)?,
+                        runtime::field("currency", currency)?,
+                    ),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct Money(runtime::Builder<super::Money>);
+    impl Money {
+        /// Returns the value.
+        pub fn build(self) -> Result<super::Money, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::Customer {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            name: impl TryInto<types::CustomerName, Error: std::fmt::Display>,
+        ) -> Customer {
+            Customer(
+                runtime::Builder::start(|| Ok(Self::new(runtime::field("name", name)?))),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct Customer(runtime::Builder<super::Customer>);
+    impl Customer {
+        pub fn email(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(
+                self.0.set("email", value, |s, v| s.email = runtime::Nullable::Value(v)),
+            )
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::Customer, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::Card {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            last4: impl TryInto<types::CardLast4, Error: std::fmt::Display>,
+        ) -> Card {
+            Card(
+                runtime::Builder::start(|| Ok(
+                    Self::new(runtime::field("last4", last4)?),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct Card(runtime::Builder<super::Card>);
+    impl Card {
+        /// Returns the value.
+        pub fn build(self) -> Result<super::Card, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::Sepa {
+        /// Starts a builder from the required properties.
+        pub fn builder(iban: impl TryInto<String, Error: std::fmt::Display>) -> Sepa {
+            Sepa(
+                runtime::Builder::start(|| Ok(Self::new(runtime::field("iban", iban)?))),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct Sepa(runtime::Builder<super::Sepa>);
+    impl Sepa {
+        /// Returns the value.
+        pub fn build(self) -> Result<super::Sepa, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::Car {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            kind: impl TryInto<String, Error: std::fmt::Display>,
+            seats: impl TryInto<i64, Error: std::fmt::Display>,
+        ) -> Car {
+            Car(
+                runtime::Builder::start(|| Ok(
+                    Self::new(
+                        runtime::field("kind", kind)?,
+                        runtime::field("seats", seats)?,
+                    ),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct Car(runtime::Builder<super::Car>);
+    impl Car {
+        /// Returns the value.
+        pub fn build(self) -> Result<super::Car, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::Van {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            kind: impl TryInto<String, Error: std::fmt::Display>,
+            cargo_litres: impl TryInto<i64, Error: std::fmt::Display>,
+        ) -> Van {
+            Van(
+                runtime::Builder::start(|| Ok(
+                    Self::new(
+                        runtime::field("kind", kind)?,
+                        runtime::field("cargoLitres", cargo_litres)?,
+                    ),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct Van(runtime::Builder<super::Van>);
+    impl Van {
+        /// Returns the value.
+        pub fn build(self) -> Result<super::Van, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::Order {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            status: impl TryInto<types::Status, Error: std::fmt::Display>,
+            total: impl TryInto<types::Money, Error: std::fmt::Display>,
+            vehicle: impl TryInto<types::Vehicle, Error: std::fmt::Display>,
+        ) -> Order {
+            Order(
+                runtime::Builder::start(|| Ok(
+                    Self::new(
+                        runtime::field("status", status)?,
+                        runtime::field("total", total)?,
+                        runtime::field("vehicle", vehicle)?,
+                    ),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct Order(runtime::Builder<super::Order>);
+    impl Order {
+        pub fn id(self, value: impl TryInto<String, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("id", value, |s, v| s.id = Some(v)))
+        }
+        pub fn customer(
+            self,
+            value: impl TryInto<types::OrderCustomer, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(
+                self
+                    .0
+                    .set(
+                        "customer",
+                        value,
+                        |s, v| s.customer = runtime::Nullable::Value(v),
+                    ),
+            )
+        }
+        pub fn notes(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(
+                self.0.set("notes", value, |s, v| s.notes = runtime::Nullable::Value(v)),
+            )
+        }
+        pub fn created_at(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("createdAt", value, |s, v| s.created_at = Some(v)))
+        }
+        pub fn labels(
+            self,
+            value: impl TryInto<
+                std::collections::BTreeMap<String, String>,
+                Error: std::fmt::Display,
+            >,
+        ) -> Self {
+            Self(self.0.set("labels", value, |s, v| s.labels = Some(v)))
+        }
+        pub fn payment(
+            self,
+            value: impl TryInto<types::OrderPayment, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("payment", value, |s, v| s.payment = Some(v)))
+        }
+        pub fn discount(
+            self,
+            value: impl TryInto<types::OrderDiscount, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("discount", value, |s, v| s.discount = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::Order, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::OrderPage {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            items: impl TryInto<Vec<types::Order>, Error: std::fmt::Display>,
+        ) -> OrderPage {
+            OrderPage(
+                runtime::Builder::start(|| Ok(
+                    Self::new(runtime::field("items", items)?),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct OrderPage(runtime::Builder<super::OrderPage>);
+    impl OrderPage {
+        pub fn total(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("total", value, |s, v| s.total = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::OrderPage, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::Problem {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            title: impl TryInto<String, Error: std::fmt::Display>,
+            status: impl TryInto<i64, Error: std::fmt::Display>,
+        ) -> Problem {
+            Problem(
+                runtime::Builder::start(|| Ok(
+                    Self::new(
+                        runtime::field("title", title)?,
+                        runtime::field("status", status)?,
+                    ),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct Problem(runtime::Builder<super::Problem>);
+    impl Problem {
+        pub fn type_(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("type", value, |s, v| s.type_ = v))
+        }
+        pub fn detail(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(
+                self
+                    .0
+                    .set("detail", value, |s, v| s.detail = runtime::Nullable::Value(v)),
+            )
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::Problem, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::UploadDocumentBody {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            file: impl TryInto<runtime::Binary, Error: std::fmt::Display>,
+            kind: impl TryInto<types::UploadDocumentBodyKind, Error: std::fmt::Display>,
+        ) -> UploadDocumentBody {
+            UploadDocumentBody(
+                runtime::Builder::start(|| Ok(
+                    Self::new(
+                        runtime::field("file", file)?,
+                        runtime::field("kind", kind)?,
+                    ),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct UploadDocumentBody(runtime::Builder<super::UploadDocumentBody>);
+    impl UploadDocumentBody {
+        /// Returns the value.
+        pub fn build(self) -> Result<super::UploadDocumentBody, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::OrderRequest {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            status: impl TryInto<types::Status, Error: std::fmt::Display>,
+            total: impl TryInto<types::Money, Error: std::fmt::Display>,
+            vehicle: impl TryInto<types::Vehicle, Error: std::fmt::Display>,
+        ) -> OrderRequest {
+            OrderRequest(
+                runtime::Builder::start(|| Ok(
+                    Self::new(
+                        runtime::field("status", status)?,
+                        runtime::field("total", total)?,
+                        runtime::field("vehicle", vehicle)?,
+                    ),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct OrderRequest(runtime::Builder<super::OrderRequest>);
+    impl OrderRequest {
+        pub fn customer(
+            self,
+            value: impl TryInto<types::OrderCustomer, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(
+                self
+                    .0
+                    .set(
+                        "customer",
+                        value,
+                        |s, v| s.customer = runtime::Nullable::Value(v),
+                    ),
+            )
+        }
+        pub fn notes(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(
+                self.0.set("notes", value, |s, v| s.notes = runtime::Nullable::Value(v)),
+            )
+        }
+        pub fn secret(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("secret", value, |s, v| s.secret = Some(v)))
+        }
+        pub fn labels(
+            self,
+            value: impl TryInto<
+                std::collections::BTreeMap<String, String>,
+                Error: std::fmt::Display,
+            >,
+        ) -> Self {
+            Self(self.0.set("labels", value, |s, v| s.labels = Some(v)))
+        }
+        pub fn payment(
+            self,
+            value: impl TryInto<types::OrderPayment, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("payment", value, |s, v| s.payment = Some(v)))
+        }
+        pub fn discount(
+            self,
+            value: impl TryInto<types::OrderDiscount, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("discount", value, |s, v| s.discount = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::OrderRequest, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::OrderPageRequest {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            items: impl TryInto<Vec<types::OrderRequest>, Error: std::fmt::Display>,
+        ) -> OrderPageRequest {
+            OrderPageRequest(
+                runtime::Builder::start(|| Ok(
+                    Self::new(runtime::field("items", items)?),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct OrderPageRequest(runtime::Builder<super::OrderPageRequest>);
+    impl OrderPageRequest {
+        pub fn total(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("total", value, |s, v| s.total = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::OrderPageRequest, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+}

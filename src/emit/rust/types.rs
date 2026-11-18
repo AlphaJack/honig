@@ -23,6 +23,9 @@ pub(super) fn emit(
     binary: bool,
 ) -> TokenStream {
     let mut items = vec![];
+    let mut builders = vec![];
+    // Whether a builder names a generated type: then the module imports `types`.
+    let mut builders_name_types = false;
     let cx = super::validate::Cx { space, aliases, live: &super::validate::live_types(space, aliases) };
     for (i, def) in space.types.defs.iter().enumerate() {
         let id = TypeId(i);
@@ -40,6 +43,8 @@ pub(super) fn emit(
         match &def.kind {
             Kind::Struct(s) => {
                 structure(&mut items, space, id, s);
+                builders.push(builder(space, &name, s));
+                builders_name_types |= s.fields.iter().any(|f| super::syntax::mentions(&f.ty).0);
                 if xml {
                     items.push(xml_shape(space, def, s));
                 }
@@ -86,7 +91,25 @@ pub(super) fn emit(
             use super::runtime;
         )
     });
-    quote! { #header #runtime_import #enum_macros #checked_macros #(#items)* }
+    // Builders sit in a module of their own: `builders::User` cannot clash with a schema named `UserBuilder`.
+    // A builder takes the name of its type: the types are named through `types::`.
+    let types_import = builders_name_types.then(|| {
+        quote!(
+            use super as types;
+        )
+    });
+    let builders = (!builders.is_empty()).then(|| {
+        quote! {
+            /// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
+            /// its field. `build` returns the first field that did not convert.
+            pub mod builders {
+                #types_import
+                use super::runtime;
+                #(#builders)*
+            }
+        }
+    });
+    quote! { #header #runtime_import #enum_macros #checked_macros #(#items)* #builders }
 }
 
 /// Inlines types declared as an alias of an identical earlier one (one inline schema per operation): index to the
@@ -873,16 +896,21 @@ fn no_extra(extra: &proc_macro2::Ident) -> TokenStream {
 /// Returns the Rust type of a struct field. It is its own when required or defaulted. Otherwise it is `Option` or
 /// `runtime::Nullable` when it also accepts `null`.
 fn field_ty(space: &Space<'_>, f: &Field) -> TokenStream {
+    field_ty_in(space, f, false)
+}
+
+/// Returns [`field_ty`] with named types as `types::Name` when `qualify`.
+fn field_ty_in(space: &Space<'_>, f: &Field, qualify: bool) -> TokenStream {
     if f.required || field_default(space, f).is_some() {
-        return ty(space, &f.ty, false);
+        return ty(space, &f.ty, qualify);
     }
     match space.types.nullable(&f.ty) {
         Some(inner) => {
-            let inner = ty(space, inner, false);
+            let inner = ty(space, inner, qualify);
             quote!(runtime::Nullable<#inner>)
         }
         None => {
-            let t = ty(space, &f.ty, false);
+            let t = ty(space, &f.ty, qualify);
             quote!(Option<#t>)
         }
     }
@@ -979,10 +1007,7 @@ fn struct_new(space: &Space<'_>, name: &proc_macro2::Ident, s: &Struct, extra: &
     });
     let extra_init = s.additional.is_some().then(|| no_extra(extra));
     let count = s.fields.iter().filter(|f| arg(f)).count();
-    // Inside the body: `clippy::allow_attributes` leaves an inner `#![allow]` alone, and an `#[expect]` would fail a
-    // crate that raises `too-many-arguments-threshold`.
-    let many = (count > super::syntax::MAX_ARGUMENTS)
-        .then(|| quote!(#![allow(clippy::too_many_arguments, reason = "one argument per required property")]));
+    let many = many_arguments(count);
     let constness =
         s.fields.iter().all(|f| field_default(space, f).is_none() || const_default(space, f)).then(|| quote!(const));
     quote! {
@@ -994,6 +1019,72 @@ fn struct_new(space: &Space<'_>, name: &proc_macro2::Ident, s: &Struct, extra: &
             }
         }
     }
+}
+
+/// Returns `builder(required...)` on the struct and its builder for the `builders` module. `builder` takes the
+/// arguments of `new`, so a missing required property stays a compile error. Every argument and setter takes anything
+/// that converts to the type of its field.
+fn builder(space: &Space<'_>, name: &proc_macro2::Ident, s: &Struct) -> TokenStream {
+    let args: Vec<&Field> = s.fields.iter().filter(|f| is_arg(space, f)).collect();
+    let params = args.iter().map(|f| {
+        let (n, t) = (snake_ident(&f.name), field_ty_in(space, f, true));
+        quote!(#n: impl TryInto<#t, Error: std::fmt::Display>)
+    });
+    let converted = args.iter().map(|f| {
+        let (n, wire) = (snake_ident(&f.name), lit(&f.wire));
+        quote!(runtime::field(#wire, #n)?)
+    });
+    let many = many_arguments(args.len());
+    // A setter named like `build` would hide it: its name takes a `_`.
+    let setters = s.fields.iter().filter(|f| !is_arg(space, f)).map(|f| {
+        let n = snake_ident(&f.name);
+        let mut setter = snake(&f.name);
+        if setter == "build" {
+            setter.push('_');
+        }
+        let setter = ident(&setter);
+        let wire = lit(&f.wire);
+        let doc = doc_opt(f.doc.as_deref());
+        let (t, put) = if f.required || field_default(space, f).is_some() {
+            (ty(space, &f.ty, true), quote!(v))
+        } else if let Some(inner) = space.types.nullable(&f.ty) {
+            (ty(space, inner, true), quote!(runtime::Nullable::Value(v)))
+        } else {
+            (ty(space, &f.ty, true), quote!(Some(v)))
+        };
+        quote! {
+            #doc
+            pub fn #setter(self, value: impl TryInto<#t, Error: std::fmt::Display>) -> Self {
+                Self(self.0.set(#wire, value, |s, v| s.#n = #put))
+            }
+        }
+    });
+    quote! {
+        impl super::#name {
+            /// Starts a builder from the required properties.
+            pub fn builder(#(#params),*) -> #name {
+                #many
+                #name(runtime::Builder::start(|| Ok(Self::new(#(#converted),*))))
+            }
+        }
+        #[must_use = "a builder does nothing until `build`"]
+        pub struct #name(runtime::Builder<super::#name>);
+        impl #name {
+            #(#setters)*
+            /// Returns the value.
+            pub fn build(self) -> Result<super::#name, runtime::BuildError> {
+                self.0.build()
+            }
+        }
+    }
+}
+
+/// Returns the `allow` of a constructor that takes `count` required properties, past what clippy allows. It goes inside
+/// the body: `clippy::allow_attributes` leaves an inner `#![allow]` alone, and an `#[expect]` would fail a crate that
+/// raises `too-many-arguments-threshold`.
+fn many_arguments(count: usize) -> Option<TokenStream> {
+    (count > super::syntax::MAX_ARGUMENTS)
+        .then(|| quote!(#![allow(clippy::too_many_arguments, reason = "one argument per required property")]))
 }
 
 fn extra_field(s: &Struct) -> String {
