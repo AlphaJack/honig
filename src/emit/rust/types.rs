@@ -746,15 +746,17 @@ fn struct_new(space: &Space<'_>, name: &proc_macro2::Ident, s: &Struct, extra: &
     });
     let extra_init = s.additional.is_some().then(|| no_extra(extra));
     let count = s.fields.iter().filter(|f| arg(f)).count();
+    // Inside the body: `clippy::allow_attributes` leaves an inner `#![allow]` alone, and an `#[expect]` would fail a
+    // crate that raises `too-many-arguments-threshold`.
     let many = (count > super::syntax::MAX_ARGUMENTS)
-        .then(|| quote!(#[allow(clippy::too_many_arguments, reason = "one argument per required property")]));
+        .then(|| quote!(#![allow(clippy::too_many_arguments, reason = "one argument per required property")]));
     let constness =
         s.fields.iter().all(|f| field_default(space, f).is_none() || const_default(space, f)).then(|| quote!(const));
     quote! {
         impl #name {
             #[must_use]
-            #many
             pub #constness fn new(#(#args),*) -> Self {
+                #many
                 Self { #(#inits)* #extra_init }
             }
         }

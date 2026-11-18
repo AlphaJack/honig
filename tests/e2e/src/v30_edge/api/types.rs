@@ -18,75 +18,133 @@ macro_rules! validate_impl {
 }
 macro_rules! deserialize_impl {
     ($t:ty) => {
-        impl < 'de > serde::Deserialize < 'de > for $t { fn deserialize < D :
-        serde::Deserializer < 'de > > (d : D) -> Result < Self, D::Error > {
-        Self::deserialize(runtime::NoSeq(d)) } }
+        impl<'de> serde::Deserialize<'de> for $t {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                Self::deserialize(runtime::NoSeq(d))
+            }
+        }
     };
 }
 macro_rules! serialize_impl {
     ($t:ty) => {
-        impl serde::Serialize for $t { fn serialize < S : serde::Serializer > (& self, s
-        : S) -> Result < S::Ok, S::Error > { Self::serialize(self, s) } }
+        impl serde::Serialize for $t {
+            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                Self::serialize(self, s)
+            }
+        }
     };
 }
 macro_rules! validate_impl_2 {
     ($t:ty) => {
-        impl runtime::Validate for $t { fn validate(& self, path : &
-        runtime::InstancePath < '_ >, out : & mut Vec < runtime::Violation >) { { let
-        base = & runtime::InstancePath::Key(path, "items"); for (i, v) in self.items
-        .iter().enumerate() { runtime::Validate::validate(v, &
-        runtime::InstancePath::Index(base, i), out); } } } }
+        impl runtime::Validate for $t {
+            fn validate(
+                &self,
+                path: &runtime::InstancePath<'_>,
+                out: &mut Vec<runtime::Violation>,
+            ) {
+                {
+                    let base = &runtime::InstancePath::Key(path, "items");
+                    for (i, v) in self.items.iter().enumerate() {
+                        runtime::Validate::validate(
+                            v,
+                            &runtime::InstancePath::Index(base, i),
+                            out,
+                        );
+                    }
+                }
+            }
+        }
     };
 }
 macro_rules! try_from_impl {
     ($t:ty) => {
-        impl TryFrom < String > for $t { type Error = String; fn try_from(value : String)
-        -> Result < Self, String > { static RE : runtime::Pattern =
-        runtime::Pattern::new(); let mut out = Vec::new(); runtime::check_len(& mut out,
-        & runtime::InstancePath::Root, value.chars().count(), None, None, "characters");
-        if let Some(v) = out.first() { return Err(v.message.clone()); } if !
-        runtime::pattern_matches(& RE, Self::PATTERN, & value) { return
-        Err(format!("`{value}` does not match `{}`", Self::PATTERN)); } Ok(Self(value)) }
+        impl TryFrom<String> for $t {
+            type Error = String;
+            fn try_from(value: String) -> Result<Self, String> {
+                static RE: runtime::Pattern = runtime::Pattern::new();
+                let mut out = Vec::new();
+                runtime::check_len(
+                    &mut out,
+                    &runtime::InstancePath::Root,
+                    value.chars().count(),
+                    None,
+                    None,
+                    "characters",
+                );
+                if let Some(v) = out.first() {
+                    return Err(v.message.clone());
+                }
+                if !runtime::pattern_matches(&RE, Self::PATTERN, &value) {
+                    return Err(format!("`{value}` does not match `{}`", Self::PATTERN));
+                }
+                Ok(Self(value))
+            }
         }
     };
 }
 macro_rules! try_from_impl_2 {
     ($t:ty) => {
-        impl TryFrom < & str > for $t { type Error = String; fn try_from(value : & str)
-        -> Result < Self, String > { Self::try_from(value.to_owned()) } }
+        impl TryFrom<&str> for $t {
+            type Error = String;
+            fn try_from(value: &str) -> Result<Self, String> {
+                Self::try_from(value.to_owned())
+            }
+        }
     };
 }
 macro_rules! as_ref_impl {
     ($t:ty) => {
-        impl AsRef < str > for $t { fn as_ref(& self) -> & str { & self.0 } }
+        impl AsRef<str> for $t {
+            fn as_ref(&self) -> &str {
+                &self.0
+            }
+        }
     };
 }
 macro_rules! display_impl {
     ($t:ty) => {
-        impl std::fmt::Display for $t { fn fmt(& self, f : & mut std::fmt::Formatter < '_
-        >) -> std::fmt::Result { f.write_str(& self.0) } }
+        impl std::fmt::Display for $t {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                f.write_str(&self.0)
+            }
+        }
     };
 }
 macro_rules! deserialize_impl_2 {
     ($t:ty) => {
-        impl < 'de > serde::Deserialize < 'de > for $t { fn deserialize < D :
-        serde::Deserializer < 'de > > (d : D) -> Result < Self, D::Error > { let s = <
-        String as serde::Deserialize > ::deserialize(d) ?; Self::try_from(s)
-        .map_err(serde::de::Error::custom) } }
+        impl<'de> serde::Deserialize<'de> for $t {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                let s = <String as serde::Deserialize>::deserialize(d)?;
+                Self::try_from(s).map_err(serde::de::Error::custom)
+            }
+        }
     };
 }
 use super::runtime;
 macro_rules! str_enum_impls {
     ($n:ident) => {
-        impl std::fmt::Display for $n { fn fmt(& self, f : & mut std::fmt::Formatter < '_
-        >) -> std::fmt::Result { f.write_str(self.as_str()) } } impl std::str::FromStr
-        for $n { type Err = String; fn from_str(s : & str) -> Result < Self, Self::Err >
-        { Self::try_from(s) } } impl serde::Serialize for $n { fn serialize < S :
-        serde::Serializer > (& self, s : S) -> Result < S::Ok, S::Error > { s
-        .serialize_str(self.as_str()) } } impl < 'de > serde::Deserialize < 'de > for $n
-        { fn deserialize < D : serde::Deserializer < 'de >> (d : D) -> Result < Self,
-        D::Error > { let s = < std::borrow::Cow < 'de, str > as serde::Deserialize >
-        ::deserialize(d) ?; Self::try_from(& * s).map_err(serde::de::Error::custom) } }
+        impl std::fmt::Display for $n {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                f.write_str(self.as_str())
+            }
+        }
+        impl std::str::FromStr for $n {
+            type Err = String;
+            fn from_str(s: &str) -> Result<Self, Self::Err> {
+                Self::try_from(s)
+            }
+        }
+        impl serde::Serialize for $n {
+            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                s.serialize_str(self.as_str())
+            }
+        }
+        impl<'de> serde::Deserialize<'de> for $n {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                let s = <std::borrow::Cow<'de, str> as serde::Deserialize>::deserialize(d)?;
+                Self::try_from(&*s).map_err(serde::de::Error::custom)
+            }
+        }
     };
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -383,7 +441,7 @@ impl runtime::Validate for Order {
                     SCHEMA
                         .get_or_init(|| {
                             serde_json::from_str(
-                                    "{\"anyOf\":[{\"allOf\":[{\"type\":\"object\",\"additionalProperties\":true,\"required\":[\"name\"],\"properties\":{\"name\":{\"type\":\"string\",\"minLength\":1},\"email\":{\"type\":[\"string\",\"null\"]}}}]},{\"type\":\"null\"}]}",
+                                    "{\"anyOf\":[{\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Customer\"}]},{\"type\":\"null\"}],\"$defs\":{\"/components/schemas/Customer\":{\"type\":\"object\",\"additionalProperties\":true,\"required\":[\"name\"],\"properties\":{\"name\":{\"type\":\"string\",\"minLength\":1},\"email\":{\"type\":[\"string\",\"null\"]}}}}}",
                                 )
                                 .unwrap_or_default()
                         }),
@@ -409,7 +467,7 @@ impl runtime::Validate for Order {
                     SCHEMA
                         .get_or_init(|| {
                             serde_json::from_str(
-                                    "{\"oneOf\":[{\"type\":\"object\",\"required\":[\"last4\"],\"properties\":{\"last4\":{\"type\":\"string\",\"minLength\":4,\"maxLength\":4}}},{\"type\":\"object\",\"required\":[\"iban\"],\"properties\":{\"iban\":{\"type\":\"string\"}}}]}",
+                                    "{\"oneOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Card\"},{\"$ref\":\"#/$defs/~1components~1schemas~1Sepa\"}],\"$defs\":{\"/components/schemas/Card\":{\"type\":\"object\",\"required\":[\"last4\"],\"properties\":{\"last4\":{\"type\":\"string\",\"minLength\":4,\"maxLength\":4}}},\"/components/schemas/Sepa\":{\"type\":\"object\",\"required\":[\"iban\"],\"properties\":{\"iban\":{\"type\":\"string\"}}}}}",
                                 )
                                 .unwrap_or_default()
                         }),
@@ -426,7 +484,7 @@ impl runtime::Validate for Order {
                 SCHEMA
                     .get_or_init(|| {
                         serde_json::from_str(
-                                "{\"oneOf\":[{\"type\":\"object\",\"required\":[\"kind\",\"seats\"],\"properties\":{\"kind\":{\"type\":\"string\"},\"seats\":{\"type\":\"integer\"}}},{\"type\":\"object\",\"required\":[\"kind\",\"cargoLitres\"],\"properties\":{\"kind\":{\"type\":\"string\"},\"cargoLitres\":{\"type\":\"integer\"}}}]}",
+                                "{\"oneOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Car\"},{\"$ref\":\"#/$defs/~1components~1schemas~1Van\"}],\"$defs\":{\"/components/schemas/Car\":{\"type\":\"object\",\"required\":[\"kind\",\"seats\"],\"properties\":{\"kind\":{\"type\":\"string\"},\"seats\":{\"type\":\"integer\"}}},\"/components/schemas/Van\":{\"type\":\"object\",\"required\":[\"kind\",\"cargoLitres\"],\"properties\":{\"kind\":{\"type\":\"string\"},\"cargoLitres\":{\"type\":\"integer\"}}}}}",
                             )
                             .unwrap_or_default()
                     }),
@@ -443,7 +501,7 @@ impl runtime::Validate for Order {
                     SCHEMA
                         .get_or_init(|| {
                             serde_json::from_str(
-                                    "{\"anyOf\":[{\"type\":\"object\",\"required\":[\"amountCents\",\"currency\"],\"properties\":{\"amountCents\":{\"type\":\"integer\",\"format\":\"int64\"},\"currency\":{\"type\":\"string\",\"pattern\":\"^[A-Z]{3}$\"}}},{}]}",
+                                    "{\"anyOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Money\"},{}],\"$defs\":{\"/components/schemas/Money\":{\"type\":\"object\",\"required\":[\"amountCents\",\"currency\"],\"properties\":{\"amountCents\":{\"type\":\"integer\",\"format\":\"int64\"},\"currency\":{\"type\":\"string\",\"pattern\":\"^[A-Z]{3}$\"}}}}}",
                                 )
                                 .unwrap_or_default()
                         }),
@@ -780,7 +838,7 @@ impl runtime::Validate for OrderRequest {
                     SCHEMA
                         .get_or_init(|| {
                             serde_json::from_str(
-                                    "{\"anyOf\":[{\"allOf\":[{\"type\":\"object\",\"additionalProperties\":true,\"required\":[\"name\"],\"properties\":{\"name\":{\"type\":\"string\",\"minLength\":1},\"email\":{\"type\":[\"string\",\"null\"]}}}]},{\"type\":\"null\"}]}",
+                                    "{\"anyOf\":[{\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Customer\"}]},{\"type\":\"null\"}],\"$defs\":{\"/components/schemas/Customer\":{\"type\":\"object\",\"additionalProperties\":true,\"required\":[\"name\"],\"properties\":{\"name\":{\"type\":\"string\",\"minLength\":1},\"email\":{\"type\":[\"string\",\"null\"]}}}}}",
                                 )
                                 .unwrap_or_default()
                         }),
@@ -798,7 +856,7 @@ impl runtime::Validate for OrderRequest {
                     SCHEMA
                         .get_or_init(|| {
                             serde_json::from_str(
-                                    "{\"oneOf\":[{\"type\":\"object\",\"required\":[\"last4\"],\"properties\":{\"last4\":{\"type\":\"string\",\"minLength\":4,\"maxLength\":4}}},{\"type\":\"object\",\"required\":[\"iban\"],\"properties\":{\"iban\":{\"type\":\"string\"}}}]}",
+                                    "{\"oneOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Card\"},{\"$ref\":\"#/$defs/~1components~1schemas~1Sepa\"}],\"$defs\":{\"/components/schemas/Card\":{\"type\":\"object\",\"required\":[\"last4\"],\"properties\":{\"last4\":{\"type\":\"string\",\"minLength\":4,\"maxLength\":4}}},\"/components/schemas/Sepa\":{\"type\":\"object\",\"required\":[\"iban\"],\"properties\":{\"iban\":{\"type\":\"string\"}}}}}",
                                 )
                                 .unwrap_or_default()
                         }),
@@ -815,7 +873,7 @@ impl runtime::Validate for OrderRequest {
                 SCHEMA
                     .get_or_init(|| {
                         serde_json::from_str(
-                                "{\"oneOf\":[{\"type\":\"object\",\"required\":[\"kind\",\"seats\"],\"properties\":{\"kind\":{\"type\":\"string\"},\"seats\":{\"type\":\"integer\"}}},{\"type\":\"object\",\"required\":[\"kind\",\"cargoLitres\"],\"properties\":{\"kind\":{\"type\":\"string\"},\"cargoLitres\":{\"type\":\"integer\"}}}]}",
+                                "{\"oneOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Car\"},{\"$ref\":\"#/$defs/~1components~1schemas~1Van\"}],\"$defs\":{\"/components/schemas/Car\":{\"type\":\"object\",\"required\":[\"kind\",\"seats\"],\"properties\":{\"kind\":{\"type\":\"string\"},\"seats\":{\"type\":\"integer\"}}},\"/components/schemas/Van\":{\"type\":\"object\",\"required\":[\"kind\",\"cargoLitres\"],\"properties\":{\"kind\":{\"type\":\"string\"},\"cargoLitres\":{\"type\":\"integer\"}}}}}",
                             )
                             .unwrap_or_default()
                     }),
@@ -832,7 +890,7 @@ impl runtime::Validate for OrderRequest {
                     SCHEMA
                         .get_or_init(|| {
                             serde_json::from_str(
-                                    "{\"anyOf\":[{\"type\":\"object\",\"required\":[\"amountCents\",\"currency\"],\"properties\":{\"amountCents\":{\"type\":\"integer\",\"format\":\"int64\"},\"currency\":{\"type\":\"string\",\"pattern\":\"^[A-Z]{3}$\"}}},{}]}",
+                                    "{\"anyOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Money\"},{}],\"$defs\":{\"/components/schemas/Money\":{\"type\":\"object\",\"required\":[\"amountCents\",\"currency\"],\"properties\":{\"amountCents\":{\"type\":\"integer\",\"format\":\"int64\"},\"currency\":{\"type\":\"string\",\"pattern\":\"^[A-Z]{3}$\"}}}}}",
                                 )
                                 .unwrap_or_default()
                         }),

@@ -177,4 +177,44 @@ impl<T: runtime::Transport> Client<T> {
             })
         }
     }
+    pub async fn find_box(
+        &self,
+        p: impl runtime::IntoArg<'_, ops::find_box::Params>,
+    ) -> Result<ops::find_box::Response, runtime::Error> {
+        let p = runtime::IntoArg::into_arg(p);
+        let path = String::from("/boxes");
+        let mut query: Vec<String> = Vec::new();
+        runtime::encode_query(&mut query, "width", &p.width, runtime::Enc::FORM)?;
+        runtime::encode_query(&mut query, "height", &p.height, runtime::Enc::FORM)?;
+        runtime::encode_query(&mut query, "depth", &p.depth, runtime::Enc::FORM)?;
+        runtime::encode_query(&mut query, "weight", &p.weight, runtime::Enc::FORM)?;
+        runtime::encode_query(&mut query, "color", &p.color, runtime::Enc::FORM)?;
+        runtime::encode_query(&mut query, "shelf", &p.shelf, runtime::Enc::FORM)?;
+        runtime::encode_query(&mut query, "row", &p.row, runtime::Enc::FORM)?;
+        runtime::encode_query(&mut query, "bin", &p.bin, runtime::Enc::FORM)?;
+        let mut req = runtime::new_request("GET", path, query)?;
+        runtime::Message::set_header(&mut req, "Accept", "application/json")?;
+        runtime::apply_auth(&mut req, &self.credentials, &[])?;
+        runtime::propagate_trace(&mut req);
+        let resp = runtime::send(&self.transport, req).await?;
+        let (head, body) = resp.into_parts();
+        let (body, _) = body.into_parts();
+        let status = head.status.as_u16();
+        if status == 200 {
+            {
+                runtime::check_response_media(
+                    status,
+                    runtime::content_type_of(&head.headers),
+                    Some(&body),
+                    &["application/json"],
+                )?;
+                runtime::json_decode(status, &body).map(ops::find_box::Response::Ok)
+            }
+        } else {
+            Err(runtime::Error::UnexpectedStatus {
+                status: head.status,
+                body,
+            })
+        }
+    }
 }

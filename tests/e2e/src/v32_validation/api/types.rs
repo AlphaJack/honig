@@ -13,15 +13,20 @@
 )]
 macro_rules! deserialize_impl {
     ($t:ty) => {
-        impl < 'de > serde::Deserialize < 'de > for $t { fn deserialize < D :
-        serde::Deserializer < 'de > > (d : D) -> Result < Self, D::Error > {
-        Self::deserialize(runtime::NoSeq(d)) } }
+        impl<'de> serde::Deserialize<'de> for $t {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                Self::deserialize(runtime::NoSeq(d))
+            }
+        }
     };
 }
 macro_rules! serialize_impl {
     ($t:ty) => {
-        impl serde::Serialize for $t { fn serialize < S : serde::Serializer > (& self, s
-        : S) -> Result < S::Ok, S::Error > { Self::serialize(self, s) } }
+        impl serde::Serialize for $t {
+            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                Self::serialize(self, s)
+            }
+        }
     };
 }
 macro_rules! validate_impl {
@@ -31,75 +36,431 @@ macro_rules! validate_impl {
 }
 macro_rules! validate_impl_2 {
     ($t:ty) => {
-        impl runtime::Validate for $t { fn validate(& self, path : &
-        runtime::InstancePath < '_ >, out : & mut Vec < runtime::Violation >) { let n =
-        self.label.chars().count(); runtime::check_len(out, &
-        runtime::InstancePath::Key(path, "label"), n, None, Some(5), "characters"); {
-        static SCHEMA : std::sync::OnceLock < serde_json::Value > =
-        std::sync::OnceLock::new(); let value = runtime::to_value(& self.holders)
-        .unwrap_or_default(); runtime::check_schema(out, &
-        runtime::InstancePath::Key(path, "holders"), & value, SCHEMA.get_or_init(| |
-        serde_json::from_str("{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"contains\":{\"const\":\"owner\"}}")
-        .unwrap_or_default())); } } }
+        impl runtime::Validate for $t {
+            fn validate(
+                &self,
+                path: &runtime::InstancePath<'_>,
+                out: &mut Vec<runtime::Violation>,
+            ) {
+                let n = self.label.chars().count();
+                runtime::check_len(
+                    out,
+                    &runtime::InstancePath::Key(path, "label"),
+                    n,
+                    None,
+                    Some(5),
+                    "characters",
+                );
+                {
+                    static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                    let value = runtime::to_value(&self.holders).unwrap_or_default();
+                    runtime::check_schema(
+                        out,
+                        &runtime::InstancePath::Key(path, "holders"),
+                        &value,
+                        SCHEMA
+                            .get_or_init(|| {
+                                serde_json::from_str(
+                                        "{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"contains\":{\"const\":\"owner\"}}",
+                                    )
+                                    .unwrap_or_default()
+                            }),
+                    );
+                }
+            }
+        }
     };
 }
 macro_rules! validate_impl_3 {
     ($t:ty) => {
-        impl runtime::Validate for $t { fn validate(& self, path : &
-        runtime::InstancePath < '_ >, out : & mut Vec < runtime::Violation >) { { let
-        base = & runtime::InstancePath::Key(path, "items"); for (i, v) in self.items
-        .iter().enumerate() { { static SCHEMA : std::sync::OnceLock < serde_json::Value >
-        = std::sync::OnceLock::new(); let value = runtime::to_value(v)
-        .unwrap_or_default(); runtime::check_schema(out, &
-        runtime::InstancePath::Index(base, i), & value, SCHEMA.get_or_init(| |
-        serde_json::from_str("{\"oneOf\":[{\"type\":\"object\",\"required\":[\"items\",\"x\"],\"properties\":{\"items\":{\"type\":\"array\",\"items\":{\"$ref\":\"#/$defs/~1components~1schemas~1Tree\"}},\"x\":{\"type\":\"string\"}}},{\"type\":\"object\",\"required\":[\"items\",\"x\"],\"properties\":{\"items\":{\"type\":\"array\",\"items\":{\"$ref\":\"#/$defs/~1components~1schemas~1Tree\"}},\"x\":{\"type\":\"integer\"}}}],\"$defs\":{\"~1components~1schemas~1Tree\":{\"oneOf\":[{\"type\":\"object\",\"required\":[\"items\",\"x\"],\"properties\":{\"items\":{\"type\":\"array\",\"items\":{\"$ref\":\"#/$defs/~1components~1schemas~1Tree\"}},\"x\":{\"type\":\"string\"}}},{\"type\":\"object\",\"required\":[\"items\",\"x\"],\"properties\":{\"items\":{\"type\":\"array\",\"items\":{\"$ref\":\"#/$defs/~1components~1schemas~1Tree\"}},\"x\":{\"type\":\"integer\"}}}]}}}")
-        .unwrap_or_default())); } } } } }
+        impl runtime::Validate for $t {
+            fn validate(
+                &self,
+                path: &runtime::InstancePath<'_>,
+                out: &mut Vec<runtime::Violation>,
+            ) {
+                {
+                    let base = &runtime::InstancePath::Key(path, "items");
+                    for (i, v) in self.items.iter().enumerate() {
+                        {
+                            static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                            let value = runtime::to_value(v).unwrap_or_default();
+                            runtime::check_schema(
+                                out,
+                                &runtime::InstancePath::Index(base, i),
+                                &value,
+                                SCHEMA
+                                    .get_or_init(|| {
+                                        serde_json::from_str(
+                                                "{\"oneOf\":[{\"type\":\"object\",\"required\":[\"items\",\"x\"],\"properties\":{\"items\":{\"type\":\"array\",\"items\":{\"$ref\":\"#/$defs/~1components~1schemas~1Tree\"}},\"x\":{\"type\":\"string\"}}},{\"type\":\"object\",\"required\":[\"items\",\"x\"],\"properties\":{\"items\":{\"type\":\"array\",\"items\":{\"$ref\":\"#/$defs/~1components~1schemas~1Tree\"}},\"x\":{\"type\":\"integer\"}}}],\"$defs\":{\"/components/schemas/Tree\":{\"oneOf\":[{\"type\":\"object\",\"required\":[\"items\",\"x\"],\"properties\":{\"items\":{\"type\":\"array\",\"items\":{\"$ref\":\"#/$defs/~1components~1schemas~1Tree\"}},\"x\":{\"type\":\"string\"}}},{\"type\":\"object\",\"required\":[\"items\",\"x\"],\"properties\":{\"items\":{\"type\":\"array\",\"items\":{\"$ref\":\"#/$defs/~1components~1schemas~1Tree\"}},\"x\":{\"type\":\"integer\"}}}]}}}",
+                                            )
+                                            .unwrap_or_default()
+                                    }),
+                            );
+                        }
+                    }
+                }
+            }
+        }
     };
 }
 macro_rules! serialize_impl_2 {
     ($t:ty) => {
-        impl serde::Serialize for $t { fn serialize < S : serde::Serializer > (& self, s
-        : S) -> Result < S::Ok, S::Error > { s.serialize_str(Self::VALUE) } }
+        impl serde::Serialize for $t {
+            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                s.serialize_str(Self::VALUE)
+            }
+        }
     };
 }
 macro_rules! try_from_impl {
     ($t:ty) => {
-        impl TryFrom < & str > for $t { type Error = String; fn try_from(value : & str)
-        -> Result < Self, String > { Self::try_from(value.to_owned()) } }
+        impl TryFrom<&str> for $t {
+            type Error = String;
+            fn try_from(value: &str) -> Result<Self, String> {
+                Self::try_from(value.to_owned())
+            }
+        }
     };
 }
 macro_rules! as_ref_impl {
     ($t:ty) => {
-        impl AsRef < str > for $t { fn as_ref(& self) -> & str { & self.0 } }
+        impl AsRef<str> for $t {
+            fn as_ref(&self) -> &str {
+                &self.0
+            }
+        }
     };
 }
 macro_rules! display_impl {
     ($t:ty) => {
-        impl std::fmt::Display for $t { fn fmt(& self, f : & mut std::fmt::Formatter < '_
-        >) -> std::fmt::Result { f.write_str(& self.0) } }
+        impl std::fmt::Display for $t {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                f.write_str(&self.0)
+            }
+        }
     };
 }
 macro_rules! deserialize_impl_2 {
     ($t:ty) => {
-        impl < 'de > serde::Deserialize < 'de > for $t { fn deserialize < D :
-        serde::Deserializer < 'de > > (d : D) -> Result < Self, D::Error > { let s = <
-        String as serde::Deserialize > ::deserialize(d) ?; Self::try_from(s)
-        .map_err(serde::de::Error::custom) } }
+        impl<'de> serde::Deserialize<'de> for $t {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                let s = <String as serde::Deserialize>::deserialize(d)?;
+                Self::try_from(s).map_err(serde::de::Error::custom)
+            }
+        }
     };
 }
 use super::runtime;
 macro_rules! str_enum_impls {
     ($n:ident) => {
-        impl std::fmt::Display for $n { fn fmt(& self, f : & mut std::fmt::Formatter < '_
-        >) -> std::fmt::Result { f.write_str(self.as_str()) } } impl std::str::FromStr
-        for $n { type Err = String; fn from_str(s : & str) -> Result < Self, Self::Err >
-        { Self::try_from(s) } } impl serde::Serialize for $n { fn serialize < S :
-        serde::Serializer > (& self, s : S) -> Result < S::Ok, S::Error > { s
-        .serialize_str(self.as_str()) } } impl < 'de > serde::Deserialize < 'de > for $n
-        { fn deserialize < D : serde::Deserializer < 'de >> (d : D) -> Result < Self,
-        D::Error > { let s = < std::borrow::Cow < 'de, str > as serde::Deserialize >
-        ::deserialize(d) ?; Self::try_from(& * s).map_err(serde::de::Error::custom) } }
+        impl std::fmt::Display for $n {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                f.write_str(self.as_str())
+            }
+        }
+        impl std::str::FromStr for $n {
+            type Err = String;
+            fn from_str(s: &str) -> Result<Self, Self::Err> {
+                Self::try_from(s)
+            }
+        }
+        impl serde::Serialize for $n {
+            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                s.serialize_str(self.as_str())
+            }
+        }
+        impl<'de> serde::Deserialize<'de> for $n {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                let s = <std::borrow::Cow<'de, str> as serde::Deserialize>::deserialize(d)?;
+                Self::try_from(&*s).map_err(serde::de::Error::custom)
+            }
+        }
     };
+}
+#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct Exact {
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub tenth: Option<runtime::Decimal>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub cents: Option<runtime::Decimal>,
+}
+deserialize_impl!(Exact);
+serialize_impl!(Exact);
+impl Exact {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self { tenth: None, cents: None }
+    }
+}
+impl runtime::XmlShape for Exact {
+    fn xml() -> &'static runtime::XmlNode {
+        static NODE: runtime::XmlNode = runtime::XmlNode {
+            name: "Exact",
+            namespace: "",
+            prefix: "",
+            fields: &[
+                runtime::XmlField {
+                    wire: "tenth",
+                    name: "tenth",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "tenth",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "cents",
+                    name: "cents",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "cents",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+            ],
+        };
+        &NODE
+    }
+}
+impl runtime::Validate for Exact {
+    fn validate(
+        &self,
+        path: &runtime::InstancePath<'_>,
+        out: &mut Vec<runtime::Violation>,
+    ) {
+        if let Some(v) = &self.tenth {
+            runtime::check_decimal_range(
+                out,
+                &runtime::InstancePath::Key(path, "tenth"),
+                v.as_str(),
+                [Some("0.1"), None, None, None],
+            );
+        }
+        if let Some(v) = &self.cents {
+            runtime::check_multiple_text(
+                out,
+                &runtime::InstancePath::Key(path, "cents"),
+                v.as_str(),
+                "0.01",
+            );
+        }
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct Degenerate {
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub never: Option<u8>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub huge: Option<i64>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub fives: Option<i64>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub zero: Option<u8>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub half: Option<i64>,
+}
+deserialize_impl!(Degenerate);
+serialize_impl!(Degenerate);
+impl Degenerate {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self {
+            never: None,
+            huge: None,
+            fives: None,
+            zero: None,
+            half: None,
+        }
+    }
+}
+impl runtime::XmlShape for Degenerate {
+    fn xml() -> &'static runtime::XmlNode {
+        static NODE: runtime::XmlNode = runtime::XmlNode {
+            name: "Degenerate",
+            namespace: "",
+            prefix: "",
+            fields: &[
+                runtime::XmlField {
+                    wire: "never",
+                    name: "never",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "never",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "huge",
+                    name: "huge",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "huge",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "fives",
+                    name: "fives",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "fives",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "zero",
+                    name: "zero",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "zero",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "half",
+                    name: "half",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "half",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+            ],
+        };
+        &NODE
+    }
+}
+impl runtime::Validate for Degenerate {
+    fn validate(
+        &self,
+        path: &runtime::InstancePath<'_>,
+        out: &mut Vec<runtime::Violation>,
+    ) {
+        if let Some(v) = &self.never {
+            runtime::violation(
+                out,
+                &runtime::InstancePath::Key(path, "never"),
+                format!(
+                    "`maximum: -1` leaves no value of this integer type, not even {}", *
+                    v
+                ),
+            );
+        }
+        if let Some(v) = &self.huge {
+            runtime::violation(
+                out,
+                &runtime::InstancePath::Key(path, "huge"),
+                format!(
+                    "`minimum: 1e+40` leaves no value of this integer type, not even {}",
+                    * v
+                ),
+            );
+        }
+        if let Some(v) = &self.fives {
+            runtime::check(
+                out,
+                &runtime::InstancePath::Key(path, "fives"),
+                i128::from(*v) % 5 == 0,
+                "is not a multiple of 2.5",
+            );
+        }
+        if let Some(v) = &self.zero {
+            runtime::check(
+                out,
+                &runtime::InstancePath::Key(path, "zero"),
+                *v == 0,
+                "is not a multiple of 1000",
+            );
+        }
+        if let Some(v) = &self.half {
+            runtime::check_range(
+                out,
+                &runtime::InstancePath::Key(path, "half"),
+                *v,
+                [Some(1), None, None, Some(4)],
+            );
+        }
+    }
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Tree {
@@ -185,6 +546,34 @@ impl Ledger {
         Self { entries: None }
     }
 }
+impl runtime::XmlShape for Ledger {
+    fn xml() -> &'static runtime::XmlNode {
+        static NODE: runtime::XmlNode = runtime::XmlNode {
+            name: "Ledger",
+            namespace: "",
+            prefix: "",
+            fields: &[
+                runtime::XmlField {
+                    wire: "entries",
+                    name: "entries",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: true,
+                    wrapped: false,
+                    required: false,
+                    item: "entries",
+                    child: Some(<Entry as runtime::XmlShape>::xml),
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+            ],
+        };
+        &NODE
+    }
+}
 impl runtime::Validate for Ledger {
     fn validate(
         &self,
@@ -205,7 +594,7 @@ impl runtime::Validate for Ledger {
                             SCHEMA
                                 .get_or_init(|| {
                                     serde_json::from_str(
-                                            "{\"allOf\":[{\"type\":\"object\",\"properties\":{\"lines\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"note\":{\"type\":[\"string\",\"null\"],\"maxLength\":3}}}}}},{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"integer\"},\"lines\":{\"maxItems\":2}}}]}",
+                                            "{\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1EntryFields\"},{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"integer\"},\"lines\":{\"maxItems\":2}}}],\"$defs\":{\"/components/schemas/EntryFields\":{\"type\":\"object\",\"properties\":{\"lines\":{\"type\":\"array\",\"items\":{\"$ref\":\"#/$defs/~1components~1schemas~1Line\"}}}},\"/components/schemas/Line\":{\"type\":\"object\",\"properties\":{\"note\":{\"type\":[\"string\",\"null\"],\"maxLength\":3}}}}}",
                                         )
                                         .unwrap_or_default()
                                 }),
@@ -238,6 +627,50 @@ impl Entry {
     #[must_use]
     pub const fn new() -> Self {
         Self { lines: None, id: None }
+    }
+}
+impl runtime::XmlShape for Entry {
+    fn xml() -> &'static runtime::XmlNode {
+        static NODE: runtime::XmlNode = runtime::XmlNode {
+            name: "Entry",
+            namespace: "",
+            prefix: "",
+            fields: &[
+                runtime::XmlField {
+                    wire: "lines",
+                    name: "lines",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "lines",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "id",
+                    name: "id",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "id",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+            ],
+        };
+        &NODE
     }
 }
 impl runtime::Validate for Entry {
@@ -281,6 +714,34 @@ impl EntryFields {
         Self { lines: None }
     }
 }
+impl runtime::XmlShape for EntryFields {
+    fn xml() -> &'static runtime::XmlNode {
+        static NODE: runtime::XmlNode = runtime::XmlNode {
+            name: "EntryFields",
+            namespace: "",
+            prefix: "",
+            fields: &[
+                runtime::XmlField {
+                    wire: "lines",
+                    name: "lines",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: true,
+                    wrapped: false,
+                    required: false,
+                    item: "lines",
+                    child: Some(<Line as runtime::XmlShape>::xml),
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+            ],
+        };
+        &NODE
+    }
+}
 impl runtime::Validate for EntryFields {
     fn validate(
         &self,
@@ -317,6 +778,34 @@ impl Line {
         }
     }
 }
+impl runtime::XmlShape for Line {
+    fn xml() -> &'static runtime::XmlNode {
+        static NODE: runtime::XmlNode = runtime::XmlNode {
+            name: "Line",
+            namespace: "",
+            prefix: "",
+            fields: &[
+                runtime::XmlField {
+                    wire: "note",
+                    name: "note",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "note",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: true,
+                    object: false,
+                },
+            ],
+        };
+        &NODE
+    }
+}
 impl runtime::Validate for Line {
     fn validate(
         &self,
@@ -350,6 +839,50 @@ impl Refusal {
         Self { message, object }
     }
 }
+impl runtime::XmlShape for Refusal {
+    fn xml() -> &'static runtime::XmlNode {
+        static NODE: runtime::XmlNode = runtime::XmlNode {
+            name: "Refusal",
+            namespace: "",
+            prefix: "",
+            fields: &[
+                runtime::XmlField {
+                    wire: "message",
+                    name: "message",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: true,
+                    item: "message",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "object",
+                    name: "object",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: true,
+                    item: "object",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+            ],
+        };
+        &NODE
+    }
+}
 validate_impl!(Refusal);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -367,7 +900,110 @@ impl Problem {
         Self { code, status, detail }
     }
 }
+impl runtime::XmlShape for Problem {
+    fn xml() -> &'static runtime::XmlNode {
+        static NODE: runtime::XmlNode = runtime::XmlNode {
+            name: "Problem",
+            namespace: "",
+            prefix: "",
+            fields: &[
+                runtime::XmlField {
+                    wire: "code",
+                    name: "code",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: true,
+                    item: "code",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "status",
+                    name: "status",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: true,
+                    item: "status",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "detail",
+                    name: "detail",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: true,
+                    item: "detail",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+            ],
+        };
+        &NODE
+    }
+}
 validate_impl!(Problem);
+#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+#[serde(deny_unknown_fields)]
+pub struct Closed {
+    pub name: String,
+}
+deserialize_impl!(Closed);
+serialize_impl!(Closed);
+impl Closed {
+    #[must_use]
+    pub const fn new(name: String) -> Self {
+        Self { name }
+    }
+}
+impl runtime::XmlShape for Closed {
+    fn xml() -> &'static runtime::XmlNode {
+        static NODE: runtime::XmlNode = runtime::XmlNode {
+            name: "closed",
+            namespace: "",
+            prefix: "",
+            fields: &[
+                runtime::XmlField {
+                    wire: "name",
+                    name: "name",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: true,
+                    item: "name",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+            ],
+        };
+        &NODE
+    }
+}
+validate_impl!(Closed);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 #[serde(deny_unknown_fields)]
@@ -378,6 +1014,17 @@ impl NoOptions {
     #[must_use]
     pub const fn new() -> Self {
         Self {}
+    }
+}
+impl runtime::XmlShape for NoOptions {
+    fn xml() -> &'static runtime::XmlNode {
+        static NODE: runtime::XmlNode = runtime::XmlNode {
+            name: "NoOptions",
+            namespace: "",
+            prefix: "",
+            fields: &[],
+        };
+        &NODE
     }
 }
 validate_impl!(NoOptions);
@@ -396,6 +1043,66 @@ impl Badge {
         Self { id, label, holders }
     }
 }
+impl runtime::XmlShape for Badge {
+    fn xml() -> &'static runtime::XmlNode {
+        static NODE: runtime::XmlNode = runtime::XmlNode {
+            name: "Badge",
+            namespace: "",
+            prefix: "",
+            fields: &[
+                runtime::XmlField {
+                    wire: "id",
+                    name: "id",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: true,
+                    item: "id",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "label",
+                    name: "label",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: true,
+                    item: "label",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "holders",
+                    name: "holders",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: true,
+                    wrapped: false,
+                    required: true,
+                    item: "holders",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+            ],
+        };
+        &NODE
+    }
+}
 validate_impl_2!(Badge);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -409,6 +1116,50 @@ impl Login {
     #[must_use]
     pub const fn new(user: String, token: String) -> Self {
         Self { user, token }
+    }
+}
+impl runtime::XmlShape for Login {
+    fn xml() -> &'static runtime::XmlNode {
+        static NODE: runtime::XmlNode = runtime::XmlNode {
+            name: "Login",
+            namespace: "",
+            prefix: "",
+            fields: &[
+                runtime::XmlField {
+                    wire: "user",
+                    name: "user",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: true,
+                    item: "user",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "token",
+                    name: "token",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: true,
+                    item: "token",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+            ],
+        };
+        &NODE
     }
 }
 validate_impl!(Login);
@@ -507,6 +1258,50 @@ impl Price {
         }
     }
 }
+impl runtime::XmlShape for Price {
+    fn xml() -> &'static runtime::XmlNode {
+        static NODE: runtime::XmlNode = runtime::XmlNode {
+            name: "Price",
+            namespace: "",
+            prefix: "",
+            fields: &[
+                runtime::XmlField {
+                    wire: "amount",
+                    name: "amount",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "amount",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "retired",
+                    name: "retired",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "retired",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+            ],
+        };
+        &NODE
+    }
+}
 impl runtime::Validate for Price {
     fn validate(
         &self,
@@ -514,14 +1309,12 @@ impl runtime::Validate for Price {
         out: &mut Vec<runtime::Violation>,
     ) {
         if let Some(v) = &self.amount {
-            let q = *v / 0.01;
-            if (q - q.round()).abs() > 1e-9 {
-                runtime::violation(
-                    out,
-                    &runtime::InstancePath::Key(path, "amount"),
-                    "is not a multiple of 0.01",
-                );
-            }
+            runtime::check_multiple(
+                out,
+                &runtime::InstancePath::Key(path, "amount"),
+                *v,
+                "0.01",
+            );
         }
     }
 }
@@ -601,6 +1394,194 @@ impl User {
         }
     }
 }
+impl runtime::XmlShape for User {
+    fn xml() -> &'static runtime::XmlNode {
+        static NODE: runtime::XmlNode = runtime::XmlNode {
+            name: "User",
+            namespace: "",
+            prefix: "",
+            fields: &[
+                runtime::XmlField {
+                    wire: "name",
+                    name: "name",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: true,
+                    item: "name",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "handle",
+                    name: "handle",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "handle",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "age",
+                    name: "age",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "age",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "score",
+                    name: "score",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "score",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "tags",
+                    name: "tags",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: true,
+                    wrapped: false,
+                    required: false,
+                    item: "tags",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "role",
+                    name: "role",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: true,
+                    item: "role",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "email",
+                    name: "email",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "email",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "site",
+                    name: "site",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "site",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "meta",
+                    name: "meta",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "meta",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: true,
+                },
+                runtime::XmlField {
+                    wire: "loyalty",
+                    name: "loyalty",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "loyalty",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "note",
+                    name: "note",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "note",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: true,
+                    object: false,
+                },
+            ],
+        };
+        &NODE
+    }
+}
 impl runtime::Validate for User {
     fn validate(
         &self,
@@ -616,14 +1597,12 @@ impl runtime::Validate for User {
             );
         }
         if let Some(v) = &self.score {
-            let q = *v / 0.5;
-            if (q - q.round()).abs() > 1e-9 {
-                runtime::violation(
-                    out,
-                    &runtime::InstancePath::Key(path, "score"),
-                    "is not a multiple of 0.5",
-                );
-            }
+            runtime::check_multiple(
+                out,
+                &runtime::InstancePath::Key(path, "score"),
+                *v,
+                "0.5",
+            );
         }
         if let Some(v) = &self.tags {
             runtime::check_len(
@@ -694,6 +1673,50 @@ impl TreeVariant1 {
         Self { items, x }
     }
 }
+impl runtime::XmlShape for TreeVariant1 {
+    fn xml() -> &'static runtime::XmlNode {
+        static NODE: runtime::XmlNode = runtime::XmlNode {
+            name: "TreeVariant1",
+            namespace: "",
+            prefix: "",
+            fields: &[
+                runtime::XmlField {
+                    wire: "items",
+                    name: "items",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: true,
+                    wrapped: false,
+                    required: true,
+                    item: "items",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "x",
+                    name: "x",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: true,
+                    item: "x",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+            ],
+        };
+        &NODE
+    }
+}
 validate_impl_3!(TreeVariant1);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -707,6 +1730,50 @@ impl TreeVariant2 {
     #[must_use]
     pub const fn new(items: Vec<Tree>, x: i64) -> Self {
         Self { items, x }
+    }
+}
+impl runtime::XmlShape for TreeVariant2 {
+    fn xml() -> &'static runtime::XmlNode {
+        static NODE: runtime::XmlNode = runtime::XmlNode {
+            name: "TreeVariant2",
+            namespace: "",
+            prefix: "",
+            fields: &[
+                runtime::XmlField {
+                    wire: "items",
+                    name: "items",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: true,
+                    wrapped: false,
+                    required: true,
+                    item: "items",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "x",
+                    name: "x",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: true,
+                    item: "x",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+            ],
+        };
+        &NODE
     }
 }
 validate_impl_3!(TreeVariant2);
@@ -832,6 +1899,226 @@ impl ShipmentInternational {
             weight: runtime::Nullable::Absent,
             labels: None,
         }
+    }
+}
+impl runtime::XmlShape for ShipmentInternational {
+    fn xml() -> &'static runtime::XmlNode {
+        static NODE: runtime::XmlNode = runtime::XmlNode {
+            name: "ShipmentInternational",
+            namespace: "",
+            prefix: "",
+            fields: &[
+                runtime::XmlField {
+                    wire: "kind",
+                    name: "kind",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: true,
+                    item: "kind",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "customs",
+                    name: "customs",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: true,
+                    item: "customs",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "insured",
+                    name: "insured",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "insured",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "insurer",
+                    name: "insurer",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "insurer",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "options",
+                    name: "options",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "options",
+                    child: Some(<NoOptions as runtime::XmlShape>::xml),
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "rating",
+                    name: "rating",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "rating",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "meta",
+                    name: "meta",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "meta",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "label",
+                    name: "label",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "label",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "parcels",
+                    name: "parcels",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: true,
+                    wrapped: false,
+                    required: true,
+                    item: "parcels",
+                    child: Some(<ParcelsItem as runtime::XmlShape>::xml),
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "scores",
+                    name: "scores",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "scores",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: true,
+                },
+                runtime::XmlField {
+                    wire: "priority",
+                    name: "priority",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "priority",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: true,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "weight",
+                    name: "weight",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "weight",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: true,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "labels",
+                    name: "labels",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "labels",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: true,
+                },
+            ],
+        };
+        &NODE
     }
 }
 impl runtime::Validate for ShipmentInternational {
@@ -1009,6 +2296,34 @@ impl MetaObject {
         Self { count: None }
     }
 }
+impl runtime::XmlShape for MetaObject {
+    fn xml() -> &'static runtime::XmlNode {
+        static NODE: runtime::XmlNode = runtime::XmlNode {
+            name: "MetaObject",
+            namespace: "",
+            prefix: "",
+            fields: &[
+                runtime::XmlField {
+                    wire: "count",
+                    name: "count",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "count",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+            ],
+        };
+        &NODE
+    }
+}
 validate_impl!(MetaObject);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -1026,6 +2341,34 @@ impl ParcelsItem {
     #[must_use]
     pub const fn new() -> Self {
         Self { fragile: None }
+    }
+}
+impl runtime::XmlShape for ParcelsItem {
+    fn xml() -> &'static runtime::XmlNode {
+        static NODE: runtime::XmlNode = runtime::XmlNode {
+            name: "ParcelsItem",
+            namespace: "",
+            prefix: "",
+            fields: &[
+                runtime::XmlField {
+                    wire: "fragile",
+                    name: "fragile",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "fragile",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+            ],
+        };
+        &NODE
     }
 }
 validate_impl!(ParcelsItem);
@@ -1116,6 +2459,228 @@ impl ShipmentOtherwise {
             weight: runtime::Nullable::Absent,
             labels: None,
         }
+    }
+}
+impl runtime::XmlShape for ShipmentOtherwise {
+    fn xml() -> &'static runtime::XmlNode {
+        static NODE: runtime::XmlNode = runtime::XmlNode {
+            name: "ShipmentOtherwise",
+            namespace: "",
+            prefix: "",
+            fields: &[
+                runtime::XmlField {
+                    wire: "kind",
+                    name: "kind",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: true,
+                    item: "kind",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "customs",
+                    name: "customs",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "customs",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "insured",
+                    name: "insured",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "insured",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "insurer",
+                    name: "insurer",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "insurer",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "options",
+                    name: "options",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "options",
+                    child: Some(<NoOptions as runtime::XmlShape>::xml),
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "rating",
+                    name: "rating",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "rating",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "meta",
+                    name: "meta",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "meta",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "label",
+                    name: "label",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "label",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "parcels",
+                    name: "parcels",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: true,
+                    wrapped: false,
+                    required: true,
+                    item: "parcels",
+                    child: Some(
+                        <ShipmentOtherwiseParcelsItem as runtime::XmlShape>::xml,
+                    ),
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "scores",
+                    name: "scores",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "scores",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: true,
+                },
+                runtime::XmlField {
+                    wire: "priority",
+                    name: "priority",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "priority",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: true,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "weight",
+                    name: "weight",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "weight",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: true,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "labels",
+                    name: "labels",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "labels",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: true,
+                },
+            ],
+        };
+        &NODE
     }
 }
 impl runtime::Validate for ShipmentOtherwise {
@@ -1459,6 +3024,50 @@ impl BadgeRequest {
         Self { label, holders }
     }
 }
+impl runtime::XmlShape for BadgeRequest {
+    fn xml() -> &'static runtime::XmlNode {
+        static NODE: runtime::XmlNode = runtime::XmlNode {
+            name: "BadgeRequest",
+            namespace: "",
+            prefix: "",
+            fields: &[
+                runtime::XmlField {
+                    wire: "label",
+                    name: "label",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: true,
+                    item: "label",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "holders",
+                    name: "holders",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: true,
+                    wrapped: false,
+                    required: true,
+                    item: "holders",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+            ],
+        };
+        &NODE
+    }
+}
 validate_impl_2!(BadgeRequest);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -1472,6 +3081,50 @@ impl LoginRequest {
     #[must_use]
     pub const fn new(user: String, password: String) -> Self {
         Self { user, password }
+    }
+}
+impl runtime::XmlShape for LoginRequest {
+    fn xml() -> &'static runtime::XmlNode {
+        static NODE: runtime::XmlNode = runtime::XmlNode {
+            name: "LoginRequest",
+            namespace: "",
+            prefix: "",
+            fields: &[
+                runtime::XmlField {
+                    wire: "user",
+                    name: "user",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: true,
+                    item: "user",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "password",
+                    name: "password",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: true,
+                    item: "password",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+            ],
+        };
+        &NODE
     }
 }
 impl runtime::Validate for LoginRequest {

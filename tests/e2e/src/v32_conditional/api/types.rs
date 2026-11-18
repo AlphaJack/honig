@@ -13,15 +13,20 @@
 )]
 macro_rules! deserialize_impl {
     ($t:ty) => {
-        impl < 'de > serde::Deserialize < 'de > for $t { fn deserialize < D :
-        serde::Deserializer < 'de > > (d : D) -> Result < Self, D::Error > {
-        Self::deserialize(runtime::NoSeq(d)) } }
+        impl<'de> serde::Deserialize<'de> for $t {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                Self::deserialize(runtime::NoSeq(d))
+            }
+        }
     };
 }
 macro_rules! serialize_impl {
     ($t:ty) => {
-        impl serde::Serialize for $t { fn serialize < S : serde::Serializer > (& self, s
-        : S) -> Result < S::Ok, S::Error > { Self::serialize(self, s) } }
+        impl serde::Serialize for $t {
+            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                Self::serialize(self, s)
+            }
+        }
     };
 }
 macro_rules! validate_impl {
@@ -31,45 +36,69 @@ macro_rules! validate_impl {
 }
 macro_rules! deserialize_impl_2 {
     ($t:ty) => {
-        impl < 'de > serde::Deserialize < 'de > for $t { fn deserialize < D :
-        serde::Deserializer < 'de > > (d : D) -> Result < Self, D::Error > {
-        runtime::tagged:: < D, Self > (d) } }
+        impl<'de> serde::Deserialize<'de> for $t {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                runtime::tagged::<D, Self>(d)
+            }
+        }
     };
 }
 macro_rules! serialize_impl_2 {
     ($t:ty) => {
-        impl serde::Serialize for $t { fn serialize < S : serde::Serializer > (& self, s
-        : S) -> Result < S::Ok, S::Error > { match self { Self::Pickup(v) =>
-        serde::Serialize::serialize(v, s), Self::Address(v) =>
-        serde::Serialize::serialize(v, s), } } }
+        impl serde::Serialize for $t {
+            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                match self {
+                    Self::Pickup(v) => serde::Serialize::serialize(v, s),
+                    Self::Address(v) => serde::Serialize::serialize(v, s),
+                }
+            }
+        }
     };
 }
 macro_rules! serialize_impl_3 {
     ($t:ty) => {
-        impl serde::Serialize for $t { fn serialize < S : serde::Serializer > (& self, s
-        : S) -> Result < S::Ok, S::Error > { s.serialize_str(Self::VALUE) } }
+        impl serde::Serialize for $t {
+            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                s.serialize_str(Self::VALUE)
+            }
+        }
     };
 }
 macro_rules! deserialize_impl_3 {
     ($t:ty) => {
-        impl < 'de > serde::Deserialize < 'de > for $t { fn deserialize < D :
-        serde::Deserializer < 'de > > (d : D) -> Result < Self, D::Error > {
-        runtime::expect_const(d, & serde_json::Value::String("sms".to_owned())).map(| ()
-        | Self) } }
+        impl<'de> serde::Deserialize<'de> for $t {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                runtime::expect_const(d, &serde_json::Value::String("sms".to_owned()))
+                    .map(|()| Self)
+            }
+        }
     };
 }
 use super::runtime;
 macro_rules! str_enum_impls {
     ($n:ident) => {
-        impl std::fmt::Display for $n { fn fmt(& self, f : & mut std::fmt::Formatter < '_
-        >) -> std::fmt::Result { f.write_str(self.as_str()) } } impl std::str::FromStr
-        for $n { type Err = String; fn from_str(s : & str) -> Result < Self, Self::Err >
-        { Self::try_from(s) } } impl serde::Serialize for $n { fn serialize < S :
-        serde::Serializer > (& self, s : S) -> Result < S::Ok, S::Error > { s
-        .serialize_str(self.as_str()) } } impl < 'de > serde::Deserialize < 'de > for $n
-        { fn deserialize < D : serde::Deserializer < 'de >> (d : D) -> Result < Self,
-        D::Error > { let s = < std::borrow::Cow < 'de, str > as serde::Deserialize >
-        ::deserialize(d) ?; Self::try_from(& * s).map_err(serde::de::Error::custom) } }
+        impl std::fmt::Display for $n {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                f.write_str(self.as_str())
+            }
+        }
+        impl std::str::FromStr for $n {
+            type Err = String;
+            fn from_str(s: &str) -> Result<Self, Self::Err> {
+                Self::try_from(s)
+            }
+        }
+        impl serde::Serialize for $n {
+            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                s.serialize_str(self.as_str())
+            }
+        }
+        impl<'de> serde::Deserialize<'de> for $n {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                let s = <std::borrow::Cow<'de, str> as serde::Deserialize>::deserialize(d)?;
+                Self::try_from(&*s).map_err(serde::de::Error::custom)
+            }
+        }
     };
 }
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]

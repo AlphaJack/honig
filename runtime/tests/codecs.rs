@@ -6,9 +6,9 @@
 
 use futures_util::StreamExt;
 use honig::__private::{
-    Framing, ItemStream, XmlField, XmlNode, XmlShape, block_on, check_unique, cookie_text, form_decode, form_encode,
-    jsonl_encode, mixed_decode, multipart_decode, multipart_encode_with, parse_cookies, parse_query, pct, pct_decode,
-    set_items, sse_decode, xml_decode, xml_encode,
+    Framing, ItemStream, XmlField, XmlNode, XmlShape, block_on, check_unique, cookie_text, form_decode,
+    form_decode_with, form_encode, jsonl_encode, mixed_decode, multipart_decode, multipart_encode_with, parse_cookies,
+    parse_query, pct, pct_decode, set_items, sse_decode, xml_decode, xml_encode,
 };
 use honig::{ByteStream, InstancePath, Violation};
 use serde::{Deserialize, Serialize};
@@ -549,4 +549,25 @@ fn a_multipart_item_arrives_before_the_body_ends() {
         ItemStream::multipart(200, arriving(vec![first.to_owned()], true), "multipart/mixed; boundary=b");
     assert_eq!(items.next().now_or_never().map(|i| i.map(Result::unwrap)), Some(Some(json!({"a": 1}))));
     assert!(items.next().now_or_never().is_none(), "the second part has not arrived");
+}
+
+/// A form field that its type refuses is named by its pointer, as in a JSON body. Only the failing body is read again
+/// to find it.
+#[test]
+fn a_form_field_that_does_not_decode_is_named() {
+    #[derive(Debug, Deserialize)]
+    struct Member {
+        #[expect(dead_code, reason = "decoded only to fail on `age`")]
+        name: String,
+        #[expect(dead_code, reason = "decoded only to fail on `age`")]
+        age: u8,
+    }
+    let pointer = |e: honig::Error| {
+        let honig::Error::Decode { pointer, .. } = e else { panic!("not a decode error: {e}") };
+        pointer
+    };
+    let err = form_decode::<Member>(0, b"name=Ann&age=300").expect_err("300 is past u8");
+    assert_eq!(pointer(err), "/age");
+    let err = form_decode_with::<Member>(0, b"name=Ann&age=300", &[], &[]).expect_err("300 is past u8");
+    assert_eq!(pointer(err), "/age");
 }

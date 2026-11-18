@@ -224,7 +224,92 @@ fn a_binary_with_a_client_gets_the_constructors() {
     let files = common::generate("shape-binary-server", &doc, &opts(false));
     let ops = common::file(&files, "operations.rs");
     assert!(!ops.contains("fn new("), "{ops}");
-    assert!(!ops.contains("dead_code"), "{ops}");
+    // A handler may build only some of the responses of its operation.
+    assert!(ops.contains("#![allow(\n    dead_code,\n    reason = \"a handler may build only some"), "{ops}");
+}
+
+/// A binary that serves the API: an operation with a choice of media types, more required parameters than clippy
+/// allows, one security requirement, and a type with more required properties than clippy allows and an example that
+/// `documented_examples.rs` decodes.
+fn wide_binary(test: &str, client: bool) -> Vec<(String, String)> {
+    let names = ["a", "b", "c", "d", "e", "f", "g", "h"];
+    let params: Vec<serde_json::Value> = names
+        .iter()
+        .map(|n| json!({"name": n, "in": "query", "required": true, "schema": {"type": "integer"}}))
+        .collect();
+    let properties: serde_json::Map<String, serde_json::Value> =
+        names.iter().map(|n| ((*n).to_owned(), json!({"type": "integer"}))).collect();
+    let example: serde_json::Map<String, serde_json::Value> =
+        names.iter().map(|n| ((*n).to_owned(), json!(1))).collect();
+    let mut doc = common::spec(
+        "3.1.0",
+        &json!({"/wide": {"get": {
+            "operationId": "wide",
+            "security": [{"key": []}],
+            "parameters": params,
+            "responses": {"200": {"description": "ok", "content": {
+                "application/json": {"schema": {"$ref": "#/components/schemas/Wide"}},
+                "application/xml": {"schema": {"$ref": "#/components/schemas/Wide"}},
+            }}},
+        }}}),
+        &json!({
+            "schemas": {"Wide": {"type": "object", "required": names, "properties": properties, "example": example}},
+            "securitySchemes": {"key": {"type": "apiKey", "in": "header", "name": "X-Key"}},
+        }),
+    );
+    doc["info"]["title"] = json!(test);
+    let opts = crate::emit::Options {
+        client,
+        tests: true,
+        rust: crate::emit::rust::Options { binary: true, ..Default::default() },
+        ..crate::emit::Options::default()
+    };
+    let files = common::generate(test, &doc, &opts);
+    common::file(&files, "documented_examples.rs");
+    files
+}
+
+/// A crate that denies `clippy::allow_attributes` takes the generated code: every `#[allow]` is an inner `#![allow]`,
+/// which that lint leaves alone. `new` allows its many arguments inside its body, not with an `#[expect]` that a crate
+/// with a higher `too-many-arguments-threshold` would leave unfulfilled.
+#[test]
+fn a_binary_gets_no_outer_allow() {
+    // A client binary gets `Params::new` too.
+    for (test, client, name) in
+        [("shape-outer-allow", false, "types.rs"), ("shape-outer-allow-client", true, "operations.rs")]
+    {
+        let files = wide_binary(test, client);
+        for (file, text) in &files {
+            let outer: Vec<&str> = text.lines().filter(|l| l.trim_start().starts_with("#[allow(")).collect();
+            assert!(outer.is_empty(), "{file}: {outer:?}");
+            assert!(!text.contains("#[expect("), "{file}: {text}");
+        }
+        let text = common::file(&files, name);
+        let compact: String = text.split_whitespace().collect();
+        assert!(compact.contains("->Self{#![allow(clippy::too_many_arguments,"), "{name}: {text}");
+    }
+}
+
+/// A binary without a client or a server names none of the operations, nor their `SECURITY_<n>`: the file allows
+/// that dead code once and no constant carries an `#[allow]` of its own.
+#[test]
+fn a_binary_without_halves_allows_dead_code_once() {
+    let doc = common::spec(
+        "3.1.0",
+        &json!({"/a": {"get": {"operationId": "a", "security": [{"key": []}], "responses": {"204": {"description": "ok"}}}}}),
+        &json!({"securitySchemes": {"key": {"type": "apiKey", "in": "header", "name": "X-Key"}}}),
+    );
+    let opts = crate::emit::Options {
+        client: false,
+        server: false,
+        rust: crate::emit::rust::Options { binary: true, ..Default::default() },
+        ..crate::emit::Options::default()
+    };
+    let files = common::generate("shape-binary-types", &doc, &opts);
+    let ops = common::file(&files, "operations.rs");
+    assert!(ops.contains("const SECURITY_0"), "{ops}");
+    assert!(!ops.contains("#[allow("), "{ops}");
+    assert!(ops.contains("reason = \"without a client or a server a binary names none"), "{ops}");
 }
 
 /// A `text/plain` string error body holds the detail: the server fills it for the requests it refuses itself and no
@@ -495,4 +580,17 @@ fn a_body_of_your_own_type_is_left_to_it() {
     let (ops, server) = generate("shape-own-body-yours", Some("crate::Note"));
     assert!(!ops.contains("check_schema"), "{ops}");
     assert!(!server.contains("check_raw_json"), "{server}");
+}
+
+/// The body of a generated `macro_rules!` is printed as the items it expands to, one per line, and not as one line of
+/// tokens.
+#[test]
+fn a_macro_body_reads_as_items() {
+    let doc = common::spec("3.1.0", &json!({}), &json!({"schemas": {"Kind": {"type": "string", "enum": ["a", "b"]}}}));
+    let files = common::generate("shape-macro-body", &doc, &crate::emit::Options::default());
+    let types = common::file(&files, "types.rs");
+    assert!(
+        types.contains("macro_rules! str_enum_impls {\n    ($n:ident) => {\n        impl std::fmt::Display for $n {\n"),
+        "{types}"
+    );
 }

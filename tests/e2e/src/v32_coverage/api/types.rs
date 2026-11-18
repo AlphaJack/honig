@@ -14,15 +14,20 @@
 )]
 macro_rules! deserialize_impl {
     ($t:ty) => {
-        impl < 'de > serde::Deserialize < 'de > for $t { fn deserialize < D :
-        serde::Deserializer < 'de > > (d : D) -> Result < Self, D::Error > {
-        Self::deserialize(runtime::NoSeq(d)) } }
+        impl<'de> serde::Deserialize<'de> for $t {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                Self::deserialize(runtime::NoSeq(d))
+            }
+        }
     };
 }
 macro_rules! serialize_impl {
     ($t:ty) => {
-        impl serde::Serialize for $t { fn serialize < S : serde::Serializer > (& self, s
-        : S) -> Result < S::Ok, S::Error > { Self::serialize(self, s) } }
+        impl serde::Serialize for $t {
+            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                Self::serialize(self, s)
+            }
+        }
     };
 }
 macro_rules! validate_impl {
@@ -32,11 +37,57 @@ macro_rules! validate_impl {
 }
 macro_rules! serialize_impl_2 {
     ($t:ty) => {
-        impl serde::Serialize for $t { fn serialize < S : serde::Serializer > (& self, s
-        : S) -> Result < S::Ok, S::Error > { s.serialize_str(Self::VALUE) } }
+        impl serde::Serialize for $t {
+            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                s.serialize_str(Self::VALUE)
+            }
+        }
     };
 }
 use super::runtime;
+#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct Box2 {
+    pub width: i64,
+    pub height: i64,
+    pub depth: i64,
+    pub weight: i64,
+    pub color: i64,
+    pub shelf: i64,
+    pub row: i64,
+    pub bin: i64,
+}
+deserialize_impl!(Box2);
+serialize_impl!(Box2);
+impl Box2 {
+    #[must_use]
+    pub const fn new(
+        width: i64,
+        height: i64,
+        depth: i64,
+        weight: i64,
+        color: i64,
+        shelf: i64,
+        row: i64,
+        bin: i64,
+    ) -> Self {
+        #![allow(
+            clippy::too_many_arguments,
+            reason = "one argument per required property"
+        )]
+        Self {
+            width,
+            height,
+            depth,
+            weight,
+            color,
+            shelf,
+            row,
+            bin,
+        }
+    }
+}
+validate_impl!(Box2);
 #[derive(Debug, Clone, PartialEq)]
 pub enum Note {
     TextNote(NoteTextNote),
@@ -244,7 +295,7 @@ impl runtime::Validate for ImageNote {
                 SCHEMA
                     .get_or_init(|| {
                         serde_json::from_str(
-                                "{\"default\":64,\"allOf\":[{\"type\":\"integer\"}]}",
+                                "{\"default\":64,\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Pixels\"}],\"$defs\":{\"/components/schemas/Pixels\":{\"type\":\"integer\"}}}",
                             )
                             .unwrap_or_default()
                     }),
@@ -439,7 +490,7 @@ impl runtime::Validate for NoteImageNote {
                 SCHEMA
                     .get_or_init(|| {
                         serde_json::from_str(
-                                "{\"default\":64,\"allOf\":[{\"type\":\"integer\"}]}",
+                                "{\"default\":64,\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Pixels\"}],\"$defs\":{\"/components/schemas/Pixels\":{\"type\":\"integer\"}}}",
                             )
                             .unwrap_or_default()
                     }),

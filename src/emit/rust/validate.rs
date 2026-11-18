@@ -372,7 +372,8 @@ fn checks(cx: Cx<'_>, t: &Ty, c: &Constraints, value: &TokenStream, path: &Token
         Ty::I8 | Ty::I16 | Ty::I32 | Ty::I64 | Ty::U8 | Ty::U16 | Ty::U32 | Ty::U64 => {
             integer_checks(t, c, value, path)
         }
-        Ty::F32 | Ty::F64 | Ty::Decimal => float_checks(c, &float_value(t, value), path),
+        Ty::F32 | Ty::F64 => float_checks(c, value, path),
+        Ty::Decimal => decimal_checks(c, value, path),
         Ty::Vec(x) => {
             let len = (c.min_items.is_some() || c.max_items.is_some()).then(|| {
                 let (min, max) = (opt_u64(c.min_items), opt_u64(c.max_items));
@@ -453,19 +454,10 @@ fn opt_u64(v: Option<u64>) -> TokenStream {
     }
 }
 
-/// Returns the value of a float as `float_checks` reads it. A decimal compares by its nearest `f64` (a range and not
-/// the value).
-fn float_value(t: &Ty, value: &TokenStream) -> TokenStream {
-    if *t == Ty::Decimal {
-        let r = receiver(value);
-        quote!(&#r.as_f64())
-    } else {
-        value.clone()
-    }
-}
-
-/// Returns the range and `multipleOf` for an integer type with bounds as integers of
-/// that type. Fractional bounds are rounded inward. Bounds that cannot be represented are dropped.
+/// Returns the range and `multipleOf` of an integer type, checked exactly. A bound becomes an integer of the type: a
+/// fraction rounds inward. A bound that every value of the type meets is left out. One that no value meets refuses
+/// every value: `maximum: -1` on a `uint8` leaves none. `multipleOf` is exact too, through its decimal text: an
+/// integer is a multiple of `2.5` when it is one of `5`.
 fn integer_checks(t: &Ty, c: &Constraints, value: &TokenStream, path: &TokenStream) -> TokenStream {
     let val = deref(value);
     let ranges: [(Ty, i128, i128); 7] = [
@@ -482,33 +474,146 @@ fn integer_checks(t: &Ty, c: &Constraints, value: &TokenStream, path: &TokenStre
         .iter()
         .find(|(k, ..)| k == t)
         .map_or_else(|| (i64::MIN.into(), i64::MAX.into()), |&(_, lo, hi)| (lo, hi));
-    let fits = |n: i128| (lo..=hi).contains(&n).then(|| Literal::i128_unsuffixed(n));
-    let int = |n: &Number, up: bool| -> Option<i128> {
-        n.as_i64().map(i128::from).or_else(|| n.as_u64().map(i128::from)).or_else(|| {
-            let f = n.as_f64()?;
-            let r = if up { f.ceil() } else { f.floor() };
-            (r.is_finite() && r.abs() < MAX_WHOLE).then(|| whole(r))
-        })
-    };
-    let bound = |n: Option<&Number>, up: bool| -> TokenStream {
-        match n.and_then(|n| int(n, up)).and_then(fits) {
-            Some(l) => quote!(Some(#l)),
-            None => quote!(None),
+    let mut none = None;
+    let mut bounds = [quote!(None), quote!(None), quote!(None), quote!(None)];
+    let keywords = [
+        ("minimum", c.minimum.as_ref(), Bound::AtLeast),
+        ("maximum", c.maximum.as_ref(), Bound::AtMost),
+        ("exclusiveMinimum", c.exclusive_minimum.as_ref(), Bound::Above),
+        ("exclusiveMaximum", c.exclusive_maximum.as_ref(), Bound::Below),
+    ];
+    for (slot, (keyword, given, bound)) in bounds.iter_mut().zip(keywords) {
+        let Some(given) = given else { continue };
+        match bound.within(whole_bound(given, bound.rounds_up()), lo, hi) {
+            Within::Every => {}
+            Within::No => {
+                none.get_or_insert_with(|| {
+                    lit(&format!("`{keyword}: {given}` leaves no value of this integer type, not even {{}}"))
+                });
+            }
+            Within::Some(whole) => {
+                let literal = Literal::i128_unsuffixed(whole);
+                *slot = quote!(Some(#literal));
+            }
         }
-    };
-    let (min, max) = (bound(c.minimum.as_ref(), true), bound(c.maximum.as_ref(), false));
-    let (xmin, xmax) = (bound(c.exclusive_minimum.as_ref(), false), bound(c.exclusive_maximum.as_ref(), true));
-    let range = [&c.minimum, &c.maximum, &c.exclusive_minimum, &c.exclusive_maximum]
+    }
+    if let Some(msg) = none {
+        // No value can be valid: the range and `multipleOf` add nothing.
+        return quote!(runtime::violation(out, #path, format!(#msg, #val)););
+    }
+    let range = bounds
         .iter()
-        .any(|b| b.is_some())
-        .then(|| quote!(runtime::check_range(out, #path, #val, [#min, #max, #xmin, #xmax]);));
-    let multiple =
-        c.multiple_of.as_ref().and_then(Number::as_u64).filter(|m| *m > 1).and_then(|m| fits(m.into())).map(|m| {
-            let msg = lit(&format!("is not a multiple of {m}"));
-            quote!(if #val % #m != 0 { runtime::violation(out, #path, #msg); })
-        });
+        .any(|b| b.to_string() != "None")
+        .then(|| quote!(runtime::check_range(out, #path, #val, [#(#bounds),*]);));
+    let multiple = c.multiple_of.as_ref().and_then(|m| {
+        let msg = lit(&format!("is not a multiple of {m}"));
+        match integer_modulus(m)? {
+            // Every integer is a multiple of `1` and of `0.5`.
+            1 => None,
+            // Only `0` is a multiple of a modulus past every value of the type.
+            m if m > hi.max(-lo) => Some(quote!(runtime::check(out, #path, #val == 0, #msg);)),
+            m => {
+                let m = Literal::i128_unsuffixed(m);
+                Some(quote!(runtime::check(out, #path, i128::from(#val) % #m == 0, #msg);))
+            }
+        }
+    });
     quote!(#range #multiple)
 }
+
+/// Which side of a value a bound keyword holds, and whether it takes the bound itself.
+#[derive(Clone, Copy)]
+enum Bound {
+    /// `minimum`: the value is the bound or more.
+    AtLeast,
+    /// `maximum`: the value is the bound or less.
+    AtMost,
+    /// `exclusiveMinimum`: the value is more than the bound.
+    Above,
+    /// `exclusiveMaximum`: the value is less than the bound.
+    Below,
+}
+
+/// What a bound leaves of the values of an integer type.
+enum Within {
+    /// Every value meets it: it needs no check.
+    Every,
+    /// No value meets it.
+    No,
+    /// Some values meet it: it is checked as this bound.
+    Some(i128),
+}
+
+impl Bound {
+    /// Does the bound round a fraction up? An inclusive minimum and an exclusive maximum do: `minimum: 1.5` is `2`
+    /// and `exclusiveMaximum: 1.5` is `< 2`.
+    const fn rounds_up(self) -> bool {
+        matches!(self, Self::AtLeast | Self::Below)
+    }
+
+    /// Returns what the whole bound `b` leaves of the values from `lo` to `hi`.
+    const fn within(self, b: i128, lo: i128, hi: i128) -> Within {
+        let (every, no) = match self {
+            Self::AtLeast => (b <= lo, b > hi),
+            Self::AtMost => (b >= hi, b < lo),
+            Self::Above => (b < lo, b >= hi),
+            Self::Below => (b > hi, b <= lo),
+        };
+        if every {
+            Within::Every
+        } else if no {
+            Within::No
+        } else {
+            Within::Some(b)
+        }
+    }
+}
+
+/// Returns a bound as a whole number, rounded up or down. One past `MAX_WHOLE` in magnitude is past every integer type:
+/// it stays past it.
+fn whole_bound(n: &Number, up: bool) -> i128 {
+    if let Some(i) = n.as_i64().map(i128::from).or_else(|| n.as_u64().map(i128::from)) {
+        return i;
+    }
+    let f = n.as_f64().unwrap_or_default();
+    let r = if up { f.ceil() } else { f.floor() };
+    if r >= MAX_WHOLE {
+        i128::MAX
+    } else if r <= -MAX_WHOLE {
+        i128::MIN
+    } else {
+        whole(r)
+    }
+}
+
+/// Returns the integer whose multiples are the integers that are multiples of `m`, from the decimal text of `m`. An
+/// integer is a multiple of `p / 10^k` when it is one of `p` with its factors of 2 and 5 that `10^k` holds removed:
+/// `2.5` is `25 / 10`, so `5`. `None` for a `multipleOf` that is not positive or does not fit an `i128`; a modulus past
+/// `i128` is `i128::MAX`, past every integer type.
+fn integer_modulus(m: &Number) -> Option<i128> {
+    let (digits, scale) = crate::json::decimal_parts(m)?;
+    if digits == 0 {
+        return None;
+    }
+    if scale >= 0 {
+        let modulus = (0..scale).try_fold(digits, |acc, _| acc.checked_mul(DECIMAL_BASE)).unwrap_or(u128::MAX);
+        return Some(i128::try_from(modulus).unwrap_or(i128::MAX));
+    }
+    let mut modulus = digits;
+    for factor in DECIMAL_BASE_FACTORS {
+        for _ in 0..scale.unsigned_abs() {
+            if !modulus.is_multiple_of(factor) {
+                break;
+            }
+            modulus /= factor;
+        }
+    }
+    Some(i128::try_from(modulus).unwrap_or(i128::MAX))
+}
+
+/// The base of decimal text, and its prime factors.
+const DECIMAL_BASE: u128 = 10;
+const DECIMAL_BASE_FACTORS: [u128; 2] = [2, 5];
 
 /// Returns an integral `f64` (finite and below 1e30 in magnitude) as an integer.
 #[expect(clippy::cast_possible_truncation, reason = "callers pass finite integral values far inside i128")]
@@ -531,15 +636,42 @@ fn float_checks(c: &Constraints, value: &TokenStream, path: &TokenStream) -> Tok
             let (xmin, xmax) = (bound(c.exclusive_minimum.as_ref()), bound(c.exclusive_maximum.as_ref()));
             quote!(runtime::check_range(out, #path, #val, [#min, #max, #xmin, #xmax]);)
         });
-    let multiple = c.multiple_of.as_ref().and_then(Number::as_f64).filter(|m| m.is_finite() && *m > 0.0).map(|m| {
-        let l = Literal::f64_unsuffixed(m);
-        let msg = lit(&format!("is not a multiple of {m}"));
-        quote! {
-            let q = #val / #l;
-            if (q - q.round()).abs() > 1e-9 { runtime::violation(out, #path, #msg); }
-        }
+    // Exact, through the decimal text of the value and of `multipleOf`: `0.07` is a multiple of `0.01`.
+    let multiple = positive(c.multiple_of.as_ref()).map(|m| {
+        let m = lit(&m.to_string());
+        quote!(runtime::check_multiple(out, #path, #val, #m);)
     });
     quote!(#range #multiple)
+}
+
+/// Returns a `multipleOf` that is a positive number. JSON Schema allows no other.
+fn positive(m: Option<&Number>) -> Option<&Number> {
+    m.filter(|m| m.as_f64().is_some_and(|f| f.is_finite() && f > 0.0))
+}
+
+/// Returns the range and `multipleOf` of a `Decimal` value (an `&Decimal` expression), checked exactly on its digits,
+/// and the limits of IEEE 754 decimal128 on them for `format: decimal128`.
+fn decimal_checks(c: &Constraints, value: &TokenStream, path: &TokenStream) -> TokenStream {
+    let r = receiver(value);
+    let bound = |n: Option<&Number>| match n {
+        Some(n) => {
+            let t = lit(&n.to_string());
+            quote!(Some(#t))
+        }
+        None => quote!(None),
+    };
+    let bounds = [&c.minimum, &c.maximum, &c.exclusive_minimum, &c.exclusive_maximum];
+    let range = bounds.iter().any(|b| b.is_some()).then(|| {
+        let [min, max, xmin, xmax] = bounds.map(|b| bound(b.as_ref()));
+        quote!(runtime::check_decimal_range(out, #path, #r.as_str(), [#min, #max, #xmin, #xmax]);)
+    });
+    let multiple = positive(c.multiple_of.as_ref()).map(|m| {
+        let m = lit(&m.to_string());
+        quote!(runtime::check_multiple_text(out, #path, #r.as_str(), #m);)
+    });
+    // `format: decimal128`: the digits that IEEE 754 decimal128 holds.
+    let limits = c.decimal128.then(|| quote!(runtime::check_decimal128(out, #path, #r.as_str());));
+    quote!(#range #multiple #limits)
 }
 
 /// Bounds past this have no whole `i128` worth writing: they are left unchecked.

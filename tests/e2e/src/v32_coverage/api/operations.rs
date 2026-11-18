@@ -14,7 +14,11 @@
 )]
 macro_rules! default_impl {
     ($t:ty) => {
-        impl Default for $t { fn default() -> Self { Self::new() } }
+        impl Default for $t {
+            fn default() -> Self {
+                Self::new()
+            }
+        }
     };
 }
 macro_rules! validate_impl {
@@ -118,7 +122,7 @@ pub mod add_note {
                     SCHEMA
                         .get_or_init(|| {
                             serde_json::from_str(
-                                    "{\"type\":\"object\",\"properties\":{\"kind\":{\"type\":\"string\"},\"text\":{\"type\":\"string\"},\"size\":{\"type\":\"integer\"}},\"oneOf\":[{\"type\":\"object\",\"required\":[\"text\"],\"properties\":{\"kind\":{\"const\":\"text\"},\"text\":{\"type\":\"string\"},\"point\":{\"type\":\"array\",\"items\":{\"type\":\"number\"},\"minItems\":2,\"maxItems\":2},\"rgb\":{\"type\":\"array\",\"items\":{\"type\":\"integer\",\"format\":\"uint8\"},\"minItems\":3,\"maxItems\":3,\"uniqueItems\":true}},\"if\":{\"required\":[\"size\"]},\"then\":{\"properties\":{\"size\":{\"maximum\":10}}},\"else\":{\"properties\":{\"text\":{\"maxLength\":5}}}},{\"type\":\"object\",\"required\":[\"kind\",\"url\"],\"properties\":{\"kind\":{\"const\":\"image\"},\"url\":{\"type\":\"string\"},\"width\":{\"default\":64,\"allOf\":[{\"type\":\"integer\"}]},\"crop\":{\"oneOf\":[{\"type\":\"string\"},{\"oneOf\":[{\"type\":\"integer\"},{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"integer\"},\"y\":{\"type\":\"integer\"}}}]}]}}}]}",
+                                    "{\"type\":\"object\",\"properties\":{\"kind\":{\"type\":\"string\"},\"text\":{\"type\":\"string\"},\"size\":{\"type\":\"integer\"}},\"oneOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1TextNote\"},{\"$ref\":\"#/$defs/~1components~1schemas~1ImageNote\"}],\"$defs\":{\"/components/schemas/TextNote\":{\"type\":\"object\",\"required\":[\"text\"],\"properties\":{\"kind\":{\"const\":\"text\"},\"text\":{\"type\":\"string\"},\"point\":{\"type\":\"array\",\"items\":{\"type\":\"number\"},\"minItems\":2,\"maxItems\":2},\"rgb\":{\"type\":\"array\",\"items\":{\"type\":\"integer\",\"format\":\"uint8\"},\"minItems\":3,\"maxItems\":3,\"uniqueItems\":true}},\"if\":{\"required\":[\"size\"]},\"then\":{\"properties\":{\"size\":{\"maximum\":10}}},\"else\":{\"properties\":{\"text\":{\"maxLength\":5}}}},\"/components/schemas/ImageNote\":{\"type\":\"object\",\"required\":[\"kind\",\"url\"],\"properties\":{\"kind\":{\"const\":\"image\"},\"url\":{\"type\":\"string\"},\"width\":{\"default\":64,\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Pixels\"}]},\"crop\":{\"$ref\":\"#/$defs/~1components~1schemas~1Crop\"}}},\"/components/schemas/Pixels\":{\"type\":\"integer\"},\"/components/schemas/Crop\":{\"oneOf\":[{\"type\":\"string\"},{\"oneOf\":[{\"type\":\"integer\"},{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"integer\"},\"y\":{\"type\":\"integer\"}}}]}]}}}",
                                 )
                                 .unwrap_or_default()
                         }),
@@ -137,5 +141,56 @@ pub mod add_note {
             #[deprecated]
             x_tags: Option<types::AddNoteCreatedXTags>,
         },
+    }
+}
+pub mod find_box {
+    use super::super::types;
+    use super::super::runtime;
+    pub const METHOD: &str = "GET";
+    pub const PATH: &str = "/boxes";
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub struct Params {
+        pub width: i64,
+        pub height: i64,
+        pub depth: i64,
+        pub weight: i64,
+        pub color: i64,
+        pub shelf: i64,
+        pub row: i64,
+        pub bin: i64,
+    }
+    impl Params {
+        #[must_use]
+        pub const fn new(
+            width: i64,
+            height: i64,
+            depth: i64,
+            weight: i64,
+            color: i64,
+            shelf: i64,
+            row: i64,
+            bin: i64,
+        ) -> Self {
+            #![allow(
+                clippy::too_many_arguments,
+                reason = "one argument per required parameter"
+            )]
+            Self {
+                width,
+                height,
+                depth,
+                weight,
+                color,
+                shelf,
+                row,
+                bin,
+            }
+        }
+    }
+    validate_impl!(Params);
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub enum Response {
+        /// The box.
+        Ok(types::Box2),
     }
 }

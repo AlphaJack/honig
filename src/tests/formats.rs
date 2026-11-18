@@ -112,3 +112,22 @@ fn local_date_time_formats_use_the_date_library() {
     assert!(jiff.contains("pub starts: jiff::civil::DateTime") && jiff.contains("pub ends: jiff::civil::Time"));
     assert!(with(None, "local-none").contains("pub starts: String"));
 }
+
+/// A `pattern` beside a format that has a type of its own is not checked: the type decides the value. Generation says
+/// so, once, at the pattern. A pattern on a plain string is checked and needs no word.
+#[test]
+fn a_pattern_beside_a_typed_format_is_reported_unchecked() {
+    let doc = common::spec(
+        "3.2.0",
+        &json!({}),
+        &json!({"schemas": {"Order": {"type": "object", "properties": {
+            "id": {"type": "string", "format": "uuid", "pattern": "^0"},
+            "code": {"type": "string", "pattern": "^[A-Z]+$"}
+        }}}}),
+    );
+    let (_, w) = common::build("pattern-format", &doc, &[]);
+    let at: Vec<&String> = w.iter().filter(|m| m.contains("is not checked")).collect();
+    assert_eq!(at.len(), 1, "{w:#?}");
+    assert!(at[0].starts_with("/components/schemas/Order/properties/id/pattern:"), "{at:?}");
+    assert!(at[0].contains("format: uuid"), "{at:?}");
+}

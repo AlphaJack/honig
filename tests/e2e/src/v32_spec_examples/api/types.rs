@@ -13,15 +13,20 @@
 )]
 macro_rules! deserialize_impl {
     ($t:ty) => {
-        impl < 'de > serde::Deserialize < 'de > for $t { fn deserialize < D :
-        serde::Deserializer < 'de > > (d : D) -> Result < Self, D::Error > {
-        Self::deserialize(runtime::NoSeq(d)) } }
+        impl<'de> serde::Deserialize<'de> for $t {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                Self::deserialize(runtime::NoSeq(d))
+            }
+        }
     };
 }
 macro_rules! serialize_impl {
     ($t:ty) => {
-        impl serde::Serialize for $t { fn serialize < S : serde::Serializer > (& self, s
-        : S) -> Result < S::Ok, S::Error > { Self::serialize(self, s) } }
+        impl serde::Serialize for $t {
+            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                Self::serialize(self, s)
+            }
+        }
     };
 }
 macro_rules! validate_impl {
@@ -31,56 +36,106 @@ macro_rules! validate_impl {
 }
 macro_rules! validate_impl_2 {
     ($t:ty) => {
-        impl runtime::Validate for $t { fn validate(& self, path : &
-        runtime::InstancePath < '_ >, out : & mut Vec < runtime::Violation >) { if let
-        Some(v) = & self.retry { runtime::check_range(out, &
-        runtime::InstancePath::Key(path, "retry"), * v, [Some(0), None, None, None]); } }
+        impl runtime::Validate for $t {
+            fn validate(
+                &self,
+                path: &runtime::InstancePath<'_>,
+                out: &mut Vec<runtime::Violation>,
+            ) {
+                if let Some(v) = &self.retry {
+                    runtime::check_range(
+                        out,
+                        &runtime::InstancePath::Key(path, "retry"),
+                        *v,
+                        [Some(0), None, None, None],
+                    );
+                }
+            }
         }
     };
 }
 macro_rules! try_from_impl {
     ($t:ty) => {
-        impl TryFrom < String > for $t { type Error = String; fn try_from(value : String)
-        -> Result < Self, String > { static RE : runtime::Pattern =
-        runtime::Pattern::new(); let mut out = Vec::new(); runtime::check_len(& mut out,
-        & runtime::InstancePath::Root, value.chars().count(), None, None, "characters");
-        if let Some(v) = out.first() { return Err(v.message.clone()); } if !
-        runtime::pattern_matches(& RE, Self::PATTERN, & value) { return
-        Err(format!("`{value}` does not match `{}`", Self::PATTERN)); } Ok(Self(value)) }
+        impl TryFrom<String> for $t {
+            type Error = String;
+            fn try_from(value: String) -> Result<Self, String> {
+                static RE: runtime::Pattern = runtime::Pattern::new();
+                let mut out = Vec::new();
+                runtime::check_len(
+                    &mut out,
+                    &runtime::InstancePath::Root,
+                    value.chars().count(),
+                    None,
+                    None,
+                    "characters",
+                );
+                if let Some(v) = out.first() {
+                    return Err(v.message.clone());
+                }
+                if !runtime::pattern_matches(&RE, Self::PATTERN, &value) {
+                    return Err(format!("`{value}` does not match `{}`", Self::PATTERN));
+                }
+                Ok(Self(value))
+            }
         }
     };
 }
 macro_rules! try_from_impl_2 {
     ($t:ty) => {
-        impl TryFrom < & str > for $t { type Error = String; fn try_from(value : & str)
-        -> Result < Self, String > { Self::try_from(value.to_owned()) } }
+        impl TryFrom<&str> for $t {
+            type Error = String;
+            fn try_from(value: &str) -> Result<Self, String> {
+                Self::try_from(value.to_owned())
+            }
+        }
     };
 }
 macro_rules! as_ref_impl {
     ($t:ty) => {
-        impl AsRef < str > for $t { fn as_ref(& self) -> & str { & self.0 } }
+        impl AsRef<str> for $t {
+            fn as_ref(&self) -> &str {
+                &self.0
+            }
+        }
     };
 }
 macro_rules! display_impl {
     ($t:ty) => {
-        impl std::fmt::Display for $t { fn fmt(& self, f : & mut std::fmt::Formatter < '_
-        >) -> std::fmt::Result { f.write_str(& self.0) } }
+        impl std::fmt::Display for $t {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                f.write_str(&self.0)
+            }
+        }
     };
 }
 macro_rules! deserialize_impl_2 {
     ($t:ty) => {
-        impl < 'de > serde::Deserialize < 'de > for $t { fn deserialize < D :
-        serde::Deserializer < 'de > > (d : D) -> Result < Self, D::Error > { let s = <
-        String as serde::Deserialize > ::deserialize(d) ?; Self::try_from(s)
-        .map_err(serde::de::Error::custom) } }
+        impl<'de> serde::Deserialize<'de> for $t {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                let s = <String as serde::Deserialize>::deserialize(d)?;
+                Self::try_from(s).map_err(serde::de::Error::custom)
+            }
+        }
     };
 }
 macro_rules! validate_impl_3 {
     ($t:ty) => {
-        impl runtime::Validate for $t { fn validate(& self, path : &
-        runtime::InstancePath < '_ >, out : & mut Vec < runtime::Violation >) { if let
-        Some(v) = & self.id { runtime::check_format(out, &
-        runtime::InstancePath::Key(path, "id"), v.as_str(), "uuid"); } } }
+        impl runtime::Validate for $t {
+            fn validate(
+                &self,
+                path: &runtime::InstancePath<'_>,
+                out: &mut Vec<runtime::Violation>,
+            ) {
+                if let Some(v) = &self.id {
+                    runtime::check_format(
+                        out,
+                        &runtime::InstancePath::Key(path, "id"),
+                        v.as_str(),
+                        "uuid",
+                    );
+                }
+            }
+        }
     };
 }
 use super::runtime;

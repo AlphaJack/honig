@@ -13,11 +13,23 @@
 )]
 macro_rules! validate_impl {
     ($t:ty) => {
-        impl runtime::Validate for $t { fn validate(& self, path : &
-        runtime::InstancePath < '_ >, out : & mut Vec < runtime::Violation >) {
-        runtime::check_format(out, & runtime::InstancePath::Key(&
-        runtime::InstancePath::Key(path, "path"), "orderId"), self.order_id.as_str(),
-        "uuid"); } }
+        impl runtime::Validate for $t {
+            fn validate(
+                &self,
+                path: &runtime::InstancePath<'_>,
+                out: &mut Vec<runtime::Violation>,
+            ) {
+                runtime::check_format(
+                    out,
+                    &runtime::InstancePath::Key(
+                        &runtime::InstancePath::Key(path, "path"),
+                        "orderId",
+                    ),
+                    self.order_id.as_str(),
+                    "uuid",
+                );
+            }
+        }
     };
 }
 use super::runtime;

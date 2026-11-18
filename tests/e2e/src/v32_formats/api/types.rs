@@ -13,15 +13,20 @@
 )]
 macro_rules! deserialize_impl {
     ($t:ty) => {
-        impl < 'de > serde::Deserialize < 'de > for $t { fn deserialize < D :
-        serde::Deserializer < 'de > > (d : D) -> Result < Self, D::Error > {
-        Self::deserialize(runtime::NoSeq(d)) } }
+        impl<'de> serde::Deserialize<'de> for $t {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                Self::deserialize(runtime::NoSeq(d))
+            }
+        }
     };
 }
 macro_rules! serialize_impl {
     ($t:ty) => {
-        impl serde::Serialize for $t { fn serialize < S : serde::Serializer > (& self, s
-        : S) -> Result < S::Ok, S::Error > { Self::serialize(self, s) } }
+        impl serde::Serialize for $t {
+            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                Self::serialize(self, s)
+            }
+        }
     };
 }
 macro_rules! validate_impl {
@@ -31,8 +36,11 @@ macro_rules! validate_impl {
 }
 macro_rules! serialize_impl_2 {
     ($t:ty) => {
-        impl serde::Serialize for $t { fn serialize < S : serde::Serializer > (& self, s
-        : S) -> Result < S::Ok, S::Error > { s.serialize_str(Self::VALUE) } }
+        impl serde::Serialize for $t {
+            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                s.serialize_str(Self::VALUE)
+            }
+        }
     };
 }
 use super::runtime;
@@ -326,11 +334,18 @@ impl runtime::Validate for Event {
             );
         }
         if let Some(v) = &self.amount {
-            runtime::check_range(
+            runtime::check_decimal_range(
                 out,
                 &runtime::InstancePath::Key(path, "amount"),
-                v.as_f64(),
-                [Some(0.0), None, None, None],
+                v.as_str(),
+                [Some("0"), None, None, None],
+            );
+        }
+        if let Some(v) = &self.sum {
+            runtime::check_decimal128(
+                out,
+                &runtime::InstancePath::Key(path, "sum"),
+                v.as_str(),
             );
         }
         if let Some(v) = &self.local {
@@ -355,6 +370,14 @@ impl runtime::Validate for Event {
                 &runtime::InstancePath::Key(path, "price"),
                 v.as_str(),
                 "decimal",
+            );
+        }
+        if let Some(v) = &self.total {
+            runtime::check_format(
+                out,
+                &runtime::InstancePath::Key(path, "total"),
+                v.as_str(),
+                "decimal128",
             );
         }
         if let Some(v) = &self.opens {
@@ -497,11 +520,11 @@ impl runtime::Validate for Card {
                     }),
             );
         }
-        runtime::check_range(
+        runtime::check_decimal_range(
             out,
             &runtime::InstancePath::Key(path, "amount"),
-            self.amount.as_f64(),
-            [Some(0.0), None, None, None],
+            self.amount.as_str(),
+            [Some("0"), None, None, None],
         );
     }
 }
@@ -539,11 +562,11 @@ impl runtime::Validate for Transfer {
                     }),
             );
         }
-        runtime::check_range(
+        runtime::check_decimal_range(
             out,
             &runtime::InstancePath::Key(path, "amount"),
-            self.amount.as_f64(),
-            [Some(0.0), None, None, None],
+            self.amount.as_str(),
+            [Some("0"), None, None, None],
         );
     }
 }

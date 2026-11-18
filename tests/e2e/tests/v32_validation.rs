@@ -124,6 +124,13 @@ impl api::Api for Users {
     ) -> impl Future<Output = Result<ops::add_badge::Response, api::ApiError>> + Send {
         std::future::ready(Ok(ops::add_badge::Response::Created))
     }
+    fn add_closed(
+        &self,
+        _: ops::add_closed::Params,
+        _: &api::Context<'_>,
+    ) -> impl Future<Output = Result<ops::add_closed::Response, api::ApiError>> + Send {
+        std::future::ready(Ok(ops::add_closed::Response::Created))
+    }
 }
 
 fn post(path: &str, media: &str, body: Vec<u8>) -> api::Response {
@@ -271,6 +278,13 @@ impl api::Api for Recording {
         _: &api::Context<'_>,
     ) -> impl Future<Output = Result<ops::add_badge::Response, api::ApiError>> + Send {
         std::future::ready(Ok(ops::add_badge::Response::Created))
+    }
+    fn add_closed(
+        &self,
+        _: ops::add_closed::Params,
+        _: &api::Context<'_>,
+    ) -> impl Future<Output = Result<ops::add_closed::Response, api::ApiError>> + Send {
+        std::future::ready(Ok(ops::add_closed::Response::Created))
     }
 }
 
@@ -529,4 +543,73 @@ fn a_recursive_union_decodes_in_time_linear_in_its_depth() {
         json = format!(r#"{{"items":[{json}],"x":1}}"#);
     }
     assert!(serde_json::from_str::<types::Tree>(&json).is_ok());
+}
+
+/// A decimal is checked on its digits: `0.09999999999999999999` is below `minimum: 0.1` although its nearest `f64` is
+/// `0.1`, and `100000000000000000.001` is not a multiple of `0.01` although every `f64` quotient that large is whole.
+#[test]
+fn decimal_keywords_are_exact() {
+    let violations = |v: &str| {
+        let e: types::Exact = serde_json::from_str(v).expect("decodes");
+        let mut out = vec![];
+        api::Validate::validate(&e, &api::InstancePath::Root, &mut out);
+        out.into_iter().map(|v| v.message).collect::<Vec<_>>()
+    };
+    assert!(violations(r#"{"tenth": 0.1}"#).is_empty());
+    assert_eq!(
+        violations(r#"{"tenth": 0.09999999999999999999}"#),
+        ["0.09999999999999999999 is less than the minimum 0.1"]
+    );
+    assert!(violations(r#"{"cents": 100000000000000000.01}"#).is_empty());
+    assert_eq!(violations(r#"{"cents": 100000000000000000.001}"#), ["is not a multiple of 0.01"]);
+    assert!(violations(r#"{"cents": 0.07}"#).is_empty(), "0.07 / 0.01 is not a whole f64");
+}
+
+/// Integer keywords are checked exactly: a bound that no value of the type meets refuses every value, a fractional
+/// `multipleOf` takes the integers that are multiples of it, and one past the type takes only `0`.
+#[test]
+fn integer_keywords_are_exact() {
+    let violations = |v: serde_json::Value| {
+        let d: types::Degenerate = serde_json::from_value(v).expect("decodes");
+        let mut out = vec![];
+        api::Validate::validate(&d, &api::InstancePath::Root, &mut out);
+        out.into_iter().map(|v| v.message).collect::<Vec<_>>()
+    };
+    for never in [0, 1, 255] {
+        assert_eq!(
+            violations(json!({"never": never})),
+            [format!("`maximum: -1` leaves no value of this integer type, not even {never}")]
+        );
+    }
+    assert_eq!(violations(json!({"huge": i64::MAX})).len(), 1, "`minimum: 1e40` leaves no int64");
+    for (fives, ok) in [(0, true), (5, true), (-15, true), (1, false), (2, false), (25, true)] {
+        assert_eq!(violations(json!({"fives": fives})).is_empty(), ok, "{fives} as a multiple of 2.5");
+    }
+    assert!(violations(json!({"zero": 0})).is_empty());
+    assert!(!violations(json!({"zero": 200})).is_empty(), "a uint8 multiple of 1000 is 0");
+    for (half, ok) in [(0, false), (1, true), (3, true), (4, false)] {
+        assert_eq!(violations(json!({"half": half})).is_empty(), ok, "{half} in [0.5, 3.5)");
+    }
+}
+
+/// `additionalProperties: false` holds in every media type of a body: a field that the schema does not declare is a
+/// bad request as JSON, as a form and as XML.
+#[test]
+fn a_closed_object_refuses_unknown_fields_in_every_media_type() {
+    let cases: [(&str, &str, &str); 3] = [
+        ("application/json", r#"{"name":"a"}"#, r#"{"name":"a","extra":"b"}"#),
+        ("application/x-www-form-urlencoded", "name=a", "name=a&extra=b"),
+        ("application/xml", "<closed><name>a</name></closed>", "<closed><name>a</name><extra>b</extra></closed>"),
+    ];
+    for (media, ok, extra) in cases {
+        let r = post("/closed", media, ok.as_bytes().to_vec());
+        assert_eq!(r.status().as_u16(), 201, "{media}: {}", String::from_utf8_lossy(r.body().bytes()));
+        let r = post("/closed", media, extra.as_bytes().to_vec());
+        assert_eq!(
+            r.status().as_u16(),
+            400,
+            "{media} with an unknown field: {}",
+            String::from_utf8_lossy(r.body().bytes())
+        );
+    }
 }

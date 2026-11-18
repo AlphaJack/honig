@@ -14,15 +14,20 @@
 )]
 macro_rules! deserialize_impl {
     ($t:ty) => {
-        impl < 'de > serde::Deserialize < 'de > for $t { fn deserialize < D :
-        serde::Deserializer < 'de > > (d : D) -> Result < Self, D::Error > {
-        Self::deserialize(runtime::NoSeq(d)) } }
+        impl<'de> serde::Deserialize<'de> for $t {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                Self::deserialize(runtime::NoSeq(d))
+            }
+        }
     };
 }
 macro_rules! serialize_impl {
     ($t:ty) => {
-        impl serde::Serialize for $t { fn serialize < S : serde::Serializer > (& self, s
-        : S) -> Result < S::Ok, S::Error > { Self::serialize(self, s) } }
+        impl serde::Serialize for $t {
+            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                Self::serialize(self, s)
+            }
+        }
     };
 }
 macro_rules! validate_impl {
@@ -32,103 +37,226 @@ macro_rules! validate_impl {
 }
 macro_rules! serialize_impl_2 {
     ($t:ty) => {
-        impl serde::Serialize for $t { fn serialize < S : serde::Serializer > (& self, s
-        : S) -> Result < S::Ok, S::Error > { match self { Self::Product(v) => { let mut j
-        = serde_json::to_value(v).map_err(serde::ser::Error::custom) ?; if let
-        serde_json::Value::Object(m) = & mut j { m.insert("type".to_owned(),
-        serde_json::Value::String("hardware".to_owned())); }
-        serde::Serialize::serialize(& j, s) }, Self::Variant(v) => { let mut j =
-        serde_json::to_value(v).map_err(serde::ser::Error::custom) ?; if let
-        serde_json::Value::Object(m) = & mut j { m.insert("type".to_owned(),
-        serde_json::Value::String("size".to_owned())); } serde::Serialize::serialize(& j,
-        s) }, } } }
+        impl serde::Serialize for $t {
+            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                match self {
+                    Self::Product(v) => {
+                        let mut j = serde_json::to_value(v).map_err(serde::ser::Error::custom)?;
+                        if let serde_json::Value::Object(m) = &mut j {
+                            m.insert(
+                                "type".to_owned(),
+                                serde_json::Value::String("hardware".to_owned()),
+                            );
+                        }
+                        serde::Serialize::serialize(&j, s)
+                    }
+                    Self::Variant(v) => {
+                        let mut j = serde_json::to_value(v).map_err(serde::ser::Error::custom)?;
+                        if let serde_json::Value::Object(m) = &mut j {
+                            m.insert(
+                                "type".to_owned(),
+                                serde_json::Value::String("size".to_owned()),
+                            );
+                        }
+                        serde::Serialize::serialize(&j, s)
+                    }
+                }
+            }
+        }
     };
 }
 macro_rules! deserialize_impl_2 {
     ($t:ty) => {
-        impl < 'de > serde::Deserialize < 'de > for $t { fn deserialize < D :
-        serde::Deserializer < 'de > > (d : D) -> Result < Self, D::Error > {
-        runtime::tagged:: < D, Self > (d) } }
+        impl<'de> serde::Deserialize<'de> for $t {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                runtime::tagged::<D, Self>(d)
+            }
+        }
     };
 }
 macro_rules! validate_impl_2 {
     ($t:ty) => {
-        impl runtime::Validate for $t { fn validate(& self, path : &
-        runtime::InstancePath < '_ >, out : & mut Vec < runtime::Violation >) { match
-        self { Self::Product(x) => { runtime::Validate::validate(x, path, out); },
-        Self::Variant(x) => { runtime::Validate::validate(x, path, out); }, } } }
+        impl runtime::Validate for $t {
+            fn validate(
+                &self,
+                path: &runtime::InstancePath<'_>,
+                out: &mut Vec<runtime::Violation>,
+            ) {
+                match self {
+                    Self::Product(x) => {
+                        runtime::Validate::validate(x, path, out);
+                    }
+                    Self::Variant(x) => {
+                        runtime::Validate::validate(x, path, out);
+                    }
+                }
+            }
+        }
     };
 }
 macro_rules! validate_impl_3 {
     ($t:ty) => {
-        impl runtime::Validate for $t { fn validate(& self, path : &
-        runtime::InstancePath < '_ >, out : & mut Vec < runtime::Violation >) { if let
-        Some(v) = & self.shipping { runtime::Validate::validate(v, &
-        runtime::InstancePath::Key(path, "shipping"), out); } } }
+        impl runtime::Validate for $t {
+            fn validate(
+                &self,
+                path: &runtime::InstancePath<'_>,
+                out: &mut Vec<runtime::Violation>,
+            ) {
+                if let Some(v) = &self.shipping {
+                    runtime::Validate::validate(
+                        v,
+                        &runtime::InstancePath::Key(path, "shipping"),
+                        out,
+                    );
+                }
+            }
+        }
     };
 }
 macro_rules! validate_impl_4 {
     ($t:ty) => {
-        impl runtime::Validate for $t { fn validate(& self, path : &
-        runtime::InstancePath < '_ >, out : & mut Vec < runtime::Violation >) { if let
-        Some(v) = & self.id { runtime::check_format(out, &
-        runtime::InstancePath::Key(path, "id"), v.as_str(), "uuid"); }
-        runtime::Validate::validate(& self.product, & runtime::InstancePath::Key(path,
-        "product"), out); if let Some(v) = & self.occurred_at {
-        runtime::check_format(out, & runtime::InstancePath::Key(path, "occurredAt"), v
-        .as_str(), "date-time"); } } }
+        impl runtime::Validate for $t {
+            fn validate(
+                &self,
+                path: &runtime::InstancePath<'_>,
+                out: &mut Vec<runtime::Violation>,
+            ) {
+                if let Some(v) = &self.id {
+                    runtime::check_format(
+                        out,
+                        &runtime::InstancePath::Key(path, "id"),
+                        v.as_str(),
+                        "uuid",
+                    );
+                }
+                runtime::Validate::validate(
+                    &self.product,
+                    &runtime::InstancePath::Key(path, "product"),
+                    out,
+                );
+                if let Some(v) = &self.occurred_at {
+                    runtime::check_format(
+                        out,
+                        &runtime::InstancePath::Key(path, "occurredAt"),
+                        v.as_str(),
+                        "date-time",
+                    );
+                }
+            }
+        }
     };
 }
 macro_rules! try_from_impl {
     ($t:ty) => {
-        impl TryFrom < & str > for $t { type Error = String; fn try_from(s : & str) ->
-        Result < Self, String > { match s { "hardware" => Ok(Self::Hardware), "software"
-        => Ok(Self::Software), "service" => Ok(Self::Service), "accessory" =>
-        Ok(Self::Accessory), "subscription" => Ok(Self::Subscription), other =>
-        Err(format!("`{other}` is not one of `hardware`, `software`, `service`, `accessory`, `subscription`")),
-        } } }
+        impl TryFrom<&str> for $t {
+            type Error = String;
+            fn try_from(s: &str) -> Result<Self, String> {
+                match s {
+                    "hardware" => Ok(Self::Hardware),
+                    "software" => Ok(Self::Software),
+                    "service" => Ok(Self::Service),
+                    "accessory" => Ok(Self::Accessory),
+                    "subscription" => Ok(Self::Subscription),
+                    other => {
+                        Err(
+                            format!(
+                                "`{other}` is not one of `hardware`, `software`, `service`, `accessory`, `subscription`"
+                            ),
+                        )
+                    }
+                }
+            }
+        }
     };
 }
 macro_rules! serialize_impl_3 {
     ($t:ty) => {
-        impl serde::Serialize for $t { fn serialize < S : serde::Serializer > (& self, s
-        : S) -> Result < S::Ok, S::Error > { Self::serialize(self,
-        runtime::UniqueKeys(s)) } }
+        impl serde::Serialize for $t {
+            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                Self::serialize(self, runtime::UniqueKeys(s))
+            }
+        }
     };
 }
 macro_rules! validate_impl_5 {
     ($t:ty) => {
-        impl runtime::Validate for $t { fn validate(& self, path : &
-        runtime::InstancePath < '_ >, out : & mut Vec < runtime::Violation >) { if let
-        Some(v) = & self.product { runtime::Validate::validate(v, &
-        runtime::InstancePath::Key(path, "product"), out); } } }
+        impl runtime::Validate for $t {
+            fn validate(
+                &self,
+                path: &runtime::InstancePath<'_>,
+                out: &mut Vec<runtime::Violation>,
+            ) {
+                if let Some(v) = &self.product {
+                    runtime::Validate::validate(
+                        v,
+                        &runtime::InstancePath::Key(path, "product"),
+                        out,
+                    );
+                }
+            }
+        }
     };
 }
 macro_rules! validate_impl_6 {
     ($t:ty) => {
-        impl runtime::Validate for $t { fn validate(& self, path : &
-        runtime::InstancePath < '_ >, out : & mut Vec < runtime::Violation >) { if let
-        Some(v) = & self.data { { let base = & runtime::InstancePath::Key(path, "data");
-        for (i, v) in v.iter().enumerate() { { static SCHEMA : std::sync::OnceLock <
-        serde_json::Value > = std::sync::OnceLock::new(); let value =
-        runtime::to_value(v).unwrap_or_default(); runtime::check_schema(out, &
-        runtime::InstancePath::Index(base, i), & value, SCHEMA.get_or_init(| |
-        serde_json::from_str("{\"$dynamicAnchor\":\"itemType\",\"allOf\":[{\"type\":\"object\",\"required\":[\"name\"],\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"integer\",\"format\":\"int64\",\"readOnly\":true},\"name\":{\"type\":\"string\"},\"description\":{\"type\":[\"string\",\"null\"]},\"type\":{\"type\":\"string\",\"enum\":[\"hardware\",\"software\",\"service\",\"accessory\",\"subscription\"],\"x-enum-varnames\":[\"Hardware\",\"Software\",\"Service\",\"Accessory\",\"Subscription\"]},\"rating\":{\"type\":\"number\",\"format\":\"float\",\"minimum\":0,\"maximum\":1},\"dimensions\":{\"type\":\"object\",\"additionalProperties\":{\"type\":\"number\",\"format\":\"float\"},\"properties\":{\"weight\":{\"type\":\"number\",\"format\":\"float\",\"exclusiveMinimum\":0},\"width\":{\"type\":\"number\",\"format\":\"float\",\"exclusiveMinimum\":0},\"height\":{\"type\":\"number\",\"format\":\"float\"},\"price\":{\"type\":\"object\",\"additionalProperties\":{\"type\":\"number\",\"format\":\"float\"},\"properties\":{\"min\":{\"type\":\"number\",\"format\":\"float\"},\"max\":{\"type\":\"number\",\"format\":\"float\"},\"average\":{\"type\":\"number\",\"format\":\"float\"}}}}},\"materials\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"additionalProperties\":{\"type\":\"string\"},\"properties\":{\"material\":{\"type\":\"string\"},\"percentage\":{\"type\":\"number\",\"format\":\"float\",\"exclusiveMaximum\":100}}}},\"listedAt\":{\"type\":\"string\",\"format\":\"date-time\"},\"image\":{\"type\":[\"string\",\"null\"]},\"variants\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"required\":[\"name\"],\"properties\":{\"id\":{\"type\":\"integer\",\"format\":\"int64\",\"readOnly\":true},\"name\":{\"type\":\"string\"},\"description\":{\"type\":[\"string\",\"null\"]},\"length\":{\"type\":\"number\",\"format\":\"float\"},\"type\":{\"type\":\"string\",\"enum\":[\"size\",\"color\",\"edition\"],\"x-enum-varnames\":[\"Size\",\"Color\",\"Edition\"]},\"shipping\":{\"type\":\"object\",\"properties\":{\"product\":{\"$ref\":\"#/$defs/~1components~1schemas~1Product\"},\"deliveryDays\":{\"type\":\"number\",\"format\":\"float\"},\"distance\":{\"type\":\"number\",\"format\":\"float\"}}}}}},\"creator\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"integer\",\"format\":\"int64\",\"readOnly\":true},\"name\":{\"type\":\"string\"}}},\"tags\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"lastUpdated\":{\"type\":\"string\",\"format\":\"date-time\",\"readOnly\":true},\"successCallbackUrl\":{\"type\":\"string\",\"format\":\"uri\"},\"failureCallbackUrl\":{\"type\":\"string\",\"format\":\"uri\"}}}],\"$defs\":{\"~1components~1schemas~1Product\":{\"type\":\"object\",\"required\":[\"name\"],\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"integer\",\"format\":\"int64\",\"readOnly\":true},\"name\":{\"type\":\"string\"},\"description\":{\"type\":[\"string\",\"null\"]},\"type\":{\"type\":\"string\",\"enum\":[\"hardware\",\"software\",\"service\",\"accessory\",\"subscription\"],\"x-enum-varnames\":[\"Hardware\",\"Software\",\"Service\",\"Accessory\",\"Subscription\"]},\"rating\":{\"type\":\"number\",\"format\":\"float\",\"minimum\":0,\"maximum\":1},\"dimensions\":{\"type\":\"object\",\"additionalProperties\":{\"type\":\"number\",\"format\":\"float\"},\"properties\":{\"weight\":{\"type\":\"number\",\"format\":\"float\",\"exclusiveMinimum\":0},\"width\":{\"type\":\"number\",\"format\":\"float\",\"exclusiveMinimum\":0},\"height\":{\"type\":\"number\",\"format\":\"float\"},\"price\":{\"type\":\"object\",\"additionalProperties\":{\"type\":\"number\",\"format\":\"float\"},\"properties\":{\"min\":{\"type\":\"number\",\"format\":\"float\"},\"max\":{\"type\":\"number\",\"format\":\"float\"},\"average\":{\"type\":\"number\",\"format\":\"float\"}}}}},\"materials\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"additionalProperties\":{\"type\":\"string\"},\"properties\":{\"material\":{\"type\":\"string\"},\"percentage\":{\"type\":\"number\",\"format\":\"float\",\"exclusiveMaximum\":100}}}},\"listedAt\":{\"type\":\"string\",\"format\":\"date-time\"},\"image\":{\"type\":[\"string\",\"null\"]},\"variants\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"required\":[\"name\"],\"properties\":{\"id\":{\"type\":\"integer\",\"format\":\"int64\",\"readOnly\":true},\"name\":{\"type\":\"string\"},\"description\":{\"type\":[\"string\",\"null\"]},\"length\":{\"type\":\"number\",\"format\":\"float\"},\"type\":{\"type\":\"string\",\"enum\":[\"size\",\"color\",\"edition\"],\"x-enum-varnames\":[\"Size\",\"Color\",\"Edition\"]},\"shipping\":{\"type\":\"object\",\"properties\":{\"product\":{\"$ref\":\"#/$defs/~1components~1schemas~1Product\"},\"deliveryDays\":{\"type\":\"number\",\"format\":\"float\"},\"distance\":{\"type\":\"number\",\"format\":\"float\"}}}}}},\"creator\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"integer\",\"format\":\"int64\",\"readOnly\":true},\"name\":{\"type\":\"string\"}}},\"tags\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"lastUpdated\":{\"type\":\"string\",\"format\":\"date-time\",\"readOnly\":true},\"successCallbackUrl\":{\"type\":\"string\",\"format\":\"uri\"},\"failureCallbackUrl\":{\"type\":\"string\",\"format\":\"uri\"}}}}}")
-        .unwrap_or_default())); } } } } } }
+        impl runtime::Validate for $t {
+            fn validate(
+                &self,
+                path: &runtime::InstancePath<'_>,
+                out: &mut Vec<runtime::Violation>,
+            ) {
+                if let Some(v) = &self.data {
+                    {
+                        let base = &runtime::InstancePath::Key(path, "data");
+                        for (i, v) in v.iter().enumerate() {
+                            {
+                                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                                let value = runtime::to_value(v).unwrap_or_default();
+                                runtime::check_schema(
+                                    out,
+                                    &runtime::InstancePath::Index(base, i),
+                                    &value,
+                                    SCHEMA
+                                        .get_or_init(|| {
+                                            serde_json::from_str(
+                                                    "{\"$dynamicAnchor\":\"itemType\",\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Product\"}],\"$defs\":{\"/components/schemas/Product\":{\"type\":\"object\",\"required\":[\"name\"],\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"integer\",\"format\":\"int64\",\"readOnly\":true},\"name\":{\"type\":\"string\"},\"description\":{\"type\":[\"string\",\"null\"]},\"type\":{\"type\":\"string\",\"enum\":[\"hardware\",\"software\",\"service\",\"accessory\",\"subscription\"],\"x-enum-varnames\":[\"Hardware\",\"Software\",\"Service\",\"Accessory\",\"Subscription\"]},\"rating\":{\"type\":\"number\",\"format\":\"float\",\"minimum\":0,\"maximum\":1},\"dimensions\":{\"type\":\"object\",\"additionalProperties\":{\"type\":\"number\",\"format\":\"float\"},\"properties\":{\"weight\":{\"type\":\"number\",\"format\":\"float\",\"exclusiveMinimum\":0},\"width\":{\"type\":\"number\",\"format\":\"float\",\"exclusiveMinimum\":0},\"height\":{\"type\":\"number\",\"format\":\"float\"},\"price\":{\"type\":\"object\",\"additionalProperties\":{\"type\":\"number\",\"format\":\"float\"},\"properties\":{\"min\":{\"type\":\"number\",\"format\":\"float\"},\"max\":{\"type\":\"number\",\"format\":\"float\"},\"average\":{\"type\":\"number\",\"format\":\"float\"}}}}},\"materials\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"additionalProperties\":{\"type\":\"string\"},\"properties\":{\"material\":{\"type\":\"string\"},\"percentage\":{\"type\":\"number\",\"format\":\"float\",\"exclusiveMaximum\":100}}}},\"listedAt\":{\"type\":\"string\",\"format\":\"date-time\"},\"image\":{\"type\":[\"string\",\"null\"]},\"variants\":{\"type\":\"array\",\"items\":{\"$ref\":\"#/$defs/~1components~1schemas~1Variant\"}},\"creator\":{\"$ref\":\"#/$defs/~1components~1schemas~1User\"},\"tags\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"lastUpdated\":{\"type\":\"string\",\"format\":\"date-time\",\"readOnly\":true},\"successCallbackUrl\":{\"type\":\"string\",\"format\":\"uri\"},\"failureCallbackUrl\":{\"type\":\"string\",\"format\":\"uri\"}}},\"/components/schemas/Variant\":{\"type\":\"object\",\"required\":[\"name\"],\"properties\":{\"id\":{\"type\":\"integer\",\"format\":\"int64\",\"readOnly\":true},\"name\":{\"type\":\"string\"},\"description\":{\"type\":[\"string\",\"null\"]},\"length\":{\"type\":\"number\",\"format\":\"float\"},\"type\":{\"type\":\"string\",\"enum\":[\"size\",\"color\",\"edition\"],\"x-enum-varnames\":[\"Size\",\"Color\",\"Edition\"]},\"shipping\":{\"type\":\"object\",\"properties\":{\"product\":{\"$ref\":\"#/$defs/~1components~1schemas~1Product\"},\"deliveryDays\":{\"type\":\"number\",\"format\":\"float\"},\"distance\":{\"type\":\"number\",\"format\":\"float\"}}}}},\"/components/schemas/User\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"integer\",\"format\":\"int64\",\"readOnly\":true},\"name\":{\"type\":\"string\"}}}}}",
+                                                )
+                                                .unwrap_or_default()
+                                        }),
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+        }
     };
 }
 use super::runtime;
 macro_rules! str_enum_impls {
     ($n:ident) => {
-        impl std::fmt::Display for $n { fn fmt(& self, f : & mut std::fmt::Formatter < '_
-        >) -> std::fmt::Result { f.write_str(self.as_str()) } } impl std::str::FromStr
-        for $n { type Err = String; fn from_str(s : & str) -> Result < Self, Self::Err >
-        { Self::try_from(s) } } impl serde::Serialize for $n { fn serialize < S :
-        serde::Serializer > (& self, s : S) -> Result < S::Ok, S::Error > { s
-        .serialize_str(self.as_str()) } } impl < 'de > serde::Deserialize < 'de > for $n
-        { fn deserialize < D : serde::Deserializer < 'de >> (d : D) -> Result < Self,
-        D::Error > { let s = < std::borrow::Cow < 'de, str > as serde::Deserialize >
-        ::deserialize(d) ?; Self::try_from(& * s).map_err(serde::de::Error::custom) } }
+        impl std::fmt::Display for $n {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                f.write_str(self.as_str())
+            }
+        }
+        impl std::str::FromStr for $n {
+            type Err = String;
+            fn from_str(s: &str) -> Result<Self, Self::Err> {
+                Self::try_from(s)
+            }
+        }
+        impl serde::Serialize for $n {
+            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                s.serialize_str(self.as_str())
+            }
+        }
+        impl<'de> serde::Deserialize<'de> for $n {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                let s = <std::borrow::Cow<'de, str> as serde::Deserialize>::deserialize(d)?;
+                Self::try_from(&*s).map_err(serde::de::Error::custom)
+            }
+        }
     };
 }
 /// A user

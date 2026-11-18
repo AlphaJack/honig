@@ -137,3 +137,5 @@ A string with a `pattern` is a type of its own. Only valid values can be that ty
 ```
 
 Decoding checks in the same way. So a request with a bad value gets `400`.
+
+Integer keywords are exact. A fractional bound rounds inward, `multipleOf: 2.5` takes the integers that are multiples of 5, and a bound that no value of the type meets refuses every value: `maximum: -1` on a `uint8` leaves none.

@@ -95,7 +95,7 @@ pub mod create_shipment {
                     SCHEMA
                         .get_or_init(|| {
                             serde_json::from_str(
-                                    "{\"type\":\"object\",\"required\":[\"kind\",\"parcels\"],\"properties\":{\"kind\":{\"type\":\"string\",\"enum\":[\"domestic\",\"international\"]},\"customs\":{\"type\":\"string\"},\"insured\":{\"type\":\"boolean\"},\"insurer\":{\"type\":\"string\"},\"options\":{\"type\":\"object\",\"additionalProperties\":false},\"rating\":{\"minimum\":1},\"meta\":{\"properties\":{\"count\":{\"type\":\"integer\"}}},\"label\":{\"type\":\"string\",\"minLength\":4,\"default\":\"bad\"},\"parcels\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"fragile\":{\"type\":\"boolean\"}}},\"contains\":{\"properties\":{\"fragile\":{\"const\":true}},\"required\":[\"fragile\"]},\"maxContains\":2},\"scores\":{\"type\":\"object\",\"patternProperties\":{\"^[a-z]+$\":{\"type\":\"integer\",\"minimum\":0}},\"additionalProperties\":false},\"priority\":{\"type\":[\"number\",\"null\"],\"minimum\":0,\"maximum\":2},\"weight\":{\"type\":[\"integer\",\"null\"],\"minimum\":256},\"labels\":{\"type\":\"object\",\"propertyNames\":{\"pattern\":\"^[a-z]+$\"},\"patternProperties\":{\"^x\":{\"type\":\"string\",\"maxLength\":3}},\"additionalProperties\":{\"type\":\"string\"}}},\"dependentRequired\":{\"insured\":[\"insurer\"]},\"if\":{\"properties\":{\"kind\":{\"const\":\"international\"}}},\"then\":{\"required\":[\"customs\"]},\"not\":{\"required\":[\"customs\",\"insurer\"],\"properties\":{\"customs\":{\"const\":\"none\"}}}}",
+                                    "{\"type\":\"object\",\"required\":[\"kind\",\"parcels\"],\"properties\":{\"kind\":{\"type\":\"string\",\"enum\":[\"domestic\",\"international\"]},\"customs\":{\"type\":\"string\"},\"insured\":{\"type\":\"boolean\"},\"insurer\":{\"type\":\"string\"},\"options\":{\"$ref\":\"#/$defs/~1components~1schemas~1NoOptions\"},\"rating\":{\"minimum\":1},\"meta\":{\"properties\":{\"count\":{\"type\":\"integer\"}}},\"label\":{\"type\":\"string\",\"minLength\":4,\"default\":\"bad\"},\"parcels\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"fragile\":{\"type\":\"boolean\"}}},\"contains\":{\"properties\":{\"fragile\":{\"const\":true}},\"required\":[\"fragile\"]},\"maxContains\":2},\"scores\":{\"type\":\"object\",\"patternProperties\":{\"^[a-z]+$\":{\"type\":\"integer\",\"minimum\":0}},\"additionalProperties\":false},\"priority\":{\"type\":[\"number\",\"null\"],\"minimum\":0,\"maximum\":2},\"weight\":{\"type\":[\"integer\",\"null\"],\"minimum\":256},\"labels\":{\"type\":\"object\",\"propertyNames\":{\"pattern\":\"^[a-z]+$\"},\"patternProperties\":{\"^x\":{\"type\":\"string\",\"maxLength\":3}},\"additionalProperties\":{\"type\":\"string\"}}},\"dependentRequired\":{\"insured\":[\"insurer\"]},\"if\":{\"properties\":{\"kind\":{\"const\":\"international\"}}},\"then\":{\"required\":[\"customs\"]},\"not\":{\"required\":[\"customs\",\"insurer\"],\"properties\":{\"customs\":{\"const\":\"none\"}}},\"$defs\":{\"/components/schemas/NoOptions\":{\"type\":\"object\",\"additionalProperties\":false}}}",
                                 )
                                 .unwrap_or_default()
                         }),
@@ -184,6 +184,34 @@ pub mod add_member {
     pub enum Body {
         Json(types::User),
         XWwwFormUrlencoded(types::User),
+    }
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub enum Response {
+        /// Created.
+        Created,
+    }
+}
+pub mod add_closed {
+    use super::super::types;
+    use super::super::runtime;
+    pub const METHOD: &str = "POST";
+    pub const PATH: &str = "/closed";
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub struct Params {
+        pub body: Body,
+    }
+    impl Params {
+        #[must_use]
+        pub const fn new(body: Body) -> Self {
+            Self { body }
+        }
+    }
+    impl runtime::Validate for Params {}
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub enum Body {
+        Json(types::Closed),
+        XWwwFormUrlencoded(types::Closed),
+        Xml(types::Closed),
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {

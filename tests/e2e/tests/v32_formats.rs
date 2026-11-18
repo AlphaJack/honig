@@ -230,3 +230,24 @@ fn a_union_checks_its_branch_and_refuses_a_value_no_branch_takes() {
     assert_eq!(check(json!({"charge": {"refund": 1}})), Vec::<String>::new());
     assert!(event(json!({"charge": {"neither": 1}})).is_err());
 }
+
+/// `decimal128`, as a number and as a string, holds what IEEE 754 decimal128 holds: at most 34 significant digits
+/// within its exponent range.
+#[test]
+fn decimal128_holds_what_ieee_decimal128_holds() {
+    let violations = |extra: &str| {
+        let e: types::Event = serde_json::from_str(&format!(r#"{{"id": "x", "at": "t", {extra}}}"#)).expect("decodes");
+        let mut out = vec![];
+        api::Validate::validate(&e, &api::InstancePath::Root, &mut out);
+        out.into_iter().filter(|v| v.path == "/sum" || v.path == "/total").map(|v| v.message).collect::<Vec<_>>()
+    };
+    let digits34 = "1234567890123456789012345678901234";
+    assert_eq!(violations(&format!(r#""sum": {digits34}e-10, "total": "{digits34}e-10""#)), Vec::<String>::new());
+    let digits35 = format!("{digits34}5");
+    assert_eq!(
+        violations(&format!(r#""sum": {digits35}"#)),
+        [format!("`{digits35}` has 35 significant digits, more than the 34 of decimal128")]
+    );
+    assert_eq!(violations(&format!(r#""total": "{digits35}""#)).len(), 1, "the string too");
+    assert_eq!(violations(r#""sum": 1e6145"#), ["`1e6145` is out of the range of decimal128"]);
+}

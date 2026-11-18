@@ -91,8 +91,13 @@ pub(crate) fn join(pointer: &str, token: &str) -> String {
 /// Does `key` (in an object found under `parent`) hold literal data?
 ///
 /// Examples, enum values and schema defaults are data. `default` under
-/// `responses` is the default response. That is structure.
+/// `responses` is the default response. That is structure. Under a map of
+/// names (`properties`, `definitions`, ...) every key is a name: a property
+/// called `default` holds a schema (Kubernetes' `LimitRangeItem`).
 pub(crate) fn is_data(parent: &str, key: &str) -> bool {
+    if matches!(parent, "properties" | "patternProperties" | "definitions" | "$defs" | "dependentSchemas" | "schemas") {
+        return false;
+    }
     match key {
         "example" | "examples" | "enum" | "const" => true,
         "default" => parent != "responses",
@@ -236,6 +241,20 @@ pub(crate) fn count(v: &Value) -> Option<u64> {
 /// tag this way cannot match another branch's tag.
 pub(crate) fn fixes_one_value(s: &Value) -> bool {
     s.get("const").is_some() || s.get("enum").and_then(Value::as_array).is_some_and(|e| e.len() == 1)
+}
+
+/// Returns a JSON number as the digits of its decimal text and the power of ten they scale by: `2.5` is `(25, -1)`
+/// and `1e3` is `(1, 3)`. `None` for a negative number or more digits than a `u128` holds.
+pub(crate) fn decimal_parts(n: &serde_json::Number) -> Option<(u128, i32)> {
+    let text = n.to_string();
+    let (mantissa, exponent) = text.split_once(['e', 'E']).unwrap_or((&text, "0"));
+    let exponent: i32 = exponent.parse().ok()?;
+    let (whole, fraction) = mantissa.split_once('.').unwrap_or((mantissa, ""));
+    if whole.starts_with('-') {
+        return None;
+    }
+    let digits: u128 = format!("{whole}{fraction}").parse().ok()?;
+    Some((digits, exponent.checked_sub(i32::try_from(fraction.len()).ok()?)?))
 }
 
 #[cfg(test)]
