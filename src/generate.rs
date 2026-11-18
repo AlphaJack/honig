@@ -22,8 +22,10 @@ pub struct Generated {
     pub runtime_features: Vec<&'static str>,
 }
 
-/// Returns load, validate, build the IR and emit formatted files. Fails only when the
-/// document cannot be parsed. Validation errors are reported but not fatal.
+/// Returns load, validate, build the IR and emit formatted files.
+///
+/// Fails when the document cannot be parsed, or when generated code could not hold it: a `pattern` that does not
+/// compile, or a server whose security scheme does not resolve. Other validation errors are reported but not fatal.
 pub fn generate(spec: &Path, opts: &Options) -> Result<Generated, Diagnostics> {
     generate_all(&[spec.to_path_buf()], opts)
 }
@@ -49,6 +51,11 @@ pub fn generate_all(specs: &[std::path::PathBuf], opts: &Options) -> Result<Gene
                 format!("security scheme `{key}` does not resolve: refusing to generate a server that would skip it"),
             );
         }
+        return Err(diagnostics);
+    }
+    // A `pattern` that does not compile cannot be checked: its type would take every value. Validation reported each
+    // as an error.
+    if crate::validate::v32::has_uncompilable_pattern(&doc.root, "") {
         return Err(diagnostics);
     }
     let from_v20 = loaded.source == Some(crate::version::Version::V20);
