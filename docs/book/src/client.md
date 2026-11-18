@@ -54,7 +54,7 @@ Other flows get helpers by what the scheme declares:
 
 ## Streams
 
-A response declared as a sequence also gets `<op>_stream`. The sequence is JSON Lines or JSON text sequences or server-sent events. `<op>_stream` gives a `Stream` that yields each item as it arrives. Read it with `futures_util::StreamExt::next`. A binary response gets the `Response` with its body still to come: `resp.into_body().into_stream()` yields its raw chunks. An item that does not decode is an `Err`. The items after it can still be read:
+A response declared as a sequence also gets `<op>_stream`. The sequence is JSON Lines or JSON text sequences or server-sent events. `<op>_stream` gives a `Stream` that yields each item as it arrives. Read it with `futures_util::StreamExt::next`. A binary response gets the `Response` with its body still to come: `resp.into_body().into_stream()` yields its raw chunks. An item that does not decode is an `Err`. The items after it can still be read. The `minItems`, `maxItems` and `uniqueItems` of the sequence hold as it arrives: the item past `maxItems` and an item met before are an `Err`, and so is an end short of `minItems`:
 
 ```rust
 {{#include ../../../tests/e2e/tests/v32_shop/client.rs:stream}}

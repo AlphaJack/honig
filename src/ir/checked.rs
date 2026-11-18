@@ -58,8 +58,8 @@ pub(crate) fn wrap(types: &mut TypeSpace, http: &mut Http) {
             let own =
                 if one { b.constraints.clone() } else { b.variant_constraints.get(i).cloned().unwrap_or_default() };
             let name = if one { body.clone() } else { body.and(&c.variant) };
-            // The items of a body read as it arrives are checked one at a time. A whole-body keyword (`minItems`,
-            // `uniqueItems`) needs every item before the handler runs, so a streamed body skips it.
+            // The items of a body read as it arrives are checked one at a time. Its `minItems`, `maxItems` and
+            // `uniqueItems` hold on the items as they arrive (`Content::item_limits`).
             if c.streams() {
                 if let Ty::Vec(item) = &c.ty {
                     let item = space.wrap(item, &own.item_constraints(), &name.and(&Name::new("Item")));

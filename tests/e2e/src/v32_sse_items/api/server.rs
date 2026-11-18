@@ -54,6 +54,11 @@ pub trait Api: Send + Sync + 'static {
     ) -> impl Future<
         Output = Result<ops::tile_batch::Response, runtime::ApiError>,
     > + Send;
+    fn tile_top(
+        &self,
+        params: ops::tile_top::Params,
+        ctx: &Context<'_, ()>,
+    ) -> impl Future<Output = Result<ops::tile_top::Response, runtime::ApiError>> + Send;
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Operation {
@@ -62,6 +67,7 @@ pub enum Operation {
     TileUpdates,
     ChatStream,
     TileBatch,
+    TileTop,
 }
 impl runtime::Operation for Operation {
     fn op(self) -> &'static runtime::Op {
@@ -71,6 +77,7 @@ impl runtime::Operation for Operation {
             Self::TileUpdates => &TILE_UPDATES_OP,
             Self::ChatStream => &CHAT_STREAM_OP,
             Self::TileBatch => &TILE_BATCH_OP,
+            Self::TileTop => &TILE_TOP_OP,
         }
     }
 }
@@ -89,6 +96,7 @@ static METHODS: &[&[(&str, (Op, Operation))]] = &[
     &[("GET", (Op::O2, Operation::TileUpdates))],
     &[("POST", (Op::O3, Operation::ChatStream))],
     &[("POST", (Op::O4, Operation::TileBatch))],
+    &[("GET", (Op::O5, Operation::TileTop))],
 ];
 static ROUTES: &[runtime::Node] = &[
     runtime::node(
@@ -98,7 +106,7 @@ static ROUTES: &[runtime::Node] = &[
         runtime::Node::NONE,
     ),
     runtime::node(
-        &[("batch", 7), ("lines", 3), ("stream", 2), ("updates", 4)],
+        &[("top", 8), ("batch", 7), ("lines", 3), ("stream", 2), ("updates", 4)],
         &[],
         runtime::Node::NONE,
         runtime::Node::NONE,
@@ -109,12 +117,14 @@ static ROUTES: &[runtime::Node] = &[
     runtime::node(&[("stream", 6)], &[], runtime::Node::NONE, runtime::Node::NONE),
     runtime::node(&[], &[], runtime::Node::NONE, 3),
     runtime::node(&[], &[], runtime::Node::NONE, 4),
+    runtime::node(&[], &[], runtime::Node::NONE, 5),
 ];
 static PATHS: &[&str] = &[
     "/chat/stream",
     "/tiles/batch",
     "/tiles/lines",
     "/tiles/stream",
+    "/tiles/top",
     "/tiles/updates",
 ];
 pub struct Routes<A>(std::sync::Arc<A>);
@@ -190,6 +200,7 @@ enum Op {
     O2,
     O3,
     O4,
+    O5,
 }
 async fn dispatch<A: Api>(
     api: &A,
@@ -203,6 +214,7 @@ async fn dispatch<A: Api>(
         Op::O2 => Box::pin(tile_updates(api, routed, call)).await,
         Op::O3 => Box::pin(chat_stream(api, routed, call)).await,
         Op::O4 => Box::pin(tile_batch(api, routed, call)).await,
+        Op::O5 => Box::pin(tile_top(api, routed, call)).await,
     }
 }
 static TILE_STREAM_OP: runtime::Op = runtime::Op {
@@ -390,4 +402,43 @@ fn tile_batch_params(
 fn tile_batch_encode(resp: &ops::tile_batch::Response) -> runtime::Response {
     let ops::tile_batch::Response::NoContent = resp;
     runtime::new_response(204)
+}
+static TILE_TOP_OP: runtime::Op = runtime::Op {
+    name: "tile_top",
+    method: "GET",
+    route: "/tiles/top",
+    span: "GET /tiles/top",
+    security: &[],
+    takes_body: false,
+    produces: &["application/jsonl"],
+    ranges: false,
+    errors: error_schema,
+};
+async fn tile_top<A: Api>(
+    api: &A,
+    routed: runtime::Routed<'_>,
+    call: runtime::Call<'_, Option<A::Principal>, Operation>,
+) -> runtime::Response {
+    let steps = runtime::Steps {
+        api,
+        decode: |_| Ok(ops::tile_top::Params {}),
+        call: |a, p, c| Box::pin(a.tile_top(p, c)),
+        encode: |r, _| tile_top_encode(r),
+    };
+    runtime::serve(routed, call.public(), &steps).await
+}
+fn tile_top_encode(
+    resp: ops::tile_top::Response,
+) -> Result<runtime::Response, runtime::Error> {
+    let ops::tile_top::Response::Ok(body) = resp;
+    Ok({
+        let mut r = runtime::new_response(200);
+        runtime::set_items(
+            &mut r,
+            "application/jsonl",
+            body,
+            runtime::Framing::JsonLines,
+        )?;
+        r
+    })
 }
