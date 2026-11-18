@@ -12,6 +12,22 @@
     clippy::missing_errors_doc,
     reason = "generated docs hold only the description's own prose"
 )]
+macro_rules! display_impl {
+    ($t:ty) => {
+        impl std::fmt::Display for $t {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                match self {
+                    Self::NoContent => f.write_str("status 204 (NoContent)"),
+                }
+            }
+        }
+    };
+}
+macro_rules! error_impl {
+    ($t:ty) => {
+        impl std::error::Error for $t {}
+    };
+}
 macro_rules! validate_impl {
     ($t:ty) => {
         impl runtime::Validate for $t {}
@@ -44,6 +60,28 @@ macro_rules! validate_impl_2 {
                         v.as_str(),
                         "uuid",
                     );
+                }
+            }
+        }
+    };
+}
+macro_rules! display_impl_2 {
+    ($t:ty) => {
+        impl std::fmt::Display for $t {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                match self {
+                    Self::Ok(..) => f.write_str("status 200 (Ok)"),
+                }
+            }
+        }
+    };
+}
+macro_rules! display_impl_3 {
+    ($t:ty) => {
+        impl std::fmt::Display for $t {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                match self {
+                    Self::Ok => f.write_str("status 200 (Ok)"),
                 }
             }
         }
@@ -130,6 +168,16 @@ pub mod submit_form {
         /// Accepted.
         NoContent,
     }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
+    }
 }
 pub mod put_blob {
     use super::super::types;
@@ -160,6 +208,24 @@ pub mod put_blob {
         ///
         /// The stored bytes.
         Ok { body: runtime::Blob, x_size: Option<i64>, x_quota: types::PutBlobOkXQuota },
+    }
+    impl std::fmt::Display for Response {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Self::Ok { .. } => f.write_str("status 200 (Ok)"),
+            }
+        }
+    }
+    error_impl!(Response);
+    /// The body and headers of the success, in order: what `Response::into_ok` gives.
+    pub type Success = (runtime::Blob, Option<i64>, types::PutBlobOkXQuota);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<Success, Box<Self>> {
+            match self {
+                Self::Ok { body, x_size, x_quota } => Ok((body, x_size, x_quota)),
+            }
+        }
     }
 }
 /// List products
@@ -265,6 +331,29 @@ pub mod list_products {
         Success { status: runtime::http::StatusCode },
         /// Error
         Default { status: runtime::http::StatusCode, body: types::Error },
+    }
+    impl std::fmt::Display for Response {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Self::Ok { .. } => f.write_str("status 200 (Ok)"),
+                Self::Success { status, .. } => {
+                    write!(f, "status {} (Success)", status.as_u16())
+                }
+                Self::Default { status, .. } => {
+                    write!(f, "status {} (Default)", status.as_u16())
+                }
+            }
+        }
+    }
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<Self, Box<Self>> {
+            match self {
+                success @ (Self::Ok { .. } | Self::Success { .. }) => Ok(success),
+                other @ Self::Default { .. } => Err(Box::new(other)),
+            }
+        }
     }
     #[derive(Debug, Clone, PartialEq)]
     pub enum OkBody {
@@ -380,6 +469,22 @@ pub mod create_product {
         /// Created
         Created,
     }
+    impl std::fmt::Display for Response {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Self::Created => f.write_str("status 201 (Created)"),
+            }
+        }
+    }
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::Created => Ok(()),
+            }
+        }
+    }
     pub mod callbacks {
         use super::super::super::runtime;
         #[must_use]
@@ -431,6 +536,16 @@ pub mod search_products {
         /// Products
         Ok(Vec<types::Product>),
     }
+    display_impl_2!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<Vec<types::Product>, Box<Self>> {
+            match self {
+                Self::Ok(body) => Ok(body),
+            }
+        }
+    }
 }
 /// Products collection
 ///
@@ -458,6 +573,16 @@ pub mod copy_products {
         /// Copied
         NoContent,
     }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
+    }
 }
 pub mod get_product {
     use super::super::types;
@@ -480,6 +605,16 @@ pub mod get_product {
         /// ok
         Ok(types::Product),
     }
+    display_impl_2!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<types::Product, Box<Self>> {
+            match self {
+                Self::Ok(body) => Ok(body),
+            }
+        }
+    }
 }
 pub mod put_product {
     use super::super::runtime;
@@ -500,6 +635,16 @@ pub mod put_product {
     pub enum Response {
         /// ok
         Ok,
+    }
+    display_impl_3!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::Ok => Ok(()),
+            }
+        }
     }
 }
 pub mod delete_product {
@@ -522,6 +667,16 @@ pub mod delete_product {
         /// deleted
         NoContent,
     }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
+    }
 }
 pub mod options_product {
     use super::super::runtime;
@@ -542,6 +697,16 @@ pub mod options_product {
     pub enum Response {
         /// ok
         Ok,
+    }
+    display_impl_3!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::Ok => Ok(()),
+            }
+        }
     }
 }
 pub mod head_product {
@@ -564,6 +729,16 @@ pub mod head_product {
         /// ok
         Ok,
     }
+    display_impl_3!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::Ok => Ok(()),
+            }
+        }
+    }
 }
 pub mod patch_product {
     use super::super::runtime;
@@ -585,6 +760,16 @@ pub mod patch_product {
         /// ok
         Ok,
     }
+    display_impl_3!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::Ok => Ok(()),
+            }
+        }
+    }
 }
 pub mod trace_product {
     use super::super::runtime;
@@ -605,6 +790,16 @@ pub mod trace_product {
     pub enum Response {
         /// ok
         Ok,
+    }
+    display_impl_3!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::Ok => Ok(()),
+            }
+        }
     }
 }
 pub mod search {
@@ -629,6 +824,16 @@ pub mod search {
         /// Events
         Ok(runtime::Items<types::SearchOkItem>),
     }
+    display_impl_2!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<runtime::Items<types::SearchOkItem>, Box<Self>> {
+            match self {
+                Self::Ok(body) => Ok(body),
+            }
+        }
+    }
 }
 pub mod new_product_post {
     use super::super::types;
@@ -651,6 +856,16 @@ pub mod new_product_post {
     pub enum Response {
         /// ok
         Ok,
+    }
+    display_impl_3!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::Ok => Ok(()),
+            }
+        }
     }
 }
 pub mod create_product_on_adopt_post {
@@ -675,6 +890,16 @@ pub mod create_product_on_adopt_post {
         /// ack
         Ok,
     }
+    display_impl_3!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::Ok => Ok(()),
+            }
+        }
+    }
 }
 pub mod create_product_shared_post {
     use super::super::runtime;
@@ -694,6 +919,16 @@ pub mod create_product_shared_post {
     pub enum Response {
         /// ok
         Ok,
+    }
+    display_impl_3!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::Ok => Ok(()),
+            }
+        }
     }
 }
 pub mod tags {
