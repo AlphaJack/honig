@@ -727,14 +727,10 @@ impl V<'_> {
                 ),
             );
         }
+        // A type that claims a pattern it cannot check would take every value: `generate` refuses the document.
         for (at, p) in patterns {
-            if let Err(e) = regress::Regex::with_flags(p, "u").or_else(|_| regress::Regex::new(p)) {
-                self.diags.warning(
-                    at,
-                    format!(
-                        "pattern `{p}` is not an ECMA-262 regular expression ({e}): values are not checked against it"
-                    ),
-                );
+            if let Some(e) = pattern_error(p) {
+                self.diags.error(at, format!("pattern `{p}` is not an ECMA-262 regular expression ({e})"));
             }
         }
         if let Some(x) = &o.xml {
@@ -841,6 +837,28 @@ fn nested_quantifier(pattern: &str) -> bool {
         last_group_repeats = false;
     }
     false
+}
+
+/// Returns why `pattern` does not compile as generated code compiles it: with `regress`, as ECMA-262 with the `u` flag
+/// or else without it. `None` when it compiles.
+pub(crate) fn pattern_error(pattern: &str) -> Option<String> {
+    regress::Regex::with_flags(pattern, "u").or_else(|_| regress::Regex::new(pattern)).err().map(|e| e.to_string())
+}
+
+/// Does a schema of the document hold a `pattern` or a `patternProperties` key that does not compile? Generated code
+/// could not check it: a value of that schema would pass whatever it is. Data (examples, enums, defaults) does not
+/// count.
+pub(crate) fn has_uncompilable_pattern(v: &Value, parent: &str) -> bool {
+    match v {
+        Value::Object(o) => o.iter().any(|(k, c)| {
+            (k == "pattern" && parent != "properties" && c.as_str().is_some_and(|p| pattern_error(p).is_some()))
+                || (k == "patternProperties"
+                    && c.as_object().is_some_and(|ps| ps.keys().any(|p| pattern_error(p).is_some())))
+                || (!crate::json::is_data(parent, k) && has_uncompilable_pattern(c, k))
+        }),
+        Value::Array(a) => a.iter().any(|c| has_uncompilable_pattern(c, parent)),
+        Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_) => false,
+    }
 }
 
 #[cfg(test)]

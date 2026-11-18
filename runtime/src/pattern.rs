@@ -16,7 +16,7 @@ impl Pattern {
     }
 }
 
-/// Does `s` match `pattern` compiled once into `re`? A pattern that `regress` cannot compile accepts every value.
+/// Does `s` match `pattern` compiled once into `re`? A pattern that `regress` cannot compile matches nothing.
 #[must_use]
 pub fn pattern_matches(re: &Pattern, pattern: &str, s: &str) -> bool {
     is_match(re.0.get_or_init(|| compile(pattern)).as_ref(), s)
@@ -48,8 +48,10 @@ fn compile(pattern: &str) -> Option<regress::Regex> {
     regress::Regex::with_flags(pattern, "u").or_else(|_| regress::Regex::new(pattern)).ok()
 }
 
+/// A pattern that does not compile matches nothing: a value that it should judge is never taken unchecked.
+/// `generate` refuses such a pattern, so generated code never has one.
 fn is_match(re: Option<&regress::Regex>, s: &str) -> bool {
-    re.is_none_or(|re| re.find(s).is_some())
+    re.is_some_and(|re| re.find(s).is_some())
 }
 
 #[cfg(test)]
@@ -57,11 +59,11 @@ mod tests {
     use super::*;
 
     #[test]
-    fn a_pattern_matches_anywhere_and_one_that_does_not_compile_accepts_all() {
+    fn a_pattern_matches_anywhere_and_one_that_does_not_compile_matches_nothing() {
         static RE: Pattern = Pattern::new();
         assert!(pattern_matches(&RE, "^[a-z]+$", "abc") && !pattern_matches(&RE, "^[a-z]+$", "ABC"));
         assert!(pattern_matches_dyn(r"[\-\_]", "_"), "plain ECMA-262 when Unicode mode refuses it");
-        assert!(pattern_matches_dyn("(", "anything"));
+        assert!(!pattern_matches_dyn("(", "anything"));
     }
 
     #[test]
