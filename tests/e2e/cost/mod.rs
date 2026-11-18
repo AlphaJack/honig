@@ -264,6 +264,13 @@ impl val::api::Api for Members {
     ) -> impl Future<Output = Result<val::api::operations::add_badge::Response, val::api::ApiError>> + Send {
         not_here()
     }
+    fn add_closed(
+        &self,
+        _: val::api::operations::add_closed::Params,
+        _: &val::api::Context<'_, ()>,
+    ) -> impl Future<Output = Result<val::api::operations::add_closed::Response, val::api::ApiError>> + Send {
+        not_here()
+    }
 }
 
 /// The generated servers, each under the prefix of its fixture.
