@@ -70,6 +70,7 @@ pub(crate) fn is_format(value: &str, format: &str) -> bool {
         "ipv4" => crate::formats::is_ipv4(value),
         "ipv6" => crate::formats::is_ipv6(value),
         "decimal" => decimal(value),
+        "decimal128" => decimal128(value).is_ok(),
         "http-date" => crate::http_date::is_http_date(value),
         "duration" => crate::duration::is_duration(value),
         "uri-reference" => crate::uri::is_reference(value, crate::uri::Chars::Uri, false),
@@ -117,6 +118,67 @@ fn decimal(s: &str) -> bool {
     let (whole, fraction) = s.split_once('.').unwrap_or((s, "0"));
     let number = |p: &str| !p.is_empty() && p.bytes().all(|b| b.is_ascii_digit());
     number(whole) && number(fraction)
+}
+
+/// The significant digits that IEEE 754 decimal128 holds.
+const DECIMAL128_DIGITS: usize = 34;
+/// The smallest exponent of the last digit that decimal128 holds: its smallest value is `1e-6176`.
+const DECIMAL128_MIN_EXPONENT: i64 = -6176;
+/// The largest exponent of the first digit that decimal128 holds: its largest values are below `1e6145`.
+const DECIMAL128_MAX_EXPONENT: i64 = 6144;
+
+/// Checks that `s` is a decimal number that IEEE 754 decimal128 holds exactly: an optional `-`, digits with an
+/// optional fraction and an optional exponent, at most 34 significant digits, within its exponent range. Zeros before
+/// the first and after the last nonzero digit are not significant: `1.50000` holds as `1.5`.
+///
+/// # Errors
+///
+/// Why it does not hold.
+pub(crate) fn decimal128(s: &str) -> Result<(), String> {
+    let unsigned = s.strip_prefix('-').unwrap_or(s);
+    let (mantissa, exponent) = unsigned.split_once(['e', 'E']).unwrap_or((unsigned, "0"));
+    let (whole, fraction) = match mantissa.split_once('.') {
+        Some((w, f)) if !f.is_empty() => (w, f),
+        Some(_) => return Err("is not a decimal".to_owned()),
+        None => (mantissa, ""),
+    };
+    let digits = |p: &str| p.bytes().all(|b| b.is_ascii_digit());
+    let exponent_digits = exponent.strip_prefix(['+', '-']).unwrap_or(exponent);
+    if whole.is_empty() || !digits(whole) || !digits(fraction) || exponent_digits.is_empty() || !digits(exponent_digits)
+    {
+        return Err("is not a decimal".to_owned());
+    }
+    let all = format!("{whole}{fraction}");
+    let significant = all.trim_start_matches('0');
+    let trimmed = significant.trim_end_matches('0');
+    if trimmed.is_empty() {
+        return Ok(());
+    }
+    // An exponent too long for an `i64` is far out of range either way.
+    let Ok(exponent) = exponent.strip_prefix('+').unwrap_or(exponent).parse::<i64>() else {
+        return Err("is out of the range of decimal128".to_owned());
+    };
+    let count = |n: usize| i64::try_from(n).unwrap_or(i64::MAX);
+    // The exponent of the last significant digit, and of the first.
+    let last = exponent.saturating_sub(count(fraction.len())).saturating_add(count(significant.len() - trimmed.len()));
+    let first = last.saturating_add(count(trimmed.len()) - 1);
+    if trimmed.len() > DECIMAL128_DIGITS {
+        return Err(format!(
+            "has {} significant digits, more than the {DECIMAL128_DIGITS} of decimal128",
+            trimmed.len()
+        ));
+    }
+    if last < DECIMAL128_MIN_EXPONENT || first > DECIMAL128_MAX_EXPONENT {
+        return Err("is out of the range of decimal128".to_owned());
+    }
+    Ok(())
+}
+
+/// Checks that the decimal number `text` is one that IEEE 754 decimal128 holds exactly (`format: decimal128`).
+pub fn check_decimal128(out: &mut Vec<Violation>, path: &InstancePath<'_>, text: &str) {
+    if let Err(why) = decimal128(text) {
+        violation(out, path, format!("`{text}` {why}"));
+    }
 }
 
 /// Records `message` at `path` unless `ok`.
@@ -1386,6 +1448,37 @@ mod tests {
         );
         let messages: Vec<&str> = out.iter().map(|v| v.message.as_str()).collect();
         assert_eq!(messages, ["items must be unique"], "only the second list has a duplicate");
+    }
+
+    #[test]
+    fn decimal128_holds_34_significant_digits_within_its_exponent_range() {
+        for ok in [
+            "0",
+            "-0.000",
+            "1.5",
+            "1.50000",
+            "1234567890123456789012345678901234",
+            "1e6144",
+            "9.999e6144",
+            "1e-6176",
+            "12E+3",
+            "100000000000000000000000000000000000000000",
+        ] {
+            assert_eq!(super::decimal128(ok), Ok(()), "{ok}");
+        }
+        assert_eq!(
+            super::decimal128("12345678901234567890123456789012345"),
+            Err("has 35 significant digits, more than the 34 of decimal128".to_owned())
+        );
+        for out in ["1e6145", "1e-6177", "1e99999999999999999999"] {
+            assert_eq!(super::decimal128(out), Err("is out of the range of decimal128".to_owned()), "{out}");
+        }
+        for not in ["", "-", ".5", "1.", "1e", "1e+", "+1", "1,5", "0x10"] {
+            assert_eq!(super::decimal128(not), Err("is not a decimal".to_owned()), "{not:?}");
+        }
+        let mut out = vec![];
+        super::check_decimal128(&mut out, &super::InstancePath::Root, "1e6145");
+        assert_eq!(out[0].message, "`1e6145` is out of the range of decimal128");
     }
 
     #[test]

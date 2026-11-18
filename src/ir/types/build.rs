@@ -88,6 +88,8 @@ impl Constraints {
             unique_items: s.get("uniqueItems") == Some(&Value::Bool(true)),
             min_properties: u("minProperties"),
             max_properties: u("maxProperties"),
+            decimal128: s.get("format").and_then(Value::as_str) == Some("decimal128")
+                && s.as_object().is_some_and(|o| type_set(o).0.iter().any(|t| t == "number")),
             items: None,
             schema: None,
         }
@@ -101,6 +103,7 @@ impl Constraints {
         take!(min_length, max_length, pattern, minimum, maximum, exclusive_minimum, exclusive_maximum, multiple_of);
         take!(min_items, max_items, min_properties, max_properties, items);
         self.unique_items |= other.unique_items;
+        self.decimal128 |= other.decimal128;
         self.schema = match (self.schema.take(), other.schema) {
             (Some(a), Some(b)) => Some(serde_json::json!({ "allOf": [a, b] })),
             (a, b) => a.or(b),

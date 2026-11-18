@@ -669,7 +669,8 @@ fn positive(m: Option<&Number>) -> Option<&Number> {
     m.filter(|m| m.as_f64().is_some_and(|f| f.is_finite() && f > 0.0))
 }
 
-/// Returns the range and `multipleOf` of a `Decimal` value (an `&Decimal` expression), checked exactly on its digits.
+/// Returns the range and `multipleOf` of a `Decimal` value (an `&Decimal` expression), checked exactly on its digits,
+/// and the limits of IEEE 754 decimal128 on them for `format: decimal128`.
 fn decimal_checks(c: &Constraints, value: &TokenStream, path: &TokenStream) -> TokenStream {
     let r = receiver(value);
     let bound = |n: Option<&Number>| match n {
@@ -688,7 +689,9 @@ fn decimal_checks(c: &Constraints, value: &TokenStream, path: &TokenStream) -> T
         let m = lit(&m.to_string());
         quote!(runtime::check_multiple_text(out, #path, #r.as_str(), #m);)
     });
-    quote!(#range #multiple)
+    // `format: decimal128`: the digits that IEEE 754 decimal128 holds.
+    let limits = c.decimal128.then(|| quote!(runtime::check_decimal128(out, #path, #r.as_str());));
+    quote!(#range #multiple #limits)
 }
 
 /// Bounds past this have no whole `i128` worth writing: they are left unchecked.
