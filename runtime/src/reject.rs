@@ -306,11 +306,7 @@ pub fn check_raw_json(body: &[u8], schema: &Value) -> Result<(), Reason> {
 ///
 /// # Errors
 /// The body breaks the schema.
-pub fn check_raw_json_in(
-    body: &[u8],
-    schema: &Value,
-    shared: Option<&serde_json::Map<String, Value>>,
-) -> Result<(), Reason> {
+pub fn check_raw_json_in(body: &[u8], schema: &Value, shared: Option<&Map<String, Value>>) -> Result<(), Reason> {
     let Ok(value) = serde_json::from_slice::<Value>(body) else { return Ok(()) };
     let mut out = vec![];
     crate::validate::check_schema_in(
