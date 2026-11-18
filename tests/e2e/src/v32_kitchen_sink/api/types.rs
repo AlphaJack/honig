@@ -110,14 +110,12 @@ macro_rules! validate_impl {
                         *v,
                         [None, None, Some(0.0), None],
                     );
-                    let q = *v / 0.01;
-                    if (q - q.round()).abs() > 1e-9 {
-                        runtime::violation(
-                            out,
-                            &runtime::InstancePath::Key(path, "weight"),
-                            "is not a multiple of 0.01",
-                        );
-                    }
+                    runtime::check_multiple(
+                        out,
+                        &runtime::InstancePath::Key(path, "weight"),
+                        *v,
+                        "0.01",
+                    );
                 }
                 if let Some(v) = &self.owner {
                     {
@@ -334,14 +332,12 @@ macro_rules! validate_impl_7 {
                         *v,
                         [None, None, Some(0.0), None],
                     );
-                    let q = *v / 0.01;
-                    if (q - q.round()).abs() > 1e-9 {
-                        runtime::violation(
-                            out,
-                            &runtime::InstancePath::Key(path, "weight"),
-                            "is not a multiple of 0.01",
-                        );
-                    }
+                    runtime::check_multiple(
+                        out,
+                        &runtime::InstancePath::Key(path, "weight"),
+                        *v,
+                        "0.01",
+                    );
                 }
                 if let Some(v) = &self.owner {
                     {
@@ -914,14 +910,12 @@ impl runtime::Validate for Gadget2 {
                 *v,
                 [None, None, Some(0.0), None],
             );
-            let q = *v / 0.01;
-            if (q - q.round()).abs() > 1e-9 {
-                runtime::violation(
-                    out,
-                    &runtime::InstancePath::Key(path, "weight"),
-                    "is not a multiple of 0.01",
-                );
-            }
+            runtime::check_multiple(
+                out,
+                &runtime::InstancePath::Key(path, "weight"),
+                *v,
+                "0.01",
+            );
         }
         if let Some(v) = &self.owner {
             {
@@ -1537,14 +1531,12 @@ impl runtime::Validate for Gadget2Request {
                 *v,
                 [None, None, Some(0.0), None],
             );
-            let q = *v / 0.01;
-            if (q - q.round()).abs() > 1e-9 {
-                runtime::violation(
-                    out,
-                    &runtime::InstancePath::Key(path, "weight"),
-                    "is not a multiple of 0.01",
-                );
-            }
+            runtime::check_multiple(
+                out,
+                &runtime::InstancePath::Key(path, "weight"),
+                *v,
+                "0.01",
+            );
         }
         if let Some(v) = &self.owner {
             {

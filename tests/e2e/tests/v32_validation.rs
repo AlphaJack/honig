@@ -520,6 +520,26 @@ fn a_recursive_union_decodes_in_time_linear_in_its_depth() {
     assert!(serde_json::from_str::<types::Tree>(&json).is_ok());
 }
 
+/// A decimal is checked on its digits: `0.09999999999999999999` is below `minimum: 0.1` although its nearest `f64` is
+/// `0.1`, and `100000000000000000.001` is not a multiple of `0.01` although every `f64` quotient that large is whole.
+#[test]
+fn decimal_keywords_are_exact() {
+    let violations = |v: &str| {
+        let e: types::Exact = serde_json::from_str(v).expect("decodes");
+        let mut out = vec![];
+        api::Validate::validate(&e, &api::InstancePath::Root, &mut out);
+        out.into_iter().map(|v| v.message).collect::<Vec<_>>()
+    };
+    assert!(violations(r#"{"tenth": 0.1}"#).is_empty());
+    assert_eq!(
+        violations(r#"{"tenth": 0.09999999999999999999}"#),
+        ["0.09999999999999999999 is less than the minimum 0.1"]
+    );
+    assert!(violations(r#"{"cents": 100000000000000000.01}"#).is_empty());
+    assert_eq!(violations(r#"{"cents": 100000000000000000.001}"#), ["is not a multiple of 0.01"]);
+    assert!(violations(r#"{"cents": 0.07}"#).is_empty(), "0.07 / 0.01 is not a whole f64");
+}
+
 /// Integer keywords are checked exactly: a bound that no value of the type meets refuses every value, a fractional
 /// `multipleOf` takes the integers that are multiples of it, and one past the type takes only `0`.
 #[test]
