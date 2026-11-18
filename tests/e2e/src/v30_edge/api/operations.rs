@@ -11,30 +11,14 @@
     clippy::missing_errors_doc,
     reason = "generated docs hold only the description's own prose"
 )]
+macro_rules! validate_impl {
+    ($t:ty) => {
+        impl runtime::Validate for $t {}
+    };
+}
 macro_rules! error_impl {
     ($t:ty) => {
         impl std::error::Error for $t {}
-    };
-}
-macro_rules! validate_impl {
-    ($t:ty) => {
-        impl runtime::Validate for $t {
-            fn validate(
-                &self,
-                path: &runtime::InstancePath<'_>,
-                out: &mut Vec<runtime::Violation>,
-            ) {
-                runtime::check_format(
-                    out,
-                    &runtime::InstancePath::Key(
-                        &runtime::InstancePath::Key(path, "path"),
-                        "orderId",
-                    ),
-                    self.order_id.as_str(),
-                    "uuid",
-                );
-            }
-        }
     };
 }
 use super::runtime;
@@ -54,7 +38,7 @@ pub mod list_orders {
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct Params {
         pub status: Option<Vec<types::Status>>,
-        pub created_after: Option<String>,
+        pub created_after: Option<runtime::DateTimeText>,
         pub limit: types::ListOrdersLimit,
         pub sort: types::ListOrdersSort,
         pub cursor: Option<types::ListOrdersCursor>,
@@ -76,25 +60,7 @@ pub mod list_orders {
             Self::new()
         }
     }
-    impl runtime::Validate for Params {
-        fn validate(
-            &self,
-            path: &runtime::InstancePath<'_>,
-            out: &mut Vec<runtime::Violation>,
-        ) {
-            if let Some(v) = &self.created_after {
-                runtime::check_format(
-                    out,
-                    &runtime::InstancePath::Key(
-                        &runtime::InstancePath::Key(path, "query"),
-                        "createdAfter",
-                    ),
-                    v.as_str(),
-                    "date-time",
-                );
-            }
-        }
-    }
+    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// A page of orders.
@@ -195,11 +161,11 @@ pub mod get_order {
     pub const PATH: &str = "/orders/{orderId}";
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct Params {
-        pub order_id: String,
+        pub order_id: runtime::UuidText,
     }
     impl Params {
         #[must_use]
-        pub const fn new(order_id: String) -> Self {
+        pub const fn new(order_id: runtime::UuidText) -> Self {
             Self { order_id }
         }
     }
@@ -263,12 +229,15 @@ pub mod upload_document {
     pub const PATH: &str = "/orders/{orderId}/documents";
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct Params {
-        pub order_id: String,
+        pub order_id: runtime::UuidText,
         pub body: types::UploadDocumentBody,
     }
     impl Params {
         #[must_use]
-        pub const fn new(order_id: String, body: types::UploadDocumentBody) -> Self {
+        pub const fn new(
+            order_id: runtime::UuidText,
+            body: types::UploadDocumentBody,
+        ) -> Self {
             Self { order_id, body }
         }
     }

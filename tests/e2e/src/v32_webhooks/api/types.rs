@@ -85,7 +85,7 @@ pub struct Event {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub at: Option<String>,
+    pub at: Option<runtime::DateTimeText>,
 }
 deserialize_impl!(Event);
 serialize_impl!(Event);
@@ -95,22 +95,7 @@ impl Event {
         Self { kind, at: None }
     }
 }
-impl runtime::Validate for Event {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        if let Some(v) = &self.at {
-            runtime::check_format(
-                out,
-                &runtime::InstancePath::Key(path, "at"),
-                v.as_str(),
-                "date-time",
-            );
-        }
-    }
-}
+validate_impl!(Event);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum EventKind {
     Created,
@@ -194,7 +179,10 @@ pub mod builders {
     #[must_use = "a builder does nothing until `build`"]
     pub struct Event(runtime::Builder<super::Event>);
     impl Event {
-        pub fn at(self, value: impl TryInto<String, Error: std::fmt::Display>) -> Self {
+        pub fn at(
+            self,
+            value: impl TryInto<runtime::DateTimeText, Error: std::fmt::Display>,
+        ) -> Self {
             Self(self.0.set("at", value, |s, v| s.at = Some(v)))
         }
         /// Returns the value.

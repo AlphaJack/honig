@@ -116,11 +116,48 @@ fn ty_with(space: &Space<'_>, t: &Ty, named: &dyn Fn(TypeId) -> TokenStream) -> 
 
 /// Returns rust type of a string format. That is the library of the target crate or `String`.
 pub(crate) fn format_ty(libs: FormatLibs, f: Format) -> TokenStream {
-    library_ty(libs, f).unwrap_or_else(|| quote!(String))
+    library_ty(libs, f).unwrap_or_else(|| text_ty(f))
 }
 
-/// Returns a format that the target crate has no library for. It is written as a `String`. Its text is checked at run
-/// time instead.
+/// Returns the runtime type of the text of a format that the crate has no library type for: `runtime::UuidText` and so
+/// on. Only text of the format is one.
+fn text_ty(f: Format) -> TokenStream {
+    let name = match f {
+        Format::Uuid => "UuidText",
+        Format::DateTime => "DateTimeText",
+        Format::Date => "DateText",
+        Format::Time => "TimeText",
+        Format::DateTimeLocal => "DateTimeLocalText",
+        Format::TimeLocal => "TimeLocalText",
+        Format::Uri => "UriText",
+        Format::UriReference => "UriReferenceText",
+        Format::Iri => "IriText",
+        Format::IriReference => "IriReferenceText",
+        Format::Ipv4Cidr => "Ipv4CidrText",
+        Format::Ipv6Cidr => "Ipv6CidrText",
+        Format::Decimal => "DecimalText",
+        Format::Decimal128 => "Decimal128Text",
+        Format::HttpDate => "HttpDateText",
+        Format::Duration => "DurationText",
+        Format::JsonPointer => "JsonPointerText",
+        Format::RelativeJsonPointer => "RelativeJsonPointerText",
+        Format::Regex => "RegexText",
+        Format::UriTemplate => "UriTemplateText",
+        // Each of these has a type of its own in every crate (`library_ty`).
+        Format::Ipv4
+        | Format::Ipv6
+        | Format::Base64Url
+        | Format::Char
+        | Format::Email
+        | Format::IdnEmail
+        | Format::Hostname
+        | Format::IdnHostname => return quote!(String),
+    };
+    let name = ident(name);
+    quote!(runtime::#name)
+}
+
+/// Returns a format that the target crate has no library for. It is a `runtime::Formatted` text, which checks it.
 pub(crate) fn untyped(libs: FormatLibs, f: Format) -> bool {
     library_ty(libs, f).is_none()
 }

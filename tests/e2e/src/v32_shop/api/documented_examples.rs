@@ -124,7 +124,7 @@ fn documented_examples_decode() {
         serde_json::Value::from(0.68f64),
     );
     value::<
-        String,
+        runtime::DateTimeText,
     >(
         &mut bad,
         "/components/schemas/Product/properties/listedAt/examples/0",
@@ -151,7 +151,7 @@ fn documented_examples_decode() {
         ),
     );
     value::<
-        String,
+        runtime::DateTimeText,
     >(
         &mut bad,
         "/components/schemas/Product/properties/lastUpdated/examples/0",
@@ -242,7 +242,7 @@ fn documented_examples_decode() {
         serde_json::Value::String("-rating".to_owned()),
     );
     value::<
-        String,
+        runtime::UuidText,
     >(
         &mut bad,
         "/components/schemas/ProductEvent/properties/id/examples/0",
@@ -256,7 +256,7 @@ fn documented_examples_decode() {
         serde_json::Value::String("created".to_owned()),
     );
     value::<
-        String,
+        runtime::DateTimeText,
     >(
         &mut bad,
         "/components/schemas/ProductEvent/properties/occurredAt/examples/0",
@@ -284,7 +284,7 @@ fn documented_examples_decode() {
         serde_json::Value::String("Studio North".to_owned()),
     );
     value::<
-        String,
+        runtime::DateTimeText,
     >(
         &mut bad,
         "/components/schemas/PhotoBatchMeta/properties/takenAt/examples/0",
@@ -315,7 +315,7 @@ fn documented_examples_decode() {
         ),
     );
     value::<
-        String,
+        runtime::DateTimeText,
     >(
         &mut bad,
         "/components/schemas/ImageUploadedMessage/properties/uploadedAt/examples/0",
@@ -777,7 +777,7 @@ fn documented_examples_decode() {
         serde_json::Value::from(12i64),
     );
     value::<
-        String,
+        runtime::UuidText,
     >(
         &mut bad,
         "/paths/~1products~1{productId}~1photos/post/responses/202/content/application~1json/schema/properties/batchId/examples/0",
@@ -931,7 +931,7 @@ fn documented_examples_decode() {
         serde_json::Value::from(0.68f64),
     );
     value::<
-        String,
+        runtime::DateTimeText,
     >(
         &mut bad,
         "/components/schemas/Product/properties/listedAt/examples/0",
@@ -1002,7 +1002,7 @@ fn documented_examples_decode() {
         serde_json::Value::String("size".to_owned()),
     );
     value::<
-        String,
+        runtime::UuidText,
     >(
         &mut bad,
         "/components/schemas/ProductEvent/properties/id/examples/0",
@@ -1016,7 +1016,7 @@ fn documented_examples_decode() {
         serde_json::Value::String("created".to_owned()),
     );
     value::<
-        String,
+        runtime::DateTimeText,
     >(
         &mut bad,
         "/components/schemas/ProductEvent/properties/occurredAt/examples/0",

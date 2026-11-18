@@ -74,78 +74,6 @@ macro_rules! deserialize_impl_2 {
         }
     };
 }
-macro_rules! validate_impl_2 {
-    ($t:ty) => {
-        impl runtime::Validate for $t {
-            fn validate(
-                &self,
-                path: &runtime::InstancePath<'_>,
-                out: &mut Vec<runtime::Violation>,
-            ) {
-                match self {
-                    Self::Product(x) => {
-                        runtime::Validate::validate(x, path, out);
-                    }
-                    Self::Variant(x) => {
-                        runtime::Validate::validate(x, path, out);
-                    }
-                }
-            }
-        }
-    };
-}
-macro_rules! validate_impl_3 {
-    ($t:ty) => {
-        impl runtime::Validate for $t {
-            fn validate(
-                &self,
-                path: &runtime::InstancePath<'_>,
-                out: &mut Vec<runtime::Violation>,
-            ) {
-                if let Some(v) = &self.shipping {
-                    runtime::Validate::validate(
-                        v,
-                        &runtime::InstancePath::Key(path, "shipping"),
-                        out,
-                    );
-                }
-            }
-        }
-    };
-}
-macro_rules! validate_impl_4 {
-    ($t:ty) => {
-        impl runtime::Validate for $t {
-            fn validate(
-                &self,
-                path: &runtime::InstancePath<'_>,
-                out: &mut Vec<runtime::Violation>,
-            ) {
-                if let Some(v) = &self.id {
-                    runtime::check_format(
-                        out,
-                        &runtime::InstancePath::Key(path, "id"),
-                        v.as_str(),
-                        "uuid",
-                    );
-                }
-                runtime::Validate::validate(
-                    &self.product,
-                    &runtime::InstancePath::Key(path, "product"),
-                    out,
-                );
-                if let Some(v) = &self.occurred_at {
-                    runtime::check_format(
-                        out,
-                        &runtime::InstancePath::Key(path, "occurredAt"),
-                        v.as_str(),
-                        "date-time",
-                    );
-                }
-            }
-        }
-    };
-}
 macro_rules! try_from_impl {
     ($t:ty) => {
         impl TryFrom<&str> for $t {
@@ -201,26 +129,7 @@ macro_rules! try_from_impl_2 {
         }
     };
 }
-macro_rules! validate_impl_5 {
-    ($t:ty) => {
-        impl runtime::Validate for $t {
-            fn validate(
-                &self,
-                path: &runtime::InstancePath<'_>,
-                out: &mut Vec<runtime::Violation>,
-            ) {
-                if let Some(v) = &self.product {
-                    runtime::Validate::validate(
-                        v,
-                        &runtime::InstancePath::Key(path, "product"),
-                        out,
-                    );
-                }
-            }
-        }
-    };
-}
-macro_rules! validate_impl_6 {
+macro_rules! validate_impl_2 {
     ($t:ty) => {
         impl runtime::Validate for $t {
             fn validate(
@@ -534,7 +443,7 @@ impl<'de> runtime::TaggedUnion<'de> for Item {
         }
     }
 }
-validate_impl_2!(Item);
+validate_impl!(Item);
 /// A product in the shop
 #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -576,7 +485,7 @@ pub struct Product {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub listed_at: Option<String>,
+    pub listed_at: Option<runtime::DateTimeText>,
     #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
     pub image: runtime::Nullable<String>,
     #[serde(
@@ -603,7 +512,7 @@ pub struct Product {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub last_updated: Option<String>,
+    pub last_updated: Option<runtime::DateTimeText>,
     /// URL which gets invoked upon a successful operation
     #[serde(
         rename = "successCallbackUrl",
@@ -897,42 +806,7 @@ impl runtime::XmlShape for Product {
         &NODE
     }
 }
-impl runtime::Validate for Product {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        if let Some(v) = &self.listed_at {
-            runtime::check_format(
-                out,
-                &runtime::InstancePath::Key(path, "listedAt"),
-                v.as_str(),
-                "date-time",
-            );
-        }
-        if let Some(v) = &self.variants {
-            {
-                let base = &runtime::InstancePath::Key(path, "variants");
-                for (i, v) in v.iter().enumerate() {
-                    runtime::Validate::validate(
-                        v,
-                        &runtime::InstancePath::Index(base, i),
-                        out,
-                    );
-                }
-            }
-        }
-        if let Some(v) = &self.last_updated {
-            runtime::check_format(
-                out,
-                &runtime::InstancePath::Key(path, "lastUpdated"),
-                v.as_str(),
-                "date-time",
-            );
-        }
-    }
-}
+validate_impl!(Product);
 /// Every variant in the shop
 #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -1090,7 +964,7 @@ impl runtime::XmlShape for Variant {
         &NODE
     }
 }
-validate_impl_3!(Variant);
+validate_impl!(Variant);
 /// A structured query for the product catalog, sent either as the body of a QUERY request or as a `querystring` parameter.
 #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -1226,7 +1100,7 @@ pub struct ProductEvent {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub id: Option<String>,
+    pub id: Option<runtime::UuidText>,
     /// The kind of change that occurred
     pub event: ProductEventEvent,
     pub product: Product,
@@ -1242,7 +1116,7 @@ pub struct ProductEvent {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub occurred_at: Option<String>,
+    pub occurred_at: Option<runtime::DateTimeText>,
 }
 deserialize_impl!(ProductEvent);
 serialize_impl!(ProductEvent);
@@ -1350,7 +1224,7 @@ impl runtime::XmlShape for ProductEvent {
         &NODE
     }
 }
-validate_impl_4!(ProductEvent);
+validate_impl!(ProductEvent);
 /// A short, localized message. Demonstrates the `OpenAPI` 3.2 XML `nodeType` values `attribute` and `text`, which serialize as `<message lang="en">A new product has appeared</message>`.
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -1435,7 +1309,7 @@ pub struct PhotoBatchMeta {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub taken_at: Option<String>,
+    pub taken_at: Option<runtime::DateTimeText>,
     /// Number of image parts that follow this metadata part
     #[serde(
         default,
@@ -1516,22 +1390,7 @@ impl runtime::XmlShape for PhotoBatchMeta {
         &NODE
     }
 }
-impl runtime::Validate for PhotoBatchMeta {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        if let Some(v) = &self.taken_at {
-            runtime::check_format(
-                out,
-                &runtime::InstancePath::Key(path, "takenAt"),
-                v.as_str(),
-                "date-time",
-            );
-        }
-    }
-}
+validate_impl!(PhotoBatchMeta);
 /// A generic paginated resource. Specializing schemas bind the item type by declaring a `$dynamicAnchor` named `itemType`, the JSON Schema 2020-12 way to express `PaginatedResource<T>`.
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -1654,7 +1513,7 @@ pub struct ImageUploadedMessage {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub uploaded_at: Option<String>,
+    pub uploaded_at: Option<runtime::DateTimeText>,
     /// Size of the uploaded image in bytes
     #[serde(
         rename = "fileSize",
@@ -1778,22 +1637,7 @@ impl runtime::XmlShape for ImageUploadedMessage {
         &NODE
     }
 }
-impl runtime::Validate for ImageUploadedMessage {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        if let Some(v) = &self.uploaded_at {
-            runtime::check_format(
-                out,
-                &runtime::InstancePath::Key(path, "uploadedAt"),
-                v.as_str(),
-                "date-time",
-            );
-        }
-    }
-}
+validate_impl!(ImageUploadedMessage);
 /// RFC 7807 (<https://datatracker.ietf.org/doc/html/rfc7807>)
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -3146,7 +2990,7 @@ impl runtime::XmlShape for VariantShipping {
         &NODE
     }
 }
-validate_impl_5!(VariantShipping);
+validate_impl!(VariantShipping);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum ProductQueryTypeItem {
     Hardware,
@@ -3433,7 +3277,7 @@ impl runtime::XmlShape for GetAllDataOk {
         &NODE
     }
 }
-validate_impl_6!(GetAllDataOk);
+validate_impl_2!(GetAllDataOk);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct GetAllDataOkMeta {
@@ -3617,7 +3461,7 @@ impl runtime::XmlShape for GetAllDataOk2 {
         &NODE
     }
 }
-validate_impl_6!(GetAllDataOk2);
+validate_impl_2!(GetAllDataOk2);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct GetAllDataOk2Meta {
@@ -3801,7 +3645,7 @@ impl runtime::XmlShape for QueryProductsOk {
         &NODE
     }
 }
-validate_impl_6!(QueryProductsOk);
+validate_impl_2!(QueryProductsOk);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct QueryProductsOkMeta {
@@ -3985,7 +3829,7 @@ impl runtime::XmlShape for SearchProductsOk {
         &NODE
     }
 }
-validate_impl_6!(SearchProductsOk);
+validate_impl_2!(SearchProductsOk);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct SearchProductsOkMeta {
@@ -4164,7 +4008,7 @@ pub struct UploadPhotosAccepted {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub batch_id: Option<String>,
+    pub batch_id: Option<runtime::UuidText>,
 }
 deserialize_impl!(UploadPhotosAccepted);
 serialize_impl!(UploadPhotosAccepted);
@@ -4221,22 +4065,7 @@ impl runtime::XmlShape for UploadPhotosAccepted {
         &NODE
     }
 }
-impl runtime::Validate for UploadPhotosAccepted {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        if let Some(v) = &self.batch_id {
-            runtime::check_format(
-                out,
-                &runtime::InstancePath::Key(path, "batchId"),
-                v.as_str(),
-                "uuid",
-            );
-        }
-    }
-}
+validate_impl!(UploadPhotosAccepted);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct CreateUserBody {
@@ -4565,7 +4394,7 @@ impl<'de> runtime::TaggedUnion<'de> for ItemRequest {
         }
     }
 }
-validate_impl_2!(ItemRequest);
+validate_impl!(ItemRequest);
 /// A product in the shop
 #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -4606,7 +4435,7 @@ pub struct ProductRequest {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub listed_at: Option<String>,
+    pub listed_at: Option<runtime::DateTimeText>,
     #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
     pub image: runtime::Nullable<String>,
     #[serde(
@@ -4886,34 +4715,7 @@ impl runtime::XmlShape for ProductRequest {
         &NODE
     }
 }
-impl runtime::Validate for ProductRequest {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        if let Some(v) = &self.listed_at {
-            runtime::check_format(
-                out,
-                &runtime::InstancePath::Key(path, "listedAt"),
-                v.as_str(),
-                "date-time",
-            );
-        }
-        if let Some(v) = &self.variants {
-            {
-                let base = &runtime::InstancePath::Key(path, "variants");
-                for (i, v) in v.iter().enumerate() {
-                    runtime::Validate::validate(
-                        v,
-                        &runtime::InstancePath::Index(base, i),
-                        out,
-                    );
-                }
-            }
-        }
-    }
-}
+validate_impl!(ProductRequest);
 /// Every variant in the shop
 #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -5048,7 +4850,7 @@ impl runtime::XmlShape for VariantRequest {
         &NODE
     }
 }
-validate_impl_3!(VariantRequest);
+validate_impl!(VariantRequest);
 /// A single event emitted on the product stream. Each item in a `text/event-stream`, `application/jsonl` or `application/json-seq` response validates against this schema.
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -5059,7 +4861,7 @@ pub struct ProductEventRequest {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub id: Option<String>,
+    pub id: Option<runtime::UuidText>,
     /// The kind of change that occurred
     pub event: ProductEventEvent,
     pub product: ProductRequest,
@@ -5075,7 +4877,7 @@ pub struct ProductEventRequest {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub occurred_at: Option<String>,
+    pub occurred_at: Option<runtime::DateTimeText>,
 }
 deserialize_impl!(ProductEventRequest);
 serialize_impl!(ProductEventRequest);
@@ -5183,7 +4985,7 @@ impl runtime::XmlShape for ProductEventRequest {
         &NODE
     }
 }
-validate_impl_4!(ProductEventRequest);
+validate_impl!(ProductEventRequest);
 #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct VariantShippingRequest {
@@ -5281,7 +5083,7 @@ impl runtime::XmlShape for VariantShippingRequest {
         &NODE
     }
 }
-validate_impl_5!(VariantShippingRequest);
+validate_impl!(VariantShippingRequest);
 /// A generic paginated resource. Specializing schemas bind the item type by declaring a `$dynamicAnchor` named `itemType`, the JSON Schema 2020-12 way to express `PaginatedResource<T>`.
 #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -5351,7 +5153,7 @@ impl runtime::XmlShape for GetAllDataOkRequest {
         &NODE
     }
 }
-validate_impl_6!(GetAllDataOkRequest);
+validate_impl_2!(GetAllDataOkRequest);
 /// A generic paginated resource. Specializing schemas bind the item type by declaring a `$dynamicAnchor` named `itemType`, the JSON Schema 2020-12 way to express `PaginatedResource<T>`.
 #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -5421,7 +5223,7 @@ impl runtime::XmlShape for GetAllDataOk2Request {
         &NODE
     }
 }
-validate_impl_6!(GetAllDataOk2Request);
+validate_impl_2!(GetAllDataOk2Request);
 /// A generic paginated resource. Specializing schemas bind the item type by declaring a `$dynamicAnchor` named `itemType`, the JSON Schema 2020-12 way to express `PaginatedResource<T>`.
 #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -5491,7 +5293,7 @@ impl runtime::XmlShape for QueryProductsOkRequest {
         &NODE
     }
 }
-validate_impl_6!(QueryProductsOkRequest);
+validate_impl_2!(QueryProductsOkRequest);
 /// A generic paginated resource. Specializing schemas bind the item type by declaring a `$dynamicAnchor` named `itemType`, the JSON Schema 2020-12 way to express `PaginatedResource<T>`.
 #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -5561,7 +5363,7 @@ impl runtime::XmlShape for SearchProductsOkRequest {
         &NODE
     }
 }
-validate_impl_6!(SearchProductsOkRequest);
+validate_impl_2!(SearchProductsOkRequest);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct CreateUserBodyRequest {
@@ -5861,7 +5663,7 @@ pub mod builders {
         }
         pub fn listed_at(
             self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
+            value: impl TryInto<runtime::DateTimeText, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("listedAt", value, |s, v| s.listed_at = Some(v)))
         }
@@ -5893,7 +5695,7 @@ pub mod builders {
         }
         pub fn last_updated(
             self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
+            value: impl TryInto<runtime::DateTimeText, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("lastUpdated", value, |s, v| s.last_updated = Some(v)))
         }
@@ -6046,7 +5848,10 @@ pub mod builders {
     pub struct ProductEvent(runtime::Builder<super::ProductEvent>);
     impl ProductEvent {
         /// Unique identifier for the event
-        pub fn id(self, value: impl TryInto<String, Error: std::fmt::Display>) -> Self {
+        pub fn id(
+            self,
+            value: impl TryInto<runtime::UuidText, Error: std::fmt::Display>,
+        ) -> Self {
             Self(self.0.set("id", value, |s, v| s.id = Some(v)))
         }
         pub fn note(
@@ -6057,7 +5862,7 @@ pub mod builders {
         }
         pub fn occurred_at(
             self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
+            value: impl TryInto<runtime::DateTimeText, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("occurredAt", value, |s, v| s.occurred_at = Some(v)))
         }
@@ -6111,7 +5916,7 @@ pub mod builders {
     impl PhotoBatchMeta {
         pub fn taken_at(
             self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
+            value: impl TryInto<runtime::DateTimeText, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("takenAt", value, |s, v| s.taken_at = Some(v)))
         }
@@ -6175,7 +5980,7 @@ pub mod builders {
         /// Timestamp when the image was uploaded
         pub fn uploaded_at(
             self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
+            value: impl TryInto<runtime::DateTimeText, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("uploadedAt", value, |s, v| s.uploaded_at = Some(v)))
         }
@@ -6863,7 +6668,7 @@ pub mod builders {
         }
         pub fn batch_id(
             self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
+            value: impl TryInto<runtime::UuidText, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("batchId", value, |s, v| s.batch_id = Some(v)))
         }
@@ -7032,7 +6837,7 @@ pub mod builders {
         }
         pub fn listed_at(
             self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
+            value: impl TryInto<runtime::DateTimeText, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("listedAt", value, |s, v| s.listed_at = Some(v)))
         }
@@ -7165,7 +6970,10 @@ pub mod builders {
     pub struct ProductEventRequest(runtime::Builder<super::ProductEventRequest>);
     impl ProductEventRequest {
         /// Unique identifier for the event
-        pub fn id(self, value: impl TryInto<String, Error: std::fmt::Display>) -> Self {
+        pub fn id(
+            self,
+            value: impl TryInto<runtime::UuidText, Error: std::fmt::Display>,
+        ) -> Self {
             Self(self.0.set("id", value, |s, v| s.id = Some(v)))
         }
         pub fn note(
@@ -7176,7 +6984,7 @@ pub mod builders {
         }
         pub fn occurred_at(
             self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
+            value: impl TryInto<runtime::DateTimeText, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("occurredAt", value, |s, v| s.occurred_at = Some(v)))
         }
