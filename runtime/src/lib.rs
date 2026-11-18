@@ -18,6 +18,7 @@ mod error;
 mod escape;
 mod exact;
 mod finite;
+mod format_checks;
 mod formats;
 mod formatted;
 mod full_time;
@@ -53,7 +54,6 @@ mod unique_keys;
 mod uri;
 mod uri_template;
 mod validate;
-mod validated;
 #[cfg(feature = "xml")]
 mod xml;
 #[cfg(feature = "xml")]
@@ -97,7 +97,7 @@ pub use message::{Request, Response};
 pub use nullable::Nullable;
 pub use reject::{ErrorField, ErrorSchema, Reason, Rejection};
 #[cfg(feature = "server")]
-pub use server::conditional::Validators;
+pub use server::conditional::CacheValidators;
 #[cfg(feature = "server")]
 pub use server::event::peer;
 #[cfg(feature = "server")]
@@ -132,8 +132,8 @@ pub mod __private {
     pub use crate::binary::*;
     pub use crate::builder::{Builder, field};
     /// Library types of formats, read with their text checked.
-    pub mod validated {
-        pub use crate::validated::*;
+    pub mod formats {
+        pub use crate::formats::*;
     }
     #[cfg(feature = "client")]
     pub use crate::client::auth::*;

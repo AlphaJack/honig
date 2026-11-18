@@ -12,8 +12,8 @@ use std::str::FromStr;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::BuildError;
-use crate::validated::Format;
-use crate::validated::format;
+use crate::formats::Format;
+use crate::formats::format;
 
 /// The text of the format `F`. Only valid text is one.
 pub struct Formatted<F>(String, PhantomData<F>);

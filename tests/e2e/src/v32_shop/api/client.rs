@@ -484,10 +484,10 @@ impl<T: runtime::Transport> Client<T> {
                             "/header/Location",
                         )
                         .map(
-                            runtime::validated::Validated::<
+                            runtime::formats::Validated::<
                                 Option<url::Url>,
-                                runtime::validated::Maybe<
-                                    runtime::validated::Text<runtime::validated::format::Uri>,
+                                runtime::formats::Maybe<
+                                    runtime::formats::Text<runtime::formats::format::Uri>,
                                 >,
                             >::into_inner,
                         )
@@ -1161,10 +1161,10 @@ impl<T: runtime::Transport> Client<T> {
                             "/header/Location",
                         )
                         .map(
-                            runtime::validated::Validated::<
+                            runtime::formats::Validated::<
                                 Option<url::Url>,
-                                runtime::validated::Maybe<
-                                    runtime::validated::Text<runtime::validated::format::Uri>,
+                                runtime::formats::Maybe<
+                                    runtime::formats::Text<runtime::formats::format::Uri>,
                                 >,
                             >::into_inner,
                         )
@@ -1820,10 +1820,10 @@ impl<T: runtime::Transport> Client<T> {
                             "/header/Location",
                         )
                         .map(
-                            runtime::validated::Validated::<
+                            runtime::formats::Validated::<
                                 Option<url::Url>,
-                                runtime::validated::Maybe<
-                                    runtime::validated::Text<runtime::validated::format::Uri>,
+                                runtime::formats::Maybe<
+                                    runtime::formats::Text<runtime::formats::format::Uri>,
                                 >,
                             >::into_inner,
                         )
