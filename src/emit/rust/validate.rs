@@ -65,14 +65,6 @@ pub(super) fn type_impl(cx: Cx<'_>, def: &TypeDef) -> Option<TokenStream> {
 fn type_body(cx: Cx<'_>, def: &TypeDef) -> TokenStream {
     match &def.kind {
         Kind::Struct(s) => struct_checks(cx, s),
-        Kind::IntEnum(values) => {
-            let allowed = values.iter().map(|(_, v)| format!("`{v}`")).collect::<Vec<_>>().join(", ");
-            not_one_of(&allowed)
-        }
-        Kind::StrEnum(values) => {
-            let allowed = values.iter().map(|v| format!("`{}`", v.wire)).collect::<Vec<_>>().join(", ");
-            not_one_of(&allowed)
-        }
         Kind::Union(u) => {
             // Variants with nothing to check share one arm. So do variants of one type (clippy `match_same_arms`).
             let (mut checked, mut unchecked) = (vec![], vec![]);
@@ -86,39 +78,27 @@ fn type_body(cx: Cx<'_>, def: &TypeDef) -> TokenStream {
                     checked.push((quote!(Self::#vn(x)), Some(same), quote!({ #inner })));
                 }
             }
-            // `Other` is valid in an open union and, in a `rest` union, holds a kind that no variant covers.
-            let free = u.open || u.rest;
-            if free {
-                if checked.is_empty() {
-                    return TokenStream::new();
-                }
+            if checked.is_empty() {
+                return TokenStream::new();
+            }
+            // `Other` is valid in an open union and, in a `rest` union, holds a kind that no variant covers. A closed
+            // union has none: decoding refuses a value that no variant takes.
+            if u.open || u.rest {
                 unchecked.push(quote!(Self::Other(_)));
             }
             let arms = super::syntax::shared_arms(checked);
             let rest = unchecked_arm(&unchecked);
-            let other = (!free).then(|| quote!(Self::Other(_) => runtime::violation(out, path, "matches no variant"),));
             quote! {
                 match self {
                     #(#arms)*
                     #rest
-                    #other
                 }
             }
         }
         Kind::Newtype(t) => checks(cx, t, &Constraints::default(), &quote!(&self.0), &quote!(path)),
         // Decoding already rejects any other value.
-        Kind::Const(_) | Kind::Pattern(_) | Kind::Alias(_) | Kind::Pending => TokenStream::new(),
-    }
-}
-
-/// Returns an unknown value of an enum is a violation. The allowed values go into the
-/// format string itself (braces escaped). So `v` is the only argument.
-fn not_one_of(allowed: &str) -> TokenStream {
-    let allowed = allowed.replace('{', "{{").replace('}', "}}");
-    let fmt = lit(&format!("`{{v}}` is not one of {allowed}"));
-    quote! {
-        if let Self::Other(v) = self {
-            runtime::violation(out, path, format!(#fmt));
+        Kind::StrEnum(_) | Kind::IntEnum(_) | Kind::Const(_) | Kind::Pattern(_) | Kind::Alias(_) | Kind::Pending => {
+            TokenStream::new()
         }
     }
 }

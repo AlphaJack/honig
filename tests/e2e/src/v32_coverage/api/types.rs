@@ -92,7 +92,6 @@ validate_impl!(Box2);
 pub enum Note {
     TextNote(NoteTextNote),
     ImageNote(NoteImageNote),
-    Other(serde_json::Value),
 }
 impl serde::Serialize for Note {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
@@ -108,7 +107,6 @@ impl serde::Serialize for Note {
                 serde::Serialize::serialize(&j, s)
             }
             Self::ImageNote(v) => serde::Serialize::serialize(v, s),
-            Self::Other(v) => serde::Serialize::serialize(v, s),
         }
     }
 }
@@ -158,7 +156,6 @@ impl runtime::Validate for Note {
             Self::ImageNote(x) => {
                 runtime::Validate::validate(x, path, out);
             }
-            Self::Other(_) => runtime::violation(out, path, "matches no variant"),
         }
     }
 }
@@ -336,14 +333,12 @@ pub type Pixels = i64;
 pub enum Crop {
     String(String),
     Variant2(CropVariant2),
-    Other(serde_json::Value),
 }
 impl serde::Serialize for Crop {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         match self {
             Self::String(v) => serde::Serialize::serialize(v, s),
             Self::Variant2(v) => serde::Serialize::serialize(v, s),
-            Self::Other(v) => serde::Serialize::serialize(v, s),
         }
     }
 }
@@ -359,33 +354,17 @@ impl<'de> serde::Deserialize<'de> for Crop {
             }
             first.get_or_insert(picked);
         }
-        if let Ok(x) = v.decode_ref::<CropVariant2>()
-            && !matches!(x, CropVariant2::Other(_))
-        {
+        if let Ok(x) = v.decode_ref::<CropVariant2>() {
             let picked = Self::Variant2(x);
             if first.is_none() || runtime::is_valid(&picked) {
                 return Ok(picked);
             }
             first.get_or_insert(picked);
         }
-        Ok(first.unwrap_or_else(|| Self::Other(v.into_value())))
+        first.ok_or_else(|| serde::de::Error::custom("matches no variant"))
     }
 }
-impl runtime::Validate for Crop {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        match self {
-            Self::Variant2(x) => {
-                runtime::Validate::validate(x, path, out);
-            }
-            Self::String(_) => {}
-            Self::Other(_) => runtime::violation(out, path, "matches no variant"),
-        }
-    }
-}
+validate_impl!(Crop);
 /// `TextNote`
 #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -578,14 +557,12 @@ validate_impl!(ImageNoteKind);
 pub enum CropVariant2 {
     Integer(i64),
     Variant2(CropVariant2Variant2),
-    Other(serde_json::Value),
 }
 impl serde::Serialize for CropVariant2 {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         match self {
             Self::Integer(v) => serde::Serialize::serialize(v, s),
             Self::Variant2(v) => serde::Serialize::serialize(v, s),
-            Self::Other(v) => serde::Serialize::serialize(v, s),
         }
     }
 }
@@ -599,22 +576,11 @@ impl<'de> serde::Deserialize<'de> for CropVariant2 {
             | runtime::Kind::Bool
             | runtime::Kind::Number
             | runtime::Kind::String
-            | runtime::Kind::Array => Ok(Self::Other(v.into_value())),
+            | runtime::Kind::Array => Err(serde::de::Error::custom("matches no variant")),
         }
     }
 }
-impl runtime::Validate for CropVariant2 {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        match self {
-            Self::Integer(_) | Self::Variant2(_) => {}
-            Self::Other(_) => runtime::violation(out, path, "matches no variant"),
-        }
-    }
-}
+validate_impl!(CropVariant2);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct CropVariant2Variant2 {

@@ -197,35 +197,38 @@ fn every_format_round_trips_through_client_and_server() {
     assert_eq!(events.0.lock().expect("lock").take(), Some(sent));
 }
 
-/// The discriminator picks the branch by its tag although both branches have one type. A tag that no branch has is
-/// `Other`.
+/// The discriminator picks the branch by its tag although both branches have one type. A tag that no branch has does
+/// not decode.
 #[test]
-fn the_tag_picks_the_branch_and_an_unknown_tag_is_other() {
-    let payment = |p: serde_json::Value| -> Option<types::EventPayment> {
-        serde_json::from_value::<types::Event>(json!({"id": ID, "at": AT, "payment": p})).expect("decodes").payment
+fn the_tag_picks_the_branch_and_an_unknown_tag_does_not_decode() {
+    let payment = |p: serde_json::Value| {
+        serde_json::from_value::<types::Event>(json!({"id": ID, "at": AT, "payment": p})).map(|e| e.payment)
     };
-    assert_matches!(payment(json!({"method": "Transfer", "amount": 2})), Some(types::EventPayment::Transfer(_)));
-    assert_matches!(payment(json!({"method": "Card", "amount": 2})), Some(types::EventPayment::Card(_)));
-    assert_matches!(payment(json!({"method": "Cash", "amount": 2})), Some(types::EventPayment::Other(_)));
+    assert_matches!(payment(json!({"method": "Transfer", "amount": 2})), Ok(Some(types::EventPayment::Transfer(_))));
+    assert_matches!(payment(json!({"method": "Card", "amount": 2})), Ok(Some(types::EventPayment::Card(_))));
+    assert_matches!(payment(json!({"method": "Cash", "amount": 2})), Err(_));
 }
 
-/// The `minimum` of a decimal is checked inside the branch that the tag picked. A value that no branch takes is
-/// reported.
+/// The `minimum` of a decimal is checked inside the branch that the tag picked. A value that no branch takes does not
+/// decode.
 #[test]
-fn a_union_checks_its_branch_and_reports_a_value_no_branch_takes() {
-    let check = |extra: serde_json::Value| -> Vec<String> {
+fn a_union_checks_its_branch_and_refuses_a_value_no_branch_takes() {
+    let event = |extra: serde_json::Value| {
         let mut event = json!({"id": ID, "at": AT});
         event.as_object_mut().expect("an object").extend(extra.as_object().expect("an object").clone());
-        let e: types::Event = serde_json::from_value(event).expect("decodes");
+        serde_json::from_value::<types::Event>(event)
+    };
+    let check = |extra: serde_json::Value| -> Vec<String> {
+        let e = event(extra).expect("decodes");
         let mut out = vec![];
         api::Validate::validate(&e, &api::InstancePath::Root, &mut out);
         out.iter().map(|v| v.path.clone()).collect()
     };
     assert_eq!(check(json!({"payment": {"method": "Transfer", "amount": 0}})), Vec::<String>::new());
     assert_eq!(check(json!({"payment": {"method": "Transfer", "amount": -0.01}})), ["/payment/amount"]);
-    assert_eq!(check(json!({"payment": {"method": "Cash", "amount": 1}})), ["/payment"]);
+    assert!(event(json!({"payment": {"method": "Cash", "amount": 1}})).is_err());
     assert_eq!(check(json!({"charge": {"refund": 1}})), Vec::<String>::new());
-    assert_eq!(check(json!({"charge": {"neither": 1}})), ["/charge"]);
+    assert!(event(json!({"charge": {"neither": 1}})).is_err());
 }
 
 /// `decimal128`, as a number and as a string, holds what IEEE 754 decimal128 holds: at most 34 significant digits

@@ -230,9 +230,9 @@ fn enum_macros(space: &Space<'_>) -> TokenStream {
                         }
                     }
                     impl std::str::FromStr for $n {
-                        type Err = std::convert::Infallible;
+                        type Err = String;
                         fn from_str(s: &str) -> Result<Self, Self::Err> {
-                            Ok(Self::from(s))
+                            Self::try_from(s)
                         }
                     }
                     impl serde::Serialize for $n {
@@ -242,8 +242,8 @@ fn enum_macros(space: &Space<'_>) -> TokenStream {
                     }
                     impl<'de> serde::Deserialize<'de> for $n {
                         fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-                            let s = <String as serde::Deserialize>::deserialize(d)?;
-                            Ok(Self::from(s.as_str()))
+                            let s = <std::borrow::Cow<'de, str> as serde::Deserialize>::deserialize(d)?;
+                            Self::try_from(&*s).map_err(serde::de::Error::custom)
                         }
                     }
                 };
@@ -266,7 +266,8 @@ fn enum_macros(space: &Space<'_>) -> TokenStream {
                     }
                     impl<'de> serde::Deserialize<'de> for $n {
                         fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-                            <i64 as serde::Deserialize>::deserialize(d).map(Self::from)
+                            let v = <i64 as serde::Deserialize>::deserialize(d)?;
+                            Self::try_from(v).map_err(serde::de::Error::custom)
                         }
                     }
                 };
@@ -297,7 +298,7 @@ fn extra_derives(def: &TypeDef, derives: &[(String, Vec<String>)]) -> Option<Tok
             &["Debug", "Clone", "PartialEq", "Eq", "Default", "Serialize", "Deserialize"]
         }
         Kind::StrEnum(_) | Kind::IntEnum(_) => {
-            &["Debug", "Clone", "PartialEq", "Eq", "Hash", "PartialOrd", "Ord", "Serialize", "Deserialize"]
+            &["Debug", "Clone", "Copy", "PartialEq", "Eq", "Hash", "PartialOrd", "Ord", "Serialize", "Deserialize"]
         }
         Kind::Union(_) => &["Debug", "Clone", "PartialEq", "Eq", "Serialize", "Deserialize"],
         Kind::Const(_) => &[
@@ -473,10 +474,10 @@ pub(super) fn default_expr(space: &Space<'_>, t: &Ty, v: &serde_json::Value, qua
     })
 }
 
-/// Returns the default of an enum. A listed value is its variant. So a `const fn` can set it. Any other value goes
-/// through `From` into `Other`.
+/// Returns the default of an enum: the variant of a listed value. So a `const fn` can set it. A value the enum does not
+/// list has no default.
 fn enum_default(kind: &Kind, t: &TokenStream, v: &serde_json::Value) -> Option<TokenStream> {
-    let variant = match (kind, v) {
+    let name = match (kind, v) {
         (Kind::StrEnum(values), serde_json::Value::String(x)) => {
             values.iter().find(|e| e.wire == *x).map(|e| pascal(&e.name))
         }
@@ -484,26 +485,10 @@ fn enum_default(kind: &Kind, t: &TokenStream, v: &serde_json::Value) -> Option<T
             let wanted = n.as_i64()?;
             values.iter().find(|(_, value)| *value == wanted).map(|(name, _)| pascal(name))
         }
-        _ => return None,
-    };
-    if let Some(name) = variant {
-        let name = ident(&name);
-        return Some(quote!(#t::#name));
-    }
-    Some(match v {
-        serde_json::Value::String(x) => {
-            let x = lit(x);
-            quote!(#t::from(#x))
-        }
-        serde_json::Value::Number(n) => {
-            let l = proc_macro2::Literal::i64_suffixed(n.as_i64()?);
-            quote!(#t::from(#l))
-        }
-        serde_json::Value::Null
-        | serde_json::Value::Bool(_)
-        | serde_json::Value::Array(_)
-        | serde_json::Value::Object(_) => return None,
-    })
+        _ => None,
+    }?;
+    let name = ident(&name);
+    Some(quote!(#t::#name))
 }
 
 /// Returns the spec default of a field as an expression when it has one that fits.
@@ -811,38 +796,45 @@ fn json_string(items: &mut Vec<TokenStream>, space: &Space<'_>, def: &TypeDef, t
     });
 }
 
-/// Emits an open integer enum with one variant per listed value and `Other(i64)` for the rest.
+/// Emits a closed integer enum with one variant per listed value. Any other value fails to convert or decode.
 fn int_enum(items: &mut Vec<TokenStream>, def: &TypeDef, values: &[(Name, i64)]) {
     let n = pascal_ident(&def.name);
     let doc = doc_opt(def.doc.as_deref());
     let names: Vec<_> = values.iter().map(|(v, _)| pascal_ident(v)).collect();
     let nums: Vec<_> = values.iter().map(|(_, x)| proc_macro2::Literal::i64_unsuffixed(*x)).collect();
+    let allowed = lit(&one_of(values.iter().map(|(_, v)| v.to_string())));
     items.push(quote! {
         #doc
         #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
         pub enum #n {
             #(#names,)*
-            Other(i64),
         }
         impl #n {
             #[must_use]
             pub const fn value(self) -> i64 {
                 match self {
                     #(Self::#names => #nums,)*
-                    Self::Other(v) => v,
                 }
             }
         }
-        impl From<i64> for #n {
-            fn from(v: i64) -> Self {
+        impl TryFrom<i64> for #n {
+            type Error = String;
+            fn try_from(v: i64) -> Result<Self, String> {
                 match v {
-                    #(#nums => Self::#names,)*
-                    other => Self::Other(other),
+                    #(#nums => Ok(Self::#names),)*
+                    other => Err(format!(#allowed)),
                 }
             }
         }
         int_enum_impls!(#n);
     });
+}
+
+/// Returns the message of a value that a closed enum does not list: `{other}` takes the value. Braces in the values are
+/// escaped.
+fn one_of(values: impl Iterator<Item = String>) -> String {
+    let allowed = values.map(|v| format!("`{v}`")).collect::<Vec<_>>().join(", ");
+    format!("`{{other}}` is not one of {}", allowed.replace('{', "{{").replace('}', "}}"))
 }
 
 /// Returns a `const`. It is a unit struct that serializes to the value and decodes only it.
@@ -997,32 +989,47 @@ fn str_enum(items: &mut Vec<TokenStream>, def: &TypeDef, values: &[EnumValue]) {
     });
     let names: Vec<_> = values.iter().map(|v| pascal_ident(&v.name)).collect();
     let wires: Vec<_> = values.iter().map(|v| lit(&v.wire)).collect();
+    let allowed = lit(&one_of(values.iter().map(|v| v.wire.clone())));
     items.push(quote! {
         #doc
-        #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
         pub enum #n {
             #(#variants)*
-            Other(String),
         }
         impl #n {
             #[must_use]
-            pub const fn as_str(&self) -> &str {
+            pub const fn as_str(&self) -> &'static str {
                 match self {
                     #(Self::#names => #wires,)*
-                    Self::Other(s) => s.as_str(),
                 }
             }
         }
-        impl From<&str> for #n {
-            fn from(s: &str) -> Self {
+        impl TryFrom<&str> for #n {
+            type Error = String;
+            fn try_from(s: &str) -> Result<Self, String> {
                 match s {
-                    #(#wires => Self::#names,)*
-                    other => Self::Other(other.to_owned()),
+                    #(#wires => Ok(Self::#names),)*
+                    other => Err(format!(#allowed)),
                 }
             }
         }
         str_enum_impls!(#n);
     });
+}
+
+/// Does the union have an `Other` variant? Only one that the schema leaves open does: a branch takes any value
+/// (`open`), or a kind that no variant covers is valid (`rest`).
+const fn has_other(u: &Union) -> bool {
+    u.open || u.rest
+}
+
+/// Returns the value that no variant of the union takes: `Other` holds it when the union has one. Else decoding fails.
+fn no_variant(u: &Union) -> TokenStream {
+    if has_other(u) {
+        quote!(Ok(Self::Other(v.into_value())))
+    } else {
+        quote!(Err(serde::de::Error::custom("matches no variant")))
+    }
 }
 
 fn union(
@@ -1041,18 +1048,24 @@ fn union(
     });
     let ser = union_serialize(space, aliases, u);
     let deserialize = union_deserialize_impl(space, &n, u);
+    // Only a union that the schema leaves open holds a value that no variant takes. A closed one fails to decode it.
+    let (other, other_ser) = if has_other(u) {
+        (quote!(Other(serde_json::Value),), quote!(Self::Other(v) => serde::Serialize::serialize(v, s),))
+    } else {
+        (TokenStream::new(), TokenStream::new())
+    };
     items.push(quote! {
         #doc
         #[derive(Debug, Clone, PartialEq, #eq)]
         pub enum #n {
             #(#variants)*
-            Other(serde_json::Value),
+            #other
         }
         impl serde::Serialize for #n {
             fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
                 match self {
                     #ser
-                    Self::Other(v) => serde::Serialize::serialize(v, s),
+                    #other_ser
                 }
             }
         }
@@ -1220,7 +1233,7 @@ fn union_deserialize(space: &Space<'_>, u: &Union) -> TokenStream {
             });
             let fallback = match default {
                 Some(i) => conv(space, &pascal(&u.variants[*i].name), &u.variants[*i].ty),
-                None => quote!(Ok(Self::Other(v.into_value()))),
+                None => no_variant(u),
             };
             let none = proc_macro2::Literal::usize_unsuffixed(tagged.len());
             quote! {
@@ -1271,10 +1284,11 @@ fn untagged(space: &Space<'_>, u: &Union) -> TokenStream {
     });
     let tries = u.variants.iter().enumerate().map(|(i, v)| {
         let (name, t) = (pascal_ident(&v.name), ty(space, &v.ty, false));
-        // A union always decodes because its `Other` takes anything. As a branch it matches only through one
+        // An open union always decodes because its `Other` takes anything. As a branch it matches only through one
         // of its own variants. So the branches after it still get their turn. A boxed one too.
         let (inner, boxed) = if let Ty::Indirect(i) = &v.ty { (i.as_ref(), true) } else { (&v.ty, false) };
-        let union = matches!(inner, Ty::Named(id) if matches!(space.types.get(*id).kind, Kind::Union(_)));
+        let union =
+            matches!(inner, Ty::Named(id) if matches!(&space.types.get(*id).kind, Kind::Union(x) if has_other(x)));
         let guard = guards[i].as_ref().map(|_| {
             let f = fit(i);
             quote!(#f &&)
@@ -1326,7 +1340,7 @@ fn untagged(space: &Space<'_>, u: &Union) -> TokenStream {
             #(#lets)*
             let mut first = None;
             #(#tries)*
-            Ok(first.unwrap_or_else(|| Self::Other(v.into_value())))
+            first.ok_or_else(|| serde::de::Error::custom("matches no variant"))
         }
     }
 }
@@ -1455,7 +1469,8 @@ fn by_kind(space: &Space<'_>, u: &Union) -> TokenStream {
         arms.push(quote!(#(#pats)|* => #c,));
     }
     let rest: Vec<TokenStream> = K::ALL.iter().filter(|k| !covered.contains(k)).map(|k| k.path()).collect();
-    let other = (!rest.is_empty()).then(|| quote!(#(#rest)|* => Ok(Self::Other(v.into_value())),));
+    let none = no_variant(u);
+    let other = (!rest.is_empty()).then(|| quote!(#(#rest)|* => #none,));
     quote! {
         match v.kind() {
             #(#arms)*

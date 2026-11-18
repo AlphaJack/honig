@@ -164,9 +164,9 @@ macro_rules! str_enum_impls {
             }
         }
         impl std::str::FromStr for $n {
-            type Err = std::convert::Infallible;
+            type Err = String;
             fn from_str(s: &str) -> Result<Self, Self::Err> {
-                Ok(Self::from(s))
+                Self::try_from(s)
             }
         }
         impl serde::Serialize for $n {
@@ -176,8 +176,8 @@ macro_rules! str_enum_impls {
         }
         impl<'de> serde::Deserialize<'de> for $n {
             fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-                let s = <String as serde::Deserialize>::deserialize(d)?;
-                Ok(Self::from(s.as_str()))
+                let s = <std::borrow::Cow<'de, str> as serde::Deserialize>::deserialize(d)?;
+                Self::try_from(&*s).map_err(serde::de::Error::custom)
             }
         }
     };
@@ -470,14 +470,12 @@ impl runtime::Validate for Degenerate {
 pub enum Tree {
     Variant1(TreeVariant1),
     Variant2(TreeVariant2),
-    Other(serde_json::Value),
 }
 impl serde::Serialize for Tree {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         match self {
             Self::Variant1(v) => serde::Serialize::serialize(v, s),
             Self::Variant2(v) => serde::Serialize::serialize(v, s),
-            Self::Other(v) => serde::Serialize::serialize(v, s),
         }
     }
 }
@@ -515,7 +513,7 @@ impl<'de> serde::Deserialize<'de> for Tree {
             }
             first.get_or_insert(picked);
         }
-        Ok(first.unwrap_or_else(|| Self::Other(v.into_value())))
+        first.ok_or_else(|| serde::de::Error::custom("matches no variant"))
     }
 }
 impl runtime::Validate for Tree {
@@ -531,7 +529,6 @@ impl runtime::Validate for Tree {
             Self::Variant2(x) => {
                 runtime::Validate::validate(x, path, out);
             }
-            Self::Other(_) => runtime::violation(out, path, "matches no variant"),
         }
     }
 }
@@ -971,19 +968,7 @@ impl runtime::XmlShape for Problem {
         &NODE
     }
 }
-impl runtime::Validate for Problem {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        runtime::Validate::validate(
-            &self.code,
-            &runtime::InstancePath::Key(path, "code"),
-            out,
-        );
-    }
-}
+validate_impl!(Problem);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 #[serde(deny_unknown_fields)]
@@ -1190,7 +1175,6 @@ validate_impl!(Login);
 pub enum Shipment {
     International(ShipmentInternational),
     Otherwise(ShipmentOtherwise),
-    Other(serde_json::Value),
 }
 impl serde::Serialize for Shipment {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
@@ -1206,7 +1190,6 @@ impl serde::Serialize for Shipment {
                 serde::Serialize::serialize(&j, s)
             }
             Self::Otherwise(v) => serde::Serialize::serialize(v, s),
-            Self::Other(v) => serde::Serialize::serialize(v, s),
         }
     }
 }
@@ -1253,7 +1236,6 @@ impl runtime::Validate for Shipment {
             Self::Otherwise(x) => {
                 runtime::Validate::validate(x, path, out);
             }
-            Self::Other(_) => runtime::violation(out, path, "matches no variant"),
         }
     }
 }
@@ -1655,11 +1637,6 @@ impl runtime::Validate for User {
                 }
             }
         }
-        runtime::Validate::validate(
-            &self.role,
-            &runtime::InstancePath::Key(path, "role"),
-            out,
-        );
         if let Some(v) = &self.meta {
             runtime::check_len(
                 out,
@@ -1821,47 +1798,32 @@ impl<'de> serde::Deserialize<'de> for RefusalObject {
     }
 }
 validate_impl!(RefusalObject);
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum ProblemCode {
     Invalid,
     Taken,
-    Other(String),
 }
 impl ProblemCode {
     #[must_use]
-    pub const fn as_str(&self) -> &str {
+    pub const fn as_str(&self) -> &'static str {
         match self {
             Self::Invalid => "INVALID",
             Self::Taken => "TAKEN",
-            Self::Other(s) => s.as_str(),
         }
     }
 }
-impl From<&str> for ProblemCode {
-    fn from(s: &str) -> Self {
+impl TryFrom<&str> for ProblemCode {
+    type Error = String;
+    fn try_from(s: &str) -> Result<Self, String> {
         match s {
-            "INVALID" => Self::Invalid,
-            "TAKEN" => Self::Taken,
-            other => Self::Other(other.to_owned()),
+            "INVALID" => Ok(Self::Invalid),
+            "TAKEN" => Ok(Self::Taken),
+            other => Err(format!("`{other}` is not one of `INVALID`, `TAKEN`")),
         }
     }
 }
 str_enum_impls!(ProblemCode);
-impl runtime::Validate for ProblemCode {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        if let Self::Other(v) = self {
-            runtime::violation(
-                out,
-                path,
-                format!("`{v}` is not one of `INVALID`, `TAKEN`"),
-            );
-        }
-    }
-}
+validate_impl!(ProblemCode);
 #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct ShipmentInternational {
@@ -2745,11 +2707,6 @@ impl runtime::Validate for ShipmentOtherwise {
         path: &runtime::InstancePath<'_>,
         out: &mut Vec<runtime::Violation>,
     ) {
-        runtime::Validate::validate(
-            &self.kind,
-            &runtime::InstancePath::Key(path, "kind"),
-            out,
-        );
         if let Some(v) = &self.rating {
             {
                 static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
@@ -2854,47 +2811,32 @@ impl runtime::Validate for ShipmentOtherwise {
         }
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum ShipmentOtherwiseKind {
     Domestic,
     International,
-    Other(String),
 }
 impl ShipmentOtherwiseKind {
     #[must_use]
-    pub const fn as_str(&self) -> &str {
+    pub const fn as_str(&self) -> &'static str {
         match self {
             Self::Domestic => "domestic",
             Self::International => "international",
-            Self::Other(s) => s.as_str(),
         }
     }
 }
-impl From<&str> for ShipmentOtherwiseKind {
-    fn from(s: &str) -> Self {
+impl TryFrom<&str> for ShipmentOtherwiseKind {
+    type Error = String;
+    fn try_from(s: &str) -> Result<Self, String> {
         match s {
-            "domestic" => Self::Domestic,
-            "international" => Self::International,
-            other => Self::Other(other.to_owned()),
+            "domestic" => Ok(Self::Domestic),
+            "international" => Ok(Self::International),
+            other => Err(format!("`{other}` is not one of `domestic`, `international`")),
         }
     }
 }
 str_enum_impls!(ShipmentOtherwiseKind);
-impl runtime::Validate for ShipmentOtherwiseKind {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        if let Self::Other(v) = self {
-            runtime::violation(
-                out,
-                path,
-                format!("`{v}` is not one of `domestic`, `international`"),
-            );
-        }
-    }
-}
+validate_impl!(ShipmentOtherwiseKind);
 pub type ShipmentOtherwiseMeta = ShipmentInternationalMeta;
 pub type ShipmentOtherwiseMetaObject = MetaObject;
 pub type ShipmentOtherwiseParcelsItem = ParcelsItem;
@@ -2980,59 +2922,42 @@ as_ref_impl!(UserHandle);
 display_impl!(UserHandle);
 deserialize_impl_2!(UserHandle);
 validate_impl!(UserHandle);
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum UserRole {
     Admin,
     User,
-    Other(String),
 }
 impl UserRole {
     #[must_use]
-    pub const fn as_str(&self) -> &str {
+    pub const fn as_str(&self) -> &'static str {
         match self {
             Self::Admin => "admin",
             Self::User => "user",
-            Self::Other(s) => s.as_str(),
         }
     }
 }
-impl From<&str> for UserRole {
-    fn from(s: &str) -> Self {
+impl TryFrom<&str> for UserRole {
+    type Error = String;
+    fn try_from(s: &str) -> Result<Self, String> {
         match s {
-            "admin" => Self::Admin,
-            "user" => Self::User,
-            other => Self::Other(other.to_owned()),
+            "admin" => Ok(Self::Admin),
+            "user" => Ok(Self::User),
+            other => Err(format!("`{other}` is not one of `admin`, `user`")),
         }
     }
 }
 str_enum_impls!(UserRole);
-impl runtime::Validate for UserRole {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        if let Self::Other(v) = self {
-            runtime::violation(
-                out,
-                path,
-                format!("`{v}` is not one of `admin`, `user`"),
-            );
-        }
-    }
-}
+validate_impl!(UserRole);
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum UserLoyalty {
     Integer(i64),
     String(String),
-    Other(serde_json::Value),
 }
 impl serde::Serialize for UserLoyalty {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         match self {
             Self::Integer(v) => serde::Serialize::serialize(v, s),
             Self::String(v) => serde::Serialize::serialize(v, s),
-            Self::Other(v) => serde::Serialize::serialize(v, s),
         }
     }
 }
@@ -3046,7 +2971,9 @@ impl<'de> serde::Deserialize<'de> for UserLoyalty {
             | runtime::Kind::Bool
             | runtime::Kind::Number
             | runtime::Kind::Array
-            | runtime::Kind::Object => Ok(Self::Other(v.into_value())),
+            | runtime::Kind::Object => {
+                Err(serde::de::Error::custom("matches no variant"))
+            }
         }
     }
 }
@@ -3064,7 +2991,6 @@ impl runtime::Validate for UserLoyalty {
                 let n = x.chars().count();
                 runtime::check_len(out, path, n, None, Some(3), "characters");
             }
-            Self::Other(_) => runtime::violation(out, path, "matches no variant"),
         }
     }
 }

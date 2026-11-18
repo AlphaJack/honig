@@ -23,6 +23,12 @@ A property that is optional and nullable is `api::Nullable<T>`. Its variants are
 
 A `const` is a unit struct that only decodes its value. Arrays with `minItems == maxItems` are `[T; N]`. The formats `int8` to `uint16` are the Rust integers of the same width.
 
+## Enums and unions
+
+String and integer enums are closed. Each listed value is a variant. Any other value fails `try_from` and decoding. So a request with one gets `400`, and a client reading a response with one gets a decode error. Update the description and generate again when the server adds a value.
+
+A `oneOf` or `anyOf` is closed too: a value that no branch takes fails decoding. A union has an `Other(serde_json::Value)` variant only when the schema itself takes any value. That is a branch of `{}`, or keywords such as `properties` without a `type`. Then any value of another kind is valid.
+
 ## Conditional schemas
 
 `if`/`then` blocks that test one property against constants become an enum. It is like a discriminated `oneOf`:
@@ -36,7 +42,7 @@ Notify:
     - {if: {properties: {type: {const: sms}}},   then: {required: [phone], properties: {phone: {type: string}}}}
 ```
 
-This gives `enum Notify { Email(NotifyEmail), Sms(NotifySms), Otherwise(NotifyOtherwise), Other(Value) }`. `NotifyEmail` has `email: String` as required.
+This gives `enum Notify { Email(NotifyEmail), Sms(NotifySms), Otherwise(NotifyOtherwise) }`. `NotifyEmail` has `email: String` as required.
 
 - `Otherwise` holds every other value. Its type has the base properties.
 - A lone `if`/`then`/`else` becomes the same kind of enum. `else` is the `Otherwise` variant. `else: false` leaves none.
@@ -55,7 +61,7 @@ Generated types take extra derives. Use `"*"` for all types or the Rust name of 
 Order = ["sqlx::FromRow"]
 ```
 
-Derives the generator already emits are skipped. String enums carry an `Other(String)` variant for unknown values. So derives that need unit-only enums do not fit them. Examples are `sqlx::Type` and `Copy`.
+Derives the generator already emits are skipped. String and integer enums are closed and `Copy`: one unit variant per listed value. So derives that need unit-only enums fit them, such as `sqlx::Type`.
 
 Put `x-rust-type` on the schema to reuse a type that you already have. honig then generates no type for it:
 
@@ -111,7 +117,7 @@ Mail addresses and host names are types of the runtime. Only a valid value can b
 `contentEncoding: base64url` gives `api::Base64Url`. It holds bytes in the URL-safe alphabet.
 
 `{type: number, format: decimal}` and `decimal128` are `api::Decimal`. It keeps the digits of the number. `12345678901234567.89` arrives and leaves as written. An `f64` would round it.
-It reads the exact text wherever the number is. This includes `oneOf` branches. It rounds only in the `Other` of a union. That variant holds a value that no branch takes as a `serde_json::Value`.
+It reads the exact text wherever the number is. This includes `oneOf` branches. It rounds only in the `Other` of an open union. That variant holds a value that no branch takes as a `serde_json::Value`.
 
 For arithmetic parse its digits into a decimal type with `d.as_str().parse::<rust_decimal::Decimal>()`.
 `{type: string, format: decimal}` is a `String` with every digit. The server checks it as a decimal. Use it past the 28 significant digits that `rust_decimal` holds.
@@ -120,7 +126,7 @@ JSON the description leaves untyped is a `serde_json::Value`:
 
 - the properties that an object does not declare with `unknown_fields = "keep"`
 - a `{}` schema and an untyped `additionalProperties`
-- the `Other` of a union
+- the `Other` of an open union
 
 A number in such a value rounds when it is past `u64`. It also rounds when it has more significant digits than an `f64` holds, which is about 17. RFC 8259 section 6 allows this. A client that reads such an object and writes it back can change that number. To keep a number exact declare it with `format: decimal`.
 

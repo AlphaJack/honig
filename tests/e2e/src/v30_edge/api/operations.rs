@@ -16,6 +16,27 @@ macro_rules! error_impl {
         impl std::error::Error for $t {}
     };
 }
+macro_rules! validate_impl {
+    ($t:ty) => {
+        impl runtime::Validate for $t {
+            fn validate(
+                &self,
+                path: &runtime::InstancePath<'_>,
+                out: &mut Vec<runtime::Violation>,
+            ) {
+                runtime::check_format(
+                    out,
+                    &runtime::InstancePath::Key(
+                        &runtime::InstancePath::Key(path, "path"),
+                        "orderId",
+                    ),
+                    self.order_id.as_str(),
+                    "uuid",
+                );
+            }
+        }
+    };
+}
 use super::runtime;
 #[doc(hidden)]
 pub const SECURITY_0: &[&[runtime::Requirement]] = &[
@@ -61,21 +82,6 @@ pub mod list_orders {
             path: &runtime::InstancePath<'_>,
             out: &mut Vec<runtime::Violation>,
         ) {
-            if let Some(v) = &self.status {
-                {
-                    let base = &runtime::InstancePath::Key(
-                        &runtime::InstancePath::Key(path, "query"),
-                        "status",
-                    );
-                    for (i, v) in v.iter().enumerate() {
-                        runtime::Validate::validate(
-                            v,
-                            &runtime::InstancePath::Index(base, i),
-                            out,
-                        );
-                    }
-                }
-            }
             if let Some(v) = &self.created_after {
                 runtime::check_format(
                     out,
@@ -95,14 +101,6 @@ pub mod list_orders {
                 ),
                 self.limit,
                 [Some(1), Some(100), None, None],
-            );
-            runtime::Validate::validate(
-                &self.sort,
-                &runtime::InstancePath::Key(
-                    &runtime::InstancePath::Key(path, "query"),
-                    "sort",
-                ),
-                out,
             );
         }
     }
@@ -214,23 +212,7 @@ pub mod get_order {
             Self { order_id }
         }
     }
-    impl runtime::Validate for Params {
-        fn validate(
-            &self,
-            path: &runtime::InstancePath<'_>,
-            out: &mut Vec<runtime::Violation>,
-        ) {
-            runtime::check_format(
-                out,
-                &runtime::InstancePath::Key(
-                    &runtime::InstancePath::Key(path, "path"),
-                    "orderId",
-                ),
-                self.order_id.as_str(),
-                "uuid",
-            );
-        }
-    }
+    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// The order.
@@ -299,28 +281,7 @@ pub mod upload_document {
             Self { order_id, body }
         }
     }
-    impl runtime::Validate for Params {
-        fn validate(
-            &self,
-            path: &runtime::InstancePath<'_>,
-            out: &mut Vec<runtime::Violation>,
-        ) {
-            runtime::check_format(
-                out,
-                &runtime::InstancePath::Key(
-                    &runtime::InstancePath::Key(path, "path"),
-                    "orderId",
-                ),
-                self.order_id.as_str(),
-                "uuid",
-            );
-            runtime::Validate::validate(
-                &self.body,
-                &runtime::InstancePath::Key(path, "body"),
-                out,
-            );
-        }
-    }
+    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Stored.

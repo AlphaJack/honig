@@ -12,6 +12,11 @@
     clippy::missing_errors_doc,
     reason = "generated docs hold only the description's own prose"
 )]
+macro_rules! validate_impl {
+    ($t:ty) => {
+        impl runtime::Validate for $t {}
+    };
+}
 macro_rules! display_impl {
     ($t:ty) => {
         impl std::fmt::Display for $t {
@@ -26,11 +31,6 @@ macro_rules! display_impl {
 macro_rules! error_impl {
     ($t:ty) => {
         impl std::error::Error for $t {}
-    };
-}
-macro_rules! validate_impl {
-    ($t:ty) => {
-        impl runtime::Validate for $t {}
     };
 }
 macro_rules! default_impl {
@@ -150,19 +150,7 @@ pub mod submit_form {
             Self { body }
         }
     }
-    impl runtime::Validate for Params {
-        fn validate(
-            &self,
-            path: &runtime::InstancePath<'_>,
-            out: &mut Vec<runtime::Violation>,
-        ) {
-            runtime::Validate::validate(
-                &self.body,
-                &runtime::InstancePath::Key(path, "body"),
-                out,
-            );
-        }
-    }
+    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Accepted.

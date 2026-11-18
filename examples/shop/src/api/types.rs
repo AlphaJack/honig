@@ -48,7 +48,6 @@ use super::runtime;
 pub enum Product {
     Physical(Physical),
     Digital(Digital),
-    Other(serde_json::Value),
 }
 impl serde::Serialize for Product {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
@@ -73,7 +72,6 @@ impl serde::Serialize for Product {
                 }
                 serde::Serialize::serialize(&j, s)
             }
-            Self::Other(v) => serde::Serialize::serialize(v, s),
         }
     }
 }
@@ -107,7 +105,7 @@ impl<'de> runtime::TaggedUnion<'de> for Product {
         match which {
             0 => v.decode_into(Self::Physical),
             1 => v.decode_into(Self::Digital),
-            _ => Ok(Self::Other(v.into_value())),
+            _ => Err(serde::de::Error::custom("matches no variant")),
         }
     }
 }
@@ -124,7 +122,6 @@ impl runtime::Validate for Product {
             Self::Digital(x) => {
                 runtime::Validate::validate(x, path, out);
             }
-            Self::Other(_) => runtime::violation(out, path, "matches no variant"),
         }
     }
 }
