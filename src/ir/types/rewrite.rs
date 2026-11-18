@@ -1,7 +1,7 @@
 //! Schema rewrites that the builder types instead of the schema as written. That is the request view without
 //! `readOnly` requirements and `if`/`then`/`else` on one property as the `oneOf` that it means.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 use serde_json::Value;
 
@@ -15,15 +15,18 @@ use crate::json;
 /// `dependentSchemas`). A subschema may be a `$ref` into the `$defs` of the root, which holds each schema once for
 /// every place that refers to it: its properties count, and a `required` of its own to strip makes it a copy.
 pub(crate) fn request_view(schema: &mut Value) {
-    let raw = schema.get("$defs").and_then(Value::as_object).cloned().unwrap_or_default();
+    let raw: BTreeMap<String, Value> =
+        schema.get("$defs").and_then(Value::as_object).cloned().unwrap_or_default().into_iter().collect();
     // Each definition as a request sees it first: a subschema that refers to one then sees what is left to strip.
     let mut defs = raw.clone();
-    defs.values_mut().for_each(|d| view(d, &raw));
+    for d in defs.values_mut() {
+        view(d, &raw);
+    }
     view(schema, &defs);
 }
 
-/// [`request_view`] with the `$defs` of the root.
-fn view(schema: &mut Value, defs: &serde_json::Map<String, Value>) {
+/// [`request_view`] where `#/$defs/<pointer>` references resolve in `defs`, as a request sees each of them already.
+pub(crate) fn view(schema: &mut Value, defs: &BTreeMap<String, Value>) {
     // A subschema that is only a `$ref` into `defs`: the schema that it stands for.
     let target = |s: &Value| -> Option<Value> {
         let o = s.as_object().filter(|o| o.len() == 1)?;

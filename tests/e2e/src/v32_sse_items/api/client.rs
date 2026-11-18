@@ -378,4 +378,33 @@ impl<T: runtime::Transport> Client<T> {
             .await;
         Ok(runtime::Streamed::Other(other?))
     }
+    pub async fn tile_batch(
+        &self,
+        p: impl runtime::IntoArg<'_, ops::tile_batch::Params>,
+    ) -> Result<ops::tile_batch::Response, runtime::Error> {
+        let p = runtime::IntoArg::into_arg(p).into_owned();
+        let path = String::from("/tiles/batch");
+        let query = Vec::new();
+        let mut req = runtime::new_request("POST", path, query)?;
+        runtime::set_items(
+            &mut req,
+            "application/jsonl",
+            p.body,
+            runtime::Framing::JsonLines,
+        )?;
+        runtime::apply_auth(&mut req, &self.credentials, &[])?;
+        runtime::propagate_trace(&mut req);
+        let resp = runtime::send(&self.transport, req).await?;
+        let (head, body) = resp.into_parts();
+        let (body, _) = body.into_parts();
+        let status = head.status.as_u16();
+        if status == 204 {
+            Ok(ops::tile_batch::Response::NoContent)
+        } else {
+            Err(runtime::Error::UnexpectedStatus {
+                status: head.status,
+                body,
+            })
+        }
+    }
 }

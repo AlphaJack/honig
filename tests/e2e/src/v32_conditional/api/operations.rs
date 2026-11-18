@@ -11,6 +11,22 @@
     clippy::missing_errors_doc,
     reason = "generated docs hold only the description's own prose"
 )]
+macro_rules! display_impl {
+    ($t:ty) => {
+        impl std::fmt::Display for $t {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                match self {
+                    Self::NoContent => f.write_str("status 204 (NoContent)"),
+                }
+            }
+        }
+    };
+}
+macro_rules! error_impl {
+    ($t:ty) => {
+        impl std::error::Error for $t {}
+    };
+}
 pub mod a {
     use super::super::types;
     use super::super::runtime;
@@ -44,6 +60,16 @@ pub mod a {
         /// ok
         NoContent,
     }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
+    }
 }
 pub mod b {
     use super::super::types;
@@ -69,17 +95,19 @@ pub mod b {
             {
                 static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                 let value = runtime::to_value(&self.body).unwrap_or_default();
-                runtime::check_schema(
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"allOf\":[{\"if\":{\"properties\":{\"type\":{\"const\":\"email\"}}},\"then\":{\"required\":[\"email\"],\"properties\":{\"email\":{\"type\":\"string\",\"format\":\"email\"}}}},{\"if\":{\"properties\":{\"type\":{\"const\":\"sms\"}}},\"then\":{\"required\":[\"phone\"],\"properties\":{\"phone\":{\"type\":\"string\"}}}}]}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
                     out,
                     &runtime::InstancePath::Key(path, "body"),
                     &value,
-                    SCHEMA
-                        .get_or_init(|| {
-                            serde_json::from_str(
-                                    "{\"allOf\":[{\"if\":{\"properties\":{\"type\":{\"const\":\"email\"}}},\"then\":{\"required\":[\"email\"],\"properties\":{\"email\":{\"type\":\"string\",\"format\":\"email\"}}}},{\"if\":{\"properties\":{\"type\":{\"const\":\"sms\"}}},\"then\":{\"required\":[\"phone\"],\"properties\":{\"phone\":{\"type\":\"string\"}}}}]}",
-                                )
-                                .unwrap_or_default()
-                        }),
+                    schema,
+                    None,
                 );
             }
         }
@@ -88,6 +116,16 @@ pub mod b {
     pub enum Response {
         /// ok
         NoContent,
+    }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
     }
 }
 pub mod c {
@@ -114,17 +152,19 @@ pub mod c {
             {
                 static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                 let value = runtime::to_value(&self.body).unwrap_or_default();
-                runtime::check_schema(
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"oneOf\":[{\"type\":\"object\",\"required\":[\"type\",\"email\"],\"properties\":{\"type\":{\"type\":\"string\",\"enum\":[\"email\"]},\"email\":{\"type\":\"string\"}}},{\"type\":\"object\",\"required\":[\"type\",\"phone\"],\"properties\":{\"type\":{\"type\":\"string\",\"enum\":[\"sms\"]},\"phone\":{\"type\":\"string\"}}}]}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
                     out,
                     &runtime::InstancePath::Key(path, "body"),
                     &value,
-                    SCHEMA
-                        .get_or_init(|| {
-                            serde_json::from_str(
-                                    "{\"oneOf\":[{\"type\":\"object\",\"required\":[\"type\",\"email\"],\"properties\":{\"type\":{\"type\":\"string\",\"enum\":[\"email\"]},\"email\":{\"type\":\"string\"}}},{\"type\":\"object\",\"required\":[\"type\",\"phone\"],\"properties\":{\"type\":{\"type\":\"string\",\"enum\":[\"sms\"]},\"phone\":{\"type\":\"string\"}}}]}",
-                                )
-                                .unwrap_or_default()
-                        }),
+                    schema,
+                    None,
                 );
             }
         }
@@ -133,5 +173,15 @@ pub mod c {
     pub enum Response {
         /// ok
         NoContent,
+    }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
     }
 }

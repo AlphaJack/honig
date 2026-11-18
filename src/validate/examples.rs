@@ -10,8 +10,7 @@ use crate::diag::Diagnostics;
 use crate::json::{Doc, join};
 use crate::walk::{self, Obj, Visit};
 
-/// Values that inlining `$ref`s may build for one schema. A recursive schema (Qdrant's `Filter`) would otherwise
-/// grow without end. Past the budget a reference reads as `true`: it accepts anything.
+/// Values that inlining `$ref`s may build for one schema. A recursive schema would otherwise grow without end. Past the budget a reference reads as `true`: it accepts anything.
 const INLINE_BUDGET: usize = 20_000;
 
 /// Nesting that inlining follows. Deeper references read as `true`, as past the budget.

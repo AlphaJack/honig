@@ -62,4 +62,20 @@ pub mod get_event {
         /// The event.
         Ok(types::Event),
     }
+    impl std::fmt::Display for Response {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Self::Ok(..) => f.write_str("status 200 (Ok)"),
+            }
+        }
+    }
+    impl std::error::Error for Response {}
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<types::Event, Box<Self>> {
+            match self {
+                Self::Ok(body) => Ok(body),
+            }
+        }
+    }
 }

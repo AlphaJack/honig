@@ -11,6 +11,22 @@
     clippy::missing_errors_doc,
     reason = "generated docs hold only the description's own prose"
 )]
+macro_rules! error_impl {
+    ($t:ty) => {
+        impl std::error::Error for $t {}
+    };
+}
+macro_rules! display_impl {
+    ($t:ty) => {
+        impl std::fmt::Display for $t {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                match self {
+                    Self::Created => f.write_str("status 201 (Created)"),
+                }
+            }
+        }
+    };
+}
 pub mod create_user {
     use super::super::types;
     use super::super::runtime;
@@ -63,6 +79,26 @@ pub mod create_user {
         /// Refused.
         ClientError { status: runtime::http::StatusCode, body: types::Problem },
     }
+    impl std::fmt::Display for Response {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Self::Created(..) => f.write_str("status 201 (Created)"),
+                Self::ClientError { status, .. } => {
+                    write!(f, "status {} (ClientError)", status.as_u16())
+                }
+            }
+        }
+    }
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<Box<types::User>, Box<Self>> {
+            match self {
+                Self::Created(body) => Ok(body),
+                other @ Self::ClientError { .. } => Err(Box::new(other)),
+            }
+        }
+    }
 }
 pub mod create_shipment {
     use super::super::types;
@@ -88,17 +124,19 @@ pub mod create_shipment {
             {
                 static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                 let value = runtime::to_value(&self.body).unwrap_or_default();
-                runtime::check_schema(
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"type\":\"object\",\"required\":[\"kind\",\"parcels\"],\"properties\":{\"kind\":{\"type\":\"string\",\"enum\":[\"domestic\",\"international\"]},\"customs\":{\"type\":\"string\"},\"insured\":{\"type\":\"boolean\"},\"insurer\":{\"type\":\"string\"},\"options\":{\"$ref\":\"#/$defs/~1components~1schemas~1NoOptions\"},\"rating\":{\"minimum\":1},\"meta\":{\"properties\":{\"count\":{\"type\":\"integer\"}}},\"label\":{\"type\":\"string\",\"minLength\":4,\"default\":\"bad\"},\"parcels\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"fragile\":{\"type\":\"boolean\"}}},\"contains\":{\"properties\":{\"fragile\":{\"const\":true}},\"required\":[\"fragile\"]},\"maxContains\":2},\"scores\":{\"type\":\"object\",\"patternProperties\":{\"^[a-z]+$\":{\"type\":\"integer\",\"minimum\":0}},\"additionalProperties\":false},\"priority\":{\"type\":[\"number\",\"null\"],\"minimum\":0,\"maximum\":2},\"weight\":{\"type\":[\"integer\",\"null\"],\"minimum\":256},\"labels\":{\"type\":\"object\",\"propertyNames\":{\"pattern\":\"^[a-z]+$\"},\"patternProperties\":{\"^x\":{\"type\":\"string\",\"maxLength\":3}},\"additionalProperties\":{\"type\":\"string\"}}},\"dependentRequired\":{\"insured\":[\"insurer\"]},\"if\":{\"properties\":{\"kind\":{\"const\":\"international\"}}},\"then\":{\"required\":[\"customs\"]},\"not\":{\"required\":[\"customs\",\"insurer\"],\"properties\":{\"customs\":{\"const\":\"none\"}}}}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
                     out,
                     &runtime::InstancePath::Key(path, "body"),
                     &value,
-                    SCHEMA
-                        .get_or_init(|| {
-                            serde_json::from_str(
-                                    "{\"type\":\"object\",\"required\":[\"kind\",\"parcels\"],\"properties\":{\"kind\":{\"type\":\"string\",\"enum\":[\"domestic\",\"international\"]},\"customs\":{\"type\":\"string\"},\"insured\":{\"type\":\"boolean\"},\"insurer\":{\"type\":\"string\"},\"options\":{\"$ref\":\"#/$defs/~1components~1schemas~1NoOptions\"},\"rating\":{\"minimum\":1},\"meta\":{\"properties\":{\"count\":{\"type\":\"integer\"}}},\"label\":{\"type\":\"string\",\"minLength\":4,\"default\":\"bad\"},\"parcels\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"fragile\":{\"type\":\"boolean\"}}},\"contains\":{\"properties\":{\"fragile\":{\"const\":true}},\"required\":[\"fragile\"]},\"maxContains\":2},\"scores\":{\"type\":\"object\",\"patternProperties\":{\"^[a-z]+$\":{\"type\":\"integer\",\"minimum\":0}},\"additionalProperties\":false},\"priority\":{\"type\":[\"number\",\"null\"],\"minimum\":0,\"maximum\":2},\"weight\":{\"type\":[\"integer\",\"null\"],\"minimum\":256},\"labels\":{\"type\":\"object\",\"propertyNames\":{\"pattern\":\"^[a-z]+$\"},\"patternProperties\":{\"^x\":{\"type\":\"string\",\"maxLength\":3}},\"additionalProperties\":{\"type\":\"string\"}}},\"dependentRequired\":{\"insured\":[\"insurer\"]},\"if\":{\"properties\":{\"kind\":{\"const\":\"international\"}}},\"then\":{\"required\":[\"customs\"]},\"not\":{\"required\":[\"customs\",\"insurer\"],\"properties\":{\"customs\":{\"const\":\"none\"}}},\"$defs\":{\"/components/schemas/NoOptions\":{\"type\":\"object\",\"additionalProperties\":false}}}",
-                                )
-                                .unwrap_or_default()
-                        }),
+                    schema,
+                    runtime::schema_defs(),
                 );
             }
         }
@@ -109,6 +147,24 @@ pub mod create_shipment {
         Created,
         /// Refused.
         BadRequest(types::Refusal),
+    }
+    impl std::fmt::Display for Response {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Self::Created => f.write_str("status 201 (Created)"),
+                Self::BadRequest(..) => f.write_str("status 400 (BadRequest)"),
+            }
+        }
+    }
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::Created => Ok(()),
+                other @ Self::BadRequest(..) => Err(Box::new(other)),
+            }
+        }
     }
 }
 pub mod login {
@@ -143,6 +199,22 @@ pub mod login {
     pub enum Response {
         /// Created.
         Created(types::Login),
+    }
+    impl std::fmt::Display for Response {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Self::Created(..) => f.write_str("status 201 (Created)"),
+            }
+        }
+    }
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<types::Login, Box<Self>> {
+            match self {
+                Self::Created(body) => Ok(body),
+            }
+        }
     }
 }
 pub mod add_member {
@@ -190,6 +262,16 @@ pub mod add_member {
         /// Created.
         Created,
     }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::Created => Ok(()),
+            }
+        }
+    }
 }
 pub mod add_closed {
     use super::super::types;
@@ -217,6 +299,16 @@ pub mod add_closed {
     pub enum Response {
         /// Created.
         Created,
+    }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::Created => Ok(()),
+            }
+        }
     }
 }
 pub mod add_badge {
@@ -267,5 +359,15 @@ pub mod add_badge {
     pub enum Response {
         /// Created.
         Created,
+    }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::Created => Ok(()),
+            }
+        }
     }
 }

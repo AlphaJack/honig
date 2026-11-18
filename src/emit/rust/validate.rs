@@ -367,12 +367,15 @@ fn checks(cx: Cx<'_>, t: &Ty, c: &Constraints, value: &TokenStream, path: &Token
     if let Some(schema) = &c.schema
         && !matches!(t, Ty::Option(_) | Ty::Indirect(_))
     {
+        // The definitions that it reaches by pointer are in `runtime.rs` once for the whole module.
         let json = lit(&schema.to_string());
+        let shared = if cx.space.types.shared.is_empty() { quote!(None) } else { quote!(runtime::schema_defs()) };
         return quote! {
             {
                 static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                 let value = runtime::to_value(#value).unwrap_or_default();
-                runtime::check_schema(out, #path, &value, SCHEMA.get_or_init(|| serde_json::from_str(#json).unwrap_or_default()));
+                let schema = SCHEMA.get_or_init(|| serde_json::from_str(#json).unwrap_or_default());
+                runtime::check_schema_in(out, #path, &value, schema, #shared);
             }
         };
     }

@@ -16,6 +16,11 @@ macro_rules! validate_impl {
         impl runtime::Validate for $t {}
     };
 }
+macro_rules! error_impl {
+    ($t:ty) => {
+        impl std::error::Error for $t {}
+    };
+}
 pub mod get_export {
     use super::super::runtime;
     pub const METHOD: &str = "GET";
@@ -38,6 +43,24 @@ pub mod get_export {
         /// No such export.
         NotFound,
     }
+    impl std::fmt::Display for Response {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Self::Ok(..) => f.write_str("status 200 (Ok)"),
+                Self::NotFound => f.write_str("status 404 (NotFound)"),
+            }
+        }
+    }
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<runtime::Blob, Box<Self>> {
+            match self {
+                Self::Ok(body) => Ok(body),
+                other @ Self::NotFound => Err(Box::new(other)),
+            }
+        }
+    }
 }
 pub mod get_thumbnail {
     use super::super::runtime;
@@ -58,6 +81,22 @@ pub mod get_thumbnail {
     pub enum Response {
         /// A preview in whatever image format the export has.
         Ok(runtime::Blob),
+    }
+    impl std::fmt::Display for Response {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Self::Ok(..) => f.write_str("status 200 (Ok)"),
+            }
+        }
+    }
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<runtime::Blob, Box<Self>> {
+            match self {
+                Self::Ok(body) => Ok(body),
+            }
+        }
     }
 }
 pub mod get_manifest {
@@ -81,6 +120,28 @@ pub mod get_manifest {
         Ok { body: Vec<String>, e_tag: Option<String>, last_modified: Option<String> },
         /// No such export.
         NotFound,
+    }
+    impl std::fmt::Display for Response {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Self::Ok { .. } => f.write_str("status 200 (Ok)"),
+                Self::NotFound => f.write_str("status 404 (NotFound)"),
+            }
+        }
+    }
+    error_impl!(Response);
+    /// The body and headers of the success, in order: what `Response::into_ok` gives.
+    pub type Success = (Vec<String>, Option<String>, Option<String>);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<Success, Box<Self>> {
+            match self {
+                Self::Ok { body, e_tag, last_modified } => {
+                    Ok((body, e_tag, last_modified))
+                }
+                other @ Self::NotFound => Err(Box::new(other)),
+            }
+        }
     }
 }
 pub mod replace_manifest {
@@ -106,5 +167,25 @@ pub mod replace_manifest {
         NoContent,
         /// The manifest changed since the client read it.
         PreconditionFailed,
+    }
+    impl std::fmt::Display for Response {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Self::NoContent => f.write_str("status 204 (NoContent)"),
+                Self::PreconditionFailed => {
+                    f.write_str("status 412 (PreconditionFailed)")
+                }
+            }
+        }
+    }
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+                other @ Self::PreconditionFailed => Err(Box::new(other)),
+            }
+        }
     }
 }
