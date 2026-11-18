@@ -363,14 +363,10 @@ fn checks(cx: Cx<'_>, t: &Ty, c: &Constraints, value: &TokenStream, path: &Token
         Ty::Option(x) => option_checks(cx, x, c, value, path),
         Ty::Indirect(x) => checks(cx, x, c, &quote!((#value).as_ref()), path),
         Ty::String => string_checks(c, value, path),
-        // A format without its library is a `String`. The text is checked here as the type of the library would on
-        // parsing.
+        // A format without its library is a `runtime::Formatted` text: decoding checks the format. Its length limits
+        // are checked here. A `pattern` stays unchecked on a format as on the typed one.
         Ty::Format(f) if super::syntax::untyped(cx.space.libs, *f) => {
-            let name = lit(f.name());
-            let r = receiver(value);
-            // Its length limits too. A `pattern` stays unchecked on a format as on the typed one.
-            let own = string_checks(&Constraints { pattern: None, ..c.clone() }, value, path);
-            quote!(runtime::check_format(out, #path, #r.as_str(), #name); #own)
+            string_checks(&Constraints { pattern: None, ..c.clone() }, value, path)
         }
         Ty::I8 | Ty::I16 | Ty::I32 | Ty::I64 | Ty::U8 | Ty::U16 | Ty::U32 | Ty::U64 => {
             integer_checks(t, c, value, path)

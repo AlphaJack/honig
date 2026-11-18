@@ -42,48 +42,6 @@ macro_rules! error_impl {
         impl std::error::Error for $t {}
     };
 }
-macro_rules! validate_impl_2 {
-    ($t:ty) => {
-        impl runtime::Validate for $t {
-            fn validate(
-                &self,
-                path: &runtime::InstancePath<'_>,
-                out: &mut Vec<runtime::Violation>,
-            ) {
-                if let Some(body) = &self.body {
-                    match body {
-                        Body::Json(x) | Body::Xml(x) => {
-                            runtime::Validate::validate(
-                                x,
-                                &runtime::InstancePath::Key(path, "body"),
-                                out,
-                            );
-                        }
-                    }
-                }
-            }
-        }
-    };
-}
-macro_rules! validate_impl_3 {
-    ($t:ty) => {
-        impl runtime::Validate for $t {
-            fn validate(
-                &self,
-                path: &runtime::InstancePath<'_>,
-                out: &mut Vec<runtime::Violation>,
-            ) {
-                if let Some(v) = &self.body {
-                    runtime::Validate::validate(
-                        v,
-                        &runtime::InstancePath::Key(path, "body"),
-                        out,
-                    );
-                }
-            }
-        }
-    };
-}
 macro_rules! display_impl_2 {
     ($t:ty) => {
         impl std::fmt::Display for $t {
@@ -192,7 +150,7 @@ pub mod get_all_data {
         Ok {
             body: OkBody,
             /// Unique identifier for the request
-            x_request_id: Option<String>,
+            x_request_id: Option<runtime::UuidText>,
             /// Total number of items available
             x_pagination_total: Option<i64>,
             /// Current page number
@@ -208,7 +166,7 @@ pub mod get_all_data {
     /// The body and headers of the success, in order: what `Response::into_ok` gives.
     pub type Success = (
         OkBody,
-        Option<String>,
+        Option<runtime::UuidText>,
         Option<i64>,
         Option<i64>,
         Option<i64>,
@@ -326,7 +284,7 @@ pub mod create_product {
         }
     }
     default_impl!(Params);
-    validate_impl_2!(Params);
+    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq)]
     pub enum Body {
         Json(types::ProductRequest),
@@ -338,7 +296,7 @@ pub mod create_product {
         Created {
             body: Box<types::Product>,
             /// Unique identifier for the request
-            x_request_id: Option<String>,
+            x_request_id: Option<runtime::UuidText>,
             /// The URL of the newly created resource
             location: Option<url::Url>,
             /// The time taken to process the request in milliseconds
@@ -348,7 +306,7 @@ pub mod create_product {
         BadRequest {
             body: BadRequestBody,
             /// Unique identifier for the request
-            x_request_id: Option<String>,
+            x_request_id: Option<runtime::UuidText>,
         },
         /// Forbidden
         Forbidden(ForbiddenBody),
@@ -366,7 +324,7 @@ pub mod create_product {
     /// The body and headers of the success, in order: what `Response::into_ok` gives.
     pub type Success = (
         Box<types::Product>,
-        Option<String>,
+        Option<runtime::UuidText>,
         Option<url::Url>,
         Option<i64>,
     );
@@ -477,13 +435,13 @@ pub mod query_products {
         Ok {
             body: types::QueryProductsOk,
             /// Unique identifier for the request
-            x_request_id: Option<String>,
+            x_request_id: Option<runtime::UuidText>,
         },
         /// Bad Request
         BadRequest {
             body: BadRequestBody,
             /// Unique identifier for the request
-            x_request_id: Option<String>,
+            x_request_id: Option<runtime::UuidText>,
         },
     }
     impl std::fmt::Display for Response {
@@ -496,7 +454,7 @@ pub mod query_products {
     }
     error_impl!(Response);
     /// The body and headers of the success, in order: what `Response::into_ok` gives.
-    pub type Success = (types::QueryProductsOk, Option<String>);
+    pub type Success = (types::QueryProductsOk, Option<runtime::UuidText>);
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
         pub fn into_ok(self) -> Result<Success, Box<Self>> {
@@ -533,13 +491,13 @@ pub mod search_products {
         Ok {
             body: types::SearchProductsOk,
             /// Unique identifier for the request
-            x_request_id: Option<String>,
+            x_request_id: Option<runtime::UuidText>,
         },
     }
     display_impl!(Response);
     error_impl!(Response);
     /// The body and headers of the success, in order: what `Response::into_ok` gives.
-    pub type Success = (types::SearchProductsOk, Option<String>);
+    pub type Success = (types::SearchProductsOk, Option<runtime::UuidText>);
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
         pub fn into_ok(self) -> Result<Success, Box<Self>> {
@@ -602,11 +560,11 @@ pub mod get_product {
         Ok {
             body: Box<types::Product>,
             /// Unique identifier for the request
-            x_request_id: Option<String>,
+            x_request_id: Option<runtime::UuidText>,
             /// Entity tag for caching
             e_tag: Option<String>,
             /// The last modification date of the resource
-            last_modified: Option<String>,
+            last_modified: Option<runtime::DateTimeText>,
             /// Cache control directives
             x_cache_control: Option<String>,
         },
@@ -625,9 +583,9 @@ pub mod get_product {
     /// The body and headers of the success, in order: what `Response::into_ok` gives.
     pub type Success = (
         Box<types::Product>,
+        Option<runtime::UuidText>,
         Option<String>,
-        Option<String>,
-        Option<String>,
+        Option<runtime::DateTimeText>,
         Option<String>,
     );
     impl Response {
@@ -717,7 +675,7 @@ pub mod update_product {
             }
         }
     }
-    validate_impl_2!(Params);
+    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq)]
     pub enum Body {
         Json(types::ProductRequest),
@@ -731,7 +689,7 @@ pub mod update_product {
         BadRequest {
             body: BadRequestBody,
             /// Unique identifier for the request
-            x_request_id: Option<String>,
+            x_request_id: Option<runtime::UuidText>,
         },
         /// Forbidden
         Forbidden(ForbiddenBody),
@@ -842,31 +800,18 @@ pub mod copy_product {
         /// The ID of the product to get
         pub product_id: i64,
         /// The location where the copied product should be created
-        pub destination: String,
+        pub destination: runtime::UriReferenceText,
     }
     impl Params {
         #[must_use]
-        pub const fn new(product_id: i64, destination: String) -> Self {
+        pub const fn new(
+            product_id: i64,
+            destination: runtime::UriReferenceText,
+        ) -> Self {
             Self { product_id, destination }
         }
     }
-    impl runtime::Validate for Params {
-        fn validate(
-            &self,
-            path: &runtime::InstancePath<'_>,
-            out: &mut Vec<runtime::Violation>,
-        ) {
-            runtime::check_format(
-                out,
-                &runtime::InstancePath::Key(
-                    &runtime::InstancePath::Key(path, "header"),
-                    "Destination",
-                ),
-                self.destination.as_str(),
-                "uri-reference",
-            );
-        }
-    }
+    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq)]
     pub enum Response {
         /// Product copied
@@ -970,7 +915,7 @@ pub mod upload_image {
         Ok {
             body: OkBody,
             /// Unique identifier for the request
-            x_request_id: Option<String>,
+            x_request_id: Option<runtime::UuidText>,
             /// Cache control directives
             x_cache_control: Option<String>,
         },
@@ -978,7 +923,7 @@ pub mod upload_image {
         BadRequest {
             body: BadRequestBody,
             /// Unique identifier for the request
-            x_request_id: Option<String>,
+            x_request_id: Option<runtime::UuidText>,
         },
         /// Forbidden
         Forbidden(ForbiddenBody),
@@ -997,7 +942,7 @@ pub mod upload_image {
     }
     error_impl!(Response);
     /// The body and headers of the success, in order: what `Response::into_ok` gives.
-    pub type Success = (OkBody, Option<String>, Option<String>);
+    pub type Success = (OkBody, Option<runtime::UuidText>, Option<String>);
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
         pub fn into_ok(self) -> Result<Success, Box<Self>> {
@@ -1070,13 +1015,13 @@ pub mod stream_product_events {
         Ok {
             body: OkBody,
             /// Unique identifier for the request
-            x_request_id: Option<String>,
+            x_request_id: Option<runtime::UuidText>,
         },
     }
     display_impl!(Response);
     error_impl!(Response);
     /// The body and headers of the success, in order: what `Response::into_ok` gives.
-    pub type Success = (OkBody, Option<String>);
+    pub type Success = (OkBody, Option<runtime::UuidText>);
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
         pub fn into_ok(self) -> Result<Success, Box<Self>> {
@@ -1145,13 +1090,13 @@ pub mod upload_photos {
         Accepted {
             body: types::UploadPhotosAccepted,
             /// Unique identifier for the request
-            x_request_id: Option<String>,
+            x_request_id: Option<runtime::UuidText>,
         },
         /// Bad Request
         BadRequest {
             body: BadRequestBody,
             /// Unique identifier for the request
-            x_request_id: Option<String>,
+            x_request_id: Option<runtime::UuidText>,
         },
         /// Not Found
         NotFound(NotFoundBody),
@@ -1167,7 +1112,7 @@ pub mod upload_photos {
     }
     error_impl!(Response);
     /// The body and headers of the success, in order: what `Response::into_ok` gives.
-    pub type Success = (types::UploadPhotosAccepted, Option<String>);
+    pub type Success = (types::UploadPhotosAccepted, Option<runtime::UuidText>);
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
         pub fn into_ok(self) -> Result<Success, Box<Self>> {
@@ -1303,7 +1248,7 @@ pub mod create_user {
         Created {
             body: types::User,
             /// Unique identifier for the request
-            x_request_id: Option<String>,
+            x_request_id: Option<runtime::UuidText>,
             /// The URL of the newly created resource
             location: Option<url::Url>,
             /// The time taken to process the request in milliseconds
@@ -1313,7 +1258,7 @@ pub mod create_user {
         BadRequest {
             body: BadRequestBody,
             /// Unique identifier for the request
-            x_request_id: Option<String>,
+            x_request_id: Option<runtime::UuidText>,
         },
         /// Unauthorized
         Unauthorized(UnauthorizedBody),
@@ -1340,7 +1285,12 @@ pub mod create_user {
     }
     error_impl!(Response);
     /// The body and headers of the success, in order: what `Response::into_ok` gives.
-    pub type Success = (types::User, Option<String>, Option<url::Url>, Option<i64>);
+    pub type Success = (
+        types::User,
+        Option<runtime::UuidText>,
+        Option<url::Url>,
+        Option<i64>,
+    );
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
         pub fn into_ok(self) -> Result<Success, Box<Self>> {
@@ -1418,7 +1368,7 @@ pub mod get_token {
         Created {
             body: types::Token,
             /// Unique identifier for the request
-            x_request_id: Option<String>,
+            x_request_id: Option<runtime::UuidText>,
             /// The number of allowed requests in the current period
             x_rate_limit_limit: Option<i64>,
             /// The number of remaining requests in the current period
@@ -1430,7 +1380,7 @@ pub mod get_token {
         BadRequest {
             body: BadRequestBody,
             /// Unique identifier for the request
-            x_request_id: Option<String>,
+            x_request_id: Option<runtime::UuidText>,
         },
         /// Unauthorized
         Unauthorized(UnauthorizedBody),
@@ -1440,7 +1390,7 @@ pub mod get_token {
         TooManyRequests {
             body: TooManyRequestsBody,
             /// Unique identifier for the request
-            x_request_id: Option<String>,
+            x_request_id: Option<runtime::UuidText>,
             /// The number of allowed requests in the current period
             x_rate_limit_limit: Option<i64>,
             /// The number of remaining requests in the current period
@@ -1468,7 +1418,7 @@ pub mod get_token {
     /// The body and headers of the success, in order: what `Response::into_ok` gives.
     pub type Success = (
         types::Token,
-        Option<String>,
+        Option<runtime::UuidText>,
         Option<i64>,
         Option<i64>,
         Option<i64>,
@@ -1550,11 +1500,11 @@ pub mod get_me {
         Ok {
             body: types::User,
             /// Unique identifier for the request
-            x_request_id: Option<String>,
+            x_request_id: Option<runtime::UuidText>,
             /// Entity tag for caching
             e_tag: Option<String>,
             /// The last modification date of the resource
-            last_modified: Option<String>,
+            last_modified: Option<runtime::DateTimeText>,
             /// Cache control directives
             x_cache_control: Option<String>,
         },
@@ -1576,9 +1526,9 @@ pub mod get_me {
     /// The body and headers of the success, in order: what `Response::into_ok` gives.
     pub type Success = (
         types::User,
+        Option<runtime::UuidText>,
         Option<String>,
-        Option<String>,
-        Option<String>,
+        Option<runtime::DateTimeText>,
         Option<String>,
     );
     impl Response {
@@ -1618,7 +1568,7 @@ pub mod new_product_post {
         }
     }
     default_impl!(Params);
-    validate_impl_3!(Params);
+    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Return a 200 status to indicate that the data was received successfully
@@ -1652,7 +1602,7 @@ pub mod create_product_product_created_post {
         }
     }
     default_impl!(Params);
-    validate_impl_3!(Params);
+    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Your server returns this code if it accepts the callback
@@ -1695,7 +1645,7 @@ pub mod create_product_product_creation_failed_post {
         }
     }
     default_impl!(Params);
-    validate_impl_3!(Params);
+    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Your server returns this code if it accepts the failure callback notification
@@ -1729,7 +1679,7 @@ pub mod create_product_product_discontinued_post {
         }
     }
     default_impl!(Params);
-    validate_impl_3!(Params);
+    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Your server returns this code if it accepts the discontinued product callback notification

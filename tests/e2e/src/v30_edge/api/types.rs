@@ -42,6 +42,96 @@ macro_rules! validate_impl_2 {
                 path: &runtime::InstancePath<'_>,
                 out: &mut Vec<runtime::Violation>,
             ) {
+                if let runtime::Nullable::Value(v) = &self.customer {
+                    {
+                        static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                        let value = runtime::to_value(v).unwrap_or_default();
+                        let schema = SCHEMA
+                            .get_or_init(|| {
+                                serde_json::from_str(
+                                        "{\"anyOf\":[{\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Customer\"}]},{\"type\":\"null\"}]}",
+                                    )
+                                    .unwrap_or_default()
+                            });
+                        runtime::check_schema_in(
+                            out,
+                            &runtime::InstancePath::Key(path, "customer"),
+                            &value,
+                            schema,
+                            runtime::schema_defs(),
+                        );
+                    }
+                }
+                if let Some(v) = &self.payment {
+                    {
+                        static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                        let value = runtime::to_value(v).unwrap_or_default();
+                        let schema = SCHEMA
+                            .get_or_init(|| {
+                                serde_json::from_str(
+                                        "{\"oneOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Card\"},{\"$ref\":\"#/$defs/~1components~1schemas~1Sepa\"}]}",
+                                    )
+                                    .unwrap_or_default()
+                            });
+                        runtime::check_schema_in(
+                            out,
+                            &runtime::InstancePath::Key(path, "payment"),
+                            &value,
+                            schema,
+                            runtime::schema_defs(),
+                        );
+                    }
+                }
+                {
+                    static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                    let value = runtime::to_value(&self.vehicle).unwrap_or_default();
+                    let schema = SCHEMA
+                        .get_or_init(|| {
+                            serde_json::from_str(
+                                    "{\"oneOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Car\"},{\"$ref\":\"#/$defs/~1components~1schemas~1Van\"}]}",
+                                )
+                                .unwrap_or_default()
+                        });
+                    runtime::check_schema_in(
+                        out,
+                        &runtime::InstancePath::Key(path, "vehicle"),
+                        &value,
+                        schema,
+                        runtime::schema_defs(),
+                    );
+                }
+                if let Some(v) = &self.discount {
+                    {
+                        static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                        let value = runtime::to_value(v).unwrap_or_default();
+                        let schema = SCHEMA
+                            .get_or_init(|| {
+                                serde_json::from_str(
+                                        "{\"anyOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Money\"},{}]}",
+                                    )
+                                    .unwrap_or_default()
+                            });
+                        runtime::check_schema_in(
+                            out,
+                            &runtime::InstancePath::Key(path, "discount"),
+                            &value,
+                            schema,
+                            runtime::schema_defs(),
+                        );
+                    }
+                }
+            }
+        }
+    };
+}
+macro_rules! validate_impl_3 {
+    ($t:ty) => {
+        impl runtime::Validate for $t {
+            fn validate(
+                &self,
+                path: &runtime::InstancePath<'_>,
+                out: &mut Vec<runtime::Violation>,
+            ) {
                 {
                     let base = &runtime::InstancePath::Key(path, "items");
                     for (i, v) in self.items.iter().enumerate() {
@@ -379,7 +469,7 @@ pub struct Order {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub id: Option<String>,
+    pub id: Option<runtime::UuidText>,
     pub status: Status,
     pub total: Money,
     #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
@@ -392,7 +482,7 @@ pub struct Order {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub created_at: Option<String>,
+    pub created_at: Option<runtime::DateTimeText>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
@@ -432,108 +522,7 @@ impl Order {
         }
     }
 }
-impl runtime::Validate for Order {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        if let Some(v) = &self.id {
-            runtime::check_format(
-                out,
-                &runtime::InstancePath::Key(path, "id"),
-                v.as_str(),
-                "uuid",
-            );
-        }
-        if let runtime::Nullable::Value(v) = &self.customer {
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(v).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"anyOf\":[{\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Customer\"}]},{\"type\":\"null\"}]}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Key(path, "customer"),
-                    &value,
-                    schema,
-                    runtime::schema_defs(),
-                );
-            }
-        }
-        if let Some(v) = &self.created_at {
-            runtime::check_format(
-                out,
-                &runtime::InstancePath::Key(path, "createdAt"),
-                v.as_str(),
-                "date-time",
-            );
-        }
-        if let Some(v) = &self.payment {
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(v).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"oneOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Card\"},{\"$ref\":\"#/$defs/~1components~1schemas~1Sepa\"}]}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Key(path, "payment"),
-                    &value,
-                    schema,
-                    runtime::schema_defs(),
-                );
-            }
-        }
-        {
-            static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-            let value = runtime::to_value(&self.vehicle).unwrap_or_default();
-            let schema = SCHEMA
-                .get_or_init(|| {
-                    serde_json::from_str(
-                            "{\"oneOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Car\"},{\"$ref\":\"#/$defs/~1components~1schemas~1Van\"}]}",
-                        )
-                        .unwrap_or_default()
-                });
-            runtime::check_schema_in(
-                out,
-                &runtime::InstancePath::Key(path, "vehicle"),
-                &value,
-                schema,
-                runtime::schema_defs(),
-            );
-        }
-        if let Some(v) = &self.discount {
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(v).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"anyOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Money\"},{}]}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Key(path, "discount"),
-                    &value,
-                    schema,
-                    runtime::schema_defs(),
-                );
-            }
-        }
-    }
-}
+validate_impl_2!(Order);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct OrderPage {
@@ -553,7 +542,7 @@ impl OrderPage {
         Self { items, total: None }
     }
 }
-validate_impl_2!(OrderPage);
+validate_impl_3!(OrderPage);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Problem {
@@ -938,92 +927,7 @@ impl OrderRequest {
         }
     }
 }
-impl runtime::Validate for OrderRequest {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        if let runtime::Nullable::Value(v) = &self.customer {
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(v).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"anyOf\":[{\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Customer\"}]},{\"type\":\"null\"}]}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Key(path, "customer"),
-                    &value,
-                    schema,
-                    runtime::schema_defs(),
-                );
-            }
-        }
-        if let Some(v) = &self.payment {
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(v).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"oneOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Card\"},{\"$ref\":\"#/$defs/~1components~1schemas~1Sepa\"}]}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Key(path, "payment"),
-                    &value,
-                    schema,
-                    runtime::schema_defs(),
-                );
-            }
-        }
-        {
-            static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-            let value = runtime::to_value(&self.vehicle).unwrap_or_default();
-            let schema = SCHEMA
-                .get_or_init(|| {
-                    serde_json::from_str(
-                            "{\"oneOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Car\"},{\"$ref\":\"#/$defs/~1components~1schemas~1Van\"}]}",
-                        )
-                        .unwrap_or_default()
-                });
-            runtime::check_schema_in(
-                out,
-                &runtime::InstancePath::Key(path, "vehicle"),
-                &value,
-                schema,
-                runtime::schema_defs(),
-            );
-        }
-        if let Some(v) = &self.discount {
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(v).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"anyOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Money\"},{}]}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Key(path, "discount"),
-                    &value,
-                    schema,
-                    runtime::schema_defs(),
-                );
-            }
-        }
-    }
-}
+validate_impl_2!(OrderRequest);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct OrderPageRequest {
@@ -1043,7 +947,7 @@ impl OrderPageRequest {
         Self { items, total: None }
     }
 }
-validate_impl_2!(OrderPageRequest);
+validate_impl_3!(OrderPageRequest);
 /// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
 /// its field. `build` returns the first field that did not convert.
 pub mod builders {
@@ -1204,7 +1108,10 @@ pub mod builders {
     #[must_use = "a builder does nothing until `build`"]
     pub struct Order(runtime::Builder<super::Order>);
     impl Order {
-        pub fn id(self, value: impl TryInto<String, Error: std::fmt::Display>) -> Self {
+        pub fn id(
+            self,
+            value: impl TryInto<runtime::UuidText, Error: std::fmt::Display>,
+        ) -> Self {
             Self(self.0.set("id", value, |s, v| s.id = Some(v)))
         }
         pub fn customer(
@@ -1231,7 +1138,7 @@ pub mod builders {
         }
         pub fn created_at(
             self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
+            value: impl TryInto<runtime::DateTimeText, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("createdAt", value, |s, v| s.created_at = Some(v)))
         }

@@ -116,6 +116,66 @@ pub mod format {
         Ipv6Cidr,
         "ipv6-cidr"
     );
+    marker!(
+        /// `time`: RFC 3339 `full-time`, with an offset.
+        Time,
+        "time"
+    );
+    marker!(
+        /// `decimal` on a string: the digits of a decimal number.
+        Decimal,
+        "decimal"
+    );
+    marker!(
+        /// `decimal128` on a string: a decimal number that IEEE 754 decimal128 holds exactly.
+        Decimal128,
+        "decimal128"
+    );
+    marker!(
+        /// `http-date`: one of the three forms of RFC 9110 section 5.6.7.
+        HttpDate,
+        "http-date"
+    );
+    marker!(
+        /// `duration`: an ISO 8601 duration of RFC 3339 Appendix A.
+        Duration,
+        "duration"
+    );
+    marker!(
+        /// `uri-reference`: an RFC 3986 URI or relative reference.
+        UriReference,
+        "uri-reference"
+    );
+    marker!(
+        /// `iri`: an absolute RFC 3987 IRI.
+        Iri,
+        "iri"
+    );
+    marker!(
+        /// `iri-reference`: an RFC 3987 IRI or relative reference.
+        IriReference,
+        "iri-reference"
+    );
+    marker!(
+        /// `json-pointer`: an RFC 6901 JSON pointer.
+        JsonPointer,
+        "json-pointer"
+    );
+    marker!(
+        /// `relative-json-pointer`: a relative JSON pointer.
+        RelativeJsonPointer,
+        "relative-json-pointer"
+    );
+    marker!(
+        /// `regex`: an ECMA-262 regular expression.
+        Regex,
+        "regex"
+    );
+    marker!(
+        /// `uri-template`: an RFC 6570 URI template.
+        UriTemplate,
+        "uri-template"
+    );
 }
 
 /// Where the formatted text sits in `T`, and how to read `T` with it checked.

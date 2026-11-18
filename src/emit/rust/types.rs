@@ -821,7 +821,9 @@ fn ty_default(space: &Space<'_>, t: &Ty, seen: &mut Vec<TypeId>) -> bool {
         // `url::Url` and `std::net`'s `Ipv4Addr` and `Ipv6Addr` have no `Default`. A mail address and a host name
         // have no value that every one of their kind could start from either. The uuid, chrono, jiff and ipnet format
         // types all implement it. So does `runtime::FullTime`.
-        return !((*f == Format::Uri && space.libs.url)
+        // Nor has the text of a format without its library: an empty one is not of the format.
+        return !(super::syntax::untyped(space.libs, *f)
+            || (*f == Format::Uri && space.libs.url)
             || matches!(
                 f,
                 Format::Email | Format::IdnEmail | Format::Hostname | Format::IdnHostname | Format::Ipv4 | Format::Ipv6

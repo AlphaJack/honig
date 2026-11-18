@@ -20,25 +20,6 @@ macro_rules! default_impl {
         }
     };
 }
-macro_rules! validate_impl {
-    ($t:ty) => {
-        impl runtime::Validate for $t {
-            fn validate(
-                &self,
-                path: &runtime::InstancePath<'_>,
-                out: &mut Vec<runtime::Violation>,
-            ) {
-                if let Some(v) = &self.body {
-                    runtime::Validate::validate(
-                        v,
-                        &runtime::InstancePath::Key(path, "body"),
-                        out,
-                    );
-                }
-            }
-        }
-    };
-}
 macro_rules! display_impl {
     ($t:ty) => {
         impl std::fmt::Display for $t {
@@ -55,7 +36,7 @@ macro_rules! error_impl {
         impl std::error::Error for $t {}
     };
 }
-macro_rules! validate_impl_2 {
+macro_rules! validate_impl {
     ($t:ty) => {
         impl runtime::Validate for $t {}
     };
@@ -87,7 +68,21 @@ pub mod form_with_xml {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
+    impl runtime::Validate for Params {
+        fn validate(
+            &self,
+            path: &runtime::InstancePath<'_>,
+            out: &mut Vec<runtime::Violation>,
+        ) {
+            if let Some(v) = &self.body {
+                runtime::Validate::validate(
+                    v,
+                    &runtime::InstancePath::Key(path, "body"),
+                    out,
+                );
+            }
+        }
+    }
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// ok
@@ -135,7 +130,7 @@ pub mod parameter_examples {
             }
         }
     }
-    validate_impl_2!(Params);
+    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// ok
@@ -168,7 +163,7 @@ pub mod querystring_form {
         }
     }
     default_impl!(Params);
-    validate_impl_2!(Params);
+    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// ok
@@ -201,7 +196,7 @@ pub mod querystring_json {
         }
     }
     default_impl!(Params);
-    validate_impl_2!(Params);
+    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// ok
@@ -307,7 +302,7 @@ pub mod multipart_form_with_multiple_files {
         }
     }
     default_impl!(Params);
-    validate_impl_2!(Params);
+    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// ok
@@ -521,7 +516,7 @@ pub mod streaming_multipart {
         }
     }
     default_impl!(Params);
-    validate_impl_2!(Params);
+    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// A device streams its pictures, each processed as it arrives.
@@ -551,7 +546,7 @@ pub mod streaming_byte_ranges {
         }
     }
     default_impl!(Params);
-    validate_impl_2!(Params);
+    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Byte ranges of a video, each with its Content-Range.
@@ -589,7 +584,7 @@ pub mod querystring_jsonpath {
         }
     }
     default_impl!(Params);
-    validate_impl_2!(Params);
+    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// ok
@@ -620,7 +615,7 @@ pub mod collection_with_links {
         }
     }
     default_impl!(Params);
-    validate_impl_2!(Params);
+    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// A page of a collection, its pagination links in the `Link` header.
@@ -659,7 +654,7 @@ pub mod standalone_json_linkset {
         }
     }
     default_impl!(Params);
-    validate_impl_2!(Params);
+    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// The same links as a JSON document.
@@ -690,7 +685,7 @@ pub mod linkset_body {
         }
     }
     default_impl!(Params);
-    validate_impl_2!(Params);
+    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// The links in `Link` header syntax.
@@ -721,7 +716,7 @@ pub mod media_type_json {
         }
     }
     default_impl!(Params);
-    validate_impl_2!(Params);
+    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// A product.
@@ -778,7 +773,7 @@ pub mod log_stream {
         }
     }
     default_impl!(Params);
-    validate_impl_2!(Params);
+    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// A stream of JSON-format log messages, in any of the sequential JSON media types.
@@ -836,7 +831,7 @@ pub mod log_excerpt {
         }
     }
     default_impl!(Params);
-    validate_impl_2!(Params);
+    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// No more than 100 log records, in any of the sequential JSON media types.
@@ -872,7 +867,7 @@ pub mod server_sent_event_streams {
             Self { body }
         }
     }
-    validate_impl_2!(Params);
+    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// ok

@@ -16,7 +16,7 @@ fn link_request_body_is_typed_after_the_target() {
         "total": {"amountCents": 9007199254740993_i64, "currency": "EUR"},
         "vehicle": {"kind": "van", "cargoLitres": 900}
     });
-    let request = ops::get_order::Params { order_id: "00000000-0000-0000-0000-000000000000".to_owned() };
+    let request = ops::get_order::Params { order_id: "00000000-0000-0000-0000-000000000000".parse().unwrap() };
     let again = ops::get_order::links::Reorder::new(&request, &body);
     // The target's request body type: `readOnly` `id` and `createdAt` are not part of it.
     let order: types::OrderRequest = again.body.expect("the response body becomes the new request body");

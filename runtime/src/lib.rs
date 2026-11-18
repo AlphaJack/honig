@@ -19,6 +19,7 @@ mod escape;
 mod exact;
 mod finite;
 mod formats;
+mod formatted;
 mod full_time;
 mod header;
 mod http_date;
@@ -74,6 +75,13 @@ pub use client::transport::{Transport, send, send_streaming};
 pub use codec::PartTypes;
 pub use decimal::{Decimal, NotADecimal};
 pub use error::{ApiError, Error};
+pub use formatted::Formatted;
+pub use formatted::UuidText;
+pub use formatted::{
+    DateText, DateTimeLocalText, DateTimeText, Decimal128Text, DecimalText, DurationText, HttpDateText,
+};
+pub use formatted::{Ipv4CidrText, Ipv6CidrText, IriReferenceText, IriText, JsonPointerText, RegexText};
+pub use formatted::{RelativeJsonPointerText, TimeLocalText, TimeText, UriReferenceText, UriTemplateText, UriText};
 #[cfg(feature = "jiff")]
 pub use full_time::{FullTime, NotAFullTime};
 /// The `http` crate that [`Request`], [`Response`] and their parts come from.

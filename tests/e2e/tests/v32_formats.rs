@@ -12,7 +12,7 @@ const AT: &str = "2024-01-31T13:45:30Z";
 #[test]
 fn json_inside_a_string_is_typed() {
     // `payload` carries JSON text inside a string (`contentMediaType`).
-    let json = json!({"id": "x", "at": "2024-01-31T00:00:00Z", "payload": json!({"n": 7}).to_string()});
+    let json = json!({"id": ID, "at": AT, "payload": json!({"n": 7}).to_string()});
     let e: types::Event = serde_json::from_value(json).expect("decodes");
     assert_eq!(e.payload.as_ref().expect("present").0.n, 7);
     let back = serde_json::to_value(&e).expect("encodes");
@@ -63,30 +63,37 @@ fn a_string_decimal_keeps_its_digits() {
     assert_eq!(e.total.as_deref(), Some("1.000000000000000000000000000000001"));
 }
 
-/// Without the uuid and date libraries `id` and `at` are strings: their text is checked as the libraries would parse
-/// it.
+/// Without the uuid and date libraries `id` and `at` are checked text: only text of their format decodes, as the
+/// libraries would parse it. So does every format that no library types.
 #[test]
 fn a_format_without_its_library_is_checked_as_text() {
-    let e: types::Event = serde_json::from_value(json!({
-        "id": "{01234567-89ab-4def-8123-456789abcdef}", "at": "2024-13-45",
-        "expires": "Sun, 31 Nov 1994 08:49:37 GMT", "lasts": "P1Y2D", "link": "a b", "page": "/no-scheme",
-        "rel": "#a#b", "at_path": "/~2", "up": "-1/a", "filter": "(", "search": "{x",
-    }))
-    .expect("decodes");
-    let mut out = vec![];
-    api::Validate::validate(&e, &api::InstancePath::Root, &mut out);
-    let paths: Vec<&str> = out.iter().map(|v| v.path.as_str()).collect();
-    assert_eq!(
-        paths,
-        ["/id", "/at", "/expires", "/lasts", "/link", "/page", "/rel", "/at_path", "/up", "/filter", "/search"]
-    );
+    let e: types::Event = serde_json::from_value(json!({"id": ID, "at": AT})).expect("decodes");
+    assert_eq!((e.id.as_str(), e.at.as_str()), (ID, AT));
+    for (field, bad) in [
+        ("id", "{01234567-89ab-4def-8123-456789abcdef}"),
+        ("at", "2024-13-45"),
+        ("expires", "Sun, 31 Nov 1994 08:49:37 GMT"),
+        ("lasts", "P1Y2D"),
+        ("link", "a b"),
+        ("page", "/no-scheme"),
+        ("rel", "#a#b"),
+        ("at_path", "/~2"),
+        ("up", "-1/a"),
+        ("filter", "("),
+        ("search", "{x"),
+    ] {
+        let mut event = json!({"id": ID, "at": AT});
+        event[field] = json!(bad);
+        let err = serde_json::from_value::<types::Event>(event).expect_err(field).to_string();
+        assert!(err.starts_with(&format!("`{bad}` is not a valid ")), "{field}: {err}");
+    }
 }
 
 /// `{type: number, format: decimal}` keeps every digit through a JSON body. An `f64` would round
 /// `12345678901234567.89` to `12345678901234568`. `minimum: 0` still applies.
 #[test]
 fn a_decimal_number_keeps_every_digit() {
-    let wide = r#"{"id":"x","at":"t","amount":12345678901234567.89,"sum":0.1000000000000000055511151231257827}"#;
+    let wide = r#"{"id":"01234567-89ab-4def-8123-456789abcdef","at":"2024-01-31T13:45:30Z","amount":12345678901234567.89,"sum":0.1000000000000000055511151231257827}"#;
     let e: types::Event = serde_json::from_str(wide).expect("decodes");
     assert_eq!(e.amount.as_ref().expect("present").as_str(), "12345678901234567.89");
     let text = serde_json::to_string(&e).expect("encodes");
@@ -100,17 +107,17 @@ fn a_decimal_number_keeps_every_digit() {
 }
 
 /// `char`, `uri` (with `url`) and the CIDR formats (with `ipnet`) are typed. Without chrono or jiff the local date
-/// and time formats stay strings.
+/// and time formats are checked text.
 #[test]
 fn registry_formats_take_their_library_types() {
-    let wire = json!({"id": "x", "at": "t", "initial": "Z", "home": "https://example.com/a?b=c",
+    let wire = json!({"id": ID, "at": AT, "initial": "Z", "home": "https://example.com/a?b=c",
         "net4": "192.0.2.0/24", "net6": "2001:db8::/32", "local": "2024-01-31T13:45:30", "clock": "13:45:30"});
     let e: types::Event = serde_json::from_value(wire.clone()).expect("decodes");
     let initial: char = e.initial.expect("present");
     let home: url::Url = e.home.clone().expect("present");
     let net4: ipnet::Ipv4Net = e.net4.expect("present");
     let net6: ipnet::Ipv6Net = e.net6.expect("present");
-    let local: String = e.local.clone().expect("present");
+    let local: api::DateTimeLocalText = e.local.clone().expect("present");
     assert_eq!((initial, home.host_str(), net4.prefix_len(), net6.prefix_len()), ('Z', Some("example.com"), 24, 32));
     assert_eq!(local, "2024-01-31T13:45:30");
     let back = serde_json::to_value(&e).expect("encodes");
@@ -183,9 +190,9 @@ fn every_format_round_trips_through_client_and_server() {
     let client = api::Client::new(service);
     let above: api::Decimal = "12345678901234567.89".parse().expect("a decimal");
     let sent = ops::get_event::Params {
-        on: Some("2024-01-31".to_owned()),
+        on: Some("2024-01-31".parse().expect("a date")),
         above: Some(above),
-        ..ops::get_event::Params::new(ID.to_owned())
+        ..ops::get_event::Params::new(ID.parse().expect("a uuid"))
     };
     let got = api::block_on(client.get_event(sent.clone()));
     assert_eq!(got.ok(), Some(ops::get_event::Response::Ok(full_event())));
@@ -222,22 +229,24 @@ fn a_union_checks_its_branch_and_refuses_a_value_no_branch_takes() {
 }
 
 /// `decimal128`, as a number and as a string, holds what IEEE 754 decimal128 holds: at most 34 significant digits
-/// within its exponent range.
+/// within its exponent range. Past them a string does not decode and a number is a violation.
 #[test]
 fn decimal128_holds_what_ieee_decimal128_holds() {
     let violations = |extra: &str| {
-        let e: types::Event = serde_json::from_str(&format!(r#"{{"id": "x", "at": "t", {extra}}}"#)).expect("decodes");
+        let e: types::Event =
+            serde_json::from_str(&format!(r#"{{"id": "{ID}", "at": "{AT}", {extra}}}"#)).map_err(|e| e.to_string())?;
         let mut out = vec![];
         api::Validate::validate(&e, &api::InstancePath::Root, &mut out);
-        out.into_iter().filter(|v| v.path == "/sum" || v.path == "/total").map(|v| v.message).collect::<Vec<_>>()
+        Ok::<_, String>(out.into_iter().filter(|v| v.path == "/sum").map(|v| v.message).collect::<Vec<_>>())
     };
     let digits34 = "1234567890123456789012345678901234";
-    assert_eq!(violations(&format!(r#""sum": {digits34}e-10, "total": "{digits34}e-10""#)), Vec::<String>::new());
+    assert_eq!(violations(&format!(r#""sum": {digits34}e-10, "total": "{digits34}e-10""#)), Ok(vec![]));
     let digits35 = format!("{digits34}5");
     assert_eq!(
         violations(&format!(r#""sum": {digits35}"#)),
-        [format!("`{digits35}` has 35 significant digits, more than the 34 of decimal128")]
+        Ok(vec![format!("`{digits35}` has 35 significant digits, more than the 34 of decimal128")])
     );
-    assert_eq!(violations(&format!(r#""total": "{digits35}""#)).len(), 1, "the string too");
-    assert_eq!(violations(r#""sum": 1e6145"#), ["`1e6145` is out of the range of decimal128"]);
+    let total = violations(&format!(r#""total": "{digits35}""#)).expect_err("35 digits");
+    assert!(total.starts_with(&format!("`{digits35}` is not a valid decimal128")), "{total}");
+    assert_eq!(violations(r#""sum": 1e6145"#), Ok(vec!["`1e6145` is out of the range of decimal128".to_owned()]));
 }

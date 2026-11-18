@@ -42,29 +42,6 @@ macro_rules! default_impl {
         }
     };
 }
-macro_rules! validate_impl_2 {
-    ($t:ty) => {
-        impl runtime::Validate for $t {
-            fn validate(
-                &self,
-                path: &runtime::InstancePath<'_>,
-                out: &mut Vec<runtime::Violation>,
-            ) {
-                if let Some(v) = &self.x_trace {
-                    runtime::check_format(
-                        out,
-                        &runtime::InstancePath::Key(
-                            &runtime::InstancePath::Key(path, "header"),
-                            "X-Trace",
-                        ),
-                        v.as_str(),
-                        "uuid",
-                    );
-                }
-            }
-        }
-    };
-}
 macro_rules! display_impl_2 {
     ($t:ty) => {
         impl std::fmt::Display for $t {
@@ -87,7 +64,7 @@ macro_rules! display_impl_3 {
         }
     };
 }
-macro_rules! validate_impl_3 {
+macro_rules! validate_impl_2 {
     ($t:ty) => {
         impl runtime::Validate for $t {
             fn validate(
@@ -233,7 +210,7 @@ pub mod list_products {
         #[deprecated]
         pub x_rate: Option<i64>,
         pub empty: Option<String>,
-        pub x_trace: Option<String>,
+        pub x_trace: Option<runtime::UuidText>,
         pub media: Media,
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -274,7 +251,7 @@ pub mod list_products {
         }
     }
     default_impl!(Params);
-    validate_impl_2!(Params);
+    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq)]
     pub enum Response {
         /// A page of products
@@ -352,7 +329,7 @@ pub mod create_product {
     pub const SERVER_VARIABLES: &[&[runtime::ServerVar]] = &[&[]];
     #[derive(Debug, Clone, PartialEq)]
     pub struct Params {
-        pub x_trace: Option<String>,
+        pub x_trace: Option<runtime::UuidText>,
         pub meta_x_part: Option<String>,
         /// New product
         pub body: Body,
@@ -373,17 +350,6 @@ pub mod create_product {
             path: &runtime::InstancePath<'_>,
             out: &mut Vec<runtime::Violation>,
         ) {
-            if let Some(v) = &self.x_trace {
-                runtime::check_format(
-                    out,
-                    &runtime::InstancePath::Key(
-                        &runtime::InstancePath::Key(path, "header"),
-                        "X-Trace",
-                    ),
-                    v.as_str(),
-                    "uuid",
-                );
-            }
             {
                 let body = &self.body;
                 match body {
@@ -479,7 +445,7 @@ pub mod search_products {
     pub const SERVER_VARIABLES: &[&[runtime::ServerVar]] = &[&[]];
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct Params {
-        pub x_trace: Option<String>,
+        pub x_trace: Option<runtime::UuidText>,
         pub body: Option<std::collections::BTreeMap<String, serde_json::Value>>,
     }
     impl Params {
@@ -489,7 +455,7 @@ pub mod search_products {
         }
     }
     default_impl!(Params);
-    validate_impl_2!(Params);
+    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq)]
     pub enum Response {
         /// Products
@@ -517,7 +483,7 @@ pub mod copy_products {
     pub const SERVER_VARIABLES: &[&[runtime::ServerVar]] = &[&[]];
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct Params {
-        pub x_trace: Option<String>,
+        pub x_trace: Option<runtime::UuidText>,
     }
     impl Params {
         #[must_use]
@@ -526,7 +492,7 @@ pub mod copy_products {
         }
     }
     default_impl!(Params);
-    validate_impl_2!(Params);
+    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Copied
@@ -810,7 +776,7 @@ pub mod new_product_post {
         }
     }
     default_impl!(Params);
-    validate_impl_3!(Params);
+    validate_impl_2!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// ok
@@ -843,7 +809,7 @@ pub mod create_product_on_adopt_post {
         }
     }
     default_impl!(Params);
-    validate_impl_3!(Params);
+    validate_impl_2!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// ack
