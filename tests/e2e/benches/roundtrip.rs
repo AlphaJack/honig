@@ -42,7 +42,8 @@ fn main() -> std::process::ExitCode {
             };
             let micros = |d: Duration| format!("{:.1}", d.as_secs_f64() * 1e6);
             let sides = [micros(timing.generated), micros(timing.baseline)];
-            rows.push(cost::Measured { path: trip.name, size, sides, ratio: timing.ratio, max: trip.max_time });
+            let max = cost::time_budget(trip.max_time, size);
+            rows.push(cost::Measured { path: trip.name, size, sides, ratio: timing.ratio, max });
         }
     }
     failed.extend(cost::print_rows(&table, rows));
