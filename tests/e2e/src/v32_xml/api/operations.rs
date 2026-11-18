@@ -11,9 +11,12 @@
     clippy::missing_errors_doc,
     reason = "generated docs hold only the description's own prose"
 )]
+#![allow(
+    clippy::init_numbered_fields,
+    reason = "a spec default builds its checked type as `Type { 0: value }`, which also works through the alias of a twin"
+)]
 pub mod add_book {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/books";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -47,19 +50,6 @@ pub mod add_book {
         #[must_use]
         pub const fn new(body: types::Book) -> Self {
             Self { body, media: Media::ALL[0] }
-        }
-    }
-    impl runtime::Validate for Params {
-        fn validate(
-            &self,
-            path: &runtime::InstancePath<'_>,
-            out: &mut Vec<runtime::Violation>,
-        ) {
-            runtime::Validate::validate(
-                &self.body,
-                &runtime::InstancePath::Key(path, "body"),
-                out,
-            );
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]

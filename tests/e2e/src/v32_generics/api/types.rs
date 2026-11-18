@@ -11,6 +11,10 @@
     clippy::missing_errors_doc,
     reason = "generated docs hold only the description's own prose"
 )]
+#![allow(
+    clippy::init_numbered_fields,
+    reason = "a spec default builds its checked type as `Type { 0: value }`, which also works through the alias of a twin"
+)]
 macro_rules! deserialize_impl {
     ($t:ty) => {
         impl<'de> serde::Deserialize<'de> for $t {
@@ -29,12 +33,33 @@ macro_rules! serialize_impl {
         }
     };
 }
-macro_rules! validate_impl {
-    ($t:ty) => {
-        impl runtime::Validate for $t {}
+use super::runtime;
+macro_rules! checked_impls {
+    ($n:ident, $t:ty) => {
+        impl $n {
+            #[must_use]
+            pub fn into_inner(self) -> $t {
+                self.0
+            }
+        }
+        impl std::ops::Deref for $n {
+            type Target = $t;
+            fn deref(&self) -> &$t {
+                &self.0
+            }
+        }
+        impl AsRef<$t> for $n {
+            fn as_ref(&self) -> &$t {
+                &self.0
+            }
+        }
+        impl From<$n> for $t {
+            fn from(value: $n) -> Self {
+                value.0
+            }
+        }
     };
 }
-use super::runtime;
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Product {
@@ -48,54 +73,46 @@ impl Product {
         Self { name }
     }
 }
-validate_impl!(Product);
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct Page {
-    pub items: Vec<serde_json::Value>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub next: Option<String>,
-}
-deserialize_impl!(Page);
-serialize_impl!(Page);
-impl Page {
-    #[must_use]
-    pub const fn new(items: Vec<serde_json::Value>) -> Self {
-        Self { items, next: None }
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
+pub struct Page(pub(super) PageFields);
+impl<'de> serde::Deserialize<'de> for Page {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <PageFields as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
     }
 }
-impl runtime::Validate for Page {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
+impl TryFrom<PageFields> for Page {
+    type Error = String;
+    fn try_from(value: PageFields) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
         {
-            static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-            let value = runtime::to_value(&self.items).unwrap_or_default();
-            runtime::check_schema(
-                out,
-                &runtime::InstancePath::Key(path, "items"),
-                &value,
-                SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"type\":\"array\",\"items\":{\"$dynamicAnchor\":\"item\"}}",
-                            )
-                            .unwrap_or_default()
-                    }),
-            );
+            let out = &mut violations;
+            {
+                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                let value = runtime::to_value(&value).unwrap_or_default();
+                runtime::check_schema(
+                    out,
+                    &runtime::InstancePath::Root,
+                    &value,
+                    SCHEMA
+                        .get_or_init(|| {
+                            serde_json::from_str(
+                                    "{\"type\":\"object\",\"required\":[\"items\"],\"properties\":{\"items\":{\"type\":\"array\",\"items\":{\"$dynamicAnchor\":\"item\"}},\"next\":{\"type\":\"string\"}},\"$defs\":{\"item\":{\"$dynamicAnchor\":\"item\"}}}",
+                                )
+                                .unwrap_or_default()
+                        }),
+                );
+            }
         }
+        runtime::first(violations).map(|()| Self(value))
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+checked_impls!(Page, PageFields);
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct ProductPage {
-    pub items: Vec<Product>,
+    pub items: ProductPageItems,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
@@ -107,103 +124,46 @@ deserialize_impl!(ProductPage);
 serialize_impl!(ProductPage);
 impl ProductPage {
     #[must_use]
-    pub const fn new(items: Vec<Product>) -> Self {
+    pub const fn new(items: ProductPageItems) -> Self {
         Self { items, next: None }
     }
 }
-impl runtime::Validate for ProductPage {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        {
-            let base = &runtime::InstancePath::Key(path, "items");
-            for (i, v) in self.items.iter().enumerate() {
-                {
-                    static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                    let value = runtime::to_value(v).unwrap_or_default();
-                    runtime::check_schema(
-                        out,
-                        &runtime::InstancePath::Index(base, i),
-                        &value,
-                        SCHEMA
-                            .get_or_init(|| {
-                                serde_json::from_str(
-                                        "{\"$dynamicAnchor\":\"item\",\"allOf\":[{\"type\":\"object\",\"required\":[\"name\"],\"properties\":{\"name\":{\"type\":\"string\"}}}]}",
-                                    )
-                                    .unwrap_or_default()
-                            }),
-                    );
-                }
-            }
-        }
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
+pub struct Tree(pub(super) TreeFields);
+impl<'de> serde::Deserialize<'de> for Tree {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <TreeFields as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct Tree {
-    pub value: serde_json::Value,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub children: Option<Vec<Self>>,
-}
-deserialize_impl!(Tree);
-serialize_impl!(Tree);
-impl Tree {
-    #[must_use]
-    pub const fn new(value: serde_json::Value) -> Self {
-        Self { value, children: None }
-    }
-}
-impl runtime::Validate for Tree {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
+impl TryFrom<TreeFields> for Tree {
+    type Error = String;
+    fn try_from(value: TreeFields) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
         {
-            static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-            let value = runtime::to_value(&self.value).unwrap_or_default();
-            runtime::check_schema(
-                out,
-                &runtime::InstancePath::Key(path, "value"),
-                &value,
-                SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str("{\"$dynamicAnchor\":\"node\"}")
-                            .unwrap_or_default()
-                    }),
-            );
-        }
-        if let Some(v) = &self.children {
+            let out = &mut violations;
             {
-                let base = &runtime::InstancePath::Key(path, "children");
-                for (i, v) in v.iter().enumerate() {
-                    {
-                        static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                        let value = runtime::to_value(v).unwrap_or_default();
-                        runtime::check_schema(
-                            out,
-                            &runtime::InstancePath::Index(base, i),
-                            &value,
-                            SCHEMA
-                                .get_or_init(|| {
-                                    serde_json::from_str(
-                                            "{\"type\":\"object\",\"required\":[\"value\"],\"properties\":{\"value\":{\"$dynamicAnchor\":\"node\",\"type\":\"string\"},\"children\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"required\":[\"value\"],\"properties\":{\"value\":{\"$dynamicAnchor\":\"node\",\"type\":\"string\"},\"children\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"required\":[\"value\"],\"properties\":{\"value\":{\"$dynamicAnchor\":\"node\",\"type\":\"string\"},\"children\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"required\":[\"value\"],\"properties\":{\"value\":{\"$dynamicAnchor\":\"node\",\"type\":\"string\"},\"children\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"required\":[\"value\"],\"properties\":{\"value\":{\"$dynamicAnchor\":\"node\",\"type\":\"string\"},\"children\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"required\":[\"value\"],\"properties\":{\"value\":{\"$dynamicAnchor\":\"node\",\"type\":\"string\"},\"children\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"required\":[\"value\"],\"properties\":{\"value\":{\"$dynamicAnchor\":\"node\",\"type\":\"string\"},\"children\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"required\":[\"value\"],\"properties\":{\"value\":{\"$dynamicAnchor\":\"node\",\"type\":\"string\"},\"children\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"required\":[\"value\"],\"properties\":{\"value\":true,\"children\":{\"type\":\"array\",\"items\":true}},\"$defs\":{\"node\":{\"$dynamicAnchor\":\"node\"}}}}},\"$defs\":{\"node\":{\"$dynamicAnchor\":\"node\"}}}}},\"$defs\":{\"node\":{\"$dynamicAnchor\":\"node\"}}}}},\"$defs\":{\"node\":{\"$dynamicAnchor\":\"node\"}}}}},\"$defs\":{\"node\":{\"$dynamicAnchor\":\"node\"}}}}},\"$defs\":{\"node\":{\"$dynamicAnchor\":\"node\"}}}}},\"$defs\":{\"node\":{\"$dynamicAnchor\":\"node\"}}}}},\"$defs\":{\"node\":{\"$dynamicAnchor\":\"node\"}}}}},\"$defs\":{\"node\":{\"$dynamicAnchor\":\"node\"}}}",
-                                        )
-                                        .unwrap_or_default()
-                                }),
-                        );
-                    }
-                }
+                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                let value = runtime::to_value(&value).unwrap_or_default();
+                runtime::check_schema(
+                    out,
+                    &runtime::InstancePath::Root,
+                    &value,
+                    SCHEMA
+                        .get_or_init(|| {
+                            serde_json::from_str(
+                                    "{\"type\":\"object\",\"required\":[\"value\"],\"properties\":{\"value\":{\"$dynamicAnchor\":\"node\",\"type\":\"string\"},\"children\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"required\":[\"value\"],\"properties\":{\"value\":{\"$dynamicAnchor\":\"node\",\"type\":\"string\"},\"children\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"required\":[\"value\"],\"properties\":{\"value\":{\"$dynamicAnchor\":\"node\",\"type\":\"string\"},\"children\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"required\":[\"value\"],\"properties\":{\"value\":{\"$dynamicAnchor\":\"node\",\"type\":\"string\"},\"children\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"required\":[\"value\"],\"properties\":{\"value\":{\"$dynamicAnchor\":\"node\",\"type\":\"string\"},\"children\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"required\":[\"value\"],\"properties\":{\"value\":{\"$dynamicAnchor\":\"node\",\"type\":\"string\"},\"children\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"required\":[\"value\"],\"properties\":{\"value\":{\"$dynamicAnchor\":\"node\",\"type\":\"string\"},\"children\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"required\":[\"value\"],\"properties\":{\"value\":{\"$dynamicAnchor\":\"node\",\"type\":\"string\"},\"children\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"required\":[\"value\"],\"properties\":{\"value\":true,\"children\":{\"type\":\"array\",\"items\":true}},\"$defs\":{\"node\":{\"$dynamicAnchor\":\"node\"}}}}},\"$defs\":{\"node\":{\"$dynamicAnchor\":\"node\"}}}}},\"$defs\":{\"node\":{\"$dynamicAnchor\":\"node\"}}}}},\"$defs\":{\"node\":{\"$dynamicAnchor\":\"node\"}}}}},\"$defs\":{\"node\":{\"$dynamicAnchor\":\"node\"}}}}},\"$defs\":{\"node\":{\"$dynamicAnchor\":\"node\"}}}}},\"$defs\":{\"node\":{\"$dynamicAnchor\":\"node\"}}}}},\"$defs\":{\"node\":{\"$dynamicAnchor\":\"node\"}}}}},\"$defs\":{\"node\":{\"$dynamicAnchor\":\"node\"}}}",
+                                )
+                                .unwrap_or_default()
+                        }),
+                );
             }
         }
+        runtime::first(violations).map(|()| Self(value))
     }
 }
+checked_impls!(Tree, TreeFields);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct StringTree {
@@ -223,7 +183,155 @@ impl StringTree {
         Self { value, children: None }
     }
 }
-validate_impl!(StringTree);
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct PageFields {
+    pub items: PageItems,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub next: Option<String>,
+}
+deserialize_impl!(PageFields);
+serialize_impl!(PageFields);
+impl PageFields {
+    #[must_use]
+    pub const fn new(items: PageItems) -> Self {
+        Self { items, next: None }
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct TreeFields {
+    pub value: TreeValue,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub children: Option<Vec<Tree>>,
+}
+deserialize_impl!(TreeFields);
+serialize_impl!(TreeFields);
+impl TreeFields {
+    #[must_use]
+    pub const fn new(value: TreeValue) -> Self {
+        Self { value, children: None }
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
+pub struct ProductPageItems(pub(super) Vec<Product>);
+impl<'de> serde::Deserialize<'de> for ProductPageItems {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <Vec<Product> as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
+    }
+}
+impl TryFrom<Vec<Product>> for ProductPageItems {
+    type Error = String;
+    fn try_from(value: Vec<Product>) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            {
+                let base = &runtime::InstancePath::Root;
+                for (i, v) in value.iter().enumerate() {
+                    {
+                        static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                        let value = runtime::to_value(v).unwrap_or_default();
+                        runtime::check_schema(
+                            out,
+                            &runtime::InstancePath::Index(base, i),
+                            &value,
+                            SCHEMA
+                                .get_or_init(|| {
+                                    serde_json::from_str(
+                                            "{\"$dynamicAnchor\":\"item\",\"allOf\":[{\"type\":\"object\",\"required\":[\"name\"],\"properties\":{\"name\":{\"type\":\"string\"}}}]}",
+                                        )
+                                        .unwrap_or_default()
+                                }),
+                        );
+                    }
+                }
+            }
+        }
+        runtime::first(violations).map(|()| Self(value))
+    }
+}
+checked_impls!(ProductPageItems, Vec < Product >);
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
+pub struct PageItems(pub(super) Vec<serde_json::Value>);
+impl<'de> serde::Deserialize<'de> for PageItems {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <Vec<serde_json::Value> as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
+    }
+}
+impl TryFrom<Vec<serde_json::Value>> for PageItems {
+    type Error = String;
+    fn try_from(value: Vec<serde_json::Value>) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            {
+                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                let value = runtime::to_value(&value).unwrap_or_default();
+                runtime::check_schema(
+                    out,
+                    &runtime::InstancePath::Root,
+                    &value,
+                    SCHEMA
+                        .get_or_init(|| {
+                            serde_json::from_str(
+                                    "{\"type\":\"array\",\"items\":{\"$dynamicAnchor\":\"item\"}}",
+                                )
+                                .unwrap_or_default()
+                        }),
+                );
+            }
+        }
+        runtime::first(violations).map(|()| Self(value))
+    }
+}
+checked_impls!(PageItems, Vec < serde_json::Value >);
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
+pub struct TreeValue(pub(super) serde_json::Value);
+impl<'de> serde::Deserialize<'de> for TreeValue {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <serde_json::Value as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
+    }
+}
+impl TryFrom<serde_json::Value> for TreeValue {
+    type Error = String;
+    fn try_from(value: serde_json::Value) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            {
+                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                let value = runtime::to_value(&value).unwrap_or_default();
+                runtime::check_schema(
+                    out,
+                    &runtime::InstancePath::Root,
+                    &value,
+                    SCHEMA
+                        .get_or_init(|| {
+                            serde_json::from_str("{\"$dynamicAnchor\":\"node\"}")
+                                .unwrap_or_default()
+                        }),
+                );
+            }
+        }
+        runtime::first(violations).map(|()| Self(value))
+    }
+}
+checked_impls!(TreeValue, serde_json::Value);
 /// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
 /// its field. `build` returns the first field that did not convert.
 pub mod builders {
@@ -248,17 +356,17 @@ pub mod builders {
     impl super::Page {
         /// Starts a builder from the required properties.
         pub fn builder(
-            items: impl TryInto<Vec<serde_json::Value>, Error: std::fmt::Display>,
+            items: impl TryInto<types::PageItems, Error: std::fmt::Display>,
         ) -> Page {
             Page(
                 runtime::Builder::start(|| Ok(
-                    Self::new(runtime::field("items", items)?),
+                    super::PageFields::new(runtime::field("items", items)?),
                 )),
             )
         }
     }
     #[must_use = "a builder does nothing until `build`"]
-    pub struct Page(runtime::Builder<super::Page>);
+    pub struct Page(runtime::Builder<super::PageFields>);
     impl Page {
         pub fn next(
             self,
@@ -266,15 +374,19 @@ pub mod builders {
         ) -> Self {
             Self(self.0.set("next", value, |s, v| s.next = Some(v)))
         }
-        /// Returns the value.
+        /// Returns the value once its whole schema holds.
         pub fn build(self) -> Result<super::Page, runtime::BuildError> {
-            self.0.build()
+            self.0
+                .build()
+                .and_then(|v| {
+                    super::Page::try_from(v).map_err(runtime::BuildError::value)
+                })
         }
     }
     impl super::ProductPage {
         /// Starts a builder from the required properties.
         pub fn builder(
-            items: impl TryInto<Vec<types::Product>, Error: std::fmt::Display>,
+            items: impl TryInto<types::ProductPageItems, Error: std::fmt::Display>,
         ) -> ProductPage {
             ProductPage(
                 runtime::Builder::start(|| Ok(
@@ -300,17 +412,17 @@ pub mod builders {
     impl super::Tree {
         /// Starts a builder from the required properties.
         pub fn builder(
-            value: impl TryInto<serde_json::Value, Error: std::fmt::Display>,
+            value: impl TryInto<types::TreeValue, Error: std::fmt::Display>,
         ) -> Tree {
             Tree(
                 runtime::Builder::start(|| Ok(
-                    Self::new(runtime::field("value", value)?),
+                    super::TreeFields::new(runtime::field("value", value)?),
                 )),
             )
         }
     }
     #[must_use = "a builder does nothing until `build`"]
-    pub struct Tree(runtime::Builder<super::Tree>);
+    pub struct Tree(runtime::Builder<super::TreeFields>);
     impl Tree {
         pub fn children(
             self,
@@ -318,9 +430,13 @@ pub mod builders {
         ) -> Self {
             Self(self.0.set("children", value, |s, v| s.children = Some(v)))
         }
-        /// Returns the value.
+        /// Returns the value once its whole schema holds.
         pub fn build(self) -> Result<super::Tree, runtime::BuildError> {
-            self.0.build()
+            self.0
+                .build()
+                .and_then(|v| {
+                    super::Tree::try_from(v).map_err(runtime::BuildError::value)
+                })
         }
     }
     impl super::StringTree {
@@ -346,6 +462,58 @@ pub mod builders {
         }
         /// Returns the value.
         pub fn build(self) -> Result<super::StringTree, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::PageFields {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            items: impl TryInto<types::PageItems, Error: std::fmt::Display>,
+        ) -> PageFields {
+            PageFields(
+                runtime::Builder::start(|| Ok(
+                    Self::new(runtime::field("items", items)?),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct PageFields(runtime::Builder<super::PageFields>);
+    impl PageFields {
+        pub fn next(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("next", value, |s, v| s.next = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::PageFields, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::TreeFields {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            value: impl TryInto<types::TreeValue, Error: std::fmt::Display>,
+        ) -> TreeFields {
+            TreeFields(
+                runtime::Builder::start(|| Ok(
+                    Self::new(runtime::field("value", value)?),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct TreeFields(runtime::Builder<super::TreeFields>);
+    impl TreeFields {
+        pub fn children(
+            self,
+            value: impl TryInto<Vec<types::Tree>, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("children", value, |s, v| s.children = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::TreeFields, runtime::BuildError> {
             self.0.build()
         }
     }

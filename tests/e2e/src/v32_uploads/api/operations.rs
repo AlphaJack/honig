@@ -11,6 +11,10 @@
     clippy::missing_errors_doc,
     reason = "generated docs hold only the description's own prose"
 )]
+#![allow(
+    clippy::init_numbered_fields,
+    reason = "a spec default builds its checked type as `Type { 0: value }`, which also works through the alias of a twin"
+)]
 pub mod put_file {
     use super::super::types;
     use super::super::runtime;
@@ -28,7 +32,6 @@ pub mod put_file {
             Self { name, body }
         }
     }
-    impl runtime::Validate for Params {}
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// What arrived.

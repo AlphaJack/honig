@@ -11,11 +11,10 @@
     clippy::missing_errors_doc,
     reason = "generated docs hold only the description's own prose"
 )]
-macro_rules! validate_impl {
-    ($t:ty) => {
-        impl runtime::Validate for $t {}
-    };
-}
+#![allow(
+    clippy::init_numbered_fields,
+    reason = "a spec default builds its checked type as `Type { 0: value }`, which also works through the alias of a twin"
+)]
 macro_rules! deserialize_impl {
     ($t:ty) => {
         impl<'de> serde::Deserialize<'de> for $t {
@@ -117,14 +116,10 @@ impl TryFrom<String> for UploadImageXChecksum {
                 "characters",
             );
         }
-        match violations.into_iter().next() {
-            Some(v) => Err(v.message),
-            None => Ok(Self(value)),
-        }
+        runtime::first(violations).map(|()| Self(value))
     }
 }
 checked_str_impls!(UploadImageXChecksum);
-validate_impl!(UploadImageXChecksum);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct UploadBody {
@@ -163,7 +158,6 @@ impl UploadBody {
         }
     }
 }
-validate_impl!(UploadBody);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct UploadBodyMeta {
@@ -183,7 +177,6 @@ impl UploadBodyMeta {
         Self { title, width: None }
     }
 }
-validate_impl!(UploadBodyMeta);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct UploadBodyBundle {
@@ -208,7 +201,6 @@ impl UploadBodyBundle {
         Self { note: None, scan: None }
     }
 }
-validate_impl!(UploadBodyBundle);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct PutIconBody {
@@ -228,7 +220,6 @@ impl PutIconBody {
         Self { name: None, icon }
     }
 }
-validate_impl!(PutIconBody);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct UploadScanBody {
@@ -248,7 +239,6 @@ impl UploadScanBody {
         Self { label: None, scan }
     }
 }
-validate_impl!(UploadScanBody);
 /// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
 /// its field. `build` returns the first field that did not convert.
 pub mod builders {

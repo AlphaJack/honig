@@ -12,6 +12,10 @@
     clippy::missing_errors_doc,
     reason = "generated docs hold only the description's own prose"
 )]
+#![allow(
+    clippy::init_numbered_fields,
+    reason = "a spec default builds its checked type as `Type { 0: value }`, which also works through the alias of a twin"
+)]
 use super::{operations as ops, runtime};
 use std::future::Future;
 pub trait Api: Send + Sync + 'static {
@@ -2204,7 +2208,7 @@ fn create_item_params(
                             serde_json::Value::Object(
                                 serde_json::Map::from_iter([
                                     (
-                                        "~1components~1schemas~1Product".to_owned(),
+                                        "/components/schemas/Product".to_owned(),
                                         serde_json::Value::Object(
                                             serde_json::Map::from_iter([
                                                 (
@@ -2890,7 +2894,7 @@ fn create_item_params(
                                         ),
                                     ),
                                     (
-                                        "~1components~1schemas~1Variant".to_owned(),
+                                        "/components/schemas/Variant".to_owned(),
                                         serde_json::Value::Object(
                                             serde_json::Map::from_iter([
                                                 (

@@ -11,6 +11,10 @@
     clippy::missing_errors_doc,
     reason = "generated docs hold only the description's own prose"
 )]
+#![allow(
+    clippy::init_numbered_fields,
+    reason = "a spec default builds its checked type as `Type { 0: value }`, which also works through the alias of a twin"
+)]
 macro_rules! deserialize_impl {
     ($t:ty) => {
         impl<'de> serde::Deserialize<'de> for $t {
@@ -27,11 +31,6 @@ macro_rules! serialize_impl {
                 Self::serialize(self, s)
             }
         }
-    };
-}
-macro_rules! validate_impl {
-    ($t:ty) => {
-        impl runtime::Validate for $t {}
     };
 }
 use super::runtime;
@@ -75,7 +74,6 @@ impl Product {
         Self { id, name }
     }
 }
-validate_impl!(Product);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Event {
@@ -95,7 +93,6 @@ impl Event {
         Self { kind, at: None }
     }
 }
-validate_impl!(Event);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum EventKind {
     Created,
@@ -121,7 +118,6 @@ impl TryFrom<&str> for EventKind {
     }
 }
 str_enum_impls!(EventKind);
-validate_impl!(EventKind);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct SubscribeBody {
@@ -139,7 +135,6 @@ impl SubscribeBody {
         Self { callback_url }
     }
 }
-validate_impl!(SubscribeBody);
 /// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
 /// its field. `build` returns the first field that did not convert.
 pub mod builders {

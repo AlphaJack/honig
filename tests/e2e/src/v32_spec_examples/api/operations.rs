@@ -11,6 +11,10 @@
     clippy::missing_errors_doc,
     reason = "generated docs hold only the description's own prose"
 )]
+#![allow(
+    clippy::init_numbered_fields,
+    reason = "a spec default builds its checked type as `Type { 0: value }`, which also works through the alias of a twin"
+)]
 macro_rules! default_impl {
     ($t:ty) => {
         impl Default for $t {
@@ -20,14 +24,8 @@ macro_rules! default_impl {
         }
     };
 }
-macro_rules! validate_impl {
-    ($t:ty) => {
-        impl runtime::Validate for $t {}
-    };
-}
 pub mod form_with_xml {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/form-with-xml";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -41,21 +39,6 @@ pub mod form_with_xml {
         }
     }
     default_impl!(Params);
-    impl runtime::Validate for Params {
-        fn validate(
-            &self,
-            path: &runtime::InstancePath<'_>,
-            out: &mut Vec<runtime::Violation>,
-        ) {
-            if let Some(v) = &self.body {
-                runtime::Validate::validate(
-                    v,
-                    &runtime::InstancePath::Key(path, "body"),
-                    out,
-                );
-            }
-        }
-    }
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// ok
@@ -64,7 +47,6 @@ pub mod form_with_xml {
 }
 pub mod parameter_examples {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/users/{username}";
     #[derive(Debug, Clone, PartialEq)]
@@ -93,7 +75,6 @@ pub mod parameter_examples {
             }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// ok
@@ -102,7 +83,6 @@ pub mod parameter_examples {
 }
 pub mod querystring_form {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/querystring/form";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -116,7 +96,6 @@ pub mod querystring_form {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// ok
@@ -125,7 +104,6 @@ pub mod querystring_form {
 }
 pub mod querystring_json {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/querystring/json";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -139,7 +117,6 @@ pub mod querystring_json {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// ok
@@ -148,7 +125,6 @@ pub mod querystring_json {
 }
 pub mod basic_multipart_form {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/multipart/basic";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -162,7 +138,6 @@ pub mod basic_multipart_form {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// ok
@@ -192,7 +167,6 @@ pub mod multipart_form_with_encoding_objects {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// ok
@@ -201,7 +175,6 @@ pub mod multipart_form_with_encoding_objects {
 }
 pub mod multipart_form_with_multiple_files {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/multipart/files";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -215,7 +188,6 @@ pub mod multipart_form_with_multiple_files {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// ok
@@ -223,12 +195,12 @@ pub mod multipart_form_with_multiple_files {
     }
 }
 pub mod ordered_unnamed_multipart {
-    use super::super::runtime;
+    use super::super::types;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/multipart/ordered";
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct Params {
-        pub body: Option<Vec<serde_json::Value>>,
+        pub body: Option<types::OrderedUnnamedMultipartBody>,
     }
     impl Params {
         #[must_use]
@@ -237,32 +209,6 @@ pub mod ordered_unnamed_multipart {
         }
     }
     default_impl!(Params);
-    impl runtime::Validate for Params {
-        fn validate(
-            &self,
-            path: &runtime::InstancePath<'_>,
-            out: &mut Vec<runtime::Violation>,
-        ) {
-            if let Some(v) = &self.body {
-                {
-                    static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                    let value = runtime::to_value(v).unwrap_or_default();
-                    runtime::check_schema(
-                        out,
-                        &runtime::InstancePath::Key(path, "body"),
-                        &value,
-                        SCHEMA
-                            .get_or_init(|| {
-                                serde_json::from_str(
-                                        "{\"type\":\"array\",\"prefixItems\":[{\"type\":\"object\",\"properties\":{\"author\":{\"type\":\"string\"},\"created\":{\"type\":\"string\",\"format\":\"datetime\"},\"copyright\":{\"type\":\"string\"},\"license\":{\"type\":\"string\"}}},{}]}",
-                                    )
-                                    .unwrap_or_default()
-                            }),
-                    );
-                }
-            }
-        }
-    }
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// ok
@@ -276,9 +222,7 @@ pub mod ordered_multipart_with_required_header {
     pub const PATH: &str = "/multipart/related";
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct Params {
-        pub body: Option<
-            (String, Vec<types::OrderedMultipartWithRequiredHeaderBodyItem>),
-        >,
+        pub body: Option<types::OrderedMultipartWithRequiredHeaderBody>,
         pub part_types: runtime::PartTypes,
     }
     impl Params {
@@ -291,32 +235,6 @@ pub mod ordered_multipart_with_required_header {
         }
     }
     default_impl!(Params);
-    impl runtime::Validate for Params {
-        fn validate(
-            &self,
-            path: &runtime::InstancePath<'_>,
-            out: &mut Vec<runtime::Violation>,
-        ) {
-            if let Some(v) = &self.body {
-                {
-                    static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                    let value = runtime::to_value(v).unwrap_or_default();
-                    runtime::check_schema(
-                        out,
-                        &runtime::InstancePath::Key(path, "body"),
-                        &value,
-                        SCHEMA
-                            .get_or_init(|| {
-                                serde_json::from_str(
-                                        "{\"prefixItems\":[{\"type\":\"string\"}],\"items\":{\"anyOf\":[{\"type\":\"string\"},{\"$comment\":\"To allow binary, this must always pass\"}]}}",
-                                    )
-                                    .unwrap_or_default()
-                            }),
-                    );
-                }
-            }
-        }
-    }
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// ok
@@ -324,12 +242,12 @@ pub mod ordered_multipart_with_required_header {
     }
 }
 pub mod nested_multipart_mixed {
-    use super::super::runtime;
+    use super::super::types;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/multipart/nested";
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct Params {
-        pub body: Option<Vec<serde_json::Value>>,
+        pub body: Option<types::NestedMultipartMixedBody>,
     }
     impl Params {
         #[must_use]
@@ -338,32 +256,6 @@ pub mod nested_multipart_mixed {
         }
     }
     default_impl!(Params);
-    impl runtime::Validate for Params {
-        fn validate(
-            &self,
-            path: &runtime::InstancePath<'_>,
-            out: &mut Vec<runtime::Violation>,
-        ) {
-            if let Some(v) = &self.body {
-                {
-                    static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                    let value = runtime::to_value(v).unwrap_or_default();
-                    runtime::check_schema(
-                        out,
-                        &runtime::InstancePath::Key(path, "body"),
-                        &value,
-                        SCHEMA
-                            .get_or_init(|| {
-                                serde_json::from_str(
-                                        "{\"type\":\"array\",\"prefixItems\":[{\"type\":\"array\"},{\"type\":\"array\",\"prefixItems\":[{\"type\":\"object\"},{\"type\":\"string\"},{}]}]}",
-                                    )
-                                    .unwrap_or_default()
-                            }),
-                    );
-                }
-            }
-        }
-    }
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// ok
@@ -383,7 +275,6 @@ pub mod streaming_multipart {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// A device streams its pictures, each processed as it arrives.
@@ -403,7 +294,6 @@ pub mod streaming_byte_ranges {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Byte ranges of a video, each with its Content-Range.
@@ -411,7 +301,6 @@ pub mod streaming_byte_ranges {
     }
 }
 pub mod querystring_jsonpath {
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/querystring/jsonpath";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -425,7 +314,6 @@ pub mod querystring_jsonpath {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// ok
@@ -434,7 +322,6 @@ pub mod querystring_jsonpath {
 }
 pub mod collection_with_links {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/collection";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -446,7 +333,6 @@ pub mod collection_with_links {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// A page of a collection, its pagination links in the `Link` header.
@@ -455,7 +341,6 @@ pub mod collection_with_links {
 }
 pub mod standalone_json_linkset {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/collection/linkset-json";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -467,7 +352,6 @@ pub mod standalone_json_linkset {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// The same links as a JSON document.
@@ -476,7 +360,6 @@ pub mod standalone_json_linkset {
 }
 pub mod linkset_body {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/collection/linkset";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -488,7 +371,6 @@ pub mod linkset_body {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// The links in `Link` header syntax.
@@ -497,7 +379,6 @@ pub mod linkset_body {
 }
 pub mod media_type_json {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/products";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -509,7 +390,6 @@ pub mod media_type_json {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// A product.
@@ -517,7 +397,6 @@ pub mod media_type_json {
     }
 }
 pub mod log_stream {
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/logs/stream";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -556,7 +435,6 @@ pub mod log_stream {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// A stream of JSON-format log messages, in any of the sequential JSON media types.
@@ -565,7 +443,6 @@ pub mod log_stream {
     pub type OkBody = super::responses::LogStream;
 }
 pub mod log_excerpt {
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/logs/excerpt";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -604,7 +481,6 @@ pub mod log_excerpt {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// No more than 100 log records, in any of the sequential JSON media types.
@@ -630,7 +506,6 @@ pub mod server_sent_event_streams {
             Self { body }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// ok

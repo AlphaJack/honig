@@ -11,6 +11,10 @@
     clippy::missing_errors_doc,
     reason = "generated docs hold only the description's own prose"
 )]
+#![allow(
+    clippy::init_numbered_fields,
+    reason = "a spec default builds its checked type as `Type { 0: value }`, which also works through the alias of a twin"
+)]
 macro_rules! default_impl {
     ($t:ty) => {
         impl Default for $t {
@@ -20,13 +24,7 @@ macro_rules! default_impl {
         }
     };
 }
-macro_rules! validate_impl {
-    ($t:ty) => {
-        impl runtime::Validate for $t {}
-    };
-}
 pub mod search_orders {
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/orders/search";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -38,7 +36,6 @@ pub mod search_orders {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Done.
@@ -46,7 +43,6 @@ pub mod search_orders {
     }
 }
 pub mod update_order {
-    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/orders/{id}";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -59,7 +55,6 @@ pub mod update_order {
             Self { id }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Done.
@@ -67,7 +62,6 @@ pub mod update_order {
     }
 }
 pub mod status_at {
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/status/@";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -79,7 +73,6 @@ pub mod status_at {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Done.
@@ -87,7 +80,6 @@ pub mod status_at {
     }
 }
 pub mod status_by_key {
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/status/{key}";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -100,7 +92,6 @@ pub mod status_by_key {
             Self { key }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// The key.
@@ -108,7 +99,6 @@ pub mod status_by_key {
     }
 }
 pub mod latest_meta {
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/files/latest/meta";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -120,7 +110,6 @@ pub mod latest_meta {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Done.
@@ -128,7 +117,6 @@ pub mod latest_meta {
     }
 }
 pub mod file_raw {
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/files/{dir}/raw";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -141,7 +129,6 @@ pub mod file_raw {
             Self { dir }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// The directory.
@@ -149,7 +136,6 @@ pub mod file_raw {
     }
 }
 pub mod file_ext {
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/files/{name}.{ext}";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -163,7 +149,6 @@ pub mod file_ext {
             Self { name, ext }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Name and extension.
@@ -171,7 +156,6 @@ pub mod file_ext {
     }
 }
 pub mod mix_literal_tail {
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/m/{a}.json/x";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -184,7 +168,6 @@ pub mod mix_literal_tail {
             Self { a }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Done.
@@ -192,7 +175,6 @@ pub mod mix_literal_tail {
     }
 }
 pub mod mix_mixed_tail {
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/m/{a}.{b}/y-{c}";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -207,7 +189,6 @@ pub mod mix_mixed_tail {
             Self { a, b, c }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// The captures.
@@ -215,7 +196,6 @@ pub mod mix_mixed_tail {
     }
 }
 pub mod mix_var_tail {
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/m/{a}.json/{c}";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -229,7 +209,6 @@ pub mod mix_var_tail {
             Self { a, c }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Accepted.

@@ -487,12 +487,13 @@ fn a_body_of_your_own_type_is_left_to_it() {
             &json!({"schemas": {"Note": note}}),
         );
         let files = common::generate(test, &doc, &crate::emit::Options::default());
-        (common::file(&files, "operations.rs").to_owned(), common::file(&files, "server.rs").to_owned())
+        (common::file(&files, "types.rs").to_owned(), common::file(&files, "server.rs").to_owned())
     };
-    let (ops, server) = generate("shape-own-body-generated", None);
-    assert!(op_module(&ops, "two").contains("check_schema"), "{ops}");
+    // `Note` is a checked type: decoding it, whatever the media type, checks its whole schema.
+    let (types, server) = generate("shape-own-body-generated", None);
+    assert!(types.contains("pub struct Note(pub(super) NoteVariants);") && types.contains("check_schema"), "{types}");
     assert!(server.contains("check_raw_json"), "{server}");
-    let (ops, server) = generate("shape-own-body-yours", Some("crate::Note"));
-    assert!(!ops.contains("check_schema"), "{ops}");
+    let (types, server) = generate("shape-own-body-yours", Some("crate::Note"));
+    assert!(!types.contains("check_schema"), "{types}");
     assert!(!server.contains("check_raw_json"), "{server}");
 }

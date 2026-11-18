@@ -11,6 +11,10 @@
     clippy::missing_errors_doc,
     reason = "generated docs hold only the description's own prose"
 )]
+#![allow(
+    clippy::init_numbered_fields,
+    reason = "a spec default builds its checked type as `Type { 0: value }`, which also works through the alias of a twin"
+)]
 use super::{operations as ops, runtime};
 use std::future::Future;
 pub trait Api: Send + Sync + 'static {
@@ -218,62 +222,6 @@ async fn b<A: Api>(
 fn b_params(incoming: runtime::Incoming<'_>) -> Result<ops::b::Params, runtime::Reason> {
     let runtime::Incoming { request: req, body, .. } = incoming;
     runtime::check_media(runtime::Message::content_type(req), &["application/json"])?;
-    if !body.is_empty() {
-        static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-        runtime::check_raw_json(
-            &body,
-            SCHEMA
-                .get_or_init(|| serde_json::Value::Object(
-                    serde_json::Map::from_iter([
-                        (
-                            "allOf".to_owned(),
-                            serde_json::Value::Array(
-                                vec![
-                                    serde_json::Value::Object(serde_json::Map::from_iter([("if"
-                                    .to_owned(),
-                                    serde_json::Value::Object(serde_json::Map::from_iter([("properties"
-                                    .to_owned(),
-                                    serde_json::Value::Object(serde_json::Map::from_iter([("type"
-                                    .to_owned(),
-                                    serde_json::Value::Object(serde_json::Map::from_iter([("const"
-                                    .to_owned(), serde_json::Value::String("email"
-                                    .to_owned()))])))])))]))), ("then".to_owned(),
-                                    serde_json::Value::Object(serde_json::Map::from_iter([("required"
-                                    .to_owned(),
-                                    serde_json::Value::Array(vec![serde_json::Value::String("email"
-                                    .to_owned())])), ("properties".to_owned(),
-                                    serde_json::Value::Object(serde_json::Map::from_iter([("email"
-                                    .to_owned(),
-                                    serde_json::Value::Object(serde_json::Map::from_iter([("type"
-                                    .to_owned(), serde_json::Value::String("string"
-                                    .to_owned())), ("format".to_owned(),
-                                    serde_json::Value::String("email"
-                                    .to_owned()))])))])))])))])),
-                                    serde_json::Value::Object(serde_json::Map::from_iter([("if"
-                                    .to_owned(),
-                                    serde_json::Value::Object(serde_json::Map::from_iter([("properties"
-                                    .to_owned(),
-                                    serde_json::Value::Object(serde_json::Map::from_iter([("type"
-                                    .to_owned(),
-                                    serde_json::Value::Object(serde_json::Map::from_iter([("const"
-                                    .to_owned(), serde_json::Value::String("sms"
-                                    .to_owned()))])))])))]))), ("then".to_owned(),
-                                    serde_json::Value::Object(serde_json::Map::from_iter([("required"
-                                    .to_owned(),
-                                    serde_json::Value::Array(vec![serde_json::Value::String("phone"
-                                    .to_owned())])), ("properties".to_owned(),
-                                    serde_json::Value::Object(serde_json::Map::from_iter([("phone"
-                                    .to_owned(),
-                                    serde_json::Value::Object(serde_json::Map::from_iter([("type"
-                                    .to_owned(), serde_json::Value::String("string"
-                                    .to_owned()))])))])))])))]))
-                                ],
-                            ),
-                        ),
-                    ]),
-                )),
-        )?;
-    }
     Ok(ops::b::Params {
         body: runtime::json_decode(0, &body)?,
     })

@@ -21,7 +21,8 @@ fn link_request_body_is_typed_after_the_target() {
     // The target's request body type: `readOnly` `id` and `createdAt` are not part of it.
     let order: types::OrderRequest = again.body.expect("the response body becomes the new request body");
     assert_eq!(order.total.amount_cents, 9_007_199_254_740_993, "int64 beyond 2^53 survives");
-    assert_matches!(order.vehicle, types::Vehicle::Van(_));
+    // `oneOf` takes exactly one branch: `Vehicle` is checked, and reads as its variants.
+    assert_matches!(*order.vehicle, types::VehicleVariants::Van(_));
 }
 
 #[test]

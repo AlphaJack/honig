@@ -46,8 +46,6 @@ pub enum Error {
         /// Raw response body. Its `Debug` shows it as text.
         body: bytes::Bytes,
     },
-    /// An item of a request body still arriving breaks the description's constraints.
-    Invalid(Vec<crate::Violation>),
     /// A body still arriving went past a limit in bytes: the `max_body_bytes` of the server.
     TooLarge(usize),
 }
@@ -89,13 +87,6 @@ impl fmt::Display for Error {
             Self::UnexpectedStatus { status, body } => {
                 let text = String::from_utf8_lossy(body.get(..body.len().min(200)).unwrap_or_default());
                 write!(f, "unexpected status {}: {text}", status.as_u16())
-            }
-            Self::Invalid(violations) => {
-                f.write_str("invalid request item")?;
-                for v in violations {
-                    write!(f, "; {}: {}", v.path, v.message)?;
-                }
-                Ok(())
             }
             Self::TooLarge(limit) => write!(f, "body exceeds {limit} bytes"),
         }

@@ -12,6 +12,10 @@
     clippy::missing_errors_doc,
     reason = "generated docs hold only the description's own prose"
 )]
+#![allow(
+    clippy::init_numbered_fields,
+    reason = "a spec default builds its checked type as `Type { 0: value }`, which also works through the alias of a twin"
+)]
 macro_rules! default_impl {
     ($t:ty) => {
         impl Default for $t {
@@ -19,11 +23,6 @@ macro_rules! default_impl {
                 Self::new()
             }
         }
-    };
-}
-macro_rules! validate_impl {
-    ($t:ty) => {
-        impl runtime::Validate for $t {}
     };
 }
 pub mod ping {
@@ -39,7 +38,6 @@ pub mod ping {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         Default { status: runtime::http::StatusCode },
@@ -47,7 +45,6 @@ pub mod ping {
 }
 pub mod archive {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/archive";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -59,7 +56,6 @@ pub mod archive {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Archived.
@@ -70,7 +66,6 @@ pub mod archive {
 }
 pub mod unarchive {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "DELETE";
     pub const PATH: &str = "/archive";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -82,7 +77,6 @@ pub mod unarchive {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Restored.
@@ -93,7 +87,6 @@ pub mod unarchive {
 }
 pub mod add_note {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/notes";
     #[derive(Debug, Clone, PartialEq)]
@@ -104,30 +97,6 @@ pub mod add_note {
         #[must_use]
         pub const fn new(body: types::Note) -> Self {
             Self { body }
-        }
-    }
-    impl runtime::Validate for Params {
-        fn validate(
-            &self,
-            path: &runtime::InstancePath<'_>,
-            out: &mut Vec<runtime::Violation>,
-        ) {
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&self.body).unwrap_or_default();
-                runtime::check_schema(
-                    out,
-                    &runtime::InstancePath::Key(path, "body"),
-                    &value,
-                    SCHEMA
-                        .get_or_init(|| {
-                            serde_json::from_str(
-                                    "{\"type\":\"object\",\"properties\":{\"kind\":{\"type\":\"string\"},\"text\":{\"type\":\"string\"},\"size\":{\"type\":\"integer\"}},\"oneOf\":[{\"type\":\"object\",\"required\":[\"text\"],\"properties\":{\"kind\":{\"const\":\"text\"},\"text\":{\"type\":\"string\"},\"point\":{\"type\":\"array\",\"items\":{\"type\":\"number\"},\"minItems\":2,\"maxItems\":2},\"rgb\":{\"type\":\"array\",\"items\":{\"type\":\"integer\",\"format\":\"uint8\"},\"minItems\":3,\"maxItems\":3,\"uniqueItems\":true}},\"if\":{\"required\":[\"size\"]},\"then\":{\"properties\":{\"size\":{\"maximum\":10}}},\"else\":{\"properties\":{\"text\":{\"maxLength\":5}}}},{\"type\":\"object\",\"required\":[\"kind\",\"url\"],\"properties\":{\"kind\":{\"const\":\"image\"},\"url\":{\"type\":\"string\"},\"width\":{\"default\":64,\"allOf\":[{\"type\":\"integer\"}]},\"crop\":{\"oneOf\":[{\"type\":\"string\"},{\"oneOf\":[{\"type\":\"integer\"},{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"integer\"},\"y\":{\"type\":\"integer\"}}}]}]}}}]}",
-                                )
-                                .unwrap_or_default()
-                        }),
-                );
-            }
         }
     }
     #[derive(Debug, Clone, PartialEq)]

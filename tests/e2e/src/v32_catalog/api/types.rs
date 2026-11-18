@@ -11,6 +11,10 @@
     clippy::missing_errors_doc,
     reason = "generated docs hold only the description's own prose"
 )]
+#![allow(
+    clippy::init_numbered_fields,
+    reason = "a spec default builds its checked type as `Type { 0: value }`, which also works through the alias of a twin"
+)]
 macro_rules! deserialize_impl {
     ($t:ty) => {
         impl<'de> serde::Deserialize<'de> for $t {
@@ -27,11 +31,6 @@ macro_rules! serialize_impl {
                 Self::serialize(self, s)
             }
         }
-    };
-}
-macro_rules! validate_impl {
-    ($t:ty) => {
-        impl runtime::Validate for $t {}
     };
 }
 macro_rules! serialize_impl_2 {
@@ -221,22 +220,6 @@ impl<'de> runtime::TaggedUnion<'de> for Product {
         }
     }
 }
-impl runtime::Validate for Product {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        match self {
-            Self::Physical(x) => {
-                runtime::Validate::validate(x, path, out);
-            }
-            Self::Digital(x) => {
-                runtime::Validate::validate(x, path, out);
-            }
-        }
-    }
-}
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Physical {
@@ -269,28 +252,6 @@ impl Physical {
         }
     }
 }
-impl runtime::Validate for Physical {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        {
-            static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-            let value = runtime::to_value(&self.kind).unwrap_or_default();
-            runtime::check_schema(
-                out,
-                &runtime::InstancePath::Key(path, "kind"),
-                &value,
-                SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str("{\"const\":\"physical\"}")
-                            .unwrap_or_default()
-                    }),
-            );
-        }
-    }
-}
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Digital {
@@ -311,28 +272,6 @@ impl Digital {
         }
     }
 }
-impl runtime::Validate for Digital {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        {
-            static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-            let value = runtime::to_value(&self.kind).unwrap_or_default();
-            runtime::check_schema(
-                out,
-                &runtime::InstancePath::Key(path, "kind"),
-                &value,
-                SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str("{\"const\":\"digital\"}")
-                            .unwrap_or_default()
-                    }),
-            );
-        }
-    }
-}
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Error {
@@ -347,7 +286,6 @@ impl Error {
         Self { code, message }
     }
 }
-validate_impl!(Error);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 pub struct PhysicalKind;
 impl PhysicalKind {
@@ -360,7 +298,6 @@ impl<'de> serde::Deserialize<'de> for PhysicalKind {
             .map(|()| Self)
     }
 }
-validate_impl!(PhysicalKind);
 /// Stock keeping unit
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
@@ -388,14 +325,10 @@ impl TryFrom<String> for PhysicalSku {
                 "does not match `^[A-Z]{3}-[0-9]{4}$`",
             );
         }
-        match violations.into_iter().next() {
-            Some(v) => Err(v.message),
-            None => Ok(Self(value)),
-        }
+        runtime::first(violations).map(|()| Self(value))
     }
 }
 checked_str_impls!(PhysicalSku);
-validate_impl!(PhysicalSku);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 pub struct DigitalKind;
 impl DigitalKind {
@@ -408,7 +341,6 @@ impl<'de> serde::Deserialize<'de> for DigitalKind {
             .map(|()| Self)
     }
 }
-validate_impl!(DigitalKind);
 #[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct ListProductsLimit(pub(super) i32);
@@ -425,14 +357,10 @@ impl TryFrom<i32> for ListProductsLimit {
                 [None, Some(100), None, None],
             );
         }
-        match violations.into_iter().next() {
-            Some(v) => Err(v.message),
-            None => Ok(Self(value)),
-        }
+        runtime::first(violations).map(|()| Self(value))
     }
 }
 checked_num_impls!(ListProductsLimit, i32);
-validate_impl!(ListProductsLimit);
 /// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
 /// its field. `build` returns the first field that did not convert.
 pub mod builders {

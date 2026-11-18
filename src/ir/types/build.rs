@@ -473,6 +473,7 @@ impl<'a> Builder<'a> {
             deprecated: false,
             json_string: false,
             component: named_by_description(ptr),
+            own: Constraints::default(),
         });
         self.by_ptr.insert(ptr.to_owned(), id);
         id
@@ -490,6 +491,7 @@ impl<'a> Builder<'a> {
         let kind = if matches!(kind, Kind::Alias(Ty::Named(t)) if t == id) { Kind::Alias(Ty::Any) } else { kind };
         self.defs[id.0].doc = doc;
         self.defs[id.0].kind = kind;
+        self.defs[id.0].own = self.constraints_at_ptr(schema, ptr);
         // JSON Schema `examples` (an array) and the older `example`.
         let mut examples: Vec<(String, Value)> =
             schema.get("example").map(|v| (join(ptr, "example"), v.clone())).into_iter().collect();
@@ -537,11 +539,25 @@ impl<'a> Builder<'a> {
         self.constraints_at(s, 0, None)
     }
 
+    /// Returns [`Builder::constraints`] of the schema at `ptr`: a `$dynamicRef` inside resolves from its resource, as
+    /// it does where a `$ref` reaches the schema.
+    fn constraints_at_ptr(&self, s: &Value, ptr: &str) -> Constraints {
+        self.constraints_at(s, 0, Some(ptr))
+    }
+
     fn constraints_at(&self, s: &Value, depth: usize, at: Option<&str>) -> Constraints {
         if depth > MAX_SCHEMA_DEPTH {
             return Constraints::default();
         }
         let mut c = Constraints::own(s);
+        // `if`/`then` on one property's constants becomes a tagged union (`conditional_union`): its variants hold the
+        // conditions. Only conditions that it cannot type stay a run-time check.
+        let typed_conditional = s.as_object().is_some_and(|o| conditional_union(o).is_some());
+        let conditional_key = |k: &str| typed_conditional && matches!(k, "if" | "then" | "else");
+        let conditional_member = |m: &Value| {
+            typed_conditional
+                && m.as_object().is_some_and(|m| m.contains_key("if") && m.keys().all(|k| conditional_key(k)))
+        };
         // Non-string `enum`/`const` have no type of their own either. An integer enum is the exception. The
         // `validate` of its type rejects `kind: 7` when only 1, 2 and 3 are allowed.
         let untyped = |v: &Value| !v.is_string() && !v.is_null();
@@ -558,8 +574,27 @@ impl<'a> Builder<'a> {
         // Keywords beside an implied shape hold for the `Other` variant too (`{minimum: 30, properties: ...}`). A
         // `$ref` with keywords beside it joins two schemas that one struct does not hold.
         let mixed = s.as_object().is_some_and(|o| {
-            let quiet =
-                |k: &str| matches!(k, "$ref" | "$id" | "$schema" | "$comment" | "$defs" | "description" | "title");
+            // Keywords that assert nothing about the value: annotations and the XML mapping.
+            let quiet = |k: &str| {
+                matches!(
+                    k,
+                    "$ref"
+                        | "$id"
+                        | "$schema"
+                        | "$comment"
+                        | "$defs"
+                        | "description"
+                        | "title"
+                        | "xml"
+                        | "example"
+                        | "examples"
+                        | "default"
+                        | "deprecated"
+                        | "readOnly"
+                        | "writeOnly"
+                        | "externalDocs"
+                )
+            };
             (inferred_kind(o).is_some()
                 && ASSERTIONS
                     .iter()
@@ -571,7 +606,7 @@ impl<'a> Builder<'a> {
             || mixed
             || self.loose_union(s)
             || self.lossy_all_of(s)
-            || matches!(s, Value::Object(o) if UNTYPED_KEYWORDS.iter().any(|k| o.contains_key(*k)) || untyped_values(o))
+            || matches!(s, Value::Object(o) if UNTYPED_KEYWORDS.iter().any(|k| o.contains_key(*k) && !conditional_key(k)) || untyped_values(o))
         {
             // The resource of the schema starts the dynamic scope that a `$dynamicRef` resolves in.
             let scope: Vec<String> = at.map_or_else(Vec::new, |p| vec![self.dynamic.resource_of(p)]);
@@ -579,7 +614,7 @@ impl<'a> Builder<'a> {
             request_view(&mut schema);
             c.schema = Some(schema);
         }
-        for m in s.get("allOf").and_then(Value::as_array).into_iter().flatten() {
+        for m in s.get("allOf").and_then(Value::as_array).into_iter().flatten().filter(|m| !conditional_member(m)) {
             c.merge(self.constraints_at(m, depth + 1, None));
         }
         // One hop: a target that has keywords beside its own `$ref` (3.1) keeps them. Following the whole chain
@@ -847,6 +882,7 @@ impl<'a> Builder<'a> {
                     self.defs[id.0].doc = doc_of(s);
                     self.defs[id.0].json_string = matches!(kind, Kind::Newtype(_)) && json_string_schema(o).is_some();
                     self.defs[id.0].kind = kind;
+                    self.defs[id.0].own = self.constraints_at_ptr(s, ptr);
                     return Ty::Named(id);
                 }
                 None => {
@@ -1055,7 +1091,8 @@ impl<'a> Builder<'a> {
             let target = pointer(&self.doc.root, &p).cloned().unwrap_or(Value::Bool(true));
             walk.expanding = vec![p.clone()];
             walk.scope = vec![self.dynamic.resource_of(&p)];
-            defs.insert(escape_token(&p), self.inline_scoped(&target, 1, Some(&p), &mut walk));
+            // The key is the pointer itself: the reference escapes it as one token, and a reader unescapes it.
+            defs.insert(p.clone(), self.inline_scoped(&target, 1, Some(&p), &mut walk));
             i += 1;
         }
         if let (Value::Object(o), false) = (&mut root, defs.is_empty()) {
@@ -2107,6 +2144,29 @@ mod tests {
 
     fn by_name<'a>(s: &'a TypeSpace, n: &str) -> &'a TypeDef {
         s.defs.iter().find(|d| d.name == Name::new(n)).unwrap_or_else(|| panic!("no {n}"))
+    }
+
+    /// A schema that refers back to itself is checked whole with the cycle in `$defs`. Its reference must reach the
+    /// definition: a reader unescapes the token of `#/$defs/~1components~1schemas~1Rec` to the key.
+    #[test]
+    fn a_cycle_in_a_checked_schema_resolves_to_its_definition() {
+        let rec = json!({
+            "type": "array",
+            "prefixItems": [{"type": "string"}, {"oneOf": [{"$ref": "#/components/schemas/Rec"}, {"type": "null"}]}],
+            "items": false,
+            "minItems": 2,
+        });
+        let doc = Doc::new(json!({"openapi": "3.2.0", "components": {"schemas": {"Rec": rec}}}));
+        let mut d = Diagnostics::default();
+        let b = Builder::new(&doc, &mut d, Reserved::default());
+        let schema = b.constraints_at_ptr(&rec, "/components/schemas/Rec").schema.expect("checked whole");
+        let defs = schema.get("$defs").and_then(Value::as_object).expect("the cycle is in `$defs`");
+        assert_eq!(defs.keys().collect::<Vec<_>>(), ["/components/schemas/Rec"]);
+        let mut out = vec![];
+        runtime::__private::check_schema(&mut out, &runtime::InstancePath::Root, &json!(["a", null]), &schema);
+        assert!(out.is_empty(), "`null` matches only the second branch: {out:?}");
+        runtime::__private::check_schema(&mut out, &runtime::InstancePath::Root, &json!(["a", ["b", 1]]), &schema);
+        assert!(!out.is_empty(), "the nested pair needs a string or `null` second");
     }
 
     #[test]

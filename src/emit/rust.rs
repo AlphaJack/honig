@@ -6,13 +6,13 @@
 //! Text from the spec only reaches code through `lit()` (string literals) or
 //! sanitized identifiers.
 
+mod checks;
 mod http;
 pub(crate) mod names;
 pub(crate) mod needs;
 mod space;
 pub(crate) mod syntax;
 mod types;
-mod validate;
 
 use proc_macro2::TokenStream;
 use quote::quote;
@@ -106,14 +106,7 @@ pub(crate) fn module(api: &Api, opts: &super::Options) -> Result<Vec<(String, St
     ));
     trees.push((
         "operations.rs",
-        http::operations(
-            api,
-            space,
-            &aliases,
-            !opts.rust.binary || opts.client,
-            opts.rust.binary,
-            opts.allow_unimplemented,
-        ),
+        http::operations(api, space, !opts.rust.binary || opts.client, opts.rust.binary, opts.allow_unimplemented),
     ));
     if opts.client {
         trees.push(("client.rs", http::client(api, space, opts.client_operations.as_deref(), opts.rust.binary)));

@@ -12,6 +12,10 @@
     clippy::missing_errors_doc,
     reason = "generated docs hold only the description's own prose"
 )]
+#![allow(
+    clippy::init_numbered_fields,
+    reason = "a spec default builds its checked type as `Type { 0: value }`, which also works through the alias of a twin"
+)]
 macro_rules! default_impl {
     ($t:ty) => {
         impl Default for $t {
@@ -19,11 +23,6 @@ macro_rules! default_impl {
                 Self::new()
             }
         }
-    };
-}
-macro_rules! validate_impl {
-    ($t:ty) => {
-        impl runtime::Validate for $t {}
     };
 }
 use super::runtime;
@@ -116,7 +115,6 @@ pub mod get_all_data {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq)]
     pub enum Response {
         /// OK
@@ -222,7 +220,6 @@ pub mod create_product {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq)]
     pub enum Body {
         Json(types::ProductRequest),
@@ -336,7 +333,6 @@ pub mod query_products {
             Self { body }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq)]
     pub enum Response {
         /// Matching products
@@ -372,7 +368,6 @@ pub mod search_products {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq)]
     pub enum Response {
         /// Matching products
@@ -429,7 +424,6 @@ pub mod get_product {
             }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq)]
     pub enum Response {
         /// Product Found
@@ -519,7 +513,6 @@ pub mod update_product {
             }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq)]
     pub enum Body {
         Json(types::ProductRequest),
@@ -565,7 +558,6 @@ pub mod update_product {
 }
 /// Deprecated, since deleting a product breaks its open orders.
 pub mod delete_product {
-    use super::super::runtime;
     pub const METHOD: &str = "DELETE";
     pub const PATH: &str = "/products/{productId}";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -579,7 +571,6 @@ pub mod delete_product {
             Self { product_id }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// No Content
@@ -611,7 +602,6 @@ pub mod copy_product {
             Self { product_id, destination }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq)]
     pub enum Response {
         /// Product copied
@@ -688,7 +678,6 @@ pub mod upload_image {
             }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Image uploaded
@@ -762,7 +751,6 @@ pub mod stream_product_events {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq)]
     pub enum Response {
         /// An open stream of product events
@@ -789,39 +777,12 @@ pub mod upload_photos {
     pub struct Params {
         /// The ID of the product to get
         pub product_id: i64,
-        pub body: (types::PhotoBatchMeta, Vec<runtime::Binary>),
+        pub body: types::UploadPhotosBody,
     }
     impl Params {
         #[must_use]
-        pub const fn new(
-            product_id: i64,
-            body: (types::PhotoBatchMeta, Vec<runtime::Binary>),
-        ) -> Self {
+        pub const fn new(product_id: i64, body: types::UploadPhotosBody) -> Self {
             Self { product_id, body }
-        }
-    }
-    impl runtime::Validate for Params {
-        fn validate(
-            &self,
-            path: &runtime::InstancePath<'_>,
-            out: &mut Vec<runtime::Violation>,
-        ) {
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&self.body).unwrap_or_default();
-                runtime::check_schema(
-                    out,
-                    &runtime::InstancePath::Key(path, "body"),
-                    &value,
-                    SCHEMA
-                        .get_or_init(|| {
-                            serde_json::from_str(
-                                    "{\"type\":\"array\",\"prefixItems\":[{\"type\":\"object\",\"required\":[\"photographer\"],\"properties\":{\"photographer\":{\"type\":\"string\"},\"takenAt\":{\"type\":\"string\",\"format\":\"date-time\"},\"count\":{\"type\":\"integer\"}}}],\"items\":{\"type\":\"string\",\"format\":\"binary\"}}",
-                                )
-                                .unwrap_or_default()
-                        }),
-                );
-            }
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -847,7 +808,6 @@ pub mod upload_photos {
 /// Add a product or a variant, anything the shop sells.
 pub mod create_item {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/items";
     #[derive(Debug, Clone, PartialEq)]
@@ -859,30 +819,6 @@ pub mod create_item {
         #[must_use]
         pub const fn new(body: types::ItemRequest) -> Self {
             Self { body }
-        }
-    }
-    impl runtime::Validate for Params {
-        fn validate(
-            &self,
-            path: &runtime::InstancePath<'_>,
-            out: &mut Vec<runtime::Violation>,
-        ) {
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&self.body).unwrap_or_default();
-                runtime::check_schema(
-                    out,
-                    &runtime::InstancePath::Key(path, "body"),
-                    &value,
-                    SCHEMA
-                        .get_or_init(|| {
-                            serde_json::from_str(
-                                    "{\"oneOf\":[{\"type\":\"object\",\"required\":[\"name\"],\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"integer\",\"format\":\"int64\",\"readOnly\":true},\"name\":{\"type\":\"string\"},\"description\":{\"type\":[\"string\",\"null\"]},\"type\":{\"type\":\"string\",\"enum\":[\"hardware\",\"software\",\"service\",\"accessory\",\"subscription\"],\"x-enum-varnames\":[\"Hardware\",\"Software\",\"Service\",\"Accessory\",\"Subscription\"]},\"rating\":{\"type\":\"number\",\"format\":\"float\",\"minimum\":0,\"maximum\":1},\"dimensions\":{\"type\":\"object\",\"additionalProperties\":{\"type\":\"number\",\"format\":\"float\"},\"properties\":{\"weight\":{\"type\":\"number\",\"format\":\"float\",\"exclusiveMinimum\":0},\"width\":{\"type\":\"number\",\"format\":\"float\",\"exclusiveMinimum\":0},\"height\":{\"type\":\"number\",\"format\":\"float\"},\"price\":{\"type\":\"object\",\"additionalProperties\":{\"type\":\"number\",\"format\":\"float\"},\"properties\":{\"min\":{\"type\":\"number\",\"format\":\"float\"},\"max\":{\"type\":\"number\",\"format\":\"float\"},\"average\":{\"type\":\"number\",\"format\":\"float\"}}}}},\"materials\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"additionalProperties\":{\"type\":\"string\"},\"properties\":{\"material\":{\"type\":\"string\"},\"percentage\":{\"type\":\"number\",\"format\":\"float\",\"exclusiveMaximum\":100}}}},\"listedAt\":{\"type\":\"string\",\"format\":\"date-time\"},\"image\":{\"type\":[\"string\",\"null\"]},\"variants\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"required\":[\"name\"],\"properties\":{\"id\":{\"type\":\"integer\",\"format\":\"int64\",\"readOnly\":true},\"name\":{\"type\":\"string\"},\"description\":{\"type\":[\"string\",\"null\"]},\"length\":{\"type\":\"number\",\"format\":\"float\"},\"type\":{\"type\":\"string\",\"enum\":[\"size\",\"color\",\"edition\"],\"x-enum-varnames\":[\"Size\",\"Color\",\"Edition\"]},\"shipping\":{\"type\":\"object\",\"properties\":{\"product\":{\"$ref\":\"#/$defs/~1components~1schemas~1Product\"},\"deliveryDays\":{\"type\":\"number\",\"format\":\"float\"},\"distance\":{\"type\":\"number\",\"format\":\"float\"}}}}}},\"creator\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"integer\",\"format\":\"int64\",\"readOnly\":true},\"name\":{\"type\":\"string\"}}},\"tags\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"lastUpdated\":{\"type\":\"string\",\"format\":\"date-time\",\"readOnly\":true},\"successCallbackUrl\":{\"type\":\"string\",\"format\":\"uri\"},\"failureCallbackUrl\":{\"type\":\"string\",\"format\":\"uri\"}}},{\"type\":\"object\",\"required\":[\"name\"],\"properties\":{\"id\":{\"type\":\"integer\",\"format\":\"int64\",\"readOnly\":true},\"name\":{\"type\":\"string\"},\"description\":{\"type\":[\"string\",\"null\"]},\"length\":{\"type\":\"number\",\"format\":\"float\"},\"type\":{\"type\":\"string\",\"enum\":[\"size\",\"color\",\"edition\"],\"x-enum-varnames\":[\"Size\",\"Color\",\"Edition\"]},\"shipping\":{\"type\":\"object\",\"properties\":{\"product\":{\"type\":\"object\",\"required\":[\"name\"],\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"integer\",\"format\":\"int64\",\"readOnly\":true},\"name\":{\"type\":\"string\"},\"description\":{\"type\":[\"string\",\"null\"]},\"type\":{\"type\":\"string\",\"enum\":[\"hardware\",\"software\",\"service\",\"accessory\",\"subscription\"],\"x-enum-varnames\":[\"Hardware\",\"Software\",\"Service\",\"Accessory\",\"Subscription\"]},\"rating\":{\"type\":\"number\",\"format\":\"float\",\"minimum\":0,\"maximum\":1},\"dimensions\":{\"type\":\"object\",\"additionalProperties\":{\"type\":\"number\",\"format\":\"float\"},\"properties\":{\"weight\":{\"type\":\"number\",\"format\":\"float\",\"exclusiveMinimum\":0},\"width\":{\"type\":\"number\",\"format\":\"float\",\"exclusiveMinimum\":0},\"height\":{\"type\":\"number\",\"format\":\"float\"},\"price\":{\"type\":\"object\",\"additionalProperties\":{\"type\":\"number\",\"format\":\"float\"},\"properties\":{\"min\":{\"type\":\"number\",\"format\":\"float\"},\"max\":{\"type\":\"number\",\"format\":\"float\"},\"average\":{\"type\":\"number\",\"format\":\"float\"}}}}},\"materials\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"additionalProperties\":{\"type\":\"string\"},\"properties\":{\"material\":{\"type\":\"string\"},\"percentage\":{\"type\":\"number\",\"format\":\"float\",\"exclusiveMaximum\":100}}}},\"listedAt\":{\"type\":\"string\",\"format\":\"date-time\"},\"image\":{\"type\":[\"string\",\"null\"]},\"variants\":{\"type\":\"array\",\"items\":{\"$ref\":\"#/$defs/~1components~1schemas~1Variant\"}},\"creator\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"integer\",\"format\":\"int64\",\"readOnly\":true},\"name\":{\"type\":\"string\"}}},\"tags\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"lastUpdated\":{\"type\":\"string\",\"format\":\"date-time\",\"readOnly\":true},\"successCallbackUrl\":{\"type\":\"string\",\"format\":\"uri\"},\"failureCallbackUrl\":{\"type\":\"string\",\"format\":\"uri\"}}},\"deliveryDays\":{\"type\":\"number\",\"format\":\"float\"},\"distance\":{\"type\":\"number\",\"format\":\"float\"}}}}}],\"$defs\":{\"~1components~1schemas~1Product\":{\"type\":\"object\",\"required\":[\"name\"],\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"integer\",\"format\":\"int64\",\"readOnly\":true},\"name\":{\"type\":\"string\"},\"description\":{\"type\":[\"string\",\"null\"]},\"type\":{\"type\":\"string\",\"enum\":[\"hardware\",\"software\",\"service\",\"accessory\",\"subscription\"],\"x-enum-varnames\":[\"Hardware\",\"Software\",\"Service\",\"Accessory\",\"Subscription\"]},\"rating\":{\"type\":\"number\",\"format\":\"float\",\"minimum\":0,\"maximum\":1},\"dimensions\":{\"type\":\"object\",\"additionalProperties\":{\"type\":\"number\",\"format\":\"float\"},\"properties\":{\"weight\":{\"type\":\"number\",\"format\":\"float\",\"exclusiveMinimum\":0},\"width\":{\"type\":\"number\",\"format\":\"float\",\"exclusiveMinimum\":0},\"height\":{\"type\":\"number\",\"format\":\"float\"},\"price\":{\"type\":\"object\",\"additionalProperties\":{\"type\":\"number\",\"format\":\"float\"},\"properties\":{\"min\":{\"type\":\"number\",\"format\":\"float\"},\"max\":{\"type\":\"number\",\"format\":\"float\"},\"average\":{\"type\":\"number\",\"format\":\"float\"}}}}},\"materials\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"additionalProperties\":{\"type\":\"string\"},\"properties\":{\"material\":{\"type\":\"string\"},\"percentage\":{\"type\":\"number\",\"format\":\"float\",\"exclusiveMaximum\":100}}}},\"listedAt\":{\"type\":\"string\",\"format\":\"date-time\"},\"image\":{\"type\":[\"string\",\"null\"]},\"variants\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"required\":[\"name\"],\"properties\":{\"id\":{\"type\":\"integer\",\"format\":\"int64\",\"readOnly\":true},\"name\":{\"type\":\"string\"},\"description\":{\"type\":[\"string\",\"null\"]},\"length\":{\"type\":\"number\",\"format\":\"float\"},\"type\":{\"type\":\"string\",\"enum\":[\"size\",\"color\",\"edition\"],\"x-enum-varnames\":[\"Size\",\"Color\",\"Edition\"]},\"shipping\":{\"type\":\"object\",\"properties\":{\"product\":{\"$ref\":\"#/$defs/~1components~1schemas~1Product\"},\"deliveryDays\":{\"type\":\"number\",\"format\":\"float\"},\"distance\":{\"type\":\"number\",\"format\":\"float\"}}}}}},\"creator\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"integer\",\"format\":\"int64\",\"readOnly\":true},\"name\":{\"type\":\"string\"}}},\"tags\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"lastUpdated\":{\"type\":\"string\",\"format\":\"date-time\",\"readOnly\":true},\"successCallbackUrl\":{\"type\":\"string\",\"format\":\"uri\"},\"failureCallbackUrl\":{\"type\":\"string\",\"format\":\"uri\"}}},\"~1components~1schemas~1Variant\":{\"type\":\"object\",\"required\":[\"name\"],\"properties\":{\"id\":{\"type\":\"integer\",\"format\":\"int64\",\"readOnly\":true},\"name\":{\"type\":\"string\"},\"description\":{\"type\":[\"string\",\"null\"]},\"length\":{\"type\":\"number\",\"format\":\"float\"},\"type\":{\"type\":\"string\",\"enum\":[\"size\",\"color\",\"edition\"],\"x-enum-varnames\":[\"Size\",\"Color\",\"Edition\"]},\"shipping\":{\"type\":\"object\",\"properties\":{\"product\":{\"type\":\"object\",\"required\":[\"name\"],\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"integer\",\"format\":\"int64\",\"readOnly\":true},\"name\":{\"type\":\"string\"},\"description\":{\"type\":[\"string\",\"null\"]},\"type\":{\"type\":\"string\",\"enum\":[\"hardware\",\"software\",\"service\",\"accessory\",\"subscription\"],\"x-enum-varnames\":[\"Hardware\",\"Software\",\"Service\",\"Accessory\",\"Subscription\"]},\"rating\":{\"type\":\"number\",\"format\":\"float\",\"minimum\":0,\"maximum\":1},\"dimensions\":{\"type\":\"object\",\"additionalProperties\":{\"type\":\"number\",\"format\":\"float\"},\"properties\":{\"weight\":{\"type\":\"number\",\"format\":\"float\",\"exclusiveMinimum\":0},\"width\":{\"type\":\"number\",\"format\":\"float\",\"exclusiveMinimum\":0},\"height\":{\"type\":\"number\",\"format\":\"float\"},\"price\":{\"type\":\"object\",\"additionalProperties\":{\"type\":\"number\",\"format\":\"float\"},\"properties\":{\"min\":{\"type\":\"number\",\"format\":\"float\"},\"max\":{\"type\":\"number\",\"format\":\"float\"},\"average\":{\"type\":\"number\",\"format\":\"float\"}}}}},\"materials\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"additionalProperties\":{\"type\":\"string\"},\"properties\":{\"material\":{\"type\":\"string\"},\"percentage\":{\"type\":\"number\",\"format\":\"float\",\"exclusiveMaximum\":100}}}},\"listedAt\":{\"type\":\"string\",\"format\":\"date-time\"},\"image\":{\"type\":[\"string\",\"null\"]},\"variants\":{\"type\":\"array\",\"items\":{\"$ref\":\"#/$defs/~1components~1schemas~1Variant\"}},\"creator\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"integer\",\"format\":\"int64\",\"readOnly\":true},\"name\":{\"type\":\"string\"}}},\"tags\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"lastUpdated\":{\"type\":\"string\",\"format\":\"date-time\",\"readOnly\":true},\"successCallbackUrl\":{\"type\":\"string\",\"format\":\"uri\"},\"failureCallbackUrl\":{\"type\":\"string\",\"format\":\"uri\"}}},\"deliveryDays\":{\"type\":\"number\",\"format\":\"float\"},\"distance\":{\"type\":\"number\",\"format\":\"float\"}}}}}}}",
-                                )
-                                .unwrap_or_default()
-                        }),
-                );
-            }
         }
     }
     #[derive(Debug, Clone, PartialEq)]
@@ -935,7 +871,6 @@ pub mod create_user {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Body {
         Json(types::CreateUserBodyRequest),
@@ -1018,7 +953,6 @@ pub mod get_token {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Body {
         Json(types::CredentialsRequest),
@@ -1107,7 +1041,6 @@ pub mod get_me {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Authenticated user information retrieved successfully
@@ -1132,7 +1065,6 @@ pub mod get_me {
 }
 pub mod new_product_post {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "";
     #[derive(Debug, Clone, PartialEq)]
@@ -1147,7 +1079,6 @@ pub mod new_product_post {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Return a 200 status to indicate that the data was received successfully
@@ -1156,7 +1087,6 @@ pub mod new_product_post {
 }
 pub mod create_product_product_created_post {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "";
     #[derive(Debug, Clone, PartialEq)]
@@ -1171,7 +1101,6 @@ pub mod create_product_product_created_post {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Your server returns this code if it accepts the callback
@@ -1182,7 +1111,6 @@ pub mod create_product_product_created_post {
 }
 pub mod create_product_product_creation_failed_post {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "";
     #[derive(Debug, Clone, PartialEq)]
@@ -1197,7 +1125,6 @@ pub mod create_product_product_creation_failed_post {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Your server returns this code if it accepts the failure callback notification
@@ -1206,7 +1133,6 @@ pub mod create_product_product_creation_failed_post {
 }
 pub mod create_product_product_discontinued_post {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "";
     #[derive(Debug, Clone, PartialEq)]
@@ -1221,7 +1147,6 @@ pub mod create_product_product_discontinued_post {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Your server returns this code if it accepts the discontinued product callback notification

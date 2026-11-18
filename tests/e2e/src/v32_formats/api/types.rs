@@ -11,6 +11,10 @@
     clippy::missing_errors_doc,
     reason = "generated docs hold only the description's own prose"
 )]
+#![allow(
+    clippy::init_numbered_fields,
+    reason = "a spec default builds its checked type as `Type { 0: value }`, which also works through the alias of a twin"
+)]
 macro_rules! deserialize_impl {
     ($t:ty) => {
         impl<'de> serde::Deserialize<'de> for $t {
@@ -27,11 +31,6 @@ macro_rules! serialize_impl {
                 Self::serialize(self, s)
             }
         }
-    };
-}
-macro_rules! validate_impl {
-    ($t:ty) => {
-        impl runtime::Validate for $t {}
     };
 }
 macro_rules! serialize_impl_2 {
@@ -132,6 +131,32 @@ macro_rules! checked_decimal_impls {
         }
     };
 }
+macro_rules! checked_impls {
+    ($n:ident, $t:ty) => {
+        impl $n {
+            #[must_use]
+            pub fn into_inner(self) -> $t {
+                self.0
+            }
+        }
+        impl std::ops::Deref for $n {
+            type Target = $t;
+            fn deref(&self) -> &$t {
+                &self.0
+            }
+        }
+        impl AsRef<$t> for $n {
+            fn as_ref(&self) -> &$t {
+                &self.0
+            }
+        }
+        impl From<$n> for $t {
+            fn from(value: $n) -> Self {
+                value.0
+            }
+        }
+    };
+}
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct StoreNetwork {
@@ -146,7 +171,6 @@ impl StoreNetwork {
         Self { first, last }
     }
 }
-validate_impl!(StoreNetwork);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Event {
@@ -374,39 +398,6 @@ impl Event {
         }
     }
 }
-impl runtime::Validate for Event {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        if let Some(v) = &self.charge {
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(v).unwrap_or_default();
-                runtime::check_schema(
-                    out,
-                    &runtime::InstancePath::Key(path, "charge"),
-                    &value,
-                    SCHEMA
-                        .get_or_init(|| {
-                            serde_json::from_str(
-                                    "{\"oneOf\":[{\"type\":\"object\",\"required\":[\"refund\"],\"properties\":{\"refund\":{\"type\":\"number\",\"format\":\"decimal\"}}},{\"type\":\"object\",\"required\":[\"fee\"],\"properties\":{\"fee\":{\"type\":\"number\",\"format\":\"decimal\"}}}]}",
-                                )
-                                .unwrap_or_default()
-                        }),
-                );
-            }
-        }
-        if let Some(v) = &self.payment {
-            runtime::Validate::validate(
-                v,
-                &runtime::InstancePath::Key(path, "payment"),
-                out,
-            );
-        }
-    }
-}
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Card {
@@ -421,27 +412,6 @@ impl Card {
         Self { method, amount }
     }
 }
-impl runtime::Validate for Card {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        {
-            static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-            let value = runtime::to_value(&self.method).unwrap_or_default();
-            runtime::check_schema(
-                out,
-                &runtime::InstancePath::Key(path, "method"),
-                &value,
-                SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str("{\"const\":\"Card\"}").unwrap_or_default()
-                    }),
-            );
-        }
-    }
-}
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Transfer {
@@ -454,28 +424,6 @@ impl Transfer {
     #[must_use]
     pub const fn new(method: TransferMethod, amount: TransferAmount) -> Self {
         Self { method, amount }
-    }
-}
-impl runtime::Validate for Transfer {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        {
-            static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-            let value = runtime::to_value(&self.method).unwrap_or_default();
-            runtime::check_schema(
-                out,
-                &runtime::InstancePath::Key(path, "method"),
-                &value,
-                SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str("{\"const\":\"Transfer\"}")
-                            .unwrap_or_default()
-                    }),
-            );
-        }
     }
 }
 #[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
@@ -494,14 +442,10 @@ impl TryFrom<u16> for EventPort {
                 [Some(1024), None, None, None],
             );
         }
-        match violations.into_iter().next() {
-            Some(v) => Err(v.message),
-            None => Ok(Self(value)),
-        }
+        runtime::first(violations).map(|()| Self(value))
     }
 }
 checked_num_impls!(EventPort, u16);
-validate_impl!(EventPort);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize)]
 #[serde(transparent)]
 pub struct EventAmount(pub(super) runtime::Decimal);
@@ -518,53 +462,46 @@ impl TryFrom<runtime::Decimal> for EventAmount {
                 [Some(0.0), None, None, None],
             );
         }
-        match violations.into_iter().next() {
-            Some(v) => Err(v.message),
-            None => Ok(Self(value)),
-        }
+        runtime::first(violations).map(|()| Self(value))
     }
 }
 checked_decimal_impls!(EventAmount);
-validate_impl!(EventAmount);
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum EventCharge {
-    Refund(EventChargeRefund),
-    Fee(EventChargeFee),
-}
-impl serde::Serialize for EventCharge {
-    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        match self {
-            Self::Refund(v) => serde::Serialize::serialize(v, s),
-            Self::Fee(v) => serde::Serialize::serialize(v, s),
-        }
-    }
-}
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
+pub struct EventCharge(pub(super) EventChargeVariants);
 impl<'de> serde::Deserialize<'de> for EventCharge {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let v = runtime::Content::exact(d)?;
-        let fit_0 = v.kind() == runtime::Kind::Object
-            && runtime::fits(&v, &[("refund", true, &[])]);
-        let fit_1 = v.kind() == runtime::Kind::Object
-            && runtime::fits(&v, &[("fee", true, &[])]);
-        let mut first = None;
-        if fit_0 && let Ok(x) = v.decode_ref::<EventChargeRefund>() {
-            let picked = Self::Refund(x);
-            if (first.is_none() && !(fit_1)) || runtime::is_valid(&picked) {
-                return Ok(picked);
-            }
-            first.get_or_insert(picked);
-        }
-        if fit_1 && let Ok(x) = v.decode_ref::<EventChargeFee>() {
-            let picked = Self::Fee(x);
-            if first.is_none() || runtime::is_valid(&picked) {
-                return Ok(picked);
-            }
-            first.get_or_insert(picked);
-        }
-        first.ok_or_else(|| serde::de::Error::custom("matches no variant"))
+        let value = <EventChargeVariants as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
     }
 }
-validate_impl!(EventCharge);
+impl TryFrom<EventChargeVariants> for EventCharge {
+    type Error = String;
+    fn try_from(value: EventChargeVariants) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            {
+                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                let value = runtime::to_value(&value).unwrap_or_default();
+                runtime::check_schema(
+                    out,
+                    &runtime::InstancePath::Root,
+                    &value,
+                    SCHEMA
+                        .get_or_init(|| {
+                            serde_json::from_str(
+                                    "{\"oneOf\":[{\"type\":\"object\",\"required\":[\"refund\"],\"properties\":{\"refund\":{\"type\":\"number\",\"format\":\"decimal\"}}},{\"type\":\"object\",\"required\":[\"fee\"],\"properties\":{\"fee\":{\"type\":\"number\",\"format\":\"decimal\"}}}]}",
+                                )
+                                .unwrap_or_default()
+                        }),
+                );
+            }
+        }
+        runtime::first(violations).map(|()| Self(value))
+    }
+}
+checked_impls!(EventCharge, EventChargeVariants);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct EventChargeRefund {
@@ -578,7 +515,6 @@ impl EventChargeRefund {
         Self { refund }
     }
 }
-validate_impl!(EventChargeRefund);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct EventChargeFee {
@@ -592,7 +528,6 @@ impl EventChargeFee {
         Self { fee }
     }
 }
-validate_impl!(EventChargeFee);
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EventPayment {
     Card(Card),
@@ -639,22 +574,6 @@ impl<'de> serde::Deserialize<'de> for EventPayment {
         }
     }
 }
-impl runtime::Validate for EventPayment {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        match self {
-            Self::Card(x) => {
-                runtime::Validate::validate(x, path, out);
-            }
-            Self::Transfer(x) => {
-                runtime::Validate::validate(x, path, out);
-            }
-        }
-    }
-}
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EventPayload(pub EventPayloadContent);
 impl serde::Serialize for EventPayload {
@@ -669,7 +588,6 @@ impl<'de> serde::Deserialize<'de> for EventPayload {
         runtime::json_text(&text).map(Self).map_err(serde::de::Error::custom)
     }
 }
-validate_impl!(EventPayload);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct EventPayloadContent {
@@ -683,7 +601,6 @@ impl EventPayloadContent {
         Self { n }
     }
 }
-validate_impl!(EventPayloadContent);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 pub struct CardMethod;
 impl CardMethod {
@@ -696,7 +613,6 @@ impl<'de> serde::Deserialize<'de> for CardMethod {
             .map(|()| Self)
     }
 }
-validate_impl!(CardMethod);
 pub type CardAmount = EventAmount;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 pub struct TransferMethod;
@@ -710,8 +626,51 @@ impl<'de> serde::Deserialize<'de> for TransferMethod {
             .map(|()| Self)
     }
 }
-validate_impl!(TransferMethod);
 pub type TransferAmount = EventAmount;
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum EventChargeVariants {
+    Refund(EventChargeRefund),
+    Fee(EventChargeFee),
+}
+impl serde::Serialize for EventChargeVariants {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        match self {
+            Self::Refund(v) => serde::Serialize::serialize(v, s),
+            Self::Fee(v) => serde::Serialize::serialize(v, s),
+        }
+    }
+}
+impl<'de> serde::Deserialize<'de> for EventChargeVariants {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let v = runtime::Content::exact(d)?;
+        let fit_0 = v.kind() == runtime::Kind::Object
+            && runtime::fits(&v, &[("refund", true, &[])]);
+        let fit_1 = v.kind() == runtime::Kind::Object
+            && runtime::fits(&v, &[("fee", true, &[])]);
+        let mut first: Option<String> = None;
+        if fit_0 {
+            match v.decode_ref::<EventChargeRefund>() {
+                Ok(x) => return Ok(Self::Refund(x)),
+                Err(e) => {
+                    first.get_or_insert(e.to_string());
+                }
+            }
+        }
+        if fit_1 {
+            match v.decode_ref::<EventChargeFee>() {
+                Ok(x) => return Ok(Self::Fee(x)),
+                Err(e) => {
+                    first.get_or_insert(e.to_string());
+                }
+            }
+        }
+        Err(
+            serde::de::Error::custom(
+                first.unwrap_or_else(|| "matches no variant".to_owned()),
+            ),
+        )
+    }
+}
 /// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
 /// its field. `build` returns the first field that did not convert.
 pub mod builders {

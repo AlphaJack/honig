@@ -11,6 +11,10 @@
     clippy::missing_errors_doc,
     reason = "generated docs hold only the description's own prose"
 )]
+#![allow(
+    clippy::init_numbered_fields,
+    reason = "a spec default builds its checked type as `Type { 0: value }`, which also works through the alias of a twin"
+)]
 macro_rules! deserialize_impl {
     ($t:ty) => {
         impl<'de> serde::Deserialize<'de> for $t {
@@ -27,11 +31,6 @@ macro_rules! serialize_impl {
                 Self::serialize(self, s)
             }
         }
-    };
-}
-macro_rules! validate_impl {
-    ($t:ty) => {
-        impl runtime::Validate for $t {}
     };
 }
 use super::runtime;
@@ -271,39 +270,6 @@ impl runtime::XmlShape for Book {
         &NODE
     }
 }
-impl runtime::Validate for Book {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        if let Some(v) = &self.sequel {
-            runtime::Validate::validate(
-                (v).as_ref(),
-                &runtime::InstancePath::Key(path, "sequel"),
-                out,
-            );
-        }
-        if let Some(v) = &self.meta {
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(v).unwrap_or_default();
-                runtime::check_schema(
-                    out,
-                    &runtime::InstancePath::Key(path, "meta"),
-                    &value,
-                    SCHEMA
-                        .get_or_init(|| {
-                            serde_json::from_str(
-                                    "{\"allOf\":[{\"type\":\"object\",\"required\":[\"isbn\"],\"properties\":{\"isbn\":{\"type\":\"string\"},\"pages\":{\"type\":\"integer\"}}}]}",
-                                )
-                                .unwrap_or_default()
-                        }),
-                );
-            }
-        }
-    }
-}
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Author {
@@ -367,7 +333,6 @@ impl runtime::XmlShape for Author {
         &NODE
     }
 }
-validate_impl!(Author);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Price {
@@ -431,7 +396,6 @@ impl runtime::XmlShape for Price {
         &NODE
     }
 }
-validate_impl!(Price);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Blurb {
@@ -495,7 +459,6 @@ impl runtime::XmlShape for Blurb {
         &NODE
     }
 }
-validate_impl!(Blurb);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Meta {
@@ -559,7 +522,6 @@ impl runtime::XmlShape for Meta {
         &NODE
     }
 }
-validate_impl!(Meta);
 /// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
 /// its field. `build` returns the first field that did not convert.
 pub mod builders {

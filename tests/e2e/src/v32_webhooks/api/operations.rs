@@ -11,14 +11,12 @@
     clippy::missing_errors_doc,
     reason = "generated docs hold only the description's own prose"
 )]
-macro_rules! validate_impl {
-    ($t:ty) => {
-        impl runtime::Validate for $t {}
-    };
-}
+#![allow(
+    clippy::init_numbered_fields,
+    reason = "a spec default builds its checked type as `Type { 0: value }`, which also works through the alias of a twin"
+)]
 pub mod subscribe {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/subscriptions";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -31,7 +29,6 @@ pub mod subscribe {
             Self { body }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Subscribed.
@@ -54,7 +51,6 @@ pub mod subscribe {
 }
 pub mod new_product {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -67,7 +63,6 @@ pub mod new_product {
             Self { body }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Accepted.
@@ -78,7 +73,6 @@ pub mod new_product {
 }
 pub mod subscribe_on_event_post {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -91,7 +85,6 @@ pub mod subscribe_on_event_post {
             Self { body }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Received.

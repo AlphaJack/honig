@@ -9,7 +9,7 @@ use std::sync::Arc;
 use super::operation::{ErrorSchemas, Op, Operation};
 use crate::{
     ApiError, BODY_LIMIT, Body, Context, Message, Query, Reason, Rejection, Request, RequestEvent, Requirement,
-    Response, SatisfiedSecurity, Scheme, Validate,
+    Response, SatisfiedSecurity, Scheme,
 };
 
 /// What the server does besides routing and your layers: the builder options of [`Server`](crate::Server). `Id` is
@@ -223,16 +223,12 @@ impl<A, C, P, R, Id> std::fmt::Debug for Steps<'_, A, C, P, R, Id> {
     }
 }
 
-impl<A: Sync, C: Sync, P: Validate + Send, R, Id: Send + Sync> OpSteps<C, Id> for Steps<'_, A, C, P, R, Id> {
+impl<A: Sync, C: Sync, P: Send, R, Id: Send + Sync> OpSteps<C, Id> for Steps<'_, A, C, P, R, Id> {
     fn run<'r>(&'r self, incoming: Incoming<'r>, ctx: &'r Context<'r, C, Id>) -> StepFuture<'r> {
         Box::pin(async move {
             let media = incoming.media;
+            // Decoding checks every keyword of the description: the handler gets only valid parameters.
             let params = (self.decode)(incoming)?;
-            let mut violations = Vec::new();
-            params.validate(&crate::InstancePath::Root, &mut violations);
-            if !violations.is_empty() {
-                return Err(Reason::Invalid(violations));
-            }
             let response = (self.call)(self.api, params, ctx).await.map_err(Reason::Handler)?;
             (self.encode)(response, media).map_err(|e| Reason::Encode(e.to_string()))
         })

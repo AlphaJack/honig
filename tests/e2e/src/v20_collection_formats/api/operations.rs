@@ -11,13 +11,11 @@
     clippy::missing_errors_doc,
     reason = "generated docs hold only the description's own prose"
 )]
-macro_rules! validate_impl {
-    ($t:ty) => {
-        impl runtime::Validate for $t {}
-    };
-}
+#![allow(
+    clippy::init_numbered_fields,
+    reason = "a spec default builds its checked type as `Type { 0: value }`, which also works through the alias of a twin"
+)]
 pub mod list_items {
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/items/{ids}";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -48,7 +46,6 @@ pub mod list_items {
             }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// ok
@@ -57,7 +54,6 @@ pub mod list_items {
 }
 pub mod upload {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/upload";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -70,7 +66,6 @@ pub mod upload {
             Self { body }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// stored
@@ -79,7 +74,6 @@ pub mod upload {
 }
 pub mod list_keys {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/keys";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -95,7 +89,6 @@ pub mod list_keys {
             Self::new()
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// ok

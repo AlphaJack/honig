@@ -12,7 +12,14 @@ pub struct BuildError {
 }
 
 impl BuildError {
-    /// Returns the name of the field as the description spells it.
+    /// Returns the error of a built value that breaks a rule of its whole schema (`if`/`then`, `not`, ...). It names no
+    /// field.
+    #[must_use]
+    pub const fn value(message: String) -> Self {
+        Self { field: "", message }
+    }
+
+    /// Returns the name of the field as the description spells it. It is empty for a rule of the whole value.
     #[must_use]
     pub const fn field(&self) -> &'static str {
         self.field
@@ -27,6 +34,9 @@ impl BuildError {
 
 impl fmt::Display for BuildError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if self.field.is_empty() {
+            return f.write_str(&self.message);
+        }
         write!(f, "`{}`: {}", self.field, self.message)
     }
 }
@@ -102,6 +112,12 @@ mod tests {
         let err = bad.build().expect_err("300 is past u8");
         assert_eq!(err.field(), "a");
         assert_eq!(err.to_string(), format!("`a`: {}", u8::try_from(300_i64).expect_err("past u8")));
+    }
+
+    #[test]
+    fn a_rule_of_the_whole_value_names_no_field() {
+        let err = BuildError::value("`customs` is required".to_owned());
+        assert_eq!((err.field(), err.to_string()), ("", "`customs` is required".to_owned()));
     }
 
     #[test]

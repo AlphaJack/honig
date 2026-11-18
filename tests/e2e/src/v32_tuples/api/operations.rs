@@ -11,9 +11,12 @@
     clippy::missing_errors_doc,
     reason = "generated docs hold only the description's own prose"
 )]
+#![allow(
+    clippy::init_numbered_fields,
+    reason = "a spec default builds its checked type as `Type { 0: value }`, which also works through the alias of a twin"
+)]
 pub mod plan {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/route";
     #[derive(Debug, Clone, PartialEq)]
@@ -24,19 +27,6 @@ pub mod plan {
         #[must_use]
         pub const fn new(body: types::Route) -> Self {
             Self { body }
-        }
-    }
-    impl runtime::Validate for Params {
-        fn validate(
-            &self,
-            path: &runtime::InstancePath<'_>,
-            out: &mut Vec<runtime::Violation>,
-        ) {
-            runtime::Validate::validate(
-                &self.body,
-                &runtime::InstancePath::Key(path, "body"),
-                out,
-            );
         }
     }
     #[derive(Debug, Clone, PartialEq)]

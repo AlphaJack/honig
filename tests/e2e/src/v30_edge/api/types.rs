@@ -11,11 +11,10 @@
     clippy::missing_errors_doc,
     reason = "generated docs hold only the description's own prose"
 )]
-macro_rules! validate_impl {
-    ($t:ty) => {
-        impl runtime::Validate for $t {}
-    };
-}
+#![allow(
+    clippy::init_numbered_fields,
+    reason = "a spec default builds its checked type as `Type { 0: value }`, which also works through the alias of a twin"
+)]
 macro_rules! deserialize_impl {
     ($t:ty) => {
         impl<'de> serde::Deserialize<'de> for $t {
@@ -34,21 +33,30 @@ macro_rules! serialize_impl {
         }
     };
 }
-macro_rules! validate_impl_2 {
+macro_rules! deserialize_impl_2 {
     ($t:ty) => {
-        impl runtime::Validate for $t {
-            fn validate(
-                &self,
-                path: &runtime::InstancePath<'_>,
-                out: &mut Vec<runtime::Violation>,
-            ) {
-                if let runtime::Nullable::Value(v) = &self.customer {
+        impl<'de> serde::Deserialize<'de> for $t {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                let value = <OrderCustomer as serde::Deserialize>::deserialize(d)?;
+                Self::try_from(value).map_err(serde::de::Error::custom)
+            }
+        }
+    };
+}
+macro_rules! try_from_impl {
+    ($t:ty) => {
+        impl TryFrom<OrderCustomer> for $t {
+            type Error = String;
+            fn try_from(value: OrderCustomer) -> Result<Self, String> {
+                let mut violations: Vec<runtime::Violation> = Vec::new();
+                {
+                    let out = &mut violations;
                     {
                         static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                        let value = runtime::to_value(v).unwrap_or_default();
+                        let value = runtime::to_value(&value).unwrap_or_default();
                         runtime::check_schema(
                             out,
-                            &runtime::InstancePath::Key(path, "customer"),
+                            &runtime::InstancePath::Root,
                             &value,
                             SCHEMA
                                 .get_or_init(|| {
@@ -60,80 +68,7 @@ macro_rules! validate_impl_2 {
                         );
                     }
                 }
-                if let Some(v) = &self.payment {
-                    {
-                        static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                        let value = runtime::to_value(v).unwrap_or_default();
-                        runtime::check_schema(
-                            out,
-                            &runtime::InstancePath::Key(path, "payment"),
-                            &value,
-                            SCHEMA
-                                .get_or_init(|| {
-                                    serde_json::from_str(
-                                            "{\"oneOf\":[{\"type\":\"object\",\"required\":[\"last4\"],\"properties\":{\"last4\":{\"type\":\"string\",\"minLength\":4,\"maxLength\":4}}},{\"type\":\"object\",\"required\":[\"iban\"],\"properties\":{\"iban\":{\"type\":\"string\"}}}]}",
-                                        )
-                                        .unwrap_or_default()
-                                }),
-                        );
-                    }
-                }
-                {
-                    static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                    let value = runtime::to_value(&self.vehicle).unwrap_or_default();
-                    runtime::check_schema(
-                        out,
-                        &runtime::InstancePath::Key(path, "vehicle"),
-                        &value,
-                        SCHEMA
-                            .get_or_init(|| {
-                                serde_json::from_str(
-                                        "{\"oneOf\":[{\"type\":\"object\",\"required\":[\"kind\",\"seats\"],\"properties\":{\"kind\":{\"type\":\"string\"},\"seats\":{\"type\":\"integer\"}}},{\"type\":\"object\",\"required\":[\"kind\",\"cargoLitres\"],\"properties\":{\"kind\":{\"type\":\"string\"},\"cargoLitres\":{\"type\":\"integer\"}}}]}",
-                                    )
-                                    .unwrap_or_default()
-                            }),
-                    );
-                }
-                if let Some(v) = &self.discount {
-                    {
-                        static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                        let value = runtime::to_value(v).unwrap_or_default();
-                        runtime::check_schema(
-                            out,
-                            &runtime::InstancePath::Key(path, "discount"),
-                            &value,
-                            SCHEMA
-                                .get_or_init(|| {
-                                    serde_json::from_str(
-                                            "{\"anyOf\":[{\"type\":\"object\",\"required\":[\"amountCents\",\"currency\"],\"properties\":{\"amountCents\":{\"type\":\"integer\",\"format\":\"int64\"},\"currency\":{\"type\":\"string\",\"pattern\":\"^[A-Z]{3}$\"}}},{}]}",
-                                        )
-                                        .unwrap_or_default()
-                                }),
-                        );
-                    }
-                }
-            }
-        }
-    };
-}
-macro_rules! validate_impl_3 {
-    ($t:ty) => {
-        impl runtime::Validate for $t {
-            fn validate(
-                &self,
-                path: &runtime::InstancePath<'_>,
-                out: &mut Vec<runtime::Violation>,
-            ) {
-                {
-                    let base = &runtime::InstancePath::Key(path, "items");
-                    for (i, v) in self.items.iter().enumerate() {
-                        runtime::Validate::validate(
-                            v,
-                            &runtime::InstancePath::Index(base, i),
-                            out,
-                        );
-                    }
-                }
+                runtime::first(violations).map(|()| Self(value))
             }
         }
     };
@@ -277,6 +212,32 @@ macro_rules! checked_num_impls {
         }
     };
 }
+macro_rules! checked_impls {
+    ($n:ident, $t:ty) => {
+        impl $n {
+            #[must_use]
+            pub fn into_inner(self) -> $t {
+                self.0
+            }
+        }
+        impl std::ops::Deref for $n {
+            type Target = $t;
+            fn deref(&self) -> &$t {
+                &self.0
+            }
+        }
+        impl AsRef<$t> for $n {
+            fn as_ref(&self) -> &$t {
+                &self.0
+            }
+        }
+        impl From<$n> for $t {
+            fn from(value: $n) -> Self {
+                value.0
+            }
+        }
+    };
+}
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum Status {
     Draft,
@@ -307,7 +268,6 @@ impl TryFrom<&str> for Status {
     }
 }
 str_enum_impls!(Status);
-validate_impl!(Status);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Money {
@@ -323,7 +283,6 @@ impl Money {
         Self { amount_cents, currency }
     }
 }
-validate_impl!(Money);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Customer {
@@ -349,7 +308,6 @@ impl Customer {
         }
     }
 }
-validate_impl!(Customer);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Card {
@@ -363,7 +321,6 @@ impl Card {
         Self { last4 }
     }
 }
-validate_impl!(Card);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Sepa {
@@ -377,7 +334,6 @@ impl Sepa {
         Self { iban }
     }
 }
-validate_impl!(Sepa);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Car {
@@ -392,7 +348,6 @@ impl Car {
         Self { kind, seats }
     }
 }
-validate_impl!(Car);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Van {
@@ -408,51 +363,42 @@ impl Van {
         Self { kind, cargo_litres }
     }
 }
-validate_impl!(Van);
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Vehicle {
-    Car(Car),
-    Van(Van),
-}
-impl serde::Serialize for Vehicle {
-    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        match self {
-            Self::Car(v) => serde::Serialize::serialize(v, s),
-            Self::Van(v) => serde::Serialize::serialize(v, s),
-        }
-    }
-}
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
+pub struct Vehicle(pub(super) VehicleVariants);
 impl<'de> serde::Deserialize<'de> for Vehicle {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        runtime::tagged::<D, Self>(d)
+        let value = <VehicleVariants as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
     }
 }
-impl<'de> runtime::TaggedUnion<'de> for Vehicle {
-    const TAG: &'static str = "kind";
-    fn knows(tag: &str) -> bool {
-        matches!(tag, "car" | "van")
-    }
-    fn from_tag<D: serde::Deserializer<'de>>(tag: &str, d: D) -> Result<Self, D::Error> {
-        match tag {
-            "car" => <Car as serde::Deserialize>::deserialize(d).map(Self::Car),
-            "van" => <Van as serde::Deserialize>::deserialize(d).map(Self::Van),
-            _ => Err(serde::de::Error::custom("unknown discriminator")),
+impl TryFrom<VehicleVariants> for Vehicle {
+    type Error = String;
+    fn try_from(value: VehicleVariants) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            {
+                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                let value = runtime::to_value(&value).unwrap_or_default();
+                runtime::check_schema(
+                    out,
+                    &runtime::InstancePath::Root,
+                    &value,
+                    SCHEMA
+                        .get_or_init(|| {
+                            serde_json::from_str(
+                                    "{\"oneOf\":[{\"type\":\"object\",\"required\":[\"kind\",\"seats\"],\"properties\":{\"kind\":{\"type\":\"string\"},\"seats\":{\"type\":\"integer\"}}},{\"type\":\"object\",\"required\":[\"kind\",\"cargoLitres\"],\"properties\":{\"kind\":{\"type\":\"string\"},\"cargoLitres\":{\"type\":\"integer\"}}}]}",
+                                )
+                                .unwrap_or_default()
+                        }),
+                );
+            }
         }
-    }
-    fn from_content(v: runtime::Content<'de>) -> Result<Self, serde_json::Error> {
-        let which = match v.tag("kind").as_deref() {
-            Some("car") => 0,
-            Some("van") => 1,
-            _ => 2,
-        };
-        match which {
-            0 => v.decode_into(Self::Car),
-            1 => v.decode_into(Self::Van),
-            _ => Err(serde::de::Error::custom("matches no variant")),
-        }
+        runtime::first(violations).map(|()| Self(value))
     }
 }
-validate_impl!(Vehicle);
+checked_impls!(Vehicle, VehicleVariants);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Order {
@@ -465,7 +411,7 @@ pub struct Order {
     pub status: Status,
     pub total: Money,
     #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
-    pub customer: runtime::Nullable<OrderCustomer>,
+    pub customer: runtime::Nullable<OrderCustomerChecked>,
     #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
     pub notes: runtime::Nullable<String>,
     #[serde(
@@ -514,7 +460,6 @@ impl Order {
         }
     }
 }
-validate_impl_2!(Order);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct OrderPage {
@@ -534,7 +479,6 @@ impl OrderPage {
         Self { items, total: None }
     }
 }
-validate_impl_3!(OrderPage);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Problem {
@@ -575,7 +519,6 @@ impl Default for Problem {
         }
     }
 }
-validate_impl!(Problem);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct MoneyCurrency(pub(super) String);
@@ -602,14 +545,10 @@ impl TryFrom<String> for MoneyCurrency {
                 "does not match `^[A-Z]{3}$`",
             );
         }
-        match violations.into_iter().next() {
-            Some(v) => Err(v.message),
-            None => Ok(Self(value)),
-        }
+        runtime::first(violations).map(|()| Self(value))
     }
 }
 checked_str_impls!(MoneyCurrency);
-validate_impl!(MoneyCurrency);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct CustomerName(pub(super) String);
@@ -629,14 +568,10 @@ impl TryFrom<String> for CustomerName {
                 "characters",
             );
         }
-        match violations.into_iter().next() {
-            Some(v) => Err(v.message),
-            None => Ok(Self(value)),
-        }
+        runtime::first(violations).map(|()| Self(value))
     }
 }
 checked_str_impls!(CustomerName);
-validate_impl!(CustomerName);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct CardLast4(pub(super) String);
@@ -656,91 +591,84 @@ impl TryFrom<String> for CardLast4 {
                 "characters",
             );
         }
-        match violations.into_iter().next() {
-            Some(v) => Err(v.message),
-            None => Ok(Self(value)),
-        }
+        runtime::first(violations).map(|()| Self(value))
     }
 }
 checked_str_impls!(CardLast4);
-validate_impl!(CardLast4);
 pub type OrderCustomer = OrderCustomer2;
 pub type OrderCustomer2 = Customer;
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum OrderPayment {
-    Card(Card),
-    Sepa(Sepa),
-}
-impl serde::Serialize for OrderPayment {
-    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        match self {
-            Self::Card(v) => serde::Serialize::serialize(v, s),
-            Self::Sepa(v) => serde::Serialize::serialize(v, s),
-        }
-    }
-}
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
+pub struct OrderPayment(pub(super) OrderPaymentVariants);
 impl<'de> serde::Deserialize<'de> for OrderPayment {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let v = <runtime::Content<'de> as serde::Deserialize>::deserialize(d)?;
-        let fit_0 = v.kind() == runtime::Kind::Object
-            && runtime::fits(&v, &[("last4", true, &[runtime::Kind::String])]);
-        let fit_1 = v.kind() == runtime::Kind::Object
-            && runtime::fits(&v, &[("iban", true, &[runtime::Kind::String])]);
-        let mut first = None;
-        if fit_0 && let Ok(x) = v.decode_ref::<Card>() {
-            let picked = Self::Card(x);
-            if (first.is_none() && !(fit_1)) || runtime::is_valid(&picked) {
-                return Ok(picked);
-            }
-            first.get_or_insert(picked);
-        }
-        if fit_1 && let Ok(x) = v.decode_ref::<Sepa>() {
-            let picked = Self::Sepa(x);
-            if first.is_none() || runtime::is_valid(&picked) {
-                return Ok(picked);
-            }
-            first.get_or_insert(picked);
-        }
-        first.ok_or_else(|| serde::de::Error::custom("matches no variant"))
+        let value = <OrderPaymentVariants as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
     }
 }
-validate_impl!(OrderPayment);
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum OrderDiscount {
-    Money(Money),
-    Other(serde_json::Value),
-}
-impl serde::Serialize for OrderDiscount {
-    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        match self {
-            Self::Money(v) => serde::Serialize::serialize(v, s),
-            Self::Other(v) => serde::Serialize::serialize(v, s),
+impl TryFrom<OrderPaymentVariants> for OrderPayment {
+    type Error = String;
+    fn try_from(value: OrderPaymentVariants) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            {
+                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                let value = runtime::to_value(&value).unwrap_or_default();
+                runtime::check_schema(
+                    out,
+                    &runtime::InstancePath::Root,
+                    &value,
+                    SCHEMA
+                        .get_or_init(|| {
+                            serde_json::from_str(
+                                    "{\"oneOf\":[{\"type\":\"object\",\"required\":[\"last4\"],\"properties\":{\"last4\":{\"type\":\"string\",\"minLength\":4,\"maxLength\":4}}},{\"type\":\"object\",\"required\":[\"iban\"],\"properties\":{\"iban\":{\"type\":\"string\"}}}]}",
+                                )
+                                .unwrap_or_default()
+                        }),
+                );
+            }
         }
+        runtime::first(violations).map(|()| Self(value))
     }
 }
+checked_impls!(OrderPayment, OrderPaymentVariants);
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
+pub struct OrderDiscount(pub(super) OrderDiscountVariants);
 impl<'de> serde::Deserialize<'de> for OrderDiscount {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let v = <runtime::Content<'de> as serde::Deserialize>::deserialize(d)?;
-        match v.kind() {
-            runtime::Kind::Object => {
-                if let Ok(x) = v.decode_ref::<Money>() {
-                    let picked = Self::Money(x);
-                    if runtime::is_valid(&picked) {
-                        return Ok(picked);
-                    }
-                }
-                Ok(Self::Other(v.into_value()))
-            }
-            runtime::Kind::Null
-            | runtime::Kind::Bool
-            | runtime::Kind::Integer
-            | runtime::Kind::Number
-            | runtime::Kind::String
-            | runtime::Kind::Array => Ok(Self::Other(v.into_value())),
-        }
+        let value = <OrderDiscountVariants as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
     }
 }
-validate_impl!(OrderDiscount);
+impl TryFrom<OrderDiscountVariants> for OrderDiscount {
+    type Error = String;
+    fn try_from(value: OrderDiscountVariants) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            {
+                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                let value = runtime::to_value(&value).unwrap_or_default();
+                runtime::check_schema(
+                    out,
+                    &runtime::InstancePath::Root,
+                    &value,
+                    SCHEMA
+                        .get_or_init(|| {
+                            serde_json::from_str(
+                                    "{\"anyOf\":[{\"type\":\"object\",\"required\":[\"amountCents\",\"currency\"],\"properties\":{\"amountCents\":{\"type\":\"integer\",\"format\":\"int64\"},\"currency\":{\"type\":\"string\",\"pattern\":\"^[A-Z]{3}$\"}}},{}]}",
+                                )
+                                .unwrap_or_default()
+                        }),
+                );
+            }
+        }
+        runtime::first(violations).map(|()| Self(value))
+    }
+}
+checked_impls!(OrderDiscount, OrderDiscountVariants);
 #[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct ListOrdersLimit(pub(super) i32);
@@ -757,14 +685,10 @@ impl TryFrom<i32> for ListOrdersLimit {
                 [Some(1), Some(100), None, None],
             );
         }
-        match violations.into_iter().next() {
-            Some(v) => Err(v.message),
-            None => Ok(Self(value)),
-        }
+        runtime::first(violations).map(|()| Self(value))
     }
 }
 checked_num_impls!(ListOrdersLimit, i32);
-validate_impl!(ListOrdersLimit);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum ListOrdersSort {
     Newest,
@@ -790,7 +714,6 @@ impl TryFrom<&str> for ListOrdersSort {
     }
 }
 str_enum_impls!(ListOrdersSort);
-validate_impl!(ListOrdersSort);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct ListOrdersCursor(pub(super) String);
@@ -817,14 +740,10 @@ impl TryFrom<String> for ListOrdersCursor {
                 "does not match `^[A-Za-z0-9_-]+$`",
             );
         }
-        match violations.into_iter().next() {
-            Some(v) => Err(v.message),
-            None => Ok(Self(value)),
-        }
+        runtime::first(violations).map(|()| Self(value))
     }
 }
 checked_str_impls!(ListOrdersCursor);
-validate_impl!(ListOrdersCursor);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct UploadDocumentBody {
@@ -839,7 +758,6 @@ impl UploadDocumentBody {
         Self { file, kind }
     }
 }
-validate_impl!(UploadDocumentBody);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum UploadDocumentBodyKind {
     Invoice,
@@ -865,14 +783,13 @@ impl TryFrom<&str> for UploadDocumentBodyKind {
     }
 }
 str_enum_impls!(UploadDocumentBodyKind);
-validate_impl!(UploadDocumentBodyKind);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct OrderRequest {
     pub status: Status,
     pub total: Money,
     #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
-    pub customer: runtime::Nullable<OrderCustomer>,
+    pub customer: runtime::Nullable<OrderRequestCustomer>,
     #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
     pub notes: runtime::Nullable<String>,
     #[serde(
@@ -919,7 +836,6 @@ impl OrderRequest {
         }
     }
 }
-validate_impl_2!(OrderRequest);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct OrderPageRequest {
@@ -939,7 +855,137 @@ impl OrderPageRequest {
         Self { items, total: None }
     }
 }
-validate_impl_3!(OrderPageRequest);
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum VehicleVariants {
+    Car(Car),
+    Van(Van),
+}
+impl serde::Serialize for VehicleVariants {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        match self {
+            Self::Car(v) => serde::Serialize::serialize(v, s),
+            Self::Van(v) => serde::Serialize::serialize(v, s),
+        }
+    }
+}
+impl<'de> serde::Deserialize<'de> for VehicleVariants {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        runtime::tagged::<D, Self>(d)
+    }
+}
+impl<'de> runtime::TaggedUnion<'de> for VehicleVariants {
+    const TAG: &'static str = "kind";
+    fn knows(tag: &str) -> bool {
+        matches!(tag, "car" | "van")
+    }
+    fn from_tag<D: serde::Deserializer<'de>>(tag: &str, d: D) -> Result<Self, D::Error> {
+        match tag {
+            "car" => <Car as serde::Deserialize>::deserialize(d).map(Self::Car),
+            "van" => <Van as serde::Deserialize>::deserialize(d).map(Self::Van),
+            _ => Err(serde::de::Error::custom("unknown discriminator")),
+        }
+    }
+    fn from_content(v: runtime::Content<'de>) -> Result<Self, serde_json::Error> {
+        let which = match v.tag("kind").as_deref() {
+            Some("car") => 0,
+            Some("van") => 1,
+            _ => 2,
+        };
+        match which {
+            0 => v.decode_into(Self::Car),
+            1 => v.decode_into(Self::Van),
+            _ => Err(serde::de::Error::custom("matches no variant")),
+        }
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum OrderPaymentVariants {
+    Card(Card),
+    Sepa(Sepa),
+}
+impl serde::Serialize for OrderPaymentVariants {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        match self {
+            Self::Card(v) => serde::Serialize::serialize(v, s),
+            Self::Sepa(v) => serde::Serialize::serialize(v, s),
+        }
+    }
+}
+impl<'de> serde::Deserialize<'de> for OrderPaymentVariants {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let v = <runtime::Content<'de> as serde::Deserialize>::deserialize(d)?;
+        let fit_0 = v.kind() == runtime::Kind::Object
+            && runtime::fits(&v, &[("last4", true, &[runtime::Kind::String])]);
+        let fit_1 = v.kind() == runtime::Kind::Object
+            && runtime::fits(&v, &[("iban", true, &[runtime::Kind::String])]);
+        let mut first: Option<String> = None;
+        if fit_0 {
+            match v.decode_ref::<Card>() {
+                Ok(x) => return Ok(Self::Card(x)),
+                Err(e) => {
+                    first.get_or_insert(e.to_string());
+                }
+            }
+        }
+        if fit_1 {
+            match v.decode_ref::<Sepa>() {
+                Ok(x) => return Ok(Self::Sepa(x)),
+                Err(e) => {
+                    first.get_or_insert(e.to_string());
+                }
+            }
+        }
+        Err(
+            serde::de::Error::custom(
+                first.unwrap_or_else(|| "matches no variant".to_owned()),
+            ),
+        )
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum OrderDiscountVariants {
+    Money(Money),
+    Other(serde_json::Value),
+}
+impl serde::Serialize for OrderDiscountVariants {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        match self {
+            Self::Money(v) => serde::Serialize::serialize(v, s),
+            Self::Other(v) => serde::Serialize::serialize(v, s),
+        }
+    }
+}
+impl<'de> serde::Deserialize<'de> for OrderDiscountVariants {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let v = <runtime::Content<'de> as serde::Deserialize>::deserialize(d)?;
+        match v.kind() {
+            runtime::Kind::Object => {
+                match v.decode_ref::<Money>() {
+                    Ok(x) => Ok(Self::Money(x)),
+                    Err(_) => Ok(Self::Other(v.into_value())),
+                }
+            }
+            runtime::Kind::Null
+            | runtime::Kind::Bool
+            | runtime::Kind::Integer
+            | runtime::Kind::Number
+            | runtime::Kind::String
+            | runtime::Kind::Array => Ok(Self::Other(v.into_value())),
+        }
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
+pub struct OrderCustomerChecked(pub(super) OrderCustomer);
+deserialize_impl_2!(OrderCustomerChecked);
+try_from_impl!(OrderCustomerChecked);
+checked_impls!(OrderCustomerChecked, OrderCustomer);
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
+pub struct OrderRequestCustomer(pub(super) OrderCustomer);
+deserialize_impl_2!(OrderRequestCustomer);
+try_from_impl!(OrderRequestCustomer);
+checked_impls!(OrderRequestCustomer, OrderCustomer);
 /// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
 /// its field. `build` returns the first field that did not convert.
 pub mod builders {
@@ -1108,7 +1154,7 @@ pub mod builders {
         }
         pub fn customer(
             self,
-            value: impl TryInto<types::OrderCustomer, Error: std::fmt::Display>,
+            value: impl TryInto<types::OrderCustomerChecked, Error: std::fmt::Display>,
         ) -> Self {
             Self(
                 self
@@ -1270,7 +1316,7 @@ pub mod builders {
     impl OrderRequest {
         pub fn customer(
             self,
-            value: impl TryInto<types::OrderCustomer, Error: std::fmt::Display>,
+            value: impl TryInto<types::OrderRequestCustomer, Error: std::fmt::Display>,
         ) -> Self {
             Self(
                 self

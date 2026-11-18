@@ -11,6 +11,10 @@
     clippy::missing_errors_doc,
     reason = "generated docs hold only the description's own prose"
 )]
+#![allow(
+    clippy::init_numbered_fields,
+    reason = "a spec default builds its checked type as `Type { 0: value }`, which also works through the alias of a twin"
+)]
 macro_rules! default_impl {
     ($t:ty) => {
         impl Default for $t {
@@ -20,14 +24,8 @@ macro_rules! default_impl {
         }
     };
 }
-macro_rules! validate_impl {
-    ($t:ty) => {
-        impl runtime::Validate for $t {}
-    };
-}
 pub mod list_products {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/products";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -39,7 +37,6 @@ pub mod list_products {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// A page of products.
@@ -48,7 +45,6 @@ pub mod list_products {
 }
 pub mod tag_tree {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/tags";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -60,7 +56,6 @@ pub mod tag_tree {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// A tree of tags.
@@ -69,7 +64,6 @@ pub mod tag_tree {
 }
 pub mod any_page {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/any";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -81,7 +75,6 @@ pub mod any_page {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Unbound, the generic's default.

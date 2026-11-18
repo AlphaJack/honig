@@ -316,7 +316,6 @@ impl From<Error> for Reason {
             Error::Decode { status: 0, pointer, message, .. } => {
                 Self::Invalid(vec![decode_violation(&pointer, &message)])
             }
-            Error::Invalid(v) => Self::Invalid(v),
             Error::Transport(why) => Self::Unreadable(why),
             Error::TooLarge(limit) => Self::PayloadTooLarge(limit),
             other @ (Error::Encode(_)

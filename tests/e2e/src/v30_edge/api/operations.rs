@@ -11,11 +11,10 @@
     clippy::missing_errors_doc,
     reason = "generated docs hold only the description's own prose"
 )]
-macro_rules! validate_impl {
-    ($t:ty) => {
-        impl runtime::Validate for $t {}
-    };
-}
+#![allow(
+    clippy::init_numbered_fields,
+    reason = "a spec default builds its checked type as `Type { 0: value }`, which also works through the alias of a twin"
+)]
 use super::runtime;
 #[doc(hidden)]
 pub const SECURITY_0: &[&[runtime::Requirement]] = &[
@@ -44,7 +43,7 @@ pub mod list_orders {
             Self {
                 status: None,
                 created_after: None,
-                limit: types::ListOrdersLimit(20i32),
+                limit: types::ListOrdersLimit { 0: 20i32 },
                 sort: types::ListOrdersSort::Newest,
                 cursor: None,
             }
@@ -55,7 +54,6 @@ pub mod list_orders {
             Self::new()
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// A page of orders.
@@ -77,19 +75,6 @@ pub mod create_order {
         #[must_use]
         pub const fn new(body: types::OrderRequest) -> Self {
             Self { body }
-        }
-    }
-    impl runtime::Validate for Params {
-        fn validate(
-            &self,
-            path: &runtime::InstancePath<'_>,
-            out: &mut Vec<runtime::Violation>,
-        ) {
-            runtime::Validate::validate(
-                &self.body,
-                &runtime::InstancePath::Key(path, "body"),
-                out,
-            );
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -117,7 +102,6 @@ pub mod get_order {
             Self { order_id }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// The order.
@@ -164,7 +148,6 @@ pub mod upload_document {
             Self { order_id, body }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Stored.

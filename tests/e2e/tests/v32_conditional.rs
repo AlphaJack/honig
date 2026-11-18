@@ -21,9 +21,9 @@ fn if_then_decodes_into_variants() {
 #[test]
 fn all_of_with_a_one_of_member_is_one_of_its_branches() {
     let pickup: types::Delivery = serde_json::from_value(json!({"pickup": true, "orderId": "o-1"})).unwrap();
-    assert_matches!(&pickup, types::Delivery::Pickup(d) if d.pickup && d.order_id == "o-1");
+    assert_matches!(&*pickup, types::DeliveryVariants::Pickup(d) if d.pickup && d.order_id == "o-1");
     let shipped: types::Delivery = serde_json::from_value(json!({"street": "Main St 1", "orderId": "o-2"})).unwrap();
-    assert_matches!(&shipped, types::Delivery::Address(d) if d.street == "Main St 1" && d.order_id == "o-2");
+    assert_matches!(&*shipped, types::DeliveryVariants::Address(d) if d.street == "Main St 1" && d.order_id == "o-2");
     assert_eq!(serde_json::to_value(&shipped).unwrap(), json!({"street": "Main St 1", "orderId": "o-2"}));
 }
 

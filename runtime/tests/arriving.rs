@@ -1,5 +1,5 @@
-//! Sequential request bodies that the server reads as they arrive. They are decoded an item at a time and each item is
-//! checked.
+//! Sequential request bodies that the server reads as they arrive. They are decoded an item at a time. An item type
+//! that checks its keywords checks each item as it decodes.
 
 #![expect(clippy::unwrap_used, reason = "test code fails loudly")]
 
@@ -7,7 +7,7 @@ use assert_matches::assert_matches;
 
 use futures_util::StreamExt;
 use honig::__private::{Framing, block_on};
-use honig::{Blob, ByteStream, Error, InstancePath, Items, Violation};
+use honig::{Blob, ByteStream, Items};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -45,49 +45,31 @@ fn a_body_read_whole_is_a_list() {
     assert_eq!(items, Items::List(vec![Event { a: 1 }, Event { a: 2 }]));
 }
 
-/// `a` must not be negative as a generated check would say.
-fn non_negative(e: &Event, path: &InstancePath<'_>, out: &mut Vec<Violation>) {
-    if e.a < 0 {
-        out.push(Violation { path: path.to_string(), message: "must be at least 0".to_owned() });
+/// An item whose `a` must not be negative. Decoding checks it, as a generated checked type does.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(try_from = "Event")]
+struct NonNegative(i64);
+
+impl TryFrom<Event> for NonNegative {
+    type Error = String;
+
+    fn try_from(e: Event) -> Result<Self, String> {
+        if e.a < 0 { Err(format!("{} is less than the minimum 0", e.a)) } else { Ok(Self(e.a)) }
     }
 }
 
 #[test]
-fn an_item_that_breaks_a_constraint_is_invalid_and_the_next_one_still_reads() {
-    let items = arriving(&[b"{\"a\":1}\n{\"a\":-1}\n{\"a\":2}\n"]);
-    let mut found = vec![];
-    items.check_each(&InstancePath::Key(&InstancePath::Root, "body"), &mut found, non_negative);
-    assert_eq!(found, vec![], "nothing is checked before the items arrive");
-    assert_eq!(
-        read_all(items),
-        vec![
-            Ok(Event { a: 1 }),
-            Err("invalid request item; /body/1: must be at least 0".to_owned()),
-            Ok(Event { a: 2 })
-        ]
-    );
-}
-
-#[test]
-fn an_invalid_item_carries_its_violations() {
-    let mut items = arriving(&[b"{\"a\":-1}\n"]);
-    items.check_each(&InstancePath::Key(&InstancePath::Root, "body"), &mut vec![], non_negative);
-    let violations = match block_on(items.next()) {
-        Some(Err(Error::Invalid(v))) => Some(v),
-        _ => None,
-    };
-    assert_eq!(
-        violations,
-        Some(vec![Violation { path: "/body/0".to_owned(), message: "must be at least 0".to_owned() }])
-    );
-}
-
-#[test]
-fn a_list_is_checked_at_once() {
-    let items = Items::List(vec![Event { a: 1 }, Event { a: -1 }]);
-    let mut found = vec![];
-    items.check_each(&InstancePath::Key(&InstancePath::Root, "body"), &mut found, non_negative);
-    assert_eq!(found, vec![Violation { path: "/body/1".to_owned(), message: "must be at least 0".to_owned() }]);
+fn an_item_that_breaks_a_constraint_does_not_decode_and_the_next_one_still_reads() {
+    let body = Blob::stream(futures_util::stream::iter([b"{\"a\":1}\n{\"a\":-1}\n{\"a\":2}\n".to_vec()])).into_body();
+    let mut items: Items<NonNegative> = Items::received(&[], body.chunks(), Framing::JsonLines).unwrap();
+    let mut read = vec![];
+    while let Some(item) = block_on(items.next()) {
+        read.push(item.map_err(|e| e.to_string()));
+    }
+    assert_eq!(read.len(), 3);
+    assert_eq!(read[0], Ok(NonNegative(1)));
+    assert!(read[1].as_ref().is_err_and(|e| e.contains("-1 is less than the minimum 0")), "{:?}", read[1]);
+    assert_eq!(read[2], Ok(NonNegative(2)));
 }
 
 #[test]

@@ -14,7 +14,7 @@ The server keeps your `Api` in an `Arc` and shares it across requests without cl
 
 ## Validation
 
-Requests are checked against every constraint of their schemas. A value that its [checked type](types.md#checked-types) refuses stops decoding: the request gets `400` with that violation and its JSON pointer. The other constraints are checked after decoding, and the `400` lists every one that fails:
+Requests are checked against every constraint of their schemas while they decode: each value is a [checked type](types.md#checked-types) or a type that holds its keywords. The first value that breaks one stops decoding. The request gets `400` with that violation and its JSON pointer. Your handler only gets valid parameters:
 
 ```json
 {"violations": [{"path": "/body/name", "message": "at least 2 characters required, found 1"}]}

@@ -11,9 +11,12 @@
     clippy::missing_errors_doc,
     reason = "generated docs hold only the description's own prose"
 )]
+#![allow(
+    clippy::init_numbered_fields,
+    reason = "a spec default builds its checked type as `Type { 0: value }`, which also works through the alias of a twin"
+)]
 pub mod order_shipped_post {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -26,7 +29,6 @@ pub mod order_shipped_post {
             Self { body }
         }
     }
-    impl runtime::Validate for Params {}
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Received.

@@ -15,7 +15,6 @@ use crate::source::{Blob, BodySource, ByteStream, Feed, Slot, Sse, put_slot, tak
 #[cfg(feature = "multipart")]
 use crate::text::decode_err;
 use crate::transport::Pending;
-use crate::validate::{InstancePath, Violation};
 use crate::{Body, Error, Request, json_seq_encode, jsonl_encode, sse_encode};
 
 /// The byte order mark that an SSE stream may start with. It is not part of the first event.
@@ -68,20 +67,6 @@ impl<T> Items<T> {
         match self {
             Self::List(v) => Some(v),
             Self::Stream(_) | Self::Events(_) => None,
-        }
-    }
-
-    /// Checks each item with `check` under `path` and its index. Every item of a list is checked now. Each item of
-    /// an arriving body is checked when it is read. Items that your code produces are not checked.
-    pub fn check_each(&self, path: &InstancePath<'_>, out: &mut Vec<Violation>, check: Check<T>) {
-        match self {
-            Self::List(v) => {
-                for (i, item) in v.iter().enumerate() {
-                    check(item, &InstancePath::Index(path, i), out);
-                }
-            }
-            Self::Stream(s) => s.check_with(check, path.to_string()),
-            Self::Events(_) => {}
         }
     }
 }
@@ -230,9 +215,6 @@ impl<T: DeserializeOwned> Items<T> {
 
 /// The status a request body decodes with: there is no response yet.
 const REQUEST: u16 = 0;
-
-/// Checks one item. It appends its violations under a path as a generated `Validate` does.
-pub type Check<T> = fn(&T, &InstancePath<'_>, &mut Vec<Violation>);
 
 /// No item is pinned: each is read out of a list, a decoder or a boxed stream.
 impl<T> Unpin for Items<T> {}
@@ -548,11 +530,6 @@ impl<T> ItemStream<T> {
         }
     }
 
-    /// Checks every item read from now on with `check`. Its violations go under `path`.
-    fn check_with(&self, check: Check<T>, path: String) {
-        self.decoder(|items| items.check = Some((check, path)));
-    }
-
     /// Returns the `id` of the last event read from any block. A reconnection sends it as `Last-Event-ID`. It is empty
     /// before the first one and after an `id` field with no value.
     pub fn last_event_id(&self) -> String {
@@ -647,7 +624,7 @@ impl<T: DeserializeOwned> Stream for ItemStream<T> {
     type Item = Result<T, Error>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        self.get_mut().poll_with(cx, Decoder::poll_checked)
+        self.get_mut().poll_with(cx, Decoder::poll_item)
     }
 }
 
@@ -683,10 +660,6 @@ pub(crate) struct Decoder<T> {
     /// Failed reconnections in a row and how many may fail.
     failures: u32,
     max_retries: Option<u32>,
-    /// The check that each item gets and the path of the body. Both are set once the request is validated.
-    check: Option<(Check<T>, String)>,
-    /// Items read so far: the index of the next one.
-    read: usize,
     /// Reads one record as an item: as `T`, or with the text of its library formats checked first.
     item: ReadItem<T>,
 }
@@ -755,8 +728,6 @@ impl<T: DeserializeOwned> Decoder<T> {
             connecting: None,
             failures: 0,
             max_retries: None,
-            check: None,
-            read: 0,
             item: decode::<T>,
         }
     }
@@ -767,24 +738,6 @@ impl<T: DeserializeOwned> Decoder<T> {
         buf.drain(..pos.min(buf.len()));
         buf.extend_from_slice(frame.get(at..).unwrap_or_default());
         (buf, body)
-    }
-
-    /// Returns the next item. It is checked once the request is validated.
-    fn poll_checked(&mut self, cx: &mut Context<'_>) -> Poll<Option<Result<T, Error>>> {
-        let item = ready!(self.poll_item(cx));
-        let index = self.read;
-        self.read += 1;
-        Poll::Ready(match (item, &self.check) {
-            (Some(Ok(item)), Some((check, under))) => {
-                let mut found = vec![];
-                check(&item, &InstancePath::Index(&InstancePath::Root, index), &mut found);
-                for v in &mut found {
-                    v.path.insert_str(0, under);
-                }
-                Some(if found.is_empty() { Ok(item) } else { Err(Error::Invalid(found)) })
-            }
-            (item, _) => item,
-        })
     }
 
     /// Returns the next item or `None` once the body has ended.

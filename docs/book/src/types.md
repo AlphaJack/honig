@@ -155,3 +155,13 @@ A builder converts every field and returns the first one that does not convert, 
 The error names the field as the description spells it: `` `age`: 150 must be less than 150 ``. The builder of `User` is `types::builders::User`.
 
 A checked type reads as its value: a string one derefs to `str` and compares with `&str`, a number one derefs to its number and compares with it. `get` and `into_inner` return the value, and `parse` reads one from text.
+
+## Whole schemas
+
+Some keywords say what no Rust type can: `not`, `contains`, `dependentRequired`, `if`/`then` beyond the constants of one property, the one branch that a `oneOf` takes, tuples and `$dynamicRef`. A struct or union whose own schema has them is a checked type of its shape: `Product` holds a `ProductFields`, `Vehicle` holds a `VehicleVariants`. It reads as its shape. `try_from` and decoding check the whole schema. Its builder fills the fields and checks the whole value in `build`:
+
+```rust
+{{#include ../../../tests/e2e/tests/v32_kitchen_sink.rs:whole-schema}}
+```
+
+A property, parameter or body with such keywords of its own has a checked type named after it, such as `ProductAttrs`. A type of yours (`x-rust-type`) is never wrapped: it keeps its own invariants.
