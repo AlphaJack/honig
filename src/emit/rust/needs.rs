@@ -80,7 +80,7 @@ fn format_checks(api: &Api, libs: FormatLibs) -> Vec<&'static str> {
         (IDN, mail.iter().any(|f| used.contains(f))),
         // The libraries that would type these formats check them.
         (REGRESS, checked(&[Format::Regex])),
-        // `runtime::FullTime`: a `time` with its offset.
+        // `runtime::FullTime` reads as `jiff` types for a crate whose dates are `jiff`.
         (JIFF, used.contains(&Format::Time) && libs.dates == Some(DateLib::Jiff)),
     ];
     needed.into_iter().filter_map(|(feature, on)| on.then_some(feature)).collect()

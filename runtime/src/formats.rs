@@ -117,11 +117,6 @@ pub mod format {
         "ipv6-cidr"
     );
     marker!(
-        /// `time`: RFC 3339 `full-time`, with an offset.
-        Time,
-        "time"
-    );
-    marker!(
         /// `email`: an RFC 5321 mail address. An ASCII dot-atom or quoted local part, then `@`, then a host name or
         /// an address literal.
         Email,

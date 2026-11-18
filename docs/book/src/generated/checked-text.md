@@ -10,7 +10,6 @@
 | `uri` | `api::UriText` | `uri`: an absolute RFC 3986 URI. |
 | `ipv4-cidr` | `api::Ipv4CidrText` | `ipv4-cidr`: an IPv4 address block. |
 | `ipv6-cidr` | `api::Ipv6CidrText` | `ipv6-cidr`: an IPv6 address block. |
-| `time` | `api::TimeText` | `time`: RFC 3339 `full-time`, with an offset. |
 | `email` | `api::Email` | `email`: an RFC 5321 mail address. An ASCII dot-atom or quoted local part, then `@`, then a host name or an address literal. |
 | `idn-email` | `api::IdnEmail` | `idn-email`: an RFC 6531 mail address, an `email` that may hold UTF-8. |
 | `hostname` | `api::Hostname` | `hostname`: an RFC 1123 host name with ASCII labels. A punycode label must decode to a valid name. |

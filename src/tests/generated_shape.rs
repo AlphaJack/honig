@@ -725,3 +725,19 @@ fn an_any_of_is_judged_by_its_variants() {
     assert!(!checked("One"), "{types}");
     assert!(types.contains("of `oneOf`, not exactly one"), "the `oneOf` counts: {types}");
 }
+
+/// `format: time` is the runtime's `FullTime` whatever the date library: neither date library has a time with an
+/// offset, and `FullTime` holds plain numbers.
+#[test]
+fn a_time_with_its_offset_is_a_full_time_with_any_date_library() {
+    let doc = common::spec(
+        "3.1.0",
+        &json!({}),
+        &json!({"schemas": {"Shift": {"type": "object", "required": ["start"], "properties": {
+            "start": {"type": "string", "format": "time"},
+        }}}}),
+    );
+    let files = common::generate("shape-full-time", &doc, &crate::emit::Options::default());
+    let types = common::file(&files, "types.rs");
+    assert!(types.contains("pub start: runtime::FullTime"), "{types}");
+}

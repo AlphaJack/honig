@@ -163,8 +163,6 @@ pub type UuidText = Formatted<format::Uuid>;
 pub type DateTimeText = Formatted<format::DateTime>;
 /// `format: date` without a date library.
 pub type DateText = Formatted<format::Date>;
-/// `format: time`: no date library has a type for a time with an offset (`jiff` has `FullTime`).
-pub type TimeText = Formatted<format::Time>;
 /// `format: date-time-local` without a date library.
 pub type DateTimeLocalText = Formatted<format::DateTimeLocal>;
 /// `format: time-local` without a date library.

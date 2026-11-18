@@ -261,7 +261,7 @@ pub struct Event {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub opens: Option<runtime::TimeText>,
+    pub opens: Option<runtime::FullTime>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
@@ -775,7 +775,7 @@ pub mod builders {
         }
         pub fn opens(
             self,
-            value: impl TryInto<runtime::TimeText, Error: std::fmt::Display>,
+            value: impl TryInto<runtime::FullTime, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("opens", value, |s, v| s.opens = Some(v)))
         }
