@@ -7,9 +7,6 @@ use std::fmt;
 use serde::Serialize;
 use serde_json::{Map, Value};
 
-/// How far from whole, relative to it, the quotient of a `multipleOf` too long to read exactly may be.
-const FALLBACK_TOLERANCE: f64 = 1e-6;
-
 /// A constraint a value breaks: where (JSON pointer) and why.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Violation {
@@ -267,15 +264,10 @@ pub fn check_multiple<T: fmt::Display + JsonNumber + Copy>(
     }
 }
 
-/// Checks that the decimal text `value` is a multiple of `of`, exactly. An `of` of more than 19 significant digits is
-/// compared by `f64`, within a millionth of the quotient.
+/// Checks that the decimal text `value` is a multiple of `of`, exactly. Text that is not decimal, or an `of` that is
+/// not positive, is no multiple: validation refuses such an `of` before generation.
 pub fn check_multiple_text(out: &mut Vec<Violation>, path: &InstancePath<'_>, value: &str, of: &str) {
-    let multiple = crate::exact::is_multiple(value, of).unwrap_or_else(|| {
-        let (v, m) = (value.parse::<f64>().unwrap_or_default(), of.parse::<f64>().unwrap_or(1.0));
-        let q = v / m;
-        (q - q.round()).abs() <= q.abs().max(1.0) * FALLBACK_TOLERANCE
-    });
-    if !multiple {
+    if !crate::exact::is_multiple(value, of).unwrap_or(false) {
         violation(out, path, format!("is not a multiple of {of}"));
     }
 }
