@@ -139,7 +139,8 @@ pub(super) fn checks(
         Ty::I8 | Ty::I16 | Ty::I32 | Ty::I64 | Ty::U8 | Ty::U16 | Ty::U32 | Ty::U64 => {
             integer_checks(t, c, value, path)
         }
-        Ty::F32 | Ty::F64 | Ty::Decimal => float_checks(c, &float_value(t, value), path),
+        Ty::F32 | Ty::F64 => float_checks(c, &float_value(t, value), path),
+        Ty::Decimal => decimal_checks(c, value, path),
         Ty::Vec(x) => {
             let len = (c.min_items.is_some() || c.max_items.is_some()).then(|| {
                 let (min, max) = (opt_u64(c.min_items), opt_u64(c.max_items));
@@ -283,6 +284,15 @@ pub(super) fn float_checks(c: &Constraints, value: &TokenStream, path: &TokenStr
         }
     });
     quote!(#range #multiple)
+}
+
+/// Returns the checks of a `Decimal` value (an `&Decimal` expression): its range and `multipleOf` by its nearest `f64`,
+/// and the limits of IEEE 754 decimal128 on its digits for `format: decimal128`.
+pub(super) fn decimal_checks(c: &Constraints, value: &TokenStream, path: &TokenStream) -> TokenStream {
+    let range = float_checks(c, &float_value(&Ty::Decimal, value), path);
+    let r = receiver(value);
+    let limits = c.decimal128.then(|| quote!(runtime::check_decimal128(out, #path, #r.as_str());));
+    quote!(#range #limits)
 }
 
 /// Bounds past this have no whole `i128` worth writing: they are left unchecked.

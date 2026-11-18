@@ -120,7 +120,7 @@ Mail addresses and host names are types of the runtime. Only a valid value can b
 It reads the exact text wherever the number is. This includes `oneOf` branches. It rounds only in the `Other` of an open union. That variant holds a value that no branch takes as a `serde_json::Value`.
 
 For arithmetic parse its digits into a decimal type with `d.as_str().parse::<rust_decimal::Decimal>()`.
-`{type: string, format: decimal}` is `api::DecimalText` with every digit, checked as a decimal. Use it past the 28 significant digits that `rust_decimal` holds.
+`{type: string, format: decimal}` is `api::DecimalText` with every digit, checked as a decimal. `decimal128` keeps every digit too, as a number or as `api::Decimal128Text`, and holds the limits of IEEE 754 decimal128: at most 34 significant digits within its exponent range. Use it past the 28 significant digits that `rust_decimal` holds.
 
 JSON the description leaves untyped is a `serde_json::Value`:
 

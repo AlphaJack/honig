@@ -221,6 +221,8 @@ pub(crate) struct Constraints {
     pub min_properties: Option<u64>,
     /// `maxProperties`.
     pub max_properties: Option<u64>,
+    /// `{type: number, format: decimal128}`: the number is one that IEEE 754 decimal128 holds exactly.
+    pub decimal128: bool,
     /// Constraints of an array's items.
     pub items: Option<Box<Self>>,
     /// The schema with `$ref`s inlined when it uses keywords that no type expresses on its own
@@ -484,9 +486,12 @@ pub(crate) enum Format {
     Ipv4Cidr,
     /// `format: ipv6-cidr`.
     Ipv6Cidr,
-    /// `{type: string, format: decimal}`: a `String` that keeps every digit and is checked as a decimal.
+    /// `{type: string, format: decimal}`: text that keeps every digit and is checked as a decimal.
     /// `rust_decimal` holds 28 significant digits and `decimal` has no limit. So no library type takes it.
     Decimal,
+    /// `{type: string, format: decimal128}`: text checked as a decimal that IEEE 754 decimal128 holds exactly. That is
+    /// at most 34 significant digits within its exponent range.
+    Decimal128,
     /// `format: email` (RFC 5321 Mailbox): `runtime::Email` (the runtime's `idn` feature).
     Email,
     /// `format: idn-email` (RFC 6531 with UTF-8 allowed): `runtime::IdnEmail`.
@@ -517,7 +522,7 @@ pub(crate) enum Format {
 
 impl Format {
     /// Every format to look one up by its name.
-    pub(crate) const ALL: [Self; 27] = [
+    pub(crate) const ALL: [Self; 28] = [
         Self::Uuid,
         Self::DateTime,
         Self::Date,
@@ -545,6 +550,7 @@ impl Format {
         Self::RelativeJsonPointer,
         Self::Regex,
         Self::UriTemplate,
+        Self::Decimal128,
     ];
 
     /// Returns the `format` (or `contentEncoding`) a description writes for it.
@@ -559,6 +565,7 @@ impl Format {
             Self::Time => "time",
             Self::Base64Url => "base64url",
             Self::Decimal => "decimal",
+            Self::Decimal128 => "decimal128",
             Self::Char => "char",
             Self::DateTimeLocal => "date-time-local",
             Self::TimeLocal => "time-local",

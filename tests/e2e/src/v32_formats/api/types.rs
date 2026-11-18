@@ -229,7 +229,7 @@ pub struct Event {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub sum: Option<runtime::Decimal>,
+    pub sum: Option<EventSum>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
@@ -277,7 +277,7 @@ pub struct Event {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub total: Option<String>,
+    pub total: Option<runtime::Decimal128Text>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
@@ -466,6 +466,21 @@ impl TryFrom<runtime::Decimal> for EventAmount {
     }
 }
 checked_decimal_impls!(EventAmount);
+#[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize)]
+#[serde(transparent)]
+pub struct EventSum(pub(super) runtime::Decimal);
+impl TryFrom<runtime::Decimal> for EventSum {
+    type Error = String;
+    fn try_from(value: runtime::Decimal) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            runtime::check_decimal128(out, &runtime::InstancePath::Root, value.as_str());
+        }
+        runtime::first(violations).map(|()| Self(value))
+    }
+}
+checked_decimal_impls!(EventSum);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct EventCharge(pub(super) EventChargeVariants);
@@ -763,7 +778,7 @@ pub mod builders {
         }
         pub fn sum(
             self,
-            value: impl TryInto<runtime::Decimal, Error: std::fmt::Display>,
+            value: impl TryInto<types::EventSum, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("sum", value, |s, v| s.sum = Some(v)))
         }
@@ -811,7 +826,7 @@ pub mod builders {
         }
         pub fn total(
             self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
+            value: impl TryInto<runtime::Decimal128Text, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("total", value, |s, v| s.total = Some(v)))
         }

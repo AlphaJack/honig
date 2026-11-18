@@ -29,3 +29,4 @@
 | `relative-json-pointer` | `api::RelativeJsonPointerText` | `api::RelativeJsonPointerText` | `api::RelativeJsonPointerText` |
 | `regex` | `api::RegexText` | `api::RegexText` | `api::RegexText` |
 | `uri-template` | `api::UriTemplateText` | `api::UriTemplateText` | `api::UriTemplateText` |
+| `decimal128` | `api::Decimal128Text` | `api::Decimal128Text` | `api::Decimal128Text` |

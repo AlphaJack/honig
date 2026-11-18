@@ -265,17 +265,8 @@ pub(crate) fn needs_checks(types: &TypeSpace, t: &Ty, c: &Constraints, hops: usi
         Ty::Option(x) | Ty::Indirect(x) => needs_checks(types, x, c, hops),
         Ty::String => length || c.pattern.is_some(),
         Ty::Format(_) => length,
-        Ty::I8
-        | Ty::I16
-        | Ty::I32
-        | Ty::I64
-        | Ty::U8
-        | Ty::U16
-        | Ty::U32
-        | Ty::U64
-        | Ty::F32
-        | Ty::F64
-        | Ty::Decimal => range,
+        Ty::I8 | Ty::I16 | Ty::I32 | Ty::I64 | Ty::U8 | Ty::U16 | Ty::U32 | Ty::U64 | Ty::F32 | Ty::F64 => range,
+        Ty::Decimal => range || c.decimal128,
         Ty::Vec(x) => {
             c.min_items.is_some()
                 || c.max_items.is_some()

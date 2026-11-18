@@ -57,10 +57,9 @@ fn a_decimal_number_keeps_its_digits() {
     let (_, diags) = common::build("decimal-number", &doc, &[]);
     assert!(diags.is_empty(), "{diags:#?}");
     let t = types_rs_of("decimal-number-types", &doc);
-    assert!(
-        t.contains("pub amount: Option<runtime::Decimal>") && t.contains("pub total: Option<runtime::Decimal>"),
-        "{t}"
-    );
+    assert!(t.contains("pub amount: Option<runtime::Decimal>"), "{t}");
+    // `decimal128` keeps its digits too, as a checked type held to the limits of IEEE 754 decimal128.
+    assert!(t.contains("pub total: Option<PriceTotal>") && t.contains("runtime::check_decimal128("), "{t}");
     assert!(t.contains("pub label: Option<runtime::DecimalText>"), "{t}");
 }
 
@@ -68,8 +67,9 @@ fn types_rs_of(test: &str, doc: &serde_json::Value) -> String {
     common::file(&common::generate(test, doc, &crate::emit::Options::default()), "types.rs").to_owned()
 }
 
-/// `{type: string, format: decimal}` is checked text that keeps every digit, as `decimal128` is. The 28 significant
-/// digits of `rust_decimal` would refuse longer values that the format allows.
+/// `{type: string, format: decimal}` is checked text that keeps every digit. The 28 significant digits of
+/// `rust_decimal` would refuse longer values that the format allows. `decimal128` is checked text too, held to the
+/// limits of IEEE 754 decimal128.
 #[test]
 fn a_string_decimal_is_checked_text() {
     let doc = common::spec(
@@ -83,8 +83,7 @@ fn a_string_decimal_is_checked_text() {
     let t = common::file(&common::generate("string-decimal", &doc, &crate::emit::Options::default()), "types.rs")
         .to_owned();
     assert!(t.contains("pub amount: runtime::DecimalText"), "{t}");
-    // `decimal128` is not a string format of the registry: a string with it is not checked.
-    assert!(t.contains("pub wide: String"), "{t}");
+    assert!(t.contains("pub wide: runtime::Decimal128Text"), "{t}");
 }
 
 /// `date-time-local` and `time-local` (RFC 3339 without an offset) take the date library's civil types.

@@ -136,6 +136,7 @@ fn text_ty(f: Format) -> TokenStream {
         Format::Ipv4Cidr => "Ipv4CidrText",
         Format::Ipv6Cidr => "Ipv6CidrText",
         Format::Decimal => "DecimalText",
+        Format::Decimal128 => "Decimal128Text",
         Format::HttpDate => "HttpDateText",
         Format::Duration => "DurationText",
         Format::JsonPointer => "JsonPointerText",
@@ -193,6 +194,7 @@ fn library_ty(libs: FormatLibs, f: Format) -> Option<TokenStream> {
         (Format::Uuid, false, _)
         | (
             Format::Decimal
+            | Format::Decimal128
             | Format::HttpDate
             | Format::Duration
             | Format::UriReference

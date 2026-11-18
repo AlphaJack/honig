@@ -182,6 +182,9 @@ pub type Ipv4CidrText = Formatted<format::Ipv4Cidr>;
 pub type Ipv6CidrText = Formatted<format::Ipv6Cidr>;
 /// `{type: string, format: decimal}`: every digit, past what a decimal type holds.
 pub type DecimalText = Formatted<format::Decimal>;
+/// `{type: string, format: decimal128}`: a decimal that IEEE 754 decimal128 holds exactly, at most 34 significant
+/// digits within its exponent range.
+pub type Decimal128Text = Formatted<format::Decimal128>;
 /// `format: http-date`.
 pub type HttpDateText = Formatted<format::HttpDate>;
 /// `format: duration`: no std type holds `P1M`, a month has no fixed length.

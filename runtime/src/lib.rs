@@ -76,7 +76,9 @@ pub use decimal::{Decimal, NotADecimal};
 pub use error::{ApiError, Error};
 pub use formatted::Formatted;
 pub use formatted::UuidText;
-pub use formatted::{DateText, DateTimeLocalText, DateTimeText, DecimalText, DurationText, HttpDateText};
+pub use formatted::{
+    DateText, DateTimeLocalText, DateTimeText, Decimal128Text, DecimalText, DurationText, HttpDateText,
+};
 pub use formatted::{Ipv4CidrText, Ipv6CidrText, IriReferenceText, IriText, JsonPointerText, RegexText};
 pub use formatted::{RelativeJsonPointerText, TimeLocalText, TimeText, UriReferenceText, UriTemplateText, UriText};
 #[cfg(feature = "jiff")]

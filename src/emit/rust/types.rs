@@ -1275,11 +1275,7 @@ fn checked_type(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, def
             (checks, quote!(Copy, PartialOrd,), None)
         }
         Base::Decimal => {
-            let checks = super::validate::float_checks(
-                &c.constraints,
-                &super::validate::float_value(&c.base, &quote!(&value)),
-                &path,
-            );
+            let checks = super::validate::decimal_checks(&c.constraints, &quote!(&value), &path);
             (checks, quote!(Eq, Hash,), None)
         }
         Base::Int => {

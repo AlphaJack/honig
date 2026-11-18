@@ -229,3 +229,23 @@ fn a_union_checks_its_branch_and_refuses_a_value_no_branch_takes() {
     assert!(event(json!({"charge": {"refund": 1}})).is_ok());
     assert!(event(json!({"charge": {"neither": 1}})).is_err());
 }
+
+/// `decimal128` keeps every digit, as a number and as a string, up to the 34 significant digits and the exponent range
+/// of IEEE 754 decimal128. Past them a value does not decode.
+#[test]
+fn decimal128_holds_what_ieee_decimal128_holds() {
+    let event = |extra: &str| {
+        serde_json::from_str::<types::Event>(&format!(r#"{{"id": "{ID}", "at": "{AT}", {extra}}}"#))
+            .map_err(|e| e.to_string())
+    };
+    let digits34 = "1234567890123456789012345678901234";
+    let e = event(&format!(r#""sum": {digits34}e-10, "total": "{digits34}e-10""#)).expect("34 digits hold");
+    assert_eq!(e.sum.as_deref().map(api::Decimal::as_str), Some(format!("{digits34}e-10").as_str()));
+    assert_eq!(e.total.as_deref(), Some(format!("{digits34}e-10").as_str()));
+    let digits35 = format!("{digits34}5");
+    let sum = event(&format!(r#""sum": {digits35}"#)).expect_err("35 digits");
+    assert!(sum.contains("has 35 significant digits, more than the 34 of decimal128"), "{sum}");
+    let total = event(&format!(r#""total": "{digits35}""#)).expect_err("35 digits");
+    assert!(total.starts_with(&format!("`{digits35}` is not a valid decimal128")), "{total}");
+    assert!(event(r#""sum": 1e6145"#).is_err(), "past the exponent range");
+}

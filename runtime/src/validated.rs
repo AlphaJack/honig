@@ -127,6 +127,11 @@ pub mod format {
         "decimal"
     );
     marker!(
+        /// `decimal128` on a string: a decimal number that IEEE 754 decimal128 holds exactly.
+        Decimal128,
+        "decimal128"
+    );
+    marker!(
         /// `http-date`: one of the three forms of RFC 9110 section 5.6.7.
         HttpDate,
         "http-date"
