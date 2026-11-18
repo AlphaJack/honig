@@ -5,7 +5,8 @@ use quote::{format_ident, quote};
 
 use crate::emit::rust::names::snake;
 use crate::emit::rust::space::Space;
-use crate::emit::rust::syntax::{WORD, approx_size, box_plan, has_float, ident, lit, ty};
+use crate::emit::rust::space::WORD;
+use crate::emit::rust::syntax::{box_plan, has_float, ident, lit, ty};
 use crate::emit::rust::syntax::{pascal_ident, snake_ident};
 use crate::ir::Api;
 use crate::ir::http::{Content, OpKind, Operation, Param, Resp, Status, Style};
@@ -172,7 +173,7 @@ pub(crate) fn content_plan(space: &Space<'_>, contents: &[Content]) -> Vec<bool>
         &contents
             .iter()
             .map(|c| {
-                let s = approx_size(space, &c.ty);
+                let s = space.approx_size(&c.ty);
                 (s, Some(s))
             })
             .collect::<Vec<_>>(),
@@ -181,9 +182,9 @@ pub(crate) fn content_plan(space: &Space<'_>, contents: &[Content]) -> Vec<bool>
 
 pub(crate) fn body_size(space: &Space<'_>, contents: &[Content], plan: &[bool]) -> usize {
     if let [c] = contents {
-        return approx_size(space, &c.ty);
+        return space.approx_size(&c.ty);
     }
-    contents.iter().zip(plan).map(|(c, b)| if *b { WORD } else { approx_size(space, &c.ty) }).max().unwrap_or(0) + WORD
+    contents.iter().zip(plan).map(|(c, b)| if *b { WORD } else { space.approx_size(&c.ty) }).max().unwrap_or(0) + WORD
 }
 
 pub(crate) fn boxing(space: &Space<'_>, op: &Operation) -> Boxing {
@@ -195,7 +196,7 @@ pub(crate) fn boxing(space: &Space<'_>, op: &Operation) -> Boxing {
         .zip(&resp_enums)
         .map(|(r, plan)| {
             let body = if r.contents.is_empty() { 0 } else { body_size(space, &r.contents, plan) };
-            let headers: usize = r.headers.iter().map(|h| approx_size(space, &h.ty)).sum();
+            let headers: usize = r.headers.iter().map(|h| space.approx_size(&h.ty)).sum();
             let status = if status_code(r).is_none() { 2 } else { 0 };
             (body + headers + status, (!r.contents.is_empty()).then_some(body))
         })

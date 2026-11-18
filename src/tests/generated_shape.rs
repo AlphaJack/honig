@@ -594,3 +594,33 @@ fn a_macro_body_reads_as_items() {
         "{types}"
     );
 }
+
+/// A response of a union of unions: each layer holds the two before it, so 2^40 paths reach the bottom. Its size is
+/// found once per type and to the bottom: about 340 bytes for `U39` against about 100 for the struct of `201`, so `Ok`
+/// is boxed. Cut at 16 levels, `U39` read as about 180.
+#[test]
+fn a_response_of_a_union_of_unions_is_sized_to_the_bottom() {
+    let mut schemas = serde_json::Map::new();
+    schemas.insert("U0".into(), json!({"type": "object", "properties": {"a": {"type": "integer"}}}));
+    schemas.insert("U1".into(), json!({"type": "object", "properties": {"b": {"type": "string"}}}));
+    for i in 2..40 {
+        let r = |j: usize| json!({"$ref": format!("#/components/schemas/U{j}")});
+        schemas.insert(format!("U{i}"), json!({"anyOf": [r(i - 1), r(i - 2)]}));
+    }
+    let fields: Vec<String> = (0..13).map(|i| format!("f{i}")).collect();
+    let props: serde_json::Map<String, serde_json::Value> =
+        fields.iter().map(|f| (f.clone(), json!({"type": "integer", "format": "int64"}))).collect();
+    let body =
+        |schema: serde_json::Value| json!({"description": "ok", "content": {"application/json": {"schema": schema}}});
+    let doc = common::spec(
+        "3.1.0",
+        &json!({"/u": {"get": {"operationId": "u", "responses": {
+            "200": body(json!({"$ref": "#/components/schemas/U39"})),
+            "201": body(json!({"type": "object", "required": fields, "properties": props})),
+        }}}}),
+        &json!({"schemas": schemas}),
+    );
+    let files = common::generate("shape-union-of-unions", &doc, &crate::emit::Options::default());
+    let ops = common::file(&files, "operations.rs");
+    assert!(ops.contains("Ok(Box<types::U39>)"), "{ops}");
+}

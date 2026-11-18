@@ -672,7 +672,7 @@ impl TypeSpace {
 
     /// Resolves aliases and wrappers down to the JSON kind on the wire.
     pub(crate) fn kind_of(&self, ty: &Ty) -> JsonKind {
-        kind_in(&self.defs, ty, 0)
+        kind_in(&self.defs, ty)
     }
 }
 
