@@ -357,22 +357,6 @@ checked_impls!(TreeValue, serde_json::Value);
 pub mod builders {
     use super as types;
     use super::runtime;
-    impl super::Product {
-        /// Starts a builder from the required properties.
-        pub fn builder(name: impl TryInto<String, Error: std::fmt::Display>) -> Product {
-            Product(
-                runtime::Builder::start(|| Ok(Self::new(runtime::field("name", name)?))),
-            )
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct Product(runtime::Builder<super::Product>);
-    impl Product {
-        /// Returns the value.
-        pub fn build(self) -> Result<super::Product, runtime::BuildError> {
-            self.0.build()
-        }
-    }
     impl super::Page {
         /// Starts a builder from the required properties.
         pub fn builder(
@@ -449,32 +433,6 @@ pub mod builders {
         /// Returns the value once its whole schema holds.
         pub fn build(self) -> Result<super::Tree, runtime::BuildError> {
             self.0.build().and_then(super::Tree::try_from)
-        }
-    }
-    impl super::StringTree {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            value: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> StringTree {
-            StringTree(
-                runtime::Builder::start(|| Ok(
-                    Self::new(runtime::field("value", value)?),
-                )),
-            )
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct StringTree(runtime::Builder<super::StringTree>);
-    impl StringTree {
-        pub fn children(
-            self,
-            value: impl TryInto<Vec<types::StringTree>, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("children", value, |s, v| s.children = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::StringTree, runtime::BuildError> {
-            self.0.build()
         }
     }
     impl super::PageFields {

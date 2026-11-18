@@ -38,32 +38,3 @@ impl PutFileOk {
         Self { bytes, chunks }
     }
 }
-/// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
-/// its field. `build` returns the first field that did not convert.
-pub mod builders {
-    use super::runtime;
-    impl super::PutFileOk {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            bytes: impl TryInto<i64, Error: std::fmt::Display>,
-            chunks: impl TryInto<i64, Error: std::fmt::Display>,
-        ) -> PutFileOk {
-            PutFileOk(
-                runtime::Builder::start(|| Ok(
-                    Self::new(
-                        runtime::field("bytes", bytes)?,
-                        runtime::field("chunks", chunks)?,
-                    ),
-                )),
-            )
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct PutFileOk(runtime::Builder<super::PutFileOk>);
-    impl PutFileOk {
-        /// Returns the value.
-        pub fn build(self) -> Result<super::PutFileOk, runtime::BuildError> {
-            self.0.build()
-        }
-    }
-}

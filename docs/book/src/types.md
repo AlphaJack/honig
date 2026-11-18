@@ -146,13 +146,13 @@ Where the field type is known, `try_into` builds the value. A spec `default` is 
 {{#include ../../../tests/e2e/tests/v32_catalog/schemas.rs:try-into}}
 ```
 
-A builder converts every field and returns the first one that does not convert, from `build`. So the whole value needs one `?`. `builder` takes the required properties, so leaving one out is still a compile error. Each setter takes anything that converts to the type of its field: a number for a checked number, a `&str` for a string, a checked string or an enum:
+A struct with a checked field has a builder. A builder converts every field and returns the first one that does not convert, from `build`. So the whole value needs one `?`. `builder` takes the required properties, so leaving one out is still a compile error. Each setter takes anything that converts to the type of its field: a number for a checked number, a `&str` for a string, a checked string or an enum:
 
 ```rust
 {{#include ../../../tests/e2e/tests/v32_validation.rs:builder}}
 ```
 
-The error names the field as the description spells it: `` `age`: 150 must be less than 150 ``. The builder of `User` is `types::builders::User`.
+The error names the field as the description spells it: `` `age`: 150 must be less than 150 ``. The builder of `User` is `types::builders::User`. A struct without a checked field has none: `new` and struct update build it with no `?`.
 
 `try_from`, `parse` and `build` all fail with `api::BuildError`, so a function that mixes them needs no `Box<dyn Error>`. In a handler, `?` turns it into a `500`: the handler's inputs are checked already, so a value that its schema refuses came from the server's own data.
 

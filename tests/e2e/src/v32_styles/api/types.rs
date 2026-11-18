@@ -44,34 +44,3 @@ impl Obj {
         Self { r, g, b }
     }
 }
-/// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
-/// its field. `build` returns the first field that did not convert.
-pub mod builders {
-    use super::runtime;
-    impl super::Obj {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            r: impl TryInto<i64, Error: std::fmt::Display>,
-            g: impl TryInto<i64, Error: std::fmt::Display>,
-            b: impl TryInto<i64, Error: std::fmt::Display>,
-        ) -> Obj {
-            Obj(
-                runtime::Builder::start(|| Ok(
-                    Self::new(
-                        runtime::field("R", r)?,
-                        runtime::field("G", g)?,
-                        runtime::field("B", b)?,
-                    ),
-                )),
-            )
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct Obj(runtime::Builder<super::Obj>);
-    impl Obj {
-        /// Returns the value.
-        pub fn build(self) -> Result<super::Obj, runtime::BuildError> {
-            self.0.build()
-        }
-    }
-}
