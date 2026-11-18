@@ -54,7 +54,8 @@ pub fn fixtures(root: &Path) -> Result<Vec<(String, PathBuf)>, Error> {
 pub fn e2e_files(e2e: &Path, root: &Path) -> Result<Vec<(PathBuf, String)>, Error> {
     let text = crate::disk::read(&e2e.join("Cargo.toml"))?;
     let parsed = crate::settings::Manifest::load(&e2e.join("Cargo.toml"))?;
-    let libs = crate::settings::format_libs(&parsed)?;
+    // The fixtures pick their libraries through the dependencies of the crate, as `init` does.
+    let libs = crate::settings::detected_format_libs(&parsed);
     let opts = crate::emit::Options {
         rust: crate::emit::rust::Options { libs, ..Default::default() },
         tests: true,

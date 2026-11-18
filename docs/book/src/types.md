@@ -96,7 +96,7 @@ formats = { uuid = true, dates = "chrono", url = true, ipnet = true }
 
 `dates` is `"chrono"`, `"jiff"` or `"string"`. Each library named must be a dependency with its `serde` feature. `cargo honig init` writes the table from the dependencies the crate has then.
 
-Without the table the dependencies decide: a library with its `serde` feature gives its type. A dependency added later then changes field types, so `generate` warns and prints the line that keeps the current types. It also warns when one of these libraries does not have its `serde` feature, and when both `chrono` and `jiff` are there. Dates then use `chrono`.
+The table is required. Without it, a dependency added for another reason would change the types of fields. `generate` stops and prints the line that keeps the types that the dependencies give today, such as `formats = { uuid = true }`.
 
 {{#include generated/formats.md}}
 

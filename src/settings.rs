@@ -36,7 +36,7 @@ pub(crate) const SETTINGS: [(&str, Option<&str>, &str); 10] = [
     ("tests", Some("false"), "generate a test that the description's examples decode"),
     ("unknown_fields", Some("\"drop\""), "\"keep\": objects without additionalProperties keep unknown keys"),
     ("overlays", Some("[]"), "Overlays (1.0 to 1.2) applied in order to the spec"),
-    ("formats", Some("the dependencies"), "library types of string formats, like { uuid = true, dates = \"chrono\" }"),
+    ("formats", None, "required: library types of string formats, like { uuid = true, dates = \"chrono\" } or {}"),
     ("derives", Some("{}"), "extra derives on every type or on one type by Rust name, like { \"*\" = [\"Hash\"] }"),
 ];
 
@@ -746,21 +746,29 @@ pub(crate) struct FormatLibs {
     pub dates: Option<DateLib>,
 }
 
-/// The libraries whose types string formats take with their `serde` feature.
-const FORMAT_LIBRARIES: [&str; 5] = [UUID, URL, IPNET, CHRONO, JIFF];
 const CHRONO: &str = "chrono";
 /// `jiff` (with its `serde` feature): the dates and times. Also the runtime feature of `runtime::FullTime`.
 pub(crate) const JIFF: &str = "jiff";
 
-/// Returns the library types that string formats take. The `formats` table decides when the crate has one. Each library
-/// that it names must be a dependency with its `serde` feature. Without the table the dependencies decide.
+/// Returns the library types that string formats take: the `formats` table says them. Each library that it names must
+/// be a dependency with its `serde` feature. Without the table a dependency added for another reason would change the
+/// types of fields, so the table is required. The error prints the line that keeps what the dependencies give today.
 ///
 /// # Errors
-/// The table holds a value of the wrong kind or names a library that the crate does not depend on with `serde`.
+/// There is no table, it holds a value of the wrong kind or it names a library that the crate does not depend on with
+/// `serde`.
 pub(crate) fn format_libs<'a>(module: impl Into<Module<'a>>) -> Result<FormatLibs, Error> {
     let module = module.into();
     let manifest = module.manifest;
-    let Some(libs) = formats_setting(module)? else { return Ok(detected_format_libs(manifest)) };
+    let Some(libs) = formats_setting(module)? else {
+        let pin = formats_line(detected_format_libs(manifest));
+        return Err(setting(
+            &module.path(),
+            "formats",
+            format!("set: `{pin}` keeps the types of today"),
+            "none".into(),
+        ));
+    };
     let formats = &format!("{}.formats", module.path());
     let named = [
         (UUID, "uuid", libs.uuid),
@@ -836,34 +844,6 @@ pub(crate) fn detected_format_libs(manifest: &Manifest) -> FormatLibs {
     }
 }
 
-/// Returns why the format types may change or are not the expected ones. Without a `formats` table the dependencies
-/// decide them: a dependency added later changes field types. A library lacks its `serde` feature or `chrono` and
-/// `jiff` are both there.
-pub(crate) fn format_lib_warnings<'a>(module: impl Into<Module<'a>>) -> Vec<String> {
-    let module = module.into();
-    let manifest = module.manifest;
-    if module.get("formats").is_some() {
-        return vec![];
-    }
-    let pin = formats_line(detected_format_libs(manifest));
-    let mut out = vec![format!(
-        "string formats take the types of the libraries this crate depends on, so a new dependency changes field \
-         types: pin them with `{pin}` in [{}]",
-        module.path()
-    )];
-    out.extend(
-        FORMAT_LIBRARIES.iter().filter(|lib| manifest.has_dependency(lib) && !manifest.has_serde_dependency(lib)).map(
-            |lib| {
-                format!("`{lib}` has no `serde` feature, so its formats stay `String`: add it to use `{lib}`'s types")
-            },
-        ),
-    );
-    if manifest.has_serde_dependency(CHRONO) && manifest.has_serde_dependency(JIFF) {
-        out.push(format!("both `{CHRONO}` and `{JIFF}` have `serde`: dates and times use `{CHRONO}`"));
-    }
-    out
-}
-
 #[cfg(test)]
 #[expect(clippy::disallowed_methods, reason = "tests set up files of their own")]
 mod tests {
@@ -895,40 +875,7 @@ mod tests {
     }
 
     #[test]
-    fn a_format_library_without_serde_or_a_second_date_library_is_a_warning() {
-        let warnings = |deps: &str| format_lib_warnings(&parse(&format!("[dependencies]\n{deps}")));
-        let pin = |line: &str| {
-            format!(
-                "string formats take the types of the libraries this crate depends on, so a new dependency changes \
-                 field types: pin them with `{line}` in [package.metadata.honig.api]"
-            )
-        };
-        assert_eq!(
-            warnings("uuid = { version = \"1\", features = [\"serde\"] }\n"),
-            [pin("formats = { uuid = true }")]
-        );
-        assert_eq!(
-            warnings("uuid = \"1\"\n"),
-            [
-                pin("formats = {}"),
-                "`uuid` has no `serde` feature, so its formats stay `String`: add it to use `uuid`'s types".to_owned()
-            ]
-        );
-        let both = "chrono = { version = \"0.4\", features = [\"serde\"] }\njiff = { version = \"0.2\", features = [\"serde\"] }\n";
-        assert_eq!(
-            warnings(both),
-            [
-                pin("formats = { dates = \"chrono\" }"),
-                "both `chrono` and `jiff` have `serde`: dates and times use `chrono`".to_owned()
-            ]
-        );
-        let pinned =
-            parse(&format!("[package.metadata.honig.api]\nspec = \"a.yaml\"\nformats = {{}}\n[dependencies]\n{both}"));
-        assert_eq!(format_lib_warnings(&pinned), Vec::<String>::new(), "a pinned crate is told nothing");
-    }
-
-    #[test]
-    fn the_formats_table_decides_and_the_dependencies_only_without_it() {
+    fn the_formats_table_decides_and_is_required() {
         let serde = |lib: &str| format!("{lib} = {{ version = \"1\", features = [\"serde\"] }}\n");
         let libs = |formats: &str, deps: &str| {
             format_libs(&parse(&format!(
@@ -936,9 +883,13 @@ mod tests {
             )))
         };
         let all = [serde("uuid"), serde("url"), serde("ipnet"), serde("jiff")].concat();
-        assert_eq!(
-            libs("", &all).unwrap(),
-            FormatLibs { uuid: true, url: true, ipnet: true, dates: Some(DateLib::Jiff) }
+        // No table: a dependency added for another reason would change field types. The error says what to write.
+        let missing = libs("", &all).unwrap_err().to_string();
+        assert!(
+            missing.contains(
+                "`formats` must be set: `formats = { uuid = true, url = true, ipnet = true, dates = \"jiff\" }`"
+            ),
+            "{missing}"
         );
         assert_eq!(libs("formats = {}", &all).unwrap(), FormatLibs::default(), "a dependency alone types nothing");
         assert_eq!(

@@ -189,6 +189,12 @@ fn generate_reports_errors_warnings_and_hints_and_adds_the_runtime() {
     let manifest = "[package]\nname = \"cli_hints\"\nedition = \"2024\"\n\n[package.metadata.honig.api]\n\
                     spec = \"openapi.yaml\"\n\n[dependencies]\nuuid = \"1\"\n";
     std::fs::write(dir.join("Cargo.toml"), manifest).unwrap();
+    // No `formats` table: a dependency added later would change field types. The error says what to write.
+    let (code, _, err) = in_crate(&dir, &["generate"]);
+    assert_eq!(code, Some(2), "{err}");
+    assert!(err.contains("`formats` must be set: `formats = {}`"), "{err}");
+    let manifest = manifest.replace("spec = \"openapi.yaml\"\n", "spec = \"openapi.yaml\"\nformats = {}\n");
+    std::fs::write(dir.join("Cargo.toml"), manifest).unwrap();
 
     let (code, out, err) = in_crate(&dir, &["generate"]);
     assert_eq!(code, Some(0), "{err}");
@@ -197,7 +203,6 @@ fn generate_reports_errors_warnings_and_hints_and_adds_the_runtime() {
     for line in [
         "are the same templated path",
         "generated anyway: 1 error(s) in the description",
-        "warning: `uuid` has no `serde` feature",
         "hint: add `serde = ",
         "hint: add `serde_json = ",
     ] {
