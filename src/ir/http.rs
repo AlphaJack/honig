@@ -92,6 +92,24 @@ pub(crate) struct Param {
     pub serialized: Vec<(String, Value, String)>,
 }
 
+/// The keywords of a sequential body as a whole. It may arrive an item at a time: they are checked as it does.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) struct ItemLimits {
+    /// `minItems`.
+    pub min: Option<u64>,
+    /// `maxItems`.
+    pub max: Option<u64>,
+    /// `uniqueItems`.
+    pub unique: bool,
+}
+
+impl ItemLimits {
+    /// Is there anything to check?
+    pub(crate) fn is_empty(self) -> bool {
+        self == Self::default()
+    }
+}
+
 #[derive(Debug, Clone)]
 /// One media type of a body.
 pub(crate) struct Content {
@@ -124,6 +142,8 @@ pub(crate) struct Content {
     /// `multipart/form-data` properties whose schema says `contentEncoding: base64`: each part goes out base64
     /// with `Content-Transfer-Encoding: base64` (3.2: the two are equivalent).
     pub transfer: Vec<String>,
+    /// A sequence (JSON Lines, JSON text sequences, SSE): `minItems`, `maxItems` and `uniqueItems` of its `schema`.
+    pub item_limits: ItemLimits,
 }
 
 impl Content {
@@ -1079,9 +1099,18 @@ fn contents(b: &mut Builder<'_>, holder: &Value, ptr: &str, hint: &Name) -> Vec<
             form_styles,
             serialized: if kind == MediaKind::Xml { serialized_of(b, &media_obj, &mptr) } else { vec![] },
             transfer: if kind == MediaKind::Multipart { base64_parts(b, &media_obj, &mptr) } else { vec![] },
+            item_limits: item_limits(b, kind, schema),
         });
     }
     out
+}
+
+/// Returns `minItems`, `maxItems` and `uniqueItems` of the `schema` of a sequence. None for any other kind of body.
+fn item_limits(b: &Builder<'_>, kind: MediaKind, schema: Option<&Value>) -> ItemLimits {
+    let Some(c) = schema.filter(|_| kind.is_sequence()).map(|s| b.constraints(s)) else {
+        return ItemLimits::default();
+    };
+    ItemLimits { min: c.min_items, max: c.max_items, unique: c.unique_items }
 }
 
 /// Returns the properties of a multipart object whose schema says `contentEncoding: base64`.

@@ -16,6 +16,22 @@ macro_rules! validate_impl {
         impl runtime::Validate for $t {}
     };
 }
+macro_rules! display_impl {
+    ($t:ty) => {
+        impl std::fmt::Display for $t {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                match self {
+                    Self::NoContent => f.write_str("status 204 (NoContent)"),
+                }
+            }
+        }
+    };
+}
+macro_rules! error_impl {
+    ($t:ty) => {
+        impl std::error::Error for $t {}
+    };
+}
 pub mod matrix_fs {
     use super::super::types;
     use super::super::runtime;
@@ -36,6 +52,16 @@ pub mod matrix_fs {
     pub enum Response {
         /// Done.
         NoContent,
+    }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
     }
 }
 pub mod matrix_fa {
@@ -59,6 +85,16 @@ pub mod matrix_fa {
         /// Done.
         NoContent,
     }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
+    }
 }
 pub mod matrix_fo {
     use super::super::types;
@@ -80,6 +116,16 @@ pub mod matrix_fo {
     pub enum Response {
         /// Done.
         NoContent,
+    }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
     }
 }
 pub mod matrix_ta {
@@ -103,6 +149,16 @@ pub mod matrix_ta {
         /// Done.
         NoContent,
     }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
+    }
 }
 pub mod matrix_to {
     use super::super::types;
@@ -124,6 +180,16 @@ pub mod matrix_to {
     pub enum Response {
         /// Done.
         NoContent,
+    }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
     }
 }
 pub mod label_fs {
@@ -147,6 +213,16 @@ pub mod label_fs {
         /// Done.
         NoContent,
     }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
+    }
 }
 pub mod label_fa {
     use super::super::types;
@@ -168,6 +244,16 @@ pub mod label_fa {
     pub enum Response {
         /// Done.
         NoContent,
+    }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
     }
 }
 pub mod label_fo {
@@ -191,6 +277,16 @@ pub mod label_fo {
         /// Done.
         NoContent,
     }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
+    }
 }
 pub mod label_ta {
     use super::super::types;
@@ -212,6 +308,16 @@ pub mod label_ta {
     pub enum Response {
         /// Done.
         NoContent,
+    }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
     }
 }
 pub mod label_to {
@@ -235,6 +341,16 @@ pub mod label_to {
         /// Done.
         NoContent,
     }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
+    }
 }
 pub mod simple_fa {
     use super::super::types;
@@ -256,6 +372,16 @@ pub mod simple_fa {
     pub enum Response {
         /// Done.
         NoContent,
+    }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
     }
 }
 pub mod simple_fo {
@@ -279,6 +405,16 @@ pub mod simple_fo {
         /// Done.
         NoContent,
     }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
+    }
 }
 pub mod simple_ta {
     use super::super::types;
@@ -300,6 +436,16 @@ pub mod simple_ta {
     pub enum Response {
         /// Done.
         NoContent,
+    }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
     }
 }
 pub mod simple_to {
@@ -323,6 +469,16 @@ pub mod simple_to {
         /// Done.
         NoContent,
     }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
+    }
 }
 pub mod form_fa {
     use super::super::types;
@@ -344,6 +500,16 @@ pub mod form_fa {
     pub enum Response {
         /// Done.
         NoContent,
+    }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
     }
 }
 pub mod form_fo {
@@ -367,6 +533,16 @@ pub mod form_fo {
         /// Done.
         NoContent,
     }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
+    }
 }
 pub mod form_ta {
     use super::super::types;
@@ -388,6 +564,16 @@ pub mod form_ta {
     pub enum Response {
         /// Done.
         NoContent,
+    }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
     }
 }
 pub mod form_to {
@@ -411,6 +597,16 @@ pub mod form_to {
         /// Done.
         NoContent,
     }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
+    }
 }
 pub mod space_fa {
     use super::super::types;
@@ -432,6 +628,16 @@ pub mod space_fa {
     pub enum Response {
         /// Done.
         NoContent,
+    }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
     }
 }
 pub mod space_fo {
@@ -455,6 +661,16 @@ pub mod space_fo {
         /// Done.
         NoContent,
     }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
+    }
 }
 pub mod pipe_fa {
     use super::super::types;
@@ -476,6 +692,16 @@ pub mod pipe_fa {
     pub enum Response {
         /// Done.
         NoContent,
+    }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
     }
 }
 pub mod pipe_fo {
@@ -499,6 +725,16 @@ pub mod pipe_fo {
         /// Done.
         NoContent,
     }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
+    }
 }
 pub mod deep_o {
     use super::super::types;
@@ -520,6 +756,16 @@ pub mod deep_o {
     pub enum Response {
         /// Done.
         NoContent,
+    }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
     }
 }
 pub mod header_fa {
@@ -543,6 +789,16 @@ pub mod header_fa {
         /// Done.
         NoContent,
     }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
+    }
 }
 pub mod header_fo {
     use super::super::types;
@@ -564,6 +820,16 @@ pub mod header_fo {
     pub enum Response {
         /// Done.
         NoContent,
+    }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
     }
 }
 pub mod header_ta {
@@ -587,6 +853,16 @@ pub mod header_ta {
         /// Done.
         NoContent,
     }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
+    }
 }
 pub mod header_to {
     use super::super::types;
@@ -608,6 +884,16 @@ pub mod header_to {
     pub enum Response {
         /// Done.
         NoContent,
+    }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
     }
 }
 pub mod cookie_form_fa {
@@ -631,6 +917,16 @@ pub mod cookie_form_fa {
         /// Done.
         NoContent,
     }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
+    }
 }
 pub mod cookie_form_fo {
     use super::super::types;
@@ -652,6 +948,16 @@ pub mod cookie_form_fo {
     pub enum Response {
         /// Done.
         NoContent,
+    }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
     }
 }
 pub mod cookie_fa {
@@ -675,6 +981,16 @@ pub mod cookie_fa {
         /// Done.
         NoContent,
     }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
+    }
 }
 pub mod cookie_fo {
     use super::super::types;
@@ -696,6 +1012,16 @@ pub mod cookie_fo {
     pub enum Response {
         /// Done.
         NoContent,
+    }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
     }
 }
 pub mod cookie_ta {
@@ -719,6 +1045,16 @@ pub mod cookie_ta {
         /// Done.
         NoContent,
     }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
+    }
 }
 pub mod cookie_to {
     use super::super::types;
@@ -740,5 +1076,15 @@ pub mod cookie_to {
     pub enum Response {
         /// Done.
         NoContent,
+    }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
     }
 }

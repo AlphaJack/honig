@@ -6,6 +6,8 @@ use std::cmp::Ordering;
 
 /// The base of decimal text.
 const DECIMAL_BASE: u128 = 10;
+/// [`DECIMAL_BASE`] as a digit is held.
+const DIGIT_BASE: u8 = 10;
 
 /// Is `s` made of ASCII digits only? An empty `s` is.
 pub(crate) fn all_digits(s: &str) -> bool {
@@ -73,8 +75,7 @@ pub(crate) fn compare(a: &str, b: &str) -> Option<Ordering> {
     Some(if sa < 0 { magnitude.reverse() } else { magnitude })
 }
 
-/// Is `value` a multiple of `of`? Both are decimal text. `None` when either is not, when `of` is not positive, or
-/// when `of` has more than 19 significant digits.
+/// Is `value` a multiple of `of`? Both are decimal text. `None` when either is not or when `of` is not positive.
 ///
 /// `value` is `a*10^e` and `of` is `b*10^f`, with `a` and `b` not ending in zeros. The quotient is `(a / b)*10^(e-f)`:
 /// a whole number when `a*10^(e-f)` is a multiple of `b`. With `e < f` it would need `a` to end in a zero, so it is not.
@@ -85,15 +86,52 @@ pub(crate) fn is_multiple(value: &str, of: &str) -> Option<bool> {
     if m.negative || m.digits.is_empty() {
         return None;
     }
-    let b: u128 = u128::from(m.digits.parse::<u64>().ok()?);
     if v.digits.is_empty() {
         return Some(true);
     }
     let Some(shift) = v.exponent.checked_sub(m.exponent).filter(|s| *s >= 0) else { return Some(false) };
+    let Ok(b) = m.digits.parse::<u64>().map(u128::from) else {
+        return Some(divides_long(v.digits, shift.unsigned_abs(), m.digits));
+    };
     // `a mod b`, a digit at a time: `r < b < 2^64` keeps `10*r + 9` inside a `u128`.
     let a = v.digits.bytes().fold(0, |r, d| (r * DECIMAL_BASE + u128::from(d - b'0')) % b);
     Some((a * power_of_ten_mod(shift.unsigned_abs(), b)).is_multiple_of(b))
 }
+
+/// Does `b` divide `a*10^shift`? `a` and `b` are digit text without leading zeros, `b` of any length. It is long
+/// division: one digit of the dividend at a time, the remainder kept below `b` by at most nine subtractions.
+///
+/// Only the first `4*len(b)` factors of ten can matter: `b` holds fewer factors of 2, and of 5, than that. Past them a
+/// factor of ten is coprime to what is left of `b`, so the check ends however large `shift` is.
+fn divides_long(a: &str, shift: u64, b: &str) -> bool {
+    let b: Vec<u8> = b.bytes().map(|d| d - b'0').collect();
+    let zeros = shift.min(FACTORS_PER_DIGIT.saturating_mul(u64::try_from(b.len()).unwrap_or(u64::MAX)));
+    let mut r: Vec<u8> = vec![];
+    for d in a.bytes().map(|d| d - b'0').chain((0..zeros).map(|_| 0)) {
+        if !(r.is_empty() && d == 0) {
+            r.push(d);
+        }
+        while r.len() > b.len() || (r.len() == b.len() && r >= b) {
+            subtract(&mut r, &b);
+        }
+    }
+    r.is_empty()
+}
+
+/// Subtracts `b` from `r`, both digits with the most significant first and `r >= b`, and drops the leading zeros.
+fn subtract(r: &mut Vec<u8>, b: &[u8]) {
+    let mut borrow = 0;
+    for i in 0..r.len() {
+        let at = r.len() - 1 - i;
+        let take = b.len().checked_sub(1 + i).map_or(0, |j| b[j]) + borrow;
+        (r[at], borrow) = if r[at] >= take { (r[at] - take, 0) } else { (r[at] + DIGIT_BASE - take, 1) };
+    }
+    let lead = r.iter().take_while(|d| **d == 0).count();
+    r.drain(..lead);
+}
+
+/// An upper bound of the factors of 2, and of 5, per decimal digit of a number: `10^n < 2^(4n)`.
+const FACTORS_PER_DIGIT: u64 = 4;
 
 /// Returns `10^k mod b` by squaring. `b < 2^64`, so every product fits a `u128`.
 fn power_of_ten_mod(mut k: u64, b: u128) -> u128 {
@@ -145,5 +183,20 @@ mod tests {
         }
         assert_eq!(is_multiple("1", "0"), None);
         assert_eq!(is_multiple("1", "-2"), None);
+    }
+
+    /// A `multipleOf` of any length divides exactly: past 19 digits an `f64` fallback took values off by less than a
+    /// millionth.
+    #[test]
+    fn a_long_multiple_of_divides_exactly() {
+        let of = "123456789012345678901"; // 21 significant digits
+        assert_eq!(is_multiple("246913578024691357802", of), Some(true));
+        assert_eq!(is_multiple("246913578024691357803", of), Some(false), "one past twice");
+        assert_eq!(is_multiple("1.23456789012345678901e30", of), Some(true), "a power of ten times it");
+        assert_eq!(is_multiple("0.000000000000000000002", "0.000000000000000000001"), Some(true));
+        assert_eq!(is_multiple("0.0000000000000000000025", "0.000000000000000000001"), Some(false));
+        // Factors of ten past what `of` holds of 2 and 5 change nothing: the check ends however large the exponent.
+        assert_eq!(is_multiple("7e9000000000000000000", "1024000000000000000000001"), Some(false));
+        assert_eq!(is_multiple("1e9000000000000000000", "2048000000000000000000000"), Some(true));
     }
 }

@@ -716,17 +716,6 @@ impl V<'_> {
             o.pattern.iter().map(|p| (join(ptr, "pattern"), p)).chain(
                 o.pattern_properties.iter().flatten().map(|(p, _)| (join(&join(ptr, "patternProperties"), p), p)),
             );
-        // A quantified group that holds a quantifier backtracks exponentially on a value that almost matches.
-        // `maxLength` bounds the value that the pattern runs on.
-        if let Some(p) = o.pattern.as_deref().filter(|p| o.max_length.is_none() && nested_quantifier(p)) {
-            self.diags.warning(
-                join(ptr, "pattern"),
-                format!(
-                    "pattern `{p}` repeats a group that repeats: a value that almost matches takes exponential time. \
-                     Add `maxLength`, which is checked first"
-                ),
-            );
-        }
         for (at, p) in patterns {
             if let Err(e) = regress::Regex::with_flags(p, "u").or_else(|_| regress::Regex::new(p)) {
                 self.diags.warning(
@@ -783,77 +772,4 @@ impl V<'_> {
 /// Returns the items of an optional list with their index.
 fn indexed<T>(items: Option<&[T]>) -> impl Iterator<Item = (usize, &T)> {
     items.into_iter().flatten().enumerate()
-}
-
-/// Returns whether `pattern` repeats a group that itself repeats something, as `(a+)+` and `(\w*\s?)*` do. A
-/// backtracking engine tries the ways to split a run among the two repeats: exponentially many on a value that almost
-/// matches.
-fn nested_quantifier(pattern: &str) -> bool {
-    // Per open group: whether it holds a repeat.
-    let mut groups: Vec<bool> = Vec::new();
-    let mut chars = pattern.chars();
-    let mut in_class = false;
-    // Whether the item just read is a group that holds a repeat.
-    let mut last_group_repeats = false;
-    while let Some(c) = chars.next() {
-        let repeats_now = match c {
-            '\\' => {
-                chars.next();
-                false
-            }
-            '[' if !in_class => {
-                in_class = true;
-                false
-            }
-            ']' if in_class => {
-                in_class = false;
-                false
-            }
-            _ if in_class => false,
-            '(' => {
-                groups.push(false);
-                false
-            }
-            ')' => {
-                last_group_repeats = groups.pop().unwrap_or(false);
-                // A group that holds a repeat makes the group around it hold one too.
-                if let Some(outer) = groups.last_mut() {
-                    *outer |= last_group_repeats;
-                }
-                continue;
-            }
-            '+' | '*' => true,
-            // `{n,}` and `{n,m}` repeat. `{n}` repeats a fixed count.
-            '{' => {
-                let body: String = chars.by_ref().take_while(|c| *c != '}').collect();
-                body.contains(',')
-            }
-            _ => false,
-        };
-        if repeats_now {
-            if last_group_repeats {
-                return true;
-            }
-            if let Some(g) = groups.last_mut() {
-                *g = true;
-            }
-        }
-        last_group_repeats = false;
-    }
-    false
-}
-
-#[cfg(test)]
-mod tests {
-    use super::nested_quantifier;
-
-    #[test]
-    fn a_repeated_group_that_repeats_is_nested() {
-        for nested in ["^(a+)+$", "(\\w*\\s?)*", "((a+)b)+", "(?:x|y+){2,}", "(a{1,3})*"] {
-            assert!(nested_quantifier(nested), "{nested}");
-        }
-        for flat in ["^[a-z]+$", "(a|b)+", "(a+)?", "(a+)b+", "(a+){3}", "[(a+)]+", "\\(a+\\)+", "^\\d{4}-\\d{2}$"] {
-            assert!(!nested_quantifier(flat), "{flat}");
-        }
-    }
 }

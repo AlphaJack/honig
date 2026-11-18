@@ -298,13 +298,23 @@ pub fn check_media(actual: &str, declared: &[&str]) -> Result<(), Reason> {
 /// # Errors
 /// [`Reason::Invalid`] with every violation, at `/body/...`.
 pub fn check_raw_json(body: &[u8], schema: &Value) -> Result<(), Reason> {
+    check_raw_json_in(body, schema, None)
+}
+
+/// [`check_raw_json`] with the definitions that the schemas of a generated module share
+/// ([`check_schema_in`](crate::validate::check_schema_in)).
+///
+/// # Errors
+/// The body breaks the schema.
+pub fn check_raw_json_in(body: &[u8], schema: &Value, shared: Option<&Map<String, Value>>) -> Result<(), Reason> {
     let Ok(value) = serde_json::from_slice::<Value>(body) else { return Ok(()) };
     let mut out = vec![];
-    crate::validate::check_schema(
+    crate::validate::check_schema_in(
         &mut out,
         &crate::InstancePath::Key(&crate::InstancePath::Root, "body"),
         &value,
         schema,
+        shared,
     );
     if out.is_empty() { Ok(()) } else { Err(Reason::Invalid(out)) }
 }

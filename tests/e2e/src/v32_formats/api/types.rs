@@ -536,17 +536,19 @@ impl runtime::Validate for Event {
             {
                 static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                 let value = runtime::to_value(v).unwrap_or_default();
-                runtime::check_schema(
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"oneOf\":[{\"type\":\"object\",\"required\":[\"refund\"],\"properties\":{\"refund\":{\"type\":\"number\",\"format\":\"decimal\"}}},{\"type\":\"object\",\"required\":[\"fee\"],\"properties\":{\"fee\":{\"type\":\"number\",\"format\":\"decimal\"}}}]}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
                     out,
                     &runtime::InstancePath::Key(path, "charge"),
                     &value,
-                    SCHEMA
-                        .get_or_init(|| {
-                            serde_json::from_str(
-                                    "{\"oneOf\":[{\"type\":\"object\",\"required\":[\"refund\"],\"properties\":{\"refund\":{\"type\":\"number\",\"format\":\"decimal\"}}},{\"type\":\"object\",\"required\":[\"fee\"],\"properties\":{\"fee\":{\"type\":\"number\",\"format\":\"decimal\"}}}]}",
-                                )
-                                .unwrap_or_default()
-                        }),
+                    schema,
+                    None,
                 );
             }
         }
@@ -582,14 +584,16 @@ impl runtime::Validate for Card {
         {
             static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
             let value = runtime::to_value(&self.method).unwrap_or_default();
-            runtime::check_schema(
+            let schema = SCHEMA
+                .get_or_init(|| {
+                    serde_json::from_str("{\"const\":\"Card\"}").unwrap_or_default()
+                });
+            runtime::check_schema_in(
                 out,
                 &runtime::InstancePath::Key(path, "method"),
                 &value,
-                SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str("{\"const\":\"Card\"}").unwrap_or_default()
-                    }),
+                schema,
+                None,
             );
         }
     }
@@ -617,15 +621,16 @@ impl runtime::Validate for Transfer {
         {
             static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
             let value = runtime::to_value(&self.method).unwrap_or_default();
-            runtime::check_schema(
+            let schema = SCHEMA
+                .get_or_init(|| {
+                    serde_json::from_str("{\"const\":\"Transfer\"}").unwrap_or_default()
+                });
+            runtime::check_schema_in(
                 out,
                 &runtime::InstancePath::Key(path, "method"),
                 &value,
-                SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str("{\"const\":\"Transfer\"}")
-                            .unwrap_or_default()
-                    }),
+                schema,
+                None,
             );
         }
     }

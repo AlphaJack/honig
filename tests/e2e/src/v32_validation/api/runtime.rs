@@ -2,3 +2,15 @@
 pub use honig::*;
 #[doc(hidden)]
 pub use honig::__private::*;
+/// The definitions that the run-time checks of this module share, parsed once.
+#[doc(hidden)]
+pub fn schema_defs() -> Option<&'static serde_json::Map<String, serde_json::Value>> {
+    static DEFS: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+    DEFS.get_or_init(|| {
+            serde_json::from_str(
+                    "{\"/components/schemas/EntryFields\":{\"type\":\"object\",\"properties\":{\"lines\":{\"type\":\"array\",\"items\":{\"$ref\":\"#/$defs/~1components~1schemas~1Line\"}}}},\"/components/schemas/Line\":{\"type\":\"object\",\"properties\":{\"note\":{\"type\":[\"string\",\"null\"],\"maxLength\":3}}},\"/components/schemas/NoOptions\":{\"type\":\"object\",\"additionalProperties\":false},\"/components/schemas/Tree\":{\"oneOf\":[{\"type\":\"object\",\"required\":[\"items\",\"x\"],\"properties\":{\"items\":{\"type\":\"array\",\"items\":{\"$ref\":\"#/$defs/~1components~1schemas~1Tree\"}},\"x\":{\"type\":\"string\"}}},{\"type\":\"object\",\"required\":[\"items\",\"x\"],\"properties\":{\"items\":{\"type\":\"array\",\"items\":{\"$ref\":\"#/$defs/~1components~1schemas~1Tree\"}},\"x\":{\"type\":\"integer\"}}}]}}",
+                )
+                .unwrap_or_default()
+        })
+        .as_object()
+}

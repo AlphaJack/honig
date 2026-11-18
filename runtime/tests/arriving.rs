@@ -6,6 +6,7 @@
 use assert_matches::assert_matches;
 
 use futures_util::StreamExt;
+use honig::__private::Limits;
 use honig::__private::{Framing, block_on};
 use honig::{Blob, ByteStream, Error, InstancePath, Items, Violation};
 use serde::{Deserialize, Serialize};
@@ -106,4 +107,24 @@ fn an_arriving_body_passes_on_what_the_handler_has_not_read() {
     let body = items.into_body(Framing::JsonLines).unwrap();
     assert_eq!(body.bytes(), b"");
     assert_eq!(block_on(body.collect()).unwrap(), b"{\"a\":2}\n{\"a\":-3}\n".as_slice());
+}
+
+/// `minItems`, `maxItems` and `uniqueItems` hold on a body as it arrives: the item past `maxItems` and an item met
+/// before are an `Err`, and so is the end of a body short of `minItems`. A body read whole is checked at once.
+#[test]
+fn an_arriving_body_is_held_to_its_item_limits() {
+    let limited = |chunks: &[&[u8]], limits: Limits| read_all(arriving(chunks).limited(limits).unwrap());
+    let unique = Limits { unique: true, ..Limits::default() };
+    let read = limited(&[b"{\"a\":1}\n{\"a\":1}\n{\"a\":2}\n"], unique);
+    assert_eq!(read[0], Ok(Event { a: 1 }));
+    assert!(read[1].as_ref().is_err_and(|e| e.contains("items must be unique")), "{read:?}");
+    assert_eq!(read[2], Ok(Event { a: 2 }));
+    let read = limited(&[b"{\"a\":1}\n{\"a\":2}\n{\"a\":3}\n"], Limits { max: Some(2), ..Limits::default() });
+    assert_eq!(read.len(), 3);
+    assert!(read[2].as_ref().is_err_and(|e| e.contains("at most 2 items allowed")), "{read:?}");
+    let read = limited(&[b"{\"a\":1}\n"], Limits { min: Some(3), ..Limits::default() });
+    assert_eq!(read.len(), 2, "the item, then the end short of `minItems`: {read:?}");
+    assert!(read[1].as_ref().is_err_and(|e| e.contains("at least 3 items required, found 1")), "{read:?}");
+    let whole: Items<Event> = Items::List(vec![Event { a: 1 }, Event { a: 1 }]);
+    assert!(whole.limited(unique).is_err(), "a list is checked at once");
 }

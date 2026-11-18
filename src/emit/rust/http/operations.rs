@@ -15,7 +15,7 @@ use crate::emit::rust::space::Space;
 use crate::emit::rust::syntax::{doc_opt, ident, json_tokens, lit, mentions, ty};
 use crate::emit::rust::syntax::{pascal_ident, snake_ident};
 use crate::ir::Api;
-use crate::ir::http::{Content, Link, LinkTarget, Location, OpKind, Operation, Param};
+use crate::ir::http::{Content, Link, LinkTarget, Location, OpKind, Operation, Param, Resp, Status};
 use crate::ir::names::Name;
 use crate::ir::types::{Kind, Ty};
 
@@ -667,6 +667,8 @@ pub(crate) fn response_enum(items: &mut Vec<TokenStream>, space: &Space<'_>, op:
             #(#variants)*
         }
     });
+    items.push(response_error(op));
+    items.extend(into_ok(space, op, bx));
     for (i, r) in op.responses.iter().enumerate() {
         if r.contents.len() < 2 || crate::emit::rust::http::shared::collapses(space, r) {
             continue;
@@ -679,6 +681,124 @@ pub(crate) fn response_enum(items: &mut Vec<TokenStream>, space: &Space<'_>, op:
             continue;
         }
         items.push(content_enum(space, &name.to_string(), &r.contents, &bx.resp_enums[i]));
+    }
+}
+
+/// Is `r` a success: a `2xx` code or the `2XX` range? `default` is not: it stands for every status not listed.
+fn is_success(r: &Resp) -> bool {
+    matches!(r.status, Status::Code(c) if (SUCCESS_FROM..SUCCESS_TO).contains(&c)) || r.status == Status::Range(2)
+}
+
+/// The first status code that is a success.
+const SUCCESS_FROM: u16 = 200;
+/// The first status code past the successes.
+const SUCCESS_TO: u16 = 300;
+
+/// Returns the pattern that matches the variant of `r` whatever it holds.
+fn any_of(r: &Resp) -> TokenStream {
+    let variant = pascal_ident(&r.variant);
+    match variant_shape(r) {
+        VariantShape::Unit => quote!(Self::#variant),
+        VariantShape::Tuple => quote!(Self::#variant(..)),
+        VariantShape::Struct => quote!(Self::#variant { .. }),
+    }
+}
+
+/// Returns one pattern that matches any of `patterns`: in parentheses when there are several, as `@` needs.
+fn either(patterns: &[TokenStream]) -> TokenStream {
+    if let [one] = patterns { one.clone() } else { quote!((#(#patterns)|*)) }
+}
+
+/// Returns `Display` and `Error` for `Response`: its status and variant, so that `?` takes it into any error type.
+fn response_error(op: &Operation) -> TokenStream {
+    let arms = op.responses.iter().map(|r| {
+        let variant = pascal_ident(&r.variant);
+        match status_code(r) {
+            Some(code) => {
+                let (pattern, text) = (any_of(r), lit(&format!("status {code} ({})", pascal(&r.variant))));
+                quote!(#pattern => f.write_str(#text),)
+            }
+            None => {
+                let text = lit(&format!("status {{}} ({})", pascal(&r.variant)));
+                quote!(Self::#variant { status, .. } => write!(f, #text, status.as_u16()),)
+            }
+        }
+    });
+    quote! {
+        impl std::fmt::Display for Response {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                match self { #(#arms)* }
+            }
+        }
+        impl std::error::Error for Response {}
+    }
+}
+
+/// A response of an operation and its index among the responses.
+type Numbered<'a> = (usize, &'a Resp);
+
+/// Returns `into_ok`: the response as `Ok` when it is the success, else itself, boxed, as `Err`. One success gives what
+/// it carries: nothing, its body, or its body and headers in order. Several successes, or the `2XX` range, give the
+/// response itself. The `Err` is boxed: only a failure pays for it, and a large response would make every `Result` as
+/// large.
+fn into_ok(space: &Space<'_>, op: &Operation, bx: &Boxing) -> Option<TokenStream> {
+    let (successes, failures): (Vec<Numbered<'_>>, Vec<Numbered<'_>>) =
+        op.responses.iter().enumerate().partition(|(_, r)| is_success(r));
+    let failed = (!failures.is_empty()).then(|| {
+        let patterns = either(&failures.iter().map(|(_, r)| any_of(r)).collect::<Vec<_>>());
+        quote!(other @ #patterns => Err(Box::new(other)),)
+    });
+    let doc = " Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.";
+    let (success, arm, alias) = match successes[..] {
+        [] => return None,
+        [(index, resp)] => one_success(space, resp, bx.resp[index]),
+        _ => {
+            let patterns = either(&successes.iter().map(|(_, r)| any_of(r)).collect::<Vec<_>>());
+            (quote!(Self), quote!(success @ #patterns => Ok(success),), None)
+        }
+    };
+    Some(quote! {
+        #alias
+        impl Response {
+            #[doc = #doc]
+            pub fn into_ok(self) -> Result<#success, Box<Self>> {
+                match self { #arm #failed }
+            }
+        }
+    })
+}
+
+/// Returns the type that the one success `resp` gives from `into_ok`, the match arm that takes it apart and the alias
+/// that names a tuple: nothing, its body, its one header, or its body and headers as `Success` in order.
+fn one_success(space: &Space<'_>, resp: &Resp, boxed_body: bool) -> (TokenStream, TokenStream, Option<TokenStream>) {
+    let variant = pascal_ident(&resp.variant);
+    let body = || {
+        let name = format!("{}Body", pascal(&resp.variant));
+        boxed(boxed_body, crate::emit::rust::http::shared::resp_body_ty(space, resp, &name))
+    };
+    match variant_shape(resp) {
+        VariantShape::Unit => (quote!(()), quote!(Self::#variant => Ok(()),), None),
+        VariantShape::Tuple => (body(), quote!(Self::#variant(body) => Ok(body),), None),
+        VariantShape::Struct => {
+            let mut names = vec![];
+            let mut types = vec![];
+            if !resp.contents.is_empty() {
+                names.push(format_ident!("body"));
+                types.push(body());
+            }
+            for header in &resp.headers {
+                names.push(snake_ident(&header.name));
+                types.push(ty(space, &header.ty, true));
+            }
+            if let ([name], [single]) = (&names[..], &types[..]) {
+                return (single.clone(), quote!(Self::#variant { #name, .. } => Ok(#name),), None);
+            }
+            let alias = quote! {
+                /// The body and headers of the success, in order: what `Response::into_ok` gives.
+                pub type Success = (#(#types),*);
+            };
+            (quote!(Success), quote!(Self::#variant { #(#names),* } => Ok((#(#names),*)),), Some(alias))
+        }
     }
 }
 

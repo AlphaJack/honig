@@ -6,7 +6,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use serde_json::Value;
 
 use super::cycles::break_cycles;
-use super::rewrite::{FALLBACK, conditional_union, request_view};
+use super::rewrite::{FALLBACK, conditional_union, request_view, view};
 use super::{
     Access, Checked, Constraints, EnumValue, Field, Format, JsonKind, Kind, Struct, Ty, TypeDef, TypeId, TypeSpace,
     Union, UnionMode, Variant, XmlHint,
@@ -37,8 +37,6 @@ struct Walk {
 const MAX_TYPE_DEPTH: usize = 48;
 /// The most `prefixItems` a tuple takes: std implements the traits up to 12.
 const MAX_TUPLE: usize = 12;
-/// Aliases followed to find a type's JSON kind.
-const MAX_KIND_DEPTH: usize = 32;
 
 /// Keywords `runtime::check_schema` handles that typed checks cannot.
 pub(crate) const UNTYPED_KEYWORDS: [&str; 14] = [
@@ -391,6 +389,13 @@ pub(crate) struct Builder<'a> {
     pub from_v20: bool,
     /// The `$ref` targets whose keywords are being read: one met again is a cycle, whose keywords its own type holds.
     reading: RefCell<Vec<String>>,
+    /// The definitions that schemas checked whole reach by pointer, inlined once for the whole document
+    /// ([`Builder::inlined`]). A schema that many others reach is then inlined once, not once per schema.
+    shared: RefCell<BTreeMap<String, Value>>,
+    /// [`Builder::shared`] as a request sees each: what the request view of a schema that refers to one reads.
+    viewed: RefCell<BTreeMap<String, Value>>,
+    /// [`Builder::shared`] in the request view that run-time checks use: `TypeSpace::shared`.
+    checked: RefCell<BTreeMap<String, Value>>,
     /// Where a schema was cut short at `MAX_SCHEMA_DEPTH`, by pointer: what is deeper is not checked. Reported once
     /// each by `finish`.
     cut_short: RefCell<BTreeMap<String, String>>,
@@ -426,6 +431,9 @@ impl<'a> Builder<'a> {
             crates: vec![],
             from_v20: false,
             reading: RefCell::new(vec![]),
+            shared: RefCell::default(),
+            viewed: RefCell::default(),
+            checked: RefCell::default(),
             cut_short: RefCell::new(BTreeMap::new()),
         }
     }
@@ -522,7 +530,7 @@ impl<'a> Builder<'a> {
         self.defs[id.0].json_string = matches!(self.defs[id.0].kind, Kind::Newtype(_))
             && schema.as_object().is_some_and(|o| json_string_schema(o).is_some());
         // `x-rust-type: crate::domain::Money` reuses your type. So does typify's object form `{crate, version, path}`
-        // (Oxide's `SledUuid`) when the crate is a dependency: `generate` checks that. An invalid path is ignored.
+        // when the crate is a dependency: `generate` checks that. An invalid path is ignored.
         let (path, krate) = match schema.get("x-rust-type") {
             Some(Value::String(p)) => (Some(p.as_str()), None),
             Some(Value::Object(o)) => (o.get("path").and_then(Value::as_str), o.get("crate").and_then(Value::as_str)),
@@ -587,7 +595,8 @@ impl<'a> Builder<'a> {
                 && ASSERTIONS
                     .iter()
                     .any(|k| !matches!(*k, "items" | "prefixItems" | "additionalProperties") && o.contains_key(*k)))
-                || (o.contains_key("$ref") && o.keys().any(|k| !quiet(k)))
+                // An extension (`x-...`) asserts nothing either.
+                || (o.contains_key("$ref") && o.keys().any(|k| !quiet(k) && !k.starts_with("x-")))
         });
         if typeless_assertions(s)
             || tuple
@@ -598,9 +607,7 @@ impl<'a> Builder<'a> {
         {
             // The resource of the schema starts the dynamic scope that a `$dynamicRef` resolves in.
             let scope: Vec<String> = at.map_or_else(Vec::new, |p| vec![self.dynamic.resource_of(p)]);
-            let mut schema = self.inlined(s, at, scope);
-            request_view(&mut schema);
-            c.schema = Some(schema);
+            c.schema = Some(self.inlined(s, at, scope));
         }
         for m in s.get("allOf").and_then(Value::as_array).into_iter().flatten() {
             c.merge(self.constraints_at(m, depth + 1, None));
@@ -1085,20 +1092,41 @@ impl<'a> Builder<'a> {
         let mut walk = Walk { scope: scope.clone(), cut: true, ..Walk::default() };
         let mut root = self.inline_scoped(s, 0, at, &mut walk);
         if walk.dynamic {
-            return self.inline_scoped(s, 0, at, &mut Walk { scope, ..Walk::default() });
+            let mut root = self.inline_scoped(s, 0, at, &mut Walk { scope, ..Walk::default() });
+            request_view(&mut root);
+            return root;
         }
-        let mut defs = serde_json::Map::new();
+        let mut added = vec![];
         let mut i = 0;
         while let Some(p) = walk.cuts.get(i).cloned() {
+            i += 1;
+            // Inlined for an earlier schema already, with every definition that it reaches.
+            if self.shared.borrow().contains_key(&p) {
+                continue;
+            }
+            // Taken first: a cycle back to `p` finds it.
+            self.shared.borrow_mut().insert(p.clone(), Value::Null);
             let target = pointer(&self.doc.root, &p).cloned().unwrap_or(Value::Bool(true));
             walk.scope = vec![self.dynamic.resource_of(&p)];
-            // The key is the pointer itself: the reference escapes it as one token, and a reader unescapes it.
-            defs.insert(p.clone(), self.inline_scoped(&target, 1, Some(&p), &mut walk));
-            i += 1;
+            let def = self.inline_scoped(&target, 1, Some(&p), &mut walk);
+            self.shared.borrow_mut().insert(p.clone(), def);
+            added.push(p);
         }
-        if let (Value::Object(o), false) = (&mut root, defs.is_empty()) {
-            o.insert("$defs".to_owned(), Value::Object(defs));
+        // Each definition as a request sees it first: a subschema that refers to one then sees what is left to strip.
+        let raw = self.shared.borrow();
+        let mut viewed = self.viewed.borrow_mut();
+        for p in &added {
+            let mut d = raw.get(p).cloned().unwrap_or_default();
+            view(&mut d, &raw);
+            viewed.insert(p.clone(), d);
         }
+        let mut checked = self.checked.borrow_mut();
+        for p in &added {
+            let mut d = raw.get(p).cloned().unwrap_or_default();
+            view(&mut d, &viewed);
+            checked.insert(p.clone(), d);
+        }
+        view(&mut root, &viewed);
         root
     }
 
@@ -1129,7 +1157,8 @@ impl<'a> Builder<'a> {
                 let target_ptr = dynamically.or(statically);
                 let mut target = match target_ptr.as_deref() {
                     // Each target goes into `$defs` once, at any depth. Copying it at each reference copies a shared
-                    // target once per path to it: Stripe reaches 917 schemas over 35 million paths. A cycle ends there
+                    // target once per path to it: a large description reaches hundreds of schemas over millions of
+                    // paths. A cycle ends there
                     // too, and is checked as deep as the value goes.
                     Some(p) if walk.cut => {
                         if !walk.cuts.iter().any(|c| c == p) {
@@ -1755,7 +1784,7 @@ impl<'a> Builder<'a> {
     }
 
     fn space_kind(&self, ty: &Ty) -> JsonKind {
-        kind_in(&self.defs, ty, 0)
+        kind_in(&self.defs, ty)
     }
 
     /// Returns `type: [string, integer]` to union by JSON kind.
@@ -1799,6 +1828,7 @@ impl<'a> Builder<'a> {
             }
         }
         let mut space = TypeSpace::new(self.defs);
+        space.shared = self.checked.into_inner();
         break_cycles(&mut space);
         space
     }
@@ -1809,13 +1839,14 @@ impl<'a> Builder<'a> {
 /// by kind, as one built later would. Repeated until nothing changes: a union's kind can depend on another union.
 fn by_kind_when_known(defs: &mut [TypeDef]) {
     loop {
+        let mut known = Kinds::new(defs);
         let settle: Vec<usize> = (0..defs.len())
             .filter(|&i| {
                 let Kind::Union(u) = &defs[i].kind else { return false };
                 if u.mode != UnionMode::Untagged {
                     return false;
                 }
-                let kinds: Vec<JsonKind> = u.variants.iter().map(|v| kind_in(defs, &v.ty, 0)).collect();
+                let kinds: Vec<JsonKind> = u.variants.iter().map(|v| known.of(&v.ty)).collect();
                 let distinct: BTreeSet<&JsonKind> = kinds.iter().collect();
                 !kinds.contains(&JsonKind::Any) && distinct.len() == kinds.len()
             })
@@ -2023,8 +2054,8 @@ fn types_value(types: &[String]) -> Value {
 }
 
 /// Returns an object that admits no property at all: `additionalProperties: false` with nothing declared and no
-/// `patternProperties` or `unevaluatedProperties` to admit a name. Only `{}` is valid (Oxide's
-/// `SubnetCreateDefaults`). It is an empty closed struct and not a map of anything.
+/// `patternProperties` or `unevaluatedProperties` to admit a name. Only `{}` is valid. It is an empty closed struct
+/// and not a map of anything.
 fn only_empty(o: &serde_json::Map<String, Value>) -> bool {
     o.get("additionalProperties") == Some(&Value::Bool(false))
         && json::object(o, "properties").is_none_or(serde_json::Map::is_empty)
@@ -2102,35 +2133,71 @@ pub(crate) fn with_external_docs(doc: Option<String>, s: &Value) -> Option<Strin
     })
 }
 
-pub(crate) fn kind_in(defs: &[TypeDef], ty: &Ty, depth: usize) -> JsonKind {
-    if depth > MAX_KIND_DEPTH {
-        return JsonKind::Any;
+pub(crate) fn kind_in(defs: &[TypeDef], ty: &Ty) -> JsonKind {
+    Kinds::new(defs).of(ty)
+}
+
+/// The JSON kinds of the named types of `defs`, each found once. A union of unions asks for the kind of each type
+/// again on every path to it: found afresh each time, that grows with the paths and not with the types.
+pub(crate) struct Kinds<'d> {
+    defs: &'d [TypeDef],
+    found: Vec<Found>,
+}
+
+/// Where finding the kind of a named type is.
+#[derive(Clone, Copy)]
+enum Found {
+    Unknown,
+    /// Met again while it is found, the type is on a cycle and takes any value.
+    Finding,
+    Kind(JsonKind),
+}
+
+impl<'d> Kinds<'d> {
+    pub(crate) fn new(defs: &'d [TypeDef]) -> Self {
+        Self { defs, found: vec![Found::Unknown; defs.len()] }
     }
-    match ty {
-        Ty::Bool => JsonKind::Bool,
-        Ty::I8 | Ty::I16 | Ty::I32 | Ty::I64 | Ty::U8 | Ty::U16 | Ty::U32 | Ty::U64 => JsonKind::Integer,
-        Ty::F32 | Ty::F64 | Ty::Decimal => JsonKind::Number,
-        Ty::String | Ty::Bytes | Ty::Binary | Ty::Format(_) => JsonKind::String,
-        Ty::Any => JsonKind::Any,
-        Ty::Unit => JsonKind::Null,
-        Ty::Vec(_) | Ty::Array(..) | Ty::Tuple(_) => JsonKind::Array,
-        Ty::Map(_) => JsonKind::Object,
-        Ty::Option(t) | Ty::Indirect(t) => kind_in(defs, t, depth + 1),
-        Ty::Named(id) => match &defs[id.0].kind {
+
+    pub(crate) fn of(&mut self, ty: &Ty) -> JsonKind {
+        match ty {
+            Ty::Bool => JsonKind::Bool,
+            Ty::I8 | Ty::I16 | Ty::I32 | Ty::I64 | Ty::U8 | Ty::U16 | Ty::U32 | Ty::U64 => JsonKind::Integer,
+            Ty::F32 | Ty::F64 | Ty::Decimal => JsonKind::Number,
+            Ty::String | Ty::Bytes | Ty::Binary | Ty::Format(_) => JsonKind::String,
+            Ty::Any => JsonKind::Any,
+            Ty::Unit => JsonKind::Null,
+            Ty::Vec(_) | Ty::Array(..) | Ty::Tuple(_) => JsonKind::Array,
+            Ty::Map(_) => JsonKind::Object,
+            Ty::Option(t) | Ty::Indirect(t) => self.of(t),
+            Ty::Named(id) => self.named(id.0),
+        }
+    }
+
+    fn named(&mut self, i: usize) -> JsonKind {
+        match self.found[i] {
+            Found::Kind(kind) => return kind,
+            Found::Finding => return JsonKind::Any,
+            Found::Unknown => {}
+        }
+        self.found[i] = Found::Finding;
+        let defs = self.defs;
+        let kind = match &defs[i].kind {
             Kind::Struct(_) => JsonKind::Object,
             Kind::StrEnum(_) => JsonKind::String,
-            Kind::Checked(c) => kind_in(defs, &c.base, depth + 1),
+            Kind::Checked(c) => self.of(&c.base),
             Kind::IntEnum(_) => JsonKind::Integer,
             Kind::Const(v) => value_kind(v),
             // A closed union whose variants share a kind has that kind. An open one takes any value.
             Kind::Union(u) if !u.open => {
-                let mut kinds = u.variants.iter().map(|v| kind_in(defs, &v.ty, depth + 1));
+                let mut kinds = u.variants.iter().map(|v| self.of(&v.ty));
                 let first = kinds.next().unwrap_or(JsonKind::Any);
                 if kinds.all(|k| k == first) { first } else { JsonKind::Any }
             }
             Kind::Union(_) | Kind::Pending => JsonKind::Any,
-            Kind::Alias(t) | Kind::Newtype(t) => kind_in(defs, t, depth + 1),
-        },
+            Kind::Alias(t) | Kind::Newtype(t) => self.of(t),
+        };
+        self.found[i] = Found::Kind(kind);
+        kind
     }
 }
 
@@ -2140,6 +2207,15 @@ mod tests {
 
     use super::*;
     use serde_json::json;
+
+    /// Returns `schema` with the definitions that it shares as its own `$defs`: what the generated check reads.
+    fn whole(b: &Builder<'_>, mut schema: Value) -> Value {
+        let defs: serde_json::Map<String, Value> = b.checked.borrow().clone().into_iter().collect();
+        if let (Value::Object(o), false) = (&mut schema, defs.is_empty()) {
+            o.insert("$defs".to_owned(), Value::Object(defs));
+        }
+        schema
+    }
 
     fn build(schemas: &Value) -> TypeSpace {
         let doc = Doc::new(json!({"openapi": "3.2.0", "components": {"schemas": schemas}}));
@@ -2166,7 +2242,7 @@ mod tests {
         let doc = Doc::new(json!({"openapi": "3.2.0", "components": {"schemas": {"Rec": rec}}}));
         let mut d = Diagnostics::default();
         let b = Builder::new(&doc, &mut d, Reserved::default());
-        let schema = b.constraints(&rec).schema.expect("checked whole");
+        let schema = whole(&b, b.constraints(&rec).schema.expect("checked whole"));
         let defs = schema.get("$defs").and_then(Value::as_object).expect("the cycle is in `$defs`");
         assert_eq!(defs.keys().collect::<Vec<_>>(), ["/components/schemas/Rec"]);
         let mut out = vec![];
@@ -2207,7 +2283,7 @@ mod tests {
             let mut d = Diagnostics::default();
             let b = Builder::new(&doc, &mut d, Reserved::default());
             let top = pointer(&doc.root, "/components/schemas/Top").cloned().expect("Top");
-            let schema = b.constraints(&top).schema.expect("a tuple is checked whole");
+            let schema = whole(&b, b.constraints(&top).schema.expect("a tuple is checked whole"));
             let mut out = vec![];
             runtime::__private::check_schema(&mut out, &runtime::InstancePath::Root, &deep_bad, &schema);
             assert!(!out.is_empty(), "{n} references: the `1` three levels down is neither a string nor `null`");
@@ -2261,6 +2337,23 @@ mod tests {
         );
     }
 
+    /// A union of unions: each layer holds the two before it, so 2^40 paths reach the bottom. Each kind is found once,
+    /// and `Top` tells a text from a number however deep the text is.
+    #[test]
+    fn a_union_of_unions_finds_each_kind_once() {
+        let mut schemas = serde_json::Map::new();
+        schemas.insert("U0".into(), json!({"type": "string", "minLength": 1}));
+        schemas.insert("U1".into(), json!({"type": "string", "maxLength": 9}));
+        for i in 2..40 {
+            let r = |j: usize| json!({"$ref": format!("#/components/schemas/U{j}")});
+            schemas.insert(format!("U{i}"), json!({"anyOf": [r(i - 1), r(i - 2)]}));
+        }
+        schemas.insert("Top".into(), json!({"anyOf": [{"$ref": "#/components/schemas/U39"}, {"type": "integer"}]}));
+        let s = build(&Value::Object(schemas));
+        let Kind::Union(top) = &by_name(&s, "Top").kind else { panic!("{:?}", by_name(&s, "Top").kind) };
+        assert_eq!(top.mode, UnionMode::ByKind);
+    }
+
     #[test]
     fn a_schema_reached_by_many_paths_is_inlined_once() {
         // Each layer refers twice to the next: 16 paths reach `L4`.
@@ -2275,7 +2368,7 @@ mod tests {
         let b = Builder::new(&doc, &mut d, Reserved::default());
         // A keyword beside the `$ref`: the schema is checked whole at run time.
         let c = b.constraints(&json!({"$ref": "#/components/schemas/L0", "minProperties": 1}));
-        let schema = c.schema.expect("checked at run time");
+        let schema = whole(&b, c.schema.expect("checked at run time"));
         let text = schema.to_string();
         assert_eq!(text.matches(r#""minLength":7"#).count(), 1, "{text}");
         // The references still reach it: a short string at the bottom fails.
@@ -2285,6 +2378,36 @@ mod tests {
         assert!(out.is_empty(), "{out:?}");
         runtime::__private::check_schema(&mut out, &runtime::InstancePath::Root, &value("123"), &schema);
         assert!(!out.is_empty(), "`L4` needs 7 characters");
+    }
+
+    /// A request leaves out `readOnly` properties: no `required` asks for them, also when the schema that declares them,
+    /// or the one that requires them, is a `$ref` into the `$defs` of a schema checked whole.
+    #[test]
+    fn a_request_checked_whole_does_not_need_a_read_only_property_behind_a_ref() {
+        let doc = Doc::new(json!({"openapi": "3.2.0", "components": {"schemas": {
+            "Base": {"type": "object", "properties": {"id": {"type": "string", "readOnly": true}, "name": {"type": "string"}}},
+            "Named": {"type": "object", "required": ["id", "name"]},
+            "Other": {"type": "object", "required": ["kind"]},
+        }}}));
+        let mut d = Diagnostics::default();
+        let b = Builder::new(&doc, &mut d, Reserved::default());
+        let check = |schema: &Value, value: &Value| {
+            let schema = whole(&b, b.constraints(schema).schema.expect("checked whole"));
+            let mut out = vec![];
+            runtime::__private::check_schema(&mut out, &runtime::InstancePath::Root, value, &schema);
+            out.into_iter().map(|v| format!("{} {}", v.path, v.message)).collect::<Vec<_>>()
+        };
+        // The properties are in the referenced schema, the `required` beside the reference.
+        let beside = json!({"$ref": "#/components/schemas/Base", "required": ["id"], "minProperties": 1});
+        assert_eq!(check(&beside, &json!({"name": "x"})), Vec::<String>::new());
+        // The properties are beside a union, the `required` in a referenced branch. `name` is still required.
+        let branch = json!({
+            "type": "object",
+            "properties": {"id": {"type": "string", "readOnly": true}, "name": {"type": "string"}},
+            "anyOf": [{"$ref": "#/components/schemas/Named"}, {"$ref": "#/components/schemas/Other"}],
+        });
+        assert_eq!(check(&branch, &json!({"name": "x"})), Vec::<String>::new());
+        assert_ne!(check(&branch, &json!({})), Vec::<String>::new());
     }
 
     #[test]

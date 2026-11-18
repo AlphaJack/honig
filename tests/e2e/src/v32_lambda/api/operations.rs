@@ -16,6 +16,22 @@ macro_rules! validate_impl {
         impl runtime::Validate for $t {}
     };
 }
+macro_rules! display_impl {
+    ($t:ty) => {
+        impl std::fmt::Display for $t {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                match self {
+                    Self::Ok(..) => f.write_str("status 200 (Ok)"),
+                }
+            }
+        }
+    };
+}
+macro_rules! error_impl {
+    ($t:ty) => {
+        impl std::error::Error for $t {}
+    };
+}
 pub mod get_item {
     use super::super::types;
     use super::super::runtime;
@@ -45,6 +61,16 @@ pub mod get_item {
         /// Every parameter as the server read it, and the caller's address from API Gateway.
         Ok(types::GetItemOk),
     }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<types::GetItemOk, Box<Self>> {
+            match self {
+                Self::Ok(body) => Ok(body),
+            }
+        }
+    }
 }
 pub mod put_blob {
     use super::super::runtime;
@@ -66,5 +92,15 @@ pub mod put_blob {
     pub enum Response {
         /// The body, sent back as it arrived.
         Ok(runtime::Blob),
+    }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<runtime::Blob, Box<Self>> {
+            match self {
+                Self::Ok(body) => Ok(body),
+            }
+        }
     }
 }

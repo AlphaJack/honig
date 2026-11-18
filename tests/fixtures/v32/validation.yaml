@@ -167,7 +167,7 @@ components:
       properties:
         name: {type: string}
       xml: {name: closed}
-    # No property allowed: only `{}` is valid (Oxide's `SubnetCreateDefaults`).
+    # No property allowed: only `{}` is valid.
     NoOptions:
       type: object
       additionalProperties: false
@@ -210,7 +210,7 @@ components:
           type: object
           patternProperties: {'^[a-z]+$': {type: integer, minimum: 0}}
           additionalProperties: false
-        # Optional and nullable, with bounds (OpenAI's `temperature`): its sample keeps to them.
+        # Optional and nullable, with bounds: its sample keeps to them.
         priority: {type: [number, 'null'], minimum: 0, maximum: 2}
         weight: {type: [integer, 'null'], minimum: 256}
         labels:

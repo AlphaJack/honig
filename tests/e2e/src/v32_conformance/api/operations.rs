@@ -25,6 +25,22 @@ macro_rules! validate_impl {
         impl runtime::Validate for $t {}
     };
 }
+macro_rules! display_impl {
+    ($t:ty) => {
+        impl std::fmt::Display for $t {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                match self {
+                    Self::NoContent => f.write_str("status 204 (NoContent)"),
+                }
+            }
+        }
+    };
+}
+macro_rules! error_impl {
+    ($t:ty) => {
+        impl std::error::Error for $t {}
+    };
+}
 use super::runtime;
 #[doc(hidden)]
 pub const SECURITY_0: &[&[runtime::Requirement]] = &[
@@ -53,6 +69,16 @@ pub mod open {
         /// ok
         NoContent,
     }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
+    }
 }
 pub mod inherits {
     use super::super::runtime;
@@ -72,6 +98,16 @@ pub mod inherits {
     pub enum Response {
         /// ok
         NoContent,
+    }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
     }
 }
 pub mod get_item {
@@ -100,6 +136,28 @@ pub mod get_item {
             body: std::collections::BTreeMap<String, serde_json::Value>,
         },
     }
+    impl std::fmt::Display for Response {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Self::Success { status, .. } => {
+                    write!(f, "status {} (Success)", status.as_u16())
+                }
+                Self::Default { status, .. } => {
+                    write!(f, "status {} (Default)", status.as_u16())
+                }
+            }
+        }
+    }
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<String, Box<Self>> {
+            match self {
+                Self::Success { body, .. } => Ok(body),
+                other @ Self::Default { .. } => Err(Box::new(other)),
+            }
+        }
+    }
 }
 pub mod post_closed {
     use super::super::types;
@@ -122,6 +180,16 @@ pub mod post_closed {
         /// ok
         NoContent,
     }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
+    }
 }
 pub mod optional_body {
     use super::super::runtime;
@@ -143,6 +211,16 @@ pub mod optional_body {
     pub enum Response {
         /// ok
         NoContent,
+    }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
     }
 }
 pub mod post_product {
@@ -169,17 +247,19 @@ pub mod post_product {
             {
                 static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                 let value = runtime::to_value(&self.body).unwrap_or_default();
-                runtime::check_schema(
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"type\":\"object\",\"required\":[\"kind\"],\"properties\":{\"kind\":{\"type\":\"string\"}},\"oneOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Gadget\"},{\"$ref\":\"#/$defs/~1components~1schemas~1Book\"}]}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
                     out,
                     &runtime::InstancePath::Key(path, "body"),
                     &value,
-                    SCHEMA
-                        .get_or_init(|| {
-                            serde_json::from_str(
-                                    "{\"type\":\"object\",\"required\":[\"kind\"],\"properties\":{\"kind\":{\"type\":\"string\"}},\"oneOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Gadget\"},{\"$ref\":\"#/$defs/~1components~1schemas~1Book\"}],\"$defs\":{\"/components/schemas/Gadget\":{\"type\":\"object\",\"required\":[\"kind\"],\"properties\":{\"kind\":{\"const\":\"Gadget\"},\"purrs\":{\"type\":\"boolean\"}}},\"/components/schemas/Book\":{\"type\":\"object\",\"required\":[\"kind\"],\"properties\":{\"kind\":{\"const\":\"Book\"},\"barks\":{\"type\":\"boolean\"}}}}}",
-                                )
-                                .unwrap_or_default()
-                        }),
+                    schema,
+                    runtime::schema_defs(),
                 );
             }
         }
@@ -188,6 +268,16 @@ pub mod post_product {
     pub enum Response {
         /// ok
         NoContent,
+    }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
     }
 }
 pub mod upload {
@@ -211,6 +301,16 @@ pub mod upload {
         /// ok
         NoContent,
     }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
+    }
 }
 pub mod cookies {
     use super::super::runtime;
@@ -230,6 +330,22 @@ pub mod cookies {
     pub enum Response {
         /// ok
         NoContent { set_cookie: Option<Vec<String>> },
+    }
+    impl std::fmt::Display for Response {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Self::NoContent { .. } => f.write_str("status 204 (NoContent)"),
+            }
+        }
+    }
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<Option<Vec<String>>, Box<Self>> {
+            match self {
+                Self::NoContent { set_cookie, .. } => Ok(set_cookie),
+            }
+        }
     }
 }
 pub mod filter {
@@ -254,5 +370,15 @@ pub mod filter {
     pub enum Response {
         /// ok
         NoContent,
+    }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
     }
 }

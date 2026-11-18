@@ -16,6 +16,22 @@ macro_rules! validate_impl {
         impl runtime::Validate for $t {}
     };
 }
+macro_rules! display_impl {
+    ($t:ty) => {
+        impl std::fmt::Display for $t {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                match self {
+                    Self::Ok(..) => f.write_str("status 200 (Ok)"),
+                }
+            }
+        }
+    };
+}
+macro_rules! error_impl {
+    ($t:ty) => {
+        impl std::error::Error for $t {}
+    };
+}
 pub mod list_items {
     use super::super::runtime;
     pub const METHOD: &str = "GET";
@@ -54,6 +70,16 @@ pub mod list_items {
         /// ok
         Ok(Vec<String>),
     }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<Vec<String>, Box<Self>> {
+            match self {
+                Self::Ok(body) => Ok(body),
+            }
+        }
+    }
 }
 pub mod upload {
     use super::super::types;
@@ -75,6 +101,22 @@ pub mod upload {
     pub enum Response {
         /// stored
         NoContent,
+    }
+    impl std::fmt::Display for Response {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Self::NoContent => f.write_str("status 204 (NoContent)"),
+            }
+        }
+    }
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
     }
 }
 pub mod list_keys {
@@ -100,5 +142,15 @@ pub mod list_keys {
     pub enum Response {
         /// ok
         Ok(Vec<types::Key>),
+    }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<Vec<types::Key>, Box<Self>> {
+            match self {
+                Self::Ok(body) => Ok(body),
+            }
+        }
     }
 }

@@ -1311,7 +1311,7 @@ fn new_product_post_params(
     runtime::check_media(runtime::Message::content_type(req), &["application/json"])?;
     if !body.is_empty() {
         static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-        runtime::check_raw_json(
+        runtime::check_raw_json_in(
             &body,
             SCHEMA
                 .get_or_init(|| serde_json::Value::Object(
@@ -1638,108 +1638,9 @@ fn new_product_post_params(
                                 ]),
                             ),
                         ),
-                        (
-                            "$defs".to_owned(),
-                            serde_json::Value::Object(
-                                serde_json::Map::from_iter([
-                                    (
-                                        "/components/schemas/Owner".to_owned(),
-                                        serde_json::Value::Object(
-                                            serde_json::Map::from_iter([
-                                                (
-                                                    "$anchor".to_owned(),
-                                                    serde_json::Value::String("owner".to_owned()),
-                                                ),
-                                                (
-                                                    "$dynamicAnchor".to_owned(),
-                                                    serde_json::Value::String("node".to_owned()),
-                                                ),
-                                                (
-                                                    "type".to_owned(),
-                                                    serde_json::Value::String("object".to_owned()),
-                                                ),
-                                                (
-                                                    "properties".to_owned(),
-                                                    serde_json::Value::Object(
-                                                        serde_json::Map::from_iter([
-                                                            (
-                                                                "children".to_owned(),
-                                                                serde_json::Value::Object(
-                                                                    serde_json::Map::from_iter([
-                                                                        (
-                                                                            "type".to_owned(),
-                                                                            serde_json::Value::String("array".to_owned()),
-                                                                        ),
-                                                                        (
-                                                                            "items".to_owned(),
-                                                                            serde_json::Value::Object(
-                                                                                serde_json::Map::from_iter([
-                                                                                    (
-                                                                                        "$ref".to_owned(),
-                                                                                        serde_json::Value::String(
-                                                                                            "#/$defs/~1components~1schemas~1Owner".to_owned(),
-                                                                                        ),
-                                                                                    ),
-                                                                                ]),
-                                                                            ),
-                                                                        ),
-                                                                    ]),
-                                                                ),
-                                                            ),
-                                                        ]),
-                                                    ),
-                                                ),
-                                                (
-                                                    "not".to_owned(),
-                                                    serde_json::Value::Object(
-                                                        serde_json::Map::from_iter([
-                                                            (
-                                                                "required".to_owned(),
-                                                                serde_json::Value::Array(
-                                                                    vec![serde_json::Value::String("forbidden".to_owned())],
-                                                                ),
-                                                            ),
-                                                        ]),
-                                                    ),
-                                                ),
-                                                (
-                                                    "$defs".to_owned(),
-                                                    serde_json::Value::Object(
-                                                        serde_json::Map::from_iter([
-                                                            (
-                                                                "Inner".to_owned(),
-                                                                serde_json::Value::Object(
-                                                                    serde_json::Map::from_iter([
-                                                                        (
-                                                                            "type".to_owned(),
-                                                                            serde_json::Value::String("string".to_owned()),
-                                                                        ),
-                                                                    ]),
-                                                                ),
-                                                            ),
-                                                        ]),
-                                                    ),
-                                                ),
-                                                (
-                                                    "$vocabulary".to_owned(),
-                                                    serde_json::Value::Object(
-                                                        serde_json::Map::from_iter([
-                                                            (
-                                                                "https://json-schema.org/draft/2020-12/vocab/core"
-                                                                    .to_owned(),
-                                                                serde_json::Value::Bool(true),
-                                                            ),
-                                                        ]),
-                                                    ),
-                                                ),
-                                            ]),
-                                        ),
-                                    ),
-                                ]),
-                            ),
-                        ),
                     ]),
                 )),
+            runtime::schema_defs(),
         )?;
     }
     Ok(ops::new_product_post::Params {
@@ -1787,7 +1688,7 @@ fn create_product_on_adopt_post_params(
     runtime::check_media(runtime::Message::content_type(req), &["application/json"])?;
     if !body.is_empty() {
         static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-        runtime::check_raw_json(
+        runtime::check_raw_json_in(
             &body,
             SCHEMA
                 .get_or_init(|| serde_json::Value::Object(
@@ -2114,108 +2015,9 @@ fn create_product_on_adopt_post_params(
                                 ]),
                             ),
                         ),
-                        (
-                            "$defs".to_owned(),
-                            serde_json::Value::Object(
-                                serde_json::Map::from_iter([
-                                    (
-                                        "/components/schemas/Owner".to_owned(),
-                                        serde_json::Value::Object(
-                                            serde_json::Map::from_iter([
-                                                (
-                                                    "$anchor".to_owned(),
-                                                    serde_json::Value::String("owner".to_owned()),
-                                                ),
-                                                (
-                                                    "$dynamicAnchor".to_owned(),
-                                                    serde_json::Value::String("node".to_owned()),
-                                                ),
-                                                (
-                                                    "type".to_owned(),
-                                                    serde_json::Value::String("object".to_owned()),
-                                                ),
-                                                (
-                                                    "properties".to_owned(),
-                                                    serde_json::Value::Object(
-                                                        serde_json::Map::from_iter([
-                                                            (
-                                                                "children".to_owned(),
-                                                                serde_json::Value::Object(
-                                                                    serde_json::Map::from_iter([
-                                                                        (
-                                                                            "type".to_owned(),
-                                                                            serde_json::Value::String("array".to_owned()),
-                                                                        ),
-                                                                        (
-                                                                            "items".to_owned(),
-                                                                            serde_json::Value::Object(
-                                                                                serde_json::Map::from_iter([
-                                                                                    (
-                                                                                        "$ref".to_owned(),
-                                                                                        serde_json::Value::String(
-                                                                                            "#/$defs/~1components~1schemas~1Owner".to_owned(),
-                                                                                        ),
-                                                                                    ),
-                                                                                ]),
-                                                                            ),
-                                                                        ),
-                                                                    ]),
-                                                                ),
-                                                            ),
-                                                        ]),
-                                                    ),
-                                                ),
-                                                (
-                                                    "not".to_owned(),
-                                                    serde_json::Value::Object(
-                                                        serde_json::Map::from_iter([
-                                                            (
-                                                                "required".to_owned(),
-                                                                serde_json::Value::Array(
-                                                                    vec![serde_json::Value::String("forbidden".to_owned())],
-                                                                ),
-                                                            ),
-                                                        ]),
-                                                    ),
-                                                ),
-                                                (
-                                                    "$defs".to_owned(),
-                                                    serde_json::Value::Object(
-                                                        serde_json::Map::from_iter([
-                                                            (
-                                                                "Inner".to_owned(),
-                                                                serde_json::Value::Object(
-                                                                    serde_json::Map::from_iter([
-                                                                        (
-                                                                            "type".to_owned(),
-                                                                            serde_json::Value::String("string".to_owned()),
-                                                                        ),
-                                                                    ]),
-                                                                ),
-                                                            ),
-                                                        ]),
-                                                    ),
-                                                ),
-                                                (
-                                                    "$vocabulary".to_owned(),
-                                                    serde_json::Value::Object(
-                                                        serde_json::Map::from_iter([
-                                                            (
-                                                                "https://json-schema.org/draft/2020-12/vocab/core"
-                                                                    .to_owned(),
-                                                                serde_json::Value::Bool(true),
-                                                            ),
-                                                        ]),
-                                                    ),
-                                                ),
-                                            ]),
-                                        ),
-                                    ),
-                                ]),
-                            ),
-                        ),
                     ]),
                 )),
+            runtime::schema_defs(),
         )?;
     }
     Ok(ops::create_product_on_adopt_post::Params {

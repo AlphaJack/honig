@@ -7,9 +7,6 @@ use std::fmt;
 use serde::Serialize;
 use serde_json::{Map, Value};
 
-/// How far from whole, relative to it, the quotient of a `multipleOf` too long to read exactly may be.
-const FALLBACK_TOLERANCE: f64 = 1e-6;
-
 /// A constraint a value breaks: where (JSON pointer) and why.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Violation {
@@ -267,15 +264,10 @@ pub fn check_multiple<T: fmt::Display + JsonNumber + Copy>(
     }
 }
 
-/// Checks that the decimal text `value` is a multiple of `of`, exactly. An `of` of more than 19 significant digits is
-/// compared by `f64`, within a millionth of the quotient.
+/// Checks that the decimal text `value` is a multiple of `of`, exactly. Text that is not decimal, or an `of` that is
+/// not positive, is no multiple: validation refuses such an `of` before generation.
 pub fn check_multiple_text(out: &mut Vec<Violation>, path: &InstancePath<'_>, value: &str, of: &str) {
-    let multiple = crate::exact::is_multiple(value, of).unwrap_or_else(|| {
-        let (v, m) = (value.parse::<f64>().unwrap_or_default(), of.parse::<f64>().unwrap_or(1.0));
-        let q = v / m;
-        (q - q.round()).abs() <= q.abs().max(1.0) * FALLBACK_TOLERANCE
-    });
-    if !multiple {
+    if !crate::exact::is_multiple(value, of).unwrap_or(false) {
         violation(out, path, format!("is not a multiple of {of}"));
     }
 }
@@ -307,18 +299,20 @@ fn has_duplicates<T: Serialize>(items: &[T]) -> bool {
     let mut keys: Vec<String> = items
         .iter()
         .enumerate()
-        .map(|(i, x)| match serde_json::to_value(x) {
-            Ok(v) => {
-                let mut key = String::new();
-                canonical(&v, &mut key);
-                key
-            }
-            // Never equal to another item: a key no JSON text starts with.
-            Err(_) => ["\u{0}", itoa::Buffer::new().format(i)].concat(),
-        })
+        // Never equal to another item: a key no JSON text starts with.
+        .map(|(i, x)| unique_key(x).unwrap_or_else(|| ["\u{0}", itoa::Buffer::new().format(i)].concat()))
         .collect();
     keys.sort_unstable();
     keys.windows(2).any(|w| w.first() == w.last())
+}
+
+/// Returns the canonical JSON of `x`: equal for items that `uniqueItems` takes as equal. `None` when it does not
+/// serialize.
+pub(crate) fn unique_key<T: Serialize>(x: &T) -> Option<String> {
+    let v = serde_json::to_value(x).ok()?;
+    let mut key = String::new();
+    canonical(&v, &mut key);
+    Some(key)
 }
 
 /// Writes JSON text that is the same for equal instances. Object keys are sorted. A number is written by its value.
@@ -405,9 +399,23 @@ pub fn check_unique<T: Serialize>(out: &mut Vec<Violation>, path: &InstancePath<
 /// Checks the JSON Schema keywords with no Rust type of their own against the serialized value.
 /// Examples are `contains`, `if`/`then` and `dependentRequired`.
 pub fn check_schema(out: &mut Vec<Violation>, path: &InstancePath<'_>, value: &Value, schema: &Value) {
+    check_schema_in(out, path, value, schema, None);
+}
+
+/// [`check_schema`] with the definitions that every schema of a generated module shares.
+///
+/// A `#/$defs/<token>` reference resolves in the `$defs` of `schema` first, then in `shared`. Each shared definition is
+/// in the generated code once, however many schemas reach it.
+pub fn check_schema_in(
+    out: &mut Vec<Violation>,
+    path: &InstancePath<'_>,
+    value: &Value,
+    schema: &Value,
+    shared: Option<&Map<String, Value>>,
+) {
     let mut found = vec![];
     let defs = schema.get("$defs").and_then(Value::as_object);
-    Schema { defs, memo: RefCell::new(BTreeMap::new()) }.check(value, schema, &mut found);
+    Schema { defs, shared, memo: RefCell::new(BTreeMap::new()) }.check(value, schema, &mut found);
     for (at, message) in found {
         let mut p = path.to_string();
         p.push_str(&at);
@@ -430,6 +438,8 @@ struct Evaluated<'v> {
 /// in each object and array already.
 struct Schema<'s> {
     defs: Option<&'s Map<String, Value>>,
+    /// The definitions that the schemas of a generated module share: looked up after `defs`.
+    shared: Option<&'s Map<String, Value>>,
     /// By the addresses of a value and a definition: what it found, or `None` while it is being checked. A recursive
     /// `oneOf` checks each branch on the same nested values: without this, every level doubles the work. Only objects
     /// and arrays are kept. They sit in the checked value, whereas a string may be a name copied for a moment.
@@ -603,9 +613,11 @@ fn pointer_key(k: &str) -> String {
 }
 
 impl Schema<'_> {
-    /// Returns the definition that `reference` names in the `$defs` of the root (`#/$defs/<token>`).
+    /// Returns the definition that `reference` names (`#/$defs/<token>`): in the `$defs` of the root, else in the
+    /// shared ones.
     fn def(&self, reference: &str) -> Option<&Value> {
-        self.defs?.get(&unescape(reference.strip_prefix("#/$defs/")?))
+        let token = unescape(reference.strip_prefix("#/$defs/")?);
+        self.defs.and_then(|d| d.get(&token)).or_else(|| self.shared?.get(&token))
     }
 
     /// Checks `value` against the definition `target` once per object or array. A definition met again on the same
@@ -698,11 +710,17 @@ impl Schema<'_> {
             Value::Object(s) => &Keywords::new(s),
             Value::Bool(true) | Value::Null | Value::Number(_) | Value::String(_) | Value::Array(_) => return ev,
         };
-        if let Some(target) = s.get("$ref").and_then(Value::as_str).and_then(|r| self.def(r)) {
-            let e = self.check_def(value, target, out);
-            merge(&mut ev, e);
-        }
         let fail = |out: &mut Vec<(String, String)>, m: String| out.push((String::new(), m));
+        if let Some(r) = s.get("$ref").and_then(Value::as_str) {
+            match self.def(r) {
+                Some(target) => {
+                    let e = self.check_def(value, target, out);
+                    merge(&mut ev, e);
+                }
+                // Passing would accept any value: the generator resolves every reference, so this is a bug to see.
+                None => fail(out, format!("the reference `{r}` resolves to no schema")),
+            }
+        }
         if let Some(t) = s.get("type") {
             let ok = match t {
                 Value::String(t) => type_is(value, t),
@@ -1305,6 +1323,7 @@ mod mail {
 
     #[cfg(test)]
     mod tests {
+
         use super::{Email, IdnHostname, email, hostname};
 
         #[test]
@@ -1397,6 +1416,16 @@ mod mail {
 
 #[cfg(test)]
 mod tests {
+    /// A reference that resolves to nothing refuses the value: passing it would accept anything.
+    #[test]
+    fn a_reference_that_does_not_resolve_refuses_the_value() {
+        let schema = serde_json::json!({"$ref": "#/$defs/missing"});
+        let mut out = vec![];
+        super::check_schema(&mut out, &super::InstancePath::Root, &serde_json::json!("anything"), &schema);
+        assert_eq!(out.len(), 1, "{out:?}");
+        assert!(out[0].message.contains("#/$defs/missing"), "{out:?}");
+    }
+
     #[test]
     fn nan_is_no_number_whatever_the_bounds() {
         let mut out = vec![];
