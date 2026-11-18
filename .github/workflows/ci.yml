@@ -48,8 +48,7 @@ jobs:
         uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1
         with:
           toolchain: "stable"
-          # `cargo acyclic` indexes the code with rust-analyzer.
-          components: clippy, rust-analyzer
+          components: clippy
       - name: Cache cargo registry and target
         uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
         with:
@@ -62,11 +61,28 @@ jobs:
       # The benches and the optional codecs and adapters.
       - name: Clippy with every runtime feature
         run: cargo clippy -p honig --all-targets --all-features --locked -- -D warnings
+  # No cycles between modules or items and no calls up to a free function of an ancestor. Layers in order.
+  acyclic:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1
+        with:
+          toolchain: "stable"
+          # `cargo acyclic` indexes the code with rust-analyzer.
+          components: rust-analyzer
+      - name: Cache cargo registry and target
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
       - name: Install cargo-acyclic
         uses: taiki-e/install-action@ab49d3c64680143e184118bed66a46419fc15519 # v2.90.5
         with:
           tool: cargo-acyclic
-      # No cycles between modules or items and no calls up to a free function of an ancestor. Layers in order.
       - name: Modules are acyclic
         run: cargo acyclic
 
@@ -105,14 +121,14 @@ jobs:
         run: mdbook build docs/book
 
   # Each runtime feature alone and no features. `--workspace` turns on every feature that the e2e crate asks for. So only
-  # this job finds a missing `cfg` or a test without the feature that it needs. Two shards split the features.
+  # this job finds a missing `cfg` or a test without the feature that it needs. Three shards split the features.
   features-shard:
     name: features (${{ matrix.partition }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        partition: [1/2, 2/2]
+        partition: [1/3, 2/3, 3/3]
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -142,29 +158,48 @@ jobs:
         env:
           PARTITION: ${{ matrix.partition }}
         run: cargo hack nextest run -p honig --each-feature --partition "$PARTITION" --locked
-      # The generator with only the runtime features that it asks for itself. In `--workspace` the e2e crate turns
-      # on more (`regress`), so a check the CLI cannot run still passes there. Its own target directory keeps the
-      # unified build's artifacts out. The fuzz and coverage tests do not depend on features: the test job runs them.
+
+  # The generator with only the runtime features that it asks for itself. In `--workspace` the e2e crate turns on more
+  # (`regress`), so a check the CLI cannot run still passes there. Its own target directory keeps the unified build's
+  # artifacts out. The fuzz and coverage tests do not depend on features: the test job runs them.
+  generator:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@683b588c487a69d01f6c6ddf40f036ff682cc2c8 # v1
+        with:
+          toolchain: "stable"
+      - name: Cache cargo registry and target
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          save-if: ${{ github.ref == 'refs/heads/main' }}
+      - name: Install cargo-nextest
+        uses: taiki-e/install-action@ab49d3c64680143e184118bed66a46419fc15519 # v2.90.5
+        with:
+          tool: cargo-nextest
       - name: Test the generator alone
-        if: matrix.partition == '2/2'
         run: cargo nextest run -p cargo-honig --locked --target-dir target/isolated -E 'not test(/fuzz|coverage/)'
       # The generator without its HTTPS client and overlays.
       - name: Test the generator without default features
-        if: matrix.partition == '2/2'
         run: cargo nextest run -p cargo-honig --lib --no-default-features --locked --target-dir target/isolated -E 'not test(/fuzz|coverage/)'
 
   # The required check: it fails if a shard failed or did not finish.
   features:
-    needs: features-shard
+    needs: [features-shard, generator]
     if: always()
     runs-on: ubuntu-latest
     steps:
       - name: Every shard passed
         env:
-          RESULT: ${{ needs.features-shard.result }}
+          SHARDS: ${{ needs.features-shard.result }}
+          GENERATOR: ${{ needs.generator.result }}
         run: |
-          echo "shards: $RESULT"
-          [ "$RESULT" = success ]
+          echo "shards: $SHARDS generator: $GENERATOR"
+          [ "$SHARDS" = success ] && [ "$GENERATOR" = success ]
 
   # The oldest Rust the published crates build with: `rust-version` in Cargo.toml.
   msrv:
@@ -225,11 +260,11 @@ jobs:
       matrix:
         include:
           - bench: scaling-runtime
-            paths: runtime benches tests/bench-support
+            paths: runtime benches tests/bench-support :!runtime/tests
             valgrind: true
             run: cargo bench -p honig --bench scaling --features cookie,multipart,server,xml --locked
           - bench: scaling-generator
-            paths: src benches tests/bench-support
+            paths: src benches tests/bench-support :!src/tests :!src/tests.rs
             valgrind: true
             run: cargo bench -p cargo-honig --bench scaling --locked
           - bench: time
