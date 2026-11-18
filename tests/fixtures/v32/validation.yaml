@@ -68,6 +68,19 @@ paths:
       responses:
         "201":
           description: Created.
+  # A closed object is closed in every media type: an unknown field is a bad request.
+  /closed:
+    post:
+      operationId: addClosed
+      requestBody:
+        required: true
+        content:
+          application/json: {schema: {$ref: '#/components/schemas/Closed'}}
+          application/x-www-form-urlencoded: {schema: {$ref: '#/components/schemas/Closed'}}
+          application/xml: {schema: {$ref: '#/components/schemas/Closed'}}
+      responses:
+        "201":
+          description: Created.
   /badges:
     post:
       operationId: addBadge
@@ -144,6 +157,13 @@ components:
         code: {type: string, enum: [INVALID, TAKEN]}
         status: {type: integer, format: int32}
         detail: {type: string}
+    Closed:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name: {type: string}
+      xml: {name: closed}
     # No property allowed: only `{}` is valid (Oxide's `SubnetCreateDefaults`).
     NoOptions:
       type: object

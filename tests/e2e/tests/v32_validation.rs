@@ -124,6 +124,13 @@ impl api::Api for Users {
     ) -> impl Future<Output = Result<ops::add_badge::Response, api::ApiError>> + Send {
         std::future::ready(Ok(ops::add_badge::Response::Created))
     }
+    fn add_closed(
+        &self,
+        _: ops::add_closed::Params,
+        _: &api::Context<'_>,
+    ) -> impl Future<Output = Result<ops::add_closed::Response, api::ApiError>> + Send {
+        std::future::ready(Ok(ops::add_closed::Response::Created))
+    }
 }
 
 fn post(path: &str, media: &str, body: Vec<u8>) -> api::Response {
@@ -269,6 +276,13 @@ impl api::Api for Recording {
         _: &api::Context<'_>,
     ) -> impl Future<Output = Result<ops::add_badge::Response, api::ApiError>> + Send {
         std::future::ready(Ok(ops::add_badge::Response::Created))
+    }
+    fn add_closed(
+        &self,
+        _: ops::add_closed::Params,
+        _: &api::Context<'_>,
+    ) -> impl Future<Output = Result<ops::add_closed::Response, api::ApiError>> + Send {
+        std::future::ready(Ok(ops::add_closed::Response::Created))
     }
 }
 
@@ -576,4 +590,26 @@ fn decimal_keywords_are_exact() {
     let past = decodes(r#"{"cents": 100000000000000000.001}"#).expect_err("not a multiple of 0.01");
     assert!(past.starts_with("is not a multiple of 0.01"), "{past}");
     assert!(decodes(r#"{"cents": 0.07}"#).is_ok(), "0.07 / 0.01 is not a whole f64");
+}
+
+/// `additionalProperties: false` holds in every media type of a body: a field that the schema does not declare is a
+/// bad request as JSON, as a form and as XML.
+#[test]
+fn a_closed_object_refuses_unknown_fields_in_every_media_type() {
+    let cases: [(&str, &str, &str); 3] = [
+        ("application/json", r#"{"name":"a"}"#, r#"{"name":"a","extra":"b"}"#),
+        ("application/x-www-form-urlencoded", "name=a", "name=a&extra=b"),
+        ("application/xml", "<closed><name>a</name></closed>", "<closed><name>a</name><extra>b</extra></closed>"),
+    ];
+    for (media, ok, extra) in cases {
+        let r = post("/closed", media, ok.as_bytes().to_vec());
+        assert_eq!(r.status().as_u16(), 201, "{media}: {}", String::from_utf8_lossy(r.body().bytes()));
+        let r = post("/closed", media, extra.as_bytes().to_vec());
+        assert_eq!(
+            r.status().as_u16(),
+            400,
+            "{media} with an unknown field: {}",
+            String::from_utf8_lossy(r.body().bytes())
+        );
+    }
 }
