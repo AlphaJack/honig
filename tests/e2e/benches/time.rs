@@ -24,13 +24,14 @@ fn main() -> std::process::ExitCode {
     for size in cost::BENCH_SIZES {
         let (generated, baseline) = cost::at(size);
         for path in cost::paths(size) {
+            let max = cost::time_budget(path.max_time, size);
             let measured = runtime.block_on(async {
                 cost::same_answer(&generated, &baseline, &path).await?;
                 // A shared CI runner stalls now and then. A path over its limit is measured again. A real slowdown
                 // fails every attempt and a stall does not.
                 let mut best = cost::times(&generated, &baseline, &path, ROUNDS, ROUND).await;
                 for _ in 1..ATTEMPTS {
-                    if best.ratio <= path.max_time {
+                    if best.ratio <= max {
                         break;
                     }
                     let again = cost::times(&generated, &baseline, &path, ROUNDS, ROUND).await;
@@ -49,7 +50,7 @@ fn main() -> std::process::ExitCode {
             };
             let micros = |d: Duration| format!("{:.1}", d.as_secs_f64() * 1e6);
             let sides = [micros(timing.generated), micros(timing.baseline)];
-            rows.push(cost::Measured { path: path.name, size, sides, ratio: timing.ratio, max: path.max_time });
+            rows.push(cost::Measured { path: path.name, size, sides, ratio: timing.ratio, max });
         }
     }
     failed.extend(cost::print_rows(&table, rows));
