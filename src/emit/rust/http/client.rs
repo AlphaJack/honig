@@ -459,7 +459,7 @@ fn other_statuses(m: &TokenStream, response: &TokenStream) -> TokenStream {
         let (head, body) = resp.into_parts();
         let resp = runtime::Response::from_parts(head, runtime::Body::new(body.collect().await?));
         let other: Result<#m::Response, runtime::Error> = async move { #response }.await;
-        Ok(runtime::Streamed::Other(other?))
+        Ok(runtime::Streamed::Whole(other?))
     }
 }
 

@@ -146,7 +146,7 @@ fn the_client_reads_a_blob_whole_or_as_chunks() {
     assert_eq!(api::block_on(resp.into_body().collect()).unwrap(), CHUNKS.concat());
     // The declared 404 arrives typed as from `get_export`.
     let missing = api::block_on(c.get_export_stream(ops::get_export::Params { id: "none".to_owned() }));
-    assert_matches!(missing, Ok(api::Streamed::Other(ops::get_export::Response::NotFound)), "{missing:?}");
+    assert_matches!(missing, Ok(api::Streamed::Whole(ops::get_export::Response::NotFound)), "{missing:?}");
 }
 
 /// A `GET` of the manifest with these request headers through the server.
