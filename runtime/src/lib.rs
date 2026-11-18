@@ -80,6 +80,7 @@ pub use formatted::UuidText;
 pub use formatted::{
     DateText, DateTimeLocalText, DateTimeText, Decimal128Text, DecimalText, DurationText, HttpDateText,
 };
+pub use formatted::{Email, Hostname, IdnEmail, IdnHostname};
 pub use formatted::{Ipv4CidrText, Ipv6CidrText, IriReferenceText, IriText, JsonPointerText, RegexText};
 pub use formatted::{RelativeJsonPointerText, TimeLocalText, TimeText, UriReferenceText, UriTemplateText, UriText};
 #[cfg(feature = "jiff")]
@@ -114,8 +115,6 @@ pub use stream::{Framing, ItemStream, Items, Streamed};
 #[cfg(any(feature = "client", feature = "server"))]
 pub use tower_service::Service;
 pub use transport::block_on;
-#[cfg(feature = "idn")]
-pub use validate::{Email, Hostname, IdnEmail, IdnHostname};
 pub use validate::{InstancePath, Violation};
 
 // The hidden items that the modules use to name each other from the root.

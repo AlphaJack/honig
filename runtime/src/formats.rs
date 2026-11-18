@@ -122,6 +122,27 @@ pub mod format {
         "time"
     );
     marker!(
+        /// `email`: an RFC 5321 mail address. An ASCII dot-atom or quoted local part, then `@`, then a host name or
+        /// an address literal.
+        Email,
+        "email"
+    );
+    marker!(
+        /// `idn-email`: an RFC 6531 mail address, an `email` that may hold UTF-8.
+        IdnEmail,
+        "idn-email"
+    );
+    marker!(
+        /// `hostname`: an RFC 1123 host name with ASCII labels. A punycode label must decode to a valid name.
+        Hostname,
+        "hostname"
+    );
+    marker!(
+        /// `idn-hostname`: an IDNA2008 host name, a `hostname` whose labels may be Unicode.
+        IdnHostname,
+        "idn-hostname"
+    );
+    marker!(
         /// `decimal` on a string: the digits of a decimal number.
         Decimal,
         "decimal"

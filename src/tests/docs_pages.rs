@@ -54,7 +54,7 @@ fn out_dir() -> PathBuf {
 /// - `error-rendering.md`: the rustdoc of `Rejection::response`
 /// - `settings.md`: every setting of a module from `SETTINGS`
 /// - `formats.md`: the Rust type of each string format as the generator picks it
-/// - `checked-text.md`: the runtime's types that only a valid value can be
+/// - `checked-text.md`: the runtime's text types that only a valid value of their format can be
 /// - `module-files.md`: the files of a generated module from `emit::rust::FILES`
 /// - `principals.md`, `operation-layer.md`: the rustdoc of `Authentication` and of `Server::operation_layer`
 /// - `upgrade-v20.md`, `upgrade-v30.md`, `upgrade-v31.md`, `upgrade-any.md`: the module docs of the upgrade passes
@@ -66,7 +66,8 @@ fn pages() -> Result<Vec<(&'static str, PathBuf, String)>> {
         src.join("server").join("range.rs"),
         src.join("client").join("reconnect.rs"),
     );
-    let (error_rs, reject_rs, validate_rs) = (src.join("error.rs"), src.join("reject.rs"), src.join("validate.rs"));
+    let (error_rs, reject_rs) = (src.join("error.rs"), src.join("reject.rs"));
+    let (formats_rs, formatted_rs) = (src.join("formats.rs"), src.join("formatted.rs"));
     let runtime_toml = root.join("runtime").join("Cargo.toml");
     let upgrade = root.join("src").join("upgrade");
     let (v20, v30, v31, any) = (
@@ -101,7 +102,11 @@ fn pages() -> Result<Vec<(&'static str, PathBuf, String)>> {
         ("error-rendering.md", reject_rs, plain_links(&item_docs(&reject, "    pub fn response")?)),
         ("formats.md", root.join("src").join("emit").join("rust").join("syntax.rs"), formats_page()),
         ("settings.md", root.join("src").join("settings.rs"), settings_page()),
-        ("checked-text.md", validate_rs.clone(), plain_links(&checked_text_page(&read(&validate_rs)?))),
+        (
+            "checked-text.md",
+            formats_rs.clone(),
+            plain_links(&checked_text_page(&read(&formats_rs)?, &read(&formatted_rs)?)),
+        ),
         ("principals.md", service_rs.clone(), plain_links(&item_docs(&service, "pub trait Authentication")?)),
         ("operation-layer.md", service_rs, plain_links(&item_docs(&service, "    pub fn operation_layer")?)),
         ("upgrade-v20.md", v20.clone(), module_docs(&read(&v20)?)),
@@ -185,17 +190,23 @@ fn formats_page() -> String {
     page
 }
 
-/// One row per `checked_text!` type of the runtime: its format, its type and its rustdoc.
-fn checked_text_page(source: &str) -> String {
+/// One row per checked text type of the runtime: its format, its `Formatted` alias in `formatted` and the rustdoc of
+/// its marker in `formats`.
+fn checked_text_page(formats: &str, formatted: &str) -> String {
     let mut page = "| Format | Type | Accepts |\n|---|---|---|\n".to_owned();
-    let mut lines = source.lines().skip_while(|l| !l.contains("macro_rules! checked_text"));
-    while lines.by_ref().any(|l| l.trim_start().starts_with("checked_text!(")) {
+    let mut lines = formats.lines();
+    while lines.by_ref().any(|l| l.trim_start().starts_with("marker!(")) {
         let block: Vec<&str> = lines.by_ref().take_while(|l| l.trim() != ");").collect();
         let docs: Vec<&str> = block.iter().filter_map(|l| doc_text(l, "///")).collect();
         let mut rest = block.iter().map(|l| l.trim()).filter(|l| !l.starts_with("///"));
-        let name = rest.next().unwrap_or_default().trim_end_matches(',');
+        let marker = rest.next().unwrap_or_default().trim_end_matches(',');
         let format = rest.next().unwrap_or_default().trim_end_matches(',').trim_matches('"');
-        page.push_str(&format!("| `{format}` | `api::{name}` | {} |\n", docs.join(" ")));
+        let alias = format!(" = Formatted<format::{marker}>;");
+        let Some(name) = formatted.lines().find_map(|l| l.strip_prefix("pub type")?.strip_suffix(alias.as_str()))
+        else {
+            continue;
+        };
+        page.push_str(&format!("| `{format}` | `api::{}` | {} |\n", name.trim(), docs.join(" ")));
     }
     page
 }

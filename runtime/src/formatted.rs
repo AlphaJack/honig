@@ -181,6 +181,14 @@ pub type IriReferenceText = Formatted<format::IriReference>;
 pub type Ipv4CidrText = Formatted<format::Ipv4Cidr>;
 /// `format: ipv6-cidr` without the `ipnet` crate.
 pub type Ipv6CidrText = Formatted<format::Ipv6Cidr>;
+/// `format: email`. Checking it needs the `idn` feature.
+pub type Email = Formatted<format::Email>;
+/// `format: idn-email`. Checking it needs the `idn` feature.
+pub type IdnEmail = Formatted<format::IdnEmail>;
+/// `format: hostname`. Checking it needs the `idn` feature.
+pub type Hostname = Formatted<format::Hostname>;
+/// `format: idn-hostname`. Checking it needs the `idn` feature.
+pub type IdnHostname = Formatted<format::IdnHostname>;
 /// `{type: string, format: decimal}`: every digit, past what a decimal type holds.
 pub type DecimalText = Formatted<format::Decimal>;
 /// `{type: string, format: decimal128}`: a decimal that IEEE 754 decimal128 holds exactly, at most 34 significant
