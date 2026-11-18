@@ -11,6 +11,10 @@
     clippy::missing_errors_doc,
     reason = "generated docs hold only the description's own prose"
 )]
+#![allow(
+    clippy::init_numbered_fields,
+    reason = "a spec default builds its checked type as `Type { 0: value }`, which also works through the alias of a twin"
+)]
 macro_rules! deserialize_impl {
     ($t:ty) => {
         impl<'de> serde::Deserialize<'de> for $t {
@@ -25,88 +29,6 @@ macro_rules! serialize_impl {
         impl serde::Serialize for $t {
             fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
                 Self::serialize(self, s)
-            }
-        }
-    };
-}
-macro_rules! validate_impl {
-    ($t:ty) => {
-        impl runtime::Validate for $t {}
-    };
-}
-macro_rules! serialize_impl_2 {
-    ($t:ty) => {
-        impl serde::Serialize for $t {
-            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-                match self {
-                    Self::Variant1(v) => serde::Serialize::serialize(v, s),
-                    Self::Variant2(v) => serde::Serialize::serialize(v, s),
-                }
-            }
-        }
-    };
-}
-macro_rules! validate_impl_2 {
-    ($t:ty) => {
-        impl runtime::Validate for $t {
-            fn validate(
-                &self,
-                path: &runtime::InstancePath<'_>,
-                out: &mut Vec<runtime::Violation>,
-            ) {
-                {
-                    static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                    let value = runtime::to_value(&self.holders).unwrap_or_default();
-                    let schema = SCHEMA
-                        .get_or_init(|| {
-                            serde_json::from_str(
-                                    "{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"contains\":{\"const\":\"owner\"}}",
-                                )
-                                .unwrap_or_default()
-                        });
-                    runtime::check_schema_in(
-                        out,
-                        &runtime::InstancePath::Key(path, "holders"),
-                        &value,
-                        schema,
-                        runtime::schema_defs(),
-                    );
-                }
-            }
-        }
-    };
-}
-macro_rules! validate_impl_3 {
-    ($t:ty) => {
-        impl runtime::Validate for $t {
-            fn validate(
-                &self,
-                path: &runtime::InstancePath<'_>,
-                out: &mut Vec<runtime::Violation>,
-            ) {
-                {
-                    let base = &runtime::InstancePath::Key(path, "items");
-                    for (i, v) in self.items.iter().enumerate() {
-                        {
-                            static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                            let value = runtime::to_value(v).unwrap_or_default();
-                            let schema = SCHEMA
-                                .get_or_init(|| {
-                                    serde_json::from_str(
-                                            "{\"oneOf\":[{\"type\":\"object\",\"required\":[\"items\",\"x\"],\"properties\":{\"items\":{\"type\":\"array\",\"items\":{\"$ref\":\"#/$defs/~1components~1schemas~1Tree\"}},\"x\":{\"type\":\"string\"}}},{\"type\":\"object\",\"required\":[\"items\",\"x\"],\"properties\":{\"items\":{\"type\":\"array\",\"items\":{\"$ref\":\"#/$defs/~1components~1schemas~1Tree\"}},\"x\":{\"type\":\"integer\"}}}]}",
-                                        )
-                                        .unwrap_or_default()
-                                });
-                            runtime::check_schema_in(
-                                out,
-                                &runtime::InstancePath::Index(base, i),
-                                &value,
-                                schema,
-                                runtime::schema_defs(),
-                            );
-                        }
-                    }
-                }
             }
         }
     };
@@ -129,15 +51,12 @@ macro_rules! try_from_impl {
                         "characters",
                     );
                 }
-                match violations.into_iter().next() {
-                    Some(v) => Err(v.message),
-                    None => Ok(Self(value)),
-                }
+                runtime::first(violations).map(|()| Self(value))
             }
         }
     };
 }
-macro_rules! serialize_impl_3 {
+macro_rules! serialize_impl_2 {
     ($t:ty) => {
         impl serde::Serialize for $t {
             fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
@@ -164,10 +83,42 @@ macro_rules! try_from_impl_2 {
                         "characters",
                     );
                 }
-                match violations.into_iter().next() {
-                    Some(v) => Err(v.message),
-                    None => Ok(Self(value)),
+                runtime::first(violations).map(|()| Self(value))
+            }
+        }
+    };
+}
+macro_rules! serialize_impl_3 {
+    ($t:ty) => {
+        impl serde::Serialize for $t {
+            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                match self {
+                    Self::Variant1(v) => serde::Serialize::serialize(v, s),
+                    Self::Variant2(v) => serde::Serialize::serialize(v, s),
                 }
+            }
+        }
+    };
+}
+macro_rules! deserialize_impl_2 {
+    ($t:ty) => {
+        impl<'de> serde::Deserialize<'de> for $t {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                let value = <std::collections::BTreeMap<
+                    String,
+                    String,
+                > as serde::Deserialize>::deserialize(d)?;
+                Self::try_from(value).map_err(serde::de::Error::custom)
+            }
+        }
+    };
+}
+macro_rules! deserialize_impl_3 {
+    ($t:ty) => {
+        impl<'de> serde::Deserialize<'de> for $t {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                let value = <serde_json::Value as serde::Deserialize>::deserialize(d)?;
+                Self::try_from(value).map_err(serde::de::Error::custom)
             }
         }
     };
@@ -350,6 +301,32 @@ macro_rules! checked_decimal_impls {
         }
     };
 }
+macro_rules! checked_impls {
+    ($n:ident, $t:ty) => {
+        impl $n {
+            #[must_use]
+            pub fn into_inner(self) -> $t {
+                self.0
+            }
+        }
+        impl std::ops::Deref for $n {
+            type Target = $t;
+            fn deref(&self) -> &$t {
+                &self.0
+            }
+        }
+        impl AsRef<$t> for $n {
+            fn as_ref(&self) -> &$t {
+                &self.0
+            }
+        }
+        impl From<$n> for $t {
+            fn from(value: $n) -> Self {
+                value.0
+            }
+        }
+    };
+}
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Exact {
@@ -418,7 +395,6 @@ impl runtime::XmlShape for Exact {
         &NODE
     }
 }
-validate_impl!(Exact);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Degenerate {
@@ -559,66 +535,44 @@ impl runtime::XmlShape for Degenerate {
         &NODE
     }
 }
-validate_impl!(Degenerate);
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Tree {
-    Variant1(TreeVariant1),
-    Variant2(TreeVariant2),
-}
-serialize_impl_2!(Tree);
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
+pub struct Tree(pub(super) TreeVariants);
 impl<'de> serde::Deserialize<'de> for Tree {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let v = <runtime::Content<'de> as serde::Deserialize>::deserialize(d)?;
-        let fit_0 = v.kind() == runtime::Kind::Object
-            && runtime::fits(
-                &v,
-                &[
-                    ("items", true, &[runtime::Kind::Array]),
-                    ("x", true, &[runtime::Kind::String]),
-                ],
-            );
-        let fit_1 = v.kind() == runtime::Kind::Object
-            && runtime::fits(
-                &v,
-                &[
-                    ("items", true, &[runtime::Kind::Array]),
-                    ("x", true, &[runtime::Kind::Integer, runtime::Kind::Number]),
-                ],
-            );
-        let mut first = None;
-        if fit_0 && let Ok(x) = v.decode_ref::<TreeVariant1>() {
-            let picked = Self::Variant1(x);
-            if (first.is_none() && !(fit_1)) || runtime::is_valid(&picked) {
-                return Ok(picked);
-            }
-            first.get_or_insert(picked);
-        }
-        if fit_1 && let Ok(x) = v.decode_ref::<TreeVariant2>() {
-            let picked = Self::Variant2(x);
-            if first.is_none() || runtime::is_valid(&picked) {
-                return Ok(picked);
-            }
-            first.get_or_insert(picked);
-        }
-        first.ok_or_else(|| serde::de::Error::custom("matches no variant"))
+        let value = <TreeVariants as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
     }
 }
-impl runtime::Validate for Tree {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        match self {
-            Self::Variant1(x) => {
-                runtime::Validate::validate(x, path, out);
-            }
-            Self::Variant2(x) => {
-                runtime::Validate::validate(x, path, out);
+impl TryFrom<TreeVariants> for Tree {
+    type Error = String;
+    fn try_from(value: TreeVariants) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            {
+                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                let value = runtime::to_value(&value).unwrap_or_default();
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"oneOf\":[{\"type\":\"object\",\"required\":[\"items\",\"x\"],\"properties\":{\"items\":{\"type\":\"array\",\"items\":{\"$ref\":\"#/$defs/~1components~1schemas~1Tree\"}},\"x\":{\"type\":\"string\"}}},{\"type\":\"object\",\"required\":[\"items\",\"x\"],\"properties\":{\"items\":{\"type\":\"array\",\"items\":{\"$ref\":\"#/$defs/~1components~1schemas~1Tree\"}},\"x\":{\"type\":\"integer\"}}}]}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
+                    out,
+                    &runtime::InstancePath::Root,
+                    &value,
+                    schema,
+                    runtime::schema_defs(),
+                );
             }
         }
+        runtime::first(violations).map(|()| Self(value))
     }
 }
+checked_impls!(Tree, TreeVariants);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Ledger {
@@ -654,107 +608,6 @@ impl runtime::XmlShape for Ledger {
                     wrapped: false,
                     required: false,
                     item: "entries",
-                    child: Some(<Entry as runtime::XmlShape>::xml),
-                    cdata: false,
-                    inline: false,
-                    nullable: false,
-                    object: false,
-                },
-            ],
-        };
-        &NODE
-    }
-}
-impl runtime::Validate for Ledger {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        if let Some(v) = &self.entries {
-            {
-                let base = &runtime::InstancePath::Key(path, "entries");
-                for (i, v) in v.iter().enumerate() {
-                    {
-                        static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                        let value = runtime::to_value(v).unwrap_or_default();
-                        let schema = SCHEMA
-                            .get_or_init(|| {
-                                serde_json::from_str(
-                                        "{\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1EntryFields\"},{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"integer\"},\"lines\":{\"maxItems\":2}}}]}",
-                                    )
-                                    .unwrap_or_default()
-                            });
-                        runtime::check_schema_in(
-                            out,
-                            &runtime::InstancePath::Index(base, i),
-                            &value,
-                            schema,
-                            runtime::schema_defs(),
-                        );
-                    }
-                }
-            }
-        }
-    }
-}
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct Entry {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub lines: Option<serde_json::Value>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub id: Option<i64>,
-}
-deserialize_impl!(Entry);
-serialize_impl!(Entry);
-impl Entry {
-    #[must_use]
-    pub const fn new() -> Self {
-        Self { lines: None, id: None }
-    }
-}
-impl runtime::XmlShape for Entry {
-    fn xml() -> &'static runtime::XmlNode {
-        static NODE: runtime::XmlNode = runtime::XmlNode {
-            name: "Entry",
-            namespace: "",
-            prefix: "",
-            fields: &[
-                runtime::XmlField {
-                    wire: "lines",
-                    name: "lines",
-                    prefix: "",
-                    attribute: false,
-                    text: false,
-                    list: false,
-                    wrapped: false,
-                    required: false,
-                    item: "lines",
-                    child: None,
-                    cdata: false,
-                    inline: false,
-                    nullable: false,
-                    object: false,
-                },
-                runtime::XmlField {
-                    wire: "id",
-                    name: "id",
-                    prefix: "",
-                    attribute: false,
-                    text: false,
-                    list: false,
-                    wrapped: false,
-                    required: false,
-                    item: "id",
                     child: None,
                     cdata: false,
                     inline: false,
@@ -766,31 +619,44 @@ impl runtime::XmlShape for Entry {
         &NODE
     }
 }
-impl runtime::Validate for Entry {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        if let Some(v) = &self.lines {
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
+pub struct Entry(pub(super) EntryFields2);
+impl<'de> serde::Deserialize<'de> for Entry {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <EntryFields2 as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
+    }
+}
+impl TryFrom<EntryFields2> for Entry {
+    type Error = String;
+    fn try_from(value: EntryFields2) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
             {
                 static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(v).unwrap_or_default();
+                let value = runtime::to_value(&value).unwrap_or_default();
                 let schema = SCHEMA
                     .get_or_init(|| {
-                        serde_json::from_str("{\"maxItems\":2}").unwrap_or_default()
+                        serde_json::from_str(
+                                "{\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1EntryFields\"},{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"integer\"},\"lines\":{\"maxItems\":2}}}]}",
+                            )
+                            .unwrap_or_default()
                     });
                 runtime::check_schema_in(
                     out,
-                    &runtime::InstancePath::Key(path, "lines"),
+                    &runtime::InstancePath::Root,
                     &value,
                     schema,
                     runtime::schema_defs(),
                 );
             }
         }
+        runtime::first(violations).map(|()| Self(value))
     }
 }
+checked_impls!(Entry, EntryFields2);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct EntryFields {
@@ -837,7 +703,6 @@ impl runtime::XmlShape for EntryFields {
         &NODE
     }
 }
-validate_impl!(EntryFields);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Line {
@@ -882,7 +747,6 @@ impl runtime::XmlShape for Line {
         &NODE
     }
 }
-validate_impl!(Line);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Refusal {
@@ -941,7 +805,6 @@ impl runtime::XmlShape for Refusal {
         &NODE
     }
 }
-validate_impl!(Refusal);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 #[serde(deny_unknown_fields)]
@@ -1018,7 +881,6 @@ impl runtime::XmlShape for Problem {
         &NODE
     }
 }
-validate_impl!(Problem);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 #[serde(deny_unknown_fields)]
@@ -1061,7 +923,6 @@ impl runtime::XmlShape for Closed {
         &NODE
     }
 }
-validate_impl!(Closed);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 #[serde(deny_unknown_fields)]
@@ -1085,19 +946,18 @@ impl runtime::XmlShape for NoOptions {
         &NODE
     }
 }
-validate_impl!(NoOptions);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Badge {
     pub id: i64,
     pub label: BadgeLabel,
-    pub holders: Vec<String>,
+    pub holders: BadgeHolders,
 }
 deserialize_impl!(Badge);
 serialize_impl!(Badge);
 impl Badge {
     #[must_use]
-    pub const fn new(id: i64, label: BadgeLabel, holders: Vec<String>) -> Self {
+    pub const fn new(id: i64, label: BadgeLabel, holders: BadgeHolders) -> Self {
         Self { id, label, holders }
     }
 }
@@ -1146,7 +1006,7 @@ impl runtime::XmlShape for Badge {
                     prefix: "",
                     attribute: false,
                     text: false,
-                    list: true,
+                    list: false,
                     wrapped: false,
                     required: true,
                     item: "holders",
@@ -1161,7 +1021,6 @@ impl runtime::XmlShape for Badge {
         &NODE
     }
 }
-validate_impl_2!(Badge);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Login {
@@ -1220,75 +1079,44 @@ impl runtime::XmlShape for Login {
         &NODE
     }
 }
-validate_impl!(Login);
-#[derive(Debug, Clone, PartialEq)]
-pub enum Shipment {
-    International(ShipmentInternational),
-    Otherwise(ShipmentOtherwise),
-}
-impl serde::Serialize for Shipment {
-    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        match self {
-            Self::International(v) => {
-                let mut j = serde_json::to_value(v).map_err(serde::ser::Error::custom)?;
-                if let serde_json::Value::Object(m) = &mut j {
-                    m.insert(
-                        "kind".to_owned(),
-                        serde_json::Value::String("international".to_owned()),
-                    );
-                }
-                serde::Serialize::serialize(&j, s)
-            }
-            Self::Otherwise(v) => serde::Serialize::serialize(v, s),
-        }
-    }
-}
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+#[serde(transparent)]
+pub struct Shipment(pub(super) ShipmentVariants);
 impl<'de> serde::Deserialize<'de> for Shipment {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        runtime::tagged::<D, Self>(d)
+        let value = <ShipmentVariants as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
     }
 }
-impl<'de> runtime::TaggedUnion<'de> for Shipment {
-    const TAG: &'static str = "kind";
-    fn knows(tag: &str) -> bool {
-        matches!(tag, "international")
-    }
-    fn from_tag<D: serde::Deserializer<'de>>(tag: &str, d: D) -> Result<Self, D::Error> {
-        match tag {
-            "international" => {
-                <ShipmentInternational as serde::Deserialize>::deserialize(d)
-                    .map(Self::International)
+impl TryFrom<ShipmentVariants> for Shipment {
+    type Error = String;
+    fn try_from(value: ShipmentVariants) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            {
+                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                let value = runtime::to_value(&value).unwrap_or_default();
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"type\":\"object\",\"required\":[\"kind\",\"parcels\"],\"properties\":{\"kind\":{\"type\":\"string\",\"enum\":[\"domestic\",\"international\"]},\"customs\":{\"type\":\"string\"},\"insured\":{\"type\":\"boolean\"},\"insurer\":{\"type\":\"string\"},\"options\":{\"$ref\":\"#/$defs/~1components~1schemas~1NoOptions\"},\"rating\":{\"minimum\":1},\"meta\":{\"properties\":{\"count\":{\"type\":\"integer\"}}},\"label\":{\"type\":\"string\",\"minLength\":4,\"default\":\"bad\"},\"parcels\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"fragile\":{\"type\":\"boolean\"}}},\"contains\":{\"properties\":{\"fragile\":{\"const\":true}},\"required\":[\"fragile\"]},\"maxContains\":2},\"scores\":{\"type\":\"object\",\"patternProperties\":{\"^[a-z]+$\":{\"type\":\"integer\",\"minimum\":0}},\"additionalProperties\":false},\"priority\":{\"type\":[\"number\",\"null\"],\"minimum\":0,\"maximum\":2},\"weight\":{\"type\":[\"integer\",\"null\"],\"minimum\":256},\"labels\":{\"type\":\"object\",\"propertyNames\":{\"pattern\":\"^[a-z]+$\"},\"patternProperties\":{\"^x\":{\"type\":\"string\",\"maxLength\":3}},\"additionalProperties\":{\"type\":\"string\"}}},\"dependentRequired\":{\"insured\":[\"insurer\"]},\"if\":{\"properties\":{\"kind\":{\"const\":\"international\"}}},\"then\":{\"required\":[\"customs\"]},\"not\":{\"required\":[\"customs\",\"insurer\"],\"properties\":{\"customs\":{\"const\":\"none\"}}}}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
+                    out,
+                    &runtime::InstancePath::Root,
+                    &value,
+                    schema,
+                    runtime::schema_defs(),
+                );
             }
-            _ => Err(serde::de::Error::custom("unknown discriminator")),
         }
-    }
-    fn from_content(v: runtime::Content<'de>) -> Result<Self, serde_json::Error> {
-        let which = match v.tag("kind").as_deref() {
-            Some("international") => 0,
-            _ => 1,
-        };
-        match which {
-            0 => v.decode_into(Self::International),
-            _ => v.decode_into(Self::Otherwise),
-        }
+        runtime::first(violations).map(|()| Self(value))
     }
 }
-impl runtime::Validate for Shipment {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        match self {
-            Self::International(x) => {
-                runtime::Validate::validate(x, path, out);
-            }
-            Self::Otherwise(x) => {
-                runtime::Validate::validate(x, path, out);
-            }
-        }
-    }
-}
+checked_impls!(Shipment, ShipmentVariants);
 #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Price {
@@ -1360,7 +1188,6 @@ impl runtime::XmlShape for Price {
         &NODE
     }
 }
-validate_impl!(Price);
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct User {
@@ -1388,7 +1215,7 @@ pub struct User {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub tags: Option<Vec<UserTagsItem>>,
+    pub tags: Option<UserTags>,
     pub role: UserRole,
     #[serde(
         default,
@@ -1407,7 +1234,7 @@ pub struct User {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub meta: Option<std::collections::BTreeMap<String, String>>,
+    pub meta: Option<UserMeta>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
@@ -1514,7 +1341,7 @@ impl runtime::XmlShape for User {
                     prefix: "",
                     attribute: false,
                     text: false,
-                    list: true,
+                    list: false,
                     wrapped: false,
                     required: false,
                     item: "tags",
@@ -1586,7 +1413,7 @@ impl runtime::XmlShape for User {
                     cdata: false,
                     inline: false,
                     nullable: false,
-                    object: true,
+                    object: false,
                 },
                 runtime::XmlField {
                     wire: "loyalty",
@@ -1625,35 +1452,6 @@ impl runtime::XmlShape for User {
         &NODE
     }
 }
-impl runtime::Validate for User {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        if let Some(v) = &self.tags {
-            runtime::check_len(
-                out,
-                &runtime::InstancePath::Key(path, "tags"),
-                v.len(),
-                Some(1),
-                None,
-                "items",
-            );
-            runtime::check_unique(out, &runtime::InstancePath::Key(path, "tags"), v);
-        }
-        if let Some(v) = &self.meta {
-            runtime::check_len(
-                out,
-                &runtime::InstancePath::Key(path, "meta"),
-                v.len(),
-                None,
-                Some(2),
-                "properties",
-            );
-        }
-    }
-}
 #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize)]
 #[serde(transparent)]
 pub struct ExactTenth(pub(super) runtime::Decimal);
@@ -1670,14 +1468,10 @@ impl TryFrom<runtime::Decimal> for ExactTenth {
                 [Some("0.1"), None, None, None],
             );
         }
-        match violations.into_iter().next() {
-            Some(v) => Err(v.message),
-            None => Ok(Self(value)),
-        }
+        runtime::first(violations).map(|()| Self(value))
     }
 }
 checked_decimal_impls!(ExactTenth);
-validate_impl!(ExactTenth);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize)]
 #[serde(transparent)]
 pub struct ExactCents(pub(super) runtime::Decimal);
@@ -1694,14 +1488,10 @@ impl TryFrom<runtime::Decimal> for ExactCents {
                 "0.01",
             );
         }
-        match violations.into_iter().next() {
-            Some(v) => Err(v.message),
-            None => Ok(Self(value)),
-        }
+        runtime::first(violations).map(|()| Self(value))
     }
 }
 checked_decimal_impls!(ExactCents);
-validate_impl!(ExactCents);
 #[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct DegenerateNever(pub(super) u8);
@@ -1722,14 +1512,10 @@ impl TryFrom<u8> for DegenerateNever {
                 );
             }
         }
-        match violations.into_iter().next() {
-            Some(v) => Err(v.message),
-            None => Ok(Self(value)),
-        }
+        runtime::first(violations).map(|()| Self(value))
     }
 }
 checked_num_impls!(DegenerateNever, u8);
-validate_impl!(DegenerateNever);
 #[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct DegenerateHuge(pub(super) i64);
@@ -1750,14 +1536,10 @@ impl TryFrom<i64> for DegenerateHuge {
                 );
             }
         }
-        match violations.into_iter().next() {
-            Some(v) => Err(v.message),
-            None => Ok(Self(value)),
-        }
+        runtime::first(violations).map(|()| Self(value))
     }
 }
 checked_num_impls!(DegenerateHuge, i64);
-validate_impl!(DegenerateHuge);
 #[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct DegenerateFives(pub(super) i64);
@@ -1774,14 +1556,10 @@ impl TryFrom<i64> for DegenerateFives {
                 "is not a multiple of 2.5",
             );
         }
-        match violations.into_iter().next() {
-            Some(v) => Err(v.message),
-            None => Ok(Self(value)),
-        }
+        runtime::first(violations).map(|()| Self(value))
     }
 }
 checked_num_impls!(DegenerateFives, i64);
-validate_impl!(DegenerateFives);
 #[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct DegenerateZero(pub(super) u8);
@@ -1798,14 +1576,10 @@ impl TryFrom<u8> for DegenerateZero {
                 "is not a multiple of 1000",
             );
         }
-        match violations.into_iter().next() {
-            Some(v) => Err(v.message),
-            None => Ok(Self(value)),
-        }
+        runtime::first(violations).map(|()| Self(value))
     }
 }
 checked_num_impls!(DegenerateZero, u8);
-validate_impl!(DegenerateZero);
 #[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct DegenerateHalf(pub(super) i64);
@@ -1822,14 +1596,10 @@ impl TryFrom<i64> for DegenerateHalf {
                 [Some(1), None, None, Some(4)],
             );
         }
-        match violations.into_iter().next() {
-            Some(v) => Err(v.message),
-            None => Ok(Self(value)),
-        }
+        runtime::first(violations).map(|()| Self(value))
     }
 }
 checked_num_impls!(DegenerateHalf, i64);
-validate_impl!(DegenerateHalf);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct TreeVariant1 {
@@ -1888,7 +1658,6 @@ impl runtime::XmlShape for TreeVariant1 {
         &NODE
     }
 }
-validate_impl_3!(TreeVariant1);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct TreeVariant2 {
@@ -1947,26 +1716,23 @@ impl runtime::XmlShape for TreeVariant2 {
         &NODE
     }
 }
-validate_impl_3!(TreeVariant2);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct LineNote(pub(super) String);
 try_from_impl!(LineNote);
 checked_str_impls!(LineNote);
-validate_impl!(LineNote);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 pub struct RefusalObject;
 impl RefusalObject {
     pub const VALUE: &'static str = "error";
 }
-serialize_impl_3!(RefusalObject);
+serialize_impl_2!(RefusalObject);
 impl<'de> serde::Deserialize<'de> for RefusalObject {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         runtime::expect_const(d, &serde_json::Value::String("error".to_owned()))
             .map(|()| Self)
     }
 }
-validate_impl!(RefusalObject);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum ProblemCode {
     Invalid,
@@ -1992,13 +1758,11 @@ impl TryFrom<&str> for ProblemCode {
     }
 }
 str_enum_impls!(ProblemCode);
-validate_impl!(ProblemCode);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct BadgeLabel(pub(super) String);
 try_from_impl_2!(BadgeLabel);
 checked_str_impls!(BadgeLabel);
-validate_impl!(BadgeLabel);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct LoginPassword(pub(super) String);
@@ -2018,431 +1782,60 @@ impl TryFrom<String> for LoginPassword {
                 "characters",
             );
         }
-        match violations.into_iter().next() {
-            Some(v) => Err(v.message),
-            None => Ok(Self(value)),
-        }
+        runtime::first(violations).map(|()| Self(value))
     }
 }
 checked_str_impls!(LoginPassword);
-validate_impl!(LoginPassword);
-#[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct ShipmentInternational {
-    pub kind: ShipmentInternationalKind,
-    pub customs: String,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub insured: Option<bool>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub insurer: Option<String>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub options: Option<NoOptions>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub rating: Option<serde_json::Value>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub meta: Option<ShipmentInternationalMeta>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub label: Option<ShipmentInternationalLabel>,
-    pub parcels: Vec<ParcelsItem>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub scores: Option<std::collections::BTreeMap<String, ScoresValue>>,
-    #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
-    pub priority: runtime::Nullable<ShipmentInternationalPriority>,
-    #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
-    pub weight: runtime::Nullable<ShipmentInternationalWeight>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub labels: Option<std::collections::BTreeMap<String, String>>,
-}
-deserialize_impl!(ShipmentInternational);
-serialize_impl!(ShipmentInternational);
-impl ShipmentInternational {
-    #[must_use]
-    pub const fn new(
-        kind: ShipmentInternationalKind,
-        customs: String,
-        parcels: Vec<ParcelsItem>,
-    ) -> Self {
-        Self {
-            kind,
-            customs,
-            insured: None,
-            insurer: None,
-            options: None,
-            rating: None,
-            meta: None,
-            label: None,
-            parcels,
-            scores: None,
-            priority: runtime::Nullable::Absent,
-            weight: runtime::Nullable::Absent,
-            labels: None,
-        }
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+#[serde(transparent)]
+pub struct ShipmentInternational(pub(super) ShipmentInternationalFields);
+impl<'de> serde::Deserialize<'de> for ShipmentInternational {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <ShipmentInternationalFields as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
     }
 }
-impl runtime::XmlShape for ShipmentInternational {
-    fn xml() -> &'static runtime::XmlNode {
-        static NODE: runtime::XmlNode = runtime::XmlNode {
-            name: "ShipmentInternational",
-            namespace: "",
-            prefix: "",
-            fields: &[
-                runtime::XmlField {
-                    wire: "kind",
-                    name: "kind",
-                    prefix: "",
-                    attribute: false,
-                    text: false,
-                    list: false,
-                    wrapped: false,
-                    required: true,
-                    item: "kind",
-                    child: None,
-                    cdata: false,
-                    inline: false,
-                    nullable: false,
-                    object: false,
-                },
-                runtime::XmlField {
-                    wire: "customs",
-                    name: "customs",
-                    prefix: "",
-                    attribute: false,
-                    text: false,
-                    list: false,
-                    wrapped: false,
-                    required: true,
-                    item: "customs",
-                    child: None,
-                    cdata: false,
-                    inline: false,
-                    nullable: false,
-                    object: false,
-                },
-                runtime::XmlField {
-                    wire: "insured",
-                    name: "insured",
-                    prefix: "",
-                    attribute: false,
-                    text: false,
-                    list: false,
-                    wrapped: false,
-                    required: false,
-                    item: "insured",
-                    child: None,
-                    cdata: false,
-                    inline: false,
-                    nullable: false,
-                    object: false,
-                },
-                runtime::XmlField {
-                    wire: "insurer",
-                    name: "insurer",
-                    prefix: "",
-                    attribute: false,
-                    text: false,
-                    list: false,
-                    wrapped: false,
-                    required: false,
-                    item: "insurer",
-                    child: None,
-                    cdata: false,
-                    inline: false,
-                    nullable: false,
-                    object: false,
-                },
-                runtime::XmlField {
-                    wire: "options",
-                    name: "options",
-                    prefix: "",
-                    attribute: false,
-                    text: false,
-                    list: false,
-                    wrapped: false,
-                    required: false,
-                    item: "options",
-                    child: Some(<NoOptions as runtime::XmlShape>::xml),
-                    cdata: false,
-                    inline: false,
-                    nullable: false,
-                    object: false,
-                },
-                runtime::XmlField {
-                    wire: "rating",
-                    name: "rating",
-                    prefix: "",
-                    attribute: false,
-                    text: false,
-                    list: false,
-                    wrapped: false,
-                    required: false,
-                    item: "rating",
-                    child: None,
-                    cdata: false,
-                    inline: false,
-                    nullable: false,
-                    object: false,
-                },
-                runtime::XmlField {
-                    wire: "meta",
-                    name: "meta",
-                    prefix: "",
-                    attribute: false,
-                    text: false,
-                    list: false,
-                    wrapped: false,
-                    required: false,
-                    item: "meta",
-                    child: None,
-                    cdata: false,
-                    inline: false,
-                    nullable: false,
-                    object: false,
-                },
-                runtime::XmlField {
-                    wire: "label",
-                    name: "label",
-                    prefix: "",
-                    attribute: false,
-                    text: false,
-                    list: false,
-                    wrapped: false,
-                    required: false,
-                    item: "label",
-                    child: None,
-                    cdata: false,
-                    inline: false,
-                    nullable: false,
-                    object: false,
-                },
-                runtime::XmlField {
-                    wire: "parcels",
-                    name: "parcels",
-                    prefix: "",
-                    attribute: false,
-                    text: false,
-                    list: true,
-                    wrapped: false,
-                    required: true,
-                    item: "parcels",
-                    child: Some(<ParcelsItem as runtime::XmlShape>::xml),
-                    cdata: false,
-                    inline: false,
-                    nullable: false,
-                    object: false,
-                },
-                runtime::XmlField {
-                    wire: "scores",
-                    name: "scores",
-                    prefix: "",
-                    attribute: false,
-                    text: false,
-                    list: false,
-                    wrapped: false,
-                    required: false,
-                    item: "scores",
-                    child: None,
-                    cdata: false,
-                    inline: false,
-                    nullable: false,
-                    object: true,
-                },
-                runtime::XmlField {
-                    wire: "priority",
-                    name: "priority",
-                    prefix: "",
-                    attribute: false,
-                    text: false,
-                    list: false,
-                    wrapped: false,
-                    required: false,
-                    item: "priority",
-                    child: None,
-                    cdata: false,
-                    inline: false,
-                    nullable: true,
-                    object: false,
-                },
-                runtime::XmlField {
-                    wire: "weight",
-                    name: "weight",
-                    prefix: "",
-                    attribute: false,
-                    text: false,
-                    list: false,
-                    wrapped: false,
-                    required: false,
-                    item: "weight",
-                    child: None,
-                    cdata: false,
-                    inline: false,
-                    nullable: true,
-                    object: false,
-                },
-                runtime::XmlField {
-                    wire: "labels",
-                    name: "labels",
-                    prefix: "",
-                    attribute: false,
-                    text: false,
-                    list: false,
-                    wrapped: false,
-                    required: false,
-                    item: "labels",
-                    child: None,
-                    cdata: false,
-                    inline: false,
-                    nullable: false,
-                    object: true,
-                },
-            ],
-        };
-        &NODE
-    }
-}
-impl runtime::Validate for ShipmentInternational {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
+impl TryFrom<ShipmentInternationalFields> for ShipmentInternational {
+    type Error = String;
+    fn try_from(value: ShipmentInternationalFields) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
         {
-            static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-            let value = runtime::to_value(&self.kind).unwrap_or_default();
-            let schema = SCHEMA
-                .get_or_init(|| {
-                    serde_json::from_str("{\"const\":\"international\"}")
-                        .unwrap_or_default()
-                });
-            runtime::check_schema_in(
-                out,
-                &runtime::InstancePath::Key(path, "kind"),
-                &value,
-                schema,
-                runtime::schema_defs(),
-            );
-        }
-        if let Some(v) = &self.rating {
+            let out = &mut violations;
             {
                 static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(v).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str("{\"minimum\":1}").unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Key(path, "rating"),
-                    &value,
-                    schema,
-                    runtime::schema_defs(),
-                );
-            }
-        }
-        {
-            static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-            let value = runtime::to_value(&self.parcels).unwrap_or_default();
-            let schema = SCHEMA
-                .get_or_init(|| {
-                    serde_json::from_str(
-                            "{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"fragile\":{\"type\":\"boolean\"}}},\"contains\":{\"properties\":{\"fragile\":{\"const\":true}},\"required\":[\"fragile\"]},\"maxContains\":2}",
-                        )
-                        .unwrap_or_default()
-                });
-            runtime::check_schema_in(
-                out,
-                &runtime::InstancePath::Key(path, "parcels"),
-                &value,
-                schema,
-                runtime::schema_defs(),
-            );
-        }
-        if let Some(v) = &self.scores {
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(v).unwrap_or_default();
+                let value = runtime::to_value(&value).unwrap_or_default();
                 let schema = SCHEMA
                     .get_or_init(|| {
                         serde_json::from_str(
-                                "{\"type\":\"object\",\"patternProperties\":{\"^[a-z]+$\":{\"type\":\"integer\",\"minimum\":0}},\"additionalProperties\":false}",
+                                "{\"type\":\"object\",\"required\":[\"kind\",\"parcels\",\"customs\"],\"properties\":{\"kind\":{\"const\":\"international\"},\"customs\":{\"type\":\"string\"},\"insured\":{\"type\":\"boolean\"},\"insurer\":{\"type\":\"string\"},\"options\":{\"$ref\":\"#/$defs/~1components~1schemas~1NoOptions\"},\"rating\":{\"minimum\":1},\"meta\":{\"properties\":{\"count\":{\"type\":\"integer\"}}},\"label\":{\"type\":\"string\",\"minLength\":4,\"default\":\"bad\"},\"parcels\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"fragile\":{\"type\":\"boolean\"}}},\"contains\":{\"properties\":{\"fragile\":{\"const\":true}},\"required\":[\"fragile\"]},\"maxContains\":2},\"scores\":{\"type\":\"object\",\"patternProperties\":{\"^[a-z]+$\":{\"type\":\"integer\",\"minimum\":0}},\"additionalProperties\":false},\"priority\":{\"type\":[\"number\",\"null\"],\"minimum\":0,\"maximum\":2},\"weight\":{\"type\":[\"integer\",\"null\"],\"minimum\":256},\"labels\":{\"type\":\"object\",\"propertyNames\":{\"pattern\":\"^[a-z]+$\"},\"patternProperties\":{\"^x\":{\"type\":\"string\",\"maxLength\":3}},\"additionalProperties\":{\"type\":\"string\"}}},\"dependentRequired\":{\"insured\":[\"insurer\"]},\"not\":{\"required\":[\"customs\",\"insurer\"],\"properties\":{\"customs\":{\"const\":\"none\"}}}}",
                             )
                             .unwrap_or_default()
                     });
                 runtime::check_schema_in(
                     out,
-                    &runtime::InstancePath::Key(path, "scores"),
+                    &runtime::InstancePath::Root,
                     &value,
                     schema,
                     runtime::schema_defs(),
                 );
             }
         }
-        if let Some(v) = &self.labels {
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(v).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"type\":\"object\",\"propertyNames\":{\"pattern\":\"^[a-z]+$\"},\"patternProperties\":{\"^x\":{\"type\":\"string\",\"maxLength\":3}},\"additionalProperties\":{\"type\":\"string\"}}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Key(path, "labels"),
-                    &value,
-                    schema,
-                    runtime::schema_defs(),
-                );
-            }
-        }
+        runtime::first(violations).map(|()| Self(value))
     }
 }
+checked_impls!(ShipmentInternational, ShipmentInternationalFields);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 pub struct ShipmentInternationalKind;
 impl ShipmentInternationalKind {
     pub const VALUE: &'static str = "international";
 }
-serialize_impl_3!(ShipmentInternationalKind);
+serialize_impl_2!(ShipmentInternationalKind);
 impl<'de> serde::Deserialize<'de> for ShipmentInternationalKind {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         runtime::expect_const(d, &serde_json::Value::String("international".to_owned()))
             .map(|()| Self)
     }
 }
-validate_impl!(ShipmentInternationalKind);
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ShipmentInternationalMeta {
     Object(MetaObject),
@@ -2470,7 +1863,6 @@ impl<'de> serde::Deserialize<'de> for ShipmentInternationalMeta {
         }
     }
 }
-validate_impl!(ShipmentInternationalMeta);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct MetaObject {
@@ -2517,7 +1909,6 @@ impl runtime::XmlShape for MetaObject {
         &NODE
     }
 }
-validate_impl!(MetaObject);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct ShipmentInternationalLabel(pub(super) String);
@@ -2537,14 +1928,10 @@ impl TryFrom<String> for ShipmentInternationalLabel {
                 "characters",
             );
         }
-        match violations.into_iter().next() {
-            Some(v) => Err(v.message),
-            None => Ok(Self(value)),
-        }
+        runtime::first(violations).map(|()| Self(value))
     }
 }
 checked_str_impls!(ShipmentInternationalLabel);
-validate_impl!(ShipmentInternationalLabel);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct ParcelsItem {
@@ -2591,7 +1978,6 @@ impl runtime::XmlShape for ParcelsItem {
         &NODE
     }
 }
-validate_impl!(ParcelsItem);
 #[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct ScoresValue(pub(super) i64);
@@ -2608,14 +1994,10 @@ impl TryFrom<i64> for ScoresValue {
                 [Some(0), None, None, None],
             );
         }
-        match violations.into_iter().next() {
-            Some(v) => Err(v.message),
-            None => Ok(Self(value)),
-        }
+        runtime::first(violations).map(|()| Self(value))
     }
 }
 checked_num_impls!(ScoresValue, i64);
-validate_impl!(ScoresValue);
 #[derive(Debug, Clone, PartialEq, Copy, PartialOrd, serde::Serialize)]
 #[serde(transparent)]
 pub struct ShipmentInternationalPriority(pub(super) f64);
@@ -2632,14 +2014,10 @@ impl TryFrom<f64> for ShipmentInternationalPriority {
                 [Some(0.0), Some(2.0), None, None],
             );
         }
-        match violations.into_iter().next() {
-            Some(v) => Err(v.message),
-            None => Ok(Self(value)),
-        }
+        runtime::first(violations).map(|()| Self(value))
     }
 }
 checked_num_impls!(ShipmentInternationalPriority, f64);
-validate_impl!(ShipmentInternationalPriority);
 #[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct ShipmentInternationalWeight(pub(super) i64);
@@ -2656,408 +2034,48 @@ impl TryFrom<i64> for ShipmentInternationalWeight {
                 [Some(256), None, None, None],
             );
         }
-        match violations.into_iter().next() {
-            Some(v) => Err(v.message),
-            None => Ok(Self(value)),
-        }
+        runtime::first(violations).map(|()| Self(value))
     }
 }
 checked_num_impls!(ShipmentInternationalWeight, i64);
-validate_impl!(ShipmentInternationalWeight);
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct ShipmentOtherwise {
-    pub kind: ShipmentOtherwiseKind,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub customs: Option<String>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub insured: Option<bool>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub insurer: Option<String>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub options: Option<NoOptions>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub rating: Option<serde_json::Value>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub meta: Option<ShipmentOtherwiseMeta>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub label: Option<ShipmentOtherwiseLabel>,
-    pub parcels: Vec<ShipmentOtherwiseParcelsItem>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub scores: Option<std::collections::BTreeMap<String, ShipmentOtherwiseScoresValue>>,
-    #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
-    pub priority: runtime::Nullable<ShipmentOtherwisePriority>,
-    #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
-    pub weight: runtime::Nullable<ShipmentOtherwiseWeight>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub labels: Option<std::collections::BTreeMap<String, String>>,
-}
-deserialize_impl!(ShipmentOtherwise);
-serialize_impl!(ShipmentOtherwise);
-impl ShipmentOtherwise {
-    #[must_use]
-    pub const fn new(
-        kind: ShipmentOtherwiseKind,
-        parcels: Vec<ShipmentOtherwiseParcelsItem>,
-    ) -> Self {
-        Self {
-            kind,
-            customs: None,
-            insured: None,
-            insurer: None,
-            options: None,
-            rating: None,
-            meta: None,
-            label: None,
-            parcels,
-            scores: None,
-            priority: runtime::Nullable::Absent,
-            weight: runtime::Nullable::Absent,
-            labels: None,
-        }
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+#[serde(transparent)]
+pub struct ShipmentOtherwise(pub(super) ShipmentOtherwiseFields);
+impl<'de> serde::Deserialize<'de> for ShipmentOtherwise {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <ShipmentOtherwiseFields as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
     }
 }
-impl runtime::XmlShape for ShipmentOtherwise {
-    fn xml() -> &'static runtime::XmlNode {
-        static NODE: runtime::XmlNode = runtime::XmlNode {
-            name: "ShipmentOtherwise",
-            namespace: "",
-            prefix: "",
-            fields: &[
-                runtime::XmlField {
-                    wire: "kind",
-                    name: "kind",
-                    prefix: "",
-                    attribute: false,
-                    text: false,
-                    list: false,
-                    wrapped: false,
-                    required: true,
-                    item: "kind",
-                    child: None,
-                    cdata: false,
-                    inline: false,
-                    nullable: false,
-                    object: false,
-                },
-                runtime::XmlField {
-                    wire: "customs",
-                    name: "customs",
-                    prefix: "",
-                    attribute: false,
-                    text: false,
-                    list: false,
-                    wrapped: false,
-                    required: false,
-                    item: "customs",
-                    child: None,
-                    cdata: false,
-                    inline: false,
-                    nullable: false,
-                    object: false,
-                },
-                runtime::XmlField {
-                    wire: "insured",
-                    name: "insured",
-                    prefix: "",
-                    attribute: false,
-                    text: false,
-                    list: false,
-                    wrapped: false,
-                    required: false,
-                    item: "insured",
-                    child: None,
-                    cdata: false,
-                    inline: false,
-                    nullable: false,
-                    object: false,
-                },
-                runtime::XmlField {
-                    wire: "insurer",
-                    name: "insurer",
-                    prefix: "",
-                    attribute: false,
-                    text: false,
-                    list: false,
-                    wrapped: false,
-                    required: false,
-                    item: "insurer",
-                    child: None,
-                    cdata: false,
-                    inline: false,
-                    nullable: false,
-                    object: false,
-                },
-                runtime::XmlField {
-                    wire: "options",
-                    name: "options",
-                    prefix: "",
-                    attribute: false,
-                    text: false,
-                    list: false,
-                    wrapped: false,
-                    required: false,
-                    item: "options",
-                    child: Some(<NoOptions as runtime::XmlShape>::xml),
-                    cdata: false,
-                    inline: false,
-                    nullable: false,
-                    object: false,
-                },
-                runtime::XmlField {
-                    wire: "rating",
-                    name: "rating",
-                    prefix: "",
-                    attribute: false,
-                    text: false,
-                    list: false,
-                    wrapped: false,
-                    required: false,
-                    item: "rating",
-                    child: None,
-                    cdata: false,
-                    inline: false,
-                    nullable: false,
-                    object: false,
-                },
-                runtime::XmlField {
-                    wire: "meta",
-                    name: "meta",
-                    prefix: "",
-                    attribute: false,
-                    text: false,
-                    list: false,
-                    wrapped: false,
-                    required: false,
-                    item: "meta",
-                    child: None,
-                    cdata: false,
-                    inline: false,
-                    nullable: false,
-                    object: false,
-                },
-                runtime::XmlField {
-                    wire: "label",
-                    name: "label",
-                    prefix: "",
-                    attribute: false,
-                    text: false,
-                    list: false,
-                    wrapped: false,
-                    required: false,
-                    item: "label",
-                    child: None,
-                    cdata: false,
-                    inline: false,
-                    nullable: false,
-                    object: false,
-                },
-                runtime::XmlField {
-                    wire: "parcels",
-                    name: "parcels",
-                    prefix: "",
-                    attribute: false,
-                    text: false,
-                    list: true,
-                    wrapped: false,
-                    required: true,
-                    item: "parcels",
-                    child: Some(
-                        <ShipmentOtherwiseParcelsItem as runtime::XmlShape>::xml,
-                    ),
-                    cdata: false,
-                    inline: false,
-                    nullable: false,
-                    object: false,
-                },
-                runtime::XmlField {
-                    wire: "scores",
-                    name: "scores",
-                    prefix: "",
-                    attribute: false,
-                    text: false,
-                    list: false,
-                    wrapped: false,
-                    required: false,
-                    item: "scores",
-                    child: None,
-                    cdata: false,
-                    inline: false,
-                    nullable: false,
-                    object: true,
-                },
-                runtime::XmlField {
-                    wire: "priority",
-                    name: "priority",
-                    prefix: "",
-                    attribute: false,
-                    text: false,
-                    list: false,
-                    wrapped: false,
-                    required: false,
-                    item: "priority",
-                    child: None,
-                    cdata: false,
-                    inline: false,
-                    nullable: true,
-                    object: false,
-                },
-                runtime::XmlField {
-                    wire: "weight",
-                    name: "weight",
-                    prefix: "",
-                    attribute: false,
-                    text: false,
-                    list: false,
-                    wrapped: false,
-                    required: false,
-                    item: "weight",
-                    child: None,
-                    cdata: false,
-                    inline: false,
-                    nullable: true,
-                    object: false,
-                },
-                runtime::XmlField {
-                    wire: "labels",
-                    name: "labels",
-                    prefix: "",
-                    attribute: false,
-                    text: false,
-                    list: false,
-                    wrapped: false,
-                    required: false,
-                    item: "labels",
-                    child: None,
-                    cdata: false,
-                    inline: false,
-                    nullable: false,
-                    object: true,
-                },
-            ],
-        };
-        &NODE
-    }
-}
-impl runtime::Validate for ShipmentOtherwise {
-    fn validate(
-        &self,
-        path: &runtime::InstancePath<'_>,
-        out: &mut Vec<runtime::Violation>,
-    ) {
-        if let Some(v) = &self.rating {
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(v).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str("{\"minimum\":1}").unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Key(path, "rating"),
-                    &value,
-                    schema,
-                    runtime::schema_defs(),
-                );
-            }
-        }
+impl TryFrom<ShipmentOtherwiseFields> for ShipmentOtherwise {
+    type Error = String;
+    fn try_from(value: ShipmentOtherwiseFields) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
         {
-            static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-            let value = runtime::to_value(&self.parcels).unwrap_or_default();
-            let schema = SCHEMA
-                .get_or_init(|| {
-                    serde_json::from_str(
-                            "{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"fragile\":{\"type\":\"boolean\"}}},\"contains\":{\"properties\":{\"fragile\":{\"const\":true}},\"required\":[\"fragile\"]},\"maxContains\":2}",
-                        )
-                        .unwrap_or_default()
-                });
-            runtime::check_schema_in(
-                out,
-                &runtime::InstancePath::Key(path, "parcels"),
-                &value,
-                schema,
-                runtime::schema_defs(),
-            );
-        }
-        if let Some(v) = &self.scores {
+            let out = &mut violations;
             {
                 static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(v).unwrap_or_default();
+                let value = runtime::to_value(&value).unwrap_or_default();
                 let schema = SCHEMA
                     .get_or_init(|| {
                         serde_json::from_str(
-                                "{\"type\":\"object\",\"patternProperties\":{\"^[a-z]+$\":{\"type\":\"integer\",\"minimum\":0}},\"additionalProperties\":false}",
+                                "{\"type\":\"object\",\"required\":[\"kind\",\"parcels\"],\"properties\":{\"kind\":{\"type\":\"string\",\"enum\":[\"domestic\",\"international\"]},\"customs\":{\"type\":\"string\"},\"insured\":{\"type\":\"boolean\"},\"insurer\":{\"type\":\"string\"},\"options\":{\"$ref\":\"#/$defs/~1components~1schemas~1NoOptions\"},\"rating\":{\"minimum\":1},\"meta\":{\"properties\":{\"count\":{\"type\":\"integer\"}}},\"label\":{\"type\":\"string\",\"minLength\":4,\"default\":\"bad\"},\"parcels\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"fragile\":{\"type\":\"boolean\"}}},\"contains\":{\"properties\":{\"fragile\":{\"const\":true}},\"required\":[\"fragile\"]},\"maxContains\":2},\"scores\":{\"type\":\"object\",\"patternProperties\":{\"^[a-z]+$\":{\"type\":\"integer\",\"minimum\":0}},\"additionalProperties\":false},\"priority\":{\"type\":[\"number\",\"null\"],\"minimum\":0,\"maximum\":2},\"weight\":{\"type\":[\"integer\",\"null\"],\"minimum\":256},\"labels\":{\"type\":\"object\",\"propertyNames\":{\"pattern\":\"^[a-z]+$\"},\"patternProperties\":{\"^x\":{\"type\":\"string\",\"maxLength\":3}},\"additionalProperties\":{\"type\":\"string\"}}},\"dependentRequired\":{\"insured\":[\"insurer\"]},\"not\":{\"required\":[\"customs\",\"insurer\"],\"properties\":{\"customs\":{\"const\":\"none\"}}},\"x-honig-fallback\":true}",
                             )
                             .unwrap_or_default()
                     });
                 runtime::check_schema_in(
                     out,
-                    &runtime::InstancePath::Key(path, "scores"),
+                    &runtime::InstancePath::Root,
                     &value,
                     schema,
                     runtime::schema_defs(),
                 );
             }
         }
-        if let Some(v) = &self.labels {
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(v).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"type\":\"object\",\"propertyNames\":{\"pattern\":\"^[a-z]+$\"},\"patternProperties\":{\"^x\":{\"type\":\"string\",\"maxLength\":3}},\"additionalProperties\":{\"type\":\"string\"}}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Key(path, "labels"),
-                    &value,
-                    schema,
-                    runtime::schema_defs(),
-                );
-            }
-        }
+        runtime::first(violations).map(|()| Self(value))
     }
 }
+checked_impls!(ShipmentOtherwise, ShipmentOtherwiseFields);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum ShipmentOtherwiseKind {
     Domestic,
@@ -3083,7 +2101,6 @@ impl TryFrom<&str> for ShipmentOtherwiseKind {
     }
 }
 str_enum_impls!(ShipmentOtherwiseKind);
-validate_impl!(ShipmentOtherwiseKind);
 pub type ShipmentOtherwiseMeta = ShipmentInternationalMeta;
 pub type ShipmentOtherwiseMetaObject = MetaObject;
 pub type ShipmentOtherwiseLabel = ShipmentInternationalLabel;
@@ -3102,14 +2119,10 @@ impl TryFrom<f64> for PriceAmount {
             let out = &mut violations;
             runtime::check_multiple(out, &runtime::InstancePath::Root, value, "0.01");
         }
-        match violations.into_iter().next() {
-            Some(v) => Err(v.message),
-            None => Ok(Self(value)),
-        }
+        runtime::first(violations).map(|()| Self(value))
     }
 }
 checked_num_impls!(PriceAmount, f64);
-validate_impl!(PriceAmount);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct UserName(pub(super) String);
@@ -3147,14 +2160,10 @@ impl TryFrom<String> for UserName {
                 );
             }
         }
-        match violations.into_iter().next() {
-            Some(v) => Err(v.message),
-            None => Ok(Self(value)),
-        }
+        runtime::first(violations).map(|()| Self(value))
     }
 }
 checked_str_impls!(UserName);
-validate_impl!(UserName);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct UserHandle(pub(super) String);
@@ -3192,14 +2201,10 @@ impl TryFrom<String> for UserHandle {
                 );
             }
         }
-        match violations.into_iter().next() {
-            Some(v) => Err(v.message),
-            None => Ok(Self(value)),
-        }
+        runtime::first(violations).map(|()| Self(value))
     }
 }
 checked_str_impls!(UserHandle);
-validate_impl!(UserHandle);
 #[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct UserAge(pub(super) i64);
@@ -3216,14 +2221,10 @@ impl TryFrom<i64> for UserAge {
                 [Some(0), None, None, Some(150)],
             );
         }
-        match violations.into_iter().next() {
-            Some(v) => Err(v.message),
-            None => Ok(Self(value)),
-        }
+        runtime::first(violations).map(|()| Self(value))
     }
 }
 checked_num_impls!(UserAge, i64);
-validate_impl!(UserAge);
 #[derive(Debug, Clone, PartialEq, Copy, PartialOrd, serde::Serialize)]
 #[serde(transparent)]
 pub struct UserScore(pub(super) f64);
@@ -3235,20 +2236,15 @@ impl TryFrom<f64> for UserScore {
             let out = &mut violations;
             runtime::check_multiple(out, &runtime::InstancePath::Root, value, "0.5");
         }
-        match violations.into_iter().next() {
-            Some(v) => Err(v.message),
-            None => Ok(Self(value)),
-        }
+        runtime::first(violations).map(|()| Self(value))
     }
 }
 checked_num_impls!(UserScore, f64);
-validate_impl!(UserScore);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct UserTagsItem(pub(super) String);
 try_from_impl!(UserTagsItem);
 checked_str_impls!(UserTagsItem);
-validate_impl!(UserTagsItem);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum UserRole {
     Admin,
@@ -3274,13 +2270,12 @@ impl TryFrom<&str> for UserRole {
     }
 }
 str_enum_impls!(UserRole);
-validate_impl!(UserRole);
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum UserLoyalty {
     Variant1(UserLoyaltyVariant1),
     Variant2(UserLoyaltyVariant2),
 }
-serialize_impl_2!(UserLoyalty);
+serialize_impl_3!(UserLoyalty);
 impl<'de> serde::Deserialize<'de> for UserLoyalty {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         let v = <runtime::Content<'de> as serde::Deserialize>::deserialize(d)?;
@@ -3297,7 +2292,6 @@ impl<'de> serde::Deserialize<'de> for UserLoyalty {
         }
     }
 }
-validate_impl!(UserLoyalty);
 #[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct UserLoyaltyVariant1(pub(super) i64);
@@ -3314,27 +2308,21 @@ impl TryFrom<i64> for UserLoyaltyVariant1 {
                 [Some(1), Some(10), None, None],
             );
         }
-        match violations.into_iter().next() {
-            Some(v) => Err(v.message),
-            None => Ok(Self(value)),
-        }
+        runtime::first(violations).map(|()| Self(value))
     }
 }
 checked_num_impls!(UserLoyaltyVariant1, i64);
-validate_impl!(UserLoyaltyVariant1);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct UserLoyaltyVariant2(pub(super) String);
 try_from_impl!(UserLoyaltyVariant2);
 checked_str_impls!(UserLoyaltyVariant2);
-validate_impl!(UserLoyaltyVariant2);
 pub type UserNote = UserNote2;
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct UserNote2(pub(super) String);
 try_from_impl_2!(UserNote2);
 checked_str_impls!(UserNote2);
-validate_impl!(UserNote2);
 #[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct CreateUserLimit(pub(super) i64);
@@ -3351,14 +2339,10 @@ impl TryFrom<i64> for CreateUserLimit {
                 [Some(1), Some(100), None, None],
             );
         }
-        match violations.into_iter().next() {
-            Some(v) => Err(v.message),
-            None => Ok(Self(value)),
-        }
+        runtime::first(violations).map(|()| Self(value))
     }
 }
 checked_num_impls!(CreateUserLimit, i64);
-validate_impl!(CreateUserLimit);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct CreateUserXTeam(pub(super) String);
@@ -3385,25 +2369,21 @@ impl TryFrom<String> for CreateUserXTeam {
                 "does not match `^[a-z]+$`",
             );
         }
-        match violations.into_iter().next() {
-            Some(v) => Err(v.message),
-            None => Ok(Self(value)),
-        }
+        runtime::first(violations).map(|()| Self(value))
     }
 }
 checked_str_impls!(CreateUserXTeam);
-validate_impl!(CreateUserXTeam);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct BadgeRequest {
     pub label: BadgeLabel,
-    pub holders: Vec<String>,
+    pub holders: BadgeRequestHolders,
 }
 deserialize_impl!(BadgeRequest);
 serialize_impl!(BadgeRequest);
 impl BadgeRequest {
     #[must_use]
-    pub const fn new(label: BadgeLabel, holders: Vec<String>) -> Self {
+    pub const fn new(label: BadgeLabel, holders: BadgeRequestHolders) -> Self {
         Self { label, holders }
     }
 }
@@ -3436,7 +2416,7 @@ impl runtime::XmlShape for BadgeRequest {
                     prefix: "",
                     attribute: false,
                     text: false,
-                    list: true,
+                    list: false,
                     wrapped: false,
                     required: true,
                     item: "holders",
@@ -3451,7 +2431,6 @@ impl runtime::XmlShape for BadgeRequest {
         &NODE
     }
 }
-validate_impl_2!(BadgeRequest);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct LoginRequest {
@@ -3510,7 +2489,1159 @@ impl runtime::XmlShape for LoginRequest {
         &NODE
     }
 }
-validate_impl!(LoginRequest);
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TreeVariants {
+    Variant1(TreeVariant1),
+    Variant2(TreeVariant2),
+}
+serialize_impl_3!(TreeVariants);
+impl<'de> serde::Deserialize<'de> for TreeVariants {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let v = <runtime::Content<'de> as serde::Deserialize>::deserialize(d)?;
+        let fit_0 = v.kind() == runtime::Kind::Object
+            && runtime::fits(
+                &v,
+                &[
+                    ("items", true, &[runtime::Kind::Array]),
+                    ("x", true, &[runtime::Kind::String]),
+                ],
+            );
+        let fit_1 = v.kind() == runtime::Kind::Object
+            && runtime::fits(
+                &v,
+                &[
+                    ("items", true, &[runtime::Kind::Array]),
+                    ("x", true, &[runtime::Kind::Integer, runtime::Kind::Number]),
+                ],
+            );
+        let mut first: Option<String> = None;
+        if fit_0 {
+            match v.decode_ref::<TreeVariant1>() {
+                Ok(x) => return Ok(Self::Variant1(x)),
+                Err(e) => {
+                    first.get_or_insert(e.to_string());
+                }
+            }
+        }
+        if fit_1 {
+            match v.decode_ref::<TreeVariant2>() {
+                Ok(x) => return Ok(Self::Variant2(x)),
+                Err(e) => {
+                    first.get_or_insert(e.to_string());
+                }
+            }
+        }
+        Err(
+            serde::de::Error::custom(
+                first.unwrap_or_else(|| "matches no variant".to_owned()),
+            ),
+        )
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct EntryFields2 {
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub lines: Option<EntryLines>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub id: Option<i64>,
+}
+deserialize_impl!(EntryFields2);
+serialize_impl!(EntryFields2);
+impl EntryFields2 {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self { lines: None, id: None }
+    }
+}
+impl runtime::XmlShape for EntryFields2 {
+    fn xml() -> &'static runtime::XmlNode {
+        static NODE: runtime::XmlNode = runtime::XmlNode {
+            name: "EntryFields2",
+            namespace: "",
+            prefix: "",
+            fields: &[
+                runtime::XmlField {
+                    wire: "lines",
+                    name: "lines",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "lines",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "id",
+                    name: "id",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "id",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+            ],
+        };
+        &NODE
+    }
+}
+#[derive(Debug, Clone, PartialEq)]
+pub enum ShipmentVariants {
+    International(ShipmentInternational),
+    Otherwise(ShipmentOtherwise),
+}
+impl serde::Serialize for ShipmentVariants {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        match self {
+            Self::International(v) => {
+                let mut j = serde_json::to_value(v).map_err(serde::ser::Error::custom)?;
+                if let serde_json::Value::Object(m) = &mut j {
+                    m.insert(
+                        "kind".to_owned(),
+                        serde_json::Value::String("international".to_owned()),
+                    );
+                }
+                serde::Serialize::serialize(&j, s)
+            }
+            Self::Otherwise(v) => serde::Serialize::serialize(v, s),
+        }
+    }
+}
+impl<'de> serde::Deserialize<'de> for ShipmentVariants {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        runtime::tagged::<D, Self>(d)
+    }
+}
+impl<'de> runtime::TaggedUnion<'de> for ShipmentVariants {
+    const TAG: &'static str = "kind";
+    fn knows(tag: &str) -> bool {
+        matches!(tag, "international")
+    }
+    fn from_tag<D: serde::Deserializer<'de>>(tag: &str, d: D) -> Result<Self, D::Error> {
+        match tag {
+            "international" => {
+                <ShipmentInternational as serde::Deserialize>::deserialize(d)
+                    .map(Self::International)
+            }
+            _ => Err(serde::de::Error::custom("unknown discriminator")),
+        }
+    }
+    fn from_content(v: runtime::Content<'de>) -> Result<Self, serde_json::Error> {
+        let which = match v.tag("kind").as_deref() {
+            Some("international") => 0,
+            _ => 1,
+        };
+        match which {
+            0 => v.decode_into(Self::International),
+            _ => v.decode_into(Self::Otherwise),
+        }
+    }
+}
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct ShipmentInternationalFields {
+    pub kind: ShipmentInternationalKind,
+    pub customs: String,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub insured: Option<bool>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub insurer: Option<String>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub options: Option<NoOptions>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub rating: Option<ShipmentInternationalRating>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub meta: Option<ShipmentInternationalMeta>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub label: Option<ShipmentInternationalLabel>,
+    pub parcels: ShipmentInternationalParcels,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub scores: Option<ShipmentInternationalScores>,
+    #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
+    pub priority: runtime::Nullable<ShipmentInternationalPriority>,
+    #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
+    pub weight: runtime::Nullable<ShipmentInternationalWeight>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub labels: Option<ShipmentInternationalLabels>,
+}
+deserialize_impl!(ShipmentInternationalFields);
+serialize_impl!(ShipmentInternationalFields);
+impl ShipmentInternationalFields {
+    #[must_use]
+    pub const fn new(
+        kind: ShipmentInternationalKind,
+        customs: String,
+        parcels: ShipmentInternationalParcels,
+    ) -> Self {
+        Self {
+            kind,
+            customs,
+            insured: None,
+            insurer: None,
+            options: None,
+            rating: None,
+            meta: None,
+            label: None,
+            parcels,
+            scores: None,
+            priority: runtime::Nullable::Absent,
+            weight: runtime::Nullable::Absent,
+            labels: None,
+        }
+    }
+}
+impl runtime::XmlShape for ShipmentInternationalFields {
+    fn xml() -> &'static runtime::XmlNode {
+        static NODE: runtime::XmlNode = runtime::XmlNode {
+            name: "ShipmentInternationalFields",
+            namespace: "",
+            prefix: "",
+            fields: &[
+                runtime::XmlField {
+                    wire: "kind",
+                    name: "kind",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: true,
+                    item: "kind",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "customs",
+                    name: "customs",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: true,
+                    item: "customs",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "insured",
+                    name: "insured",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "insured",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "insurer",
+                    name: "insurer",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "insurer",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "options",
+                    name: "options",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "options",
+                    child: Some(<NoOptions as runtime::XmlShape>::xml),
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "rating",
+                    name: "rating",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "rating",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "meta",
+                    name: "meta",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "meta",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "label",
+                    name: "label",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "label",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "parcels",
+                    name: "parcels",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: true,
+                    item: "parcels",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "scores",
+                    name: "scores",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "scores",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "priority",
+                    name: "priority",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "priority",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: true,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "weight",
+                    name: "weight",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "weight",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: true,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "labels",
+                    name: "labels",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "labels",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+            ],
+        };
+        &NODE
+    }
+}
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct ShipmentOtherwiseFields {
+    pub kind: ShipmentOtherwiseKind,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub customs: Option<String>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub insured: Option<bool>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub insurer: Option<String>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub options: Option<NoOptions>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub rating: Option<ShipmentOtherwiseRating>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub meta: Option<ShipmentOtherwiseMeta>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub label: Option<ShipmentOtherwiseLabel>,
+    pub parcels: ShipmentOtherwiseParcels,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub scores: Option<ShipmentOtherwiseScores>,
+    #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
+    pub priority: runtime::Nullable<ShipmentOtherwisePriority>,
+    #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
+    pub weight: runtime::Nullable<ShipmentOtherwiseWeight>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub labels: Option<ShipmentOtherwiseLabels>,
+}
+deserialize_impl!(ShipmentOtherwiseFields);
+serialize_impl!(ShipmentOtherwiseFields);
+impl ShipmentOtherwiseFields {
+    #[must_use]
+    pub const fn new(
+        kind: ShipmentOtherwiseKind,
+        parcels: ShipmentOtherwiseParcels,
+    ) -> Self {
+        Self {
+            kind,
+            customs: None,
+            insured: None,
+            insurer: None,
+            options: None,
+            rating: None,
+            meta: None,
+            label: None,
+            parcels,
+            scores: None,
+            priority: runtime::Nullable::Absent,
+            weight: runtime::Nullable::Absent,
+            labels: None,
+        }
+    }
+}
+impl runtime::XmlShape for ShipmentOtherwiseFields {
+    fn xml() -> &'static runtime::XmlNode {
+        static NODE: runtime::XmlNode = runtime::XmlNode {
+            name: "ShipmentOtherwiseFields",
+            namespace: "",
+            prefix: "",
+            fields: &[
+                runtime::XmlField {
+                    wire: "kind",
+                    name: "kind",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: true,
+                    item: "kind",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "customs",
+                    name: "customs",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "customs",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "insured",
+                    name: "insured",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "insured",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "insurer",
+                    name: "insurer",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "insurer",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "options",
+                    name: "options",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "options",
+                    child: Some(<NoOptions as runtime::XmlShape>::xml),
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "rating",
+                    name: "rating",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "rating",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "meta",
+                    name: "meta",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "meta",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "label",
+                    name: "label",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "label",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "parcels",
+                    name: "parcels",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: true,
+                    item: "parcels",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "scores",
+                    name: "scores",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "scores",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "priority",
+                    name: "priority",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "priority",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: true,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "weight",
+                    name: "weight",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "weight",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: true,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "labels",
+                    name: "labels",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "labels",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+            ],
+        };
+        &NODE
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
+pub struct BadgeHolders(pub(super) Vec<String>);
+impl<'de> serde::Deserialize<'de> for BadgeHolders {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <Vec<String> as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
+    }
+}
+impl TryFrom<Vec<String>> for BadgeHolders {
+    type Error = String;
+    fn try_from(value: Vec<String>) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            {
+                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                let value = runtime::to_value(&value).unwrap_or_default();
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"contains\":{\"const\":\"owner\"}}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
+                    out,
+                    &runtime::InstancePath::Root,
+                    &value,
+                    schema,
+                    runtime::schema_defs(),
+                );
+            }
+        }
+        runtime::first(violations).map(|()| Self(value))
+    }
+}
+checked_impls!(BadgeHolders, Vec < String >);
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
+pub struct UserTags(pub(super) Vec<UserTagsItem>);
+impl<'de> serde::Deserialize<'de> for UserTags {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <Vec<UserTagsItem> as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
+    }
+}
+impl TryFrom<Vec<UserTagsItem>> for UserTags {
+    type Error = String;
+    fn try_from(value: Vec<UserTagsItem>) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            runtime::check_len(
+                out,
+                &runtime::InstancePath::Root,
+                value.len(),
+                Some(1),
+                None,
+                "items",
+            );
+            runtime::check_unique(out, &runtime::InstancePath::Root, &value);
+        }
+        runtime::first(violations).map(|()| Self(value))
+    }
+}
+checked_impls!(UserTags, Vec < UserTagsItem >);
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
+pub struct UserMeta(pub(super) std::collections::BTreeMap<String, String>);
+deserialize_impl_2!(UserMeta);
+impl TryFrom<std::collections::BTreeMap<String, String>> for UserMeta {
+    type Error = String;
+    fn try_from(
+        value: std::collections::BTreeMap<String, String>,
+    ) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            runtime::check_len(
+                out,
+                &runtime::InstancePath::Root,
+                value.len(),
+                None,
+                Some(2),
+                "properties",
+            );
+        }
+        runtime::first(violations).map(|()| Self(value))
+    }
+}
+checked_impls!(UserMeta, std::collections::BTreeMap < String, String >);
+pub type BadgeRequestHolders = BadgeHolders;
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
+pub struct EntryLines(pub(super) serde_json::Value);
+deserialize_impl_3!(EntryLines);
+impl TryFrom<serde_json::Value> for EntryLines {
+    type Error = String;
+    fn try_from(value: serde_json::Value) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            {
+                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                let value = runtime::to_value(&value).unwrap_or_default();
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str("{\"maxItems\":2}").unwrap_or_default()
+                    });
+                runtime::check_schema_in(
+                    out,
+                    &runtime::InstancePath::Root,
+                    &value,
+                    schema,
+                    runtime::schema_defs(),
+                );
+            }
+        }
+        runtime::first(violations).map(|()| Self(value))
+    }
+}
+checked_impls!(EntryLines, serde_json::Value);
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
+pub struct ShipmentInternationalRating(pub(super) serde_json::Value);
+deserialize_impl_3!(ShipmentInternationalRating);
+impl TryFrom<serde_json::Value> for ShipmentInternationalRating {
+    type Error = String;
+    fn try_from(value: serde_json::Value) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            {
+                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                let value = runtime::to_value(&value).unwrap_or_default();
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str("{\"minimum\":1}").unwrap_or_default()
+                    });
+                runtime::check_schema_in(
+                    out,
+                    &runtime::InstancePath::Root,
+                    &value,
+                    schema,
+                    runtime::schema_defs(),
+                );
+            }
+        }
+        runtime::first(violations).map(|()| Self(value))
+    }
+}
+checked_impls!(ShipmentInternationalRating, serde_json::Value);
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
+pub struct ShipmentInternationalParcels(pub(super) Vec<ParcelsItem>);
+impl<'de> serde::Deserialize<'de> for ShipmentInternationalParcels {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <Vec<ParcelsItem> as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
+    }
+}
+impl TryFrom<Vec<ParcelsItem>> for ShipmentInternationalParcels {
+    type Error = String;
+    fn try_from(value: Vec<ParcelsItem>) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            {
+                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                let value = runtime::to_value(&value).unwrap_or_default();
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"fragile\":{\"type\":\"boolean\"}}},\"contains\":{\"properties\":{\"fragile\":{\"const\":true}},\"required\":[\"fragile\"]},\"maxContains\":2}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
+                    out,
+                    &runtime::InstancePath::Root,
+                    &value,
+                    schema,
+                    runtime::schema_defs(),
+                );
+            }
+        }
+        runtime::first(violations).map(|()| Self(value))
+    }
+}
+checked_impls!(ShipmentInternationalParcels, Vec < ParcelsItem >);
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
+pub struct ShipmentInternationalScores(
+    pub(super) std::collections::BTreeMap<String, ScoresValue>,
+);
+impl<'de> serde::Deserialize<'de> for ShipmentInternationalScores {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <std::collections::BTreeMap<
+            String,
+            ScoresValue,
+        > as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
+    }
+}
+impl TryFrom<std::collections::BTreeMap<String, ScoresValue>>
+for ShipmentInternationalScores {
+    type Error = String;
+    fn try_from(
+        value: std::collections::BTreeMap<String, ScoresValue>,
+    ) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            {
+                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                let value = runtime::to_value(&value).unwrap_or_default();
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"type\":\"object\",\"patternProperties\":{\"^[a-z]+$\":{\"type\":\"integer\",\"minimum\":0}},\"additionalProperties\":false}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
+                    out,
+                    &runtime::InstancePath::Root,
+                    &value,
+                    schema,
+                    runtime::schema_defs(),
+                );
+            }
+        }
+        runtime::first(violations).map(|()| Self(value))
+    }
+}
+checked_impls!(
+    ShipmentInternationalScores, std::collections::BTreeMap < String, ScoresValue >
+);
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
+pub struct ShipmentInternationalLabels(
+    pub(super) std::collections::BTreeMap<String, String>,
+);
+deserialize_impl_2!(ShipmentInternationalLabels);
+impl TryFrom<std::collections::BTreeMap<String, String>>
+for ShipmentInternationalLabels {
+    type Error = String;
+    fn try_from(
+        value: std::collections::BTreeMap<String, String>,
+    ) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            {
+                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                let value = runtime::to_value(&value).unwrap_or_default();
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"type\":\"object\",\"propertyNames\":{\"pattern\":\"^[a-z]+$\"},\"patternProperties\":{\"^x\":{\"type\":\"string\",\"maxLength\":3}},\"additionalProperties\":{\"type\":\"string\"}}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
+                    out,
+                    &runtime::InstancePath::Root,
+                    &value,
+                    schema,
+                    runtime::schema_defs(),
+                );
+            }
+        }
+        runtime::first(violations).map(|()| Self(value))
+    }
+}
+checked_impls!(
+    ShipmentInternationalLabels, std::collections::BTreeMap < String, String >
+);
+pub type ShipmentOtherwiseRating = ShipmentInternationalRating;
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
+pub struct ShipmentOtherwiseParcels(pub(super) Vec<ShipmentOtherwiseParcelsItem>);
+impl<'de> serde::Deserialize<'de> for ShipmentOtherwiseParcels {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <Vec<
+            ShipmentOtherwiseParcelsItem,
+        > as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
+    }
+}
+impl TryFrom<Vec<ShipmentOtherwiseParcelsItem>> for ShipmentOtherwiseParcels {
+    type Error = String;
+    fn try_from(value: Vec<ShipmentOtherwiseParcelsItem>) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            {
+                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                let value = runtime::to_value(&value).unwrap_or_default();
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"fragile\":{\"type\":\"boolean\"}}},\"contains\":{\"properties\":{\"fragile\":{\"const\":true}},\"required\":[\"fragile\"]},\"maxContains\":2}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
+                    out,
+                    &runtime::InstancePath::Root,
+                    &value,
+                    schema,
+                    runtime::schema_defs(),
+                );
+            }
+        }
+        runtime::first(violations).map(|()| Self(value))
+    }
+}
+checked_impls!(ShipmentOtherwiseParcels, Vec < ShipmentOtherwiseParcelsItem >);
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
+pub struct ShipmentOtherwiseScores(
+    pub(super) std::collections::BTreeMap<String, ShipmentOtherwiseScoresValue>,
+);
+impl<'de> serde::Deserialize<'de> for ShipmentOtherwiseScores {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <std::collections::BTreeMap<
+            String,
+            ShipmentOtherwiseScoresValue,
+        > as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
+    }
+}
+impl TryFrom<std::collections::BTreeMap<String, ShipmentOtherwiseScoresValue>>
+for ShipmentOtherwiseScores {
+    type Error = String;
+    fn try_from(
+        value: std::collections::BTreeMap<String, ShipmentOtherwiseScoresValue>,
+    ) -> Result<Self, String> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            {
+                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                let value = runtime::to_value(&value).unwrap_or_default();
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"type\":\"object\",\"patternProperties\":{\"^[a-z]+$\":{\"type\":\"integer\",\"minimum\":0}},\"additionalProperties\":false}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
+                    out,
+                    &runtime::InstancePath::Root,
+                    &value,
+                    schema,
+                    runtime::schema_defs(),
+                );
+            }
+        }
+        runtime::first(violations).map(|()| Self(value))
+    }
+}
+checked_impls!(
+    ShipmentOtherwiseScores, std::collections::BTreeMap < String,
+    ShipmentOtherwiseScoresValue >
+);
+pub type ShipmentOtherwiseLabels = ShipmentInternationalLabels;
 /// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
 /// its field. `build` returns the first field that did not convert.
 pub mod builders {
@@ -3609,24 +3740,28 @@ pub mod builders {
     impl super::Entry {
         /// Starts a builder from the required properties.
         pub fn builder() -> Entry {
-            Entry(runtime::Builder::start(|| Ok(Self::new())))
+            Entry(runtime::Builder::start(|| Ok(super::EntryFields2::new())))
         }
     }
     #[must_use = "a builder does nothing until `build`"]
-    pub struct Entry(runtime::Builder<super::Entry>);
+    pub struct Entry(runtime::Builder<super::EntryFields2>);
     impl Entry {
         pub fn lines(
             self,
-            value: impl TryInto<serde_json::Value, Error: std::fmt::Display>,
+            value: impl TryInto<types::EntryLines, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("lines", value, |s, v| s.lines = Some(v)))
         }
         pub fn id(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
             Self(self.0.set("id", value, |s, v| s.id = Some(v)))
         }
-        /// Returns the value.
+        /// Returns the value once its whole schema holds.
         pub fn build(self) -> Result<super::Entry, runtime::BuildError> {
-            self.0.build()
+            self.0
+                .build()
+                .and_then(|v| {
+                    super::Entry::try_from(v).map_err(runtime::BuildError::value)
+                })
         }
     }
     impl super::EntryFields {
@@ -3754,7 +3889,7 @@ pub mod builders {
         pub fn builder(
             id: impl TryInto<i64, Error: std::fmt::Display>,
             label: impl TryInto<types::BadgeLabel, Error: std::fmt::Display>,
-            holders: impl TryInto<Vec<String>, Error: std::fmt::Display>,
+            holders: impl TryInto<types::BadgeHolders, Error: std::fmt::Display>,
         ) -> Badge {
             Badge(
                 runtime::Builder::start(|| Ok(
@@ -3861,7 +3996,7 @@ pub mod builders {
         }
         pub fn tags(
             self,
-            value: impl TryInto<Vec<types::UserTagsItem>, Error: std::fmt::Display>,
+            value: impl TryInto<types::UserTags, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("tags", value, |s, v| s.tags = Some(v)))
         }
@@ -3879,10 +4014,7 @@ pub mod builders {
         }
         pub fn meta(
             self,
-            value: impl TryInto<
-                std::collections::BTreeMap<String, String>,
-                Error: std::fmt::Display,
-            >,
+            value: impl TryInto<types::UserMeta, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("meta", value, |s, v| s.meta = Some(v)))
         }
@@ -3953,11 +4085,14 @@ pub mod builders {
                 Error: std::fmt::Display,
             >,
             customs: impl TryInto<String, Error: std::fmt::Display>,
-            parcels: impl TryInto<Vec<types::ParcelsItem>, Error: std::fmt::Display>,
+            parcels: impl TryInto<
+                types::ShipmentInternationalParcels,
+                Error: std::fmt::Display,
+            >,
         ) -> ShipmentInternational {
             ShipmentInternational(
                 runtime::Builder::start(|| Ok(
-                    Self::new(
+                    super::ShipmentInternationalFields::new(
                         runtime::field("kind", kind)?,
                         runtime::field("customs", customs)?,
                         runtime::field("parcels", parcels)?,
@@ -3967,7 +4102,9 @@ pub mod builders {
         }
     }
     #[must_use = "a builder does nothing until `build`"]
-    pub struct ShipmentInternational(runtime::Builder<super::ShipmentInternational>);
+    pub struct ShipmentInternational(
+        runtime::Builder<super::ShipmentInternationalFields>,
+    );
     impl ShipmentInternational {
         pub fn insured(
             self,
@@ -3989,7 +4126,10 @@ pub mod builders {
         }
         pub fn rating(
             self,
-            value: impl TryInto<serde_json::Value, Error: std::fmt::Display>,
+            value: impl TryInto<
+                types::ShipmentInternationalRating,
+                Error: std::fmt::Display,
+            >,
         ) -> Self {
             Self(self.0.set("rating", value, |s, v| s.rating = Some(v)))
         }
@@ -4014,7 +4154,7 @@ pub mod builders {
         pub fn scores(
             self,
             value: impl TryInto<
-                std::collections::BTreeMap<String, types::ScoresValue>,
+                types::ShipmentInternationalScores,
                 Error: std::fmt::Display,
             >,
         ) -> Self {
@@ -4053,15 +4193,20 @@ pub mod builders {
         pub fn labels(
             self,
             value: impl TryInto<
-                std::collections::BTreeMap<String, String>,
+                types::ShipmentInternationalLabels,
                 Error: std::fmt::Display,
             >,
         ) -> Self {
             Self(self.0.set("labels", value, |s, v| s.labels = Some(v)))
         }
-        /// Returns the value.
+        /// Returns the value once its whole schema holds.
         pub fn build(self) -> Result<super::ShipmentInternational, runtime::BuildError> {
-            self.0.build()
+            self.0
+                .build()
+                .and_then(|v| {
+                    super::ShipmentInternational::try_from(v)
+                        .map_err(runtime::BuildError::value)
+                })
         }
     }
     impl super::MetaObject {
@@ -4106,13 +4251,13 @@ pub mod builders {
         pub fn builder(
             kind: impl TryInto<types::ShipmentOtherwiseKind, Error: std::fmt::Display>,
             parcels: impl TryInto<
-                Vec<types::ShipmentOtherwiseParcelsItem>,
+                types::ShipmentOtherwiseParcels,
                 Error: std::fmt::Display,
             >,
         ) -> ShipmentOtherwise {
             ShipmentOtherwise(
                 runtime::Builder::start(|| Ok(
-                    Self::new(
+                    super::ShipmentOtherwiseFields::new(
                         runtime::field("kind", kind)?,
                         runtime::field("parcels", parcels)?,
                     ),
@@ -4121,7 +4266,7 @@ pub mod builders {
         }
     }
     #[must_use = "a builder does nothing until `build`"]
-    pub struct ShipmentOtherwise(runtime::Builder<super::ShipmentOtherwise>);
+    pub struct ShipmentOtherwise(runtime::Builder<super::ShipmentOtherwiseFields>);
     impl ShipmentOtherwise {
         pub fn customs(
             self,
@@ -4149,7 +4294,7 @@ pub mod builders {
         }
         pub fn rating(
             self,
-            value: impl TryInto<serde_json::Value, Error: std::fmt::Display>,
+            value: impl TryInto<types::ShipmentOtherwiseRating, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("rating", value, |s, v| s.rating = Some(v)))
         }
@@ -4167,10 +4312,7 @@ pub mod builders {
         }
         pub fn scores(
             self,
-            value: impl TryInto<
-                std::collections::BTreeMap<String, types::ShipmentOtherwiseScoresValue>,
-                Error: std::fmt::Display,
-            >,
+            value: impl TryInto<types::ShipmentOtherwiseScores, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("scores", value, |s, v| s.scores = Some(v)))
         }
@@ -4203,23 +4345,25 @@ pub mod builders {
         }
         pub fn labels(
             self,
-            value: impl TryInto<
-                std::collections::BTreeMap<String, String>,
-                Error: std::fmt::Display,
-            >,
+            value: impl TryInto<types::ShipmentOtherwiseLabels, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("labels", value, |s, v| s.labels = Some(v)))
         }
-        /// Returns the value.
+        /// Returns the value once its whole schema holds.
         pub fn build(self) -> Result<super::ShipmentOtherwise, runtime::BuildError> {
-            self.0.build()
+            self.0
+                .build()
+                .and_then(|v| {
+                    super::ShipmentOtherwise::try_from(v)
+                        .map_err(runtime::BuildError::value)
+                })
         }
     }
     impl super::BadgeRequest {
         /// Starts a builder from the required properties.
         pub fn builder(
             label: impl TryInto<types::BadgeLabel, Error: std::fmt::Display>,
-            holders: impl TryInto<Vec<String>, Error: std::fmt::Display>,
+            holders: impl TryInto<types::BadgeRequestHolders, Error: std::fmt::Display>,
         ) -> BadgeRequest {
             BadgeRequest(
                 runtime::Builder::start(|| Ok(
@@ -4260,6 +4404,268 @@ pub mod builders {
     impl LoginRequest {
         /// Returns the value.
         pub fn build(self) -> Result<super::LoginRequest, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::EntryFields2 {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> EntryFields2 {
+            EntryFields2(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct EntryFields2(runtime::Builder<super::EntryFields2>);
+    impl EntryFields2 {
+        pub fn lines(
+            self,
+            value: impl TryInto<types::EntryLines, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("lines", value, |s, v| s.lines = Some(v)))
+        }
+        pub fn id(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("id", value, |s, v| s.id = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::EntryFields2, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::ShipmentInternationalFields {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            kind: impl TryInto<
+                types::ShipmentInternationalKind,
+                Error: std::fmt::Display,
+            >,
+            customs: impl TryInto<String, Error: std::fmt::Display>,
+            parcels: impl TryInto<
+                types::ShipmentInternationalParcels,
+                Error: std::fmt::Display,
+            >,
+        ) -> ShipmentInternationalFields {
+            ShipmentInternationalFields(
+                runtime::Builder::start(|| Ok(
+                    Self::new(
+                        runtime::field("kind", kind)?,
+                        runtime::field("customs", customs)?,
+                        runtime::field("parcels", parcels)?,
+                    ),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct ShipmentInternationalFields(
+        runtime::Builder<super::ShipmentInternationalFields>,
+    );
+    impl ShipmentInternationalFields {
+        pub fn insured(
+            self,
+            value: impl TryInto<bool, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("insured", value, |s, v| s.insured = Some(v)))
+        }
+        pub fn insurer(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("insurer", value, |s, v| s.insurer = Some(v)))
+        }
+        pub fn options(
+            self,
+            value: impl TryInto<types::NoOptions, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("options", value, |s, v| s.options = Some(v)))
+        }
+        pub fn rating(
+            self,
+            value: impl TryInto<
+                types::ShipmentInternationalRating,
+                Error: std::fmt::Display,
+            >,
+        ) -> Self {
+            Self(self.0.set("rating", value, |s, v| s.rating = Some(v)))
+        }
+        pub fn meta(
+            self,
+            value: impl TryInto<
+                types::ShipmentInternationalMeta,
+                Error: std::fmt::Display,
+            >,
+        ) -> Self {
+            Self(self.0.set("meta", value, |s, v| s.meta = Some(v)))
+        }
+        pub fn label(
+            self,
+            value: impl TryInto<
+                types::ShipmentInternationalLabel,
+                Error: std::fmt::Display,
+            >,
+        ) -> Self {
+            Self(self.0.set("label", value, |s, v| s.label = Some(v)))
+        }
+        pub fn scores(
+            self,
+            value: impl TryInto<
+                types::ShipmentInternationalScores,
+                Error: std::fmt::Display,
+            >,
+        ) -> Self {
+            Self(self.0.set("scores", value, |s, v| s.scores = Some(v)))
+        }
+        pub fn priority(
+            self,
+            value: impl TryInto<
+                types::ShipmentInternationalPriority,
+                Error: std::fmt::Display,
+            >,
+        ) -> Self {
+            Self(
+                self
+                    .0
+                    .set(
+                        "priority",
+                        value,
+                        |s, v| s.priority = runtime::Nullable::Value(v),
+                    ),
+            )
+        }
+        pub fn weight(
+            self,
+            value: impl TryInto<
+                types::ShipmentInternationalWeight,
+                Error: std::fmt::Display,
+            >,
+        ) -> Self {
+            Self(
+                self
+                    .0
+                    .set("weight", value, |s, v| s.weight = runtime::Nullable::Value(v)),
+            )
+        }
+        pub fn labels(
+            self,
+            value: impl TryInto<
+                types::ShipmentInternationalLabels,
+                Error: std::fmt::Display,
+            >,
+        ) -> Self {
+            Self(self.0.set("labels", value, |s, v| s.labels = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(
+            self,
+        ) -> Result<super::ShipmentInternationalFields, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::ShipmentOtherwiseFields {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            kind: impl TryInto<types::ShipmentOtherwiseKind, Error: std::fmt::Display>,
+            parcels: impl TryInto<
+                types::ShipmentOtherwiseParcels,
+                Error: std::fmt::Display,
+            >,
+        ) -> ShipmentOtherwiseFields {
+            ShipmentOtherwiseFields(
+                runtime::Builder::start(|| Ok(
+                    Self::new(
+                        runtime::field("kind", kind)?,
+                        runtime::field("parcels", parcels)?,
+                    ),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct ShipmentOtherwiseFields(runtime::Builder<super::ShipmentOtherwiseFields>);
+    impl ShipmentOtherwiseFields {
+        pub fn customs(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("customs", value, |s, v| s.customs = Some(v)))
+        }
+        pub fn insured(
+            self,
+            value: impl TryInto<bool, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("insured", value, |s, v| s.insured = Some(v)))
+        }
+        pub fn insurer(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("insurer", value, |s, v| s.insurer = Some(v)))
+        }
+        pub fn options(
+            self,
+            value: impl TryInto<types::NoOptions, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("options", value, |s, v| s.options = Some(v)))
+        }
+        pub fn rating(
+            self,
+            value: impl TryInto<types::ShipmentOtherwiseRating, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("rating", value, |s, v| s.rating = Some(v)))
+        }
+        pub fn meta(
+            self,
+            value: impl TryInto<types::ShipmentOtherwiseMeta, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("meta", value, |s, v| s.meta = Some(v)))
+        }
+        pub fn label(
+            self,
+            value: impl TryInto<types::ShipmentOtherwiseLabel, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("label", value, |s, v| s.label = Some(v)))
+        }
+        pub fn scores(
+            self,
+            value: impl TryInto<types::ShipmentOtherwiseScores, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("scores", value, |s, v| s.scores = Some(v)))
+        }
+        pub fn priority(
+            self,
+            value: impl TryInto<
+                types::ShipmentOtherwisePriority,
+                Error: std::fmt::Display,
+            >,
+        ) -> Self {
+            Self(
+                self
+                    .0
+                    .set(
+                        "priority",
+                        value,
+                        |s, v| s.priority = runtime::Nullable::Value(v),
+                    ),
+            )
+        }
+        pub fn weight(
+            self,
+            value: impl TryInto<types::ShipmentOtherwiseWeight, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(
+                self
+                    .0
+                    .set("weight", value, |s, v| s.weight = runtime::Nullable::Value(v)),
+            )
+        }
+        pub fn labels(
+            self,
+            value: impl TryInto<types::ShipmentOtherwiseLabels, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("labels", value, |s, v| s.labels = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(
+            self,
+        ) -> Result<super::ShipmentOtherwiseFields, runtime::BuildError> {
             self.0.build()
         }
     }

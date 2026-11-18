@@ -187,6 +187,9 @@ pub(crate) struct TypeDef {
     pub json_string: bool,
     /// A schema of `components/schemas`: one the description names. An identical one keeps its own type.
     pub component: bool,
+    /// The keywords of the schema itself, as a value of the type meets them: with `$ref`s and `allOf` members
+    /// followed. Keywords that no type holds (`if`, `not`, `oneOf`'s one match) make it a checked type.
+    pub own: Constraints,
 }
 
 /// Validation keywords of a schema (JSON Schema 2020-12 validation vocabulary).
@@ -623,7 +626,7 @@ impl TypeSpace {
                 break;
             }
         }
-        let mut names: BTreeSet<String> = self.defs.iter().map(|d| d.name.key()).collect();
+        let mut names = self.name_keys();
         let mut request_of: Vec<Option<TypeId>> = vec![None; n];
         for i in (0..n).filter(|i| split[*i]) {
             let name = unique(self.defs[i].name.and(&Name::new("Request")), &mut names);
@@ -648,6 +651,11 @@ impl TypeSpace {
         let mut t = t.clone();
         map_named(&mut t, request_of);
         t
+    }
+
+    /// Returns the key of every type's name: a new name must be none of them.
+    pub(crate) fn name_keys(&self) -> BTreeSet<String> {
+        self.defs.iter().map(|d| d.name.key()).collect()
     }
 
     /// Returns the definition of a named type.

@@ -180,9 +180,12 @@ pub(crate) fn checked_scalar(o: &serde_json::Map<String, Value>) -> bool {
                 && (o.get("pattern").is_some_and(Value::is_string)
                     || ["minLength", "maxLength"].iter().any(|k| o.get(*k).and_then(json::count).is_some()))
         }
-        "integer" | "number" => ["minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "multipleOf"]
-            .iter()
-            .any(|k| o.get(*k).is_some_and(Value::is_number)),
+        "integer" | "number" => {
+            ["minimum", "maximum", "exclusiveMinimum", "exclusiveMaximum", "multipleOf"]
+                .iter()
+                .any(|k| o.get(*k).is_some_and(Value::is_number))
+                || (t == "number" && format == Some("decimal128"))
+        }
         _ => false,
     }
 }
@@ -502,6 +505,7 @@ impl<'a> Builder<'a> {
             deprecated: false,
             json_string: false,
             component: named_by_description(ptr),
+            own: Constraints::default(),
         });
         self.by_ptr.insert(ptr.to_owned(), id);
         id
@@ -519,6 +523,7 @@ impl<'a> Builder<'a> {
         let kind = if matches!(kind, Kind::Alias(Ty::Named(t)) if t == id) { Kind::Alias(Ty::Any) } else { kind };
         self.defs[id.0].doc = doc;
         self.defs[id.0].kind = kind;
+        self.defs[id.0].own = self.constraints_at_ptr(schema, ptr);
         // JSON Schema `examples` (an array) and the older `example`.
         let mut examples: Vec<(String, Value)> =
             schema.get("example").map(|v| (join(ptr, "example"), v.clone())).into_iter().collect();
@@ -566,6 +571,12 @@ impl<'a> Builder<'a> {
         self.constraints_at(s, 0, None)
     }
 
+    /// Returns [`Builder::constraints`] of the schema at `ptr`: a `$dynamicRef` inside resolves from its resource, as
+    /// it does where a `$ref` reaches the schema.
+    fn constraints_at_ptr(&self, s: &Value, ptr: &str) -> Constraints {
+        self.constraints_at(s, 0, Some(ptr))
+    }
+
     fn constraints_at(&self, s: &Value, depth: usize, at: Option<&str>) -> Constraints {
         // Keywords further down belong to the named types on the way, which hold them. Only a schema checked whole
         // loses what it cuts (`inline_scoped`).
@@ -573,6 +584,14 @@ impl<'a> Builder<'a> {
             return Constraints::default();
         }
         let mut c = Constraints::own(s);
+        // `if`/`then` on one property's constants becomes a tagged union (`conditional_union`): its variants hold the
+        // conditions. Only conditions that it cannot type stay a run-time check.
+        let typed_conditional = s.as_object().is_some_and(|o| conditional_union(o).is_some());
+        let conditional_key = |k: &str| typed_conditional && matches!(k, "if" | "then" | "else");
+        let conditional_member = |m: &Value| {
+            typed_conditional
+                && m.as_object().is_some_and(|m| m.contains_key("if") && m.keys().all(|k| conditional_key(k)))
+        };
         // Non-string `enum`/`const` have no type of their own either. An integer enum is the exception. The
         // `validate` of its type rejects `kind: 7` when only 1, 2 and 3 are allowed.
         let untyped = |v: &Value| !v.is_string() && !v.is_null();
@@ -589,8 +608,27 @@ impl<'a> Builder<'a> {
         // Keywords beside an implied shape hold for the `Other` variant too (`{minimum: 30, properties: ...}`). A
         // `$ref` with keywords beside it joins two schemas that one struct does not hold.
         let mixed = s.as_object().is_some_and(|o| {
-            let quiet =
-                |k: &str| matches!(k, "$ref" | "$id" | "$schema" | "$comment" | "$defs" | "description" | "title");
+            // Keywords that assert nothing about the value: annotations and the XML mapping.
+            let quiet = |k: &str| {
+                matches!(
+                    k,
+                    "$ref"
+                        | "$id"
+                        | "$schema"
+                        | "$comment"
+                        | "$defs"
+                        | "description"
+                        | "title"
+                        | "xml"
+                        | "example"
+                        | "examples"
+                        | "default"
+                        | "deprecated"
+                        | "readOnly"
+                        | "writeOnly"
+                        | "externalDocs"
+                )
+            };
             (inferred_kind(o).is_some()
                 && ASSERTIONS
                     .iter()
@@ -603,13 +641,13 @@ impl<'a> Builder<'a> {
             || mixed
             || self.loose_union(s)
             || self.lossy_all_of(s)
-            || matches!(s, Value::Object(o) if UNTYPED_KEYWORDS.iter().any(|k| o.contains_key(*k)) || untyped_values(o))
+            || matches!(s, Value::Object(o) if UNTYPED_KEYWORDS.iter().any(|k| o.contains_key(*k) && !conditional_key(k)) || untyped_values(o))
         {
             // The resource of the schema starts the dynamic scope that a `$dynamicRef` resolves in.
             let scope: Vec<String> = at.map_or_else(Vec::new, |p| vec![self.dynamic.resource_of(p)]);
             c.schema = Some(self.inlined(s, at, scope));
         }
-        for m in s.get("allOf").and_then(Value::as_array).into_iter().flatten() {
+        for m in s.get("allOf").and_then(Value::as_array).into_iter().flatten().filter(|m| !conditional_member(m)) {
             c.merge(self.constraints_at(m, depth + 1, None));
         }
         // One hop: a target that has keywords beside its own `$ref` (3.1) keeps them. Following the whole chain
@@ -881,6 +919,7 @@ impl<'a> Builder<'a> {
                     self.defs[id.0].doc = doc_of(s);
                     self.defs[id.0].json_string = matches!(kind, Kind::Newtype(_)) && json_string_schema(o).is_some();
                     self.defs[id.0].kind = kind;
+                    self.defs[id.0].own = self.constraints_at_ptr(s, ptr);
                     return Ty::Named(id);
                 }
                 None => {
@@ -2242,7 +2281,7 @@ mod tests {
         let doc = Doc::new(json!({"openapi": "3.2.0", "components": {"schemas": {"Rec": rec}}}));
         let mut d = Diagnostics::default();
         let b = Builder::new(&doc, &mut d, Reserved::default());
-        let schema = whole(&b, b.constraints(&rec).schema.expect("checked whole"));
+        let schema = whole(&b, b.constraints_at_ptr(&rec, "/components/schemas/Rec").schema.expect("checked whole"));
         let defs = schema.get("$defs").and_then(Value::as_object).expect("the cycle is in `$defs`");
         assert_eq!(defs.keys().collect::<Vec<_>>(), ["/components/schemas/Rec"]);
         let mut out = vec![];
@@ -2283,7 +2322,10 @@ mod tests {
             let mut d = Diagnostics::default();
             let b = Builder::new(&doc, &mut d, Reserved::default());
             let top = pointer(&doc.root, "/components/schemas/Top").cloned().expect("Top");
-            let schema = whole(&b, b.constraints(&top).schema.expect("a tuple is checked whole"));
+            let schema = whole(
+                &b,
+                b.constraints_at_ptr(&top, "/components/schemas/Top").schema.expect("a tuple is checked whole"),
+            );
             let mut out = vec![];
             runtime::__private::check_schema(&mut out, &runtime::InstancePath::Root, &deep_bad, &schema);
             assert!(!out.is_empty(), "{n} references: the `1` three levels down is neither a string nor `null`");
@@ -2296,7 +2338,7 @@ mod tests {
         let mut d = Diagnostics::default();
         let b = Builder::new(&doc, &mut d, Reserved::default());
         let top = pointer(&doc.root, "/components/schemas/Top").cloned().expect("Top");
-        drop(b.constraints(&top));
+        drop(b.constraints_at_ptr(&top, "/components/schemas/Top"));
         b.finish();
         assert!(d.iter().any(|w| w.message.contains("a value there is not checked against it")), "{d:?}");
     }

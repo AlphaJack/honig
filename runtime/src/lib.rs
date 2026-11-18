@@ -110,13 +110,13 @@ pub use server::service::{
     Endpoint, Errors, MatchedOperation, Secured, Server, read_body,
 };
 pub use source::{Blob, Body, ByteStream, Sse};
-pub use stream::{Check, Framing, ItemStream, Items, Streamed};
+pub use stream::{Framing, ItemStream, Items, Streamed};
 #[cfg(any(feature = "client", feature = "server"))]
 pub use tower_service::Service;
 pub use transport::block_on;
 #[cfg(feature = "idn")]
 pub use validate::{Email, Hostname, IdnEmail, IdnHostname};
-pub use validate::{InstancePath, Validate, Violation, is_valid};
+pub use validate::{InstancePath, Violation};
 
 // The hidden items that the modules use to name each other from the root.
 #[cfg_attr(not(test), expect(clippy::wildcard_imports, reason = "which items each feature set uses differs"))]

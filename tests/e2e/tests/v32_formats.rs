@@ -133,7 +133,9 @@ fn registry_formats_take_their_library_types() {
 fn a_decimal_in_a_one_of_branch_keeps_its_digits() {
     let body = format!(r#"{{"id": "{ID}", "at": "{AT}", "charge": {{"fee": 12345678901234567.89}}}}"#);
     let e: types::Event = serde_json::from_str(&body).expect("decodes");
-    let Some(types::EventCharge::Fee(charge)) = e.charge else { panic!("the fee branch: {:?}", e.charge) };
+    let Some(types::EventChargeVariants::Fee(charge)) = e.charge.as_deref() else {
+        panic!("the fee branch: {:?}", e.charge)
+    };
     assert_eq!(charge.fee.as_str(), "12345678901234567.89");
 }
 
@@ -229,24 +231,21 @@ fn a_union_checks_its_branch_and_refuses_a_value_no_branch_takes() {
 }
 
 /// `decimal128`, as a number and as a string, holds what IEEE 754 decimal128 holds: at most 34 significant digits
-/// within its exponent range. Past them a string does not decode and a number is a violation.
+/// within its exponent range. Past them a value does not decode.
 #[test]
 fn decimal128_holds_what_ieee_decimal128_holds() {
-    let violations = |extra: &str| {
-        let e: types::Event =
-            serde_json::from_str(&format!(r#"{{"id": "{ID}", "at": "{AT}", {extra}}}"#)).map_err(|e| e.to_string())?;
-        let mut out = vec![];
-        api::Validate::validate(&e, &api::InstancePath::Root, &mut out);
-        Ok::<_, String>(out.into_iter().filter(|v| v.path == "/sum").map(|v| v.message).collect::<Vec<_>>())
+    let event = |extra: &str| {
+        serde_json::from_str::<types::Event>(&format!(r#"{{"id": "{ID}", "at": "{AT}", {extra}}}"#))
+            .map_err(|e| e.to_string())
     };
     let digits34 = "1234567890123456789012345678901234";
-    assert_eq!(violations(&format!(r#""sum": {digits34}e-10, "total": "{digits34}e-10""#)), Ok(vec![]));
+    let e = event(&format!(r#""sum": {digits34}e-10, "total": "{digits34}e-10""#)).expect("34 digits hold");
+    assert_eq!(e.sum.as_deref().map(api::Decimal::as_str), Some(format!("{digits34}e-10").as_str()));
+    assert_eq!(e.total.as_deref(), Some(format!("{digits34}e-10").as_str()));
     let digits35 = format!("{digits34}5");
-    assert_eq!(
-        violations(&format!(r#""sum": {digits35}"#)),
-        Ok(vec![format!("`{digits35}` has 35 significant digits, more than the 34 of decimal128")])
-    );
-    let total = violations(&format!(r#""total": "{digits35}""#)).expect_err("35 digits");
+    let sum = event(&format!(r#""sum": {digits35}"#)).expect_err("35 digits");
+    assert!(sum.contains("has 35 significant digits, more than the 34 of decimal128"), "{sum}");
+    let total = event(&format!(r#""total": "{digits35}""#)).expect_err("35 digits");
     assert!(total.starts_with(&format!("`{digits35}` is not a valid decimal128")), "{total}");
-    assert_eq!(violations(r#""sum": 1e6145"#), Ok(vec!["`1e6145` is out of the range of decimal128".to_owned()]));
+    assert!(event(r#""sum": 1e6145"#).is_err(), "past the exponent range");
 }

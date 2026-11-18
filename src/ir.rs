@@ -1,5 +1,6 @@
 //! Intermediate representation: types and operations built from a bundled 3.2 document for any target language.
 
+pub(crate) mod checked;
 pub(crate) mod dynamic;
 pub(crate) mod http;
 pub(crate) mod media;
@@ -100,6 +101,8 @@ pub(crate) fn build_with(
     let mut http = Http::build(&mut b, &schemes);
     let mut types = b.finish();
     http.use_request_types(&types.split_directions());
+    // After the split: each direction's type wraps its own fields.
+    checked::wrap(&mut types, &mut http);
     let servers = doc
         .root
         .get("servers")

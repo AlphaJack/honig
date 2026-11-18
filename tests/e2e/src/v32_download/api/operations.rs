@@ -11,11 +11,10 @@
     clippy::missing_errors_doc,
     reason = "generated docs hold only the description's own prose"
 )]
-macro_rules! validate_impl {
-    ($t:ty) => {
-        impl runtime::Validate for $t {}
-    };
-}
+#![allow(
+    clippy::init_numbered_fields,
+    reason = "a spec default builds its checked type as `Type { 0: value }`, which also works through the alias of a twin"
+)]
 macro_rules! error_impl {
     ($t:ty) => {
         impl std::error::Error for $t {}
@@ -35,7 +34,6 @@ pub mod get_export {
             Self { id }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// The export as a zip archive.
@@ -76,7 +74,6 @@ pub mod get_thumbnail {
             Self { id }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// A preview in whatever image format the export has.
@@ -100,7 +97,6 @@ pub mod get_thumbnail {
     }
 }
 pub mod get_manifest {
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/exports/{id}/manifest";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -113,7 +109,6 @@ pub mod get_manifest {
             Self { id }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// The files the export holds.
@@ -145,7 +140,6 @@ pub mod get_manifest {
     }
 }
 pub mod replace_manifest {
-    use super::super::runtime;
     pub const METHOD: &str = "PUT";
     pub const PATH: &str = "/exports/{id}/manifest";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -160,7 +154,6 @@ pub mod replace_manifest {
             Self { if_match: None, id, body }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Replaced.

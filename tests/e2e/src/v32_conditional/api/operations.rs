@@ -11,6 +11,10 @@
     clippy::missing_errors_doc,
     reason = "generated docs hold only the description's own prose"
 )]
+#![allow(
+    clippy::init_numbered_fields,
+    reason = "a spec default builds its checked type as `Type { 0: value }`, which also works through the alias of a twin"
+)]
 macro_rules! display_impl {
     ($t:ty) => {
         impl std::fmt::Display for $t {
@@ -29,7 +33,6 @@ macro_rules! error_impl {
 }
 pub mod a {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/a";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -42,7 +45,6 @@ pub mod a {
             Self { body }
         }
     }
-    impl runtime::Validate for Params {}
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// ok
@@ -61,7 +63,6 @@ pub mod a {
 }
 pub mod b {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/b";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -72,32 +73,6 @@ pub mod b {
         #[must_use]
         pub const fn new(body: types::IfThen) -> Self {
             Self { body }
-        }
-    }
-    impl runtime::Validate for Params {
-        fn validate(
-            &self,
-            path: &runtime::InstancePath<'_>,
-            out: &mut Vec<runtime::Violation>,
-        ) {
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&self.body).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"allOf\":[{\"if\":{\"properties\":{\"type\":{\"const\":\"email\"}}},\"then\":{\"required\":[\"email\"],\"properties\":{\"email\":{\"type\":\"string\",\"format\":\"email\"}}}},{\"if\":{\"properties\":{\"type\":{\"const\":\"sms\"}}},\"then\":{\"required\":[\"phone\"],\"properties\":{\"phone\":{\"type\":\"string\"}}}}]}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Key(path, "body"),
-                    &value,
-                    schema,
-                    None,
-                );
-            }
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -118,7 +93,6 @@ pub mod b {
 }
 pub mod c {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/c";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -129,32 +103,6 @@ pub mod c {
         #[must_use]
         pub const fn new(body: types::ConstOneOf) -> Self {
             Self { body }
-        }
-    }
-    impl runtime::Validate for Params {
-        fn validate(
-            &self,
-            path: &runtime::InstancePath<'_>,
-            out: &mut Vec<runtime::Violation>,
-        ) {
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&self.body).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"oneOf\":[{\"type\":\"object\",\"required\":[\"type\",\"email\"],\"properties\":{\"type\":{\"type\":\"string\",\"enum\":[\"email\"]},\"email\":{\"type\":\"string\"}}},{\"type\":\"object\",\"required\":[\"type\",\"phone\"],\"properties\":{\"type\":{\"type\":\"string\",\"enum\":[\"sms\"]},\"phone\":{\"type\":\"string\"}}}]}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Key(path, "body"),
-                    &value,
-                    schema,
-                    None,
-                );
-            }
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]

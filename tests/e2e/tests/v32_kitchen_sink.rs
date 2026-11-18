@@ -46,9 +46,7 @@ fn form(priority: types::SubmitFormBodyPriority) -> ops::submit_form::Params {
 
 #[test]
 fn integer_enum_values_are_checked() {
-    let mut out = vec![];
-    api::Validate::validate(&form(types::SubmitFormBodyPriority::N2), &api::InstancePath::Root, &mut out);
-    assert!(out.is_empty(), "{out:?}");
+    assert_eq!(form(types::SubmitFormBodyPriority::N2).body.priority, types::SubmitFormBodyPriority::N2);
     assert_eq!(types::SubmitFormBodyPriority::try_from(2), Ok(types::SubmitFormBodyPriority::N2));
     assert_eq!(types::SubmitFormBodyPriority::try_from(7), Err("`7` is not one of `1`, `2`, `3`".to_owned()));
     assert!(serde_json::from_str::<types::SubmitFormBodyPriority>("7").is_err());
@@ -185,8 +183,17 @@ impl Products {
 }
 
 fn lamp() -> types::Product {
-    let name = types::ProductName::try_from("Lamp").unwrap_or_else(|e| panic!("{e}"));
-    types::Product::new(7.try_into().unwrap_or_else(|e| panic!("{e}")), name, types::ProductKind::Book)
+    lamp_numbered(7).unwrap_or_else(|e| panic!("{e}"))
+}
+
+/// The lamp with the id `id`. Its schema is checked whole (`types::Product` wraps `types::ProductFields`).
+fn lamp_numbered(id: i64) -> Result<types::Product, api::BuildError> {
+    // ANCHOR: whole-schema
+    let lamp: types::Product = types::Product::builder(id, "Lamp", types::ProductKind::Book).build()?;
+    let fields: &types::ProductFields = &lamp; // reads as its fields
+    // ANCHOR_END: whole-schema
+    assert_eq!(fields.name.as_str(), "Lamp");
+    Ok(lamp)
 }
 
 type Ctx<'a> = api::Context<'a, Option<()>>;
@@ -240,13 +247,9 @@ impl api::Api for Products {
 
     async fn get_product(&self, p: ops::get_product::Params, _: &Ctx<'_>) -> Answer<ops::get_product::Response> {
         self.keep(&p);
-        Ok(ops::get_product::Response::Ok(types::Product {
-            id: p
-                .product_id
-                .try_into()
-                .map_err(|e: String| api::ApiError::new(api::http::StatusCode::BAD_REQUEST, e))?,
-            ..lamp()
-        }))
+        let product = lamp_numbered(p.product_id)
+            .map_err(|e| api::ApiError::new(api::http::StatusCode::BAD_REQUEST, e.to_string()))?;
+        Ok(ops::get_product::Response::Ok(product))
     }
 
     async fn put_product(&self, p: ops::put_product::Params, _: &Ctx<'_>) -> Answer<ops::put_product::Response> {
@@ -324,10 +327,7 @@ fn each_method_reaches_its_operation() {
     let client = served(&products);
     assert_eq!(
         api::block_on(client.get_product(ops::get_product::Params { product_id: 9 })).ok(),
-        Some(ops::get_product::Response::Ok(types::Product {
-            id: 9.try_into().unwrap_or_else(|e| panic!("{e}")),
-            ..lamp()
-        }))
+        Some(ops::get_product::Response::Ok(lamp_numbered(9).unwrap_or_else(|e| panic!("{e}"))))
     );
     assert_eq!(products.last(), Some(ops::get_product::Params { product_id: 9 }));
     assert_eq!(

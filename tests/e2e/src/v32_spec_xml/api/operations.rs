@@ -11,6 +11,10 @@
     clippy::missing_errors_doc,
     reason = "generated docs hold only the description's own prose"
 )]
+#![allow(
+    clippy::init_numbered_fields,
+    reason = "a spec default builds its checked type as `Type { 0: value }`, which also works through the alias of a twin"
+)]
 macro_rules! default_impl {
     ($t:ty) => {
         impl Default for $t {
@@ -18,11 +22,6 @@ macro_rules! default_impl {
                 Self::new()
             }
         }
-    };
-}
-macro_rules! validate_impl {
-    ($t:ty) => {
-        impl runtime::Validate for $t {}
     };
 }
 macro_rules! display_impl {
@@ -43,7 +42,6 @@ macro_rules! error_impl {
 }
 pub mod no_xml_object {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/no-xml-object";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -55,7 +53,6 @@ pub mod no_xml_object {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Basic string property without an XML Object.
@@ -74,7 +71,6 @@ pub mod no_xml_object {
 }
 pub mod no_xml_object_array {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/no-xml-object/array";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -86,7 +82,6 @@ pub mod no_xml_object_array {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Basic string array property (`nodeType` is `none` by default).
@@ -105,7 +100,6 @@ pub mod no_xml_object_array {
 }
 pub mod xml_attribute_prefix_and_namespace {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/people";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -119,7 +113,6 @@ pub mod xml_attribute_prefix_and_namespace {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// ok
@@ -144,7 +137,6 @@ pub mod xml_attribute_prefix_and_namespace {
 }
 pub mod xml_array_item_names {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/arrays/item-names";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -156,7 +148,6 @@ pub mod xml_array_item_names {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Items named `product`.
@@ -175,7 +166,6 @@ pub mod xml_array_item_names {
 }
 pub mod xml_array_name_without_wrapper {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/arrays/unwrapped-name";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -187,7 +177,6 @@ pub mod xml_array_name_without_wrapper {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// The array's `name` has no effect while its `nodeType` is `none`.
@@ -206,7 +195,6 @@ pub mod xml_array_name_without_wrapper {
 }
 pub mod xml_array_wrapped {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/arrays/wrapped";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -218,7 +206,6 @@ pub mod xml_array_wrapped {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// A wrapper element named after the property, items too.
@@ -237,7 +224,6 @@ pub mod xml_array_wrapped {
 }
 pub mod xml_array_wrapped_item_names {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/arrays/wrapped-item-names";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -249,7 +235,6 @@ pub mod xml_array_wrapped_item_names {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// A wrapper element, items named `product`.
@@ -268,7 +253,6 @@ pub mod xml_array_wrapped_item_names {
 }
 pub mod xml_array_wrapped_renamed {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/arrays/wrapped-renamed";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -280,7 +264,6 @@ pub mod xml_array_wrapped_renamed {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// A wrapper element named `aliens`, items named `product`.
@@ -298,7 +281,6 @@ pub mod xml_array_wrapped_renamed {
     }
 }
 pub mod elements_with_attributes_and_text {
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/products";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -310,7 +292,6 @@ pub mod elements_with_attributes_and_text {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Each item an element with an attribute and text.
@@ -329,7 +310,6 @@ pub mod elements_with_attributes_and_text {
 }
 pub mod referenced_element_with_cdata {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/docs";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -341,7 +321,6 @@ pub mod referenced_element_with_cdata {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Documentation.
@@ -359,7 +338,6 @@ pub mod referenced_element_with_cdata {
     }
 }
 pub mod ordered_elements {
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/one-two-three";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -371,7 +349,6 @@ pub mod ordered_elements {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// A sequence of elements, and `null` as `xsi:nil`.
@@ -389,7 +366,6 @@ pub mod ordered_elements {
     }
 }
 pub mod ordered_elements_and_text {
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/report";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -401,7 +377,6 @@ pub mod ordered_elements_and_text {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Text and elements interleaved.
@@ -420,7 +395,6 @@ pub mod ordered_elements_and_text {
 }
 pub mod xml_with_null_values {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/product";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -432,7 +406,6 @@ pub mod xml_with_null_values {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq)]
     pub enum Response {
         /// Empty objects and `null`.

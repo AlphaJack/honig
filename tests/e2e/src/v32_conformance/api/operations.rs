@@ -11,6 +11,10 @@
     clippy::missing_errors_doc,
     reason = "generated docs hold only the description's own prose"
 )]
+#![allow(
+    clippy::init_numbered_fields,
+    reason = "a spec default builds its checked type as `Type { 0: value }`, which also works through the alias of a twin"
+)]
 macro_rules! default_impl {
     ($t:ty) => {
         impl Default for $t {
@@ -18,11 +22,6 @@ macro_rules! default_impl {
                 Self::new()
             }
         }
-    };
-}
-macro_rules! validate_impl {
-    ($t:ty) => {
-        impl runtime::Validate for $t {}
     };
 }
 macro_rules! display_impl {
@@ -51,7 +50,6 @@ pub const SECURITY_1: &[&[runtime::Requirement]] = &[
     &[(runtime::Scheme::ApiKey("cookieKey", runtime::KeyIn::Cookie, "SID"), &[])],
 ];
 pub mod open {
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/public";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -63,7 +61,6 @@ pub mod open {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// ok
@@ -81,7 +78,6 @@ pub mod open {
     }
 }
 pub mod inherits {
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/inherits";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -93,7 +89,6 @@ pub mod inherits {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// ok
@@ -125,7 +120,6 @@ pub mod get_item {
             Self { limit: None, id }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// any success
@@ -161,7 +155,6 @@ pub mod get_item {
 }
 pub mod post_closed {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/closed";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -174,7 +167,6 @@ pub mod post_closed {
             Self { body }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// ok
@@ -192,7 +184,6 @@ pub mod post_closed {
     }
 }
 pub mod optional_body {
-    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/optional-body";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -206,7 +197,6 @@ pub mod optional_body {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// ok
@@ -225,7 +215,6 @@ pub mod optional_body {
 }
 pub mod post_product {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/products";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -236,32 +225,6 @@ pub mod post_product {
         #[must_use]
         pub const fn new(body: types::Product) -> Self {
             Self { body }
-        }
-    }
-    impl runtime::Validate for Params {
-        fn validate(
-            &self,
-            path: &runtime::InstancePath<'_>,
-            out: &mut Vec<runtime::Violation>,
-        ) {
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&self.body).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"type\":\"object\",\"required\":[\"kind\"],\"properties\":{\"kind\":{\"type\":\"string\"}},\"oneOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Gadget\"},{\"$ref\":\"#/$defs/~1components~1schemas~1Book\"}]}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Key(path, "body"),
-                    &value,
-                    schema,
-                    runtime::schema_defs(),
-                );
-            }
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -282,7 +245,6 @@ pub mod post_product {
 }
 pub mod upload {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/upload";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -295,7 +257,6 @@ pub mod upload {
             Self { body }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// ok
@@ -313,7 +274,6 @@ pub mod upload {
     }
 }
 pub mod cookies {
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/cookies";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -325,7 +285,6 @@ pub mod cookies {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// ok
@@ -350,7 +309,6 @@ pub mod cookies {
 }
 pub mod filter {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/filter";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -365,7 +323,6 @@ pub mod filter {
         }
     }
     default_impl!(Params);
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// ok

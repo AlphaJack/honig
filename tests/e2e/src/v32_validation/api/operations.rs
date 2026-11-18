@@ -11,14 +11,13 @@
     clippy::missing_errors_doc,
     reason = "generated docs hold only the description's own prose"
 )]
+#![allow(
+    clippy::init_numbered_fields,
+    reason = "a spec default builds its checked type as `Type { 0: value }`, which also works through the alias of a twin"
+)]
 macro_rules! error_impl {
     ($t:ty) => {
         impl std::error::Error for $t {}
-    };
-}
-macro_rules! validate_impl {
-    ($t:ty) => {
-        impl runtime::Validate for $t {}
     };
 }
 macro_rules! display_impl {
@@ -53,19 +52,6 @@ pub mod create_user {
             }
         }
     }
-    impl runtime::Validate for Params {
-        fn validate(
-            &self,
-            path: &runtime::InstancePath<'_>,
-            out: &mut Vec<runtime::Violation>,
-        ) {
-            runtime::Validate::validate(
-                &self.body,
-                &runtime::InstancePath::Key(path, "body"),
-                out,
-            );
-        }
-    }
     #[derive(Debug, Clone, PartialEq)]
     pub enum Response {
         /// Created.
@@ -96,7 +82,6 @@ pub mod create_user {
 }
 pub mod create_shipment {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/shipments";
     #[derive(Debug, Clone, PartialEq)]
@@ -107,32 +92,6 @@ pub mod create_shipment {
         #[must_use]
         pub const fn new(body: types::Shipment) -> Self {
             Self { body }
-        }
-    }
-    impl runtime::Validate for Params {
-        fn validate(
-            &self,
-            path: &runtime::InstancePath<'_>,
-            out: &mut Vec<runtime::Violation>,
-        ) {
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&self.body).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"type\":\"object\",\"required\":[\"kind\",\"parcels\"],\"properties\":{\"kind\":{\"type\":\"string\",\"enum\":[\"domestic\",\"international\"]},\"customs\":{\"type\":\"string\"},\"insured\":{\"type\":\"boolean\"},\"insurer\":{\"type\":\"string\"},\"options\":{\"$ref\":\"#/$defs/~1components~1schemas~1NoOptions\"},\"rating\":{\"minimum\":1},\"meta\":{\"properties\":{\"count\":{\"type\":\"integer\"}}},\"label\":{\"type\":\"string\",\"minLength\":4,\"default\":\"bad\"},\"parcels\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"fragile\":{\"type\":\"boolean\"}}},\"contains\":{\"properties\":{\"fragile\":{\"const\":true}},\"required\":[\"fragile\"]},\"maxContains\":2},\"scores\":{\"type\":\"object\",\"patternProperties\":{\"^[a-z]+$\":{\"type\":\"integer\",\"minimum\":0}},\"additionalProperties\":false},\"priority\":{\"type\":[\"number\",\"null\"],\"minimum\":0,\"maximum\":2},\"weight\":{\"type\":[\"integer\",\"null\"],\"minimum\":256},\"labels\":{\"type\":\"object\",\"propertyNames\":{\"pattern\":\"^[a-z]+$\"},\"patternProperties\":{\"^x\":{\"type\":\"string\",\"maxLength\":3}},\"additionalProperties\":{\"type\":\"string\"}}},\"dependentRequired\":{\"insured\":[\"insurer\"]},\"if\":{\"properties\":{\"kind\":{\"const\":\"international\"}}},\"then\":{\"required\":[\"customs\"]},\"not\":{\"required\":[\"customs\",\"insurer\"],\"properties\":{\"customs\":{\"const\":\"none\"}}}}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Key(path, "body"),
-                    &value,
-                    schema,
-                    runtime::schema_defs(),
-                );
-            }
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -163,7 +122,6 @@ pub mod create_shipment {
 }
 pub mod login {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/logins";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -176,7 +134,6 @@ pub mod login {
             Self { body }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Created.
@@ -201,7 +158,6 @@ pub mod login {
 }
 pub mod add_member {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/members";
     #[derive(Debug, Clone, PartialEq)]
@@ -212,26 +168,6 @@ pub mod add_member {
         #[must_use]
         pub const fn new(body: Body) -> Self {
             Self { body }
-        }
-    }
-    impl runtime::Validate for Params {
-        fn validate(
-            &self,
-            path: &runtime::InstancePath<'_>,
-            out: &mut Vec<runtime::Violation>,
-        ) {
-            {
-                let body = &self.body;
-                match body {
-                    Body::Json(x) | Body::XWwwFormUrlencoded(x) => {
-                        runtime::Validate::validate(
-                            x,
-                            &runtime::InstancePath::Key(path, "body"),
-                            out,
-                        );
-                    }
-                }
-            }
         }
     }
     #[derive(Debug, Clone, PartialEq)]
@@ -257,7 +193,6 @@ pub mod add_member {
 }
 pub mod add_closed {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/closed";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -270,7 +205,6 @@ pub mod add_closed {
             Self { body }
         }
     }
-    validate_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Body {
         Json(types::Closed),
@@ -295,7 +229,6 @@ pub mod add_closed {
 }
 pub mod add_badge {
     use super::super::types;
-    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/badges";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -311,25 +244,6 @@ pub mod add_badge {
     impl Default for Params {
         fn default() -> Self {
             Self::new()
-        }
-    }
-    impl runtime::Validate for Params {
-        fn validate(
-            &self,
-            path: &runtime::InstancePath<'_>,
-            out: &mut Vec<runtime::Violation>,
-        ) {
-            if let Some(body) = &self.body {
-                match body {
-                    Body::Json(x) | Body::XWwwFormUrlencoded(x) => {
-                        runtime::Validate::validate(
-                            x,
-                            &runtime::InstancePath::Key(path, "body"),
-                            out,
-                        );
-                    }
-                }
-            }
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]

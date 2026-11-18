@@ -8,5 +8,4 @@
 | `UnexpectedMedia` | The status is declared but the response's `Content-Type` is none that the description declares for it. |
 | `NotModified` | `304 Not Modified` to a request that sent `If-None-Match` or `If-Modified-Since`. The operation declares no `304`. The representation that the client holds is still current. |
 | `UnexpectedStatus` | A status that the operation declares neither as itself nor as a `default`. |
-| `Invalid` | An item of a request body still arriving breaks the description's constraints. |
 | `TooLarge` | A body still arriving went past a limit in bytes: the `max_body_bytes` of the server. |
