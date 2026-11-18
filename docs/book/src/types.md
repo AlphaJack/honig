@@ -29,6 +29,17 @@ String and integer enums are closed. Each listed value is a variant. Any other v
 
 A `oneOf` or `anyOf` is closed too: a value that no branch takes fails decoding. A union has an `Other(serde_json::Value)` variant only when the schema itself takes any value. That is a branch of `{}`, or keywords such as `properties` without a `type`. Then any value of another kind is valid.
 
+## Values the description does not list
+
+Two settings decide what happens to a property or a value that the description does not list. They answer different questions:
+
+| Setting | Applies to | What it does |
+|---|---|---|
+| `unknown_fields = "keep"` | objects without `additionalProperties`, both directions | keeps the undeclared properties in a map, so a value round-trips. The default `"drop"` ignores them |
+| `client = { strict = false }` | the responses of a client | reads what a server added: an enum value or a union branch as `Other`, and a property of a closed object (`additionalProperties: false`) by ignoring it. Requests stay strict through `<Name>Request` copies |
+
+An object without `additionalProperties` never refuses an undeclared property: the first setting only chooses whether to keep it. A closed object refuses it, unless `strict = false` reads a response.
+
 ## Conditional schemas
 
 `if`/`then` blocks that test one property against constants become an enum. It is like a discriminated `oneOf`:
