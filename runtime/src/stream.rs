@@ -637,10 +637,10 @@ impl<T: DeserializeOwned> ItemStream<T> {
         Self::with(Inner::Decoding(Box::new(Decoder::new(status, body, framing))))
     }
 
-    /// Reads each item of a request with the text of its library formats validated first, as `H` says
-    /// (`runtime::validated`).
+    /// Reads each item with the text of its library formats validated first, as `H` says (`runtime::validated`).
+    #[doc(hidden)]
     #[must_use]
-    pub(crate) fn validated<H: for<'de> crate::validated::Holds<'de, T>>(self) -> Self {
+    pub fn validated<H: for<'de> crate::validated::Holds<'de, T>>(self) -> Self {
         self.decoder(|items| items.item = read_validated::<T, H>);
         self
     }
@@ -836,8 +836,6 @@ fn decode<U: DeserializeOwned>(record: &Record<'_>) -> Result<U, Error> {
 fn read_validated<T: DeserializeOwned, H: for<'de> crate::validated::Holds<'de, T>>(
     record: &Record<'_>,
 ) -> Result<T, Error> {
-    // An item of a request arrives after the server decoded the rest of it: its text is validated here.
-    let _strict = crate::validated::Strict::enter();
     decode::<crate::validated::Validated<T, H>>(record).map(crate::validated::Validated::into_inner)
 }
 

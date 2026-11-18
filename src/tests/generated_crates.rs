@@ -223,18 +223,16 @@ const OK: &str = r#"{"at":"2024-06-19T08:30:06Z","id":"01234567-89ab-4def-8123-4
 "two":["2024-06-19","2024-06-20"],"stamp":"2024-06-19T08:30:06Z","extra":"2024-06-19",
 "by_kind":"2024-06-19T08:30:06Z","same_kind":"01234567-89ab-4def-8123-456789abcdef","rec":["2024-06-19",null]}"#;
 
-/// Decodes `json` as the server decodes a request: the text of library types is validated.
+/// Decodes `json` as a server decodes a request and a client a response: the text of library types is validated.
 fn decodes(json: &str) -> bool {
-    let _strict = api::runtime::validated::Strict::enter();
     serde_json::from_str::<api::types::Validated>(json).is_ok()
 }
 
-/// A client leaves the text to the library: jiff reads a space in a `date-time`.
+/// jiff reads a space in a `date-time`. Decoding refuses it before jiff reads it, on either side.
 #[test]
-fn a_client_reads_what_its_library_reads() {
-    let lenient = OK.replace("\"at\":\"2024-06-19T08:30:06Z\"", "\"at\":\"2024-06-19 08:30:06Z\"");
-    assert!(serde_json::from_str::<api::types::Validated>(&lenient).is_ok());
-    assert!(!decodes(&lenient));
+fn text_that_the_library_reads_but_the_format_refuses_does_not_decode() {
+    let spaced = OK.replace("\"at\":\"2024-06-19T08:30:06Z\"", "\"at\":\"2024-06-19 08:30:06Z\"");
+    assert!(serde_json::from_str::<api::types::Validated>(&spaced).is_err());
 }
 
 #[test]
@@ -271,7 +269,6 @@ fn every_place_checks_its_text() {
 #[test]
 fn an_untagged_branch_checks_its_text() {
     use api::types::SameKind;
-    let _strict = api::runtime::validated::Strict::enter();
     let pick = |s: &str| serde_json::from_str::<SameKind>(s);
     assert!(matches!(pick("\"2024-06-19T08:30:06Z\""), Ok(SameKind::DateTime(_))));
     assert!(matches!(pick("\"01234567-89ab-4def-8123-456789abcdef\""), Ok(SameKind::Uuid(_))));
@@ -477,9 +474,10 @@ impl api::Service<api::Request> for Answer {
     }
 }
 
-/// A client leaves the text to its library: jiff reads a space and url reads one too.
+/// A client checks the text before its library reads it, as the server does: jiff reads a space and url reads one too,
+/// but the formats refuse them.
 #[test]
-fn the_client_reads_what_its_library_reads() {
+fn the_client_reads_only_what_the_format_allows() {
     let item = |location: &'static str, body: &'static str| {
         let client = api::Client::new(Answer { content_type: "application/json", location, body });
         api::block_on(client.get_item(ops::get_item::Params::new(ID.parse().unwrap()))).is_ok()
@@ -504,7 +502,7 @@ fn the_client_reads_what_its_library_reads() {
         streamed("\"2024-06-19\"\n\"20240620\"\n"),
     ];
     let what = "a space in a date-time, a space in a URL, a date without hyphens whole and as it arrives";
-    assert_eq!(read, [true; 4], "{what}");
+    assert_eq!(read, [false; 4], "{what}");
 }
 }
 "#;
