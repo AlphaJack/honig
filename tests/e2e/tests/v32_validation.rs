@@ -623,3 +623,13 @@ fn a_closed_object_refuses_unknown_fields_in_every_media_type() {
         );
     }
 }
+
+/// An `anyOf` decodes as its first branch that takes the value, keywords and all. A value that only the second branch
+/// takes decodes, and one that no branch takes does not.
+#[test]
+fn an_any_of_takes_the_first_branch_that_decodes() {
+    for ok in [r#""""#, r#""abc""#] {
+        assert!(serde_json::from_str::<types::Slug>(ok).is_ok(), "{ok}");
+    }
+    assert!(serde_json::from_str::<types::Slug>(r#""ABC""#).is_err());
+}
