@@ -123,6 +123,26 @@ pub fn form_decode_with<T: DeserializeOwned>(
     styles: &[(&'static str, Style, Shape, bool)],
     types: &[(&str, &str)],
 ) -> Result<T, Error> {
+    let fields = form_fields(status, body, styles, types)?;
+    T::deserialize(Coerce(Value::Object(fields))).map_err(|e| {
+        // Tracking the pointer allocates per key. So only a body that fails is read again with tracking to say where.
+        let pointer = form_fields(status, body, styles, types)
+            .ok()
+            .and_then(|fields| crate::path::deserialize::<_, T>(Coerce(Value::Object(fields))).err())
+            .map(|(pointer, _)| pointer)
+            .unwrap_or_default();
+        Error::Decode { status, message: e.to_string(), body: bytes::Bytes::copy_from_slice(body), pointer }
+    })
+}
+
+/// Returns the fields of a form body as an object: styled fields read like query parameters, typed ones in their
+/// media type. Errors: a styled field or a typed one does not decode.
+fn form_fields(
+    status: u16,
+    body: &[u8],
+    styles: &[(&'static str, Style, Shape, bool)],
+    types: &[(&str, &str)],
+) -> Result<Map<String, Value>, Error> {
     let text = lossy(body);
     let pairs = parse_query(&text);
     let mut o = Map::new();
@@ -145,7 +165,7 @@ pub fn form_decode_with<T: DeserializeOwned>(
             typed_field(field, media).map_err(|e| decode_err(status, body, e))?;
         }
     }
-    T::deserialize(Coerce(Value::Object(o))).map_err(|e| decode_err(status, body, e))
+    Ok(o)
 }
 
 /// Returns the error of the form field `name` that does not decode: it is at `/name` in the body.
@@ -157,11 +177,22 @@ fn field_err(status: u16, body: &[u8], name: &str, e: &crate::Reason) -> Error {
 /// Decodes an `application/x-www-form-urlencoded` body.
 pub fn form_decode<T: DeserializeOwned>(status: u16, body: &[u8]) -> Result<T, Error> {
     let text = lossy(body);
-    let mut pairs = parse_query(&text);
-    // By name as the object that the fields used to be collected into had them. The sort is stable. So a repeated
-    // field keeps its values in order.
+    T::deserialize(Form(sorted_pairs(&text))).map_err(|e| {
+        // Read again with tracking only once it failed, to say where: tracking allocates per key.
+        let pointer = crate::path::deserialize::<_, T>(Form(sorted_pairs(&text)))
+            .err()
+            .map(|(pointer, _)| pointer)
+            .unwrap_or_default();
+        Error::Decode { status, message: e.to_string(), body: bytes::Bytes::copy_from_slice(body), pointer }
+    })
+}
+
+/// Returns the fields of a form by name, as the object that they used to be collected into had them. The sort is
+/// stable. So a repeated field keeps its values in order.
+fn sorted_pairs(text: &str) -> Vec<(Cow<'_, str>, Cow<'_, str>)> {
+    let mut pairs = parse_query(text);
     pairs.sort_by(|a, b| a.0.cmp(&b.0));
-    T::deserialize(Form(pairs)).map_err(|e| decode_err(status, body, e))
+    pairs
 }
 
 /// The fields of a form sorted by name and read as their object. A field once is its text. A repeated one is the
