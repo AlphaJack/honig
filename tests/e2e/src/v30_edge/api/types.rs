@@ -472,7 +472,7 @@ impl runtime::Validate for Order {
                     SCHEMA
                         .get_or_init(|| {
                             serde_json::from_str(
-                                    "{\"anyOf\":[{\"allOf\":[{\"type\":\"object\",\"additionalProperties\":true,\"required\":[\"name\"],\"properties\":{\"name\":{\"type\":\"string\",\"minLength\":1},\"email\":{\"type\":[\"string\",\"null\"]}}}]},{\"type\":\"null\"}]}",
+                                    "{\"anyOf\":[{\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Customer\"}]},{\"type\":\"null\"}],\"$defs\":{\"/components/schemas/Customer\":{\"type\":\"object\",\"additionalProperties\":true,\"required\":[\"name\"],\"properties\":{\"name\":{\"type\":\"string\",\"minLength\":1},\"email\":{\"type\":[\"string\",\"null\"]}}}}}",
                                 )
                                 .unwrap_or_default()
                         }),
@@ -498,7 +498,7 @@ impl runtime::Validate for Order {
                     SCHEMA
                         .get_or_init(|| {
                             serde_json::from_str(
-                                    "{\"oneOf\":[{\"type\":\"object\",\"required\":[\"last4\"],\"properties\":{\"last4\":{\"type\":\"string\",\"minLength\":4,\"maxLength\":4}}},{\"type\":\"object\",\"required\":[\"iban\"],\"properties\":{\"iban\":{\"type\":\"string\"}}}]}",
+                                    "{\"oneOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Card\"},{\"$ref\":\"#/$defs/~1components~1schemas~1Sepa\"}],\"$defs\":{\"/components/schemas/Card\":{\"type\":\"object\",\"required\":[\"last4\"],\"properties\":{\"last4\":{\"type\":\"string\",\"minLength\":4,\"maxLength\":4}}},\"/components/schemas/Sepa\":{\"type\":\"object\",\"required\":[\"iban\"],\"properties\":{\"iban\":{\"type\":\"string\"}}}}}",
                                 )
                                 .unwrap_or_default()
                         }),
@@ -515,7 +515,7 @@ impl runtime::Validate for Order {
                 SCHEMA
                     .get_or_init(|| {
                         serde_json::from_str(
-                                "{\"oneOf\":[{\"type\":\"object\",\"required\":[\"kind\",\"seats\"],\"properties\":{\"kind\":{\"type\":\"string\"},\"seats\":{\"type\":\"integer\"}}},{\"type\":\"object\",\"required\":[\"kind\",\"cargoLitres\"],\"properties\":{\"kind\":{\"type\":\"string\"},\"cargoLitres\":{\"type\":\"integer\"}}}]}",
+                                "{\"oneOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Car\"},{\"$ref\":\"#/$defs/~1components~1schemas~1Van\"}],\"$defs\":{\"/components/schemas/Car\":{\"type\":\"object\",\"required\":[\"kind\",\"seats\"],\"properties\":{\"kind\":{\"type\":\"string\"},\"seats\":{\"type\":\"integer\"}}},\"/components/schemas/Van\":{\"type\":\"object\",\"required\":[\"kind\",\"cargoLitres\"],\"properties\":{\"kind\":{\"type\":\"string\"},\"cargoLitres\":{\"type\":\"integer\"}}}}}",
                             )
                             .unwrap_or_default()
                     }),
@@ -532,7 +532,7 @@ impl runtime::Validate for Order {
                     SCHEMA
                         .get_or_init(|| {
                             serde_json::from_str(
-                                    "{\"anyOf\":[{\"type\":\"object\",\"required\":[\"amountCents\",\"currency\"],\"properties\":{\"amountCents\":{\"type\":\"integer\",\"format\":\"int64\"},\"currency\":{\"type\":\"string\",\"pattern\":\"^[A-Z]{3}$\"}}},{}]}",
+                                    "{\"anyOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Money\"},{}],\"$defs\":{\"/components/schemas/Money\":{\"type\":\"object\",\"required\":[\"amountCents\",\"currency\"],\"properties\":{\"amountCents\":{\"type\":\"integer\",\"format\":\"int64\"},\"currency\":{\"type\":\"string\",\"pattern\":\"^[A-Z]{3}$\"}}}}}",
                                 )
                                 .unwrap_or_default()
                         }),
@@ -919,7 +919,7 @@ impl runtime::Validate for OrderRequest {
                     SCHEMA
                         .get_or_init(|| {
                             serde_json::from_str(
-                                    "{\"anyOf\":[{\"allOf\":[{\"type\":\"object\",\"additionalProperties\":true,\"required\":[\"name\"],\"properties\":{\"name\":{\"type\":\"string\",\"minLength\":1},\"email\":{\"type\":[\"string\",\"null\"]}}}]},{\"type\":\"null\"}]}",
+                                    "{\"anyOf\":[{\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Customer\"}]},{\"type\":\"null\"}],\"$defs\":{\"/components/schemas/Customer\":{\"type\":\"object\",\"additionalProperties\":true,\"required\":[\"name\"],\"properties\":{\"name\":{\"type\":\"string\",\"minLength\":1},\"email\":{\"type\":[\"string\",\"null\"]}}}}}",
                                 )
                                 .unwrap_or_default()
                         }),
@@ -937,7 +937,7 @@ impl runtime::Validate for OrderRequest {
                     SCHEMA
                         .get_or_init(|| {
                             serde_json::from_str(
-                                    "{\"oneOf\":[{\"type\":\"object\",\"required\":[\"last4\"],\"properties\":{\"last4\":{\"type\":\"string\",\"minLength\":4,\"maxLength\":4}}},{\"type\":\"object\",\"required\":[\"iban\"],\"properties\":{\"iban\":{\"type\":\"string\"}}}]}",
+                                    "{\"oneOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Card\"},{\"$ref\":\"#/$defs/~1components~1schemas~1Sepa\"}],\"$defs\":{\"/components/schemas/Card\":{\"type\":\"object\",\"required\":[\"last4\"],\"properties\":{\"last4\":{\"type\":\"string\",\"minLength\":4,\"maxLength\":4}}},\"/components/schemas/Sepa\":{\"type\":\"object\",\"required\":[\"iban\"],\"properties\":{\"iban\":{\"type\":\"string\"}}}}}",
                                 )
                                 .unwrap_or_default()
                         }),
@@ -954,7 +954,7 @@ impl runtime::Validate for OrderRequest {
                 SCHEMA
                     .get_or_init(|| {
                         serde_json::from_str(
-                                "{\"oneOf\":[{\"type\":\"object\",\"required\":[\"kind\",\"seats\"],\"properties\":{\"kind\":{\"type\":\"string\"},\"seats\":{\"type\":\"integer\"}}},{\"type\":\"object\",\"required\":[\"kind\",\"cargoLitres\"],\"properties\":{\"kind\":{\"type\":\"string\"},\"cargoLitres\":{\"type\":\"integer\"}}}]}",
+                                "{\"oneOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Car\"},{\"$ref\":\"#/$defs/~1components~1schemas~1Van\"}],\"$defs\":{\"/components/schemas/Car\":{\"type\":\"object\",\"required\":[\"kind\",\"seats\"],\"properties\":{\"kind\":{\"type\":\"string\"},\"seats\":{\"type\":\"integer\"}}},\"/components/schemas/Van\":{\"type\":\"object\",\"required\":[\"kind\",\"cargoLitres\"],\"properties\":{\"kind\":{\"type\":\"string\"},\"cargoLitres\":{\"type\":\"integer\"}}}}}",
                             )
                             .unwrap_or_default()
                     }),
@@ -971,7 +971,7 @@ impl runtime::Validate for OrderRequest {
                     SCHEMA
                         .get_or_init(|| {
                             serde_json::from_str(
-                                    "{\"anyOf\":[{\"type\":\"object\",\"required\":[\"amountCents\",\"currency\"],\"properties\":{\"amountCents\":{\"type\":\"integer\",\"format\":\"int64\"},\"currency\":{\"type\":\"string\",\"pattern\":\"^[A-Z]{3}$\"}}},{}]}",
+                                    "{\"anyOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Money\"},{}],\"$defs\":{\"/components/schemas/Money\":{\"type\":\"object\",\"required\":[\"amountCents\",\"currency\"],\"properties\":{\"amountCents\":{\"type\":\"integer\",\"format\":\"int64\"},\"currency\":{\"type\":\"string\",\"pattern\":\"^[A-Z]{3}$\"}}}}}",
                                 )
                                 .unwrap_or_default()
                         }),

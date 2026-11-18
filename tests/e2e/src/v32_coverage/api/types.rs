@@ -298,7 +298,7 @@ impl runtime::Validate for ImageNote {
                 SCHEMA
                     .get_or_init(|| {
                         serde_json::from_str(
-                                "{\"default\":64,\"allOf\":[{\"type\":\"integer\"}]}",
+                                "{\"default\":64,\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Pixels\"}],\"$defs\":{\"/components/schemas/Pixels\":{\"type\":\"integer\"}}}",
                             )
                             .unwrap_or_default()
                     }),
@@ -511,7 +511,7 @@ impl runtime::Validate for NoteImageNote {
                 SCHEMA
                     .get_or_init(|| {
                         serde_json::from_str(
-                                "{\"default\":64,\"allOf\":[{\"type\":\"integer\"}]}",
+                                "{\"default\":64,\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Pixels\"}],\"$defs\":{\"/components/schemas/Pixels\":{\"type\":\"integer\"}}}",
                             )
                             .unwrap_or_default()
                     }),
