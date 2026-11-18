@@ -11,6 +11,7 @@ use std::str::FromStr;
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
+use crate::BuildError;
 use crate::validated::Format;
 use crate::validated::format;
 
@@ -32,31 +33,31 @@ impl<F> Formatted<F> {
 }
 
 impl<F: Format> TryFrom<String> for Formatted<F> {
-    type Error = String;
+    type Error = BuildError;
 
     /// Errors: the text is not of the format.
-    fn try_from(value: String) -> Result<Self, String> {
+    fn try_from(value: String) -> Result<Self, BuildError> {
         if crate::validate::is_format(&value, F::NAME) {
             Ok(Self(value, PhantomData))
         } else {
-            Err(format!("`{value}` is not a valid {}", F::NAME))
+            Err(BuildError::value(format!("`{value}` is not a valid {}", F::NAME)))
         }
     }
 }
 
 impl<F: Format> TryFrom<&str> for Formatted<F> {
-    type Error = String;
+    type Error = BuildError;
 
     /// Errors: the text is not of the format.
-    fn try_from(value: &str) -> Result<Self, String> {
+    fn try_from(value: &str) -> Result<Self, BuildError> {
         Self::try_from(value.to_owned())
     }
 }
 
 impl<F: Format> FromStr for Formatted<F> {
-    type Err = String;
+    type Err = BuildError;
 
-    fn from_str(s: &str) -> Result<Self, String> {
+    fn from_str(s: &str) -> Result<Self, BuildError> {
         Self::try_from(s)
     }
 }
@@ -209,7 +210,7 @@ mod tests {
         assert_eq!(id.len(), 36, "reads as a `str`");
         assert_eq!(
             UuidText::try_from("{01234567-89ab-4def-8123-456789abcdef}"),
-            Err("`{01234567-89ab-4def-8123-456789abcdef}` is not a valid uuid".to_owned())
+            Err(BuildError::value("`{01234567-89ab-4def-8123-456789abcdef}` is not a valid uuid".to_owned()))
         );
         assert!("P1M".parse::<DurationText>().is_ok());
         assert!("1 month".parse::<DurationText>().is_err());

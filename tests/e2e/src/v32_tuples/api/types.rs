@@ -84,8 +84,8 @@ impl<'de> serde::Deserialize<'de> for RouteStart {
     }
 }
 impl TryFrom<Point> for RouteStart {
-    type Error = String;
-    fn try_from(value: Point) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: Point) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -108,7 +108,9 @@ impl TryFrom<Point> for RouteStart {
                 );
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_impls!(RouteStart, Point);
@@ -122,8 +124,8 @@ impl<'de> serde::Deserialize<'de> for RouteStops {
     }
 }
 impl TryFrom<Vec<Point>> for RouteStops {
-    type Error = String;
-    fn try_from(value: Vec<Point>) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: Vec<Point>) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -151,7 +153,9 @@ impl TryFrom<Vec<Point>> for RouteStops {
                 }
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_impls!(RouteStops, Vec < Point >);
@@ -165,8 +169,8 @@ impl<'de> serde::Deserialize<'de> for RouteTags {
     }
 }
 impl TryFrom<Open> for RouteTags {
-    type Error = String;
-    fn try_from(value: Open) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: Open) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -189,7 +193,9 @@ impl TryFrom<Open> for RouteTags {
                 );
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_impls!(RouteTags, Open);

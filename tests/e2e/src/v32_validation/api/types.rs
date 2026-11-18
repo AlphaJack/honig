@@ -36,8 +36,8 @@ macro_rules! serialize_impl {
 macro_rules! try_from_impl {
     ($t:ty) => {
         impl TryFrom<String> for $t {
-            type Error = String;
-            fn try_from(value: String) -> Result<Self, String> {
+            type Error = runtime::BuildError;
+            fn try_from(value: String) -> Result<Self, runtime::BuildError> {
                 let mut violations: Vec<runtime::Violation> = Vec::new();
                 {
                     let out = &mut violations;
@@ -51,7 +51,9 @@ macro_rules! try_from_impl {
                         "characters",
                     );
                 }
-                runtime::first(violations).map(|()| Self(value))
+                runtime::first(violations)
+                    .map(|()| Self(value))
+                    .map_err(runtime::BuildError::value)
             }
         }
     };
@@ -68,8 +70,8 @@ macro_rules! serialize_impl_2 {
 macro_rules! try_from_impl_2 {
     ($t:ty) => {
         impl TryFrom<String> for $t {
-            type Error = String;
-            fn try_from(value: String) -> Result<Self, String> {
+            type Error = runtime::BuildError;
+            fn try_from(value: String) -> Result<Self, runtime::BuildError> {
                 let mut violations: Vec<runtime::Violation> = Vec::new();
                 {
                     let out = &mut violations;
@@ -83,7 +85,9 @@ macro_rules! try_from_impl_2 {
                         "characters",
                     );
                 }
-                runtime::first(violations).map(|()| Self(value))
+                runtime::first(violations)
+                    .map(|()| Self(value))
+                    .map_err(runtime::BuildError::value)
             }
         }
     };
@@ -132,7 +136,7 @@ macro_rules! str_enum_impls {
             }
         }
         impl std::str::FromStr for $n {
-            type Err = String;
+            type Err = runtime::BuildError;
             fn from_str(s: &str) -> Result<Self, Self::Err> {
                 Self::try_from(s)
             }
@@ -163,14 +167,14 @@ macro_rules! checked_str_impls {
             }
         }
         impl TryFrom<&str> for $n {
-            type Error = String;
-            fn try_from(value: &str) -> Result<Self, String> {
+            type Error = runtime::BuildError;
+            fn try_from(value: &str) -> Result<Self, runtime::BuildError> {
                 Self::try_from(value.to_owned())
             }
         }
         impl std::str::FromStr for $n {
-            type Err = String;
-            fn from_str(s: &str) -> Result<Self, String> {
+            type Err = runtime::BuildError;
+            fn from_str(s: &str) -> Result<Self, runtime::BuildError> {
                 Self::try_from(s)
             }
         }
@@ -222,9 +226,11 @@ macro_rules! checked_num_impls {
             }
         }
         impl std::str::FromStr for $n {
-            type Err = String;
-            fn from_str(s: &str) -> Result<Self, String> {
-                let v: $t = s.parse().map_err(|e| format!("{e}"))?;
+            type Err = runtime::BuildError;
+            fn from_str(s: &str) -> Result<Self, runtime::BuildError> {
+                let v: $t = s
+                    .parse()
+                    .map_err(|e| runtime::BuildError::value(format!("{e}")))?;
                 Self::try_from(v)
             }
         }
@@ -271,9 +277,11 @@ macro_rules! checked_decimal_impls {
             }
         }
         impl std::str::FromStr for $n {
-            type Err = String;
-            fn from_str(s: &str) -> Result<Self, String> {
-                let v: runtime::Decimal = s.parse().map_err(|e| format!("{e}"))?;
+            type Err = runtime::BuildError;
+            fn from_str(s: &str) -> Result<Self, runtime::BuildError> {
+                let v: runtime::Decimal = s
+                    .parse()
+                    .map_err(|e| runtime::BuildError::value(format!("{e}")))?;
                 Self::try_from(v)
             }
         }
@@ -545,8 +553,8 @@ impl<'de> serde::Deserialize<'de> for Tree {
     }
 }
 impl TryFrom<TreeVariants> for Tree {
-    type Error = String;
-    fn try_from(value: TreeVariants) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: TreeVariants) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -569,7 +577,9 @@ impl TryFrom<TreeVariants> for Tree {
                 );
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_impls!(Tree, TreeVariants);
@@ -629,8 +639,8 @@ impl<'de> serde::Deserialize<'de> for Entry {
     }
 }
 impl TryFrom<EntryFields2> for Entry {
-    type Error = String;
-    fn try_from(value: EntryFields2) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: EntryFields2) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -653,7 +663,9 @@ impl TryFrom<EntryFields2> for Entry {
                 );
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_impls!(Entry, EntryFields2);
@@ -1089,8 +1101,8 @@ impl<'de> serde::Deserialize<'de> for Shipment {
     }
 }
 impl TryFrom<ShipmentVariants> for Shipment {
-    type Error = String;
-    fn try_from(value: ShipmentVariants) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: ShipmentVariants) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -1113,7 +1125,9 @@ impl TryFrom<ShipmentVariants> for Shipment {
                 );
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_impls!(Shipment, ShipmentVariants);
@@ -1456,8 +1470,8 @@ impl runtime::XmlShape for User {
 #[serde(transparent)]
 pub struct ExactTenth(pub(super) runtime::Decimal);
 impl TryFrom<runtime::Decimal> for ExactTenth {
-    type Error = String;
-    fn try_from(value: runtime::Decimal) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: runtime::Decimal) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -1468,7 +1482,9 @@ impl TryFrom<runtime::Decimal> for ExactTenth {
                 [Some("0.1"), None, None, None],
             );
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_decimal_impls!(ExactTenth);
@@ -1476,8 +1492,8 @@ checked_decimal_impls!(ExactTenth);
 #[serde(transparent)]
 pub struct ExactCents(pub(super) runtime::Decimal);
 impl TryFrom<runtime::Decimal> for ExactCents {
-    type Error = String;
-    fn try_from(value: runtime::Decimal) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: runtime::Decimal) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -1488,7 +1504,9 @@ impl TryFrom<runtime::Decimal> for ExactCents {
                 "0.01",
             );
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_decimal_impls!(ExactCents);
@@ -1496,8 +1514,8 @@ checked_decimal_impls!(ExactCents);
 #[serde(transparent)]
 pub struct DegenerateNever(pub(super) u8);
 impl TryFrom<u8> for DegenerateNever {
-    type Error = String;
-    fn try_from(value: u8) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: u8) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -1512,7 +1530,9 @@ impl TryFrom<u8> for DegenerateNever {
                 );
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_num_impls!(DegenerateNever, u8);
@@ -1520,8 +1540,8 @@ checked_num_impls!(DegenerateNever, u8);
 #[serde(transparent)]
 pub struct DegenerateHuge(pub(super) i64);
 impl TryFrom<i64> for DegenerateHuge {
-    type Error = String;
-    fn try_from(value: i64) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: i64) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -1536,7 +1556,9 @@ impl TryFrom<i64> for DegenerateHuge {
                 );
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_num_impls!(DegenerateHuge, i64);
@@ -1544,8 +1566,8 @@ checked_num_impls!(DegenerateHuge, i64);
 #[serde(transparent)]
 pub struct DegenerateFives(pub(super) i64);
 impl TryFrom<i64> for DegenerateFives {
-    type Error = String;
-    fn try_from(value: i64) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: i64) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -1556,7 +1578,9 @@ impl TryFrom<i64> for DegenerateFives {
                 "is not a multiple of 2.5",
             );
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_num_impls!(DegenerateFives, i64);
@@ -1564,8 +1588,8 @@ checked_num_impls!(DegenerateFives, i64);
 #[serde(transparent)]
 pub struct DegenerateZero(pub(super) u8);
 impl TryFrom<u8> for DegenerateZero {
-    type Error = String;
-    fn try_from(value: u8) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: u8) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -1576,7 +1600,9 @@ impl TryFrom<u8> for DegenerateZero {
                 "is not a multiple of 1000",
             );
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_num_impls!(DegenerateZero, u8);
@@ -1584,8 +1610,8 @@ checked_num_impls!(DegenerateZero, u8);
 #[serde(transparent)]
 pub struct DegenerateHalf(pub(super) i64);
 impl TryFrom<i64> for DegenerateHalf {
-    type Error = String;
-    fn try_from(value: i64) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: i64) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -1596,7 +1622,9 @@ impl TryFrom<i64> for DegenerateHalf {
                 [Some(1), None, None, Some(4)],
             );
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_num_impls!(DegenerateHalf, i64);
@@ -1748,12 +1776,18 @@ impl ProblemCode {
     }
 }
 impl TryFrom<&str> for ProblemCode {
-    type Error = String;
-    fn try_from(s: &str) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(s: &str) -> Result<Self, runtime::BuildError> {
         match s {
             "INVALID" => Ok(Self::Invalid),
             "TAKEN" => Ok(Self::Taken),
-            other => Err(format!("`{other}` is not one of `INVALID`, `TAKEN`")),
+            other => {
+                Err(
+                    runtime::BuildError::value(
+                        format!("`{other}` is not one of `INVALID`, `TAKEN`"),
+                    ),
+                )
+            }
         }
     }
 }
@@ -1767,8 +1801,8 @@ checked_str_impls!(BadgeLabel);
 #[serde(transparent)]
 pub struct LoginPassword(pub(super) String);
 impl TryFrom<String> for LoginPassword {
-    type Error = String;
-    fn try_from(value: String) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: String) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -1782,7 +1816,9 @@ impl TryFrom<String> for LoginPassword {
                 "characters",
             );
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_str_impls!(LoginPassword);
@@ -1796,8 +1832,10 @@ impl<'de> serde::Deserialize<'de> for ShipmentInternational {
     }
 }
 impl TryFrom<ShipmentInternationalFields> for ShipmentInternational {
-    type Error = String;
-    fn try_from(value: ShipmentInternationalFields) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(
+        value: ShipmentInternationalFields,
+    ) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -1820,7 +1858,9 @@ impl TryFrom<ShipmentInternationalFields> for ShipmentInternational {
                 );
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_impls!(ShipmentInternational, ShipmentInternationalFields);
@@ -1913,8 +1953,8 @@ impl runtime::XmlShape for MetaObject {
 #[serde(transparent)]
 pub struct ShipmentInternationalLabel(pub(super) String);
 impl TryFrom<String> for ShipmentInternationalLabel {
-    type Error = String;
-    fn try_from(value: String) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: String) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -1928,7 +1968,9 @@ impl TryFrom<String> for ShipmentInternationalLabel {
                 "characters",
             );
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_str_impls!(ShipmentInternationalLabel);
@@ -1982,8 +2024,8 @@ impl runtime::XmlShape for ParcelsItem {
 #[serde(transparent)]
 pub struct ScoresValue(pub(super) i64);
 impl TryFrom<i64> for ScoresValue {
-    type Error = String;
-    fn try_from(value: i64) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: i64) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -1994,7 +2036,9 @@ impl TryFrom<i64> for ScoresValue {
                 [Some(0), None, None, None],
             );
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_num_impls!(ScoresValue, i64);
@@ -2002,8 +2046,8 @@ checked_num_impls!(ScoresValue, i64);
 #[serde(transparent)]
 pub struct ShipmentInternationalPriority(pub(super) f64);
 impl TryFrom<f64> for ShipmentInternationalPriority {
-    type Error = String;
-    fn try_from(value: f64) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: f64) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -2014,7 +2058,9 @@ impl TryFrom<f64> for ShipmentInternationalPriority {
                 [Some(0.0), Some(2.0), None, None],
             );
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_num_impls!(ShipmentInternationalPriority, f64);
@@ -2022,8 +2068,8 @@ checked_num_impls!(ShipmentInternationalPriority, f64);
 #[serde(transparent)]
 pub struct ShipmentInternationalWeight(pub(super) i64);
 impl TryFrom<i64> for ShipmentInternationalWeight {
-    type Error = String;
-    fn try_from(value: i64) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: i64) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -2034,7 +2080,9 @@ impl TryFrom<i64> for ShipmentInternationalWeight {
                 [Some(256), None, None, None],
             );
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_num_impls!(ShipmentInternationalWeight, i64);
@@ -2048,8 +2096,8 @@ impl<'de> serde::Deserialize<'de> for ShipmentOtherwise {
     }
 }
 impl TryFrom<ShipmentOtherwiseFields> for ShipmentOtherwise {
-    type Error = String;
-    fn try_from(value: ShipmentOtherwiseFields) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: ShipmentOtherwiseFields) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -2072,7 +2120,9 @@ impl TryFrom<ShipmentOtherwiseFields> for ShipmentOtherwise {
                 );
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_impls!(ShipmentOtherwise, ShipmentOtherwiseFields);
@@ -2091,12 +2141,18 @@ impl ShipmentOtherwiseKind {
     }
 }
 impl TryFrom<&str> for ShipmentOtherwiseKind {
-    type Error = String;
-    fn try_from(s: &str) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(s: &str) -> Result<Self, runtime::BuildError> {
         match s {
             "domestic" => Ok(Self::Domestic),
             "international" => Ok(Self::International),
-            other => Err(format!("`{other}` is not one of `domestic`, `international`")),
+            other => {
+                Err(
+                    runtime::BuildError::value(
+                        format!("`{other}` is not one of `domestic`, `international`"),
+                    ),
+                )
+            }
         }
     }
 }
@@ -2112,14 +2168,16 @@ pub type ShipmentOtherwiseWeight = ShipmentInternationalWeight;
 #[serde(transparent)]
 pub struct PriceAmount(pub(super) f64);
 impl TryFrom<f64> for PriceAmount {
-    type Error = String;
-    fn try_from(value: f64) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: f64) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
             runtime::check_multiple(out, &runtime::InstancePath::Root, value, "0.01");
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_num_impls!(PriceAmount, f64);
@@ -2130,8 +2188,8 @@ impl UserName {
     pub const PATTERN: &'static str = "^\\p{Lu}";
 }
 impl TryFrom<String> for UserName {
-    type Error = String;
-    fn try_from(value: String) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: String) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -2160,7 +2218,9 @@ impl TryFrom<String> for UserName {
                 );
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_str_impls!(UserName);
@@ -2171,8 +2231,8 @@ impl UserHandle {
     pub const PATTERN: &'static str = "^(a+)+$";
 }
 impl TryFrom<String> for UserHandle {
-    type Error = String;
-    fn try_from(value: String) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: String) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -2201,7 +2261,9 @@ impl TryFrom<String> for UserHandle {
                 );
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_str_impls!(UserHandle);
@@ -2209,8 +2271,8 @@ checked_str_impls!(UserHandle);
 #[serde(transparent)]
 pub struct UserAge(pub(super) i64);
 impl TryFrom<i64> for UserAge {
-    type Error = String;
-    fn try_from(value: i64) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: i64) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -2221,7 +2283,9 @@ impl TryFrom<i64> for UserAge {
                 [Some(0), None, None, Some(150)],
             );
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_num_impls!(UserAge, i64);
@@ -2229,14 +2293,16 @@ checked_num_impls!(UserAge, i64);
 #[serde(transparent)]
 pub struct UserScore(pub(super) f64);
 impl TryFrom<f64> for UserScore {
-    type Error = String;
-    fn try_from(value: f64) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: f64) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
             runtime::check_multiple(out, &runtime::InstancePath::Root, value, "0.5");
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_num_impls!(UserScore, f64);
@@ -2260,12 +2326,18 @@ impl UserRole {
     }
 }
 impl TryFrom<&str> for UserRole {
-    type Error = String;
-    fn try_from(s: &str) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(s: &str) -> Result<Self, runtime::BuildError> {
         match s {
             "admin" => Ok(Self::Admin),
             "user" => Ok(Self::User),
-            other => Err(format!("`{other}` is not one of `admin`, `user`")),
+            other => {
+                Err(
+                    runtime::BuildError::value(
+                        format!("`{other}` is not one of `admin`, `user`"),
+                    ),
+                )
+            }
         }
     }
 }
@@ -2296,8 +2368,8 @@ impl<'de> serde::Deserialize<'de> for UserLoyalty {
 #[serde(transparent)]
 pub struct UserLoyaltyVariant1(pub(super) i64);
 impl TryFrom<i64> for UserLoyaltyVariant1 {
-    type Error = String;
-    fn try_from(value: i64) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: i64) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -2308,7 +2380,9 @@ impl TryFrom<i64> for UserLoyaltyVariant1 {
                 [Some(1), Some(10), None, None],
             );
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_num_impls!(UserLoyaltyVariant1, i64);
@@ -2327,8 +2401,8 @@ checked_str_impls!(UserNote2);
 #[serde(transparent)]
 pub struct CreateUserLimit(pub(super) i64);
 impl TryFrom<i64> for CreateUserLimit {
-    type Error = String;
-    fn try_from(value: i64) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: i64) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -2339,7 +2413,9 @@ impl TryFrom<i64> for CreateUserLimit {
                 [Some(1), Some(100), None, None],
             );
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_num_impls!(CreateUserLimit, i64);
@@ -2350,8 +2426,8 @@ impl CreateUserXTeam {
     pub const PATTERN: &'static str = "^[a-z]+$";
 }
 impl TryFrom<String> for CreateUserXTeam {
-    type Error = String;
-    fn try_from(value: String) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: String) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -2369,7 +2445,9 @@ impl TryFrom<String> for CreateUserXTeam {
                 "does not match `^[a-z]+$`",
             );
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_str_impls!(CreateUserXTeam);
@@ -3282,8 +3360,8 @@ impl<'de> serde::Deserialize<'de> for BadgeHolders {
     }
 }
 impl TryFrom<Vec<String>> for BadgeHolders {
-    type Error = String;
-    fn try_from(value: Vec<String>) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: Vec<String>) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -3306,7 +3384,9 @@ impl TryFrom<Vec<String>> for BadgeHolders {
                 );
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_impls!(BadgeHolders, Vec < String >);
@@ -3320,8 +3400,8 @@ impl<'de> serde::Deserialize<'de> for UserTags {
     }
 }
 impl TryFrom<Vec<UserTagsItem>> for UserTags {
-    type Error = String;
-    fn try_from(value: Vec<UserTagsItem>) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: Vec<UserTagsItem>) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -3335,7 +3415,9 @@ impl TryFrom<Vec<UserTagsItem>> for UserTags {
             );
             runtime::check_unique(out, &runtime::InstancePath::Root, &value);
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_impls!(UserTags, Vec < UserTagsItem >);
@@ -3344,10 +3426,10 @@ checked_impls!(UserTags, Vec < UserTagsItem >);
 pub struct UserMeta(pub(super) std::collections::BTreeMap<String, String>);
 deserialize_impl_2!(UserMeta);
 impl TryFrom<std::collections::BTreeMap<String, String>> for UserMeta {
-    type Error = String;
+    type Error = runtime::BuildError;
     fn try_from(
         value: std::collections::BTreeMap<String, String>,
-    ) -> Result<Self, String> {
+    ) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -3360,7 +3442,9 @@ impl TryFrom<std::collections::BTreeMap<String, String>> for UserMeta {
                 "properties",
             );
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_impls!(UserMeta, std::collections::BTreeMap < String, String >);
@@ -3370,8 +3454,8 @@ pub type BadgeRequestHolders = BadgeHolders;
 pub struct EntryLines(pub(super) serde_json::Value);
 deserialize_impl_3!(EntryLines);
 impl TryFrom<serde_json::Value> for EntryLines {
-    type Error = String;
-    fn try_from(value: serde_json::Value) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: serde_json::Value) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -3391,7 +3475,9 @@ impl TryFrom<serde_json::Value> for EntryLines {
                 );
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_impls!(EntryLines, serde_json::Value);
@@ -3400,8 +3486,8 @@ checked_impls!(EntryLines, serde_json::Value);
 pub struct ShipmentInternationalRating(pub(super) serde_json::Value);
 deserialize_impl_3!(ShipmentInternationalRating);
 impl TryFrom<serde_json::Value> for ShipmentInternationalRating {
-    type Error = String;
-    fn try_from(value: serde_json::Value) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: serde_json::Value) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -3421,7 +3507,9 @@ impl TryFrom<serde_json::Value> for ShipmentInternationalRating {
                 );
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_impls!(ShipmentInternationalRating, serde_json::Value);
@@ -3435,8 +3523,8 @@ impl<'de> serde::Deserialize<'de> for ShipmentInternationalParcels {
     }
 }
 impl TryFrom<Vec<ParcelsItem>> for ShipmentInternationalParcels {
-    type Error = String;
-    fn try_from(value: Vec<ParcelsItem>) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: Vec<ParcelsItem>) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -3459,7 +3547,9 @@ impl TryFrom<Vec<ParcelsItem>> for ShipmentInternationalParcels {
                 );
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_impls!(ShipmentInternationalParcels, Vec < ParcelsItem >);
@@ -3479,10 +3569,10 @@ impl<'de> serde::Deserialize<'de> for ShipmentInternationalScores {
 }
 impl TryFrom<std::collections::BTreeMap<String, ScoresValue>>
 for ShipmentInternationalScores {
-    type Error = String;
+    type Error = runtime::BuildError;
     fn try_from(
         value: std::collections::BTreeMap<String, ScoresValue>,
-    ) -> Result<Self, String> {
+    ) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -3505,7 +3595,9 @@ for ShipmentInternationalScores {
                 );
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_impls!(
@@ -3519,10 +3611,10 @@ pub struct ShipmentInternationalLabels(
 deserialize_impl_2!(ShipmentInternationalLabels);
 impl TryFrom<std::collections::BTreeMap<String, String>>
 for ShipmentInternationalLabels {
-    type Error = String;
+    type Error = runtime::BuildError;
     fn try_from(
         value: std::collections::BTreeMap<String, String>,
-    ) -> Result<Self, String> {
+    ) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -3545,7 +3637,9 @@ for ShipmentInternationalLabels {
                 );
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_impls!(
@@ -3564,8 +3658,10 @@ impl<'de> serde::Deserialize<'de> for ShipmentOtherwiseParcels {
     }
 }
 impl TryFrom<Vec<ShipmentOtherwiseParcelsItem>> for ShipmentOtherwiseParcels {
-    type Error = String;
-    fn try_from(value: Vec<ShipmentOtherwiseParcelsItem>) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(
+        value: Vec<ShipmentOtherwiseParcelsItem>,
+    ) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -3588,7 +3684,9 @@ impl TryFrom<Vec<ShipmentOtherwiseParcelsItem>> for ShipmentOtherwiseParcels {
                 );
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_impls!(ShipmentOtherwiseParcels, Vec < ShipmentOtherwiseParcelsItem >);
@@ -3608,10 +3706,10 @@ impl<'de> serde::Deserialize<'de> for ShipmentOtherwiseScores {
 }
 impl TryFrom<std::collections::BTreeMap<String, ShipmentOtherwiseScoresValue>>
 for ShipmentOtherwiseScores {
-    type Error = String;
+    type Error = runtime::BuildError;
     fn try_from(
         value: std::collections::BTreeMap<String, ShipmentOtherwiseScoresValue>,
-    ) -> Result<Self, String> {
+    ) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -3634,7 +3732,9 @@ for ShipmentOtherwiseScores {
                 );
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_impls!(
@@ -3757,11 +3857,7 @@ pub mod builders {
         }
         /// Returns the value once its whole schema holds.
         pub fn build(self) -> Result<super::Entry, runtime::BuildError> {
-            self.0
-                .build()
-                .and_then(|v| {
-                    super::Entry::try_from(v).map_err(runtime::BuildError::value)
-                })
+            self.0.build().and_then(super::Entry::try_from)
         }
     }
     impl super::EntryFields {
@@ -4201,12 +4297,7 @@ pub mod builders {
         }
         /// Returns the value once its whole schema holds.
         pub fn build(self) -> Result<super::ShipmentInternational, runtime::BuildError> {
-            self.0
-                .build()
-                .and_then(|v| {
-                    super::ShipmentInternational::try_from(v)
-                        .map_err(runtime::BuildError::value)
-                })
+            self.0.build().and_then(super::ShipmentInternational::try_from)
         }
     }
     impl super::MetaObject {
@@ -4351,12 +4442,7 @@ pub mod builders {
         }
         /// Returns the value once its whole schema holds.
         pub fn build(self) -> Result<super::ShipmentOtherwise, runtime::BuildError> {
-            self.0
-                .build()
-                .and_then(|v| {
-                    super::ShipmentOtherwise::try_from(v)
-                        .map_err(runtime::BuildError::value)
-                })
+            self.0.build().and_then(super::ShipmentOtherwise::try_from)
         }
     }
     impl super::BadgeRequest {

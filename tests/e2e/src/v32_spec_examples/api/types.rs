@@ -36,8 +36,8 @@ macro_rules! serialize_impl {
 macro_rules! try_from_impl {
     ($t:ty) => {
         impl TryFrom<i64> for $t {
-            type Error = String;
-            fn try_from(value: i64) -> Result<Self, String> {
+            type Error = runtime::BuildError;
+            fn try_from(value: i64) -> Result<Self, runtime::BuildError> {
                 let mut violations: Vec<runtime::Violation> = Vec::new();
                 {
                     let out = &mut violations;
@@ -48,7 +48,9 @@ macro_rules! try_from_impl {
                         [Some(0), None, None, None],
                     );
                 }
-                runtime::first(violations).map(|()| Self(value))
+                runtime::first(violations)
+                    .map(|()| Self(value))
+                    .map_err(runtime::BuildError::value)
             }
         }
     };
@@ -77,14 +79,14 @@ macro_rules! checked_str_impls {
             }
         }
         impl TryFrom<&str> for $n {
-            type Error = String;
-            fn try_from(value: &str) -> Result<Self, String> {
+            type Error = runtime::BuildError;
+            fn try_from(value: &str) -> Result<Self, runtime::BuildError> {
                 Self::try_from(value.to_owned())
             }
         }
         impl std::str::FromStr for $n {
-            type Err = String;
-            fn from_str(s: &str) -> Result<Self, String> {
+            type Err = runtime::BuildError;
+            fn from_str(s: &str) -> Result<Self, runtime::BuildError> {
                 Self::try_from(s)
             }
         }
@@ -136,9 +138,11 @@ macro_rules! checked_num_impls {
             }
         }
         impl std::str::FromStr for $n {
-            type Err = String;
-            fn from_str(s: &str) -> Result<Self, String> {
-                let v: $t = s.parse().map_err(|e| format!("{e}"))?;
+            type Err = runtime::BuildError;
+            fn from_str(s: &str) -> Result<Self, runtime::BuildError> {
+                let v: $t = s
+                    .parse()
+                    .map_err(|e| runtime::BuildError::value(format!("{e}")))?;
                 Self::try_from(v)
             }
         }
@@ -402,8 +406,8 @@ impl FormDataCode2 {
     pub const PATTERN: &'static str = "1";
 }
 impl TryFrom<String> for FormDataCode2 {
-    type Error = String;
-    fn try_from(value: String) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: String) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -421,7 +425,9 @@ impl TryFrom<String> for FormDataCode2 {
                 "does not match `1`",
             );
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_str_impls!(FormDataCode2);
@@ -697,8 +703,8 @@ impl MultipartFormWithEncodingObjectsBodyAliasString {
     pub const PATTERN: &'static str = "^[A-Z][a-z]*$";
 }
 impl TryFrom<String> for MultipartFormWithEncodingObjectsBodyAliasString {
-    type Error = String;
-    fn try_from(value: String) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: String) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -716,7 +722,9 @@ impl TryFrom<String> for MultipartFormWithEncodingObjectsBodyAliasString {
                 "does not match `^[A-Z][a-z]*$`",
             );
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_str_impls!(MultipartFormWithEncodingObjectsBodyAliasString);
@@ -753,10 +761,10 @@ impl<'de> serde::Deserialize<'de> for OrderedMultipartWithRequiredHeaderBodyItem
 }
 impl TryFrom<OrderedMultipartWithRequiredHeaderBodyItemVariants>
 for OrderedMultipartWithRequiredHeaderBodyItem {
-    type Error = String;
+    type Error = runtime::BuildError;
     fn try_from(
         value: OrderedMultipartWithRequiredHeaderBodyItemVariants,
-    ) -> Result<Self, String> {
+    ) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -779,7 +787,9 @@ for OrderedMultipartWithRequiredHeaderBodyItem {
                 );
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_impls!(
@@ -800,8 +810,10 @@ impl<'de> serde::Deserialize<'de> for ServerSentEventStreamsBodyItem {
     }
 }
 impl TryFrom<ServerSentEventStreamsBodyItemVariants> for ServerSentEventStreamsBodyItem {
-    type Error = String;
-    fn try_from(value: ServerSentEventStreamsBodyItemVariants) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(
+        value: ServerSentEventStreamsBodyItemVariants,
+    ) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -824,7 +836,9 @@ impl TryFrom<ServerSentEventStreamsBodyItemVariants> for ServerSentEventStreamsB
                 );
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_impls!(ServerSentEventStreamsBodyItem, ServerSentEventStreamsBodyItemVariants);
@@ -844,10 +858,10 @@ impl<'de> serde::Deserialize<'de> for ServerSentEventStreamsBodyItemEvent {
 }
 impl TryFrom<ServerSentEventStreamsBodyItemEventFields>
 for ServerSentEventStreamsBodyItemEvent {
-    type Error = String;
+    type Error = runtime::BuildError;
     fn try_from(
         value: ServerSentEventStreamsBodyItemEventFields,
-    ) -> Result<Self, String> {
+    ) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -870,7 +884,9 @@ for ServerSentEventStreamsBodyItemEvent {
                 );
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_impls!(
@@ -892,10 +908,10 @@ impl<'de> serde::Deserialize<'de> for ServerSentEventStreamsBodyItemAddInt64 {
 }
 impl TryFrom<ServerSentEventStreamsBodyItemAddInt64Fields>
 for ServerSentEventStreamsBodyItemAddInt64 {
-    type Error = String;
+    type Error = runtime::BuildError;
     fn try_from(
         value: ServerSentEventStreamsBodyItemAddInt64Fields,
-    ) -> Result<Self, String> {
+    ) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -918,7 +934,9 @@ for ServerSentEventStreamsBodyItemAddInt64 {
                 );
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_impls!(
@@ -940,10 +958,10 @@ impl<'de> serde::Deserialize<'de> for ServerSentEventStreamsBodyItemAddJson {
 }
 impl TryFrom<ServerSentEventStreamsBodyItemAddJsonFields>
 for ServerSentEventStreamsBodyItemAddJson {
-    type Error = String;
+    type Error = runtime::BuildError;
     fn try_from(
         value: ServerSentEventStreamsBodyItemAddJsonFields,
-    ) -> Result<Self, String> {
+    ) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -966,7 +984,9 @@ for ServerSentEventStreamsBodyItemAddJson {
                 );
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_impls!(
@@ -1145,8 +1165,8 @@ impl<'de> serde::Deserialize<'de> for FormDataCodeChecked {
     }
 }
 impl TryFrom<FormDataCode> for FormDataCodeChecked {
-    type Error = String;
-    fn try_from(value: FormDataCode) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: FormDataCode) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -1169,7 +1189,9 @@ impl TryFrom<FormDataCode> for FormDataCodeChecked {
                 );
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_impls!(FormDataCodeChecked, FormDataCode);
@@ -1178,8 +1200,8 @@ checked_impls!(FormDataCodeChecked, FormDataCode);
 pub struct OrderedUnnamedMultipartBody(pub(super) Vec<serde_json::Value>);
 deserialize_impl_2!(OrderedUnnamedMultipartBody);
 impl TryFrom<Vec<serde_json::Value>> for OrderedUnnamedMultipartBody {
-    type Error = String;
-    fn try_from(value: Vec<serde_json::Value>) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: Vec<serde_json::Value>) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -1202,7 +1224,9 @@ impl TryFrom<Vec<serde_json::Value>> for OrderedUnnamedMultipartBody {
                 );
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_impls!(OrderedUnnamedMultipartBody, Vec < serde_json::Value >);
@@ -1222,10 +1246,10 @@ impl<'de> serde::Deserialize<'de> for OrderedMultipartWithRequiredHeaderBody {
 }
 impl TryFrom<(String, Vec<OrderedMultipartWithRequiredHeaderBodyItem>)>
 for OrderedMultipartWithRequiredHeaderBody {
-    type Error = String;
+    type Error = runtime::BuildError;
     fn try_from(
         value: (String, Vec<OrderedMultipartWithRequiredHeaderBodyItem>),
-    ) -> Result<Self, String> {
+    ) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -1248,7 +1272,9 @@ for OrderedMultipartWithRequiredHeaderBody {
                 );
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_impls!(
@@ -1260,8 +1286,8 @@ checked_impls!(
 pub struct NestedMultipartMixedBody(pub(super) Vec<serde_json::Value>);
 deserialize_impl_2!(NestedMultipartMixedBody);
 impl TryFrom<Vec<serde_json::Value>> for NestedMultipartMixedBody {
-    type Error = String;
-    fn try_from(value: Vec<serde_json::Value>) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: Vec<serde_json::Value>) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -1284,7 +1310,9 @@ impl TryFrom<Vec<serde_json::Value>> for NestedMultipartMixedBody {
                 );
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_impls!(NestedMultipartMixedBody, Vec < serde_json::Value >);
@@ -1790,12 +1818,7 @@ pub mod builders {
         pub fn build(
             self,
         ) -> Result<super::ServerSentEventStreamsBodyItemEvent, runtime::BuildError> {
-            self.0
-                .build()
-                .and_then(|v| {
-                    super::ServerSentEventStreamsBodyItemEvent::try_from(v)
-                        .map_err(runtime::BuildError::value)
-                })
+            self.0.build().and_then(super::ServerSentEventStreamsBodyItemEvent::try_from)
         }
     }
     impl super::ServerSentEventStreamsBodyItemAddInt64 {
@@ -1841,10 +1864,7 @@ pub mod builders {
         ) -> Result<super::ServerSentEventStreamsBodyItemAddInt64, runtime::BuildError> {
             self.0
                 .build()
-                .and_then(|v| {
-                    super::ServerSentEventStreamsBodyItemAddInt64::try_from(v)
-                        .map_err(runtime::BuildError::value)
-                })
+                .and_then(super::ServerSentEventStreamsBodyItemAddInt64::try_from)
         }
     }
     impl super::ServerSentEventStreamsBodyItemAddJson {
@@ -1890,10 +1910,7 @@ pub mod builders {
         ) -> Result<super::ServerSentEventStreamsBodyItemAddJson, runtime::BuildError> {
             self.0
                 .build()
-                .and_then(|v| {
-                    super::ServerSentEventStreamsBodyItemAddJson::try_from(v)
-                        .map_err(runtime::BuildError::value)
-                })
+                .and_then(super::ServerSentEventStreamsBodyItemAddJson::try_from)
         }
     }
     impl super::ServerSentEventStreamsBodyItemEventFields {

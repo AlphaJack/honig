@@ -56,14 +56,14 @@ macro_rules! checked_str_impls {
             }
         }
         impl TryFrom<&str> for $n {
-            type Error = String;
-            fn try_from(value: &str) -> Result<Self, String> {
+            type Error = runtime::BuildError;
+            fn try_from(value: &str) -> Result<Self, runtime::BuildError> {
                 Self::try_from(value.to_owned())
             }
         }
         impl std::str::FromStr for $n {
-            type Err = String;
-            fn from_str(s: &str) -> Result<Self, String> {
+            type Err = runtime::BuildError;
+            fn from_str(s: &str) -> Result<Self, runtime::BuildError> {
                 Self::try_from(s)
             }
         }
@@ -115,9 +115,11 @@ macro_rules! checked_num_impls {
             }
         }
         impl std::str::FromStr for $n {
-            type Err = String;
-            fn from_str(s: &str) -> Result<Self, String> {
-                let v: $t = s.parse().map_err(|e| format!("{e}"))?;
+            type Err = runtime::BuildError;
+            fn from_str(s: &str) -> Result<Self, runtime::BuildError> {
+                let v: $t = s
+                    .parse()
+                    .map_err(|e| runtime::BuildError::value(format!("{e}")))?;
                 Self::try_from(v)
             }
         }
@@ -306,8 +308,8 @@ impl PhysicalSku {
     pub const PATTERN: &'static str = "^[A-Z]{3}-[0-9]{4}$";
 }
 impl TryFrom<String> for PhysicalSku {
-    type Error = String;
-    fn try_from(value: String) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: String) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -325,7 +327,9 @@ impl TryFrom<String> for PhysicalSku {
                 "does not match `^[A-Z]{3}-[0-9]{4}$`",
             );
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_str_impls!(PhysicalSku);
@@ -345,8 +349,8 @@ impl<'de> serde::Deserialize<'de> for DigitalKind {
 #[serde(transparent)]
 pub struct ListProductsLimit(pub(super) i32);
 impl TryFrom<i32> for ListProductsLimit {
-    type Error = String;
-    fn try_from(value: i32) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: i32) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -357,7 +361,9 @@ impl TryFrom<i32> for ListProductsLimit {
                 [None, Some(100), None, None],
             );
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_num_impls!(ListProductsLimit, i32);

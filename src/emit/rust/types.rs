@@ -242,7 +242,7 @@ fn enum_macros(space: &Space<'_>) -> TokenStream {
                         }
                     }
                     impl std::str::FromStr for $n {
-                        type Err = String;
+                        type Err = runtime::BuildError;
                         fn from_str(s: &str) -> Result<Self, Self::Err> {
                             Self::try_from(s)
                         }
@@ -317,14 +317,14 @@ fn checked_str_macro() -> TokenStream {
                     }
                 }
                 impl TryFrom<&str> for $n {
-                    type Error = String;
-                    fn try_from(value: &str) -> Result<Self, String> {
+                    type Error = runtime::BuildError;
+                    fn try_from(value: &str) -> Result<Self, runtime::BuildError> {
                         Self::try_from(value.to_owned())
                     }
                 }
                 impl std::str::FromStr for $n {
-                    type Err = String;
-                    fn from_str(s: &str) -> Result<Self, String> {
+                    type Err = runtime::BuildError;
+                    fn from_str(s: &str) -> Result<Self, runtime::BuildError> {
                         Self::try_from(s)
                     }
                 }
@@ -382,9 +382,9 @@ fn checked_num_macro() -> TokenStream {
                     }
                 }
                 impl std::str::FromStr for $n {
-                    type Err = String;
-                    fn from_str(s: &str) -> Result<Self, String> {
-                        let v: $t = s.parse().map_err(|e| format!("{e}"))?;
+                    type Err = runtime::BuildError;
+                    fn from_str(s: &str) -> Result<Self, runtime::BuildError> {
+                        let v: $t = s.parse().map_err(|e| runtime::BuildError::value(format!("{e}")))?;
                         Self::try_from(v)
                     }
                 }
@@ -470,9 +470,9 @@ fn checked_decimal_macro() -> TokenStream {
                     }
                 }
                 impl std::str::FromStr for $n {
-                    type Err = String;
-                    fn from_str(s: &str) -> Result<Self, String> {
-                        let v: runtime::Decimal = s.parse().map_err(|e| format!("{e}"))?;
+                    type Err = runtime::BuildError;
+                    fn from_str(s: &str) -> Result<Self, runtime::BuildError> {
+                        let v: runtime::Decimal = s.parse().map_err(|e| runtime::BuildError::value(format!("{e}")))?;
                         Self::try_from(v)
                     }
                 }
@@ -1132,7 +1132,7 @@ fn builder(space: &Space<'_>, name: &proc_macro2::Ident, shape: &proc_macro2::Id
         quote! {
             /// Returns the value once its whole schema holds.
             pub fn build(self) -> Result<super::#name, runtime::BuildError> {
-                self.0.build().and_then(|v| super::#name::try_from(v).map_err(runtime::BuildError::value))
+                self.0.build().and_then(super::#name::try_from)
             }
         }
     };
@@ -1216,11 +1216,11 @@ fn int_enum(items: &mut Vec<TokenStream>, def: &TypeDef, values: &[(Name, i64)])
             }
         }
         impl TryFrom<i64> for #n {
-            type Error = String;
-            fn try_from(v: i64) -> Result<Self, String> {
+            type Error = runtime::BuildError;
+            fn try_from(v: i64) -> Result<Self, runtime::BuildError> {
                 match v {
                     #(#nums => Ok(Self::#names),)*
-                    other => Err(format!(#allowed)),
+                    other => Err(runtime::BuildError::value(format!(#allowed))),
                 }
             }
         }
@@ -1316,14 +1316,14 @@ fn checked_type(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, def
         pub struct #n(pub(super) #base);
         #consts
         impl TryFrom<#base> for #n {
-            type Error = String;
-            fn try_from(value: #base) -> Result<Self, String> {
+            type Error = runtime::BuildError;
+            fn try_from(value: #base) -> Result<Self, runtime::BuildError> {
                 let mut violations: Vec<runtime::Violation> = Vec::new();
                 {
                     let out = &mut violations;
                     #checks
                 }
-                runtime::first(violations).map(|()| Self(value))
+                runtime::first(violations).map(|()| Self(value)).map_err(runtime::BuildError::value)
             }
         }
         #shared
@@ -1402,11 +1402,11 @@ fn str_enum(items: &mut Vec<TokenStream>, def: &TypeDef, values: &[EnumValue]) {
             }
         }
         impl TryFrom<&str> for #n {
-            type Error = String;
-            fn try_from(s: &str) -> Result<Self, String> {
+            type Error = runtime::BuildError;
+            fn try_from(s: &str) -> Result<Self, runtime::BuildError> {
                 match s {
                     #(#wires => Ok(Self::#names),)*
-                    other => Err(format!(#allowed)),
+                    other => Err(runtime::BuildError::value(format!(#allowed))),
                 }
             }
         }

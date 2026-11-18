@@ -82,7 +82,7 @@ macro_rules! str_enum_impls {
             }
         }
         impl std::str::FromStr for $n {
-            type Err = String;
+            type Err = runtime::BuildError;
             fn from_str(s: &str) -> Result<Self, Self::Err> {
                 Self::try_from(s)
             }
@@ -289,8 +289,8 @@ impl<'de> serde::Deserialize<'de> for ConstOneOf {
     }
 }
 impl TryFrom<ConstOneOfVariants> for ConstOneOf {
-    type Error = String;
-    fn try_from(value: ConstOneOfVariants) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: ConstOneOfVariants) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -313,7 +313,9 @@ impl TryFrom<ConstOneOfVariants> for ConstOneOf {
                 );
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_impls!(ConstOneOf, ConstOneOfVariants);
@@ -327,8 +329,8 @@ impl<'de> serde::Deserialize<'de> for Delivery {
     }
 }
 impl TryFrom<DeliveryVariants> for Delivery {
-    type Error = String;
-    fn try_from(value: DeliveryVariants) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: DeliveryVariants) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -351,7 +353,9 @@ impl TryFrom<DeliveryVariants> for Delivery {
                 );
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_impls!(Delivery, DeliveryVariants);
@@ -365,8 +369,8 @@ impl<'de> serde::Deserialize<'de> for DeliveryMethod {
     }
 }
 impl TryFrom<DeliveryMethodVariants> for DeliveryMethod {
-    type Error = String;
-    fn try_from(value: DeliveryMethodVariants) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: DeliveryMethodVariants) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -389,7 +393,9 @@ impl TryFrom<DeliveryMethodVariants> for DeliveryMethod {
                 );
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_impls!(DeliveryMethod, DeliveryMethodVariants);
@@ -526,11 +532,17 @@ impl EmailRequestType {
     }
 }
 impl TryFrom<&str> for EmailRequestType {
-    type Error = String;
-    fn try_from(s: &str) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(s: &str) -> Result<Self, runtime::BuildError> {
         match s {
             "email" => Ok(Self::Email),
-            other => Err(format!("`{other}` is not one of `email`")),
+            other => {
+                Err(
+                    runtime::BuildError::value(
+                        format!("`{other}` is not one of `email`"),
+                    ),
+                )
+            }
         }
     }
 }
@@ -548,11 +560,13 @@ impl SmsRequestType {
     }
 }
 impl TryFrom<&str> for SmsRequestType {
-    type Error = String;
-    fn try_from(s: &str) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(s: &str) -> Result<Self, runtime::BuildError> {
         match s {
             "sms" => Ok(Self::Sms),
-            other => Err(format!("`{other}` is not one of `sms`")),
+            other => {
+                Err(runtime::BuildError::value(format!("`{other}` is not one of `sms`")))
+            }
         }
     }
 }
@@ -796,12 +810,18 @@ impl ContactEmailOrMailVia {
     }
 }
 impl TryFrom<&str> for ContactEmailOrMailVia {
-    type Error = String;
-    fn try_from(s: &str) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(s: &str) -> Result<Self, runtime::BuildError> {
         match s {
             "email" => Ok(Self::Email),
             "mail" => Ok(Self::Mail),
-            other => Err(format!("`{other}` is not one of `email`, `mail`")),
+            other => {
+                Err(
+                    runtime::BuildError::value(
+                        format!("`{other}` is not one of `email`, `mail`"),
+                    ),
+                )
+            }
         }
     }
 }

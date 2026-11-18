@@ -122,8 +122,8 @@ impl<'de> serde::Deserialize<'de> for Note {
     }
 }
 impl TryFrom<NoteVariants> for Note {
-    type Error = String;
-    fn try_from(value: NoteVariants) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: NoteVariants) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -146,7 +146,9 @@ impl TryFrom<NoteVariants> for Note {
                 );
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_impls!(Note, NoteVariants);
@@ -160,8 +162,8 @@ impl<'de> serde::Deserialize<'de> for TextNote {
     }
 }
 impl TryFrom<TextNoteFields> for TextNote {
-    type Error = String;
-    fn try_from(value: TextNoteFields) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: TextNoteFields) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -184,7 +186,9 @@ impl TryFrom<TextNoteFields> for TextNote {
                 );
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_impls!(TextNote, TextNoteFields);
@@ -243,8 +247,8 @@ impl<'de> serde::Deserialize<'de> for Crop {
     }
 }
 impl TryFrom<CropVariants> for Crop {
-    type Error = String;
-    fn try_from(value: CropVariants) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: CropVariants) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -267,7 +271,9 @@ impl TryFrom<CropVariants> for Crop {
                 );
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_impls!(Crop, CropVariants);
@@ -282,8 +288,8 @@ impl<'de> serde::Deserialize<'de> for NoteTextNote {
     }
 }
 impl TryFrom<NoteTextNoteFields> for NoteTextNote {
-    type Error = String;
-    fn try_from(value: NoteTextNoteFields) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: NoteTextNoteFields) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -306,7 +312,9 @@ impl TryFrom<NoteTextNoteFields> for NoteTextNote {
                 );
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_impls!(NoteTextNote, NoteTextNoteFields);
@@ -321,8 +329,8 @@ impl<'de> serde::Deserialize<'de> for NoteImageNote {
     }
 }
 impl TryFrom<NoteImageNoteFields> for NoteImageNote {
-    type Error = String;
-    fn try_from(value: NoteImageNoteFields) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: NoteImageNoteFields) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -345,7 +353,9 @@ impl TryFrom<NoteImageNoteFields> for NoteImageNote {
                 );
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_impls!(NoteImageNote, NoteImageNoteFields);
@@ -719,14 +729,16 @@ impl<'de> serde::Deserialize<'de> for TextNoteRgb {
     }
 }
 impl TryFrom<[u8; 3]> for TextNoteRgb {
-    type Error = String;
-    fn try_from(value: [u8; 3]) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: [u8; 3]) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
             runtime::check_unique(out, &runtime::InstancePath::Root, &value);
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_impls!(TextNoteRgb, [u8; 3]);
@@ -811,11 +823,7 @@ pub mod builders {
         }
         /// Returns the value once its whole schema holds.
         pub fn build(self) -> Result<super::TextNote, runtime::BuildError> {
-            self.0
-                .build()
-                .and_then(|v| {
-                    super::TextNote::try_from(v).map_err(runtime::BuildError::value)
-                })
+            self.0.build().and_then(super::TextNote::try_from)
         }
     }
     impl super::ImageNote {
@@ -889,11 +897,7 @@ pub mod builders {
         }
         /// Returns the value once its whole schema holds.
         pub fn build(self) -> Result<super::NoteTextNote, runtime::BuildError> {
-            self.0
-                .build()
-                .and_then(|v| {
-                    super::NoteTextNote::try_from(v).map_err(runtime::BuildError::value)
-                })
+            self.0.build().and_then(super::NoteTextNote::try_from)
         }
     }
     impl super::NoteImageNote {
@@ -938,11 +942,7 @@ pub mod builders {
         }
         /// Returns the value once its whole schema holds.
         pub fn build(self) -> Result<super::NoteImageNote, runtime::BuildError> {
-            self.0
-                .build()
-                .and_then(|v| {
-                    super::NoteImageNote::try_from(v).map_err(runtime::BuildError::value)
-                })
+            self.0.build().and_then(super::NoteImageNote::try_from)
         }
     }
     impl super::CropVariant2Variant2 {
