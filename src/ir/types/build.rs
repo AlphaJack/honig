@@ -974,7 +974,19 @@ impl<'a> Builder<'a> {
             Some("string") if o.get("contentEncoding").and_then(Value::as_str) == Some("base64url") => {
                 Ty::Format(Format::Base64Url)
             }
-            Some("string") => string_format(format).map_or(Ty::String, Ty::Format),
+            Some("string") => match string_format(format) {
+                Some(f) => {
+                    // The format's type decides the value: `generate` does not check a `pattern` beside it.
+                    if let Some(p) = o.get("pattern").and_then(Value::as_str) {
+                        self.diags.warning(
+                            join(ptr, "pattern"),
+                            format!("pattern `{p}` is not checked: the value is the type of `format: {format}`"),
+                        );
+                    }
+                    Ty::Format(f)
+                }
+                None => Ty::String,
+            },
             Some("null") => Ty::Unit,
             Some("array") => self.array(o, ptr, hint),
             Some("object") | None => {
