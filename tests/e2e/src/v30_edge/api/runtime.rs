@@ -2,3 +2,15 @@
 pub use honig::*;
 #[doc(hidden)]
 pub use honig::__private::*;
+/// The definitions that the run-time checks of this module share, parsed once.
+#[doc(hidden)]
+pub fn schema_defs() -> Option<&'static serde_json::Map<String, serde_json::Value>> {
+    static DEFS: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+    DEFS.get_or_init(|| {
+            serde_json::from_str(
+                    "{\"/components/schemas/Car\":{\"type\":\"object\",\"required\":[\"kind\",\"seats\"],\"properties\":{\"kind\":{\"type\":\"string\"},\"seats\":{\"type\":\"integer\"}}},\"/components/schemas/Card\":{\"type\":\"object\",\"required\":[\"last4\"],\"properties\":{\"last4\":{\"type\":\"string\",\"minLength\":4,\"maxLength\":4}}},\"/components/schemas/Customer\":{\"type\":\"object\",\"additionalProperties\":true,\"required\":[\"name\"],\"properties\":{\"name\":{\"type\":\"string\",\"minLength\":1},\"email\":{\"type\":[\"string\",\"null\"]}}},\"/components/schemas/Money\":{\"type\":\"object\",\"required\":[\"amountCents\",\"currency\"],\"properties\":{\"amountCents\":{\"type\":\"integer\",\"format\":\"int64\"},\"currency\":{\"type\":\"string\",\"pattern\":\"^[A-Z]{3}$\"}}},\"/components/schemas/Sepa\":{\"type\":\"object\",\"required\":[\"iban\"],\"properties\":{\"iban\":{\"type\":\"string\"}}},\"/components/schemas/Van\":{\"type\":\"object\",\"required\":[\"kind\",\"cargoLitres\"],\"properties\":{\"kind\":{\"type\":\"string\"},\"cargoLitres\":{\"type\":\"integer\"}}}}",
+                )
+                .unwrap_or_default()
+        })
+        .as_object()
+}

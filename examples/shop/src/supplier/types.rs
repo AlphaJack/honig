@@ -288,17 +288,19 @@ impl runtime::Validate for Book {
             {
                 static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                 let value = runtime::to_value(v).unwrap_or_default();
-                runtime::check_schema(
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Meta\"}]}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
                     out,
                     &runtime::InstancePath::Key(path, "meta"),
                     &value,
-                    SCHEMA
-                        .get_or_init(|| {
-                            serde_json::from_str(
-                                    "{\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Meta\"}],\"$defs\":{\"/components/schemas/Meta\":{\"type\":\"object\",\"required\":[\"isbn\"],\"properties\":{\"isbn\":{\"type\":\"string\"},\"pages\":{\"type\":\"integer\"}}}}}",
-                                )
-                                .unwrap_or_default()
-                        }),
+                    schema,
+                    runtime::schema_defs(),
                 );
             }
         }

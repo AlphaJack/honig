@@ -407,9 +407,23 @@ pub fn check_unique<T: Serialize>(out: &mut Vec<Violation>, path: &InstancePath<
 /// Checks the JSON Schema keywords with no Rust type of their own against the serialized value.
 /// Examples are `contains`, `if`/`then` and `dependentRequired`.
 pub fn check_schema(out: &mut Vec<Violation>, path: &InstancePath<'_>, value: &Value, schema: &Value) {
+    check_schema_in(out, path, value, schema, None);
+}
+
+/// [`check_schema`] with the definitions that every schema of a generated module shares.
+///
+/// A `#/$defs/<token>` reference resolves in the `$defs` of `schema` first, then in `shared`. Each shared definition is
+/// in the generated code once, however many schemas reach it.
+pub fn check_schema_in(
+    out: &mut Vec<Violation>,
+    path: &InstancePath<'_>,
+    value: &Value,
+    schema: &Value,
+    shared: Option<&Map<String, Value>>,
+) {
     let mut found = vec![];
     let defs = schema.get("$defs").and_then(Value::as_object);
-    Schema { defs, memo: RefCell::new(BTreeMap::new()) }.check(value, schema, &mut found);
+    Schema { defs, shared, memo: RefCell::new(BTreeMap::new()) }.check(value, schema, &mut found);
     for (at, message) in found {
         let mut p = path.to_string();
         p.push_str(&at);
@@ -432,6 +446,8 @@ struct Evaluated<'v> {
 /// in each object and array already.
 struct Schema<'s> {
     defs: Option<&'s Map<String, Value>>,
+    /// The definitions that the schemas of a generated module share: looked up after `defs`.
+    shared: Option<&'s Map<String, Value>>,
     /// By the addresses of a value and a definition: what it found, or `None` while it is being checked. A recursive
     /// `oneOf` checks each branch on the same nested values: without this, every level doubles the work. Only objects
     /// and arrays are kept. They sit in the checked value, whereas a string may be a name copied for a moment.
@@ -605,9 +621,11 @@ fn pointer_key(k: &str) -> String {
 }
 
 impl Schema<'_> {
-    /// Returns the definition that `reference` names in the `$defs` of the root (`#/$defs/<token>`).
+    /// Returns the definition that `reference` names (`#/$defs/<token>`): in the `$defs` of the root, else in the
+    /// shared ones.
     fn def(&self, reference: &str) -> Option<&Value> {
-        self.defs?.get(&unescape(reference.strip_prefix("#/$defs/")?))
+        let token = unescape(reference.strip_prefix("#/$defs/")?);
+        self.defs.and_then(|d| d.get(&token)).or_else(|| self.shared?.get(&token))
     }
 
     /// Checks `value` against the definition `target` once per object or array. A definition met again on the same

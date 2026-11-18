@@ -169,17 +169,19 @@ pub mod post_product {
             {
                 static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                 let value = runtime::to_value(&self.body).unwrap_or_default();
-                runtime::check_schema(
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"type\":\"object\",\"required\":[\"kind\"],\"properties\":{\"kind\":{\"type\":\"string\"}},\"oneOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Gadget\"},{\"$ref\":\"#/$defs/~1components~1schemas~1Book\"}]}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
                     out,
                     &runtime::InstancePath::Key(path, "body"),
                     &value,
-                    SCHEMA
-                        .get_or_init(|| {
-                            serde_json::from_str(
-                                    "{\"type\":\"object\",\"required\":[\"kind\"],\"properties\":{\"kind\":{\"type\":\"string\"}},\"oneOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Gadget\"},{\"$ref\":\"#/$defs/~1components~1schemas~1Book\"}],\"$defs\":{\"/components/schemas/Gadget\":{\"type\":\"object\",\"required\":[\"kind\"],\"properties\":{\"kind\":{\"const\":\"Gadget\"},\"purrs\":{\"type\":\"boolean\"}}},\"/components/schemas/Book\":{\"type\":\"object\",\"required\":[\"kind\"],\"properties\":{\"kind\":{\"const\":\"Book\"},\"barks\":{\"type\":\"boolean\"}}}}}",
-                                )
-                                .unwrap_or_default()
-                        }),
+                    schema,
+                    runtime::schema_defs(),
                 );
             }
         }

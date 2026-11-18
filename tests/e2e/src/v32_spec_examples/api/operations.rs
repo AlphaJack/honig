@@ -269,17 +269,19 @@ pub mod ordered_unnamed_multipart {
                 {
                     static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                     let value = runtime::to_value(v).unwrap_or_default();
-                    runtime::check_schema(
+                    let schema = SCHEMA
+                        .get_or_init(|| {
+                            serde_json::from_str(
+                                    "{\"type\":\"array\",\"prefixItems\":[{\"type\":\"object\",\"properties\":{\"author\":{\"type\":\"string\"},\"created\":{\"type\":\"string\",\"format\":\"datetime\"},\"copyright\":{\"type\":\"string\"},\"license\":{\"type\":\"string\"}}},{}]}",
+                                )
+                                .unwrap_or_default()
+                        });
+                    runtime::check_schema_in(
                         out,
                         &runtime::InstancePath::Key(path, "body"),
                         &value,
-                        SCHEMA
-                            .get_or_init(|| {
-                                serde_json::from_str(
-                                        "{\"type\":\"array\",\"prefixItems\":[{\"type\":\"object\",\"properties\":{\"author\":{\"type\":\"string\"},\"created\":{\"type\":\"string\",\"format\":\"datetime\"},\"copyright\":{\"type\":\"string\"},\"license\":{\"type\":\"string\"}}},{}]}",
-                                    )
-                                    .unwrap_or_default()
-                            }),
+                        schema,
+                        None,
                     );
                 }
             }
@@ -323,17 +325,19 @@ pub mod ordered_multipart_with_required_header {
                 {
                     static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                     let value = runtime::to_value(v).unwrap_or_default();
-                    runtime::check_schema(
+                    let schema = SCHEMA
+                        .get_or_init(|| {
+                            serde_json::from_str(
+                                    "{\"prefixItems\":[{\"type\":\"string\"}],\"items\":{\"anyOf\":[{\"type\":\"string\"},{\"$comment\":\"To allow binary, this must always pass\"}]}}",
+                                )
+                                .unwrap_or_default()
+                        });
+                    runtime::check_schema_in(
                         out,
                         &runtime::InstancePath::Key(path, "body"),
                         &value,
-                        SCHEMA
-                            .get_or_init(|| {
-                                serde_json::from_str(
-                                        "{\"prefixItems\":[{\"type\":\"string\"}],\"items\":{\"anyOf\":[{\"type\":\"string\"},{\"$comment\":\"To allow binary, this must always pass\"}]}}",
-                                    )
-                                    .unwrap_or_default()
-                            }),
+                        schema,
+                        None,
                     );
                 }
             }
@@ -370,17 +374,19 @@ pub mod nested_multipart_mixed {
                 {
                     static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                     let value = runtime::to_value(v).unwrap_or_default();
-                    runtime::check_schema(
+                    let schema = SCHEMA
+                        .get_or_init(|| {
+                            serde_json::from_str(
+                                    "{\"type\":\"array\",\"prefixItems\":[{\"type\":\"array\"},{\"type\":\"array\",\"prefixItems\":[{\"type\":\"object\"},{\"type\":\"string\"},{}]}]}",
+                                )
+                                .unwrap_or_default()
+                        });
+                    runtime::check_schema_in(
                         out,
                         &runtime::InstancePath::Key(path, "body"),
                         &value,
-                        SCHEMA
-                            .get_or_init(|| {
-                                serde_json::from_str(
-                                        "{\"type\":\"array\",\"prefixItems\":[{\"type\":\"array\"},{\"type\":\"array\",\"prefixItems\":[{\"type\":\"object\"},{\"type\":\"string\"},{}]}]}",
-                                    )
-                                    .unwrap_or_default()
-                            }),
+                        schema,
+                        None,
                     );
                 }
             }
