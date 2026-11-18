@@ -73,7 +73,7 @@ pub use client::oauth::{AuthMetadata, DeviceCode, DevicePoll, Token};
 pub use client::transport::{Transport, send, send_streaming};
 #[cfg(feature = "multipart")]
 pub use codec::PartTypes;
-pub use decimal::{Decimal, NotADecimal};
+pub use decimal::Decimal;
 pub use error::{ApiError, Error};
 pub use formatted::Formatted;
 pub use formatted::UuidText;
@@ -84,7 +84,7 @@ pub use formatted::{Email, Hostname, IdnEmail, IdnHostname};
 pub use formatted::{Ipv4CidrText, Ipv6CidrText, IriReferenceText, IriText, JsonPointerText, RegexText};
 pub use formatted::{RelativeJsonPointerText, TimeLocalText, TimeText, UriReferenceText, UriTemplateText, UriText};
 #[cfg(feature = "jiff")]
-pub use full_time::{FullTime, NotAFullTime};
+pub use full_time::FullTime;
 /// The `http` crate that [`Request`], [`Response`] and their parts come from.
 pub use http;
 /// The `jiff` crate that [`FullTime`] holds the types of.
