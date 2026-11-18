@@ -755,14 +755,16 @@ impl<'a> Builder<'a> {
             return false;
         }
         // `anyOf` asks for one branch at least: decoding checks every keyword of a branch, so the first branch that
-        // decodes proves it, whatever types the branches share. `oneOf` asks for exactly one: two branches of one type
-        // could both match.
+        // decodes proves it, whatever types the branches share. `oneOf` asks for exactly one: its untagged union
+        // decodes every branch and counts. A discriminator that does
+        // not pin each branch picks one by its tag and would not count, so the whole schema is checked then.
         let one_of = o.contains_key("oneOf");
+        let tagged = o.contains_key("discriminator");
         let mut types = BTreeSet::new();
         for b in branches {
             let Some((b, _)) = self.deref(b) else { return true };
             let Some(t) = b.get("type").and_then(Value::as_str) else { return true };
-            if !types.insert(t.to_owned()) && one_of {
+            if !types.insert(t.to_owned()) && one_of && tagged {
                 return true;
             }
         }
@@ -1689,7 +1691,7 @@ impl<'a> Builder<'a> {
         };
         let hints: Vec<Option<String>> = variants.iter().map(|(b, _)| branch_hint(b)).collect();
         self.name_by_tag(&mut out, name, fallback, &hints);
-        Some(Kind::Union(Union { variants: out, mode, open, rest: false }))
+        Some(Kind::Union(Union { variants: out, mode, open, rest: false, exclusive: key == "oneOf" }))
     }
 
     /// Returns what an array branch holds as the name of its variant: `NumberArray` for numbers, `NumberArrayArray` for
@@ -1847,7 +1849,7 @@ impl<'a> Builder<'a> {
         // integer + number overlap: integer must be tried first (ByKind handles it).
         let kinds: BTreeSet<JsonKind> = variants.iter().map(|v| self.space_kind(&v.ty)).collect();
         let mode = if kinds.len() == variants.len() { UnionMode::ByKind } else { UnionMode::Untagged };
-        Kind::Union(Union { variants, mode, open: false, rest: false })
+        Kind::Union(Union { variants, mode, open: false, rest: false, exclusive: false })
     }
 
     /// Returns finish. Resolve placeholders, drop defaults that the type of their field cannot hold and break cycles

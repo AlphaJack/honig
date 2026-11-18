@@ -257,57 +257,6 @@ async fn c<A: Api>(
 fn c_params(incoming: runtime::Incoming<'_>) -> Result<ops::c::Params, runtime::Reason> {
     let runtime::Incoming { request: req, body, .. } = incoming;
     runtime::check_media(runtime::Message::content_type(req), &["application/json"])?;
-    if !body.is_empty() {
-        static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-        runtime::check_raw_json_in(
-            &body,
-            SCHEMA
-                .get_or_init(|| serde_json::Value::Object(
-                    serde_json::Map::from_iter([
-                        (
-                            "oneOf".to_owned(),
-                            serde_json::Value::Array(
-                                vec![
-                                    serde_json::Value::Object(serde_json::Map::from_iter([("type"
-                                    .to_owned(), serde_json::Value::String("object"
-                                    .to_owned())), ("required".to_owned(),
-                                    serde_json::Value::Array(vec![serde_json::Value::String("type"
-                                    .to_owned()), serde_json::Value::String("email"
-                                    .to_owned())])), ("properties".to_owned(),
-                                    serde_json::Value::Object(serde_json::Map::from_iter([("type"
-                                    .to_owned(),
-                                    serde_json::Value::Object(serde_json::Map::from_iter([("type"
-                                    .to_owned(), serde_json::Value::String("string"
-                                    .to_owned())), ("enum".to_owned(),
-                                    serde_json::Value::Array(vec![serde_json::Value::String("email"
-                                    .to_owned())]))]))), ("email".to_owned(),
-                                    serde_json::Value::Object(serde_json::Map::from_iter([("type"
-                                    .to_owned(), serde_json::Value::String("string"
-                                    .to_owned()))])))])))])),
-                                    serde_json::Value::Object(serde_json::Map::from_iter([("type"
-                                    .to_owned(), serde_json::Value::String("object"
-                                    .to_owned())), ("required".to_owned(),
-                                    serde_json::Value::Array(vec![serde_json::Value::String("type"
-                                    .to_owned()), serde_json::Value::String("phone"
-                                    .to_owned())])), ("properties".to_owned(),
-                                    serde_json::Value::Object(serde_json::Map::from_iter([("type"
-                                    .to_owned(),
-                                    serde_json::Value::Object(serde_json::Map::from_iter([("type"
-                                    .to_owned(), serde_json::Value::String("string"
-                                    .to_owned())), ("enum".to_owned(),
-                                    serde_json::Value::Array(vec![serde_json::Value::String("sms"
-                                    .to_owned())]))]))), ("phone".to_owned(),
-                                    serde_json::Value::Object(serde_json::Map::from_iter([("type"
-                                    .to_owned(), serde_json::Value::String("string"
-                                    .to_owned()))])))])))]))
-                                ],
-                            ),
-                        ),
-                    ]),
-                )),
-            runtime::schema_defs(),
-        )?;
-    }
     Ok(ops::c::Params {
         body: runtime::json_decode(0, &body)?,
     })

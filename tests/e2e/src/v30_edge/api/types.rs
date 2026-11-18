@@ -619,46 +619,69 @@ impl TryFrom<String> for CardLast4 {
 checked_str_impls!(CardLast4);
 pub type OrderCustomer = OrderCustomer2;
 pub type OrderCustomer2 = Customer;
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
-#[serde(transparent)]
-pub struct OrderPayment(pub(super) OrderPaymentVariants);
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum OrderPayment {
+    Card(Card),
+    Sepa(Sepa),
+}
+impl serde::Serialize for OrderPayment {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        match self {
+            Self::Card(v) => serde::Serialize::serialize(v, s),
+            Self::Sepa(v) => serde::Serialize::serialize(v, s),
+        }
+    }
+}
 impl<'de> serde::Deserialize<'de> for OrderPayment {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <OrderPaymentVariants as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
-    }
-}
-impl TryFrom<OrderPaymentVariants> for OrderPayment {
-    type Error = runtime::BuildError;
-    fn try_from(value: OrderPaymentVariants) -> Result<Self, runtime::BuildError> {
-        let mut violations: Vec<runtime::Violation> = Vec::new();
-        {
-            let out = &mut violations;
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&value).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"oneOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Card\"},{\"$ref\":\"#/$defs/~1components~1schemas~1Sepa\"}]}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Root,
-                    &value,
-                    schema,
-                    runtime::schema_defs(),
-                );
+        let v = <runtime::Content<'de> as serde::Deserialize>::deserialize(d)?;
+        let fit_0 = v.kind() == runtime::Kind::Object
+            && runtime::fits(&v, &[("last4", true, &[runtime::Kind::String])]);
+        let fit_1 = v.kind() == runtime::Kind::Object
+            && runtime::fits(&v, &[("iban", true, &[runtime::Kind::String])]);
+        let mut first: Option<String> = None;
+        let mut matches = 0usize;
+        let mut found: Option<Self> = None;
+        if fit_0 {
+            match v.decode_ref::<Card>() {
+                Ok(x) => {
+                    matches += 1;
+                    found.get_or_insert(Self::Card(x));
+                }
+                Err(e) => {
+                    first.get_or_insert(e.to_string());
+                }
             }
         }
-        runtime::first(violations)
-            .map(|()| Self(value))
-            .map_err(runtime::BuildError::value)
+        if fit_1 {
+            match v.decode_ref::<Sepa>() {
+                Ok(x) => {
+                    matches += 1;
+                    found.get_or_insert(Self::Sepa(x));
+                }
+                Err(e) => {
+                    first.get_or_insert(e.to_string());
+                }
+            }
+        }
+        match (matches, found) {
+            (1, Some(one)) => return Ok(one),
+            (n, Some(_)) => {
+                return Err(
+                    serde::de::Error::custom(
+                        format!("matches {n} of `oneOf`, not exactly one"),
+                    ),
+                );
+            }
+            (_, None) => {}
+        }
+        Err(
+            serde::de::Error::custom(
+                first.unwrap_or_else(|| "matches no variant".to_owned()),
+            ),
+        )
     }
 }
-checked_impls!(OrderPayment, OrderPaymentVariants);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct OrderDiscount(pub(super) OrderDiscountVariants);
@@ -942,50 +965,6 @@ impl<'de> runtime::TaggedUnion<'de> for VehicleVariants {
             1 => v.decode_into(Self::Van),
             _ => Err(serde::de::Error::custom("matches no variant")),
         }
-    }
-}
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum OrderPaymentVariants {
-    Card(Card),
-    Sepa(Sepa),
-}
-impl serde::Serialize for OrderPaymentVariants {
-    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        match self {
-            Self::Card(v) => serde::Serialize::serialize(v, s),
-            Self::Sepa(v) => serde::Serialize::serialize(v, s),
-        }
-    }
-}
-impl<'de> serde::Deserialize<'de> for OrderPaymentVariants {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let v = <runtime::Content<'de> as serde::Deserialize>::deserialize(d)?;
-        let fit_0 = v.kind() == runtime::Kind::Object
-            && runtime::fits(&v, &[("last4", true, &[runtime::Kind::String])]);
-        let fit_1 = v.kind() == runtime::Kind::Object
-            && runtime::fits(&v, &[("iban", true, &[runtime::Kind::String])]);
-        let mut first: Option<String> = None;
-        if fit_0 {
-            match v.decode_ref::<Card>() {
-                Ok(x) => return Ok(Self::Card(x)),
-                Err(e) => {
-                    first.get_or_insert(e.to_string());
-                }
-            }
-        }
-        if fit_1 {
-            match v.decode_ref::<Sepa>() {
-                Ok(x) => return Ok(Self::Sepa(x)),
-                Err(e) => {
-                    first.get_or_insert(e.to_string());
-                }
-            }
-        }
-        Err(
-            serde::de::Error::custom(
-                first.unwrap_or_else(|| "matches no variant".to_owned()),
-            ),
-        )
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq)]

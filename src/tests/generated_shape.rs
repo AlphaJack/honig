@@ -539,13 +539,14 @@ fn a_named_schema_keeps_its_name_beside_a_twin() {
 
 #[test]
 fn a_body_of_your_own_type_is_left_to_it() {
-    // A body of two object schemas that no Rust type judges alone: the generated code checks it as JSON, unless the
-    // schema is a type of yours.
+    // A body whose `not` no Rust type judges: the generated code checks it as JSON, unless the schema is a type of
+    // yours.
     let generate = |test: &str, rust_type: Option<&str>| {
-        let mut note = json!({"oneOf": [
-            {"type": "object", "required": ["a"], "properties": {"a": {"type": "string"}}},
-            {"type": "object", "required": ["b"], "properties": {"b": {"type": "string"}}},
-        ]});
+        let mut note = json!({
+            "type": "object",
+            "properties": {"a": {"type": "string"}, "b": {"type": "string"}},
+            "not": {"required": ["a", "b"]},
+        });
         if let Some(path) = rust_type {
             note["x-rust-type"] = json!(path);
         }
@@ -576,7 +577,7 @@ fn a_body_of_your_own_type_is_left_to_it() {
     };
     // `Note` is a checked type: decoding it, whatever the media type, checks its whole schema.
     let (types, server) = generate("shape-own-body-generated", None);
-    assert!(types.contains("pub struct Note(pub(super) NoteVariants);") && types.contains("check_schema"), "{types}");
+    assert!(types.contains("pub struct Note(pub(super) NoteFields);") && types.contains("check_schema"), "{types}");
     assert!(server.contains("check_raw_json"), "{server}");
     let (types, server) = generate("shape-own-body-yours", Some("crate::Note"));
     assert!(!types.contains("check_schema"), "{types}");
@@ -705,8 +706,8 @@ fn only_a_struct_with_a_checked_field_gets_a_builder() {
     assert!(types.contains("impl super::Tagged {"), "{types}");
 }
 
-/// An `anyOf` whose branches share a type needs no check of the whole value: decoding checks every keyword of a
-/// branch, so the first branch that decodes proves that one matches. A `oneOf` still counts its matches.
+/// An `anyOf` or `oneOf` whose branches share a type needs no check of the whole value: decoding checks every keyword
+/// of a branch. The first branch that decodes proves an `anyOf`. A `oneOf` decodes every branch and counts.
 #[test]
 fn an_any_of_is_judged_by_its_variants() {
     let union = |key: &str| {
@@ -721,5 +722,6 @@ fn an_any_of_is_judged_by_its_variants() {
     // A union checked whole is the checked type of its variants.
     let checked = |name: &str| types.contains(&format!("pub struct {name}(pub(super) {name}Variants)"));
     assert!(!checked("Any"), "{types}");
-    assert!(checked("One"), "{types}");
+    assert!(!checked("One"), "{types}");
+    assert!(types.contains("of `oneOf`, not exactly one"), "the `oneOf` counts: {types}");
 }

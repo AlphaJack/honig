@@ -133,9 +133,7 @@ fn registry_formats_take_their_library_types() {
 fn a_decimal_in_a_one_of_branch_keeps_its_digits() {
     let body = format!(r#"{{"id": "{ID}", "at": "{AT}", "charge": {{"fee": 12345678901234567.89}}}}"#);
     let e: types::Event = serde_json::from_str(&body).expect("decodes");
-    let Some(types::EventChargeVariants::Fee(charge)) = e.charge.as_deref() else {
-        panic!("the fee branch: {:?}", e.charge)
-    };
+    let Some(types::EventCharge::Fee(charge)) = e.charge.as_ref() else { panic!("the fee branch: {:?}", e.charge) };
     assert_eq!(charge.fee.as_str(), "12345678901234567.89");
 }
 

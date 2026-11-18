@@ -401,6 +401,9 @@ pub(crate) struct Union {
     /// A value of a kind that no variant covers is valid and `Other` holds it (a schema of `properties` without
     /// `type` takes any non-object). A value of a covered kind must fit its variant.
     pub rest: bool,
+    /// `oneOf`: exactly one branch takes a value. An untagged union then decodes every branch and counts. `anyOf` takes
+    /// the first branch that decodes.
+    pub exclusive: bool,
 }
 
 #[derive(Debug, Clone)]

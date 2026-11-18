@@ -591,9 +591,14 @@ impl<'de> serde::Deserialize<'de> for CropVariants {
         let v = <runtime::Content<'de> as serde::Deserialize>::deserialize(d)?;
         let fit_0 = v.kind() == runtime::Kind::String;
         let mut first: Option<String> = None;
+        let mut matches = 0usize;
+        let mut found: Option<Self> = None;
         if fit_0 {
             match v.decode_ref::<String>() {
-                Ok(x) => return Ok(Self::String(x)),
+                Ok(x) => {
+                    matches += 1;
+                    found.get_or_insert(Self::String(x));
+                }
                 Err(e) => {
                     first.get_or_insert(e.to_string());
                 }
@@ -601,11 +606,25 @@ impl<'de> serde::Deserialize<'de> for CropVariants {
         }
         {
             match v.decode_ref::<CropVariant2>() {
-                Ok(x) => return Ok(Self::Variant2(x)),
+                Ok(x) => {
+                    matches += 1;
+                    found.get_or_insert(Self::Variant2(x));
+                }
                 Err(e) => {
                     first.get_or_insert(e.to_string());
                 }
             }
+        }
+        match (matches, found) {
+            (1, Some(one)) => return Ok(one),
+            (n, Some(_)) => {
+                return Err(
+                    serde::de::Error::custom(
+                        format!("matches {n} of `oneOf`, not exactly one"),
+                    ),
+                );
+            }
+            (_, None) => {}
         }
         Err(
             serde::de::Error::custom(

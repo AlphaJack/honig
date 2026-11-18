@@ -633,3 +633,14 @@ fn an_any_of_takes_the_first_branch_that_decodes() {
     }
     assert!(serde_json::from_str::<types::Slug>(r#""ABC""#).is_err());
 }
+
+/// A `oneOf` decodes every branch and takes a value that exactly one takes: `ab` fits both and is refused.
+#[test]
+fn a_one_of_takes_a_value_that_exactly_one_branch_takes() {
+    for ok in [r#""AB""#, r#""abcd""#] {
+        assert!(serde_json::from_str::<types::Code>(ok).is_ok(), "{ok}");
+    }
+    let both = serde_json::from_str::<types::Code>(r#""ab""#).unwrap_err().to_string();
+    assert!(both.contains("matches 2 of `oneOf`, not exactly one"), "{both}");
+    assert!(serde_json::from_str::<types::Code>(r#""ABCD""#).is_err(), "neither");
+}
