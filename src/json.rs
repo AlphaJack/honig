@@ -93,7 +93,7 @@ pub(crate) fn join(pointer: &str, token: &str) -> String {
 /// Examples, enum values and schema defaults are data. `default` under
 /// `responses` is the default response. That is structure. Under a map of
 /// names (`properties`, `definitions`, ...) every key is a name: a property
-/// called `default` holds a schema (Kubernetes' `LimitRangeItem`).
+/// called `default` holds a schema.
 pub(crate) fn is_data(parent: &str, key: &str) -> bool {
     if matches!(parent, "properties" | "patternProperties" | "definitions" | "$defs" | "dependentSchemas" | "schemas") {
         return false;
