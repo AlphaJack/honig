@@ -334,11 +334,11 @@ impl runtime::Validate for Event {
             );
         }
         if let Some(v) = &self.amount {
-            runtime::check_range(
+            runtime::check_decimal_range(
                 out,
                 &runtime::InstancePath::Key(path, "amount"),
-                v.as_f64(),
-                [Some(0.0), None, None, None],
+                v.as_str(),
+                [Some("0"), None, None, None],
             );
         }
         if let Some(v) = &self.local {
@@ -505,11 +505,11 @@ impl runtime::Validate for Card {
                     }),
             );
         }
-        runtime::check_range(
+        runtime::check_decimal_range(
             out,
             &runtime::InstancePath::Key(path, "amount"),
-            self.amount.as_f64(),
-            [Some(0.0), None, None, None],
+            self.amount.as_str(),
+            [Some("0"), None, None, None],
         );
     }
 }
@@ -547,11 +547,11 @@ impl runtime::Validate for Transfer {
                     }),
             );
         }
-        runtime::check_range(
+        runtime::check_decimal_range(
             out,
             &runtime::InstancePath::Key(path, "amount"),
-            self.amount.as_f64(),
-            [Some(0.0), None, None, None],
+            self.amount.as_str(),
+            [Some("0"), None, None, None],
         );
     }
 }

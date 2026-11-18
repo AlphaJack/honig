@@ -7,9 +7,8 @@ use std::fmt;
 use serde::Serialize;
 use serde_json::{Map, Value};
 
-/// How far from a whole number `value / multipleOf` may be and still count: floating point leaves `0.3 / 0.1` a
-/// hair off 3.
-pub const MULTIPLE_TOLERANCE: f64 = 1e-9;
+/// How far from whole, relative to it, the quotient of a `multipleOf` too long to read exactly may be.
+const FALLBACK_TOLERANCE: f64 = 1e-6;
 
 /// A constraint a value breaks: where (JSON pointer) and why.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -190,6 +189,52 @@ pub fn check_range<T: PartialOrd + fmt::Display + Copy + JsonNumber>(
     }
     if let Some(m) = xmax.filter(|m| v >= *m) {
         violation(out, path, format!("{v} must be less than {m}"));
+    }
+}
+
+/// Checks that the number `value` is a multiple of `of`, exactly: both are read as their decimal text. An `f64` is its
+/// shortest text, the one that it decodes from.
+pub fn check_multiple<T: fmt::Display + JsonNumber + Copy>(
+    out: &mut Vec<Violation>,
+    path: &InstancePath<'_>,
+    value: T,
+    of: &str,
+) {
+    if value.is_json_number() {
+        check_multiple_text(out, path, &value.to_string(), of);
+    }
+}
+
+/// Checks that the decimal text `value` is a multiple of `of`, exactly. An `of` of more than 19 significant digits is
+/// compared by `f64`, within a millionth of the quotient.
+pub fn check_multiple_text(out: &mut Vec<Violation>, path: &InstancePath<'_>, value: &str, of: &str) {
+    let multiple = crate::exact::is_multiple(value, of).unwrap_or_else(|| {
+        let (v, m) = (value.parse::<f64>().unwrap_or_default(), of.parse::<f64>().unwrap_or(1.0));
+        let q = v / m;
+        (q - q.round()).abs() <= q.abs().max(1.0) * FALLBACK_TOLERANCE
+    });
+    if !multiple {
+        violation(out, path, format!("is not a multiple of {of}"));
+    }
+}
+
+/// Checks `minimum`, `maximum`, `exclusiveMinimum` and `exclusiveMaximum` of the decimal text `value` exactly: a
+/// decimal keeps more digits than an `f64` compares.
+pub fn check_decimal_range(out: &mut Vec<Violation>, path: &InstancePath<'_>, value: &str, bounds: [Option<&str>; 4]) {
+    use std::cmp::Ordering::{Greater, Less};
+    let [min, max, xmin, xmax] = bounds;
+    let cmp = |b: &str| crate::exact::compare(value, b);
+    if let Some(m) = min.filter(|m| cmp(m) == Some(Less)) {
+        violation(out, path, format!("{value} is less than the minimum {m}"));
+    }
+    if let Some(m) = max.filter(|m| cmp(m) == Some(Greater)) {
+        violation(out, path, format!("{value} is greater than the maximum {m}"));
+    }
+    if let Some(m) = xmin.filter(|m| cmp(m) != Some(Greater)) {
+        violation(out, path, format!("{value} must be greater than {m}"));
+    }
+    if let Some(m) = xmax.filter(|m| cmp(m) != Some(Less)) {
+        violation(out, path, format!("{value} must be less than {m}"));
     }
 }
 
@@ -657,11 +702,10 @@ impl Schema<'_> {
                     if let Some(m) = bound("exclusiveMaximum").filter(|m| x >= *m) {
                         fail(out, format!("{num} must be less than {m}"));
                     }
-                    if let Some(m) = bound("multipleOf").filter(|m| *m > 0.0) {
-                        let q = x / m;
-                        if (q - q.round()).abs() > MULTIPLE_TOLERANCE {
-                            fail(out, format!("is not a multiple of {m}"));
-                        }
+                    if let Some(m) = s.get("multipleOf").and_then(Value::as_number).filter(|m| m.as_f64() > Some(0.0))
+                        && crate::exact::is_multiple(&num.to_string(), &m.to_string()) == Some(false)
+                    {
+                        fail(out, format!("is not a multiple of {m}"));
                     }
                 }
             }
@@ -1372,7 +1416,8 @@ mod tests {
     fn multiple_of_and_property_counts_hold_at_their_bounds() {
         use serde_json::json;
         assert_eq!(faults(&json!(4), &json!({"multipleOf": 2})), 0);
-        assert_eq!(faults(&json!(0.3), &json!({"multipleOf": 0.1})), 0, "within the float tolerance");
+        assert_eq!(faults(&json!(0.3), &json!({"multipleOf": 0.1})), 0, "exact on the decimal text");
+        assert_eq!(faults(&json!(0.300_000_000_000_000_04), &json!({"multipleOf": 0.1})), 1, "0.1 + 0.2");
         assert_eq!(faults(&json!(3), &json!({"multipleOf": 2})), 1);
         assert_eq!(faults(&json!({"a": 1}), &json!({"maxProperties": 1})), 0);
         assert_eq!(faults(&json!({"a": 1, "b": 2}), &json!({"maxProperties": 1})), 1);

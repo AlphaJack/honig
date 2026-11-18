@@ -80,6 +80,12 @@ paths:
           description: Created.
 components:
   schemas:
+    # A decimal keeps its digits: its range and `multipleOf` hold on them, past what an `f64` tells apart.
+    Exact:
+      type: object
+      properties:
+        tenth: {type: number, format: decimal, minimum: 0.1}
+        cents: {type: number, format: decimal, multipleOf: 0.01}
     # Integer keywords checked exactly. A bound that no value of the type meets leaves none, and `multipleOf: 2.5`
     # takes the integers that are multiples of 5.
     Degenerate:

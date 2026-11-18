@@ -180,6 +180,54 @@ macro_rules! str_enum_impls {
 }
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
+pub struct Exact {
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub tenth: Option<runtime::Decimal>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub cents: Option<runtime::Decimal>,
+}
+deserialize_impl!(Exact);
+serialize_impl!(Exact);
+impl Exact {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self { tenth: None, cents: None }
+    }
+}
+impl runtime::Validate for Exact {
+    fn validate(
+        &self,
+        path: &runtime::InstancePath<'_>,
+        out: &mut Vec<runtime::Violation>,
+    ) {
+        if let Some(v) = &self.tenth {
+            runtime::check_decimal_range(
+                out,
+                &runtime::InstancePath::Key(path, "tenth"),
+                v.as_str(),
+                [Some("0.1"), None, None, None],
+            );
+        }
+        if let Some(v) = &self.cents {
+            runtime::check_multiple_text(
+                out,
+                &runtime::InstancePath::Key(path, "cents"),
+                v.as_str(),
+                "0.01",
+            );
+        }
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
 pub struct Degenerate {
     #[serde(
         default,
@@ -709,14 +757,12 @@ impl runtime::Validate for Price {
         out: &mut Vec<runtime::Violation>,
     ) {
         if let Some(v) = &self.amount {
-            let q = *v / 0.01;
-            if (q - q.round()).abs() > 1e-9 {
-                runtime::violation(
-                    out,
-                    &runtime::InstancePath::Key(path, "amount"),
-                    "is not a multiple of 0.01",
-                );
-            }
+            runtime::check_multiple(
+                out,
+                &runtime::InstancePath::Key(path, "amount"),
+                *v,
+                "0.01",
+            );
         }
     }
 }
@@ -811,14 +857,12 @@ impl runtime::Validate for User {
             );
         }
         if let Some(v) = &self.score {
-            let q = *v / 0.5;
-            if (q - q.round()).abs() > 1e-9 {
-                runtime::violation(
-                    out,
-                    &runtime::InstancePath::Key(path, "score"),
-                    "is not a multiple of 0.5",
-                );
-            }
+            runtime::check_multiple(
+                out,
+                &runtime::InstancePath::Key(path, "score"),
+                *v,
+                "0.5",
+            );
         }
         if let Some(v) = &self.tags {
             runtime::check_len(
