@@ -26,6 +26,22 @@ macro_rules! validate_impl {
         impl runtime::Validate for $t {}
     };
 }
+macro_rules! display_impl {
+    ($t:ty) => {
+        impl std::fmt::Display for $t {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                match self {
+                    Self::Ok { .. } => f.write_str("status 200 (Ok)"),
+                }
+            }
+        }
+    };
+}
+macro_rules! error_impl {
+    ($t:ty) => {
+        impl std::error::Error for $t {}
+    };
+}
 macro_rules! validate_impl_2 {
     ($t:ty) => {
         impl runtime::Validate for $t {
@@ -63,6 +79,17 @@ macro_rules! validate_impl_3 {
                         &runtime::InstancePath::Key(path, "body"),
                         out,
                     );
+                }
+            }
+        }
+    };
+}
+macro_rules! display_impl_2 {
+    ($t:ty) => {
+        impl std::fmt::Display for $t {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                match self {
+                    Self::Ok => f.write_str("status 200 (Ok)"),
                 }
             }
         }
@@ -175,6 +202,41 @@ pub mod get_all_data {
             /// Cache control directives
             x_cache_control: Option<String>,
         },
+    }
+    display_impl!(Response);
+    error_impl!(Response);
+    /// The body and headers of the success, in order: what `Response::into_ok` gives.
+    pub type Success = (
+        OkBody,
+        Option<String>,
+        Option<i64>,
+        Option<i64>,
+        Option<i64>,
+        Option<String>,
+    );
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<Success, Box<Self>> {
+            match self {
+                Self::Ok {
+                    body,
+                    x_request_id,
+                    x_pagination_total,
+                    x_pagination_page,
+                    x_pagination_per_page,
+                    x_cache_control,
+                } => {
+                    Ok((
+                        body,
+                        x_request_id,
+                        x_pagination_total,
+                        x_pagination_page,
+                        x_pagination_per_page,
+                        x_cache_control,
+                    ))
+                }
+            }
+        }
     }
     #[derive(Debug, Clone, PartialEq)]
     pub enum OkBody {
@@ -291,6 +353,36 @@ pub mod create_product {
         /// Forbidden
         Forbidden(ForbiddenBody),
     }
+    impl std::fmt::Display for Response {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Self::Created { .. } => f.write_str("status 201 (Created)"),
+                Self::BadRequest { .. } => f.write_str("status 400 (BadRequest)"),
+                Self::Forbidden(..) => f.write_str("status 403 (Forbidden)"),
+            }
+        }
+    }
+    error_impl!(Response);
+    /// The body and headers of the success, in order: what `Response::into_ok` gives.
+    pub type Success = (
+        Box<types::Product>,
+        Option<String>,
+        Option<url::Url>,
+        Option<i64>,
+    );
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<Success, Box<Self>> {
+            match self {
+                Self::Created { body, x_request_id, location, x_processing_time } => {
+                    Ok((body, x_request_id, location, x_processing_time))
+                }
+                other @ (Self::BadRequest { .. } | Self::Forbidden(..)) => {
+                    Err(Box::new(other))
+                }
+            }
+        }
+    }
     pub type BadRequestBody = super::responses::BadRequest;
     pub type ForbiddenBody = super::responses::Forbidden;
     pub mod links {
@@ -394,6 +486,26 @@ pub mod query_products {
             x_request_id: Option<String>,
         },
     }
+    impl std::fmt::Display for Response {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Self::Ok { .. } => f.write_str("status 200 (Ok)"),
+                Self::BadRequest { .. } => f.write_str("status 400 (BadRequest)"),
+            }
+        }
+    }
+    error_impl!(Response);
+    /// The body and headers of the success, in order: what `Response::into_ok` gives.
+    pub type Success = (types::QueryProductsOk, Option<String>);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<Success, Box<Self>> {
+            match self {
+                Self::Ok { body, x_request_id } => Ok((body, x_request_id)),
+                other @ Self::BadRequest { .. } => Err(Box::new(other)),
+            }
+        }
+    }
     pub type BadRequestBody = super::responses::BadRequest;
 }
 /// Filter products using a single, structured query string. The `filter` parameter sets `in` to `querystring` (new in `OpenAPI` 3.2), which describes the entire query string as one value via a media type instead of listing each query parameter individually.
@@ -423,6 +535,18 @@ pub mod search_products {
             /// Unique identifier for the request
             x_request_id: Option<String>,
         },
+    }
+    display_impl!(Response);
+    error_impl!(Response);
+    /// The body and headers of the success, in order: what `Response::into_ok` gives.
+    pub type Success = (types::SearchProductsOk, Option<String>);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<Success, Box<Self>> {
+            match self {
+                Self::Ok { body, x_request_id } => Ok((body, x_request_id)),
+            }
+        }
     }
 }
 /// One product, by its ID.
@@ -488,6 +612,38 @@ pub mod get_product {
         },
         /// Not Found
         NotFound(NotFoundBody),
+    }
+    impl std::fmt::Display for Response {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Self::Ok { .. } => f.write_str("status 200 (Ok)"),
+                Self::NotFound(..) => f.write_str("status 404 (NotFound)"),
+            }
+        }
+    }
+    error_impl!(Response);
+    /// The body and headers of the success, in order: what `Response::into_ok` gives.
+    pub type Success = (
+        Box<types::Product>,
+        Option<String>,
+        Option<String>,
+        Option<String>,
+        Option<String>,
+    );
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<Success, Box<Self>> {
+            match self {
+                Self::Ok {
+                    body,
+                    x_request_id,
+                    e_tag,
+                    last_modified,
+                    x_cache_control,
+                } => Ok((body, x_request_id, e_tag, last_modified, x_cache_control)),
+                other @ Self::NotFound(..) => Err(Box::new(other)),
+            }
+        }
     }
     pub type NotFoundBody = super::responses::NotFound;
     pub mod links {
@@ -584,6 +740,32 @@ pub mod update_product {
         /// The product changed since the client read it
         PreconditionFailed,
     }
+    impl std::fmt::Display for Response {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Self::Ok(..) => f.write_str("status 200 (Ok)"),
+                Self::BadRequest { .. } => f.write_str("status 400 (BadRequest)"),
+                Self::Forbidden(..) => f.write_str("status 403 (Forbidden)"),
+                Self::NotFound(..) => f.write_str("status 404 (NotFound)"),
+                Self::PreconditionFailed => {
+                    f.write_str("status 412 (PreconditionFailed)")
+                }
+            }
+        }
+    }
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<Box<types::Product>, Box<Self>> {
+            match self {
+                Self::Ok(body) => Ok(body),
+                other @ (Self::BadRequest { .. }
+                | Self::Forbidden(..)
+                | Self::NotFound(..)
+                | Self::PreconditionFailed) => Err(Box::new(other)),
+            }
+        }
+    }
     pub type BadRequestBody = super::responses::BadRequest;
     pub type ForbiddenBody = super::responses::Forbidden;
     pub type NotFoundBody = super::responses::NotFound;
@@ -628,6 +810,24 @@ pub mod delete_product {
         NoContent,
         /// Not Found
         NotFound(NotFoundBody),
+    }
+    impl std::fmt::Display for Response {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Self::NoContent => f.write_str("status 204 (NoContent)"),
+                Self::NotFound(..) => f.write_str("status 404 (NotFound)"),
+            }
+        }
+    }
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+                other @ Self::NotFound(..) => Err(Box::new(other)),
+            }
+        }
     }
     pub type NotFoundBody = super::responses::NotFound;
 }
@@ -677,6 +877,26 @@ pub mod copy_product {
         },
         /// Not Found
         NotFound(NotFoundBody),
+    }
+    impl std::fmt::Display for Response {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Self::Created { .. } => f.write_str("status 201 (Created)"),
+                Self::NotFound(..) => f.write_str("status 404 (NotFound)"),
+            }
+        }
+    }
+    error_impl!(Response);
+    /// The body and headers of the success, in order: what `Response::into_ok` gives.
+    pub type Success = (Box<types::Product>, Option<url::Url>);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<Success, Box<Self>> {
+            match self {
+                Self::Created { body, location } => Ok((body, location)),
+                other @ Self::NotFound(..) => Err(Box::new(other)),
+            }
+        }
     }
     pub type NotFoundBody = super::responses::NotFound;
     pub mod links {
@@ -765,6 +985,32 @@ pub mod upload_image {
         /// Not Found
         NotFound(NotFoundBody),
     }
+    impl std::fmt::Display for Response {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Self::Ok { .. } => f.write_str("status 200 (Ok)"),
+                Self::BadRequest { .. } => f.write_str("status 400 (BadRequest)"),
+                Self::Forbidden(..) => f.write_str("status 403 (Forbidden)"),
+                Self::NotFound(..) => f.write_str("status 404 (NotFound)"),
+            }
+        }
+    }
+    error_impl!(Response);
+    /// The body and headers of the success, in order: what `Response::into_ok` gives.
+    pub type Success = (OkBody, Option<String>, Option<String>);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<Success, Box<Self>> {
+            match self {
+                Self::Ok { body, x_request_id, x_cache_control } => {
+                    Ok((body, x_request_id, x_cache_control))
+                }
+                other @ (Self::BadRequest { .. }
+                | Self::Forbidden(..)
+                | Self::NotFound(..)) => Err(Box::new(other)),
+            }
+        }
+    }
     pub type OkBody = super::responses::ImageUploaded;
     pub type BadRequestBody = super::responses::BadRequest;
     pub type ForbiddenBody = super::responses::Forbidden;
@@ -827,6 +1073,18 @@ pub mod stream_product_events {
             x_request_id: Option<String>,
         },
     }
+    display_impl!(Response);
+    error_impl!(Response);
+    /// The body and headers of the success, in order: what `Response::into_ok` gives.
+    pub type Success = (OkBody, Option<String>);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<Success, Box<Self>> {
+            match self {
+                Self::Ok { body, x_request_id } => Ok((body, x_request_id)),
+            }
+        }
+    }
     #[derive(Debug, Clone, PartialEq)]
     pub enum OkBody {
         EventStream(runtime::Items<types::ProductEvent>),
@@ -864,17 +1122,19 @@ pub mod upload_photos {
             {
                 static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                 let value = runtime::to_value(&self.body).unwrap_or_default();
-                runtime::check_schema(
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"type\":\"array\",\"prefixItems\":[{\"$ref\":\"#/$defs/~1components~1schemas~1PhotoBatchMeta\"}],\"items\":{\"type\":\"string\",\"format\":\"binary\"}}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
                     out,
                     &runtime::InstancePath::Key(path, "body"),
                     &value,
-                    SCHEMA
-                        .get_or_init(|| {
-                            serde_json::from_str(
-                                    "{\"type\":\"array\",\"prefixItems\":[{\"$ref\":\"#/$defs/~1components~1schemas~1PhotoBatchMeta\"}],\"items\":{\"type\":\"string\",\"format\":\"binary\"},\"$defs\":{\"/components/schemas/PhotoBatchMeta\":{\"type\":\"object\",\"required\":[\"photographer\"],\"properties\":{\"photographer\":{\"type\":\"string\"},\"takenAt\":{\"type\":\"string\",\"format\":\"date-time\"},\"count\":{\"type\":\"integer\"}}}}}",
-                                )
-                                .unwrap_or_default()
-                        }),
+                    schema,
+                    runtime::schema_defs(),
                 );
             }
         }
@@ -895,6 +1155,29 @@ pub mod upload_photos {
         },
         /// Not Found
         NotFound(NotFoundBody),
+    }
+    impl std::fmt::Display for Response {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Self::Accepted { .. } => f.write_str("status 202 (Accepted)"),
+                Self::BadRequest { .. } => f.write_str("status 400 (BadRequest)"),
+                Self::NotFound(..) => f.write_str("status 404 (NotFound)"),
+            }
+        }
+    }
+    error_impl!(Response);
+    /// The body and headers of the success, in order: what `Response::into_ok` gives.
+    pub type Success = (types::UploadPhotosAccepted, Option<String>);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<Success, Box<Self>> {
+            match self {
+                Self::Accepted { body, x_request_id } => Ok((body, x_request_id)),
+                other @ (Self::BadRequest { .. } | Self::NotFound(..)) => {
+                    Err(Box::new(other))
+                }
+            }
+        }
     }
     pub type BadRequestBody = super::responses::BadRequest;
     pub type NotFoundBody = super::responses::NotFound;
@@ -925,17 +1208,19 @@ pub mod create_item {
             {
                 static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                 let value = runtime::to_value(&self.body).unwrap_or_default();
-                runtime::check_schema(
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"oneOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Product\"},{\"$ref\":\"#/$defs/~1components~1schemas~1Variant\"}]}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
                     out,
                     &runtime::InstancePath::Key(path, "body"),
                     &value,
-                    SCHEMA
-                        .get_or_init(|| {
-                            serde_json::from_str(
-                                    "{\"oneOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Product\"},{\"$ref\":\"#/$defs/~1components~1schemas~1Variant\"}],\"$defs\":{\"/components/schemas/Product\":{\"type\":\"object\",\"required\":[\"name\"],\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"integer\",\"format\":\"int64\",\"readOnly\":true},\"name\":{\"type\":\"string\"},\"description\":{\"type\":[\"string\",\"null\"]},\"type\":{\"type\":\"string\",\"enum\":[\"hardware\",\"software\",\"service\",\"accessory\",\"subscription\"],\"x-enum-varnames\":[\"Hardware\",\"Software\",\"Service\",\"Accessory\",\"Subscription\"]},\"rating\":{\"type\":\"number\",\"format\":\"float\",\"minimum\":0,\"maximum\":1},\"dimensions\":{\"type\":\"object\",\"additionalProperties\":{\"type\":\"number\",\"format\":\"float\"},\"properties\":{\"weight\":{\"type\":\"number\",\"format\":\"float\",\"exclusiveMinimum\":0},\"width\":{\"type\":\"number\",\"format\":\"float\",\"exclusiveMinimum\":0},\"height\":{\"type\":\"number\",\"format\":\"float\"},\"price\":{\"type\":\"object\",\"additionalProperties\":{\"type\":\"number\",\"format\":\"float\"},\"properties\":{\"min\":{\"type\":\"number\",\"format\":\"float\"},\"max\":{\"type\":\"number\",\"format\":\"float\"},\"average\":{\"type\":\"number\",\"format\":\"float\"}}}}},\"materials\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"additionalProperties\":{\"type\":\"string\"},\"properties\":{\"material\":{\"type\":\"string\"},\"percentage\":{\"type\":\"number\",\"format\":\"float\",\"exclusiveMaximum\":100}}}},\"listedAt\":{\"type\":\"string\",\"format\":\"date-time\"},\"image\":{\"type\":[\"string\",\"null\"]},\"variants\":{\"type\":\"array\",\"items\":{\"$ref\":\"#/$defs/~1components~1schemas~1Variant\"}},\"creator\":{\"$ref\":\"#/$defs/~1components~1schemas~1User\"},\"tags\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"lastUpdated\":{\"type\":\"string\",\"format\":\"date-time\",\"readOnly\":true},\"successCallbackUrl\":{\"type\":\"string\",\"format\":\"uri\"},\"failureCallbackUrl\":{\"type\":\"string\",\"format\":\"uri\"}}},\"/components/schemas/Variant\":{\"type\":\"object\",\"required\":[\"name\"],\"properties\":{\"id\":{\"type\":\"integer\",\"format\":\"int64\",\"readOnly\":true},\"name\":{\"type\":\"string\"},\"description\":{\"type\":[\"string\",\"null\"]},\"length\":{\"type\":\"number\",\"format\":\"float\"},\"type\":{\"type\":\"string\",\"enum\":[\"size\",\"color\",\"edition\"],\"x-enum-varnames\":[\"Size\",\"Color\",\"Edition\"]},\"shipping\":{\"type\":\"object\",\"properties\":{\"product\":{\"$ref\":\"#/$defs/~1components~1schemas~1Product\"},\"deliveryDays\":{\"type\":\"number\",\"format\":\"float\"},\"distance\":{\"type\":\"number\",\"format\":\"float\"}}}}},\"/components/schemas/User\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"integer\",\"format\":\"int64\",\"readOnly\":true},\"name\":{\"type\":\"string\"}}}}}",
-                                )
-                                .unwrap_or_default()
-                        }),
+                    schema,
+                    runtime::schema_defs(),
                 );
             }
         }
@@ -944,6 +1229,22 @@ pub mod create_item {
     pub enum Response {
         /// Item created
         Created(types::Item),
+    }
+    impl std::fmt::Display for Response {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Self::Created(..) => f.write_str("status 201 (Created)"),
+            }
+        }
+    }
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<types::Item, Box<Self>> {
+            match self {
+                Self::Created(body) => Ok(body),
+            }
+        }
     }
 }
 /// Create a user account.
@@ -1022,6 +1323,38 @@ pub mod create_user {
         Conflict(ConflictBody),
         /// Unprocessable Entity
         UnprocessableEntity(UnprocessableEntityBody),
+    }
+    impl std::fmt::Display for Response {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Self::Created { .. } => f.write_str("status 201 (Created)"),
+                Self::BadRequest { .. } => f.write_str("status 400 (BadRequest)"),
+                Self::Unauthorized(..) => f.write_str("status 401 (Unauthorized)"),
+                Self::Forbidden(..) => f.write_str("status 403 (Forbidden)"),
+                Self::Conflict(..) => f.write_str("status 409 (Conflict)"),
+                Self::UnprocessableEntity(..) => {
+                    f.write_str("status 422 (UnprocessableEntity)")
+                }
+            }
+        }
+    }
+    error_impl!(Response);
+    /// The body and headers of the success, in order: what `Response::into_ok` gives.
+    pub type Success = (types::User, Option<String>, Option<url::Url>, Option<i64>);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<Success, Box<Self>> {
+            match self {
+                Self::Created { body, x_request_id, location, x_processing_time } => {
+                    Ok((body, x_request_id, location, x_processing_time))
+                }
+                other @ (Self::BadRequest { .. }
+                | Self::Unauthorized(..)
+                | Self::Forbidden(..)
+                | Self::Conflict(..)
+                | Self::UnprocessableEntity(..)) => Err(Box::new(other)),
+            }
+        }
     }
     pub type BadRequestBody = super::responses::BadRequest;
     pub type UnauthorizedBody = super::responses::Unauthorized;
@@ -1118,6 +1451,54 @@ pub mod get_token {
             retry_after: Option<i64>,
         },
     }
+    impl std::fmt::Display for Response {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Self::Created { .. } => f.write_str("status 201 (Created)"),
+                Self::BadRequest { .. } => f.write_str("status 400 (BadRequest)"),
+                Self::Unauthorized(..) => f.write_str("status 401 (Unauthorized)"),
+                Self::Forbidden(..) => f.write_str("status 403 (Forbidden)"),
+                Self::TooManyRequests { .. } => {
+                    f.write_str("status 429 (TooManyRequests)")
+                }
+            }
+        }
+    }
+    error_impl!(Response);
+    /// The body and headers of the success, in order: what `Response::into_ok` gives.
+    pub type Success = (
+        types::Token,
+        Option<String>,
+        Option<i64>,
+        Option<i64>,
+        Option<i64>,
+    );
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<Success, Box<Self>> {
+            match self {
+                Self::Created {
+                    body,
+                    x_request_id,
+                    x_rate_limit_limit,
+                    x_rate_limit_remaining,
+                    x_rate_limit_reset,
+                } => {
+                    Ok((
+                        body,
+                        x_request_id,
+                        x_rate_limit_limit,
+                        x_rate_limit_remaining,
+                        x_rate_limit_reset,
+                    ))
+                }
+                other @ (Self::BadRequest { .. }
+                | Self::Unauthorized(..)
+                | Self::Forbidden(..)
+                | Self::TooManyRequests { .. }) => Err(Box::new(other)),
+            }
+        }
+    }
     pub type BadRequestBody = super::responses::BadRequest;
     pub type UnauthorizedBody = super::responses::Unauthorized;
     pub type ForbiddenBody = super::responses::Forbidden;
@@ -1182,6 +1563,41 @@ pub mod get_me {
         /// Forbidden
         Forbidden(ForbiddenBody),
     }
+    impl std::fmt::Display for Response {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Self::Ok { .. } => f.write_str("status 200 (Ok)"),
+                Self::Unauthorized(..) => f.write_str("status 401 (Unauthorized)"),
+                Self::Forbidden(..) => f.write_str("status 403 (Forbidden)"),
+            }
+        }
+    }
+    error_impl!(Response);
+    /// The body and headers of the success, in order: what `Response::into_ok` gives.
+    pub type Success = (
+        types::User,
+        Option<String>,
+        Option<String>,
+        Option<String>,
+        Option<String>,
+    );
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<Success, Box<Self>> {
+            match self {
+                Self::Ok {
+                    body,
+                    x_request_id,
+                    e_tag,
+                    last_modified,
+                    x_cache_control,
+                } => Ok((body, x_request_id, e_tag, last_modified, x_cache_control)),
+                other @ (Self::Unauthorized(..) | Self::Forbidden(..)) => {
+                    Err(Box::new(other))
+                }
+            }
+        }
+    }
     pub type UnauthorizedBody = super::responses::Unauthorized;
     pub type ForbiddenBody = super::responses::Forbidden;
 }
@@ -1207,6 +1623,16 @@ pub mod new_product_post {
     pub enum Response {
         /// Return a 200 status to indicate that the data was received successfully
         Ok,
+    }
+    display_impl_2!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::Ok => Ok(()),
+            }
+        }
     }
 }
 pub mod create_product_product_created_post {
@@ -1234,6 +1660,23 @@ pub mod create_product_product_created_post {
         /// Your server should return this HTTP status code if no longer interested in further updates
         NoContent,
     }
+    impl std::fmt::Display for Response {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Self::Ok => f.write_str("status 200 (Ok)"),
+                Self::NoContent => f.write_str("status 204 (NoContent)"),
+            }
+        }
+    }
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<Self, Box<Self>> {
+            match self {
+                success @ (Self::Ok | Self::NoContent) => Ok(success),
+            }
+        }
+    }
 }
 pub mod create_product_product_creation_failed_post {
     use super::super::types;
@@ -1258,6 +1701,16 @@ pub mod create_product_product_creation_failed_post {
         /// Your server returns this code if it accepts the failure callback notification
         Ok,
     }
+    display_impl_2!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::Ok => Ok(()),
+            }
+        }
+    }
 }
 pub mod create_product_product_discontinued_post {
     use super::super::types;
@@ -1281,6 +1734,16 @@ pub mod create_product_product_discontinued_post {
     pub enum Response {
         /// Your server returns this code if it accepts the discontinued product callback notification
         Ok,
+    }
+    display_impl_2!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::Ok => Ok(()),
+            }
+        }
     }
 }
 pub mod responses {

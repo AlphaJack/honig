@@ -25,6 +25,22 @@ macro_rules! validate_impl {
         impl runtime::Validate for $t {}
     };
 }
+macro_rules! display_impl {
+    ($t:ty) => {
+        impl std::fmt::Display for $t {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                match self {
+                    Self::Ok(..) => f.write_str("status 200 (Ok)"),
+                }
+            }
+        }
+    };
+}
+macro_rules! error_impl {
+    ($t:ty) => {
+        impl std::error::Error for $t {}
+    };
+}
 pub mod no_xml_object {
     use super::super::types;
     use super::super::runtime;
@@ -44,6 +60,16 @@ pub mod no_xml_object {
     pub enum Response {
         /// Basic string property without an XML Object.
         Ok(types::NoXmlObjectOk),
+    }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<types::NoXmlObjectOk, Box<Self>> {
+            match self {
+                Self::Ok(body) => Ok(body),
+            }
+        }
     }
 }
 pub mod no_xml_object_array {
@@ -65,6 +91,16 @@ pub mod no_xml_object_array {
     pub enum Response {
         /// Basic string array property (`nodeType` is `none` by default).
         Ok(types::NoXmlObjectArrayOk),
+    }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<types::NoXmlObjectArrayOk, Box<Self>> {
+            match self {
+                Self::Ok(body) => Ok(body),
+            }
+        }
     }
 }
 pub mod xml_attribute_prefix_and_namespace {
@@ -89,6 +125,22 @@ pub mod xml_attribute_prefix_and_namespace {
         /// ok
         NoContent,
     }
+    impl std::fmt::Display for Response {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Self::NoContent => f.write_str("status 204 (NoContent)"),
+            }
+        }
+    }
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
+    }
 }
 pub mod xml_array_item_names {
     use super::super::types;
@@ -109,6 +161,16 @@ pub mod xml_array_item_names {
     pub enum Response {
         /// Items named `product`.
         Ok(types::XmlArrayItemNamesOk),
+    }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<types::XmlArrayItemNamesOk, Box<Self>> {
+            match self {
+                Self::Ok(body) => Ok(body),
+            }
+        }
     }
 }
 pub mod xml_array_name_without_wrapper {
@@ -131,6 +193,16 @@ pub mod xml_array_name_without_wrapper {
         /// The array's `name` has no effect while its `nodeType` is `none`.
         Ok(types::XmlArrayNameWithoutWrapperOk),
     }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<types::XmlArrayNameWithoutWrapperOk, Box<Self>> {
+            match self {
+                Self::Ok(body) => Ok(body),
+            }
+        }
+    }
 }
 pub mod xml_array_wrapped {
     use super::super::types;
@@ -151,6 +223,16 @@ pub mod xml_array_wrapped {
     pub enum Response {
         /// A wrapper element named after the property, items too.
         Ok(types::XmlArrayWrappedOk),
+    }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<types::XmlArrayWrappedOk, Box<Self>> {
+            match self {
+                Self::Ok(body) => Ok(body),
+            }
+        }
     }
 }
 pub mod xml_array_wrapped_item_names {
@@ -173,6 +255,16 @@ pub mod xml_array_wrapped_item_names {
         /// A wrapper element, items named `product`.
         Ok(types::XmlArrayWrappedItemNamesOk),
     }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<types::XmlArrayWrappedItemNamesOk, Box<Self>> {
+            match self {
+                Self::Ok(body) => Ok(body),
+            }
+        }
+    }
 }
 pub mod xml_array_wrapped_renamed {
     use super::super::types;
@@ -194,6 +286,16 @@ pub mod xml_array_wrapped_renamed {
         /// A wrapper element named `aliens`, items named `product`.
         Ok(types::XmlArrayWrappedRenamedOk),
     }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<types::XmlArrayWrappedRenamedOk, Box<Self>> {
+            match self {
+                Self::Ok(body) => Ok(body),
+            }
+        }
+    }
 }
 pub mod elements_with_attributes_and_text {
     use super::super::runtime;
@@ -213,6 +315,16 @@ pub mod elements_with_attributes_and_text {
     pub enum Response {
         /// Each item an element with an attribute and text.
         Ok(String),
+    }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<String, Box<Self>> {
+            match self {
+                Self::Ok(body) => Ok(body),
+            }
+        }
     }
 }
 pub mod referenced_element_with_cdata {
@@ -235,6 +347,16 @@ pub mod referenced_element_with_cdata {
         /// Documentation.
         Ok(types::Documentation),
     }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<types::Documentation, Box<Self>> {
+            match self {
+                Self::Ok(body) => Ok(body),
+            }
+        }
+    }
 }
 pub mod ordered_elements {
     use super::super::runtime;
@@ -254,6 +376,16 @@ pub mod ordered_elements {
     pub enum Response {
         /// A sequence of elements, and `null` as `xsi:nil`.
         Ok(String),
+    }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<String, Box<Self>> {
+            match self {
+                Self::Ok(body) => Ok(body),
+            }
+        }
     }
 }
 pub mod ordered_elements_and_text {
@@ -275,6 +407,16 @@ pub mod ordered_elements_and_text {
         /// Text and elements interleaved.
         Ok(String),
     }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<String, Box<Self>> {
+            match self {
+                Self::Ok(body) => Ok(body),
+            }
+        }
+    }
 }
 pub mod xml_with_null_values {
     use super::super::types;
@@ -295,5 +437,15 @@ pub mod xml_with_null_values {
     pub enum Response {
         /// Empty objects and `null`.
         Ok(types::XmlWithNullValuesOk),
+    }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<types::XmlWithNullValuesOk, Box<Self>> {
+            match self {
+                Self::Ok(body) => Ok(body),
+            }
+        }
     }
 }

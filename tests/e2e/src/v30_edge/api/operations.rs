@@ -11,6 +11,11 @@
     clippy::missing_errors_doc,
     reason = "generated docs hold only the description's own prose"
 )]
+macro_rules! error_impl {
+    ($t:ty) => {
+        impl std::error::Error for $t {}
+    };
+}
 macro_rules! validate_impl {
     ($t:ty) => {
         impl runtime::Validate for $t {
@@ -97,6 +102,28 @@ pub mod list_orders {
         /// A problem.
         ClientError { status: runtime::http::StatusCode, body: types::Problem },
     }
+    impl std::fmt::Display for Response {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Self::Ok { .. } => f.write_str("status 200 (Ok)"),
+                Self::ClientError { status, .. } => {
+                    write!(f, "status {} (ClientError)", status.as_u16())
+                }
+            }
+        }
+    }
+    error_impl!(Response);
+    /// The body and headers of the success, in order: what `Response::into_ok` gives.
+    pub type Success = (types::OrderPage, Option<String>);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<Success, Box<Self>> {
+            match self {
+                Self::Ok { body, x_next_cursor } => Ok((body, x_next_cursor)),
+                other @ Self::ClientError { .. } => Err(Box::new(other)),
+            }
+        }
+    }
 }
 pub mod create_order {
     use super::super::types;
@@ -135,6 +162,31 @@ pub mod create_order {
         /// A problem.
         Default { status: runtime::http::StatusCode, body: types::Problem },
     }
+    impl std::fmt::Display for Response {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Self::Created(..) => f.write_str("status 201 (Created)"),
+                Self::UnprocessableEntity(..) => {
+                    f.write_str("status 422 (UnprocessableEntity)")
+                }
+                Self::Default { status, .. } => {
+                    write!(f, "status {} (Default)", status.as_u16())
+                }
+            }
+        }
+    }
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<Box<types::Order>, Box<Self>> {
+            match self {
+                Self::Created(body) => Ok(body),
+                other @ (Self::UnprocessableEntity(..) | Self::Default { .. }) => {
+                    Err(Box::new(other))
+                }
+            }
+        }
+    }
 }
 pub mod get_order {
     use super::super::types;
@@ -160,6 +212,31 @@ pub mod get_order {
         NotFound(types::Problem),
         /// A problem.
         Default { status: runtime::http::StatusCode, body: types::Problem },
+    }
+    impl std::fmt::Display for Response {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Self::Ok { .. } => f.write_str("status 200 (Ok)"),
+                Self::NotFound(..) => f.write_str("status 404 (NotFound)"),
+                Self::Default { status, .. } => {
+                    write!(f, "status {} (Default)", status.as_u16())
+                }
+            }
+        }
+    }
+    error_impl!(Response);
+    /// The body and headers of the success, in order: what `Response::into_ok` gives.
+    pub type Success = (Box<types::Order>, String);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<Success, Box<Self>> {
+            match self {
+                Self::Ok { body, x_request_id } => Ok((body, x_request_id)),
+                other @ (Self::NotFound(..) | Self::Default { .. }) => {
+                    Err(Box::new(other))
+                }
+            }
+        }
     }
     pub mod links {
         use super::super::super::types;
@@ -200,5 +277,21 @@ pub mod upload_document {
     pub enum Response {
         /// Stored.
         NoContent,
+    }
+    impl std::fmt::Display for Response {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Self::NoContent => f.write_str("status 204 (NoContent)"),
+            }
+        }
+    }
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
     }
 }

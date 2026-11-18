@@ -26,7 +26,7 @@ exclude = ["reference", "target"]
 
 [workspace.package]
 # Generated code pins `honig = "=<version>"`: both crates share it.
-version = "0.0.2"
+version = "0.0.3"
 edition = "2024"
 rust-version = "1.91"
 license = "Apache-2.0"
@@ -46,7 +46,7 @@ indexmap = { version = "2", features = ["serde"] }
 # What generated code and the generator must agree on: status phrases, percent escapes.
 # Released together at one version: release-plz bumps the pin with it. `regress`: checking an example against its
 # schema checks its `pattern` too.
-runtime = { package = "honig", version = "=0.0.2", path = "runtime", features = ["regress"] }
+runtime = { package = "honig", version = "=0.0.3", path = "runtime", features = ["regress"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
 serde_path_to_error = "0.1"

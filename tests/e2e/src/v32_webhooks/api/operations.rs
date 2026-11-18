@@ -16,6 +16,11 @@ macro_rules! validate_impl {
         impl runtime::Validate for $t {}
     };
 }
+macro_rules! error_impl {
+    ($t:ty) => {
+        impl std::error::Error for $t {}
+    };
+}
 pub mod subscribe {
     use super::super::types;
     use super::super::runtime;
@@ -36,6 +41,22 @@ pub mod subscribe {
     pub enum Response {
         /// Subscribed.
         Created,
+    }
+    impl std::fmt::Display for Response {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Self::Created => f.write_str("status 201 (Created)"),
+            }
+        }
+    }
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::Created => Ok(()),
+            }
+        }
     }
     pub mod callbacks {
         use super::super::super::runtime;
@@ -75,6 +96,24 @@ pub mod new_product {
         /// Gone, stop sending.
         Gone,
     }
+    impl std::fmt::Display for Response {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Self::Ok => f.write_str("status 200 (Ok)"),
+                Self::Gone => f.write_str("status 410 (Gone)"),
+            }
+        }
+    }
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::Ok => Ok(()),
+                other @ Self::Gone => Err(Box::new(other)),
+            }
+        }
+    }
 }
 pub mod subscribe_on_event_post {
     use super::super::types;
@@ -108,5 +147,21 @@ pub mod subscribe_on_event_post {
     pub enum Response {
         /// Received.
         NoContent,
+    }
+    impl std::fmt::Display for Response {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Self::NoContent => f.write_str("status 204 (NoContent)"),
+            }
+        }
+    }
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
     }
 }

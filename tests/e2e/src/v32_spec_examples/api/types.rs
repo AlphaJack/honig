@@ -259,17 +259,19 @@ impl runtime::Validate for FormData {
             {
                 static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                 let value = runtime::to_value(v).unwrap_or_default();
-                runtime::check_schema(
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"allOf\":[{\"type\":[\"string\",\"number\"],\"pattern\":\"1\",\"minimum\":0},{\"type\":\"string\",\"pattern\":\"2\"}]}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
                     out,
                     &runtime::InstancePath::Key(path, "code"),
                     &value,
-                    SCHEMA
-                        .get_or_init(|| {
-                            serde_json::from_str(
-                                    "{\"allOf\":[{\"type\":[\"string\",\"number\"],\"pattern\":\"1\",\"minimum\":0},{\"type\":\"string\",\"pattern\":\"2\"}]}",
-                                )
-                                .unwrap_or_default()
-                        }),
+                    schema,
+                    None,
                 );
             }
         }

@@ -629,14 +629,16 @@ impl runtime::Validate for IfThenEmail {
         {
             static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
             let value = runtime::to_value(&self.type_).unwrap_or_default();
-            runtime::check_schema(
+            let schema = SCHEMA
+                .get_or_init(|| {
+                    serde_json::from_str("{\"const\":\"email\"}").unwrap_or_default()
+                });
+            runtime::check_schema_in(
                 out,
                 &runtime::InstancePath::Key(path, "type"),
                 &value,
-                SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str("{\"const\":\"email\"}").unwrap_or_default()
-                    }),
+                schema,
+                None,
             );
         }
     }
@@ -678,14 +680,16 @@ impl runtime::Validate for IfThenSms {
         {
             static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
             let value = runtime::to_value(&self.type_).unwrap_or_default();
-            runtime::check_schema(
+            let schema = SCHEMA
+                .get_or_init(|| {
+                    serde_json::from_str("{\"const\":\"sms\"}").unwrap_or_default()
+                });
+            runtime::check_schema_in(
                 out,
                 &runtime::InstancePath::Key(path, "type"),
                 &value,
-                SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str("{\"const\":\"sms\"}").unwrap_or_default()
-                    }),
+                schema,
+                None,
             );
         }
     }
@@ -833,14 +837,16 @@ impl runtime::Validate for ShippingUs {
         {
             static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
             let value = runtime::to_value(&self.country).unwrap_or_default();
-            runtime::check_schema(
+            let schema = SCHEMA
+                .get_or_init(|| {
+                    serde_json::from_str("{\"const\":\"US\"}").unwrap_or_default()
+                });
+            runtime::check_schema_in(
                 out,
                 &runtime::InstancePath::Key(path, "country"),
                 &value,
-                SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str("{\"const\":\"US\"}").unwrap_or_default()
-                    }),
+                schema,
+                None,
             );
         }
     }
@@ -952,14 +958,16 @@ impl runtime::Validate for ContactSms {
         {
             static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
             let value = runtime::to_value(&self.via).unwrap_or_default();
-            runtime::check_schema(
+            let schema = SCHEMA
+                .get_or_init(|| {
+                    serde_json::from_str("{\"const\":\"sms\"}").unwrap_or_default()
+                });
+            runtime::check_schema_in(
                 out,
                 &runtime::InstancePath::Key(path, "via"),
                 &value,
-                SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str("{\"const\":\"sms\"}").unwrap_or_default()
-                    }),
+                schema,
+                None,
             );
         }
     }

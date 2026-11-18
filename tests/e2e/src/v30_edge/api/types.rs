@@ -450,17 +450,19 @@ impl runtime::Validate for Order {
             {
                 static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                 let value = runtime::to_value(v).unwrap_or_default();
-                runtime::check_schema(
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"anyOf\":[{\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Customer\"}]},{\"type\":\"null\"}]}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
                     out,
                     &runtime::InstancePath::Key(path, "customer"),
                     &value,
-                    SCHEMA
-                        .get_or_init(|| {
-                            serde_json::from_str(
-                                    "{\"anyOf\":[{\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Customer\"}]},{\"type\":\"null\"}],\"$defs\":{\"/components/schemas/Customer\":{\"type\":\"object\",\"additionalProperties\":true,\"required\":[\"name\"],\"properties\":{\"name\":{\"type\":\"string\",\"minLength\":1},\"email\":{\"type\":[\"string\",\"null\"]}}}}}",
-                                )
-                                .unwrap_or_default()
-                        }),
+                    schema,
+                    runtime::schema_defs(),
                 );
             }
         }
@@ -476,51 +478,57 @@ impl runtime::Validate for Order {
             {
                 static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                 let value = runtime::to_value(v).unwrap_or_default();
-                runtime::check_schema(
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"oneOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Card\"},{\"$ref\":\"#/$defs/~1components~1schemas~1Sepa\"}]}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
                     out,
                     &runtime::InstancePath::Key(path, "payment"),
                     &value,
-                    SCHEMA
-                        .get_or_init(|| {
-                            serde_json::from_str(
-                                    "{\"oneOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Card\"},{\"$ref\":\"#/$defs/~1components~1schemas~1Sepa\"}],\"$defs\":{\"/components/schemas/Card\":{\"type\":\"object\",\"required\":[\"last4\"],\"properties\":{\"last4\":{\"type\":\"string\",\"minLength\":4,\"maxLength\":4}}},\"/components/schemas/Sepa\":{\"type\":\"object\",\"required\":[\"iban\"],\"properties\":{\"iban\":{\"type\":\"string\"}}}}}",
-                                )
-                                .unwrap_or_default()
-                        }),
+                    schema,
+                    runtime::schema_defs(),
                 );
             }
         }
         {
             static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
             let value = runtime::to_value(&self.vehicle).unwrap_or_default();
-            runtime::check_schema(
+            let schema = SCHEMA
+                .get_or_init(|| {
+                    serde_json::from_str(
+                            "{\"oneOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Car\"},{\"$ref\":\"#/$defs/~1components~1schemas~1Van\"}]}",
+                        )
+                        .unwrap_or_default()
+                });
+            runtime::check_schema_in(
                 out,
                 &runtime::InstancePath::Key(path, "vehicle"),
                 &value,
-                SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"oneOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Car\"},{\"$ref\":\"#/$defs/~1components~1schemas~1Van\"}],\"$defs\":{\"/components/schemas/Car\":{\"type\":\"object\",\"required\":[\"kind\",\"seats\"],\"properties\":{\"kind\":{\"type\":\"string\"},\"seats\":{\"type\":\"integer\"}}},\"/components/schemas/Van\":{\"type\":\"object\",\"required\":[\"kind\",\"cargoLitres\"],\"properties\":{\"kind\":{\"type\":\"string\"},\"cargoLitres\":{\"type\":\"integer\"}}}}}",
-                            )
-                            .unwrap_or_default()
-                    }),
+                schema,
+                runtime::schema_defs(),
             );
         }
         if let Some(v) = &self.discount {
             {
                 static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                 let value = runtime::to_value(v).unwrap_or_default();
-                runtime::check_schema(
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"anyOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Money\"},{}]}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
                     out,
                     &runtime::InstancePath::Key(path, "discount"),
                     &value,
-                    SCHEMA
-                        .get_or_init(|| {
-                            serde_json::from_str(
-                                    "{\"anyOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Money\"},{}],\"$defs\":{\"/components/schemas/Money\":{\"type\":\"object\",\"required\":[\"amountCents\",\"currency\"],\"properties\":{\"amountCents\":{\"type\":\"integer\",\"format\":\"int64\"},\"currency\":{\"type\":\"string\",\"pattern\":\"^[A-Z]{3}$\"}}}}}",
-                                )
-                                .unwrap_or_default()
-                        }),
+                    schema,
+                    runtime::schema_defs(),
                 );
             }
         }
@@ -940,17 +948,19 @@ impl runtime::Validate for OrderRequest {
             {
                 static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                 let value = runtime::to_value(v).unwrap_or_default();
-                runtime::check_schema(
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"anyOf\":[{\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Customer\"}]},{\"type\":\"null\"}]}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
                     out,
                     &runtime::InstancePath::Key(path, "customer"),
                     &value,
-                    SCHEMA
-                        .get_or_init(|| {
-                            serde_json::from_str(
-                                    "{\"anyOf\":[{\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Customer\"}]},{\"type\":\"null\"}],\"$defs\":{\"/components/schemas/Customer\":{\"type\":\"object\",\"additionalProperties\":true,\"required\":[\"name\"],\"properties\":{\"name\":{\"type\":\"string\",\"minLength\":1},\"email\":{\"type\":[\"string\",\"null\"]}}}}}",
-                                )
-                                .unwrap_or_default()
-                        }),
+                    schema,
+                    runtime::schema_defs(),
                 );
             }
         }
@@ -958,51 +968,57 @@ impl runtime::Validate for OrderRequest {
             {
                 static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                 let value = runtime::to_value(v).unwrap_or_default();
-                runtime::check_schema(
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"oneOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Card\"},{\"$ref\":\"#/$defs/~1components~1schemas~1Sepa\"}]}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
                     out,
                     &runtime::InstancePath::Key(path, "payment"),
                     &value,
-                    SCHEMA
-                        .get_or_init(|| {
-                            serde_json::from_str(
-                                    "{\"oneOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Card\"},{\"$ref\":\"#/$defs/~1components~1schemas~1Sepa\"}],\"$defs\":{\"/components/schemas/Card\":{\"type\":\"object\",\"required\":[\"last4\"],\"properties\":{\"last4\":{\"type\":\"string\",\"minLength\":4,\"maxLength\":4}}},\"/components/schemas/Sepa\":{\"type\":\"object\",\"required\":[\"iban\"],\"properties\":{\"iban\":{\"type\":\"string\"}}}}}",
-                                )
-                                .unwrap_or_default()
-                        }),
+                    schema,
+                    runtime::schema_defs(),
                 );
             }
         }
         {
             static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
             let value = runtime::to_value(&self.vehicle).unwrap_or_default();
-            runtime::check_schema(
+            let schema = SCHEMA
+                .get_or_init(|| {
+                    serde_json::from_str(
+                            "{\"oneOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Car\"},{\"$ref\":\"#/$defs/~1components~1schemas~1Van\"}]}",
+                        )
+                        .unwrap_or_default()
+                });
+            runtime::check_schema_in(
                 out,
                 &runtime::InstancePath::Key(path, "vehicle"),
                 &value,
-                SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"oneOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Car\"},{\"$ref\":\"#/$defs/~1components~1schemas~1Van\"}],\"$defs\":{\"/components/schemas/Car\":{\"type\":\"object\",\"required\":[\"kind\",\"seats\"],\"properties\":{\"kind\":{\"type\":\"string\"},\"seats\":{\"type\":\"integer\"}}},\"/components/schemas/Van\":{\"type\":\"object\",\"required\":[\"kind\",\"cargoLitres\"],\"properties\":{\"kind\":{\"type\":\"string\"},\"cargoLitres\":{\"type\":\"integer\"}}}}}",
-                            )
-                            .unwrap_or_default()
-                    }),
+                schema,
+                runtime::schema_defs(),
             );
         }
         if let Some(v) = &self.discount {
             {
                 static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                 let value = runtime::to_value(v).unwrap_or_default();
-                runtime::check_schema(
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"anyOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Money\"},{}]}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
                     out,
                     &runtime::InstancePath::Key(path, "discount"),
                     &value,
-                    SCHEMA
-                        .get_or_init(|| {
-                            serde_json::from_str(
-                                    "{\"anyOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Money\"},{}],\"$defs\":{\"/components/schemas/Money\":{\"type\":\"object\",\"required\":[\"amountCents\",\"currency\"],\"properties\":{\"amountCents\":{\"type\":\"integer\",\"format\":\"int64\"},\"currency\":{\"type\":\"string\",\"pattern\":\"^[A-Z]{3}$\"}}}}}",
-                                )
-                                .unwrap_or_default()
-                        }),
+                    schema,
+                    runtime::schema_defs(),
                 );
             }
         }

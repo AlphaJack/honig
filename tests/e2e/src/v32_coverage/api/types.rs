@@ -205,15 +205,16 @@ impl runtime::Validate for TextNote {
             {
                 static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                 let value = runtime::to_value(v).unwrap_or_default();
-                runtime::check_schema(
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str("{\"const\":\"text\"}").unwrap_or_default()
+                    });
+                runtime::check_schema_in(
                     out,
                     &runtime::InstancePath::Key(path, "kind"),
                     &value,
-                    SCHEMA
-                        .get_or_init(|| {
-                            serde_json::from_str("{\"const\":\"text\"}")
-                                .unwrap_or_default()
-                        }),
+                    schema,
+                    runtime::schema_defs(),
                 );
             }
         }
@@ -275,47 +276,53 @@ impl runtime::Validate for ImageNote {
         {
             static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
             let value = runtime::to_value(&self.kind).unwrap_or_default();
-            runtime::check_schema(
+            let schema = SCHEMA
+                .get_or_init(|| {
+                    serde_json::from_str("{\"const\":\"image\"}").unwrap_or_default()
+                });
+            runtime::check_schema_in(
                 out,
                 &runtime::InstancePath::Key(path, "kind"),
                 &value,
-                SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str("{\"const\":\"image\"}").unwrap_or_default()
-                    }),
+                schema,
+                runtime::schema_defs(),
             );
         }
         {
             static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
             let value = runtime::to_value(&self.width).unwrap_or_default();
-            runtime::check_schema(
+            let schema = SCHEMA
+                .get_or_init(|| {
+                    serde_json::from_str(
+                            "{\"default\":64,\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Pixels\"}]}",
+                        )
+                        .unwrap_or_default()
+                });
+            runtime::check_schema_in(
                 out,
                 &runtime::InstancePath::Key(path, "width"),
                 &value,
-                SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"default\":64,\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Pixels\"}],\"$defs\":{\"/components/schemas/Pixels\":{\"type\":\"integer\"}}}",
-                            )
-                            .unwrap_or_default()
-                    }),
+                schema,
+                runtime::schema_defs(),
             );
         }
         if let Some(v) = &self.crop {
             {
                 static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                 let value = runtime::to_value(v).unwrap_or_default();
-                runtime::check_schema(
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"oneOf\":[{\"type\":\"string\"},{\"oneOf\":[{\"type\":\"integer\"},{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"integer\"},\"y\":{\"type\":\"integer\"}}}]}]}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
                     out,
                     &runtime::InstancePath::Key(path, "crop"),
                     &value,
-                    SCHEMA
-                        .get_or_init(|| {
-                            serde_json::from_str(
-                                    "{\"oneOf\":[{\"type\":\"string\"},{\"oneOf\":[{\"type\":\"integer\"},{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"integer\"},\"y\":{\"type\":\"integer\"}}}]}]}",
-                                )
-                                .unwrap_or_default()
-                        }),
+                    schema,
+                    runtime::schema_defs(),
                 );
             }
         }
@@ -483,34 +490,38 @@ impl runtime::Validate for NoteImageNote {
         {
             static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
             let value = runtime::to_value(&self.width).unwrap_or_default();
-            runtime::check_schema(
+            let schema = SCHEMA
+                .get_or_init(|| {
+                    serde_json::from_str(
+                            "{\"default\":64,\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Pixels\"}]}",
+                        )
+                        .unwrap_or_default()
+                });
+            runtime::check_schema_in(
                 out,
                 &runtime::InstancePath::Key(path, "width"),
                 &value,
-                SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"default\":64,\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Pixels\"}],\"$defs\":{\"/components/schemas/Pixels\":{\"type\":\"integer\"}}}",
-                            )
-                            .unwrap_or_default()
-                    }),
+                schema,
+                runtime::schema_defs(),
             );
         }
         if let Some(v) = &self.crop {
             {
                 static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                 let value = runtime::to_value(v).unwrap_or_default();
-                runtime::check_schema(
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"oneOf\":[{\"type\":\"string\"},{\"oneOf\":[{\"type\":\"integer\"},{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"integer\"},\"y\":{\"type\":\"integer\"}}}]}]}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
                     out,
                     &runtime::InstancePath::Key(path, "crop"),
                     &value,
-                    SCHEMA
-                        .get_or_init(|| {
-                            serde_json::from_str(
-                                    "{\"oneOf\":[{\"type\":\"string\"},{\"oneOf\":[{\"type\":\"integer\"},{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"integer\"},\"y\":{\"type\":\"integer\"}}}]}]}",
-                                )
-                                .unwrap_or_default()
-                        }),
+                    schema,
+                    runtime::schema_defs(),
                 );
             }
         }

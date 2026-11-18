@@ -201,6 +201,13 @@ impl sse::api::Api for Tiles {
     ) -> impl Future<Output = Result<sse::api::operations::chat_stream::Response, sse::api::ApiError>> + Send {
         unused()
     }
+    fn tile_batch(
+        &self,
+        _: sse::api::operations::tile_batch::Params,
+        _: &sse::api::Context<'_>,
+    ) -> impl Future<Output = Result<sse::api::operations::tile_batch::Response, sse::api::ApiError>> + Send {
+        unused()
+    }
 }
 
 struct Books;
@@ -506,12 +513,29 @@ pub struct Measured {
     pub max: f64,
 }
 
-/// Prints `rows` by path and then by size, so the sizes of one kind sit together. Returns each row over its budget.
+/// How much more time the smallest size may take: one run there is a few microseconds, and the jitter of a shared
+/// runner is a larger share of it than of a large body.
+#[allow(dead_code, reason = "the size sweep and the allocation tests time nothing")]
+const SMALLEST_SLACK: f64 = 1.25;
+
+/// Returns the time budget of a path whose budget is `max` at `size`: wider at the smallest of [`BENCH_SIZES`].
+#[allow(dead_code, reason = "the size sweep and the allocation tests time nothing")]
+pub fn time_budget(max: f64, size: usize) -> f64 {
+    if Some(&size) == BENCH_SIZES.first() { max * SMALLEST_SLACK } else { max }
+}
+
+/// Prints `rows` by path and then by size, so the sizes of one kind sit together, with an empty line between kinds.
+/// Returns each row over its budget.
 #[allow(dead_code, reason = "the size sweep prints no bench")]
 pub fn print_rows(table: &Table, mut rows: Vec<Measured>) -> Vec<String> {
     rows.sort_by_key(|r| (r.path, r.size));
     let mut over = vec![];
+    let mut last = None;
     for Measured { path, size, sides: [head, base], ratio, max } in rows {
+        if last.is_some_and(|l| l != path) {
+            println!();
+        }
+        last = Some(path);
         let failed = ratio > max;
         let result = if failed { "FAIL" } else { "ok" };
         let cells = [path.to_owned(), table::size(size), head, base, format!("{ratio:.2}"), format!("{max:.2}")];

@@ -452,6 +452,9 @@ pub(crate) enum JsonKind {
 pub(crate) struct TypeSpace {
     /// Indexed by `TypeId`.
     pub defs: Vec<TypeDef>,
+    /// The definitions that schemas checked whole at run time reach, by pointer: `#/$defs/<pointer>` in
+    /// `Constraints::schema` names one. Each is here once for the whole document.
+    pub shared: std::collections::BTreeMap<String, Value>,
 }
 
 /// A string `format` with a well-known type of its own.
@@ -654,7 +657,7 @@ impl TypeSpace {
 
     /// Creates a space of these definitions.
     pub(crate) const fn new(defs: Vec<TypeDef>) -> Self {
-        Self { defs }
+        Self { defs, shared: std::collections::BTreeMap::new() }
     }
 
     /// Returns `ty` with its aliases followed.
@@ -681,7 +684,7 @@ impl TypeSpace {
 
     /// Resolves aliases and wrappers down to the JSON kind on the wire.
     pub(crate) fn kind_of(&self, ty: &Ty) -> JsonKind {
-        kind_in(&self.defs, ty, 0)
+        kind_in(&self.defs, ty)
     }
 }
 

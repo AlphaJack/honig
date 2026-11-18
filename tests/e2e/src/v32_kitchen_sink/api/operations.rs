@@ -17,6 +17,22 @@ macro_rules! validate_impl {
         impl runtime::Validate for $t {}
     };
 }
+macro_rules! display_impl {
+    ($t:ty) => {
+        impl std::fmt::Display for $t {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                match self {
+                    Self::NoContent => f.write_str("status 204 (NoContent)"),
+                }
+            }
+        }
+    };
+}
+macro_rules! error_impl {
+    ($t:ty) => {
+        impl std::error::Error for $t {}
+    };
+}
 macro_rules! default_impl {
     ($t:ty) => {
         impl Default for $t {
@@ -49,6 +65,28 @@ macro_rules! validate_impl_2 {
         }
     };
 }
+macro_rules! display_impl_2 {
+    ($t:ty) => {
+        impl std::fmt::Display for $t {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                match self {
+                    Self::Ok(..) => f.write_str("status 200 (Ok)"),
+                }
+            }
+        }
+    };
+}
+macro_rules! display_impl_3 {
+    ($t:ty) => {
+        impl std::fmt::Display for $t {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                match self {
+                    Self::Ok => f.write_str("status 200 (Ok)"),
+                }
+            }
+        }
+    };
+}
 macro_rules! validate_impl_3 {
     ($t:ty) => {
         impl runtime::Validate for $t {
@@ -61,17 +99,19 @@ macro_rules! validate_impl_3 {
                     {
                         static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                         let value = runtime::to_value(v).unwrap_or_default();
-                        runtime::check_schema(
+                        let schema = SCHEMA
+                            .get_or_init(|| {
+                                serde_json::from_str(
+                                        "{\"$id\":\"https://example.com/schemas/product\",\"$schema\":\"https://spec.openapis.org/oas/3.2/dialect/2025-09-17\",\"$comment\":\"A product\",\"type\":\"object\",\"required\":[\"name\",\"kind\"],\"properties\":{\"id\":{\"type\":\"integer\",\"format\":\"int64\",\"readOnly\":true,\"minimum\":0,\"exclusiveMaximum\":9007199254740991},\"name\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":64,\"pattern\":\"^[A-Za-z ]+$\"},\"kind\":{\"type\":\"string\",\"enum\":[\"book\",\"gadget\"]},\"nickname\":{\"type\":[\"string\",\"null\"],\"default\":null},\"secret\":{\"type\":\"string\",\"writeOnly\":true,\"deprecated\":true},\"tags\":{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"uniqueItems\":true,\"minItems\":0,\"maxItems\":10,\"contains\":{\"const\":\"vip\"},\"minContains\":0,\"maxContains\":1},\"point\":{\"type\":\"array\",\"prefixItems\":[{\"type\":\"number\"},{\"type\":\"number\"}],\"items\":false,\"unevaluatedItems\":false},\"attrs\":{\"type\":\"object\",\"patternProperties\":{\"^x_\":{\"type\":\"string\"}},\"propertyNames\":{\"pattern\":\"^[a-z_]+$\"},\"minProperties\":0,\"maxProperties\":20,\"unevaluatedProperties\":false},\"weight\":{\"type\":\"number\",\"multipleOf\":0.01,\"exclusiveMinimum\":0},\"owner\":{\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Owner\"}]}},\"dependentRequired\":{\"nickname\":[\"name\"]},\"dependentSchemas\":{\"secret\":{\"required\":[]}},\"x-rust-type\":{\"crate\":\"products\",\"version\":\"1\",\"path\":\"products::Product\"}}",
+                                    )
+                                    .unwrap_or_default()
+                            });
+                        runtime::check_schema_in(
                             out,
                             &runtime::InstancePath::Key(path, "body"),
                             &value,
-                            SCHEMA
-                                .get_or_init(|| {
-                                    serde_json::from_str(
-                                            "{\"$id\":\"https://example.com/schemas/product\",\"$schema\":\"https://spec.openapis.org/oas/3.2/dialect/2025-09-17\",\"$comment\":\"A product\",\"type\":\"object\",\"required\":[\"name\",\"kind\"],\"properties\":{\"id\":{\"type\":\"integer\",\"format\":\"int64\",\"readOnly\":true,\"minimum\":0,\"exclusiveMaximum\":9007199254740991},\"name\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":64,\"pattern\":\"^[A-Za-z ]+$\"},\"kind\":{\"type\":\"string\",\"enum\":[\"book\",\"gadget\"]},\"nickname\":{\"type\":[\"string\",\"null\"],\"default\":null},\"secret\":{\"type\":\"string\",\"writeOnly\":true,\"deprecated\":true},\"tags\":{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"uniqueItems\":true,\"minItems\":0,\"maxItems\":10,\"contains\":{\"const\":\"vip\"},\"minContains\":0,\"maxContains\":1},\"point\":{\"type\":\"array\",\"prefixItems\":[{\"type\":\"number\"},{\"type\":\"number\"}],\"items\":false,\"unevaluatedItems\":false},\"attrs\":{\"type\":\"object\",\"patternProperties\":{\"^x_\":{\"type\":\"string\"}},\"propertyNames\":{\"pattern\":\"^[a-z_]+$\"},\"minProperties\":0,\"maxProperties\":20,\"unevaluatedProperties\":false},\"weight\":{\"type\":\"number\",\"multipleOf\":0.01,\"exclusiveMinimum\":0},\"owner\":{\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Owner\"}]}},\"dependentRequired\":{\"nickname\":[\"name\"]},\"dependentSchemas\":{\"secret\":{\"required\":[]}},\"x-rust-type\":{\"crate\":\"products\",\"version\":\"1\",\"path\":\"products::Product\"},\"$defs\":{\"/components/schemas/Owner\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$ref\":\"#/$defs/~1components~1schemas~1Owner\"}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}}",
-                                        )
-                                        .unwrap_or_default()
-                                }),
+                            schema,
+                            runtime::schema_defs(),
                         );
                     }
                 }
@@ -116,6 +156,16 @@ pub mod submit_form {
         /// Accepted.
         NoContent,
     }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
+    }
 }
 pub mod put_blob {
     use super::super::types;
@@ -146,6 +196,24 @@ pub mod put_blob {
         ///
         /// The stored bytes.
         Ok { body: runtime::Blob, x_size: Option<i64>, x_quota: types::PutBlobOkXQuota },
+    }
+    impl std::fmt::Display for Response {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Self::Ok { .. } => f.write_str("status 200 (Ok)"),
+            }
+        }
+    }
+    error_impl!(Response);
+    /// The body and headers of the success, in order: what `Response::into_ok` gives.
+    pub type Success = (runtime::Blob, Option<i64>, types::PutBlobOkXQuota);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<Success, Box<Self>> {
+            match self {
+                Self::Ok { body, x_size, x_quota } => Ok((body, x_size, x_quota)),
+            }
+        }
     }
 }
 /// List products
@@ -223,6 +291,29 @@ pub mod list_products {
         /// Error
         Default { status: runtime::http::StatusCode, body: types::Error },
     }
+    impl std::fmt::Display for Response {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Self::Ok { .. } => f.write_str("status 200 (Ok)"),
+                Self::Success { status, .. } => {
+                    write!(f, "status {} (Success)", status.as_u16())
+                }
+                Self::Default { status, .. } => {
+                    write!(f, "status {} (Default)", status.as_u16())
+                }
+            }
+        }
+    }
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<Self, Box<Self>> {
+            match self {
+                success @ (Self::Ok { .. } | Self::Success { .. }) => Ok(success),
+                other @ Self::Default { .. } => Err(Box::new(other)),
+            }
+        }
+    }
     #[derive(Debug, Clone, PartialEq)]
     pub enum OkBody {
         Json(Vec<types::Product>),
@@ -299,17 +390,19 @@ pub mod create_product {
                     Body::Json(x) => {
                         static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                         let value = runtime::to_value(x).unwrap_or_default();
-                        runtime::check_schema(
+                        let schema = SCHEMA
+                            .get_or_init(|| {
+                                serde_json::from_str(
+                                        "{\"$id\":\"https://example.com/schemas/product\",\"$schema\":\"https://spec.openapis.org/oas/3.2/dialect/2025-09-17\",\"$comment\":\"A product\",\"type\":\"object\",\"required\":[\"name\",\"kind\"],\"properties\":{\"id\":{\"type\":\"integer\",\"format\":\"int64\",\"readOnly\":true,\"minimum\":0,\"exclusiveMaximum\":9007199254740991},\"name\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":64,\"pattern\":\"^[A-Za-z ]+$\"},\"kind\":{\"type\":\"string\",\"enum\":[\"book\",\"gadget\"]},\"nickname\":{\"type\":[\"string\",\"null\"],\"default\":null},\"secret\":{\"type\":\"string\",\"writeOnly\":true,\"deprecated\":true},\"tags\":{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"uniqueItems\":true,\"minItems\":0,\"maxItems\":10,\"contains\":{\"const\":\"vip\"},\"minContains\":0,\"maxContains\":1},\"point\":{\"type\":\"array\",\"prefixItems\":[{\"type\":\"number\"},{\"type\":\"number\"}],\"items\":false,\"unevaluatedItems\":false},\"attrs\":{\"type\":\"object\",\"patternProperties\":{\"^x_\":{\"type\":\"string\"}},\"propertyNames\":{\"pattern\":\"^[a-z_]+$\"},\"minProperties\":0,\"maxProperties\":20,\"unevaluatedProperties\":false},\"weight\":{\"type\":\"number\",\"multipleOf\":0.01,\"exclusiveMinimum\":0},\"owner\":{\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Owner\"}]}},\"dependentRequired\":{\"nickname\":[\"name\"]},\"dependentSchemas\":{\"secret\":{\"required\":[]}},\"x-rust-type\":{\"crate\":\"products\",\"version\":\"1\",\"path\":\"products::Product\"}}",
+                                    )
+                                    .unwrap_or_default()
+                            });
+                        runtime::check_schema_in(
                             out,
                             &runtime::InstancePath::Key(path, "body"),
                             &value,
-                            SCHEMA
-                                .get_or_init(|| {
-                                    serde_json::from_str(
-                                            "{\"$id\":\"https://example.com/schemas/product\",\"$schema\":\"https://spec.openapis.org/oas/3.2/dialect/2025-09-17\",\"$comment\":\"A product\",\"type\":\"object\",\"required\":[\"name\",\"kind\"],\"properties\":{\"id\":{\"type\":\"integer\",\"format\":\"int64\",\"readOnly\":true,\"minimum\":0,\"exclusiveMaximum\":9007199254740991},\"name\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":64,\"pattern\":\"^[A-Za-z ]+$\"},\"kind\":{\"type\":\"string\",\"enum\":[\"book\",\"gadget\"]},\"nickname\":{\"type\":[\"string\",\"null\"],\"default\":null},\"secret\":{\"type\":\"string\",\"writeOnly\":true,\"deprecated\":true},\"tags\":{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"uniqueItems\":true,\"minItems\":0,\"maxItems\":10,\"contains\":{\"const\":\"vip\"},\"minContains\":0,\"maxContains\":1},\"point\":{\"type\":\"array\",\"prefixItems\":[{\"type\":\"number\"},{\"type\":\"number\"}],\"items\":false,\"unevaluatedItems\":false},\"attrs\":{\"type\":\"object\",\"patternProperties\":{\"^x_\":{\"type\":\"string\"}},\"propertyNames\":{\"pattern\":\"^[a-z_]+$\"},\"minProperties\":0,\"maxProperties\":20,\"unevaluatedProperties\":false},\"weight\":{\"type\":\"number\",\"multipleOf\":0.01,\"exclusiveMinimum\":0},\"owner\":{\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Owner\"}]}},\"dependentRequired\":{\"nickname\":[\"name\"]},\"dependentSchemas\":{\"secret\":{\"required\":[]}},\"x-rust-type\":{\"crate\":\"products\",\"version\":\"1\",\"path\":\"products::Product\"},\"$defs\":{\"/components/schemas/Owner\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$ref\":\"#/$defs/~1components~1schemas~1Owner\"}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}}",
-                                        )
-                                        .unwrap_or_default()
-                                }),
+                            schema,
+                            runtime::schema_defs(),
                         );
                     }
                     Body::FormData(x) => {
@@ -334,6 +427,22 @@ pub mod create_product {
     pub enum Response {
         /// Created
         Created,
+    }
+    impl std::fmt::Display for Response {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            match self {
+                Self::Created => f.write_str("status 201 (Created)"),
+            }
+        }
+    }
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::Created => Ok(()),
+            }
+        }
     }
     pub mod callbacks {
         use super::super::super::runtime;
@@ -386,6 +495,16 @@ pub mod search_products {
         /// Products
         Ok(Vec<types::Product>),
     }
+    display_impl_2!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<Vec<types::Product>, Box<Self>> {
+            match self {
+                Self::Ok(body) => Ok(body),
+            }
+        }
+    }
 }
 /// Products collection
 ///
@@ -413,6 +532,16 @@ pub mod copy_products {
         /// Copied
         NoContent,
     }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
+    }
 }
 pub mod get_product {
     use super::super::types;
@@ -435,6 +564,16 @@ pub mod get_product {
         /// ok
         Ok(types::Product),
     }
+    display_impl_2!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<types::Product, Box<Self>> {
+            match self {
+                Self::Ok(body) => Ok(body),
+            }
+        }
+    }
 }
 pub mod put_product {
     use super::super::runtime;
@@ -455,6 +594,16 @@ pub mod put_product {
     pub enum Response {
         /// ok
         Ok,
+    }
+    display_impl_3!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::Ok => Ok(()),
+            }
+        }
     }
 }
 pub mod delete_product {
@@ -477,6 +626,16 @@ pub mod delete_product {
         /// deleted
         NoContent,
     }
+    display_impl!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
+    }
 }
 pub mod options_product {
     use super::super::runtime;
@@ -497,6 +656,16 @@ pub mod options_product {
     pub enum Response {
         /// ok
         Ok,
+    }
+    display_impl_3!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::Ok => Ok(()),
+            }
+        }
     }
 }
 pub mod head_product {
@@ -519,6 +688,16 @@ pub mod head_product {
         /// ok
         Ok,
     }
+    display_impl_3!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::Ok => Ok(()),
+            }
+        }
+    }
 }
 pub mod patch_product {
     use super::super::runtime;
@@ -540,6 +719,16 @@ pub mod patch_product {
         /// ok
         Ok,
     }
+    display_impl_3!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::Ok => Ok(()),
+            }
+        }
+    }
 }
 pub mod trace_product {
     use super::super::runtime;
@@ -560,6 +749,16 @@ pub mod trace_product {
     pub enum Response {
         /// ok
         Ok,
+    }
+    display_impl_3!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::Ok => Ok(()),
+            }
+        }
     }
 }
 pub mod search {
@@ -584,6 +783,16 @@ pub mod search {
         /// Events
         Ok(runtime::Items<types::SearchOkItem>),
     }
+    display_impl_2!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<runtime::Items<types::SearchOkItem>, Box<Self>> {
+            match self {
+                Self::Ok(body) => Ok(body),
+            }
+        }
+    }
 }
 pub mod new_product_post {
     use super::super::types;
@@ -606,6 +815,16 @@ pub mod new_product_post {
     pub enum Response {
         /// ok
         Ok,
+    }
+    display_impl_3!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::Ok => Ok(()),
+            }
+        }
     }
 }
 pub mod create_product_on_adopt_post {
@@ -630,6 +849,16 @@ pub mod create_product_on_adopt_post {
         /// ack
         Ok,
     }
+    display_impl_3!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::Ok => Ok(()),
+            }
+        }
+    }
 }
 pub mod create_product_shared_post {
     use super::super::runtime;
@@ -649,6 +878,16 @@ pub mod create_product_shared_post {
     pub enum Response {
         /// ok
         Ok,
+    }
+    display_impl_3!(Response);
+    error_impl!(Response);
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        pub fn into_ok(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::Ok => Ok(()),
+            }
+        }
     }
 }
 pub mod tags {

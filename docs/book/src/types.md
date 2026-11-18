@@ -74,7 +74,7 @@ Money:
 
 `types::Money` becomes an alias of your type. It must serialize like the schema. It must implement `Debug`, `Clone`, `PartialEq` and the serde traits. It must also check the constraints of the schema: honig checks none of them, neither where the schema is declared nor where a body or a field uses it.
 
-A type from another crate takes typify's object form, which Oxide's description uses:
+A type from another crate takes typify's object form:
 
 ```yaml
 SledUuid:
