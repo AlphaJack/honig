@@ -139,3 +139,54 @@ pub mod add_note {
         },
     }
 }
+pub mod find_box {
+    use super::super::types;
+    use super::super::runtime;
+    pub const METHOD: &str = "GET";
+    pub const PATH: &str = "/boxes";
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub struct Params {
+        pub width: i64,
+        pub height: i64,
+        pub depth: i64,
+        pub weight: i64,
+        pub color: i64,
+        pub shelf: i64,
+        pub row: i64,
+        pub bin: i64,
+    }
+    impl Params {
+        #[must_use]
+        pub const fn new(
+            width: i64,
+            height: i64,
+            depth: i64,
+            weight: i64,
+            color: i64,
+            shelf: i64,
+            row: i64,
+            bin: i64,
+        ) -> Self {
+            #![allow(
+                clippy::too_many_arguments,
+                reason = "one argument per required parameter"
+            )]
+            Self {
+                width,
+                height,
+                depth,
+                weight,
+                color,
+                shelf,
+                row,
+                bin,
+            }
+        }
+    }
+    validate_impl!(Params);
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub enum Response {
+        /// The box.
+        Ok(types::Box2),
+    }
+}
