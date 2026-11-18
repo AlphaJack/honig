@@ -77,17 +77,19 @@ impl runtime::Validate for Page {
         {
             static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
             let value = runtime::to_value(&self.items).unwrap_or_default();
-            runtime::check_schema(
+            let schema = SCHEMA
+                .get_or_init(|| {
+                    serde_json::from_str(
+                            "{\"type\":\"array\",\"items\":{\"$dynamicAnchor\":\"item\"}}",
+                        )
+                        .unwrap_or_default()
+                });
+            runtime::check_schema_in(
                 out,
                 &runtime::InstancePath::Key(path, "items"),
                 &value,
-                SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"type\":\"array\",\"items\":{\"$dynamicAnchor\":\"item\"}}",
-                            )
-                            .unwrap_or_default()
-                    }),
+                schema,
+                None,
             );
         }
     }
@@ -123,17 +125,19 @@ impl runtime::Validate for ProductPage {
                 {
                     static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                     let value = runtime::to_value(v).unwrap_or_default();
-                    runtime::check_schema(
+                    let schema = SCHEMA
+                        .get_or_init(|| {
+                            serde_json::from_str(
+                                    "{\"$dynamicAnchor\":\"item\",\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Product\"}]}",
+                                )
+                                .unwrap_or_default()
+                        });
+                    runtime::check_schema_in(
                         out,
                         &runtime::InstancePath::Index(base, i),
                         &value,
-                        SCHEMA
-                            .get_or_init(|| {
-                                serde_json::from_str(
-                                        "{\"$dynamicAnchor\":\"item\",\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Product\"}],\"$defs\":{\"/components/schemas/Product\":{\"type\":\"object\",\"required\":[\"name\"],\"properties\":{\"name\":{\"type\":\"string\"}}}}}",
-                                    )
-                                    .unwrap_or_default()
-                            }),
+                        schema,
+                        runtime::schema_defs(),
                     );
                 }
             }
@@ -168,15 +172,17 @@ impl runtime::Validate for Tree {
         {
             static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
             let value = runtime::to_value(&self.value).unwrap_or_default();
-            runtime::check_schema(
+            let schema = SCHEMA
+                .get_or_init(|| {
+                    serde_json::from_str("{\"$dynamicAnchor\":\"node\"}")
+                        .unwrap_or_default()
+                });
+            runtime::check_schema_in(
                 out,
                 &runtime::InstancePath::Key(path, "value"),
                 &value,
-                SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str("{\"$dynamicAnchor\":\"node\"}")
-                            .unwrap_or_default()
-                    }),
+                schema,
+                None,
             );
         }
         if let Some(v) = &self.children {
@@ -186,17 +192,19 @@ impl runtime::Validate for Tree {
                     {
                         static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                         let value = runtime::to_value(v).unwrap_or_default();
-                        runtime::check_schema(
+                        let schema = SCHEMA
+                            .get_or_init(|| {
+                                serde_json::from_str(
+                                        "{\"type\":\"object\",\"required\":[\"value\"],\"properties\":{\"value\":{\"$dynamicAnchor\":\"node\",\"type\":\"string\"},\"children\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"required\":[\"value\"],\"properties\":{\"value\":{\"$dynamicAnchor\":\"node\",\"type\":\"string\"},\"children\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"required\":[\"value\"],\"properties\":{\"value\":{\"$dynamicAnchor\":\"node\",\"type\":\"string\"},\"children\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"required\":[\"value\"],\"properties\":{\"value\":{\"$dynamicAnchor\":\"node\",\"type\":\"string\"},\"children\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"required\":[\"value\"],\"properties\":{\"value\":{\"$dynamicAnchor\":\"node\",\"type\":\"string\"},\"children\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"required\":[\"value\"],\"properties\":{\"value\":{\"$dynamicAnchor\":\"node\",\"type\":\"string\"},\"children\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"required\":[\"value\"],\"properties\":{\"value\":{\"$dynamicAnchor\":\"node\",\"type\":\"string\"},\"children\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"required\":[\"value\"],\"properties\":{\"value\":{\"$dynamicAnchor\":\"node\",\"type\":\"string\"},\"children\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"required\":[\"value\"],\"properties\":{\"value\":true,\"children\":{\"type\":\"array\",\"items\":true}},\"$defs\":{\"node\":{\"$dynamicAnchor\":\"node\"}}}}},\"$defs\":{\"node\":{\"$dynamicAnchor\":\"node\"}}}}},\"$defs\":{\"node\":{\"$dynamicAnchor\":\"node\"}}}}},\"$defs\":{\"node\":{\"$dynamicAnchor\":\"node\"}}}}},\"$defs\":{\"node\":{\"$dynamicAnchor\":\"node\"}}}}},\"$defs\":{\"node\":{\"$dynamicAnchor\":\"node\"}}}}},\"$defs\":{\"node\":{\"$dynamicAnchor\":\"node\"}}}}},\"$defs\":{\"node\":{\"$dynamicAnchor\":\"node\"}}}}},\"$defs\":{\"node\":{\"$dynamicAnchor\":\"node\"}}}",
+                                    )
+                                    .unwrap_or_default()
+                            });
+                        runtime::check_schema_in(
                             out,
                             &runtime::InstancePath::Index(base, i),
                             &value,
-                            SCHEMA
-                                .get_or_init(|| {
-                                    serde_json::from_str(
-                                            "{\"type\":\"object\",\"required\":[\"value\"],\"properties\":{\"value\":{\"$dynamicAnchor\":\"node\",\"type\":\"string\"},\"children\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"required\":[\"value\"],\"properties\":{\"value\":{\"$dynamicAnchor\":\"node\",\"type\":\"string\"},\"children\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"required\":[\"value\"],\"properties\":{\"value\":{\"$dynamicAnchor\":\"node\",\"type\":\"string\"},\"children\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"required\":[\"value\"],\"properties\":{\"value\":{\"$dynamicAnchor\":\"node\",\"type\":\"string\"},\"children\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"required\":[\"value\"],\"properties\":{\"value\":{\"$dynamicAnchor\":\"node\",\"type\":\"string\"},\"children\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"required\":[\"value\"],\"properties\":{\"value\":{\"$dynamicAnchor\":\"node\",\"type\":\"string\"},\"children\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"required\":[\"value\"],\"properties\":{\"value\":{\"$dynamicAnchor\":\"node\",\"type\":\"string\"},\"children\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"required\":[\"value\"],\"properties\":{\"value\":{\"$dynamicAnchor\":\"node\",\"type\":\"string\"},\"children\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"required\":[\"value\"],\"properties\":{\"value\":true,\"children\":{\"type\":\"array\",\"items\":true}},\"$defs\":{\"node\":{\"$dynamicAnchor\":\"node\"}}}}},\"$defs\":{\"node\":{\"$dynamicAnchor\":\"node\"}}}}},\"$defs\":{\"node\":{\"$dynamicAnchor\":\"node\"}}}}},\"$defs\":{\"node\":{\"$dynamicAnchor\":\"node\"}}}}},\"$defs\":{\"node\":{\"$dynamicAnchor\":\"node\"}}}}},\"$defs\":{\"node\":{\"$dynamicAnchor\":\"node\"}}}}},\"$defs\":{\"node\":{\"$dynamicAnchor\":\"node\"}}}}},\"$defs\":{\"node\":{\"$dynamicAnchor\":\"node\"}}}}},\"$defs\":{\"node\":{\"$dynamicAnchor\":\"node\"}}}",
-                                        )
-                                        .unwrap_or_default()
-                                }),
+                            schema,
+                            None,
                         );
                     }
                 }

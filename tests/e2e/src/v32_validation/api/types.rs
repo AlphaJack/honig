@@ -54,17 +54,19 @@ macro_rules! validate_impl_2 {
                 {
                     static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                     let value = runtime::to_value(&self.holders).unwrap_or_default();
-                    runtime::check_schema(
+                    let schema = SCHEMA
+                        .get_or_init(|| {
+                            serde_json::from_str(
+                                    "{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"contains\":{\"const\":\"owner\"}}",
+                                )
+                                .unwrap_or_default()
+                        });
+                    runtime::check_schema_in(
                         out,
                         &runtime::InstancePath::Key(path, "holders"),
                         &value,
-                        SCHEMA
-                            .get_or_init(|| {
-                                serde_json::from_str(
-                                        "{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"contains\":{\"const\":\"owner\"}}",
-                                    )
-                                    .unwrap_or_default()
-                            }),
+                        schema,
+                        None,
                     );
                 }
             }
@@ -85,17 +87,19 @@ macro_rules! validate_impl_3 {
                         {
                             static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                             let value = runtime::to_value(v).unwrap_or_default();
-                            runtime::check_schema(
+                            let schema = SCHEMA
+                                .get_or_init(|| {
+                                    serde_json::from_str(
+                                            "{\"oneOf\":[{\"type\":\"object\",\"required\":[\"items\",\"x\"],\"properties\":{\"items\":{\"type\":\"array\",\"items\":{\"$ref\":\"#/$defs/~1components~1schemas~1Tree\"}},\"x\":{\"type\":\"string\"}}},{\"type\":\"object\",\"required\":[\"items\",\"x\"],\"properties\":{\"items\":{\"type\":\"array\",\"items\":{\"$ref\":\"#/$defs/~1components~1schemas~1Tree\"}},\"x\":{\"type\":\"integer\"}}}]}",
+                                        )
+                                        .unwrap_or_default()
+                                });
+                            runtime::check_schema_in(
                                 out,
                                 &runtime::InstancePath::Index(base, i),
                                 &value,
-                                SCHEMA
-                                    .get_or_init(|| {
-                                        serde_json::from_str(
-                                                "{\"oneOf\":[{\"type\":\"object\",\"required\":[\"items\",\"x\"],\"properties\":{\"items\":{\"type\":\"array\",\"items\":{\"$ref\":\"#/$defs/~1components~1schemas~1Tree\"}},\"x\":{\"type\":\"string\"}}},{\"type\":\"object\",\"required\":[\"items\",\"x\"],\"properties\":{\"items\":{\"type\":\"array\",\"items\":{\"$ref\":\"#/$defs/~1components~1schemas~1Tree\"}},\"x\":{\"type\":\"integer\"}}}],\"$defs\":{\"/components/schemas/Tree\":{\"oneOf\":[{\"type\":\"object\",\"required\":[\"items\",\"x\"],\"properties\":{\"items\":{\"type\":\"array\",\"items\":{\"$ref\":\"#/$defs/~1components~1schemas~1Tree\"}},\"x\":{\"type\":\"string\"}}},{\"type\":\"object\",\"required\":[\"items\",\"x\"],\"properties\":{\"items\":{\"type\":\"array\",\"items\":{\"$ref\":\"#/$defs/~1components~1schemas~1Tree\"}},\"x\":{\"type\":\"integer\"}}}]}}}",
-                                            )
-                                            .unwrap_or_default()
-                                    }),
+                                schema,
+                                runtime::schema_defs(),
                             );
                         }
                     }
@@ -590,17 +594,19 @@ impl runtime::Validate for Ledger {
                     {
                         static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                         let value = runtime::to_value(v).unwrap_or_default();
-                        runtime::check_schema(
+                        let schema = SCHEMA
+                            .get_or_init(|| {
+                                serde_json::from_str(
+                                        "{\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1EntryFields\"},{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"integer\"},\"lines\":{\"maxItems\":2}}}]}",
+                                    )
+                                    .unwrap_or_default()
+                            });
+                        runtime::check_schema_in(
                             out,
                             &runtime::InstancePath::Index(base, i),
                             &value,
-                            SCHEMA
-                                .get_or_init(|| {
-                                    serde_json::from_str(
-                                            "{\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1EntryFields\"},{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"integer\"},\"lines\":{\"maxItems\":2}}}],\"$defs\":{\"/components/schemas/EntryFields\":{\"type\":\"object\",\"properties\":{\"lines\":{\"type\":\"array\",\"items\":{\"$ref\":\"#/$defs/~1components~1schemas~1Line\"}}}},\"/components/schemas/Line\":{\"type\":\"object\",\"properties\":{\"note\":{\"type\":[\"string\",\"null\"],\"maxLength\":3}}}}}",
-                                        )
-                                        .unwrap_or_default()
-                                }),
+                            schema,
+                            runtime::schema_defs(),
                         );
                     }
                 }
@@ -686,14 +692,16 @@ impl runtime::Validate for Entry {
             {
                 static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                 let value = runtime::to_value(v).unwrap_or_default();
-                runtime::check_schema(
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str("{\"maxItems\":2}").unwrap_or_default()
+                    });
+                runtime::check_schema_in(
                     out,
                     &runtime::InstancePath::Key(path, "lines"),
                     &value,
-                    SCHEMA
-                        .get_or_init(|| {
-                            serde_json::from_str("{\"maxItems\":2}").unwrap_or_default()
-                        }),
+                    schema,
+                    None,
                 );
             }
         }
@@ -2168,29 +2176,33 @@ impl runtime::Validate for ShipmentInternational {
         {
             static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
             let value = runtime::to_value(&self.kind).unwrap_or_default();
-            runtime::check_schema(
+            let schema = SCHEMA
+                .get_or_init(|| {
+                    serde_json::from_str("{\"const\":\"international\"}")
+                        .unwrap_or_default()
+                });
+            runtime::check_schema_in(
                 out,
                 &runtime::InstancePath::Key(path, "kind"),
                 &value,
-                SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str("{\"const\":\"international\"}")
-                            .unwrap_or_default()
-                    }),
+                schema,
+                None,
             );
         }
         if let Some(v) = &self.rating {
             {
                 static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                 let value = runtime::to_value(v).unwrap_or_default();
-                runtime::check_schema(
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str("{\"minimum\":1}").unwrap_or_default()
+                    });
+                runtime::check_schema_in(
                     out,
                     &runtime::InstancePath::Key(path, "rating"),
                     &value,
-                    SCHEMA
-                        .get_or_init(|| {
-                            serde_json::from_str("{\"minimum\":1}").unwrap_or_default()
-                        }),
+                    schema,
+                    None,
                 );
             }
         }
@@ -2208,34 +2220,38 @@ impl runtime::Validate for ShipmentInternational {
         {
             static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
             let value = runtime::to_value(&self.parcels).unwrap_or_default();
-            runtime::check_schema(
+            let schema = SCHEMA
+                .get_or_init(|| {
+                    serde_json::from_str(
+                            "{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"fragile\":{\"type\":\"boolean\"}}},\"contains\":{\"properties\":{\"fragile\":{\"const\":true}},\"required\":[\"fragile\"]},\"maxContains\":2}",
+                        )
+                        .unwrap_or_default()
+                });
+            runtime::check_schema_in(
                 out,
                 &runtime::InstancePath::Key(path, "parcels"),
                 &value,
-                SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"fragile\":{\"type\":\"boolean\"}}},\"contains\":{\"properties\":{\"fragile\":{\"const\":true}},\"required\":[\"fragile\"]},\"maxContains\":2}",
-                            )
-                            .unwrap_or_default()
-                    }),
+                schema,
+                None,
             );
         }
         if let Some(v) = &self.scores {
             {
                 static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                 let value = runtime::to_value(v).unwrap_or_default();
-                runtime::check_schema(
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"type\":\"object\",\"patternProperties\":{\"^[a-z]+$\":{\"type\":\"integer\",\"minimum\":0}},\"additionalProperties\":false}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
                     out,
                     &runtime::InstancePath::Key(path, "scores"),
                     &value,
-                    SCHEMA
-                        .get_or_init(|| {
-                            serde_json::from_str(
-                                    "{\"type\":\"object\",\"patternProperties\":{\"^[a-z]+$\":{\"type\":\"integer\",\"minimum\":0}},\"additionalProperties\":false}",
-                                )
-                                .unwrap_or_default()
-                        }),
+                    schema,
+                    None,
                 );
             }
         }
@@ -2259,17 +2275,19 @@ impl runtime::Validate for ShipmentInternational {
             {
                 static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                 let value = runtime::to_value(v).unwrap_or_default();
-                runtime::check_schema(
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"type\":\"object\",\"propertyNames\":{\"pattern\":\"^[a-z]+$\"},\"patternProperties\":{\"^x\":{\"type\":\"string\",\"maxLength\":3}},\"additionalProperties\":{\"type\":\"string\"}}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
                     out,
                     &runtime::InstancePath::Key(path, "labels"),
                     &value,
-                    SCHEMA
-                        .get_or_init(|| {
-                            serde_json::from_str(
-                                    "{\"type\":\"object\",\"propertyNames\":{\"pattern\":\"^[a-z]+$\"},\"patternProperties\":{\"^x\":{\"type\":\"string\",\"maxLength\":3}},\"additionalProperties\":{\"type\":\"string\"}}",
-                                )
-                                .unwrap_or_default()
-                        }),
+                    schema,
+                    None,
                 );
             }
         }
@@ -2736,14 +2754,16 @@ impl runtime::Validate for ShipmentOtherwise {
             {
                 static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                 let value = runtime::to_value(v).unwrap_or_default();
-                runtime::check_schema(
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str("{\"minimum\":1}").unwrap_or_default()
+                    });
+                runtime::check_schema_in(
                     out,
                     &runtime::InstancePath::Key(path, "rating"),
                     &value,
-                    SCHEMA
-                        .get_or_init(|| {
-                            serde_json::from_str("{\"minimum\":1}").unwrap_or_default()
-                        }),
+                    schema,
+                    None,
                 );
             }
         }
@@ -2761,34 +2781,38 @@ impl runtime::Validate for ShipmentOtherwise {
         {
             static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
             let value = runtime::to_value(&self.parcels).unwrap_or_default();
-            runtime::check_schema(
+            let schema = SCHEMA
+                .get_or_init(|| {
+                    serde_json::from_str(
+                            "{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"fragile\":{\"type\":\"boolean\"}}},\"contains\":{\"properties\":{\"fragile\":{\"const\":true}},\"required\":[\"fragile\"]},\"maxContains\":2}",
+                        )
+                        .unwrap_or_default()
+                });
+            runtime::check_schema_in(
                 out,
                 &runtime::InstancePath::Key(path, "parcels"),
                 &value,
-                SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"fragile\":{\"type\":\"boolean\"}}},\"contains\":{\"properties\":{\"fragile\":{\"const\":true}},\"required\":[\"fragile\"]},\"maxContains\":2}",
-                            )
-                            .unwrap_or_default()
-                    }),
+                schema,
+                None,
             );
         }
         if let Some(v) = &self.scores {
             {
                 static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                 let value = runtime::to_value(v).unwrap_or_default();
-                runtime::check_schema(
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"type\":\"object\",\"patternProperties\":{\"^[a-z]+$\":{\"type\":\"integer\",\"minimum\":0}},\"additionalProperties\":false}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
                     out,
                     &runtime::InstancePath::Key(path, "scores"),
                     &value,
-                    SCHEMA
-                        .get_or_init(|| {
-                            serde_json::from_str(
-                                    "{\"type\":\"object\",\"patternProperties\":{\"^[a-z]+$\":{\"type\":\"integer\",\"minimum\":0}},\"additionalProperties\":false}",
-                                )
-                                .unwrap_or_default()
-                        }),
+                    schema,
+                    None,
                 );
             }
         }
@@ -2812,17 +2836,19 @@ impl runtime::Validate for ShipmentOtherwise {
             {
                 static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                 let value = runtime::to_value(v).unwrap_or_default();
-                runtime::check_schema(
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"type\":\"object\",\"propertyNames\":{\"pattern\":\"^[a-z]+$\"},\"patternProperties\":{\"^x\":{\"type\":\"string\",\"maxLength\":3}},\"additionalProperties\":{\"type\":\"string\"}}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
                     out,
                     &runtime::InstancePath::Key(path, "labels"),
                     &value,
-                    SCHEMA
-                        .get_or_init(|| {
-                            serde_json::from_str(
-                                    "{\"type\":\"object\",\"propertyNames\":{\"pattern\":\"^[a-z]+$\"},\"patternProperties\":{\"^x\":{\"type\":\"string\",\"maxLength\":3}},\"additionalProperties\":{\"type\":\"string\"}}",
-                                )
-                                .unwrap_or_default()
-                        }),
+                    schema,
+                    None,
                 );
             }
         }

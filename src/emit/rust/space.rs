@@ -1,6 +1,9 @@
 //! The type space as the Rust emitter sees it. That is the types of the IR with what only Rust output depends on.
 
+use std::cell::RefCell;
 use std::collections::BTreeMap;
+
+use serde_json::Value;
 
 use crate::ir::TypeSpace;
 use crate::ir::types::{Kind, Ty, TypeId, all_refs, def_types};
@@ -16,6 +19,9 @@ pub(crate) struct Space<'a> {
     floats: Vec<bool>,
     /// The rough size of each definition by `TypeId` ([`Space::approx_size`]).
     sizes: Vec<usize>,
+    /// The `$defs` of every schema checked whole at run time, by pointer: `runtime.rs` holds each once
+    /// ([`Space::shared`]).
+    defs: RefCell<BTreeMap<String, Value>>,
 }
 
 impl<'a> Space<'a> {
@@ -52,7 +58,39 @@ impl<'a> Space<'a> {
 
     /// Creates the view of the emitter on `types` for a crate with `libs`.
     pub(crate) fn new(types: &'a TypeSpace, libs: FormatLibs) -> Self {
-        Self { types, libs, floats: float_defs(types), sizes: def_sizes(types) }
+        Self { types, libs, floats: float_defs(types), sizes: def_sizes(types), defs: RefCell::default() }
+    }
+
+    /// Returns `schema` without the definitions that it reaches by pointer (`#/$defs/<pointer>`). They join the ones
+    /// that the module shares: a schema that many others reach is then in the generated code once, not once per
+    /// schema that reaches it. Each is the same for every schema that reaches it: the request view of what the pointer
+    /// names. Definitions under other names (a `$defs` of the description's own) stay in `schema`. Also returns
+    /// whether any moved: only then does `schema` need the shared ones.
+    pub(crate) fn shared(&self, schema: &Value) -> (Value, bool) {
+        let mut schema = schema.clone();
+        let mut moved = false;
+        if let Some(defs) = schema.get_mut("$defs").and_then(Value::as_object_mut) {
+            let pointers: Vec<String> = defs.keys().filter(|k| k.starts_with('/')).cloned().collect();
+            let mut shared = self.defs.borrow_mut();
+            for p in pointers {
+                if let Some(d) = defs.remove(&p) {
+                    shared.entry(p).or_insert(d);
+                    moved = true;
+                }
+            }
+            if defs.is_empty()
+                && let Some(o) = schema.as_object_mut()
+            {
+                o.remove("$defs");
+            }
+        }
+        (schema, moved)
+    }
+
+    /// Returns the definitions that the module's schemas share as JSON text, or `None` when there are none.
+    pub(crate) fn shared_defs(&self) -> Option<String> {
+        let defs = self.defs.borrow();
+        (!defs.is_empty()).then(|| Value::Object(defs.clone().into_iter().collect()).to_string())
     }
 
     /// Returns the rough in-memory size in bytes of `ty` on a 64-bit target. It decides which enum variants to box

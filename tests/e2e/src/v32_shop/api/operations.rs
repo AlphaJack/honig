@@ -893,17 +893,19 @@ pub mod upload_photos {
             {
                 static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                 let value = runtime::to_value(&self.body).unwrap_or_default();
-                runtime::check_schema(
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"type\":\"array\",\"prefixItems\":[{\"$ref\":\"#/$defs/~1components~1schemas~1PhotoBatchMeta\"}],\"items\":{\"type\":\"string\",\"format\":\"binary\"}}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
                     out,
                     &runtime::InstancePath::Key(path, "body"),
                     &value,
-                    SCHEMA
-                        .get_or_init(|| {
-                            serde_json::from_str(
-                                    "{\"type\":\"array\",\"prefixItems\":[{\"$ref\":\"#/$defs/~1components~1schemas~1PhotoBatchMeta\"}],\"items\":{\"type\":\"string\",\"format\":\"binary\"},\"$defs\":{\"/components/schemas/PhotoBatchMeta\":{\"type\":\"object\",\"required\":[\"photographer\"],\"properties\":{\"photographer\":{\"type\":\"string\"},\"takenAt\":{\"type\":\"string\",\"format\":\"date-time\"},\"count\":{\"type\":\"integer\"}}}}}",
-                                )
-                                .unwrap_or_default()
-                        }),
+                    schema,
+                    runtime::schema_defs(),
                 );
             }
         }
@@ -954,17 +956,19 @@ pub mod create_item {
             {
                 static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
                 let value = runtime::to_value(&self.body).unwrap_or_default();
-                runtime::check_schema(
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"oneOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Product\"},{\"$ref\":\"#/$defs/~1components~1schemas~1Variant\"}]}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
                     out,
                     &runtime::InstancePath::Key(path, "body"),
                     &value,
-                    SCHEMA
-                        .get_or_init(|| {
-                            serde_json::from_str(
-                                    "{\"oneOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Product\"},{\"$ref\":\"#/$defs/~1components~1schemas~1Variant\"}],\"$defs\":{\"/components/schemas/Product\":{\"type\":\"object\",\"required\":[\"name\"],\"additionalProperties\":false,\"properties\":{\"id\":{\"type\":\"integer\",\"format\":\"int64\",\"readOnly\":true},\"name\":{\"type\":\"string\"},\"description\":{\"type\":[\"string\",\"null\"]},\"type\":{\"type\":\"string\",\"enum\":[\"hardware\",\"software\",\"service\",\"accessory\",\"subscription\"],\"x-enum-varnames\":[\"Hardware\",\"Software\",\"Service\",\"Accessory\",\"Subscription\"]},\"rating\":{\"type\":\"number\",\"format\":\"float\",\"minimum\":0,\"maximum\":1},\"dimensions\":{\"type\":\"object\",\"additionalProperties\":{\"type\":\"number\",\"format\":\"float\"},\"properties\":{\"weight\":{\"type\":\"number\",\"format\":\"float\",\"exclusiveMinimum\":0},\"width\":{\"type\":\"number\",\"format\":\"float\",\"exclusiveMinimum\":0},\"height\":{\"type\":\"number\",\"format\":\"float\"},\"price\":{\"type\":\"object\",\"additionalProperties\":{\"type\":\"number\",\"format\":\"float\"},\"properties\":{\"min\":{\"type\":\"number\",\"format\":\"float\"},\"max\":{\"type\":\"number\",\"format\":\"float\"},\"average\":{\"type\":\"number\",\"format\":\"float\"}}}}},\"materials\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"additionalProperties\":{\"type\":\"string\"},\"properties\":{\"material\":{\"type\":\"string\"},\"percentage\":{\"type\":\"number\",\"format\":\"float\",\"exclusiveMaximum\":100}}}},\"listedAt\":{\"type\":\"string\",\"format\":\"date-time\"},\"image\":{\"type\":[\"string\",\"null\"]},\"variants\":{\"type\":\"array\",\"items\":{\"$ref\":\"#/$defs/~1components~1schemas~1Variant\"}},\"creator\":{\"$ref\":\"#/$defs/~1components~1schemas~1User\"},\"tags\":{\"type\":\"array\",\"items\":{\"type\":\"string\"}},\"lastUpdated\":{\"type\":\"string\",\"format\":\"date-time\",\"readOnly\":true},\"successCallbackUrl\":{\"type\":\"string\",\"format\":\"uri\"},\"failureCallbackUrl\":{\"type\":\"string\",\"format\":\"uri\"}}},\"/components/schemas/Variant\":{\"type\":\"object\",\"required\":[\"name\"],\"properties\":{\"id\":{\"type\":\"integer\",\"format\":\"int64\",\"readOnly\":true},\"name\":{\"type\":\"string\"},\"description\":{\"type\":[\"string\",\"null\"]},\"length\":{\"type\":\"number\",\"format\":\"float\"},\"type\":{\"type\":\"string\",\"enum\":[\"size\",\"color\",\"edition\"],\"x-enum-varnames\":[\"Size\",\"Color\",\"Edition\"]},\"shipping\":{\"type\":\"object\",\"properties\":{\"product\":{\"$ref\":\"#/$defs/~1components~1schemas~1Product\"},\"deliveryDays\":{\"type\":\"number\",\"format\":\"float\"},\"distance\":{\"type\":\"number\",\"format\":\"float\"}}}}},\"/components/schemas/User\":{\"type\":\"object\",\"properties\":{\"id\":{\"type\":\"integer\",\"format\":\"int64\",\"readOnly\":true},\"name\":{\"type\":\"string\"}}}}}",
-                                )
-                                .unwrap_or_default()
-                        }),
+                    schema,
+                    runtime::schema_defs(),
                 );
             }
         }

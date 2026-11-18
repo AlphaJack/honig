@@ -3,7 +3,7 @@
 
 use super::common;
 
-use serde_json::json;
+use serde_json::{Value, json};
 
 /// The `pub mod <op> { ... }` block of `operations.rs`.
 fn op_module<'a>(ops: &'a str, op: &str) -> &'a str {
@@ -623,4 +623,36 @@ fn a_response_of_a_union_of_unions_is_sized_to_the_bottom() {
     let files = common::generate("shape-union-of-unions", &doc, &crate::emit::Options::default());
     let ops = common::file(&files, "operations.rs");
     assert!(ops.contains("Ok(Box<types::U39>)"), "{ops}");
+}
+
+/// A schema that many schemas checked whole reach is in the generated code once: in `runtime.rs`, which every
+/// check of the module shares. Each check used to carry its own copy, so the code grew with the product of the two.
+#[test]
+fn a_schema_that_many_whole_checks_reach_is_generated_once() {
+    let mut schemas = serde_json::Map::new();
+    schemas.insert(
+        "Big".to_owned(),
+        json!({"type": "object", "properties": {"code": {"type": "string", "maxLength": 4242}}}),
+    );
+    let mut paths = serde_json::Map::new();
+    for i in 0..20 {
+        // `not` has no Rust type: each of these is checked whole at run time, and reaches `Big`.
+        schemas.insert(
+            format!("S{i}"),
+            json!({"type": "object", "properties": {"big": {"$ref": "#/components/schemas/Big"}}, "not": {"required": ["x"]}}),
+        );
+        paths.insert(
+            format!("/s{i}"),
+            json!({"post": {
+                "operationId": format!("s{i}"),
+                "requestBody": {"content": {"application/json": {"schema": {"$ref": format!("#/components/schemas/S{i}")}}}},
+                "responses": {"204": {"description": "ok"}},
+            }}),
+        );
+    }
+    let doc = common::spec("3.1.0", &Value::Object(paths), &json!({"schemas": schemas}));
+    let files = common::generate("shape-shared-defs", &doc, &crate::emit::Options::default());
+    let copies: usize = files.iter().map(|(_, text)| text.matches(r#"maxLength\":4242"#).count()).sum();
+    assert_eq!(copies, 1, "{files:#?}");
+    assert!(common::file(&files, "runtime.rs").contains("fn schema_defs"), "{files:#?}");
 }
