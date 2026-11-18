@@ -718,11 +718,17 @@ impl Schema<'_> {
             Value::Object(s) => &Keywords::new(s),
             Value::Bool(true) | Value::Null | Value::Number(_) | Value::String(_) | Value::Array(_) => return ev,
         };
-        if let Some(target) = s.get("$ref").and_then(Value::as_str).and_then(|r| self.def(r)) {
-            let e = self.check_def(value, target, out);
-            merge(&mut ev, e);
-        }
         let fail = |out: &mut Vec<(String, String)>, m: String| out.push((String::new(), m));
+        if let Some(r) = s.get("$ref").and_then(Value::as_str) {
+            match self.def(r) {
+                Some(target) => {
+                    let e = self.check_def(value, target, out);
+                    merge(&mut ev, e);
+                }
+                // Passing would accept any value: the generator resolves every reference, so this is a bug to see.
+                None => fail(out, format!("the reference `{r}` resolves to no schema")),
+            }
+        }
         if let Some(t) = s.get("type") {
             let ok = match t {
                 Value::String(t) => type_is(value, t),
@@ -1325,6 +1331,7 @@ mod mail {
 
     #[cfg(test)]
     mod tests {
+
         use super::{Email, IdnHostname, email, hostname};
 
         #[test]
@@ -1417,6 +1424,16 @@ mod mail {
 
 #[cfg(test)]
 mod tests {
+    /// A reference that resolves to nothing refuses the value: passing it would accept anything.
+    #[test]
+    fn a_reference_that_does_not_resolve_refuses_the_value() {
+        let schema = serde_json::json!({"$ref": "#/$defs/missing"});
+        let mut out = vec![];
+        super::check_schema(&mut out, &super::InstancePath::Root, &serde_json::json!("anything"), &schema);
+        assert_eq!(out.len(), 1, "{out:?}");
+        assert!(out[0].message.contains("#/$defs/missing"), "{out:?}");
+    }
+
     #[test]
     fn nan_is_no_number_whatever_the_bounds() {
         let mut out = vec![];
