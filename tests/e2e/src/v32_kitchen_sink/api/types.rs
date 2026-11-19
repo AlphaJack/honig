@@ -1256,9 +1256,14 @@ impl<'de> serde::Deserialize<'de> for ShapeVariants {
         let fit_0 = v.kind() == runtime::Kind::Object;
         let fit_1 = v.kind() == runtime::Kind::Object;
         let mut first: Option<String> = None;
+        let mut matches = 0usize;
+        let mut found: Option<Self> = None;
         if fit_0 {
             match v.decode_ref::<Book>() {
-                Ok(x) => return Ok(Self::Book(x)),
+                Ok(x) => {
+                    matches += 1;
+                    found.get_or_insert(Self::Book(x));
+                }
                 Err(e) => {
                     first.get_or_insert(e.to_string());
                 }
@@ -1266,11 +1271,25 @@ impl<'de> serde::Deserialize<'de> for ShapeVariants {
         }
         if fit_1 {
             match v.decode_ref::<Gadget>() {
-                Ok(x) => return Ok(Self::Gadget(x)),
+                Ok(x) => {
+                    matches += 1;
+                    found.get_or_insert(Self::Gadget(x));
+                }
                 Err(e) => {
                     first.get_or_insert(e.to_string());
                 }
             }
+        }
+        match (matches, found) {
+            (1, Some(one)) => return Ok(one),
+            (n, Some(_)) => {
+                return Err(
+                    serde::de::Error::custom(
+                        format!("matches {n} of `oneOf`, not exactly one"),
+                    ),
+                );
+            }
+            (_, None) => {}
         }
         Err(
             serde::de::Error::custom(
@@ -1489,9 +1508,14 @@ impl<'de> serde::Deserialize<'de> for ShapeRequestVariants {
         let fit_0 = v.kind() == runtime::Kind::Object;
         let fit_1 = v.kind() == runtime::Kind::Object;
         let mut first: Option<String> = None;
+        let mut matches = 0usize;
+        let mut found: Option<Self> = None;
         if fit_0 {
             match v.decode_ref::<BookRequest>() {
-                Ok(x) => return Ok(Self::Book(x)),
+                Ok(x) => {
+                    matches += 1;
+                    found.get_or_insert(Self::Book(x));
+                }
                 Err(e) => {
                     first.get_or_insert(e.to_string());
                 }
@@ -1499,11 +1523,25 @@ impl<'de> serde::Deserialize<'de> for ShapeRequestVariants {
         }
         if fit_1 {
             match v.decode_ref::<GadgetRequest>() {
-                Ok(x) => return Ok(Self::Gadget(x)),
+                Ok(x) => {
+                    matches += 1;
+                    found.get_or_insert(Self::Gadget(x));
+                }
                 Err(e) => {
                     first.get_or_insert(e.to_string());
                 }
             }
+        }
+        match (matches, found) {
+            (1, Some(one)) => return Ok(one),
+            (n, Some(_)) => {
+                return Err(
+                    serde::de::Error::custom(
+                        format!("matches {n} of `oneOf`, not exactly one"),
+                    ),
+                );
+            }
+            (_, None) => {}
         }
         Err(
             serde::de::Error::custom(

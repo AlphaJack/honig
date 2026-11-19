@@ -46,6 +46,18 @@ macro_rules! serialize_impl_2 {
     ($t:ty) => {
         impl serde::Serialize for $t {
             fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                match self {
+                    Self::Pickup(v) => serde::Serialize::serialize(v, s),
+                    Self::Address(v) => serde::Serialize::serialize(v, s),
+                }
+            }
+        }
+    };
+}
+macro_rules! serialize_impl_3 {
+    ($t:ty) => {
+        impl serde::Serialize for $t {
+            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
                 s.serialize_str(Self::VALUE)
             }
         }
@@ -57,18 +69,6 @@ macro_rules! deserialize_impl_3 {
             fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
                 runtime::expect_const(d, &serde_json::Value::String("sms".to_owned()))
                     .map(|()| Self)
-            }
-        }
-    };
-}
-macro_rules! serialize_impl_3 {
-    ($t:ty) => {
-        impl serde::Serialize for $t {
-            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-                match self {
-                    Self::Pickup(v) => serde::Serialize::serialize(v, s),
-                    Self::Address(v) => serde::Serialize::serialize(v, s),
-                }
             }
         }
     };
@@ -96,32 +96,6 @@ macro_rules! str_enum_impls {
             fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
                 let s = <std::borrow::Cow<'de, str> as serde::Deserialize>::deserialize(d)?;
                 Self::try_from(&*s).map_err(serde::de::Error::custom)
-            }
-        }
-    };
-}
-macro_rules! checked_impls {
-    ($n:ident, $t:ty) => {
-        impl $n {
-            #[must_use]
-            pub fn into_inner(self) -> $t {
-                self.0
-            }
-        }
-        impl std::ops::Deref for $n {
-            type Target = $t;
-            fn deref(&self) -> &$t {
-                &self.0
-            }
-        }
-        impl AsRef<$t> for $n {
-            fn as_ref(&self) -> &$t {
-                &self.0
-            }
-        }
-        impl From<$n> for $t {
-            fn from(value: $n) -> Self {
-                value.0
             }
         }
     };
@@ -279,126 +253,189 @@ impl<'de> runtime::TaggedUnion<'de> for IfThen {
         }
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
-#[serde(transparent)]
-pub struct ConstOneOf(pub(super) ConstOneOfVariants);
-impl<'de> serde::Deserialize<'de> for ConstOneOf {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <ConstOneOfVariants as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
-    }
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ConstOneOf {
+    Email(ConstOneOfEmail),
+    Sms(ConstOneOfSms),
 }
-impl TryFrom<ConstOneOfVariants> for ConstOneOf {
-    type Error = runtime::BuildError;
-    fn try_from(value: ConstOneOfVariants) -> Result<Self, runtime::BuildError> {
-        let mut violations: Vec<runtime::Violation> = Vec::new();
-        {
-            let out = &mut violations;
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&value).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"oneOf\":[{\"type\":\"object\",\"required\":[\"type\",\"email\"],\"properties\":{\"type\":{\"type\":\"string\",\"enum\":[\"email\"]},\"email\":{\"type\":\"string\"}}},{\"type\":\"object\",\"required\":[\"type\",\"phone\"],\"properties\":{\"type\":{\"type\":\"string\",\"enum\":[\"sms\"]},\"phone\":{\"type\":\"string\"}}}]}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Root,
-                    &value,
-                    schema,
-                    runtime::schema_defs(),
-                );
+impl serde::Serialize for ConstOneOf {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        match self {
+            Self::Email(v) => {
+                let mut j = serde_json::to_value(v).map_err(serde::ser::Error::custom)?;
+                if let serde_json::Value::Object(m) = &mut j {
+                    m.insert(
+                        "type".to_owned(),
+                        serde_json::Value::String("email".to_owned()),
+                    );
+                }
+                serde::Serialize::serialize(&j, s)
+            }
+            Self::Sms(v) => {
+                let mut j = serde_json::to_value(v).map_err(serde::ser::Error::custom)?;
+                if let serde_json::Value::Object(m) = &mut j {
+                    m.insert(
+                        "type".to_owned(),
+                        serde_json::Value::String("sms".to_owned()),
+                    );
+                }
+                serde::Serialize::serialize(&j, s)
             }
         }
-        runtime::first(violations)
-            .map(|()| Self(value))
-            .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(ConstOneOf, ConstOneOfVariants);
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
-#[serde(transparent)]
-pub struct Delivery(pub(super) DeliveryVariants);
+deserialize_impl_2!(ConstOneOf);
+impl<'de> runtime::TaggedUnion<'de> for ConstOneOf {
+    const TAG: &'static str = "type";
+    fn knows(tag: &str) -> bool {
+        matches!(tag, "email" | "sms")
+    }
+    fn from_tag<D: serde::Deserializer<'de>>(tag: &str, d: D) -> Result<Self, D::Error> {
+        match tag {
+            "email" => {
+                <ConstOneOfEmail as serde::Deserialize>::deserialize(d).map(Self::Email)
+            }
+            "sms" => <ConstOneOfSms as serde::Deserialize>::deserialize(d).map(Self::Sms),
+            _ => Err(serde::de::Error::custom("unknown discriminator")),
+        }
+    }
+    fn from_content(v: runtime::Content<'de>) -> Result<Self, serde_json::Error> {
+        let which = match v.tag("type").as_deref() {
+            Some("email") => 0,
+            Some("sms") => 1,
+            _ => 2,
+        };
+        match which {
+            0 => v.decode_into(Self::Email),
+            1 => v.decode_into(Self::Sms),
+            _ => Err(serde::de::Error::custom("matches no variant")),
+        }
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Delivery {
+    Pickup(DeliveryPickup),
+    Address(DeliveryAddress),
+}
+serialize_impl_2!(Delivery);
 impl<'de> serde::Deserialize<'de> for Delivery {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <DeliveryVariants as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
-    }
-}
-impl TryFrom<DeliveryVariants> for Delivery {
-    type Error = runtime::BuildError;
-    fn try_from(value: DeliveryVariants) -> Result<Self, runtime::BuildError> {
-        let mut violations: Vec<runtime::Violation> = Vec::new();
-        {
-            let out = &mut violations;
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&value).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"oneOf\":[{\"type\":\"object\",\"required\":[\"pickup\"],\"properties\":{\"pickup\":{\"type\":\"boolean\"}}},{\"$ref\":\"#/$defs/~1components~1schemas~1Address\"}]}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Root,
-                    &value,
-                    schema,
-                    runtime::schema_defs(),
-                );
+        let v = <runtime::Content<'de> as serde::Deserialize>::deserialize(d)?;
+        let fit_0 = v.kind() == runtime::Kind::Object
+            && runtime::fits(
+                &v,
+                &[
+                    ("pickup", true, &[runtime::Kind::Bool]),
+                    ("orderId", true, &[runtime::Kind::String]),
+                ],
+            );
+        let fit_1 = v.kind() == runtime::Kind::Object
+            && runtime::fits(
+                &v,
+                &[
+                    ("street", true, &[runtime::Kind::String]),
+                    ("orderId", true, &[runtime::Kind::String]),
+                ],
+            );
+        let mut first: Option<String> = None;
+        let mut matches = 0usize;
+        let mut found: Option<Self> = None;
+        if fit_0 {
+            match v.decode_ref::<DeliveryPickup>() {
+                Ok(x) => {
+                    matches += 1;
+                    found.get_or_insert(Self::Pickup(x));
+                }
+                Err(e) => {
+                    first.get_or_insert(e.to_string());
+                }
             }
         }
-        runtime::first(violations)
-            .map(|()| Self(value))
-            .map_err(runtime::BuildError::value)
+        if fit_1 {
+            match v.decode_ref::<DeliveryAddress>() {
+                Ok(x) => {
+                    matches += 1;
+                    found.get_or_insert(Self::Address(x));
+                }
+                Err(e) => {
+                    first.get_or_insert(e.to_string());
+                }
+            }
+        }
+        match (matches, found) {
+            (1, Some(one)) => return Ok(one),
+            (n, Some(_)) => {
+                return Err(
+                    serde::de::Error::custom(
+                        format!("matches {n} of `oneOf`, not exactly one"),
+                    ),
+                );
+            }
+            (_, None) => {}
+        }
+        Err(
+            serde::de::Error::custom(
+                first.unwrap_or_else(|| "matches no variant".to_owned()),
+            ),
+        )
     }
 }
-checked_impls!(Delivery, DeliveryVariants);
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
-#[serde(transparent)]
-pub struct DeliveryMethod(pub(super) DeliveryMethodVariants);
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum DeliveryMethod {
+    Pickup(DeliveryMethodPickup),
+    Address(Address),
+}
+serialize_impl_2!(DeliveryMethod);
 impl<'de> serde::Deserialize<'de> for DeliveryMethod {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <DeliveryMethodVariants as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
-    }
-}
-impl TryFrom<DeliveryMethodVariants> for DeliveryMethod {
-    type Error = runtime::BuildError;
-    fn try_from(value: DeliveryMethodVariants) -> Result<Self, runtime::BuildError> {
-        let mut violations: Vec<runtime::Violation> = Vec::new();
-        {
-            let out = &mut violations;
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&value).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"oneOf\":[{\"type\":\"object\",\"required\":[\"pickup\"],\"properties\":{\"pickup\":{\"type\":\"boolean\"}}},{\"$ref\":\"#/$defs/~1components~1schemas~1Address\"}]}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Root,
-                    &value,
-                    schema,
-                    runtime::schema_defs(),
-                );
+        let v = <runtime::Content<'de> as serde::Deserialize>::deserialize(d)?;
+        let fit_0 = v.kind() == runtime::Kind::Object
+            && runtime::fits(&v, &[("pickup", true, &[runtime::Kind::Bool])]);
+        let fit_1 = v.kind() == runtime::Kind::Object
+            && runtime::fits(&v, &[("street", true, &[runtime::Kind::String])]);
+        let mut first: Option<String> = None;
+        let mut matches = 0usize;
+        let mut found: Option<Self> = None;
+        if fit_0 {
+            match v.decode_ref::<DeliveryMethodPickup>() {
+                Ok(x) => {
+                    matches += 1;
+                    found.get_or_insert(Self::Pickup(x));
+                }
+                Err(e) => {
+                    first.get_or_insert(e.to_string());
+                }
             }
         }
-        runtime::first(violations)
-            .map(|()| Self(value))
-            .map_err(runtime::BuildError::value)
+        if fit_1 {
+            match v.decode_ref::<Address>() {
+                Ok(x) => {
+                    matches += 1;
+                    found.get_or_insert(Self::Address(x));
+                }
+                Err(e) => {
+                    first.get_or_insert(e.to_string());
+                }
+            }
+        }
+        match (matches, found) {
+            (1, Some(one)) => return Ok(one),
+            (n, Some(_)) => {
+                return Err(
+                    serde::de::Error::custom(
+                        format!("matches {n} of `oneOf`, not exactly one"),
+                    ),
+                );
+            }
+            (_, None) => {}
+        }
+        Err(
+            serde::de::Error::custom(
+                first.unwrap_or_else(|| "matches no variant".to_owned()),
+            ),
+        )
     }
 }
-checked_impls!(DeliveryMethod, DeliveryMethodVariants);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Address {
@@ -591,7 +628,7 @@ pub struct IfThenEmailType;
 impl IfThenEmailType {
     pub const VALUE: &'static str = "email";
 }
-serialize_impl_2!(IfThenEmailType);
+serialize_impl_3!(IfThenEmailType);
 impl<'de> serde::Deserialize<'de> for IfThenEmailType {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         runtime::expect_const(d, &serde_json::Value::String("email".to_owned()))
@@ -618,7 +655,7 @@ pub struct IfThenSmsType;
 impl IfThenSmsType {
     pub const VALUE: &'static str = "sms";
 }
-serialize_impl_2!(IfThenSmsType);
+serialize_impl_3!(IfThenSmsType);
 deserialize_impl_3!(IfThenSmsType);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -745,7 +782,7 @@ pub struct ShippingUsCountry;
 impl ShippingUsCountry {
     pub const VALUE: &'static str = "US";
 }
-serialize_impl_2!(ShippingUsCountry);
+serialize_impl_3!(ShippingUsCountry);
 impl<'de> serde::Deserialize<'de> for ShippingUsCountry {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         runtime::expect_const(d, &serde_json::Value::String("US".to_owned()))
@@ -845,7 +882,7 @@ pub struct ContactSmsVia;
 impl ContactSmsVia {
     pub const VALUE: &'static str = "sms";
 }
-serialize_impl_2!(ContactSmsVia);
+serialize_impl_3!(ContactSmsVia);
 deserialize_impl_3!(ContactSmsVia);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -863,151 +900,6 @@ impl ContactOtherwise {
     #[must_use]
     pub const fn new() -> Self {
         Self { via: None }
-    }
-}
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ConstOneOfVariants {
-    Email(ConstOneOfEmail),
-    Sms(ConstOneOfSms),
-}
-impl serde::Serialize for ConstOneOfVariants {
-    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        match self {
-            Self::Email(v) => {
-                let mut j = serde_json::to_value(v).map_err(serde::ser::Error::custom)?;
-                if let serde_json::Value::Object(m) = &mut j {
-                    m.insert(
-                        "type".to_owned(),
-                        serde_json::Value::String("email".to_owned()),
-                    );
-                }
-                serde::Serialize::serialize(&j, s)
-            }
-            Self::Sms(v) => {
-                let mut j = serde_json::to_value(v).map_err(serde::ser::Error::custom)?;
-                if let serde_json::Value::Object(m) = &mut j {
-                    m.insert(
-                        "type".to_owned(),
-                        serde_json::Value::String("sms".to_owned()),
-                    );
-                }
-                serde::Serialize::serialize(&j, s)
-            }
-        }
-    }
-}
-deserialize_impl_2!(ConstOneOfVariants);
-impl<'de> runtime::TaggedUnion<'de> for ConstOneOfVariants {
-    const TAG: &'static str = "type";
-    fn knows(tag: &str) -> bool {
-        matches!(tag, "email" | "sms")
-    }
-    fn from_tag<D: serde::Deserializer<'de>>(tag: &str, d: D) -> Result<Self, D::Error> {
-        match tag {
-            "email" => {
-                <ConstOneOfEmail as serde::Deserialize>::deserialize(d).map(Self::Email)
-            }
-            "sms" => <ConstOneOfSms as serde::Deserialize>::deserialize(d).map(Self::Sms),
-            _ => Err(serde::de::Error::custom("unknown discriminator")),
-        }
-    }
-    fn from_content(v: runtime::Content<'de>) -> Result<Self, serde_json::Error> {
-        let which = match v.tag("type").as_deref() {
-            Some("email") => 0,
-            Some("sms") => 1,
-            _ => 2,
-        };
-        match which {
-            0 => v.decode_into(Self::Email),
-            1 => v.decode_into(Self::Sms),
-            _ => Err(serde::de::Error::custom("matches no variant")),
-        }
-    }
-}
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum DeliveryVariants {
-    Pickup(DeliveryPickup),
-    Address(DeliveryAddress),
-}
-serialize_impl_3!(DeliveryVariants);
-impl<'de> serde::Deserialize<'de> for DeliveryVariants {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let v = <runtime::Content<'de> as serde::Deserialize>::deserialize(d)?;
-        let fit_0 = v.kind() == runtime::Kind::Object
-            && runtime::fits(
-                &v,
-                &[
-                    ("pickup", true, &[runtime::Kind::Bool]),
-                    ("orderId", true, &[runtime::Kind::String]),
-                ],
-            );
-        let fit_1 = v.kind() == runtime::Kind::Object
-            && runtime::fits(
-                &v,
-                &[
-                    ("street", true, &[runtime::Kind::String]),
-                    ("orderId", true, &[runtime::Kind::String]),
-                ],
-            );
-        let mut first: Option<String> = None;
-        if fit_0 {
-            match v.decode_ref::<DeliveryPickup>() {
-                Ok(x) => return Ok(Self::Pickup(x)),
-                Err(e) => {
-                    first.get_or_insert(e.to_string());
-                }
-            }
-        }
-        if fit_1 {
-            match v.decode_ref::<DeliveryAddress>() {
-                Ok(x) => return Ok(Self::Address(x)),
-                Err(e) => {
-                    first.get_or_insert(e.to_string());
-                }
-            }
-        }
-        Err(
-            serde::de::Error::custom(
-                first.unwrap_or_else(|| "matches no variant".to_owned()),
-            ),
-        )
-    }
-}
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum DeliveryMethodVariants {
-    Pickup(DeliveryMethodPickup),
-    Address(Address),
-}
-serialize_impl_3!(DeliveryMethodVariants);
-impl<'de> serde::Deserialize<'de> for DeliveryMethodVariants {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let v = <runtime::Content<'de> as serde::Deserialize>::deserialize(d)?;
-        let fit_0 = v.kind() == runtime::Kind::Object
-            && runtime::fits(&v, &[("pickup", true, &[runtime::Kind::Bool])]);
-        let fit_1 = v.kind() == runtime::Kind::Object
-            && runtime::fits(&v, &[("street", true, &[runtime::Kind::String])]);
-        let mut first: Option<String> = None;
-        if fit_0 {
-            match v.decode_ref::<DeliveryMethodPickup>() {
-                Ok(x) => return Ok(Self::Pickup(x)),
-                Err(e) => {
-                    first.get_or_insert(e.to_string());
-                }
-            }
-        }
-        if fit_1 {
-            match v.decode_ref::<Address>() {
-                Ok(x) => return Ok(Self::Address(x)),
-                Err(e) => {
-                    first.get_or_insert(e.to_string());
-                }
-            }
-        }
-        Err(
-            serde::de::Error::custom(
-                first.unwrap_or_else(|| "matches no variant".to_owned()),
-            ),
-        )
     }
 }
 /// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of

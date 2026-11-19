@@ -15,6 +15,18 @@
     clippy::init_numbered_fields,
     reason = "a spec default builds its checked type as `Type { 0: value }`, which also works through the alias of a twin"
 )]
+macro_rules! serialize_impl {
+    ($t:ty) => {
+        impl serde::Serialize for $t {
+            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                match self {
+                    Self::Variant1(v) => serde::Serialize::serialize(v, s),
+                    Self::Variant2(v) => serde::Serialize::serialize(v, s),
+                }
+            }
+        }
+    };
+}
 macro_rules! deserialize_impl {
     ($t:ty) => {
         impl<'de> serde::Deserialize<'de> for $t {
@@ -24,7 +36,7 @@ macro_rules! deserialize_impl {
         }
     };
 }
-macro_rules! serialize_impl {
+macro_rules! serialize_impl_2 {
     ($t:ty) => {
         impl serde::Serialize for $t {
             fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
@@ -87,7 +99,7 @@ macro_rules! try_from_impl_2 {
         }
     };
 }
-macro_rules! serialize_impl_2 {
+macro_rules! serialize_impl_3 {
     ($t:ty) => {
         impl serde::Serialize for $t {
             fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
@@ -117,18 +129,6 @@ macro_rules! try_from_impl_3 {
                 runtime::first(violations)
                     .map(|()| Self(value))
                     .map_err(runtime::BuildError::value)
-            }
-        }
-    };
-}
-macro_rules! serialize_impl_3 {
-    ($t:ty) => {
-        impl serde::Serialize for $t {
-            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-                match self {
-                    Self::Variant1(v) => serde::Serialize::serialize(v, s),
-                    Self::Variant2(v) => serde::Serialize::serialize(v, s),
-                }
             }
         }
     };
@@ -406,6 +406,60 @@ impl<'de> serde::Deserialize<'de> for Slug {
         )
     }
 }
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Code {
+    Variant1(CodeVariant1),
+    Variant2(CodeVariant2),
+}
+serialize_impl!(Code);
+impl<'de> serde::Deserialize<'de> for Code {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let v = <runtime::Content<'de> as serde::Deserialize>::deserialize(d)?;
+        let fit_0 = v.kind() == runtime::Kind::String;
+        let fit_1 = v.kind() == runtime::Kind::String;
+        let mut first: Option<String> = None;
+        let mut matches = 0usize;
+        let mut found: Option<Self> = None;
+        if fit_0 {
+            match v.decode_ref::<CodeVariant1>() {
+                Ok(x) => {
+                    matches += 1;
+                    found.get_or_insert(Self::Variant1(x));
+                }
+                Err(e) => {
+                    first.get_or_insert(e.to_string());
+                }
+            }
+        }
+        if fit_1 {
+            match v.decode_ref::<CodeVariant2>() {
+                Ok(x) => {
+                    matches += 1;
+                    found.get_or_insert(Self::Variant2(x));
+                }
+                Err(e) => {
+                    first.get_or_insert(e.to_string());
+                }
+            }
+        }
+        match (matches, found) {
+            (1, Some(one)) => return Ok(one),
+            (n, Some(_)) => {
+                return Err(
+                    serde::de::Error::custom(
+                        format!("matches {n} of `oneOf`, not exactly one"),
+                    ),
+                );
+            }
+            (_, None) => {}
+        }
+        Err(
+            serde::de::Error::custom(
+                first.unwrap_or_else(|| "matches no variant".to_owned()),
+            ),
+        )
+    }
+}
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Exact {
@@ -423,7 +477,7 @@ pub struct Exact {
     pub cents: Option<ExactCents>,
 }
 deserialize_impl!(Exact);
-serialize_impl!(Exact);
+serialize_impl_2!(Exact);
 impl Exact {
     #[must_use]
     pub const fn new() -> Self {
@@ -509,7 +563,7 @@ pub struct Degenerate {
     pub half: Option<DegenerateHalf>,
 }
 deserialize_impl!(Degenerate);
-serialize_impl!(Degenerate);
+serialize_impl_2!(Degenerate);
 impl Degenerate {
     #[must_use]
     pub const fn new() -> Self {
@@ -614,46 +668,74 @@ impl runtime::XmlShape for Degenerate {
         &NODE
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
-#[serde(transparent)]
-pub struct Tree(pub(super) TreeVariants);
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Tree {
+    Variant1(TreeVariant1),
+    Variant2(TreeVariant2),
+}
+serialize_impl!(Tree);
 impl<'de> serde::Deserialize<'de> for Tree {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <TreeVariants as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
-    }
-}
-impl TryFrom<TreeVariants> for Tree {
-    type Error = runtime::BuildError;
-    fn try_from(value: TreeVariants) -> Result<Self, runtime::BuildError> {
-        let mut violations: Vec<runtime::Violation> = Vec::new();
-        {
-            let out = &mut violations;
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&value).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"oneOf\":[{\"type\":\"object\",\"required\":[\"items\",\"x\"],\"properties\":{\"items\":{\"type\":\"array\",\"items\":{\"$ref\":\"#/$defs/~1components~1schemas~1Tree\"}},\"x\":{\"type\":\"string\"}}},{\"type\":\"object\",\"required\":[\"items\",\"x\"],\"properties\":{\"items\":{\"type\":\"array\",\"items\":{\"$ref\":\"#/$defs/~1components~1schemas~1Tree\"}},\"x\":{\"type\":\"integer\"}}}]}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Root,
-                    &value,
-                    schema,
-                    runtime::schema_defs(),
-                );
+        let v = <runtime::Content<'de> as serde::Deserialize>::deserialize(d)?;
+        let fit_0 = v.kind() == runtime::Kind::Object
+            && runtime::fits(
+                &v,
+                &[
+                    ("items", true, &[runtime::Kind::Array]),
+                    ("x", true, &[runtime::Kind::String]),
+                ],
+            );
+        let fit_1 = v.kind() == runtime::Kind::Object
+            && runtime::fits(
+                &v,
+                &[
+                    ("items", true, &[runtime::Kind::Array]),
+                    ("x", true, &[runtime::Kind::Integer, runtime::Kind::Number]),
+                ],
+            );
+        let mut first: Option<String> = None;
+        let mut matches = 0usize;
+        let mut found: Option<Self> = None;
+        if fit_0 {
+            match v.decode_ref::<TreeVariant1>() {
+                Ok(x) => {
+                    matches += 1;
+                    found.get_or_insert(Self::Variant1(x));
+                }
+                Err(e) => {
+                    first.get_or_insert(e.to_string());
+                }
             }
         }
-        runtime::first(violations)
-            .map(|()| Self(value))
-            .map_err(runtime::BuildError::value)
+        if fit_1 {
+            match v.decode_ref::<TreeVariant2>() {
+                Ok(x) => {
+                    matches += 1;
+                    found.get_or_insert(Self::Variant2(x));
+                }
+                Err(e) => {
+                    first.get_or_insert(e.to_string());
+                }
+            }
+        }
+        match (matches, found) {
+            (1, Some(one)) => return Ok(one),
+            (n, Some(_)) => {
+                return Err(
+                    serde::de::Error::custom(
+                        format!("matches {n} of `oneOf`, not exactly one"),
+                    ),
+                );
+            }
+            (_, None) => {}
+        }
+        Err(
+            serde::de::Error::custom(
+                first.unwrap_or_else(|| "matches no variant".to_owned()),
+            ),
+        )
     }
 }
-checked_impls!(Tree, TreeVariants);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Ledger {
@@ -665,7 +747,7 @@ pub struct Ledger {
     pub entries: Option<Vec<Entry>>,
 }
 deserialize_impl!(Ledger);
-serialize_impl!(Ledger);
+serialize_impl_2!(Ledger);
 impl Ledger {
     #[must_use]
     pub const fn new() -> Self {
@@ -751,7 +833,7 @@ pub struct EntryFields {
     pub lines: Option<Vec<Line>>,
 }
 deserialize_impl!(EntryFields);
-serialize_impl!(EntryFields);
+serialize_impl_2!(EntryFields);
 impl EntryFields {
     #[must_use]
     pub const fn new() -> Self {
@@ -793,7 +875,7 @@ pub struct Line {
     pub note: runtime::Nullable<LineNote>,
 }
 deserialize_impl!(Line);
-serialize_impl!(Line);
+serialize_impl_2!(Line);
 impl Line {
     #[must_use]
     pub const fn new() -> Self {
@@ -837,7 +919,7 @@ pub struct Refusal {
     pub object: RefusalObject,
 }
 deserialize_impl!(Refusal);
-serialize_impl!(Refusal);
+serialize_impl_2!(Refusal);
 impl Refusal {
     #[must_use]
     pub const fn new(message: String, object: RefusalObject) -> Self {
@@ -897,7 +979,7 @@ pub struct Problem {
     pub detail: String,
 }
 deserialize_impl!(Problem);
-serialize_impl!(Problem);
+serialize_impl_2!(Problem);
 impl Problem {
     #[must_use]
     pub const fn new(code: ProblemCode, status: i32, detail: String) -> Self {
@@ -971,7 +1053,7 @@ pub struct Closed {
     pub name: String,
 }
 deserialize_impl!(Closed);
-serialize_impl!(Closed);
+serialize_impl_2!(Closed);
 impl Closed {
     #[must_use]
     pub const fn new(name: String) -> Self {
@@ -1011,7 +1093,7 @@ impl runtime::XmlShape for Closed {
 #[serde(deny_unknown_fields)]
 pub struct NoOptions {}
 deserialize_impl!(NoOptions);
-serialize_impl!(NoOptions);
+serialize_impl_2!(NoOptions);
 impl NoOptions {
     #[must_use]
     pub const fn new() -> Self {
@@ -1037,7 +1119,7 @@ pub struct Badge {
     pub holders: BadgeHolders,
 }
 deserialize_impl!(Badge);
-serialize_impl!(Badge);
+serialize_impl_2!(Badge);
 impl Badge {
     #[must_use]
     pub const fn new(id: i64, label: BadgeLabel, holders: BadgeHolders) -> Self {
@@ -1111,7 +1193,7 @@ pub struct Login {
     pub token: String,
 }
 deserialize_impl!(Login);
-serialize_impl!(Login);
+serialize_impl_2!(Login);
 impl Login {
     #[must_use]
     pub const fn new(user: String, token: String) -> Self {
@@ -1219,7 +1301,7 @@ pub struct Price {
     pub retired: Option<()>,
 }
 deserialize_impl!(Price);
-serialize_impl!(Price);
+serialize_impl_2!(Price);
 impl Price {
     #[must_use]
     pub const fn new() -> Self {
@@ -1330,7 +1412,7 @@ pub struct User {
     pub note: runtime::Nullable<UserNote>,
 }
 deserialize_impl!(User);
-serialize_impl!(User);
+serialize_impl_2!(User);
 impl User {
     #[must_use]
     pub const fn new(name: UserName, role: UserRole) -> Self {
@@ -1569,6 +1651,12 @@ impl SlugVariant2 {
 }
 try_from_impl!(SlugVariant2);
 checked_str_impls!(SlugVariant2);
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
+#[serde(transparent)]
+pub struct CodeVariant1(pub(super) String);
+try_from_impl_2!(CodeVariant1);
+checked_str_impls!(CodeVariant1);
+pub type CodeVariant2 = SlugVariant2;
 #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize)]
 #[serde(transparent)]
 pub struct ExactTenth(pub(super) runtime::Decimal);
@@ -1738,7 +1826,7 @@ pub struct TreeVariant1 {
     pub x: String,
 }
 deserialize_impl!(TreeVariant1);
-serialize_impl!(TreeVariant1);
+serialize_impl_2!(TreeVariant1);
 impl TreeVariant1 {
     #[must_use]
     pub const fn new(items: Vec<Tree>, x: String) -> Self {
@@ -1796,7 +1884,7 @@ pub struct TreeVariant2 {
     pub x: i64,
 }
 deserialize_impl!(TreeVariant2);
-serialize_impl!(TreeVariant2);
+serialize_impl_2!(TreeVariant2);
 impl TreeVariant2 {
     #[must_use]
     pub const fn new(items: Vec<Tree>, x: i64) -> Self {
@@ -1857,7 +1945,7 @@ pub struct RefusalObject;
 impl RefusalObject {
     pub const VALUE: &'static str = "error";
 }
-serialize_impl_2!(RefusalObject);
+serialize_impl_3!(RefusalObject);
 impl<'de> serde::Deserialize<'de> for RefusalObject {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         runtime::expect_const(d, &serde_json::Value::String("error".to_owned()))
@@ -1972,7 +2060,7 @@ pub struct ShipmentInternationalKind;
 impl ShipmentInternationalKind {
     pub const VALUE: &'static str = "international";
 }
-serialize_impl_2!(ShipmentInternationalKind);
+serialize_impl_3!(ShipmentInternationalKind);
 impl<'de> serde::Deserialize<'de> for ShipmentInternationalKind {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         runtime::expect_const(d, &serde_json::Value::String("international".to_owned()))
@@ -2017,7 +2105,7 @@ pub struct MetaObject {
     pub count: Option<i64>,
 }
 deserialize_impl!(MetaObject);
-serialize_impl!(MetaObject);
+serialize_impl_2!(MetaObject);
 impl MetaObject {
     #[must_use]
     pub const fn new() -> Self {
@@ -2088,7 +2176,7 @@ pub struct ParcelsItem {
     pub fragile: Option<bool>,
 }
 deserialize_impl!(ParcelsItem);
-serialize_impl!(ParcelsItem);
+serialize_impl_2!(ParcelsItem);
 impl ParcelsItem {
     #[must_use]
     pub const fn new() -> Self {
@@ -2450,7 +2538,7 @@ pub enum UserLoyalty {
     Variant1(UserLoyaltyVariant1),
     Variant2(UserLoyaltyVariant2),
 }
-serialize_impl_3!(UserLoyalty);
+serialize_impl!(UserLoyalty);
 impl<'de> serde::Deserialize<'de> for UserLoyalty {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         let v = <runtime::Content<'de> as serde::Deserialize>::deserialize(d)?;
@@ -2537,7 +2625,7 @@ pub struct BadgeRequest {
     pub holders: BadgeRequestHolders,
 }
 deserialize_impl!(BadgeRequest);
-serialize_impl!(BadgeRequest);
+serialize_impl_2!(BadgeRequest);
 impl BadgeRequest {
     #[must_use]
     pub const fn new(label: BadgeLabel, holders: BadgeRequestHolders) -> Self {
@@ -2595,7 +2683,7 @@ pub struct LoginRequest {
     pub password: LoginPassword,
 }
 deserialize_impl!(LoginRequest);
-serialize_impl!(LoginRequest);
+serialize_impl_2!(LoginRequest);
 impl LoginRequest {
     #[must_use]
     pub const fn new(user: String, password: LoginPassword) -> Self {
@@ -2646,55 +2734,6 @@ impl runtime::XmlShape for LoginRequest {
         &NODE
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum TreeVariants {
-    Variant1(TreeVariant1),
-    Variant2(TreeVariant2),
-}
-serialize_impl_3!(TreeVariants);
-impl<'de> serde::Deserialize<'de> for TreeVariants {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let v = <runtime::Content<'de> as serde::Deserialize>::deserialize(d)?;
-        let fit_0 = v.kind() == runtime::Kind::Object
-            && runtime::fits(
-                &v,
-                &[
-                    ("items", true, &[runtime::Kind::Array]),
-                    ("x", true, &[runtime::Kind::String]),
-                ],
-            );
-        let fit_1 = v.kind() == runtime::Kind::Object
-            && runtime::fits(
-                &v,
-                &[
-                    ("items", true, &[runtime::Kind::Array]),
-                    ("x", true, &[runtime::Kind::Integer, runtime::Kind::Number]),
-                ],
-            );
-        let mut first: Option<String> = None;
-        if fit_0 {
-            match v.decode_ref::<TreeVariant1>() {
-                Ok(x) => return Ok(Self::Variant1(x)),
-                Err(e) => {
-                    first.get_or_insert(e.to_string());
-                }
-            }
-        }
-        if fit_1 {
-            match v.decode_ref::<TreeVariant2>() {
-                Ok(x) => return Ok(Self::Variant2(x)),
-                Err(e) => {
-                    first.get_or_insert(e.to_string());
-                }
-            }
-        }
-        Err(
-            serde::de::Error::custom(
-                first.unwrap_or_else(|| "matches no variant".to_owned()),
-            ),
-        )
-    }
-}
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct EntryFields2 {
@@ -2712,7 +2751,7 @@ pub struct EntryFields2 {
     pub id: Option<i64>,
 }
 deserialize_impl!(EntryFields2);
-serialize_impl!(EntryFields2);
+serialize_impl_2!(EntryFields2);
 impl EntryFields2 {
     #[must_use]
     pub const fn new() -> Self {
@@ -2875,7 +2914,7 @@ pub struct ShipmentInternationalFields {
     pub labels: Option<ShipmentInternationalLabels>,
 }
 deserialize_impl!(ShipmentInternationalFields);
-serialize_impl!(ShipmentInternationalFields);
+serialize_impl_2!(ShipmentInternationalFields);
 impl ShipmentInternationalFields {
     #[must_use]
     pub const fn new(
@@ -3185,7 +3224,7 @@ pub struct ShipmentOtherwiseFields {
     pub labels: Option<ShipmentOtherwiseLabels>,
 }
 deserialize_impl!(ShipmentOtherwiseFields);
-serialize_impl!(ShipmentOtherwiseFields);
+serialize_impl_2!(ShipmentOtherwiseFields);
 impl ShipmentOtherwiseFields {
     #[must_use]
     pub const fn new(
@@ -4083,48 +4122,6 @@ pub mod builders {
         }
         /// Returns the value.
         pub fn build(self) -> Result<super::User, runtime::BuildError> {
-            self.0.build()
-        }
-    }
-    impl super::TreeVariant1 {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            items: impl TryInto<Vec<types::Tree>, Error: std::fmt::Display>,
-            x: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> TreeVariant1 {
-            TreeVariant1(
-                runtime::Builder::start(|| Ok(
-                    Self::new(runtime::field("items", items)?, runtime::field("x", x)?),
-                )),
-            )
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct TreeVariant1(runtime::Builder<super::TreeVariant1>);
-    impl TreeVariant1 {
-        /// Returns the value.
-        pub fn build(self) -> Result<super::TreeVariant1, runtime::BuildError> {
-            self.0.build()
-        }
-    }
-    impl super::TreeVariant2 {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            items: impl TryInto<Vec<types::Tree>, Error: std::fmt::Display>,
-            x: impl TryInto<i64, Error: std::fmt::Display>,
-        ) -> TreeVariant2 {
-            TreeVariant2(
-                runtime::Builder::start(|| Ok(
-                    Self::new(runtime::field("items", items)?, runtime::field("x", x)?),
-                )),
-            )
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct TreeVariant2(runtime::Builder<super::TreeVariant2>);
-    impl TreeVariant2 {
-        /// Returns the value.
-        pub fn build(self) -> Result<super::TreeVariant2, runtime::BuildError> {
             self.0.build()
         }
     }

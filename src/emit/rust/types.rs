@@ -1810,6 +1810,9 @@ fn untagged(space: &Space<'_>, u: &Union) -> TokenStream {
         let (name, g) = (fit(i), g.as_ref()?);
         Some(quote!(let #name = #g;))
     });
+    // A closed `oneOf` counts its matches: exactly one must take the value. An open one has a branch that takes any
+    // value, which its whole schema judges instead.
+    let counts = u.exclusive && !u.open;
     let tries = u.variants.iter().enumerate().map(|(i, v)| {
         let (name, t) = (pascal_ident(&v.name), ty(space, &v.ty, false));
         // An open union always decodes because its `Other` takes anything. As a branch it matches only through one
@@ -1831,9 +1834,15 @@ fn untagged(space: &Space<'_>, u: &Union) -> TokenStream {
             }
         } else {
             let decoded = decode_ref(space, &v.ty);
+            // `oneOf`: every branch decodes and the matches are counted. The first one is the answer.
+            let matched = if counts {
+                quote! {{ matches += 1; found.get_or_insert(Self::#name(x)); }}
+            } else {
+                quote!(return Ok(Self::#name(x)))
+            };
             quote! {
                 match #decoded {
-                    Ok(x) => return Ok(Self::#name(x)),
+                    Ok(x) => #matched,
                     Err(e) => { first.get_or_insert(e.to_string()); }
                 }
             }
@@ -1853,12 +1862,33 @@ fn untagged(space: &Space<'_>, u: &Union) -> TokenStream {
     } else {
         quote!(Err(serde::de::Error::custom(first.unwrap_or_else(|| "matches no variant".to_owned()))))
     };
+    let (count, counted) = counting(counts);
     quote! {
         #(#lets)*
         let mut first: Option<String> = None;
+        #count
         #(#tries)*
+        #counted
         #end
     }
+}
+
+/// Returns what a `oneOf` that `counts` declares before its branches and decides after them: how many decoded and the
+/// first, which is the answer when it is the only one. Empty when it takes the first branch that decodes.
+fn counting(counts: bool) -> (TokenStream, TokenStream) {
+    if !counts {
+        return (TokenStream::new(), TokenStream::new());
+    }
+    (
+        quote!(let mut matches = 0_usize; let mut found: Option<Self> = None;),
+        quote! {
+            match (matches, found) {
+                (1, Some(one)) => return Ok(one),
+                (n, Some(_)) => return Err(serde::de::Error::custom(format!("matches {n} of `oneOf`, not exactly one"))),
+                (_, None) => {}
+            }
+        },
+    )
 }
 
 /// `runtime::fits(&v, ...)` for a struct branch: the fields that must be present and the kinds that each may have.

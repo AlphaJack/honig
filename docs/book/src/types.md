@@ -27,7 +27,7 @@ A `const` is a unit struct that only decodes its value. Arrays with `minItems ==
 
 String and integer enums are closed. Each listed value is a variant. Any other value fails `try_from` and decoding. So a request with one gets `400`, and a client reading a response with one gets a decode error. Update the description and generate again when the server adds a value.
 
-A `oneOf` or `anyOf` is closed too: a value that no branch takes fails decoding. A union has an `Other(serde_json::Value)` variant only when the schema itself takes any value. That is a branch of `{}`, or keywords such as `properties` without a `type`. Then any value of another kind is valid.
+A `oneOf` or `anyOf` is closed too: a value that no branch takes fails decoding. An `anyOf` is the first branch that decodes, keywords and all. A `oneOf` decodes every branch and takes the value only when exactly one does. A union has an `Other(serde_json::Value)` variant only when the schema itself takes any value. That is a branch of `{}`, or keywords such as `properties` without a `type`. Then any value of another kind is valid.
 
 ## Values the description does not list
 
@@ -173,7 +173,7 @@ Integer keywords are exact. A fractional bound rounds inward, `multipleOf: 2.5` 
 
 ## Whole schemas
 
-Some keywords say what no Rust type can: `not`, `contains`, `dependentRequired`, `if`/`then` beyond the constants of one property, the one branch that a `oneOf` takes, tuples and `$dynamicRef`. A struct or union whose own schema has them is a checked type of its shape: `Product` holds a `ProductFields`, `Vehicle` holds a `VehicleVariants`. It reads as its shape. `try_from` and decoding check the whole schema. Its builder fills the fields and checks the whole value in `build`:
+Some keywords say what no Rust type can: `not`, `contains`, `dependentRequired`, `if`/`then` beyond the constants of one property, the one branch that a `oneOf` takes when a discriminator picks branches it does not pin, tuples and `$dynamicRef`. A struct or union whose own schema has them is a checked type of its shape: `Product` holds a `ProductFields`, `Vehicle` holds a `VehicleVariants`. It reads as its shape. `try_from` and decoding check the whole schema. Its builder fills the fields and checks the whole value in `build`:
 
 ```rust
 {{#include ../../../tests/e2e/tests/v32_kitchen_sink.rs:whole-schema}}
