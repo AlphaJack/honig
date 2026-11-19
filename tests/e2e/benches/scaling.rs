@@ -52,5 +52,5 @@ const PATHS: &[Path] = &[
 ];
 
 fn main() -> std::process::ExitCode {
-    callgrind::main(PATHS, &SIZES)
+    callgrind::main("scaling-e2e", PATHS, &SIZES)
 }

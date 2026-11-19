@@ -197,5 +197,5 @@ const PATHS: &[Phased] = &[
 ];
 
 fn main() -> std::process::ExitCode {
-    callgrind::main_phased(PATHS, &SIZES)
+    callgrind::main_phased("scaling-generator", PATHS, &SIZES)
 }

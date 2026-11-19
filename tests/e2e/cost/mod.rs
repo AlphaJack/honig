@@ -21,6 +21,7 @@ use axum::http::{Request, StatusCode, header};
 use axum::response::{IntoResponse, Response, Sse, sse::Event};
 use axum::routing::{get, post, put};
 use base64::Engine;
+use bench_support::results::Results;
 use bench_support::table::{self, Column, Table};
 use futures_util::StreamExt;
 use http_body_util::BodyExt;
@@ -504,6 +505,7 @@ pub fn bench_table(head: &'static str, base: &'static str, sample: &str) -> Tabl
         Column::right(head, sample),
         Column::right(base, sample),
         Column::right("ratio", "99.99"),
+        Column::right("main_ratio", "99.99"),
         Column::right("max", "9.99"),
         Column::left("result", "FAIL".len()),
     ])
@@ -532,9 +534,10 @@ pub fn time_budget(max: f64, size: usize) -> f64 {
 }
 
 /// Prints `rows` by path and then by size, so the sizes of one kind sit together, with an empty line between kinds.
+/// With `results`, each ratio stands beside the one that `main` measured, and is kept there for the next run on `main`.
 /// Returns each row over its budget.
 #[allow(dead_code, reason = "the memory bench prints a table of its own")]
-pub fn print_rows(table: &Table, mut rows: Vec<Measured>) -> Vec<String> {
+pub fn print_rows(table: &Table, mut rows: Vec<Measured>, mut results: Option<&mut Results>) -> Vec<String> {
     rows.sort_by_key(|r| (r.path, r.size));
     let mut over = vec![];
     let mut last = None;
@@ -545,7 +548,20 @@ pub fn print_rows(table: &Table, mut rows: Vec<Measured>) -> Vec<String> {
         last = Some(path);
         let failed = ratio > max;
         let result = if failed { "FAIL" } else { "ok" };
-        let cells = [path.to_owned(), table::kib(size), head, base, format!("{ratio:.2}"), format!("{max:.2}")];
+        let key = format!("{path}/{size}");
+        let main = results.as_deref().and_then(|r| r.main(&key));
+        if let Some(r) = results.as_deref_mut() {
+            r.record(&key, ratio);
+        }
+        let cells = [
+            path.to_owned(),
+            table::kib(size),
+            head,
+            base,
+            format!("{ratio:.2}"),
+            bench_support::results::shown(main, 2),
+            format!("{max:.2}"),
+        ];
         table.row(&[cells.as_slice(), &[result.to_owned()]].concat());
         if failed {
             over.push(format!("{path} at {}", table::size(size)));

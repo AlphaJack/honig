@@ -11,6 +11,7 @@
 use std::process::{Command, ExitCode};
 
 use crate::functions::{self, Report};
+use crate::results::{self, Results};
 use crate::table::{Column, Table};
 use crate::{Path, Phased, Work};
 
@@ -35,26 +36,28 @@ struct Target {
 
 /// Checks every path at every size. When callgrind runs it with `--measure` it runs one path at one size. Names on the
 /// command line (`cargo bench --bench scaling -- text_encode`) check only those paths.
-pub fn main(paths: &[Path], sizes: &[usize]) -> ExitCode {
+///
+/// `bench` names its results, to compare with what `main` measured ([`Results`]).
+pub fn main(bench: &str, paths: &[Path], sizes: &[usize]) -> ExitCode {
     let targets: Vec<Target> = paths.iter().map(|p| Target { name: p.name, phases: &[], prepare: p.prepare }).collect();
-    run(&targets, sizes)
+    run(bench, &targets, sizes)
 }
 
 /// [`main`] for paths whose phases are counted apart. Its table has a row per phase.
-pub fn main_phased(paths: &[Phased], sizes: &[usize]) -> ExitCode {
+pub fn main_phased(bench: &str, paths: &[Phased], sizes: &[usize]) -> ExitCode {
     let targets: Vec<Target> =
         paths.iter().map(|p| Target { name: p.name, phases: p.phases, prepare: p.prepare }).collect();
-    run(&targets, sizes)
+    run(bench, &targets, sizes)
 }
 
-fn run(targets: &[Target], sizes: &[usize]) -> ExitCode {
+fn run(bench: &str, targets: &[Target], sizes: &[usize]) -> ExitCode {
     let args: Vec<String> = std::env::args().collect();
     match args.iter().map(String::as_str).collect::<Vec<_>>()[..] {
         [_, MEASURE, name, size] => measure(targets, name, size),
         [program, ref rest @ ..] => {
             let names: Vec<&str> = rest.iter().copied().filter(|a| !a.starts_with('-')).collect();
             let picked: Vec<&Target> = targets.iter().filter(|t| names.is_empty() || names.contains(&t.name)).collect();
-            check(&picked, sizes, program)
+            check(bench, &picked, sizes, program)
         }
         [] => ExitCode::FAILURE,
     }
@@ -86,10 +89,13 @@ fn measured(work: &mut Work) {
 struct Growth {
     steepest: f64,
     stopped: bool,
+    /// The instructions at the largest size that ran.
+    last: f64,
 }
 
 /// Counts every path at every size, prints how each phase grew and fails if one grew faster than [`MAX_EXPONENT`].
-fn check(targets: &[&Target], sizes: &[usize], program: &str) -> ExitCode {
+fn check(bench: &str, targets: &[&Target], sizes: &[usize], program: &str) -> ExitCode {
+    let mut results = Results::open(bench);
     let mut steep = vec![];
     // In the order of their names, so a path is easy to find in the table. Its phases stay in the order they run.
     let mut targets = targets.to_vec();
@@ -101,7 +107,13 @@ fn check(targets: &[&Target], sizes: &[usize], program: &str) -> ExitCode {
         let widest = targets.iter().flat_map(|t| t.phases).map(|p| p.len()).max().unwrap_or_default();
         columns.push(Column::left("phase", widest));
     }
-    columns.extend([Column::right("n^k", &format!("{MAX_EXPONENT:.2}")), Column::left("result", "stopped".len())]);
+    columns.extend([
+        Column::right("n^k", &format!("{MAX_EXPONENT:.2}")),
+        Column::right("Minstr", "99999.9"),
+        Column::right("main_Minstr", "99999.9"),
+        Column::right("change_%", "+999.9"),
+        Column::left("result", "stopped".len()),
+    ]);
     // Counted first: the header and the rows then print together, however long the runs take.
     let runs = counted(&targets, sizes, program);
     // The cost grows as n^k with the size n of the input. The limit is the same for every path.
@@ -120,24 +132,14 @@ fn check(targets: &[&Target], sizes: &[usize], program: &str) -> ExitCode {
         };
         let names: Vec<&str> = if target.phases.is_empty() { vec![""] } else { target.phases.to_vec() };
         for (phase, growth) in names.iter().zip(growths) {
-            let over = growth.steepest > MAX_EXPONENT;
-            // A path stops only on a step steeper than the limit: it fails, and its larger sizes did not run.
-            let result = match (over, growth.stopped) {
-                (_, true) => "stopped",
-                (true, false) => "FAIL",
-                (false, false) => "ok",
-            };
-            let mut row = vec![target.name.to_owned()];
-            if phased {
-                row.push((*phase).to_owned());
-            }
-            row.extend([format!("{:.2}", growth.steepest), result.to_owned()]);
+            let (row, over) = phase_row(target.name, phase, phased, growth, &mut results);
             table.row(&row);
             if over {
                 steep.push(if phase.is_empty() { target.name.to_owned() } else { format!("{} {phase}", target.name) });
             }
         }
     }
+    results.save();
     print_functions(&targets, &functions);
     if steep.is_empty() && functions.is_empty() {
         return ExitCode::SUCCESS;
@@ -154,6 +156,39 @@ fn check(targets: &[&Target], sizes: &[usize], program: &str) -> ExitCode {
     println!("cost grows faster than n^{MAX_EXPONENT}: {}", verdict.join(" and "));
     ExitCode::FAILURE
 }
+
+/// The row of one phase of a path, and whether it grew faster than [`MAX_EXPONENT`]. Its instructions at the largest
+/// size stand beside those that `main` counted, and are kept for the next run on `main`.
+fn phase_row(name: &str, phase: &str, phased: bool, growth: Growth, results: &mut Results) -> (Vec<String>, bool) {
+    let over = growth.steepest > MAX_EXPONENT;
+    // A path stops only on a step steeper than the limit: it fails, and its larger sizes did not run.
+    let result = match (over, growth.stopped) {
+        (_, true) => "stopped",
+        (true, false) => "FAIL",
+        (false, false) => "ok",
+    };
+    let key = if phase.is_empty() { name.to_owned() } else { format!("{name}/{phase}") };
+    let millions = growth.last / MILLION;
+    let main = results.main(&key);
+    if !growth.stopped {
+        results.record(&key, millions);
+    }
+    let mut row = vec![name.to_owned()];
+    if phased {
+        row.push(phase.to_owned());
+    }
+    row.extend([
+        format!("{:.2}", growth.steepest),
+        format!("{millions:.1}"),
+        results::shown(main, 1),
+        results::change(millions, main),
+        result.to_owned(),
+    ]);
+    (row, over)
+}
+
+/// Instructions are shown in millions.
+const MILLION: f64 = 1_000_000.0;
 
 /// The functions of `target` whose own cost grew faster than [`MAX_EXPONENT`], over the sizes that it ran at.
 fn steep_functions(target: &Target, sizes: &[usize], runs: &[Counts]) -> Vec<functions::Steep> {
@@ -241,7 +276,7 @@ fn counted(targets: &[&Target], sizes: &[usize], program: &str) -> Vec<Vec<Count
 /// How `target` grew over the runs that counted it, in the order of `sizes`, each phase apart. A run that did not
 /// count (skipped, or not yet done) ends it: the target is marked stopped.
 fn growth(target: &Target, sizes: &[usize], runs: &[Counts]) -> Result<Vec<Growth>, String> {
-    let mut growths = vec![Growth { steepest: 0.0, stopped: false }; target.phases.len().max(1)];
+    let mut growths = vec![Growth { steepest: 0.0, stopped: false, last: 0.0 }; target.phases.len().max(1)];
     let mut before: Option<(f64, Vec<f64>)> = None;
     for (&size, run) in sizes.iter().zip(runs) {
         let Some(counts) = run else {
@@ -257,6 +292,9 @@ fn growth(target: &Target, sizes: &[usize], runs: &[Counts]) -> Result<Vec<Growt
             for (g, (y0, y1)) in growths.iter_mut().zip(y0.iter().zip(&counts)) {
                 g.steepest = g.steepest.max(exponent((x0, *y0), (bytes, *y1)));
             }
+        }
+        for (g, c) in growths.iter_mut().zip(&counts) {
+            g.last = *c;
         }
         before = Some((bytes, counts));
     }

@@ -10,6 +10,7 @@
 
 use std::process::ExitCode;
 
+use bench_support::results::Results;
 use bench_support::table::{self, Column, Table};
 
 #[path = "../cost/mod.rs"]
@@ -34,10 +35,12 @@ fn memory_table(sizes: &[usize]) -> Table {
         Column::right("size_KiB", &widest_size),
         Column::right("head_KiB", "9999999"),
         Column::right("base_KiB", "9999999"),
+        Column::right("main_KiB", "9999999"),
         Column::right("peak_ratio", "99.99"),
         Column::right("peak_max", "9.99"),
         Column::right("head_allocs", "99999999"),
         Column::right("base_allocs", "99999999"),
+        Column::right("main_allocs", "99999999"),
         Column::right("allocs_ratio", "99.99"),
         Column::right("allocs_max", "9.99"),
         Column::right("head_frames", "9999999"),
@@ -54,7 +57,20 @@ struct Side {
 }
 
 /// The checks of a kind at one size that do not hold, by name, and its row of the table.
-fn judged(path: &cost::Path, size: usize, head: &Side, base: &Side) -> (Vec<&'static str>, Vec<String>) {
+/// The peak and the allocations stand beside those that `main` measured in `results`, and are kept there.
+fn judged(
+    path: &cost::Path,
+    size: usize,
+    (head, base): (&Side, &Side),
+    results: &mut Results,
+) -> (Vec<&'static str>, Vec<String>) {
+    let (peak_key, allocs_key) = (format!("{}/{size}/peak_KiB", path.name), format!("{}/{size}/allocs", path.name));
+    let (main_peak, main_allocs) = (results.main(&peak_key), results.main(&allocs_key));
+    #[expect(clippy::cast_precision_loss, reason = "a heap in KiB or a count of allocations is far below 2^52")]
+    {
+        results.record(&peak_key, head.peak as f64);
+        results.record(&allocs_key, head.allocs as f64);
+    }
     let streamed = STREAMED.contains(&path.name);
     let kib = |p: isize| u64::try_from(p).unwrap_or_default();
     let peak_ratio = ratio(kib(head.peak), kib(base.peak));
@@ -78,10 +94,12 @@ fn judged(path: &cost::Path, size: usize, head: &Side, base: &Side) -> (Vec<&'st
         table::kib(size),
         head.peak.to_string(),
         base.peak.to_string(),
+        bench_support::results::shown(main_peak, 0),
         if streamed { unjudged() } else { format!("{peak_ratio:.2}") },
         if streamed { unjudged() } else { format!("{WHOLE_RATIO:.2}") },
         head.allocs.to_string(),
         base.allocs.to_string(),
+        bench_support::results::shown(main_allocs, 0),
         format!("{allocs_ratio:.2}"),
         format!("{:.2}", path.max_allocs),
         head.frames.to_string(),
@@ -107,6 +125,7 @@ fn main() -> ExitCode {
          baseline's"
     );
     let table = memory_table(&sizes);
+    let mut results = Results::open("memory");
     let mut over = vec![];
     for &size in &sizes {
         let (generated, baseline) = cost::at(size);
@@ -122,7 +141,7 @@ fn main() -> ExitCode {
                 let (base_allocs, base_peak) = cost::heap(&baseline, &path).await;
                 let head = Side { peak: head_peak, allocs: head_allocs, frames: head_frames };
                 let base = Side { peak: base_peak, allocs: base_allocs, frames: base_frames };
-                let (failed, row) = judged(&path, size, &head, &base);
+                let (failed, row) = judged(&path, size, (&head, &base), &mut results);
                 table.row(&row);
                 if !failed.is_empty() {
                     over.push(format!("{} at {}: {}", path.name, table::size(size), failed.join(", ")));
@@ -130,6 +149,7 @@ fn main() -> ExitCode {
             }
         });
     }
+    results.save();
     if over.is_empty() {
         return ExitCode::SUCCESS;
     }
