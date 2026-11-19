@@ -165,6 +165,7 @@ pub(super) fn subschema_checks(
             }
         }
     });
+    let patterns = pattern_checks(c, &ty, path);
     quote! {
         {
             let json = runtime::to_value(#value).unwrap_or_default();
@@ -172,6 +173,7 @@ pub(super) fn subschema_checks(
             #(#dependents)*
             #(#conditions)*
             #one_of
+            #patterns
         }
     }
 }
@@ -208,6 +210,55 @@ fn contains_checks(space: &Space<'_>, c: &Constraints, value: &TokenStream, path
                 .count();
             #at_least
             #at_most
+        }
+    }
+}
+
+/// Returns `patternProperties` of `c` on the object in `json`: the value of each name that a pattern matches decodes as
+/// the type of its schema. With `additionalProperties: false`, a name that is neither declared nor matched is refused.
+fn pattern_checks(c: &Constraints, ty: &dyn Fn(usize) -> TokenStream, path: &TokenStream) -> TokenStream {
+    if c.pattern_properties.is_empty() {
+        return TokenStream::new();
+    }
+    let closed = c.closed_to.is_some();
+    let patterns = c.pattern_properties.iter().map(|(pattern, n)| {
+        let (schema, pattern) = (ty(*n), lit(pattern));
+        let matched = closed.then(|| quote!(matched = true;));
+        quote! {
+            if runtime::pattern_matches({ static RE: runtime::Pattern = runtime::Pattern::new(); &RE }, #pattern, name) {
+                #matched
+                if let Err(e) = serde_json::from_value::<#schema>(item.clone()) {
+                    runtime::violation(out, &runtime::InstancePath::Key(#path, name), e.to_string());
+                }
+            }
+        }
+    });
+    let (start, refuse) = match &c.closed_to {
+        Some(declared) => {
+            let declared = declared.iter().map(|d| lit(d));
+            let undeclared = if c.closed_to.as_ref().is_some_and(Vec::is_empty) {
+                quote!(true)
+            } else {
+                quote!(![#(#declared),*].contains(&name.as_str()))
+            };
+            (
+                Some(quote!(let mut matched = false;)),
+                Some(quote! {
+                    if !matched && #undeclared {
+                        runtime::violation(out, &runtime::InstancePath::Key(#path, name), "no value is allowed here");
+                    }
+                }),
+            )
+        }
+        None => (None, None),
+    };
+    quote! {
+        if let serde_json::Value::Object(object) = &json {
+            for (name, item) in object {
+                #start
+                #(#patterns)*
+                #refuse
+            }
         }
     }
 }

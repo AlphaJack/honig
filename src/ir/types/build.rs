@@ -71,13 +71,23 @@ impl Constraints {
             dependent_schemas: self.dependent_schemas.clone(),
             conditions: self.conditions.clone(),
             one_of: self.one_of.clone(),
+            pattern_properties: self.pattern_properties.clone(),
+            closed_to: self.closed_to.clone(),
             ..Self::default()
         }
     }
 
     /// Returns these constraints without the checks that judge the value as JSON ([`Self::json_checks`]).
     pub(crate) fn without_json(&self) -> Self {
-        Self { not: vec![], dependent_schemas: vec![], conditions: vec![], one_of: vec![], ..self.clone() }
+        Self {
+            not: vec![],
+            dependent_schemas: vec![],
+            conditions: vec![],
+            one_of: vec![],
+            pattern_properties: vec![],
+            closed_to: None,
+            ..self.clone()
+        }
     }
 
     /// Is there anything to check?
@@ -115,6 +125,8 @@ impl Constraints {
             conditions: vec![],
             contains: None,
             one_of: vec![],
+            pattern_properties: vec![],
+            closed_to: None,
             schema: None,
         }
     }
@@ -138,6 +150,10 @@ impl Constraints {
         self.conditions.extend(other.conditions);
         if self.one_of.is_empty() {
             self.one_of = other.one_of;
+        }
+        self.pattern_properties.extend(other.pattern_properties);
+        if self.closed_to.is_none() {
+            self.closed_to = other.closed_to;
         }
         self.schema = match (self.schema.take(), other.schema) {
             (Some(a), Some(b)) => Some(serde_json::json!({ "allOf": [a, b] })),
@@ -175,6 +191,15 @@ fn typed_pattern_map(s: &Value) -> Option<String> {
     let patterns = o.get("patternProperties")?.as_object().filter(|p| p.len() == 1)?;
     let closed = o.get("additionalProperties") == Some(&Value::Bool(false));
     (closed && !o.contains_key("properties")).then(|| patterns.keys().next().cloned()).flatten()
+}
+
+/// Returns `patternProperties` of `s` when generated code checks it: on an object whose `additionalProperties` is
+/// absent, `true` or `false`. A schema there would type the names that patterns match too. `None` leaves it to the
+/// run-time check of the whole schema.
+fn typed_patterns(s: &Value) -> Option<&serde_json::Map<String, Value>> {
+    let o = s.as_object().filter(|o| is_object(o))?;
+    let extra = o.get("additionalProperties");
+    o.get("patternProperties")?.as_object().filter(|_| extra.is_none_or(Value::is_boolean))
 }
 
 /// Returns `propertyNames` of `s` when generated code checks it: a schema of `pattern`, `minLength` and `maxLength`
@@ -870,6 +895,7 @@ impl<'a> Builder<'a> {
         // `contains` on an array type counts the items that decode as the type of its schema.
         let typed_contains =
             s.get("contains").is_some() && s.as_object().is_some_and(|o| type_set(o).0.iter().any(|t| t == "array"));
+        let patterns = (!pattern_map).then(|| typed_patterns(s)).flatten();
         // `if`/`then` on one property's constants becomes a tagged union (`conditional_union`): its variants hold the
         // conditions. Only conditions that it cannot type stay a run-time check.
         let typed_conditional = s.as_object().is_some_and(|o| conditional_union(o).is_some());
@@ -882,6 +908,7 @@ impl<'a> Builder<'a> {
                 || k == "not"
                 || (dependent_schemas.is_some() && k == "dependentSchemas")
                 || (typed_contains && matches!(k, "contains" | "minContains" | "maxContains"))
+                || (patterns.is_some() && k == "patternProperties")
         };
         let conditional_member = |m: &Value| {
             typed_conditional
@@ -928,6 +955,16 @@ impl<'a> Builder<'a> {
             for (i, branch) in self.counted_one_of(s).into_iter().flatten().enumerate() {
                 let at = at.map(|p| join(&join(p, "oneOf"), &i.to_string()));
                 c.one_of.push(self.queue_subschema(branch, at));
+            }
+            if let Some(patterns) = patterns {
+                let at = at.map(|p| join(p, "patternProperties"));
+                c.pattern_properties = (patterns.iter())
+                    .map(|(p, sub)| (p.clone(), self.queue_subschema(sub, at.as_deref().map(|a| join(a, p)))))
+                    .collect();
+                let declared =
+                    s.get("properties").and_then(Value::as_object).into_iter().flat_map(serde_json::Map::keys);
+                c.closed_to =
+                    (s.get("additionalProperties") == Some(&Value::Bool(false))).then(|| declared.cloned().collect());
             }
             for (name, sub) in dependent_schemas.into_iter().flatten() {
                 let at = at.map(|p| join(&join(p, "dependentSchemas"), name));

@@ -780,7 +780,7 @@ fn property_names_checks_each_name() {
 }
 
 /// One `patternProperties` entry of a closed map is a map of the pattern's schema whose names are checked against the
-/// pattern: no schema is checked whole. An open map or two patterns keep the whole check.
+/// pattern. An open map or two patterns check each matched value: no schema is checked whole either way.
 #[test]
 fn a_closed_map_of_one_pattern_is_typed() {
     let types = |scores: serde_json::Value| {
@@ -793,10 +793,10 @@ fn a_closed_map_of_one_pattern_is_typed() {
     let typed = types(json!({"type": "object", "patternProperties": {"^[a-z]+$": int}, "additionalProperties": false}));
     assert!(typed.contains("for name in") && !typed.contains("check_schema"), "{typed}");
     let open = types(json!({"type": "object", "patternProperties": {"^[a-z]+$": int}}));
-    assert!(open.contains("check_schema"), "{open}");
+    assert!(!open.contains("check_schema"), "{open}");
     let two = types(json!({"type": "object", "patternProperties": {"^[a-z]+$": int, "^x": int},
         "additionalProperties": false}));
-    assert!(two.contains("check_schema"), "{two}");
+    assert!(!two.contains("check_schema"), "{two}");
 }
 
 /// A schema without `type` whose keywords each apply to one kind of value (`minimum`, `maxLength`, `maxItems`, ...) is
@@ -913,4 +913,17 @@ fn required_unique_and_format_without_a_type_check_their_kind() {
         common::file(&common::generate("typeless-required", &doc, &crate::emit::Options::default()), "types.rs")
             .to_owned();
     assert!(types.contains("runtime::check_unique") && !types.contains("check_schema"), "{types}");
+}
+
+/// `patternProperties` with several patterns, or beside declared properties, checks the value of each matched name
+/// against the type of its schema: no schema is checked whole.
+#[test]
+fn pattern_properties_check_each_matched_value() {
+    let tags = json!({"type": "object", "properties": {"id": {"type": "string"}},
+        "patternProperties": {"^x_": {"type": "string"}, "^n_": {"type": "integer", "minimum": 0}},
+        "additionalProperties": false});
+    let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Tags": tags}}));
+    let types =
+        common::file(&common::generate("patterns", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
+    assert!(types.contains("no value is allowed here") && !types.contains("check_schema"), "{types}");
 }

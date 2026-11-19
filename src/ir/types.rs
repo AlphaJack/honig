@@ -253,6 +253,12 @@ pub(crate) struct Constraints {
     /// The branches of a `oneOf` that a value must decode as exactly one of, each an index into
     /// [`TypeSpace::subschemas`]: a discriminator picks one branch, and two share a type.
     pub one_of: Vec<usize>,
+    /// `patternProperties` that generated code checks: each pattern with its schema, an index into
+    /// [`TypeSpace::subschemas`]. A value of a name that the pattern matches decodes as the type of the schema.
+    pub pattern_properties: Vec<(String, usize)>,
+    /// `additionalProperties: false` beside `patternProperties`: the declared names. Any other name that no pattern
+    /// matches is refused.
+    pub closed_to: Option<Vec<String>>,
     /// The schema with `$ref`s inlined when it uses keywords that no type expresses on its own
     /// (`contains`, `patternProperties`, `if`, `not`, ...). `runtime::check_schema`
     /// checks it at runtime.
