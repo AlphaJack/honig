@@ -127,6 +127,7 @@ impl Constraints {
             min_items: u("minItems"),
             max_items: u("maxItems"),
             unique_items: s.get("uniqueItems") == Some(&Value::Bool(true)),
+            never: *s == Value::Bool(false),
             min_properties: u("minProperties"),
             max_properties: u("maxProperties"),
             decimal128: s.get("format").and_then(Value::as_str) == Some("decimal128")
@@ -170,6 +171,7 @@ impl Constraints {
         take!(enum_values, const_value, unevaluated, unevaluated_items, names_schema, json_contains);
         take!(min_items, max_items, min_properties, max_properties, items, property_names, contains, tuple);
         self.unique_items |= other.unique_items;
+        self.never |= other.never;
         self.decimal128 |= other.decimal128;
         self.dependent_required.extend(other.dependent_required);
         self.json_dependents.extend(other.json_dependents);
@@ -220,6 +222,14 @@ fn typed_conditional(s: &Value) -> bool {
     s.as_object().is_some_and(|o| {
         is_object(o) && !o.contains_key("oneOf") && !o.contains_key("anyOf") && conditional_union(o).is_some()
     })
+}
+
+/// Are the items of `s` checked one by one ([`Constraints::tuple`])? A tuple (`prefixItems`, maybe closed by
+/// `items: false`) is, and so is `items` without `type`: the union of the implied shape holds the list, the check each
+/// item.
+fn checked_items(s: &Value) -> bool {
+    let typeless_items = s.get("type").is_none() && s.get("items").is_some_and(Value::is_object);
+    s.get("prefixItems").is_some() || s.get("items") == Some(&Value::Bool(false)) || typeless_items
 }
 
 /// Whether the schema `o` takes an object: its `type` names `object`.
@@ -486,15 +496,15 @@ const ASSERTIONS: [&str; 20] = [
 /// as `minimum` applies to numbers only there, as JSON Schema says. `oneOf` and `anyOf` are left to `loose_union`: a
 /// union of distinct types judges itself.
 fn typeless_assertions(s: &Value) -> bool {
-    match s {
-        Value::Bool(b) => !b,
-        Value::Object(o) => {
-            !o.contains_key("type")
-                && json::object(o, "properties").is_none_or(serde_json::Map::is_empty)
-                && ASSERTIONS.iter().any(|k| o.contains_key(*k))
-        }
-        Value::Null | Value::Number(_) | Value::String(_) | Value::Array(_) => false,
-    }
+    // `false` refuses every value: [`Constraints::never`].
+    let Value::Object(o) = s else { return false };
+    // The union of an implied shape holds its own keywords: an `Array` or `Object` variant and `Other`.
+    let shape = inferred_kind(o).is_some();
+    !o.contains_key("type")
+        && json::object(o, "properties").is_none_or(serde_json::Map::is_empty)
+        && ASSERTIONS
+            .iter()
+            .any(|k| o.contains_key(*k) && !(shape && matches!(*k, "items" | "prefixItems" | "additionalProperties")))
 }
 
 /// Keywords that apply to one kind of value only and pass any other (JSON Schema 2020-12 section 7.2.1): checked on a
@@ -1031,14 +1041,28 @@ impl<'a> Builder<'a> {
     fn queue_patterns(
         &self,
         s: &Value,
-        patterns: &serde_json::Map<String, Value>,
+        patterns: Option<&serde_json::Map<String, Value>>,
         at: Option<&str>,
         c: &mut Constraints,
     ) {
+        // Without patterns and without `type`, the union of the implied shape holds the object, the check the other
+        // names. With a `type`, the struct or map holds them, and a map of one pattern its names.
+        let Some(patterns) = patterns else {
+            if s.get("type").is_none() && s.get("patternProperties").is_none() {
+                self.queue_closed(s, c);
+            }
+            return;
+        };
         let at = at.map(|p| join(p, "patternProperties"));
         c.pattern_properties = (patterns.iter())
             .map(|(p, sub)| (p.clone(), self.queue_subschema(sub, at.as_deref().map(|a| join(a, p)))))
             .collect();
+        self.queue_closed(s, c);
+    }
+
+    /// Puts `additionalProperties` (`false` or a schema) of `s` into `c`: the names that `s` declares, and what the
+    /// other names that no pattern matches take.
+    fn queue_closed(&self, s: &Value, c: &mut Constraints) {
         let declared = s.get("properties").and_then(Value::as_object).into_iter().flat_map(serde_json::Map::keys);
         let declared = declared.cloned().collect();
         c.closed_to = match s.get("additionalProperties") {
@@ -1239,7 +1263,7 @@ impl<'a> Builder<'a> {
         // the run-time check of the whole schema follows it there.
         let dynamic = self.dynamic_refs_vary(s);
         // A tuple (`prefixItems`, maybe closed by `items: false`) is checked item by item ([`Constraints::tuple`]).
-        let typed_tuple = !dynamic && (s.get("prefixItems").is_some() || s.get("items") == Some(&Value::Bool(false)));
+        let typed_tuple = !dynamic && checked_items(s);
         let mixed = mixed(s);
         let scoped = typeless_assertions(s) && kind_scoped(s);
         if scoped {
@@ -1265,9 +1289,7 @@ impl<'a> Builder<'a> {
                 let at = at.map(|p| join(&join(p, "oneOf"), &i.to_string()));
                 c.one_of.push(self.queue_subschema(branch, at));
             }
-            if let Some(patterns) = patterns {
-                self.queue_patterns(s, patterns, at, &mut c);
-            }
+            self.queue_patterns(s, patterns, at, &mut c);
             if typed_tuple {
                 c.tuple = Some(self.queue_tuple(s, at));
             }

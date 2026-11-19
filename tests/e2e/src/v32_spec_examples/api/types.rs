@@ -97,6 +97,41 @@ macro_rules! serialize_impl_3 {
     ($t:ty) => {
         impl serde::Serialize for $t {
             fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                match self {
+                    Self::String(v) => serde::Serialize::serialize(v, s),
+                    Self::Other(v) => serde::Serialize::serialize(v, s),
+                }
+            }
+        }
+    };
+}
+macro_rules! deserialize_impl_2 {
+    ($t:ty) => {
+        impl<'de> serde::Deserialize<'de> for $t {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                let v = <runtime::Content<'de> as serde::Deserialize>::deserialize(d)?;
+                match v.kind() {
+                    runtime::Kind::String => {
+                        match v.decode_ref::<String>() {
+                            Ok(x) => Ok(Self::String(x)),
+                            Err(_) => Ok(Self::Other(v.into_value())),
+                        }
+                    }
+                    runtime::Kind::Null
+                    | runtime::Kind::Bool
+                    | runtime::Kind::Integer
+                    | runtime::Kind::Number
+                    | runtime::Kind::Array
+                    | runtime::Kind::Object => Ok(Self::Other(v.into_value())),
+                }
+            }
+        }
+    };
+}
+macro_rules! serialize_impl_4 {
+    ($t:ty) => {
+        impl serde::Serialize for $t {
+            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
                 s.serialize_str(Self::VALUE)
             }
         }
@@ -789,33 +824,8 @@ pub enum OrderedMultipartWithRequiredHeaderBodyItem {
     String(String),
     Other(serde_json::Value),
 }
-impl serde::Serialize for OrderedMultipartWithRequiredHeaderBodyItem {
-    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        match self {
-            Self::String(v) => serde::Serialize::serialize(v, s),
-            Self::Other(v) => serde::Serialize::serialize(v, s),
-        }
-    }
-}
-impl<'de> serde::Deserialize<'de> for OrderedMultipartWithRequiredHeaderBodyItem {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let v = <runtime::Content<'de> as serde::Deserialize>::deserialize(d)?;
-        match v.kind() {
-            runtime::Kind::String => {
-                match v.decode_ref::<String>() {
-                    Ok(x) => Ok(Self::String(x)),
-                    Err(_) => Ok(Self::Other(v.into_value())),
-                }
-            }
-            runtime::Kind::Null
-            | runtime::Kind::Bool
-            | runtime::Kind::Integer
-            | runtime::Kind::Number
-            | runtime::Kind::Array
-            | runtime::Kind::Object => Ok(Self::Other(v.into_value())),
-        }
-    }
-}
+serialize_impl_3!(OrderedMultipartWithRequiredHeaderBodyItem);
+deserialize_impl_2!(OrderedMultipartWithRequiredHeaderBodyItem);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct ServerSentEventStreamsBodyItem(
@@ -904,7 +914,7 @@ pub struct ServerSentEventStreamsBodyItemEventEvent;
 impl ServerSentEventStreamsBodyItemEventEvent {
     pub const VALUE: &'static str = "addString";
 }
-serialize_impl_3!(ServerSentEventStreamsBodyItemEventEvent);
+serialize_impl_4!(ServerSentEventStreamsBodyItemEventEvent);
 impl<'de> serde::Deserialize<'de> for ServerSentEventStreamsBodyItemEventEvent {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         runtime::expect_const(d, &serde_json::Value::String("addString".to_owned()))
@@ -953,7 +963,7 @@ pub struct ServerSentEventStreamsBodyItemAddInt64Event;
 impl ServerSentEventStreamsBodyItemAddInt64Event {
     pub const VALUE: &'static str = "addInt64";
 }
-serialize_impl_3!(ServerSentEventStreamsBodyItemAddInt64Event);
+serialize_impl_4!(ServerSentEventStreamsBodyItemAddInt64Event);
 impl<'de> serde::Deserialize<'de> for ServerSentEventStreamsBodyItemAddInt64Event {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         runtime::expect_const(d, &serde_json::Value::String("addInt64".to_owned()))
@@ -1003,7 +1013,7 @@ pub struct ServerSentEventStreamsBodyItemAddJsonEvent;
 impl ServerSentEventStreamsBodyItemAddJsonEvent {
     pub const VALUE: &'static str = "addJSON";
 }
-serialize_impl_3!(ServerSentEventStreamsBodyItemAddJsonEvent);
+serialize_impl_4!(ServerSentEventStreamsBodyItemAddJsonEvent);
 impl<'de> serde::Deserialize<'de> for ServerSentEventStreamsBodyItemAddJsonEvent {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         runtime::expect_const(d, &serde_json::Value::String("addJSON".to_owned()))
@@ -1159,6 +1169,13 @@ impl Not4 {
         }
     }
 }
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Not5 {
+    String(String),
+    Other(serde_json::Value),
+}
+serialize_impl_3!(Not5);
+deserialize_impl_2!(Not5);
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ServerSentEventStreamsBodyItemVariants {
     Event(ServerSentEventStreamsBodyItemEvent),
@@ -1337,57 +1354,6 @@ impl TryFrom<Vec<serde_json::Value>> for NotChecked {
     }
 }
 checked_impls!(NotChecked, Vec < serde_json::Value >);
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
-#[serde(transparent)]
-pub struct OrderedMultipartWithRequiredHeaderBody(
-    pub(super) (String, Vec<OrderedMultipartWithRequiredHeaderBodyItem>),
-);
-impl<'de> serde::Deserialize<'de> for OrderedMultipartWithRequiredHeaderBody {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <(
-            String,
-            Vec<OrderedMultipartWithRequiredHeaderBodyItem>,
-        ) as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
-    }
-}
-impl TryFrom<(String, Vec<OrderedMultipartWithRequiredHeaderBodyItem>)>
-for OrderedMultipartWithRequiredHeaderBody {
-    type Error = runtime::BuildError;
-    fn try_from(
-        value: (String, Vec<OrderedMultipartWithRequiredHeaderBodyItem>),
-    ) -> Result<Self, runtime::BuildError> {
-        let mut violations: Vec<runtime::Violation> = Vec::new();
-        {
-            let out = &mut violations;
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&value).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"prefixItems\":[{\"type\":\"string\"}],\"items\":{\"anyOf\":[{\"type\":\"string\"},{\"$comment\":\"To allow binary, this must always pass\"}]}}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Root,
-                    &value,
-                    schema,
-                    None,
-                );
-            }
-        }
-        runtime::first(violations)
-            .map(|()| Self(value))
-            .map_err(runtime::BuildError::value)
-    }
-}
-checked_impls!(
-    OrderedMultipartWithRequiredHeaderBody, (String, Vec <
-    OrderedMultipartWithRequiredHeaderBodyItem >,)
-);
 /// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
 /// its field. `build` returns the first field that did not convert.
 pub mod builders {

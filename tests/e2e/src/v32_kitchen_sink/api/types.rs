@@ -1972,19 +1972,11 @@ impl TryFrom<serde_json::Value> for NotChecked3 {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&value).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| serde_json::from_str("false").unwrap_or_default());
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Root,
-                    &value,
-                    schema,
-                    runtime::schema_defs(),
-                );
-            }
+            runtime::violation(
+                out,
+                &runtime::InstancePath::Root,
+                "no value is allowed here",
+            );
         }
         runtime::first(violations)
             .map(|()| Self(value))

@@ -238,7 +238,7 @@ fn contains_bounds(min: u64, max: Option<u64>, path: &TokenStream) -> TokenStrea
 /// Returns `patternProperties` of `c` on the object in `json`: the value of each name that a pattern matches decodes as
 /// the type of its schema. With `additionalProperties: false`, a name that is neither declared nor matched is refused.
 fn pattern_checks(c: &Constraints, ty: &dyn Fn(usize) -> TokenStream, path: &TokenStream) -> TokenStream {
-    if c.pattern_properties.is_empty() {
+    if c.pattern_properties.is_empty() && c.closed_to.is_none() {
         return TokenStream::new();
     }
     let closed = c.closed_to.is_some();
@@ -454,6 +454,17 @@ fn evaluated_expr(
     either(&parts)
 }
 
+/// Returns the checks of a value that no keyword needs to look at, or `None`. A type of yours keeps its own invariants
+/// (see `live_types`): the schema where it is used is not checked either. `false` refuses a value that decoded; an
+/// optional one that is absent passes, so `Option` looks inside first.
+fn settled_checks(space: &Space<'_>, t: &Ty, c: &Constraints, path: &TokenStream) -> Option<TokenStream> {
+    if space.is_external(t) {
+        return Some(TokenStream::new());
+    }
+    (c.never && !matches!(t, Ty::Option(_) | Ty::Indirect(_)))
+        .then(|| quote!(runtime::violation(out, #path, "no value is allowed here");))
+}
+
 /// Checks of `value` (an expression of type `&T` for `t`) at `path`.
 /// Empty when nothing can be violated.
 pub(super) fn checks(
@@ -463,9 +474,8 @@ pub(super) fn checks(
     value: &TokenStream,
     path: &TokenStream,
 ) -> TokenStream {
-    // A type of yours keeps its own invariants (see `live_types`): the schema where it is used is not checked either.
-    if space.is_external(t) {
-        return TokenStream::new();
+    if let Some(settled) = settled_checks(space, t, c, path) {
+        return settled;
     }
     let json = c.json_checks();
     // A Rust tuple holds its items by their types.
@@ -536,6 +546,8 @@ pub(super) fn checks(
                 let dependents = dependent_checks(space, s, c, value, path);
                 quote!(#names #dependents)
             }
+            // The union of an implied shape (`Object` and `Other`): the names of an object value.
+            Kind::Union(_) if c.property_names.is_some() => union_name_checks(c, value, path),
             // Any other named type holds its own keywords: only a valid value decodes or is built.
             Kind::Struct(_)
             | Kind::StrEnum(_)
@@ -554,6 +566,17 @@ pub(super) fn checks(
 /// Returns `propertyNames` on the name in `name`, at the path of that name.
 fn name_check(names: &Constraints, path: &TokenStream) -> TokenStream {
     string_checks(names, &quote!(name), &quote!(&runtime::InstancePath::Key(#path, name)))
+}
+
+/// Returns `propertyNames` of `c` on a value of the union of an implied shape (`Object` and `Other`): the names of an
+/// object value.
+fn union_name_checks(c: &Constraints, value: &TokenStream, path: &TokenStream) -> TokenStream {
+    let names = c.property_names.as_deref().map(|n| name_checks(n, &quote!(object.keys()), path));
+    quote! {
+        if let serde_json::Value::Object(object) = runtime::to_value(#value).unwrap_or_default() {
+            #names
+        }
+    }
 }
 
 /// Returns `propertyNames` on each name that `keys` (an iterator of `&String`) yields.
