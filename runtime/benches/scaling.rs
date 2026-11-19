@@ -7,5 +7,5 @@ mod paths;
 const SIZES: [usize; 4] = [16 << 10, 64 << 10, 256 << 10, 1 << 20];
 
 fn main() -> std::process::ExitCode {
-    bench_support::callgrind::main(paths::PATHS, &SIZES)
+    bench_support::callgrind::main("scaling-runtime", paths::PATHS, &SIZES)
 }

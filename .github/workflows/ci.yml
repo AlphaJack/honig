@@ -331,11 +331,27 @@ jobs:
           # runner, cannot read them. Unreadable, they fail the save of the whole cache, cargo's included.
           sudo rm -rf ~/valgrind-debs/partial ~/valgrind-debs/lock
           sudo chown -R "$USER" ~/valgrind-debs
+      # What the last run on main measured, for the tables to show beside this run (`tests/bench-support/src/results.rs`).
+      # Each run on main saves its own; the newest is restored.
+      - name: Restore the results of main
+        if: steps.changed.outputs.run == 'true'
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .bench-results
+          key: bench-results-${{ matrix.bench }}-${{ github.sha }}
+          restore-keys: bench-results-${{ matrix.bench }}-
       - name: Bench
         if: steps.changed.outputs.run == 'true'
         env:
           RUN: ${{ matrix.run }}
         run: $RUN
+      # Only main saves: a pull request compares with main and leaves nothing behind.
+      - name: Save the results of main
+        if: steps.changed.outputs.run == 'true' && github.ref == 'refs/heads/main'
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .bench-results
+          key: bench-results-${{ matrix.bench }}-${{ github.sha }}
 
   # The required check: it fails if a bench failed or did not finish.
   bench:

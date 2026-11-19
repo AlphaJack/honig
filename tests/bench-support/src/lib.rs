@@ -5,6 +5,7 @@
 pub mod callgrind;
 mod functions;
 mod path;
+pub mod results;
 pub mod table;
 
 pub use path::{Path, Phased, Work, phase};

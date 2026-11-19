@@ -35,7 +35,7 @@ fn no_generated_path_allocates_much_more_than_its_baseline() {
             rows.push(cost::Measured { path: path.name, size, sides, ratio, max: path.max_allocs });
         }
     }
-    failed.extend(cost::print_rows(&table, rows));
+    failed.extend(cost::print_rows(&table, rows, None));
     assert!(failed.is_empty(), "more allocations than the budget:\n{}", failed.join("\n"));
 }
 
@@ -65,6 +65,6 @@ fn no_generated_roundtrip_allocates_much_more_than_its_baseline() {
             rows.push(cost::Measured { path: trip.name, size, sides, ratio, max: trip.max_allocs });
         }
     }
-    failed.extend(cost::print_rows(&table, rows));
+    failed.extend(cost::print_rows(&table, rows, None));
     assert!(failed.is_empty(), "more allocations than the budget:\n{}", failed.join("\n"));
 }

@@ -46,7 +46,9 @@ fn main() -> std::process::ExitCode {
             rows.push(cost::Measured { path: trip.name, size, sides, ratio: timing.ratio, max });
         }
     }
-    failed.extend(cost::print_rows(&table, rows));
+    let mut results = bench_support::results::Results::open("roundtrip");
+    failed.extend(cost::print_rows(&table, rows, Some(&mut results)));
+    results.save();
     // stdout, after the table: on stderr a line lands inside it.
     println!("took {:.1}s", started.elapsed().as_secs_f64());
     for f in &failed {
