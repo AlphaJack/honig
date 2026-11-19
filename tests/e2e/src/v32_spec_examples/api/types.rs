@@ -35,6 +35,35 @@ macro_rules! serialize_impl {
 }
 macro_rules! try_from_impl {
     ($t:ty) => {
+        impl TryFrom<String> for $t {
+            type Error = runtime::BuildError;
+            fn try_from(value: String) -> Result<Self, runtime::BuildError> {
+                let mut violations: Vec<runtime::Violation> = Vec::new();
+                {
+                    let out = &mut violations;
+                    runtime::check(
+                        out,
+                        &runtime::InstancePath::Root,
+                        runtime::pattern_matches(
+                            {
+                                static RE: runtime::Pattern = runtime::Pattern::new();
+                                &RE
+                            },
+                            "1",
+                            value.as_str(),
+                        ),
+                        "does not match `1`",
+                    );
+                }
+                runtime::first(violations)
+                    .map(|()| Self(value))
+                    .map_err(runtime::BuildError::value)
+            }
+        }
+    };
+}
+macro_rules! try_from_impl_2 {
+    ($t:ty) => {
         impl TryFrom<i64> for $t {
             type Error = runtime::BuildError;
             fn try_from(value: i64) -> Result<Self, runtime::BuildError> {
@@ -69,6 +98,35 @@ macro_rules! serialize_impl_3 {
         impl serde::Serialize for $t {
             fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
                 s.serialize_str(Self::VALUE)
+            }
+        }
+    };
+}
+macro_rules! try_from_impl_3 {
+    ($t:ty) => {
+        impl TryFrom<String> for $t {
+            type Error = runtime::BuildError;
+            fn try_from(value: String) -> Result<Self, runtime::BuildError> {
+                let mut violations: Vec<runtime::Violation> = Vec::new();
+                {
+                    let out = &mut violations;
+                    runtime::check(
+                        out,
+                        &runtime::InstancePath::Root,
+                        runtime::pattern_matches(
+                            {
+                                static RE: runtime::Pattern = runtime::Pattern::new();
+                                &RE
+                            },
+                            "2",
+                            value.as_str(),
+                        ),
+                        "does not match `2`",
+                    );
+                }
+                runtime::first(violations)
+                    .map(|()| Self(value))
+                    .map_err(runtime::BuildError::value)
             }
         }
     };
@@ -413,31 +471,7 @@ pub struct FormDataCode2(pub(super) String);
 impl FormDataCode2 {
     pub const PATTERN: &'static str = "1";
 }
-impl TryFrom<String> for FormDataCode2 {
-    type Error = runtime::BuildError;
-    fn try_from(value: String) -> Result<Self, runtime::BuildError> {
-        let mut violations: Vec<runtime::Violation> = Vec::new();
-        {
-            let out = &mut violations;
-            runtime::check(
-                out,
-                &runtime::InstancePath::Root,
-                runtime::pattern_matches(
-                    {
-                        static RE: runtime::Pattern = runtime::Pattern::new();
-                        &RE
-                    },
-                    "1",
-                    value.as_str(),
-                ),
-                "does not match `1`",
-            );
-        }
-        runtime::first(violations)
-            .map(|()| Self(value))
-            .map_err(runtime::BuildError::value)
-    }
-}
+try_from_impl!(FormDataCode2);
 checked_str_impls!(FormDataCode2);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -460,12 +494,12 @@ impl FormDataExtra {
 #[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct LogEntryLevel(pub(super) i64);
-try_from_impl!(LogEntryLevel);
+try_from_impl_2!(LogEntryLevel);
 checked_num_impls!(LogEntryLevel, i64);
 #[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct EventRetry(pub(super) i64);
-try_from_impl!(EventRetry);
+try_from_impl_2!(EventRetry);
 checked_num_impls!(EventRetry, i64);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -530,7 +564,7 @@ impl ParameterExamplesCookie {
 #[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct ParameterExamplesCookieCode(pub(super) i64);
-try_from_impl!(ParameterExamplesCookieCode);
+try_from_impl_2!(ParameterExamplesCookieCode);
 checked_num_impls!(ParameterExamplesCookieCode, i64);
 #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -1007,9 +1041,83 @@ impl ServerSentEventStreamsBodyItemAddJsonData2Content {
     }
 }
 pub type ServerSentEventStreamsBodyItemAddJsonRetry = EventRetry;
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
+#[serde(transparent)]
+pub struct Not(pub(super) String);
+impl Not {
+    pub const PATTERN: &'static str = "2";
+}
+try_from_impl_3!(Not);
+checked_str_impls!(Not);
+#[derive(Debug, Clone, PartialEq)]
+pub enum Not2 {
+    String(Not2String),
+    Number(Not2Number),
+}
+impl serde::Serialize for Not2 {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        match self {
+            Self::String(v) => serde::Serialize::serialize(v, s),
+            Self::Number(v) => serde::Serialize::serialize(v, s),
+        }
+    }
+}
+impl<'de> serde::Deserialize<'de> for Not2 {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let v = <runtime::Content<'de> as serde::Deserialize>::deserialize(d)?;
+        match v.kind() {
+            runtime::Kind::Integer | runtime::Kind::Number => v.decode_into(Self::Number),
+            runtime::Kind::String => v.decode_into(Self::String),
+            runtime::Kind::Null
+            | runtime::Kind::Bool
+            | runtime::Kind::Array
+            | runtime::Kind::Object => {
+                Err(serde::de::Error::custom("matches no variant"))
+            }
+        }
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
+#[serde(transparent)]
+pub struct Not2String(pub(super) String);
+impl Not2String {
+    pub const PATTERN: &'static str = "1";
+}
+try_from_impl!(Not2String);
+checked_str_impls!(Not2String);
+#[derive(Debug, Clone, PartialEq, Copy, PartialOrd, serde::Serialize)]
+#[serde(transparent)]
+pub struct Not2Number(pub(super) f64);
+impl TryFrom<f64> for Not2Number {
+    type Error = runtime::BuildError;
+    fn try_from(value: f64) -> Result<Self, runtime::BuildError> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            runtime::check_range(
+                out,
+                &runtime::InstancePath::Root,
+                value,
+                [Some(0.0), None, None, None],
+            );
+        }
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
+    }
+}
+checked_num_impls!(Not2Number, f64);
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
+#[serde(transparent)]
+pub struct Not3(pub(super) String);
+impl Not3 {
+    pub const PATTERN: &'static str = "2";
+}
+try_from_impl_3!(Not3);
+checked_str_impls!(Not3);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
-pub struct Not {
+pub struct Not4 {
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
@@ -1037,9 +1145,9 @@ pub struct Not {
     #[serde(flatten)]
     pub additional_properties: std::collections::BTreeMap<String, serde_json::Value>,
 }
-deserialize_impl!(Not);
-serialize_impl_2!(Not);
-impl Not {
+deserialize_impl!(Not4);
+serialize_impl_2!(Not4);
+impl Not4 {
     #[must_use]
     pub const fn new() -> Self {
         Self {
@@ -1157,22 +1265,13 @@ impl TryFrom<FormDataCode> for FormDataCodeChecked {
         {
             let out = &mut violations;
             {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&value).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"allOf\":[{\"type\":[\"string\",\"number\"],\"pattern\":\"1\",\"minimum\":0},{\"type\":\"string\",\"pattern\":\"2\"}]}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Root,
-                    &value,
-                    schema,
-                    None,
-                );
+                let json = runtime::to_value(&value).unwrap_or_default();
+                if let Err(e) = serde_json::from_value::<Not2>(json.clone()) {
+                    runtime::violation(out, &runtime::InstancePath::Root, e.to_string());
+                }
+                if let Err(e) = serde_json::from_value::<Not3>(json.clone()) {
+                    runtime::violation(out, &runtime::InstancePath::Root, e.to_string());
+                }
             }
         }
         runtime::first(violations)

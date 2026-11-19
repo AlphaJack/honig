@@ -955,6 +955,17 @@ impl<'a> Builder<'a> {
         (prefix, rest)
     }
 
+    /// Queues `not`, and `if` with its `then` and `else` unless a tagged union holds them, as subschemas of `c`.
+    fn queue_not_and_if(&self, s: &Value, at: Option<&str>, typed_conditional: bool, c: &mut Constraints) {
+        if let Some(not) = s.get("not") {
+            c.not.push(self.queue_subschema(not, at.map(|p| join(p, "not"))));
+        }
+        if let Some(cond) = s.get("if").filter(|_| !typed_conditional) {
+            let queue = |k: &str| s.get(k).map(|b| self.queue_subschema(b, at.map(|p| join(p, k))));
+            c.conditions.push((self.queue_subschema(cond, at.map(|p| join(p, "if"))), queue("then"), queue("else")));
+        }
+    }
+
     fn constraints_at(&self, s: &Value, depth: usize, at: Option<&str>) -> Constraints {
         // Keywords further down belong to the named types on the way, which hold them. Only a schema checked whole
         // loses what it cuts (`inline_scoped`).
@@ -988,7 +999,6 @@ impl<'a> Builder<'a> {
         };
         // Non-string `enum`/`const` have no type of their own either. An integer enum is the exception. The
         // `validate` of its type rejects `kind: 7` when only 1, 2 and 3 are allowed.
-        // A tuple (`prefixItems`, maybe closed by `items: false`) has no Rust type that checks its length and items.
         // A `$dynamicRef` anywhere inside resolves in the dynamic scope from here: only the run-time check of the whole
         // schema follows it there.
         // A tuple (`prefixItems`, maybe closed by `items: false`) is checked item by item ([`Constraints::tuple`]).
@@ -1003,24 +1013,13 @@ impl<'a> Builder<'a> {
             || tuple
             || mixed
             || self.loose_union(s)
-            || self.lossy_all_of(s)
             || matches!(s, Value::Object(o) if UNTYPED_KEYWORDS.iter().any(|k| o.contains_key(*k) && !conditional_key(k)) || untyped_values(o))
         {
             // The resource of the schema starts the dynamic scope that a `$dynamicRef` resolves in.
             let scope: Vec<String> = at.map_or_else(Vec::new, |p| vec![self.dynamic.resource_of(p)]);
             c.schema = Some(self.inlined(s, at, scope));
         } else {
-            if let Some(not) = s.get("not") {
-                c.not.push(self.queue_subschema(not, at.map(|p| join(p, "not"))));
-            }
-            if let Some(cond) = s.get("if").filter(|_| !typed_conditional) {
-                let queue = |k: &str| s.get(k).map(|b| self.queue_subschema(b, at.map(|p| join(p, k))));
-                c.conditions.push((
-                    self.queue_subschema(cond, at.map(|p| join(p, "if"))),
-                    queue("then"),
-                    queue("else"),
-                ));
-            }
+            self.queue_not_and_if(s, at, typed_conditional, &mut c);
             if let Some(sub) = s.get("contains").filter(|_| typed_contains) {
                 let n = self.queue_subschema(sub, at.map(|p| join(p, "contains")));
                 c.contains = Some((n, count_of(s, "minContains").unwrap_or(1), count_of(s, "maxContains")));
@@ -1037,6 +1036,13 @@ impl<'a> Builder<'a> {
             }
             if let Some(beside) = beside_union(s) {
                 c.also.push(self.queue_subschema(&beside, None));
+            }
+            // Members that one merged type cannot hold: the value also decodes as each of them.
+            if self.lossy_all_of(s) {
+                let at = at.map(|p| join(p, "allOf"));
+                for (i, m) in json::items(s.get("allOf")) {
+                    c.also.push(self.queue_subschema(m, at.as_deref().map(|a| join(a, &i.to_string()))));
+                }
             }
             for (name, sub) in dependent_schemas.into_iter().flatten() {
                 let at = at.map(|p| join(&join(p, "dependentSchemas"), name));
