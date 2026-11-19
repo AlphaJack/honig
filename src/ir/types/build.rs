@@ -1078,6 +1078,11 @@ impl<'a> Builder<'a> {
     /// Returns types that never need a named item.
     fn scalar(&mut self, o: &serde_json::Map<String, Value>, ptr: &str, hint: &Name) -> Ty {
         let (types, _) = type_set(o);
+        // Values of several kinds and no type for them all, such as `enum: [6, "foo", []]`: the first kind would refuse
+        // the others. The run-time check judges the value (`untyped_values`).
+        if types.iter().filter(|t| *t != "null").count() > 1 {
+            return Ty::Any;
+        }
         // `null` beside another type makes that type nullable. Alone it is the type: `type: null` allows only `null`.
         let t = types.iter().find(|t| *t != "null").or_else(|| types.first()).map(String::as_str);
         let format = o.get("format").and_then(Value::as_str).unwrap_or("");
@@ -2170,19 +2175,21 @@ pub(crate) fn type_set(o: &serde_json::Map<String, Value>) -> (Vec<String>, bool
         } else if o.contains_key("items") || o.contains_key("prefixItems") {
             types.push("array".into());
         } else if let Some(Value::Array(values)) = o.get("enum") {
-            let mut ks: Vec<String> = values
-                .iter()
-                .filter_map(|v| match v {
-                    Value::String(_) => Some("string"),
-                    Value::Bool(_) => Some("boolean"),
-                    Value::Number(n) if n.is_f64() => Some("number"),
-                    Value::Number(_) => Some("integer"),
-                    Value::Null | Value::Array(_) | Value::Object(_) => None,
-                })
-                .map(String::from)
-                .collect();
-            ks.dedup();
-            types = ks;
+            // Each value's own type, once, in the order of the values. `null` is `nullable` below.
+            for v in values {
+                let t = match v {
+                    Value::String(_) => "string",
+                    Value::Bool(_) => "boolean",
+                    Value::Number(n) if n.is_f64() => "number",
+                    Value::Number(_) => "integer",
+                    Value::Array(_) => "array",
+                    Value::Object(_) => "object",
+                    Value::Null => continue,
+                };
+                if !types.iter().any(|x| x == t) {
+                    types.push(t.to_owned());
+                }
+            }
         }
     }
     let nullable = types.iter().any(|t| t == "null")
@@ -2353,6 +2360,21 @@ mod tests {
 
     fn by_name<'a>(s: &'a TypeSpace, n: &str) -> &'a TypeDef {
         s.defs.iter().find(|d| d.name == Name::new(n)).unwrap_or_else(|| panic!("no {n}"))
+    }
+
+    /// An `enum` without `type` has the type of each of its values. A list or an object among them is one too: the
+    /// `enum` is not typed as its first scalar, which would refuse the list.
+    #[test]
+    fn an_untyped_enum_has_the_type_of_each_value() {
+        let o = json!({"enum": [6, "foo", [], true, {"foo": 12}, 7, null]});
+        let (types, nullable) = type_set(o.as_object().unwrap());
+        assert_eq!(types, ["integer", "string", "array", "boolean", "object"]);
+        assert!(nullable);
+        let s = build(
+            &json!({"Mixed": {"type": "object", "properties": {"v": {"enum": [6, "foo", [], true, {"foo": 12}]}}}}),
+        );
+        let Kind::Struct(mixed) = &by_name(&s, "Mixed").kind else { panic!("a struct") };
+        assert_eq!(mixed.fields[0].ty, Ty::Any, "{:?}", mixed.fields[0].ty);
     }
 
     /// A schema that refers back to itself is checked whole with the cycle in `$defs`. Its reference must reach the
