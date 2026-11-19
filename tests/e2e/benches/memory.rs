@@ -24,38 +24,76 @@ const STREAMED_PEAK: isize = 1024;
 /// How many times its baseline's peak a kind read whole may hold. Today 0.55 to 1.23.
 const WHOLE_RATIO: f64 = 1.3;
 
-/// The table of the bench: per kind and size, the peak heap of both sides in KiB, their ratio and its limit, then the
-/// allocations and the frames of both sides.
+/// The table of the bench: per kind and size in KiB, the peak heap of both sides in KiB, then the allocations and the
+/// frames of both sides, each with the ratio that is judged and its limit.
 fn memory_table(sizes: &[usize]) -> Table {
-    let widest_size = sizes.iter().map(|&s| table::size(s)).max_by_key(String::len).unwrap_or_default();
+    let widest_size = sizes.iter().map(|&s| table::kib(s)).max_by_key(String::len).unwrap_or_default();
     let widest_path = cost::paths(sizes[0]).iter().map(|p| p.name.len()).max().unwrap_or_default();
     Table::new(&[
-        Column::left("path", widest_path),
-        Column::right("size", &widest_size),
+        Column::left("request", widest_path),
+        Column::right("size_KiB", &widest_size),
         Column::right("head_KiB", "9999999"),
         Column::right("base_KiB", "9999999"),
-        Column::right("ratio", "99.99"),
-        Column::right("max", "1024KiB"),
+        Column::right("peak_ratio", "99.99"),
+        Column::right("peak_max", "9.99"),
         Column::right("head_allocs", "99999999"),
         Column::right("base_allocs", "99999999"),
+        Column::right("allocs_ratio", "99.99"),
+        Column::right("allocs_max", "9.99"),
         Column::right("head_frames", "9999999"),
         Column::right("base_frames", "9999999"),
         Column::left("result", "FAIL".len()),
     ])
 }
 
-/// Whether `path` holds `peak` KiB within its limit beside its baseline's `base`, and the limit as the table shows it.
-/// A peak below [`STREAMED_PEAK`] always holds: a few KiB more than the baseline is a ratio, not a cost.
-fn judged(path: &str, peak: isize, base: isize) -> (bool, String) {
-    if STREAMED.contains(&path) {
-        return (peak <= STREAMED_PEAK, format!("{STREAMED_PEAK}KiB"));
-    }
-    (peak <= STREAMED_PEAK || ratio(peak, base) <= WHOLE_RATIO, format!("{WHOLE_RATIO:.2}"))
+/// What one side measured for a request: its peak heap in KiB, its allocations and the frames of its response body.
+struct Side {
+    peak: isize,
+    allocs: u64,
+    frames: usize,
 }
 
-#[expect(clippy::cast_precision_loss, reason = "a heap in KiB is far below 2^52")]
-fn ratio(peak: isize, base: isize) -> f64 {
-    peak as f64 / base.max(1) as f64
+/// The checks of a kind at one size that do not hold, by name, and its row of the table.
+fn judged(path: &cost::Path, size: usize, head: &Side, base: &Side) -> (Vec<&'static str>, Vec<String>) {
+    let streamed = STREAMED.contains(&path.name);
+    let kib = |p: isize| u64::try_from(p).unwrap_or_default();
+    let peak_ratio = ratio(kib(head.peak), kib(base.peak));
+    let allocs_ratio = ratio(head.allocs, base.allocs);
+    let mut failed = vec![];
+    // A peak below the cap always holds: a few KiB more than the baseline is a ratio, not a cost.
+    let peak_ok = head.peak <= STREAMED_PEAK || (!streamed && peak_ratio <= WHOLE_RATIO);
+    if !peak_ok {
+        failed.push("peak");
+    }
+    if allocs_ratio > path.max_allocs {
+        failed.push("allocations");
+    }
+    // A streamed body that its baseline sends in fewer pieces is written more often over a socket.
+    if streamed && head.frames > base.frames {
+        failed.push("frames");
+    }
+    let unjudged = || "-".to_owned();
+    let row = vec![
+        path.name.to_owned(),
+        table::kib(size),
+        head.peak.to_string(),
+        base.peak.to_string(),
+        if streamed { unjudged() } else { format!("{peak_ratio:.2}") },
+        if streamed { unjudged() } else { format!("{WHOLE_RATIO:.2}") },
+        head.allocs.to_string(),
+        base.allocs.to_string(),
+        format!("{allocs_ratio:.2}"),
+        format!("{:.2}", path.max_allocs),
+        head.frames.to_string(),
+        base.frames.to_string(),
+        if failed.is_empty() { "ok" } else { "FAIL" }.to_owned(),
+    ];
+    (failed, row)
+}
+
+#[expect(clippy::cast_precision_loss, reason = "a heap in KiB or a count of allocations is far below 2^52")]
+fn ratio(head: u64, base: u64) -> f64 {
+    head as f64 / base.max(1) as f64
 }
 
 fn main() -> ExitCode {
@@ -64,7 +102,9 @@ fn main() -> ExitCode {
     let sizes = if given.is_empty() { SIZES.to_vec() } else { given };
     let runtime = cost::runtime();
     println!(
-        "streamed: peak at most {STREAMED_PEAK} KiB; read whole: peak at most {WHOLE_RATIO} times the baseline or {STREAMED_PEAK} KiB"
+        "peak: streamed at most {STREAMED_PEAK} KiB, read whole at most {WHOLE_RATIO} times the baseline or \
+         {STREAMED_PEAK} KiB; allocations: at most the kind's budget times the baseline; frames: streamed at most the \
+         baseline's"
     );
     let table = memory_table(&sizes);
     let mut over = vec![];
@@ -76,31 +116,16 @@ fn main() -> ExitCode {
                     over.push(e);
                     continue;
                 }
-                let ((_, frames), (_, base_frames)) =
+                let ((_, head_frames), (_, base_frames)) =
                     (cost::serve(&generated, &path).await, cost::serve(&baseline, &path).await);
-                let (allocs, peak) = cost::heap(&generated, &path).await;
+                let (head_allocs, head_peak) = cost::heap(&generated, &path).await;
                 let (base_allocs, base_peak) = cost::heap(&baseline, &path).await;
-                let (ok, max) = judged(path.name, peak, base_peak);
-                let shown_ratio = if STREAMED.contains(&path.name) {
-                    "-".to_owned()
-                } else {
-                    format!("{:.2}", ratio(peak, base_peak))
-                };
-                table.row(&[
-                    path.name.to_owned(),
-                    table::size(size),
-                    peak.to_string(),
-                    base_peak.to_string(),
-                    shown_ratio,
-                    max,
-                    allocs.to_string(),
-                    base_allocs.to_string(),
-                    frames.to_string(),
-                    base_frames.to_string(),
-                    if ok { "ok" } else { "FAIL" }.to_owned(),
-                ]);
-                if !ok {
-                    over.push(format!("{} at {}", path.name, table::size(size)));
+                let head = Side { peak: head_peak, allocs: head_allocs, frames: head_frames };
+                let base = Side { peak: base_peak, allocs: base_allocs, frames: base_frames };
+                let (failed, row) = judged(&path, size, &head, &base);
+                table.row(&row);
+                if !failed.is_empty() {
+                    over.push(format!("{} at {}: {}", path.name, table::size(size), failed.join(", ")));
                 }
             }
         });
@@ -108,6 +133,6 @@ fn main() -> ExitCode {
     if over.is_empty() {
         return ExitCode::SUCCESS;
     }
-    println!("peak heap over its limit: {}", over.join(", "));
+    println!("over a limit: {}", over.join("; "));
     ExitCode::FAILURE
 }

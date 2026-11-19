@@ -82,9 +82,31 @@ pub fn size(bytes: usize) -> String {
     format!("{n}{name}")
 }
 
+/// Returns `bytes` in KiB, a number alone for a column whose header names the unit: `0.25`, `16`, `32768`.
+#[must_use]
+pub fn kib(bytes: usize) -> String {
+    let whole = bytes / STEP;
+    match bytes % STEP {
+        0 => whole.to_string(),
+        part => {
+            // Two decimals of the part: a size is a power of two or a round number of bytes in a bench.
+            let hundredths = part * 100 / STEP;
+            format!("{whole}.{hundredths:02}").trim_end_matches('0').to_owned()
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::size;
+    use super::{kib, size};
+
+    #[test]
+    fn kib_is_a_number_alone() {
+        assert_eq!(
+            [kib(256), kib(2 << 10), kib(1 << 20), kib(32 << 20), kib(1536)],
+            ["0.25", "2", "1024", "32768", "1.5"]
+        );
+    }
 
     #[test]
     fn a_size_takes_the_largest_unit_that_holds_it_whole() {
