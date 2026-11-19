@@ -710,3 +710,15 @@ fn a_closed_map_of_one_pattern_checks_names_and_values() {
     assert!(scores(json!({"alice": -1})).is_err(), "a value below its minimum");
     assert!(scores(json!({"alice": "three"})).is_err(), "a value of another type");
 }
+
+/// Keywords without `type` apply to values of their kind: `minimum` to a number, `maxLength` to a string, nothing to a
+/// boolean.
+#[test]
+fn keywords_without_a_type_apply_to_their_kind() {
+    let loose = |v: serde_json::Value| serde_json::from_value::<types::Loose>(json!({"v": v}));
+    for ok in [json!(5), json!("ab"), json!(true)] {
+        assert!(loose(ok.clone()).is_ok(), "{ok}");
+    }
+    assert!(loose(json!(0)).is_err(), "a number below its minimum");
+    assert!(loose(json!("abcd")).is_err(), "a string past its length");
+}

@@ -146,6 +146,16 @@ macro_rules! deserialize_impl_2 {
     ($t:ty) => {
         impl<'de> serde::Deserialize<'de> for $t {
             fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                let value = <serde_json::Value as serde::Deserialize>::deserialize(d)?;
+                Self::try_from(value).map_err(serde::de::Error::custom)
+            }
+        }
+    };
+}
+macro_rules! deserialize_impl_3 {
+    ($t:ty) => {
+        impl<'de> serde::Deserialize<'de> for $t {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
                 let value = <std::collections::BTreeMap<
                     String,
                     String,
@@ -1451,6 +1461,52 @@ impl TryFrom<ShipmentVariants> for Shipment {
     }
 }
 checked_impls!(Shipment, ShipmentVariants);
+#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct Loose {
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub v: Option<LooseV>,
+}
+deserialize_impl!(Loose);
+serialize_impl!(Loose);
+impl Loose {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self { v: None }
+    }
+}
+impl runtime::XmlShape for Loose {
+    fn xml() -> &'static runtime::XmlNode {
+        static NODE: runtime::XmlNode = runtime::XmlNode {
+            name: "Loose",
+            namespace: "",
+            prefix: "",
+            fields: &[
+                runtime::XmlField {
+                    wire: "v",
+                    name: "v",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "v",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+            ],
+        };
+        &NODE
+    }
+}
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct Payment(pub(super) PaymentFields);
@@ -4254,21 +4310,14 @@ impl TryFrom<EntryLines> for EntryLinesChecked {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&value).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str("{\"maxItems\":2}").unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Root,
-                    &value,
-                    schema,
-                    runtime::schema_defs(),
-                );
-            }
+            runtime::check_len(
+                out,
+                &runtime::InstancePath::Root,
+                value.len(),
+                None,
+                Some(2),
+                "items",
+            );
         }
         runtime::first(violations)
             .map(|()| Self(value))
@@ -4316,6 +4365,49 @@ impl TryFrom<Vec<String>> for BadgeHolders {
     }
 }
 checked_impls!(BadgeHolders, Vec < String >);
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
+pub struct LooseV(pub(super) serde_json::Value);
+deserialize_impl_2!(LooseV);
+impl TryFrom<serde_json::Value> for LooseV {
+    type Error = runtime::BuildError;
+    fn try_from(value: serde_json::Value) -> Result<Self, runtime::BuildError> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            match &value {
+                serde_json::Value::String(text) => {
+                    let n = (text.as_str()).chars().count();
+                    runtime::check_len(
+                        out,
+                        &runtime::InstancePath::Root,
+                        n,
+                        None,
+                        Some(3),
+                        "characters",
+                    );
+                }
+                serde_json::Value::Number(n) => {
+                    let text = n.to_string();
+                    runtime::check_decimal_range(
+                        out,
+                        &runtime::InstancePath::Root,
+                        text.as_str(),
+                        [Some("1"), None, None, None],
+                    );
+                }
+                serde_json::Value::Null
+                | serde_json::Value::Bool(_)
+                | serde_json::Value::Array(_)
+                | serde_json::Value::Object(_) => {}
+            }
+        }
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
+    }
+}
+checked_impls!(LooseV, serde_json::Value);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct LabelledLabels(pub(super) Labels);
@@ -4435,7 +4527,7 @@ checked_impls!(UserTags, Vec < UserTagsItem >);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct UserMeta(pub(super) std::collections::BTreeMap<String, String>);
-deserialize_impl_2!(UserMeta);
+deserialize_impl_3!(UserMeta);
 impl TryFrom<std::collections::BTreeMap<String, String>> for UserMeta {
     type Error = runtime::BuildError;
     fn try_from(
@@ -4463,31 +4555,20 @@ pub type BadgeRequestHolders = BadgeHolders;
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct ShipmentInternationalRating(pub(super) serde_json::Value);
-impl<'de> serde::Deserialize<'de> for ShipmentInternationalRating {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <serde_json::Value as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
-    }
-}
+deserialize_impl_2!(ShipmentInternationalRating);
 impl TryFrom<serde_json::Value> for ShipmentInternationalRating {
     type Error = runtime::BuildError;
     fn try_from(value: serde_json::Value) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&value).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str("{\"minimum\":1}").unwrap_or_default()
-                    });
-                runtime::check_schema_in(
+            if let serde_json::Value::Number(n) = &value {
+                let text = n.to_string();
+                runtime::check_decimal_range(
                     out,
                     &runtime::InstancePath::Root,
-                    &value,
-                    schema,
-                    runtime::schema_defs(),
+                    text.as_str(),
+                    [Some("1"), None, None, None],
                 );
             }
         }
@@ -4590,7 +4671,7 @@ checked_impls!(
 pub struct ShipmentInternationalLabels(
     pub(super) std::collections::BTreeMap<String, String>,
 );
-deserialize_impl_2!(ShipmentInternationalLabels);
+deserialize_impl_3!(ShipmentInternationalLabels);
 impl TryFrom<std::collections::BTreeMap<String, String>>
 for ShipmentInternationalLabels {
     type Error = runtime::BuildError;
@@ -4880,6 +4961,26 @@ pub mod builders {
     impl Badge {
         /// Returns the value.
         pub fn build(self) -> Result<super::Badge, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::Loose {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> Loose {
+            Loose(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct Loose(runtime::Builder<super::Loose>);
+    impl Loose {
+        pub fn v(
+            self,
+            value: impl TryInto<types::LooseV, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("v", value, |s, v| s.v = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::Loose, runtime::BuildError> {
             self.0.build()
         }
     }

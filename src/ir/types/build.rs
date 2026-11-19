@@ -365,6 +365,32 @@ fn typeless_assertions(s: &Value) -> bool {
     }
 }
 
+/// Keywords that apply to one kind of value only and pass any other (JSON Schema 2020-12 section 7.2.1): checked on a
+/// `serde_json::Value` by its kind.
+const KIND_SCOPED: [&str; 12] = [
+    "minLength",
+    "maxLength",
+    "pattern",
+    "minimum",
+    "maximum",
+    "exclusiveMinimum",
+    "exclusiveMaximum",
+    "multipleOf",
+    "minItems",
+    "maxItems",
+    "minProperties",
+    "maxProperties",
+];
+
+/// Does a schema without `type` assert only [`KIND_SCOPED`] keywords? Its value is a `serde_json::Value` whose checks
+/// apply each keyword to values of its kind, with no schema checked whole.
+fn kind_scoped(s: &Value) -> bool {
+    s.as_object().is_some_and(|o| {
+        ASSERTIONS.iter().filter(|k| o.contains_key(**k)).all(|k| KIND_SCOPED.contains(k))
+            && json::object(o, "properties").is_none_or(serde_json::Map::is_empty)
+    })
+}
+
 /// Returns the pointer of `key` under the schema at `at`.
 fn child_ptr(at: &str, key: &str) -> String {
     format!("{at}/{}", escape_token(key))
@@ -766,7 +792,7 @@ impl<'a> Builder<'a> {
                 // An extension (`x-...`) asserts nothing either.
                 || (o.contains_key("$ref") && o.keys().any(|k| !quiet(k) && !k.starts_with("x-")))
         });
-        if typeless_assertions(s)
+        if (typeless_assertions(s) && !kind_scoped(s))
             || tuple
             || mixed
             || self.loose_union(s)
