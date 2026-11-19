@@ -309,20 +309,18 @@ jobs:
           key: ${{ matrix.bench }}
           save-if: ${{ github.ref == 'refs/heads/main' }}
           cache-directories: ${{ matrix.valgrind && '~/valgrind-debs' || '' }}
-      # apt reads cached packages first and downloads only what the image moved past. The runner's package index can
-      # name packages that the mirror has dropped: only then is it updated. needrestart would scan and restart services
-      # after libc6 is upgraded: nothing here needs that.
+      # The runner's package index can name packages that the mirror has dropped, so it is updated first (about 5 s).
+      # apt then reads the cached packages and downloads only what the image moved past. needrestart would scan and
+      # restart services after libc6 is upgraded: nothing here needs that.
       - name: Install valgrind
         if: steps.changed.outputs.run == 'true' && matrix.valgrind
         run: |
           mkdir -p ~/valgrind-debs/partial
           # apt downloads as `_apt`: it must own the folder, or it falls back to root and warns.
           sudo chown -R _apt ~/valgrind-debs
-          install() {
-            sudo NEEDRESTART_SUSPEND=1 apt-get install -y --no-install-recommends \
-              -o Dir::Cache::Archives="$HOME/valgrind-debs" valgrind
-          }
-          install || { sudo apt-get update -qq; install; }
+          sudo apt-get update -qq
+          sudo NEEDRESTART_SUSPEND=1 apt-get install -y --no-install-recommends \
+            -o Dir::Cache::Archives="$HOME/valgrind-debs" valgrind
           # The cache keeps the packages only: apt's lock and its partial downloads are root's, and tar, run as the
           # runner, cannot read them. Unreadable, they fail the save of the whole cache, cargo's included.
           sudo rm -rf ~/valgrind-debs/partial ~/valgrind-debs/lock
