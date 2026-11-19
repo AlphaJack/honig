@@ -38,19 +38,27 @@ fn untyped_keywords_pass_when_satisfied() {
     assert_eq!(ok.status().as_u16(), 201, "{:?}", violations(&ok));
 }
 
+/// Each keyword is reported on its own: a request is refused at its first violation.
 #[test]
 fn untyped_keywords_report_each_failure() {
-    let r = shipment(
-        &json!({"kind":"domestic","insured":true,"parcels":[{"fragile":false}],"labels":{"Bad":"x","xlong":"abcd"}}),
-    );
-    assert_eq!(r.status().as_u16(), 400);
-    let v = violations(&r).join("\n");
-    for expected in [
-        "/body/insurer is required when `insured` is present", // dependentRequired
-        "/body/parcels must contain at least 1 matching item(s), found 0", // contains
-        "/body/labels/Bad is not an allowed property name",    // propertyNames
-        "/body/labels/xlong at most 3 characters allowed, found 4", // patternProperties
+    let ok = || json!({"kind":"domestic","parcels":[{"fragile":true}]});
+    let with = |key: &str, value: serde_json::Value| {
+        let mut body = ok();
+        body[key] = value;
+        body
+    };
+    for (body, expected) in [
+        (with("insured", json!(true)), "/body/insurer is required when `insured` is present"), // dependentRequired
+        (
+            with("parcels", json!([{"fragile": false}])),
+            "/body/parcels must contain at least 1 matching item(s), found 0",
+        ), // contains
+        (with("labels", json!({"Bad": "x"})), "/body/labels/Bad is not an allowed property name"), // propertyNames
+        (with("labels", json!({"xlong": "abcd"})), "/body/labels/xlong at most 3 characters allowed, found 4"), // patternProperties
     ] {
+        let r = shipment(&body);
+        assert_eq!(r.status().as_u16(), 400, "{body}");
+        let v = violations(&r).join("\n");
         assert!(v.contains(expected), "missing `{expected}` in:\n{v}");
     }
 }
@@ -68,13 +76,14 @@ fn if_then_requirement_is_a_decode_error() {
     );
 }
 
+/// A request is refused at its first violation: each value here breaks one keyword.
 #[test]
 fn not_and_max_contains_reject() {
-    let r = shipment(
-        &json!({"kind":"domestic","customs":"none","insurer":"acme","parcels":[{"fragile":true},{"fragile":true},{"fragile":true}]}),
-    );
+    let r = shipment(&json!({"kind":"domestic","customs":"none","insurer":"acme","parcels":[{"fragile":true}]}));
     let v = violations(&r).join("\n");
     assert!(v.contains("/body matches `not`"), "{v}");
+    let r = shipment(&json!({"kind":"domestic","parcels":[{"fragile":true},{"fragile":true},{"fragile":true}]}));
+    let v = violations(&r).join("\n");
     assert!(v.contains("/body/parcels contains 3 matching items, more than allowed"), "{v}");
 }
 
