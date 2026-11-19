@@ -85,7 +85,7 @@ postprocessors = [{ pattern = '\n{3,}', replace = "\n\n" }]
 commit_parsers = [
     { message = "^feat", group = "<!-- 0 -->added" },
     { message = "^fix", group = "<!-- 1 -->fixed" },
-    { message = "^perf", group = "<!-- 2 -->improved" },
+    { message = "^perf", group = "<!-- 2 -->optimized" },
     # Users do not see other types unless they break something.
     { message = "^[a-z]+(\\([^)]*\\))?!:", group = "<!-- 3 -->changed" },
     { message = ".*", skip = true },
