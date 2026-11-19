@@ -10,5 +10,5 @@
 | `tests` | no | `false` | generate a test that the description's examples decode |
 | `unknown_fields` | no | `"drop"` | "keep": objects without additionalProperties keep unknown keys |
 | `overlays` | no | `[]` | Overlays (1.0 to 1.2) applied in order to the spec |
-| `formats` | yes |  | required: library types of string formats, like { uuid = true, dates = "chrono" } or {} |
+| `formats` | yes |  | required: types of string formats, like { dates = "chrono", uuid = "crate::Id" } or {} |
 | `derives` | no | `{}` | extra derives on every type or on one type by Rust name, like { "*" = ["Hash"] } |

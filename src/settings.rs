@@ -7,11 +7,13 @@
 //! Dependencies are read as cargo resolves them: a `workspace = true` entry adds the features of the workspace
 //! root's `[workspace.dependencies]` entry to its own.
 
+use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use toml_edit::{DocumentMut, Item, TableLike};
 
 use crate::error::Error;
+use crate::ir::types::Format;
 
 /// Every setting of a module as (key, default, what it does). A setting without a default is required. `--help` and
 /// the book show it.
@@ -36,7 +38,7 @@ pub(crate) const SETTINGS: [(&str, Option<&str>, &str); 10] = [
     ("tests", Some("false"), "generate a test that the description's examples decode"),
     ("unknown_fields", Some("\"drop\""), "\"keep\": objects without additionalProperties keep unknown keys"),
     ("overlays", Some("[]"), "Overlays (1.0 to 1.2) applied in order to the spec"),
-    ("formats", None, "required: library types of string formats, like { uuid = true, dates = \"chrono\" } or {}"),
+    ("formats", None, "required: types of string formats, like { dates = \"chrono\", uuid = \"crate::Id\" } or {}"),
     ("derives", Some("{}"), "extra derives on every type or on one type by Rust name, like { \"*\" = [\"Hash\"] }"),
 ];
 
@@ -59,7 +61,7 @@ pub(crate) fn init_table(manifest: &Manifest, spec: &str) -> String {
         "[{ROOT}.{DEFAULT_MODULE}]\nspec = \"{spec}\"\n{}\n{}\n{}\n",
         half("client", Side::Client),
         half("server", Side::Server),
-        formats_line(detected_format_libs(manifest))
+        formats_line(&detected_format_libs(manifest))
     )
 }
 
@@ -744,8 +746,26 @@ pub(crate) enum DateLib {
     Jiff,
 }
 
+/// A type that the `formats` table names for a format: a path such as `time::OffsetDateTime`. Only a path of Rust
+/// identifiers is one.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct NamedType(String);
+
+impl NamedType {
+    /// Returns the type that `path` names. `None` when it is not a path of identifiers.
+    pub(crate) fn new(path: &str) -> Option<Self> {
+        let segments = path.strip_prefix("::").unwrap_or(path);
+        segments.split("::").all(crate::text::is_identifier).then(|| Self(path.to_owned()))
+    }
+
+    /// Returns the path as the table writes it.
+    pub(crate) fn path(&self) -> &str {
+        &self.0
+    }
+}
+
 /// Libraries the target crate provides; `Ty::Format` falls back to `String`.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub(crate) struct FormatLibs {
     /// `uuid` (with its `serde` feature).
     pub uuid: bool,
@@ -755,6 +775,8 @@ pub(crate) struct FormatLibs {
     pub ipnet: bool,
     /// Dates and timestamps.
     pub dates: Option<DateLib>,
+    /// The types that the table names for formats. Each wins over a library for its format.
+    pub named: BTreeMap<Format, NamedType>,
 }
 
 const CHRONO: &str = "chrono";
@@ -772,7 +794,7 @@ pub(crate) fn format_libs<'a>(module: impl Into<Module<'a>>) -> Result<FormatLib
     let module = module.into();
     let manifest = module.manifest;
     let Some(libs) = formats_setting(module)? else {
-        let pin = formats_line(detected_format_libs(manifest));
+        let pin = formats_line(&detected_format_libs(manifest));
         return Err(setting(
             &module.path(),
             "formats",
@@ -806,6 +828,7 @@ fn formats_setting(module: Module<'_>) -> Result<Option<FormatLibs>, Error> {
     for (key, value) in table.iter() {
         let flag = || value.as_bool().ok_or_else(|| setting(formats, key, "true or false", shown(value)));
         match key {
+            "uuid" if value.is_str() => _ = libs.named.insert(Format::Uuid, named_type(formats, key, value)?),
             "uuid" => libs.uuid = flag()?,
             "url" => libs.url = flag()?,
             "ipnet" => libs.ipnet = flag()?,
@@ -818,23 +841,36 @@ fn formats_setting(module: Module<'_>) -> Result<Option<FormatLibs>, Error> {
                 };
             }
             _ => {
-                return Err(setting(
-                    formats,
-                    key,
-                    "one of uuid, dates, url and ipnet",
-                    "an unknown setting".to_owned(),
-                ));
+                let Some(format) = Format::ALL.into_iter().find(|f| f.name() == key && f.marker().is_some()) else {
+                    return Err(setting(
+                        formats,
+                        key,
+                        "uuid, dates, url, ipnet or a format with a check, such as date-time",
+                        "an unknown setting".to_owned(),
+                    ));
+                };
+                libs.named.insert(format, named_type(formats, key, value)?);
             }
         }
     }
     Ok(Some(libs))
 }
 
+/// Returns the type that `value` names for the format `key`. The compiler checks that it exists.
+fn named_type(formats: &str, key: &str, value: &Item) -> Result<NamedType, Error> {
+    let text = value
+        .as_str()
+        .ok_or_else(|| setting(formats, key, "the path of a type such as \"crate::Stamp\"", shown(value)))?;
+    NamedType::new(text).ok_or_else(|| setting(formats, key, "the path of a type", format!("`{text}`")))
+}
+
 /// Returns the `formats` line that keeps `libs`: only the libraries in use, `{}` for none.
-pub(crate) fn formats_line(libs: FormatLibs) -> String {
+pub(crate) fn formats_line(libs: &FormatLibs) -> String {
     let dates = libs.dates.map(|d| format!("dates = \"{}\"", if d == DateLib::Chrono { CHRONO } else { JIFF }));
     let on = [(libs.uuid, "uuid = true"), (libs.url, "url = true"), (libs.ipnet, "ipnet = true")];
-    let parts: Vec<String> = on.iter().filter(|(b, _)| *b).map(|(_, s)| (*s).to_owned()).chain(dates).collect();
+    let named = libs.named.iter().map(|(f, t)| format!("{} = \"{}\"", f.name(), t.path()));
+    let parts: Vec<String> =
+        on.iter().filter(|(b, _)| *b).map(|(_, s)| (*s).to_owned()).chain(dates).chain(named).collect();
     if parts.is_empty() { "formats = {}".to_owned() } else { format!("formats = {{ {} }}", parts.join(", ")) }
 }
 
@@ -852,6 +888,7 @@ pub(crate) fn detected_format_libs(manifest: &Manifest) -> FormatLibs {
         url: manifest.has_serde_dependency(URL),
         ipnet: manifest.has_serde_dependency(IPNET),
         dates,
+        named: BTreeMap::new(),
     }
 }
 
@@ -911,15 +948,43 @@ mod tests {
         let error = |formats: &str, deps: &str| libs(formats, deps).unwrap_err().to_string();
         assert!(error("formats = { uuid = true }", "uuid = \"1\"\n").contains("features = [\"serde\"]"));
         assert!(error("formats = { dates = \"time\" }", &all).contains("\"chrono\", \"jiff\" or \"string\""));
-        assert!(error("formats = { decimal = true }", &all).contains("one of uuid, dates, url and ipnet"));
+        assert!(
+            error("formats = { decimals = true }", &all).contains("uuid, dates, url, ipnet or a format with a check")
+        );
         assert!(error("formats = { url = \"yes\" }", &all).contains("true or false"));
     }
 
     #[test]
+    fn the_formats_table_names_any_type() {
+        let libs = |formats: &str| {
+            format_libs(&parse(&format!(
+                "[package.metadata.honig.api]\nspec = \"a.yaml\"\n{formats}\n[dependencies]\n\
+                 chrono = {{ version = \"0.4\", features = [\"serde\"] }}\n"
+            )))
+        };
+        let named = |libs: &FormatLibs, f: Format| libs.named.get(&f).map(|t| t.path().to_owned());
+        let time = libs("formats = { date-time = \"time::OffsetDateTime\" }").unwrap();
+        assert_eq!(named(&time, Format::DateTime).as_deref(), Some("time::OffsetDateTime"));
+        // A named format wins over the library for its format only.
+        let mixed = libs("formats = { dates = \"chrono\", date-time = \"crate::Stamp\" }").unwrap();
+        assert_eq!(named(&mixed, Format::DateTime).as_deref(), Some("crate::Stamp"));
+        assert_eq!((named(&mixed, Format::Date), mixed.dates), (None, Some(DateLib::Chrono)));
+        let ids = libs("formats = { uuid = \"crate::ids::OrderId\" }").unwrap();
+        assert_eq!((named(&ids, Format::Uuid).as_deref(), ids.uuid), (Some("crate::ids::OrderId"), false));
+        assert_eq!(formats_line(&ids), "formats = { uuid = \"crate::ids::OrderId\" }");
+        let error = |formats: &str| libs(formats).unwrap_err().to_string();
+        assert!(error("formats = { uuid = \"not a type(\" }").contains("`uuid`"), "the error names the key");
+        assert!(error("formats = { date = 1 }").contains("the path of a type"));
+        assert!(error("formats = { date = \"chrono::DateTime<chrono::Utc>\" }").contains("the path of a type"));
+        // `time` reads only valid values: no check to keep, so no type to name.
+        assert!(error("formats = { time = \"crate::T\" }").contains("an unknown setting"));
+    }
+
+    #[test]
     fn the_formats_line_names_only_the_libraries_in_use() {
-        assert_eq!(formats_line(FormatLibs::default()), "formats = {}");
+        assert_eq!(formats_line(&FormatLibs::default()), "formats = {}");
         let libs = FormatLibs { uuid: true, ipnet: true, dates: Some(DateLib::Chrono), ..FormatLibs::default() };
-        assert_eq!(formats_line(libs), "formats = { uuid = true, ipnet = true, dates = \"chrono\" }");
+        assert_eq!(formats_line(&libs), "formats = { uuid = true, ipnet = true, dates = \"chrono\" }");
     }
 
     #[test]

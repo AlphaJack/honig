@@ -1,0 +1,19 @@
+openapi: 3.2.0
+info: {title: Named format types, version: "1"}
+# `named-formats.toml` names `String` for `date-time`. It reads any text: honig checks the format before it.
+paths:
+  /stamps:
+    post:
+      operationId: putStamp
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/Stamp'}}}
+      responses:
+        "204": {description: Stored.}
+components:
+  schemas:
+    Stamp:
+      type: object
+      required: [at]
+      properties:
+        at: {type: string, format: date-time}

@@ -111,6 +111,14 @@ The table is required. Without it, a dependency added for another reason would c
 
 {{#include generated/formats.md}}
 
+A format with a check can also name a type of your own, or of a library that honig has no shorthand for:
+
+```toml
+formats = { dates = "chrono", date-time = "time::OffsetDateTime", uuid = "crate::ids::OrderId" }
+```
+
+The key is the name of the format. The value is the path of a type, without generic arguments. A named type wins over the shorthand for its format only: above, `date` stays `chrono::NaiveDate`. The type must implement `Debug`, `Clone`, `PartialEq`, `Eq` and the serde traits. It reads text that honig checked first, as a library type does. honig knows the quirks of the shorthand libraries only. For any type of `date-time`, `date-time-local` and `time-local` it cuts a fraction of a second to nine digits. honig does not check the type: the compiler reports a wrong one. A struct with a required field of a named type derives no `Default`.
+
 `format: time` has an offset (`08:30:06+02:00`), and no date library's time type holds one. So it is `api::FullTime` with any `dates` setting: plain numbers (`hour`, `minute`, `second`, `nanosecond`, `offset_seconds`) and whether the second was a leap second. With `dates = "jiff"`, `time()` and `offset()` read it as `jiff` types.
 
 A format without its library is its checked text, such as `api::UuidText` or `api::DateTimeText`. Only text of the format is one: `try_from`, `parse` and decoding check it as the library would on parsing. It reads as a `str`. `generate` turns on the runtime feature that each check needs. [Adapters](adapters.md) lists the features.

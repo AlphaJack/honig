@@ -70,7 +70,14 @@ pub fn e2e_files(e2e: &Path, root: &Path) -> Result<Vec<(PathBuf, String)>, Erro
     }
     let mut features = vec![];
     for (module, spec) in fixtures(root)? {
-        let opts = crate::emit::Options { strict_client: strict_client(&spec)?, ..opts.clone() };
+        let sidecar = sidecar(&spec)?;
+        let mut libs = opts.rust.libs.clone();
+        libs.named.extend(named_formats(sidecar.as_ref())?);
+        let opts = crate::emit::Options {
+            strict_client: strict_client(sidecar.as_ref()),
+            rust: crate::emit::rust::Options { libs, ..opts.rust.clone() },
+            ..opts.clone()
+        };
         let generated = crate::generate::generate(&spec, &opts)
             .map_err(|problems| Error::Fixture { spec: spec.clone(), problems })?;
         let api = Path::new("src").join(&module).join("api");
@@ -86,13 +93,37 @@ pub fn e2e_files(e2e: &Path, root: &Path) -> Result<Vec<(PathBuf, String)>, Erro
     Ok(files)
 }
 
-/// Returns the `strict` of the `client` table in `<fixture>.toml` beside `spec`: `true` without one. The fixture of a
-/// lenient client sets `client = { strict = false }` there.
-fn strict_client(spec: &Path) -> Result<bool, Error> {
-    let sidecar = spec.with_extension("toml");
-    if !crate::disk::is_file(&sidecar) {
-        return Ok(true);
+/// Returns `<fixture>.toml` beside `spec`: the settings of a fixture that differ from the defaults. `None` without one.
+fn sidecar(spec: &Path) -> Result<Option<toml_edit::DocumentMut>, Error> {
+    let path = spec.with_extension("toml");
+    if !crate::disk::is_file(&path) {
+        return Ok(None);
     }
-    let table: toml_edit::DocumentMut = crate::disk::read(&sidecar)?.parse()?;
-    Ok(table.get("client").and_then(|c| c.get("strict")).and_then(toml_edit::Item::as_bool).unwrap_or(true))
+    Ok(Some(crate::disk::read(&path)?.parse()?))
+}
+
+/// Returns the `strict` of the `client` table of a fixture: `true` without one. The fixture of a lenient client sets
+/// `client = { strict = false }`.
+fn strict_client(sidecar: Option<&toml_edit::DocumentMut>) -> bool {
+    sidecar.and_then(|t| t.get("client")?.get("strict")?.as_bool()).unwrap_or(true)
+}
+
+/// Returns the types that the `formats` table of a fixture names, such as `formats = { date-time = "String" }`.
+fn named_formats(
+    sidecar: Option<&toml_edit::DocumentMut>,
+) -> Result<Vec<(crate::ir::types::Format, crate::settings::NamedType)>, Error> {
+    let Some(table) = sidecar.and_then(|t| t.get("formats")?.as_table_like()) else { return Ok(vec![]) };
+    table
+        .iter()
+        .map(|(key, value)| {
+            let format = crate::ir::types::Format::ALL.into_iter().find(|f| f.name() == key);
+            let named = value.as_str().and_then(crate::settings::NamedType::new);
+            format.zip(named).ok_or_else(|| Error::Setting {
+                table: "formats".to_owned(),
+                key: key.to_owned(),
+                expected: "a format and a Rust type".to_owned(),
+                found: value.to_string(),
+            })
+        })
+        .collect()
 }

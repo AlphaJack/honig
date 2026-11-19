@@ -134,7 +134,7 @@ pub fn print(loaded: &Loaded, built: Ir, trees: Trees, opts: &Options) -> Result
     Ok(Generated {
         runtime_features: needs::runtime_features(
             api,
-            opts.rust.libs,
+            &opts.rust.libs,
             opts.client,
             opts.server,
             needs::Uses {

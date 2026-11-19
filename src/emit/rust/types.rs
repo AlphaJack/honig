@@ -560,11 +560,10 @@ impl Base {
 fn external(items: &mut Vec<TokenStream>, def: &TypeDef, path: &str) {
     let name = pascal_ident(&def.name);
     let doc = doc_opt(def.doc.as_deref());
-    let segs = path.trim_start_matches("::").split("::").map(ident);
-    let lead = path.starts_with("::").then(|| quote!(::));
+    let ty = super::syntax::path(path);
     items.push(quote! {
         #doc
-        pub type #name = #lead #(#segs)::*;
+        pub type #name = #ty;
     });
 }
 
@@ -606,10 +605,7 @@ fn extra_derives(def: &TypeDef, derives: &[(String, Vec<String>)]) -> Option<Tok
         }
     }
     (!paths.is_empty()).then(|| {
-        let paths = paths.iter().map(|p| {
-            let segs = p.split("::").map(ident);
-            quote!(#(#segs)::*)
-        });
+        let paths = paths.iter().map(|p| super::syntax::path(p));
         quote!(#[derive(#(#paths),*)])
     })
 }
@@ -855,7 +851,9 @@ fn ty_default(space: &Space<'_>, t: &Ty, seen: &mut Vec<TypeId>) -> bool {
         // have no value that every one of their kind could start from either. The uuid, chrono, jiff and ipnet format
         // types all implement it. So does `runtime::FullTime`.
         // Nor has the text of a format without its library: an empty one is not of the format.
+        // Nor has a type that the table names: honig cannot know.
         return !(super::syntax::untyped(space.libs, *f)
+            || space.libs.named.contains_key(f)
             || (*f == Format::Uri && space.libs.url)
             || matches!(
                 f,
@@ -1096,7 +1094,8 @@ fn holds_checked(space: &Space<'_>, t: &Ty) -> bool {
         },
         Ty::Format(f) => {
             super::syntax::untyped(space.libs, *f)
-                || matches!(f, Format::Email | Format::IdnEmail | Format::Hostname | Format::IdnHostname)
+                || (!space.libs.named.contains_key(f)
+                    && matches!(f, Format::Email | Format::IdnEmail | Format::Hostname | Format::IdnHostname))
         }
         Ty::Bool
         | Ty::I8

@@ -154,9 +154,9 @@ fn a_shift_keeps_every_offset_as_sent() {
 #[ignore = "compiles generated crates"]
 fn library_types_read_only_their_format() {
     let types = Crate { paths: serde_json::json!({}), schemas: validated_schemas(), test: VALIDATED_TEST, http: false };
-    let all = crate::settings::FormatLibs { uuid: true, url: true, ipnet: true, dates: None };
+    let all = crate::settings::FormatLibs { uuid: true, url: true, ipnet: true, dates: None, ..Default::default() };
     let jiff = "jiff = { version = \"1\", features = [\"serde\"] }";
-    let with_jiff = crate::settings::FormatLibs { dates: Some(crate::settings::DateLib::Jiff), ..all };
+    let with_jiff = crate::settings::FormatLibs { dates: Some(crate::settings::DateLib::Jiff), ..all.clone() };
     build_validated("validated-jiff", jiff, with_jiff, &types);
     let chrono = "chrono = { version = \"0.4\", features = [\"serde\"] }";
     let with_chrono = crate::settings::FormatLibs { dates: Some(crate::settings::DateLib::Chrono), ..all };
@@ -367,8 +367,13 @@ fn library_types_in_requests_read_only_their_format() {
     let http =
         Crate { paths: validated_paths(), schemas: serde_json::json!({}), test: VALIDATED_HTTP_TEST, http: true };
     let jiff = "jiff = { version = \"1\", features = [\"serde\"] }";
-    let libs =
-        crate::settings::FormatLibs { uuid: true, url: true, ipnet: true, dates: Some(crate::settings::DateLib::Jiff) };
+    let libs = crate::settings::FormatLibs {
+        uuid: true,
+        url: true,
+        ipnet: true,
+        dates: Some(crate::settings::DateLib::Jiff),
+        ..Default::default()
+    };
     build_validated("validated-http", jiff, libs, &http);
 }
 

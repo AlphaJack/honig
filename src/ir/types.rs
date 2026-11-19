@@ -563,6 +563,38 @@ impl Format {
         Self::Decimal128,
     ];
 
+    /// Returns the marker in `runtime::formats::format` that checks its text. `None` for a format whose type reads
+    /// only valid values: the standard library's addresses, a character, base64url bytes and `runtime::FullTime`.
+    #[must_use]
+    pub(crate) const fn marker(self) -> Option<&'static str> {
+        Some(match self {
+            Self::Uuid => "Uuid",
+            Self::DateTime => "DateTime",
+            Self::Date => "Date",
+            Self::DateTimeLocal => "DateTimeLocal",
+            Self::TimeLocal => "TimeLocal",
+            Self::Uri => "Uri",
+            Self::Ipv4Cidr => "Ipv4Cidr",
+            Self::Ipv6Cidr => "Ipv6Cidr",
+            Self::Decimal => "Decimal",
+            Self::Decimal128 => "Decimal128",
+            Self::Email => "Email",
+            Self::IdnEmail => "IdnEmail",
+            Self::Hostname => "Hostname",
+            Self::IdnHostname => "IdnHostname",
+            Self::HttpDate => "HttpDate",
+            Self::Duration => "Duration",
+            Self::UriReference => "UriReference",
+            Self::Iri => "Iri",
+            Self::IriReference => "IriReference",
+            Self::JsonPointer => "JsonPointer",
+            Self::RelativeJsonPointer => "RelativeJsonPointer",
+            Self::Regex => "Regex",
+            Self::UriTemplate => "UriTemplate",
+            Self::Ipv4 | Self::Ipv6 | Self::Time | Self::Base64Url | Self::Char => return None,
+        })
+    }
+
     /// Returns the `format` (or `contentEncoding`) a description writes for it.
     #[must_use]
     pub(crate) const fn name(self) -> &'static str {

@@ -42,7 +42,7 @@ pub(crate) fn warnings(api: &Api, opts: &super::Options) -> Vec<crate::diag::Dia
     if !opts.server {
         return vec![];
     }
-    let mut out = http::unfillable_errors(api, &Space::new(&api.types, opts.rust.libs));
+    let mut out = http::unfillable_errors(api, &Space::new(&api.types, &opts.rust.libs));
     out.extend(http::unset_error_headers(api));
     out
 }
@@ -82,7 +82,7 @@ pub(crate) fn trees(api: &Api, opts: &super::Options) -> Trees {
     // A type that its twins alias takes the name they share. The names change before anything is emitted, so every
     // file reads the same one.
     let renamed = {
-        let space = Space::new(&api.types, opts.rust.libs);
+        let space = Space::new(&api.types, &opts.rust.libs);
         types::shared_names(&space, &types::aliases(&space, &opts.rust.derives))
     };
     let mut owned = None;
@@ -95,7 +95,7 @@ pub(crate) fn trees(api: &Api, opts: &super::Options) -> Trees {
         }
         owned.insert(t)
     };
-    let space = Space::new(types, opts.rust.libs);
+    let space = Space::new(types, &opts.rust.libs);
     let space = &space;
     let examples = opts.tests.then(|| http::tests(api, space)).flatten();
     let mut trees = vec![("mod.rs", root(api, opts, examples.is_some()))];
