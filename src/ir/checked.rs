@@ -337,10 +337,13 @@ pub(crate) fn needs_checks(types: &TypeSpace, t: &Ty, c: &Constraints, hops: usi
             c.min_items.is_some()
                 || c.max_items.is_some()
                 || c.unique_items
+                || c.contains.is_some()
                 || needs_checks(types, x, &c.item_constraints(), hops)
         }
         // The length is the type's.
-        Ty::Array(x, _) => c.unique_items || needs_checks(types, x, &c.item_constraints(), hops),
+        Ty::Array(x, _) => {
+            c.unique_items || c.contains.is_some() || needs_checks(types, x, &c.item_constraints(), hops)
+        }
         Ty::Map(_) => c.min_properties.is_some() || c.max_properties.is_some() || c.property_names.is_some(),
         Ty::Named(id) => match &types.get(*id).kind {
             Kind::Alias(x) if hops < MAX_ALIAS_HOPS => needs_checks(types, x, c, hops + 1),
