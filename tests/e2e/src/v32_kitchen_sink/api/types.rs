@@ -874,6 +874,22 @@ impl SearchOkItem {
 pub struct SearchOkItemData(pub Product);
 serialize_impl_2!(SearchOkItemData);
 deserialize_impl_2!(SearchOkItemData);
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
+pub struct Not;
+impl Not {
+    pub const VALUE: &'static str = "vip";
+}
+impl serde::Serialize for Not {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        s.serialize_str(Self::VALUE)
+    }
+}
+impl<'de> serde::Deserialize<'de> for Not {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        runtime::expect_const(d, &serde_json::Value::String("vip".to_owned()))
+            .map(|()| Self)
+    }
+}
 /// Product
 ///
 /// A product
@@ -1635,23 +1651,32 @@ impl TryFrom<Vec<String>> for ProductTags {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
+            runtime::check_len(
+                out,
+                &runtime::InstancePath::Root,
+                value.len(),
+                Some(0),
+                Some(10),
+                "items",
+            );
+            runtime::check_unique(out, &runtime::InstancePath::Root, &value);
             {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&value).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"uniqueItems\":true,\"minItems\":0,\"maxItems\":10,\"contains\":{\"const\":\"vip\"},\"minContains\":0,\"maxContains\":1}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Root,
-                    &value,
-                    schema,
-                    runtime::schema_defs(),
-                );
+                let hits = value
+                    .iter()
+                    .filter(|item| {
+                        runtime::to_value(item)
+                            .is_ok_and(|json| {
+                                serde_json::from_value::<Not>(json).is_ok()
+                            })
+                    })
+                    .count();
+                if hits > 1 {
+                    runtime::violation(
+                        out,
+                        &runtime::InstancePath::Root,
+                        format!("contains {hits} matching items, more than allowed"),
+                    );
+                }
             }
         }
         runtime::first(violations)

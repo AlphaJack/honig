@@ -863,3 +863,15 @@ fn a_field_of_a_type_that_checks_itself_takes_no_second_check() {
         common::file(&common::generate("held-not", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
     assert!(types.contains("pub code: Option<Code>"), "{types}");
 }
+
+/// `contains` on an array counts the items that decode as the type of its schema, held to `minContains` and
+/// `maxContains`: no schema is checked whole.
+#[test]
+fn contains_counts_the_items_of_its_type() {
+    let tags = json!({"type": "array", "items": {"type": "string"}, "contains": {"const": "vip"}, "maxContains": 1});
+    let tagged = json!({"type": "object", "properties": {"tags": tags}});
+    let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Tagged": tagged}}));
+    let types =
+        common::file(&common::generate("contains", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
+    assert!(types.contains("matching items, more than allowed") && !types.contains("check_schema"), "{types}");
+}

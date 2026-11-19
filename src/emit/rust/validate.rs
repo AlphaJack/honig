@@ -163,6 +163,42 @@ pub(super) fn subschema_checks(
     }
 }
 
+/// Returns `contains` of `c` on the items of `value` (a `&` of a list) at `path`: it counts the items that decode as the
+/// type of the schema, and holds the count to `minContains` and `maxContains`.
+fn contains_checks(space: &Space<'_>, c: &Constraints, value: &TokenStream, path: &TokenStream) -> TokenStream {
+    let Some((n, min, max)) = c.contains else { return TokenStream::new() };
+    let ty = super::syntax::ty(space, &space.types.subschemas[n].0, false);
+    let r = receiver(value);
+    let at_least = (min > 0).then(|| {
+        let min = Literal::u64_unsuffixed(min);
+        quote! {
+            if hits < #min {
+                runtime::violation(out, #path, format!("must contain at least {} matching item(s), found {hits}", #min));
+            }
+        }
+    });
+    let at_most = max.map(|max| {
+        let max = Literal::u64_unsuffixed(max);
+        quote! {
+            if hits > #max {
+                runtime::violation(out, #path, format!("contains {hits} matching items, more than allowed"));
+            }
+        }
+    });
+    quote! {
+        {
+            let hits = #r
+                .iter()
+                .filter(|item| {
+                    runtime::to_value(item).is_ok_and(|json| serde_json::from_value::<#ty>(json).is_ok())
+                })
+                .count();
+            #at_least
+            #at_most
+        }
+    }
+}
+
 /// Checks of `value` (an expression of type `&T` for `t`) at `path`.
 /// Empty when nothing can be violated.
 pub(super) fn checks(
@@ -224,10 +260,15 @@ pub(super) fn checks(
                 quote!(runtime::check_len(out, #path, #r.len(), #min, #max, "items");)
             });
             let items = item_checks(space, x, c, value, path);
-            quote!(#len #items)
+            let contains = contains_checks(space, c, value, path);
+            quote!(#len #items #contains)
         }
-        // The length is the type's: only uniqueness and the items are checked.
-        Ty::Array(x, _) => item_checks(space, x, c, value, path),
+        // The length is the type's: only uniqueness, `contains` and the items are checked.
+        Ty::Array(x, _) => {
+            let items = item_checks(space, x, c, value, path);
+            let contains = contains_checks(space, c, value, path);
+            quote!(#items #contains)
+        }
         // A value of a named type in the map checks itself where it decodes.
         Ty::Map(_) if c.min_properties.is_some() || c.max_properties.is_some() || c.property_names.is_some() => {
             let r = receiver(value);

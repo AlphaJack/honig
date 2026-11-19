@@ -85,7 +85,7 @@ impl Constraints {
 
     /// Keywords of one schema object without `$ref` and `allOf`.
     fn own(s: &Value) -> Self {
-        let u = |k: &str| s.get(k).and_then(json::count);
+        let u = |k: &str| count_of(s, k);
         let n = |k: &str| s.get(k).and_then(Value::as_number).cloned();
         Self {
             min_length: u("minLength"),
@@ -109,6 +109,7 @@ impl Constraints {
             not: vec![],
             dependent_schemas: vec![],
             conditions: vec![],
+            contains: None,
             schema: None,
         }
     }
@@ -119,7 +120,7 @@ impl Constraints {
             ($($f:ident),*) => { $( if self.$f.is_none() { self.$f = other.$f; } )* };
         }
         take!(min_length, max_length, pattern, minimum, maximum, exclusive_minimum, exclusive_maximum, multiple_of);
-        take!(min_items, max_items, min_properties, max_properties, items, property_names);
+        take!(min_items, max_items, min_properties, max_properties, items, property_names, contains);
         self.unique_items |= other.unique_items;
         self.decimal128 |= other.decimal128;
         self.dependent_required.extend(other.dependent_required);
@@ -458,6 +459,11 @@ fn mixed(s: &Value) -> bool {
             // An extension (`x-...`) asserts nothing either.
             || (o.contains_key("$ref") && o.keys().any(|k| !quiet(k) && !k.starts_with("x-")))
     })
+}
+
+/// Returns the count that keyword `k` of `s` sets (`minLength`, `maxContains`, ...).
+fn count_of(s: &Value, k: &str) -> Option<u64> {
+    s.get(k).and_then(json::count)
 }
 
 /// Returns the pointer of `key` under the schema at `at`.
@@ -825,6 +831,9 @@ impl<'a> Builder<'a> {
         let mut c = Constraints::own(s);
         let (dependents, names, pattern_map) = typed_object_keywords(s, &mut c);
         let dependent_schemas = typed_dependent_schemas(s);
+        // `contains` on an array type counts the items that decode as the type of its schema.
+        let typed_contains =
+            s.get("contains").is_some() && s.as_object().is_some_and(|o| type_set(o).0.iter().any(|t| t == "array"));
         // `if`/`then` on one property's constants becomes a tagged union (`conditional_union`): its variants hold the
         // conditions. Only conditions that it cannot type stay a run-time check.
         let typed_conditional = s.as_object().is_some_and(|o| conditional_union(o).is_some());
@@ -836,6 +845,7 @@ impl<'a> Builder<'a> {
                 || (pattern_map && matches!(k, "patternProperties" | "additionalProperties"))
                 || k == "not"
                 || (dependent_schemas.is_some() && k == "dependentSchemas")
+                || (typed_contains && matches!(k, "contains" | "minContains" | "maxContains"))
         };
         let conditional_member = |m: &Value| {
             typed_conditional
@@ -870,6 +880,10 @@ impl<'a> Builder<'a> {
                     queue("then"),
                     queue("else"),
                 ));
+            }
+            if let Some(sub) = s.get("contains").filter(|_| typed_contains) {
+                let n = self.queue_subschema(sub, at.map(|p| join(p, "contains")));
+                c.contains = Some((n, count_of(s, "minContains").unwrap_or(1), count_of(s, "maxContains")));
             }
             for (name, sub) in dependent_schemas.into_iter().flatten() {
                 let at = at.map(|p| join(&join(p, "dependentSchemas"), name));
