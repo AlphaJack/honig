@@ -192,10 +192,26 @@ pub(crate) fn checked_scalar(o: &serde_json::Map<String, Value>) -> bool {
 
 /// Returns a `const` with a type of its own. That is a string, number or bool.
 pub(crate) fn scalar_const(o: &serde_json::Map<String, Value>) -> Option<&Value> {
-    let c = o.get("const").filter(|c| json::is_scalar(c))?;
-    // Composition, conditions and object shapes keep their own typing.
-    let shaped = ["oneOf", "anyOf", "allOf", "properties", "if", "not", "enum"].iter().any(|k| o.contains_key(*k));
+    // `enum` with one value says what `const` does: `enum: [true]` is a flag that may only be `true`.
+    let one_value = || match o.get("enum")?.as_array()?.as_slice() {
+        [v] if !o.contains_key("const") => Some(v),
+        _ => None,
+    };
+    let c = o.get("const").or_else(one_value).filter(|c| json::is_scalar(c) && !c.is_null())?;
+    // Composition, conditions and object shapes keep their own typing. A `const` beside an `enum` is both.
+    let shaped = ["oneOf", "anyOf", "allOf", "properties", "if", "not"].iter().any(|k| o.contains_key(*k))
+        || (o.contains_key("const") && o.contains_key("enum"));
     (!shaped).then_some(c)
+}
+
+/// Does `o` list values that no Rust type holds: an `enum` of other than strings or integers, or a `const` of other
+/// than a string? A scalar constant is a unit type that decodes its one value, so it holds its keyword.
+fn untyped_values(o: &serde_json::Map<String, Value>) -> bool {
+    let untyped = |v: &Value| !v.is_string() && !v.is_null();
+    scalar_const(o).is_none()
+        && ((o.get("enum").and_then(Value::as_array).is_some_and(|e| e.iter().any(untyped))
+            && int_enum_values(o).is_none())
+            || o.get("const").is_some_and(untyped))
 }
 
 /// Keywords that assert something about a value whatever its type.
@@ -598,12 +614,6 @@ impl<'a> Builder<'a> {
         };
         // Non-string `enum`/`const` have no type of their own either. An integer enum is the exception. The
         // `validate` of its type rejects `kind: 7` when only 1, 2 and 3 are allowed.
-        let untyped = |v: &Value| !v.is_string() && !v.is_null();
-        let untyped_values = |o: &serde_json::Map<String, Value>| {
-            (o.get("enum").and_then(Value::as_array).is_some_and(|e| e.iter().any(untyped))
-                && int_enum_values(o).is_none())
-                || o.get("const").is_some_and(untyped)
-        };
         // A tuple (`prefixItems`, maybe closed by `items: false`) has no Rust type that checks its length and items.
         // A `$dynamicRef` anywhere inside resolves in the dynamic scope from here: only the run-time check of the whole
         // schema follows it there.

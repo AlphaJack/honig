@@ -954,6 +954,8 @@ pub(crate) fn json_tokens(v: &serde_json::Value) -> TokenStream {
                 quote!(serde_json::Value::from(#l))
             }
         }
+        // `String::new()` for the empty one (clippy `manual_string_new`).
+        serde_json::Value::String(t) if t.is_empty() => quote!(serde_json::Value::String(String::new())),
         serde_json::Value::String(t) => {
             let t = lit(t);
             quote!(serde_json::Value::String(#t.to_owned()))

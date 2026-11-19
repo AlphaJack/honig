@@ -45,6 +45,15 @@ macro_rules! serialize_impl_2 {
         }
     };
 }
+macro_rules! serialize_impl_3 {
+    ($t:ty) => {
+        impl serde::Serialize for $t {
+            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                s.serialize_str(Self::VALUE)
+            }
+        }
+    };
+}
 macro_rules! try_from_impl {
     ($t:ty) => {
         impl TryFrom<String> for $t {
@@ -95,15 +104,6 @@ macro_rules! try_from_impl_2 {
                 runtime::first(violations)
                     .map(|()| Self(value))
                     .map_err(runtime::BuildError::value)
-            }
-        }
-    };
-}
-macro_rules! serialize_impl_3 {
-    ($t:ty) => {
-        impl serde::Serialize for $t {
-            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-                s.serialize_str(Self::VALUE)
             }
         }
     };
@@ -404,6 +404,21 @@ impl<'de> serde::Deserialize<'de> for Slug {
                 first.unwrap_or_else(|| "matches no variant".to_owned()),
             ),
         )
+    }
+}
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
+pub struct AlwaysTrue;
+impl AlwaysTrue {
+    pub const VALUE: bool = true;
+}
+impl serde::Serialize for AlwaysTrue {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        s.serialize_bool(Self::VALUE)
+    }
+}
+impl<'de> serde::Deserialize<'de> for AlwaysTrue {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        runtime::expect_const(d, &serde_json::Value::Bool(true)).map(|()| Self)
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1619,30 +1634,18 @@ impl runtime::XmlShape for User {
         &NODE
     }
 }
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub enum SlugEmpty {
-    Empty,
-}
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
+pub struct SlugEmpty;
 impl SlugEmpty {
-    #[must_use]
-    pub const fn as_str(&self) -> &'static str {
-        match self {
-            Self::Empty => "",
-        }
+    pub const VALUE: &'static str = "";
+}
+serialize_impl_3!(SlugEmpty);
+impl<'de> serde::Deserialize<'de> for SlugEmpty {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        runtime::expect_const(d, &serde_json::Value::String(String::new()))
+            .map(|()| Self)
     }
 }
-impl TryFrom<&str> for SlugEmpty {
-    type Error = runtime::BuildError;
-    fn try_from(s: &str) -> Result<Self, runtime::BuildError> {
-        match s {
-            "" => Ok(Self::Empty),
-            other => {
-                Err(runtime::BuildError::value(format!("`{other}` is not one of ``")))
-            }
-        }
-    }
-}
-str_enum_impls!(SlugEmpty);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct SlugVariant2(pub(super) String);

@@ -104,29 +104,29 @@ macro_rules! str_enum_impls {
 #[serde(remote = "Self")]
 pub struct EmailRequest {
     #[serde(rename = "type")]
-    pub type_: EmailRequestType,
+    pub type_: EmailType,
     pub email: runtime::Email,
 }
 deserialize_impl!(EmailRequest);
 serialize_impl!(EmailRequest);
 impl EmailRequest {
     #[must_use]
-    pub const fn new(type_: EmailRequestType, email: runtime::Email) -> Self {
+    pub const fn new(type_: EmailType, email: runtime::Email) -> Self {
         Self { type_, email }
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct SmsRequest {
     #[serde(rename = "type")]
-    pub type_: SmsRequestType,
+    pub type_: SmsType,
     pub phone: String,
 }
 deserialize_impl!(SmsRequest);
 serialize_impl!(SmsRequest);
 impl SmsRequest {
     #[must_use]
-    pub const fn new(type_: SmsRequestType, phone: String) -> Self {
+    pub const fn new(type_: SmsType, phone: String) -> Self {
         Self { type_, phone }
     }
 }
@@ -556,58 +556,25 @@ impl<'de> runtime::TaggedUnion<'de> for Contact {
         }
     }
 }
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub enum EmailRequestType {
-    Email,
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
+pub struct EmailType;
+impl EmailType {
+    pub const VALUE: &'static str = "email";
 }
-impl EmailRequestType {
-    #[must_use]
-    pub const fn as_str(&self) -> &'static str {
-        match self {
-            Self::Email => "email",
-        }
+serialize_impl_3!(EmailType);
+impl<'de> serde::Deserialize<'de> for EmailType {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        runtime::expect_const(d, &serde_json::Value::String("email".to_owned()))
+            .map(|()| Self)
     }
 }
-impl TryFrom<&str> for EmailRequestType {
-    type Error = runtime::BuildError;
-    fn try_from(s: &str) -> Result<Self, runtime::BuildError> {
-        match s {
-            "email" => Ok(Self::Email),
-            other => {
-                Err(
-                    runtime::BuildError::value(
-                        format!("`{other}` is not one of `email`"),
-                    ),
-                )
-            }
-        }
-    }
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
+pub struct SmsType;
+impl SmsType {
+    pub const VALUE: &'static str = "sms";
 }
-str_enum_impls!(EmailRequestType);
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub enum SmsRequestType {
-    Sms,
-}
-impl SmsRequestType {
-    #[must_use]
-    pub const fn as_str(&self) -> &'static str {
-        match self {
-            Self::Sms => "sms",
-        }
-    }
-}
-impl TryFrom<&str> for SmsRequestType {
-    type Error = runtime::BuildError;
-    fn try_from(s: &str) -> Result<Self, runtime::BuildError> {
-        match s {
-            "sms" => Ok(Self::Sms),
-            other => {
-                Err(runtime::BuildError::value(format!("`{other}` is not one of `sms`")))
-            }
-        }
-    }
-}
-str_enum_impls!(SmsRequestType);
+serialize_impl_3!(SmsType);
+deserialize_impl_3!(SmsType);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct IfThenEmail {
@@ -623,18 +590,7 @@ impl IfThenEmail {
         Self { type_, email }
     }
 }
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
-pub struct IfThenEmailType;
-impl IfThenEmailType {
-    pub const VALUE: &'static str = "email";
-}
-serialize_impl_3!(IfThenEmailType);
-impl<'de> serde::Deserialize<'de> for IfThenEmailType {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        runtime::expect_const(d, &serde_json::Value::String("email".to_owned()))
-            .map(|()| Self)
-    }
-}
+pub type IfThenEmailType = EmailType;
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct IfThenSms {
@@ -650,13 +606,7 @@ impl IfThenSms {
         Self { type_, phone }
     }
 }
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
-pub struct IfThenSmsType;
-impl IfThenSmsType {
-    pub const VALUE: &'static str = "sms";
-}
-serialize_impl_3!(IfThenSmsType);
-deserialize_impl_3!(IfThenSmsType);
+pub type IfThenSmsType = SmsType;
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct IfThenOtherwise {
@@ -676,7 +626,7 @@ impl IfThenOtherwise {
         Self { type_: None }
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct ConstOneOfEmail {
     #[serde(rename = "type")]
@@ -691,8 +641,8 @@ impl ConstOneOfEmail {
         Self { type_, email }
     }
 }
-pub type ConstOneOfEmailType = EmailRequestType;
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub type ConstOneOfEmailType = EmailType;
+#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct ConstOneOfSms {
     #[serde(rename = "type")]
@@ -707,7 +657,7 @@ impl ConstOneOfSms {
         Self { type_, phone }
     }
 }
-pub type ConstOneOfSmsType = SmsRequestType;
+pub type ConstOneOfSmsType = SmsType;
 /// pickup
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -910,7 +860,7 @@ pub mod builders {
     impl super::EmailRequest {
         /// Starts a builder from the required properties.
         pub fn builder(
-            type_: impl TryInto<types::EmailRequestType, Error: std::fmt::Display>,
+            type_: impl TryInto<types::EmailType, Error: std::fmt::Display>,
             email: impl TryInto<runtime::Email, Error: std::fmt::Display>,
         ) -> EmailRequest {
             EmailRequest(
