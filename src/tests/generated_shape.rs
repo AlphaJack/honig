@@ -1163,3 +1163,17 @@ fn keywords_of_one_kind_without_a_type_are_checked() {
         assert!(types.contains(check) && !types.contains("check_schema"), "{keyword}: {types}");
     }
 }
+
+/// An `if` on one property's constant without `type: object` is no tagged union: its value may be of any kind. The
+/// generated code checks its `then` and `else`, so a value of the wrong branch is not taken without a word.
+#[test]
+fn a_conditional_without_an_object_type_is_checked() {
+    let v = json!({"if": {"properties": {"kind": {"const": "n"}}, "required": ["kind"]},
+        "then": {"properties": {"x": {"type": "number"}}}, "else": {"properties": {"x": {"type": "string"}}}});
+    let holder = json!({"type": "object", "required": ["v"], "properties": {"v": v}});
+    let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Holder": holder}}));
+    let types =
+        common::file(&common::generate("typeless-conditional", &doc, &crate::emit::Options::default()), "types.rs")
+            .to_owned();
+    assert!(types.contains("`then`: ") || types.contains("check_schema"), "{types}");
+}

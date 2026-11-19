@@ -78,10 +78,29 @@ macro_rules! serialize_impl_3 {
     ($t:ty) => {
         impl serde::Serialize for $t {
             fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                s.serialize_str(Self::VALUE)
+            }
+        }
+    };
+}
+macro_rules! serialize_impl_4 {
+    ($t:ty) => {
+        impl serde::Serialize for $t {
+            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
                 match self {
                     Self::Book(v) => serde::Serialize::serialize(v, s),
                     Self::Gadget(v) => serde::Serialize::serialize(v, s),
                 }
+            }
+        }
+    };
+}
+macro_rules! deserialize_impl_3 {
+    ($t:ty) => {
+        impl<'de> serde::Deserialize<'de> for $t {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                let value = <serde_json::Value as serde::Deserialize>::deserialize(d)?;
+                Self::try_from(value).map_err(serde::de::Error::custom)
             }
         }
     };
@@ -861,14 +880,76 @@ pub struct Not;
 impl Not {
     pub const VALUE: &'static str = "vip";
 }
-impl serde::Serialize for Not {
-    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        s.serialize_str(Self::VALUE)
-    }
-}
+serialize_impl_3!(Not);
 impl<'de> serde::Deserialize<'de> for Not {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         runtime::expect_const(d, &serde_json::Value::String("vip".to_owned()))
+            .map(|()| Self)
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Not2 {
+    Object(Not2Object),
+    Other(serde_json::Value),
+}
+impl serde::Serialize for Not2 {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        match self {
+            Self::Object(v) => serde::Serialize::serialize(v, s),
+            Self::Other(v) => serde::Serialize::serialize(v, s),
+        }
+    }
+}
+impl<'de> serde::Deserialize<'de> for Not2 {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let v = <runtime::Content<'de> as serde::Deserialize>::deserialize(d)?;
+        match v.kind() {
+            runtime::Kind::Object => v.decode_into(Self::Object),
+            runtime::Kind::Null
+            | runtime::Kind::Bool
+            | runtime::Kind::Integer
+            | runtime::Kind::Number
+            | runtime::Kind::String
+            | runtime::Kind::Array => Ok(Self::Other(v.into_value())),
+        }
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct Not2Object {
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub kind: Option<Not2ObjectKind>,
+    #[serde(flatten)]
+    pub additional_properties: std::collections::BTreeMap<String, serde_json::Value>,
+}
+deserialize_impl!(Not2Object);
+impl serde::Serialize for Not2Object {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        Self::serialize(self, runtime::UniqueKeys(s))
+    }
+}
+impl Not2Object {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self {
+            kind: None,
+            additional_properties: std::collections::BTreeMap::new(),
+        }
+    }
+}
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
+pub struct Not2ObjectKind;
+impl Not2ObjectKind {
+    pub const VALUE: &'static str = "gadget";
+}
+serialize_impl_3!(Not2ObjectKind);
+impl<'de> serde::Deserialize<'de> for Not2ObjectKind {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        runtime::expect_const(d, &serde_json::Value::String("gadget".to_owned()))
             .map(|()| Self)
     }
 }
@@ -1253,7 +1334,7 @@ pub enum ShapeVariants {
     Book(Book),
     Gadget(Gadget),
 }
-serialize_impl_3!(ShapeVariants);
+serialize_impl_4!(ShapeVariants);
 impl<'de> serde::Deserialize<'de> for ShapeVariants {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         let v = <runtime::Content<'de> as serde::Deserialize>::deserialize(d)?;
@@ -1505,7 +1586,7 @@ pub enum ShapeRequestVariants {
     Book(BookRequest),
     Gadget(GadgetRequest),
 }
-serialize_impl_3!(ShapeRequestVariants);
+serialize_impl_4!(ShapeRequestVariants);
 impl<'de> serde::Deserialize<'de> for ShapeRequestVariants {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         let v = <runtime::Content<'de> as serde::Deserialize>::deserialize(d)?;
@@ -1834,12 +1915,7 @@ pub type Gadget2RequestAttrs = ProductAttrs;
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct NotChecked(pub(super) serde_json::Value);
-impl<'de> serde::Deserialize<'de> for NotChecked {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <serde_json::Value as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
-    }
-}
+deserialize_impl_3!(NotChecked);
 impl TryFrom<serde_json::Value> for NotChecked {
     type Error = runtime::BuildError;
     fn try_from(value: serde_json::Value) -> Result<Self, runtime::BuildError> {
@@ -1861,6 +1937,61 @@ impl TryFrom<serde_json::Value> for NotChecked {
     }
 }
 checked_impls!(NotChecked, serde_json::Value);
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
+pub struct NotChecked2(pub(super) serde_json::Value);
+deserialize_impl_3!(NotChecked2);
+impl TryFrom<serde_json::Value> for NotChecked2 {
+    type Error = runtime::BuildError;
+    fn try_from(value: serde_json::Value) -> Result<Self, runtime::BuildError> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            if let serde_json::Value::Object(n) = &value {
+                runtime::check_required(
+                    out,
+                    &runtime::InstancePath::Root,
+                    |name| n.contains_key(name),
+                    &["name"],
+                );
+            }
+        }
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
+    }
+}
+checked_impls!(NotChecked2, serde_json::Value);
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
+pub struct NotChecked3(pub(super) serde_json::Value);
+deserialize_impl_3!(NotChecked3);
+impl TryFrom<serde_json::Value> for NotChecked3 {
+    type Error = runtime::BuildError;
+    fn try_from(value: serde_json::Value) -> Result<Self, runtime::BuildError> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            {
+                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                let value = runtime::to_value(&value).unwrap_or_default();
+                let schema = SCHEMA
+                    .get_or_init(|| serde_json::from_str("false").unwrap_or_default());
+                runtime::check_schema_in(
+                    out,
+                    &runtime::InstancePath::Root,
+                    &value,
+                    schema,
+                    runtime::schema_defs(),
+                );
+            }
+        }
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
+    }
+}
+checked_impls!(NotChecked3, serde_json::Value);
 /// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
 /// its field. `build` returns the first field that did not convert.
 pub mod builders {
