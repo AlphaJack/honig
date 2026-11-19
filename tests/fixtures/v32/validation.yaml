@@ -252,6 +252,17 @@ components:
       then: {required: [customs]}
       not: {required: [customs, insurer], properties: {customs: {const: "none"}}}
 
+    # `dependentRequired` over declared properties: a check of the fields, with no schema checked whole.
+    Payment:
+      type: object
+      properties:
+        card: {type: string}
+        cvc: {type: string}
+        holder: {type: [string, 'null']}
+        note: {type: string}
+      dependentRequired:
+        card: [cvc, holder]
+
     Price:
       type: object
       properties:

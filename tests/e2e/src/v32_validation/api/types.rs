@@ -1451,6 +1451,40 @@ impl TryFrom<ShipmentVariants> for Shipment {
     }
 }
 checked_impls!(Shipment, ShipmentVariants);
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
+pub struct Payment(pub(super) PaymentFields);
+impl<'de> serde::Deserialize<'de> for Payment {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <PaymentFields as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
+    }
+}
+impl TryFrom<PaymentFields> for Payment {
+    type Error = runtime::BuildError;
+    fn try_from(value: PaymentFields) -> Result<Self, runtime::BuildError> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            runtime::check(
+                out,
+                &runtime::InstancePath::Root,
+                value.card.is_none() || value.cvc.is_some(),
+                "`cvc` is required when `card` is present",
+            );
+            runtime::check(
+                out,
+                &runtime::InstancePath::Root,
+                value.card.is_none() || !value.holder.is_absent(),
+                "`holder` is required when `card` is present",
+            );
+        }
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
+    }
+}
+checked_impls!(Payment, PaymentFields);
 #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Price {
@@ -3095,6 +3129,119 @@ impl<'de> runtime::TaggedUnion<'de> for ShipmentVariants {
         }
     }
 }
+#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct PaymentFields {
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub card: Option<String>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub cvc: Option<String>,
+    #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
+    pub holder: runtime::Nullable<String>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub note: Option<String>,
+}
+deserialize_impl!(PaymentFields);
+serialize_impl!(PaymentFields);
+impl PaymentFields {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self {
+            card: None,
+            cvc: None,
+            holder: runtime::Nullable::Absent,
+            note: None,
+        }
+    }
+}
+impl runtime::XmlShape for PaymentFields {
+    fn xml() -> &'static runtime::XmlNode {
+        static NODE: runtime::XmlNode = runtime::XmlNode {
+            name: "PaymentFields",
+            namespace: "",
+            prefix: "",
+            fields: &[
+                runtime::XmlField {
+                    wire: "card",
+                    name: "card",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "card",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "cvc",
+                    name: "cvc",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "cvc",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "holder",
+                    name: "holder",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "holder",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: true,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "note",
+                    name: "note",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "note",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+            ],
+        };
+        &NODE
+    }
+}
 /// label
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -4411,6 +4558,45 @@ pub mod builders {
         /// Returns the value.
         pub fn build(self) -> Result<super::Badge, runtime::BuildError> {
             self.0.build()
+        }
+    }
+    impl super::Payment {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> Payment {
+            Payment(runtime::Builder::start(|| Ok(super::PaymentFields::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct Payment(runtime::Builder<super::PaymentFields>);
+    impl Payment {
+        pub fn card(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("card", value, |s, v| s.card = Some(v)))
+        }
+        pub fn cvc(self, value: impl TryInto<String, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("cvc", value, |s, v| s.cvc = Some(v)))
+        }
+        pub fn holder(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(
+                self
+                    .0
+                    .set("holder", value, |s, v| s.holder = runtime::Nullable::Value(v)),
+            )
+        }
+        pub fn note(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("note", value, |s, v| s.note = Some(v)))
+        }
+        /// Returns the value once its whole schema holds.
+        pub fn build(self) -> Result<super::Payment, runtime::BuildError> {
+            self.0.build().and_then(super::Payment::try_from)
         }
     }
     impl super::Price {

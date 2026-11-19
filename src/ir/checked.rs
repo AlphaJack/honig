@@ -74,7 +74,7 @@ pub(crate) fn wrap(types: &mut TypeSpace, http: &mut Http) {
 }
 
 /// Splits each struct or union whose own schema has keywords that no type holds (`if`, `not`, the one match of a
-/// `oneOf`, ...). Its shape moves to a type of its own, `<Name>Fields` or `<Name>Variants`. Its name becomes a checked
+/// `oneOf`, ...) or that its fields hold together (`dependentRequired`). Its shape moves to a type of its own, `<Name>Fields` or `<Name>Variants`. Its name becomes a checked
 /// type of that shape. So every value of it is checked once, by its type, and no use of it needs a wrapper.
 ///
 /// Returns the name of the checked type of each shape, by the index of the shape.
@@ -93,8 +93,8 @@ fn split_own_checks(types: &mut TypeSpace, taken: &mut BTreeSet<String>) -> BTre
             | Kind::Checked(_)
             | Kind::Pending => continue,
         };
-        let Some(schema) = def.own.schema.clone() else { continue };
-        if def.rust_type.is_some() {
+        let (schema, dependents) = (def.own.schema.clone(), def.own.dependent_required.clone());
+        if def.rust_type.is_some() || (schema.is_none() && dependents.is_empty()) {
             continue;
         }
         let raw = TypeId(types.defs.len());
@@ -116,7 +116,7 @@ fn split_own_checks(types: &mut TypeSpace, taken: &mut BTreeSet<String>) -> BTre
         };
         public.insert(raw.0, types.defs[i].name.clone());
         types.defs.push(shape);
-        let constraints = Constraints { schema: Some(schema), ..Constraints::default() };
+        let constraints = Constraints { schema, dependent_required: dependents, ..Constraints::default() };
         types.defs[i].kind = Kind::Checked(Box::new(Checked { base: Ty::Named(raw), constraints }));
     }
     public

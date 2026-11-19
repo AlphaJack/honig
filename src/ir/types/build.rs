@@ -89,6 +89,7 @@ impl Constraints {
             decimal128: s.get("format").and_then(Value::as_str) == Some("decimal128")
                 && s.as_object().is_some_and(|o| type_set(o).0.iter().any(|t| t == "number")),
             items: None,
+            dependent_required: vec![],
             schema: None,
         }
     }
@@ -102,11 +103,32 @@ impl Constraints {
         take!(min_items, max_items, min_properties, max_properties, items);
         self.unique_items |= other.unique_items;
         self.decimal128 |= other.decimal128;
+        self.dependent_required.extend(other.dependent_required);
         self.schema = match (self.schema.take(), other.schema) {
             (Some(a), Some(b)) => Some(serde_json::json!({ "allOf": [a, b] })),
             (a, b) => a.or(b),
         };
     }
+}
+
+/// Returns `dependentRequired` of `s` when its struct holds it: every name is a property that `s` declares, and an
+/// optional one has no `default`, so that its absence shows. `None` leaves it to the run-time check of the whole schema.
+fn typed_dependents(s: &Value) -> Option<Vec<(String, Vec<String>)>> {
+    let deps = s.get("dependentRequired")?.as_object()?;
+    let props = s.get("properties")?.as_object()?;
+    let required: Vec<&str> =
+        json::strs(s.get("required").and_then(Value::as_array).map_or(&[][..], Vec::as_slice)).collect();
+    let seen = |n: &str| props.get(n).is_some_and(|p| required.contains(&n) || p.get("default").is_none());
+    let mut out = vec![];
+    for (name, needs) in deps {
+        let needs: Vec<String> =
+            needs.as_array()?.iter().map(|n| n.as_str().map(String::from)).collect::<Option<_>>()?;
+        if !seen(name) || !needs.iter().all(|n| seen(n)) {
+            return None;
+        }
+        out.push((name.clone(), needs));
+    }
+    Some(out)
 }
 
 /// Returns a property schema's `example` and `examples` (an array in JSON Schema).
@@ -645,10 +667,18 @@ impl<'a> Builder<'a> {
             return Constraints::default();
         }
         let mut c = Constraints::own(s);
+        // `dependentRequired` over properties that the struct declares is a check of its fields.
+        let dependents = typed_dependents(s);
+        if let Some(d) = &dependents {
+            c.dependent_required.clone_from(d);
+        }
         // `if`/`then` on one property's constants becomes a tagged union (`conditional_union`): its variants hold the
         // conditions. Only conditions that it cannot type stay a run-time check.
         let typed_conditional = s.as_object().is_some_and(|o| conditional_union(o).is_some());
-        let conditional_key = |k: &str| typed_conditional && matches!(k, "if" | "then" | "else");
+        let conditional_key = |k: &str| {
+            (typed_conditional && matches!(k, "if" | "then" | "else"))
+                || (dependents.is_some() && k == "dependentRequired")
+        };
         let conditional_member = |m: &Value| {
             typed_conditional
                 && m.as_object().is_some_and(|m| m.contains_key("if") && m.keys().all(|k| conditional_key(k)))
