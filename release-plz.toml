@@ -57,26 +57,36 @@ header = """
 # Changelog
 
 """
-# Each group lists its commits by scope, in the order of CONTRIBUTING.md, then the rest. Without it they follow the
-# order release-plz reads them in: the commits of cargo-honig, then those of honig.
+# Each group lists its commits under a heading per scope, Runtime, Generator then CLI, breaking ones first.
+# Commits with no listed scope come before the headings. The comment before each group name sets the order of the
+# groups, which would otherwise be alphabetical.
 body = """
-{%- set scopes = ["cli", "generator", "runtime"] %}
+{%- set scopes = ["runtime", "generator", "cli"] %}
 ## [{{ version }}]{%- if release_link -%}({{ release_link }}){% endif %} - {{ timestamp | date(format="%Y-%m-%d") }}
 {% for group, commits in commits | group_by(attribute="group") %}
-### {{ group | upper_first }}
-{% for scope in scopes %}{% for c in commits | filter(attribute="scope", value=scope) %}
-- **{{ c.scope }}**: {% if c.breaking %}**breaking**: {% endif %}{{ c.message | upper_first }}
-{%- endfor %}{% endfor %}
-{%- for c in commits %}{% if c.scope not in scopes %}
-- {% if c.scope %}**{{ c.scope }}**: {% endif %}{% if c.breaking %}**breaking**: {% endif %}{{ c.message | upper_first }}
+### {{ group | striptags | trim | upper_first }}
+{% for c in commits %}{% if c.scope not in scopes %}
+- {% if c.scope %}**{{ c.scope }}**: {% endif %}{% if c.breaking %}**Breaking:** {% endif %}{{ c.message | upper_first }}
+{%- endif %}{% endfor %}
+{%- for scope in scopes %}{% set scoped = commits | filter(attribute="scope", value=scope) %}{% if scoped %}
+
+#### {% if scope == "cli" %}CLI{% else %}{{ scope | upper_first }}{% endif %}
+{% for c in scoped | filter(attribute="breaking", value=true) %}
+- **Breaking:** {{ c.message | upper_first }}
+{%- endfor %}
+{%- for c in scoped | filter(attribute="breaking", value=false) %}
+- {{ c.message | upper_first }}
+{%- endfor %}
 {%- endif %}{% endfor %}
 {% endfor %}
 """
+# The template leaves two blank lines where a group has no commit outside the listed scopes.
+postprocessors = [{ pattern = '\n{3,}', replace = "\n\n" }]
 commit_parsers = [
-    { message = "^feat", group = "added" },
-    { message = "^fix", group = "fixed" },
-    { message = "^perf", group = "performance" },
+    { message = "^feat", group = "<!-- 0 -->added" },
+    { message = "^fix", group = "<!-- 1 -->fixed" },
+    { message = "^perf", group = "<!-- 2 -->optimized" },
     # Users do not see other types unless they break something.
-    { message = "^[a-z]+(\\([^)]*\\))?!:", group = "changed" },
+    { message = "^[a-z]+(\\([^)]*\\))?!:", group = "<!-- 3 -->changed" },
     { message = ".*", skip = true },
 ]
