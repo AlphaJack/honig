@@ -2,15 +2,3 @@
 pub use honig::*;
 #[doc(hidden)]
 pub use honig::__private::*;
-/// The definitions that the run-time checks of this module share, parsed once.
-#[doc(hidden)]
-pub fn schema_defs() -> Option<&'static serde_json::Map<String, serde_json::Value>> {
-    static DEFS: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-    DEFS.get_or_init(|| {
-            serde_json::from_str(
-                    "{\"/components/schemas/Crop\":{\"oneOf\":[{\"type\":\"string\"},{\"oneOf\":[{\"type\":\"integer\"},{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"integer\"},\"y\":{\"type\":\"integer\"}}}]}]},\"/components/schemas/ImageNote\":{\"type\":\"object\",\"required\":[\"kind\",\"url\"],\"properties\":{\"kind\":{\"const\":\"image\"},\"url\":{\"type\":\"string\"},\"width\":{\"default\":64,\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Pixels\"}]},\"crop\":{\"$ref\":\"#/$defs/~1components~1schemas~1Crop\"}}},\"/components/schemas/Pixels\":{\"type\":\"integer\"},\"/components/schemas/TextNote\":{\"type\":\"object\",\"required\":[\"text\"],\"properties\":{\"kind\":{\"const\":\"text\"},\"text\":{\"type\":\"string\"},\"point\":{\"type\":\"array\",\"items\":{\"type\":\"number\"},\"minItems\":2,\"maxItems\":2},\"rgb\":{\"type\":\"array\",\"items\":{\"type\":\"integer\",\"format\":\"uint8\"},\"minItems\":3,\"maxItems\":3,\"uniqueItems\":true}},\"if\":{\"required\":[\"size\"]},\"then\":{\"properties\":{\"size\":{\"maximum\":10}}},\"else\":{\"properties\":{\"text\":{\"maxLength\":5}}}}}",
-                )
-                .unwrap_or_default()
-        })
-        .as_object()
-}

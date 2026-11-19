@@ -177,22 +177,10 @@ impl TryFrom<NoteVariants> for Note {
         {
             let out = &mut violations;
             {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&value).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"type\":\"object\",\"properties\":{\"kind\":{\"type\":\"string\"},\"text\":{\"type\":\"string\"},\"size\":{\"type\":\"integer\"}},\"oneOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1TextNote\"},{\"$ref\":\"#/$defs/~1components~1schemas~1ImageNote\"}]}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Root,
-                    &value,
-                    schema,
-                    runtime::schema_defs(),
-                );
+                let json = runtime::to_value(&value).unwrap_or_default();
+                if let Err(e) = serde_json::from_value::<Not3>(json.clone()) {
+                    runtime::violation(out, &runtime::InstancePath::Root, e.to_string());
+                }
             }
         }
         runtime::first(violations)
@@ -316,7 +304,7 @@ impl TryFrom<CropVariants> for Crop {
                     &runtime::InstancePath::Root,
                     &value,
                     schema,
-                    runtime::schema_defs(),
+                    None,
                 );
             }
         }
@@ -600,6 +588,43 @@ impl Not2Object {
     pub const fn new() -> Self {
         Self {
             text: None,
+            additional_properties: std::collections::BTreeMap::new(),
+        }
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct Not3 {
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub kind: Option<String>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub text: Option<String>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub size: Option<i64>,
+    #[serde(flatten)]
+    pub additional_properties: std::collections::BTreeMap<String, serde_json::Value>,
+}
+deserialize_impl!(Not3);
+serialize_impl_4!(Not3);
+impl Not3 {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self {
+            kind: None,
+            text: None,
+            size: None,
             additional_properties: std::collections::BTreeMap::new(),
         }
     }

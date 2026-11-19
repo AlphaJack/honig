@@ -167,6 +167,14 @@ pub(super) fn subschema_checks(
     });
     let patterns = pattern_checks(c, &ty, path);
     let tuple = tuple_checks(c, &ty, path);
+    let also = c.also.iter().map(|&n| {
+        let t = ty(n);
+        quote! {
+            if let Err(e) = serde_json::from_value::<#t>(json.clone()) {
+                runtime::violation(out, #path, e.to_string());
+            }
+        }
+    });
     quote! {
         {
             let json = runtime::to_value(#value).unwrap_or_default();
@@ -176,6 +184,7 @@ pub(super) fn subschema_checks(
             #one_of
             #patterns
             #tuple
+            #(#also)*
         }
     }
 }
