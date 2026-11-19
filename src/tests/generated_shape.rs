@@ -1089,3 +1089,17 @@ fn a_dynamic_ref_in_a_resource_with_an_id_is_typed() {
         .to_owned();
     assert!(types.contains("pub v: Vec<String>,"), "{types}");
 }
+
+/// A schema that refers to a generic and declares its `$dynamicAnchor` at its own root binds the generic's dynamic
+/// references to itself: the children of a strict tree are strict trees.
+#[test]
+fn a_root_dynamic_anchor_binds_the_generic_to_its_site() {
+    let tree = json!({"$dynamicAnchor": "node", "type": "object",
+        "properties": {"data": {"type": "string"}, "children": {"type": "array", "items": {"$dynamicRef": "#node"}}}});
+    let strict = json!({"$dynamicAnchor": "node",
+        "$ref": "#/components/schemas/Tree", "maxProperties": 2});
+    let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Tree": tree, "StrictTree": strict}}));
+    let types =
+        common::file(&common::generate("root-anchor", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
+    assert!(types.contains("Option<Vec<Self>>"), "{types}");
+}
