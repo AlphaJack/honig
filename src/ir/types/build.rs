@@ -74,6 +74,8 @@ impl Constraints {
             pattern_properties: self.pattern_properties.clone(),
             closed_to: self.closed_to.clone(),
             also: self.also.clone(),
+            enum_values: self.enum_values.clone(),
+            const_value: self.const_value.clone(),
             ..Self::default()
         }
     }
@@ -88,6 +90,8 @@ impl Constraints {
             pattern_properties: vec![],
             closed_to: None,
             also: vec![],
+            enum_values: None,
+            const_value: None,
             ..self.clone()
         }
     }
@@ -129,6 +133,8 @@ impl Constraints {
             format: None,
             not: vec![],
             dependent_schemas: vec![],
+            enum_values: None,
+            const_value: None,
             conditions: vec![],
             contains: None,
             one_of: vec![],
@@ -146,6 +152,7 @@ impl Constraints {
             ($($f:ident),*) => { $( if self.$f.is_none() { self.$f = other.$f; } )* };
         }
         take!(min_length, max_length, pattern, minimum, maximum, exclusive_minimum, exclusive_maximum, multiple_of);
+        take!(enum_values, const_value);
         take!(min_items, max_items, min_properties, max_properties, items, property_names, contains, tuple);
         self.unique_items |= other.unique_items;
         self.decimal128 |= other.decimal128;
@@ -355,12 +362,12 @@ pub(crate) fn scalar_const(o: &serde_json::Map<String, Value>) -> Option<&Value>
     (!shaped).then_some(c)
 }
 
-/// Does `o` list values that no Rust type holds: an `enum` of other than strings or integers, or a `const` of other
-/// than a string? A scalar constant is a unit type that decodes its one value, so it holds its keyword.
+/// Does `o` list values that no Rust type holds: an empty `enum`, one of other than strings or integers, or a `const`
+/// of other than a string? A scalar constant is a unit type that decodes its one value, so it holds its keyword.
 fn untyped_values(o: &serde_json::Map<String, Value>) -> bool {
     let untyped = |v: &Value| !v.is_string() && !v.is_null();
     scalar_const(o).is_none()
-        && ((o.get("enum").and_then(Value::as_array).is_some_and(|e| e.iter().any(untyped))
+        && ((o.get("enum").and_then(Value::as_array).is_some_and(|e| e.is_empty() || e.iter().any(untyped))
             && int_enum_values(o).is_none())
             || o.get("const").is_some_and(untyped))
 }
@@ -449,7 +456,7 @@ fn typeless_assertions(s: &Value) -> bool {
 
 /// Keywords that apply to one kind of value only and pass any other (JSON Schema 2020-12 section 7.2.1): checked on a
 /// `serde_json::Value` by its kind.
-const KIND_SCOPED: [&str; 15] = [
+const KIND_SCOPED: [&str; 17] = [
     "minLength",
     "maxLength",
     "pattern",
@@ -465,6 +472,8 @@ const KIND_SCOPED: [&str; 15] = [
     "uniqueItems",
     "required",
     "format",
+    "enum",
+    "const",
 ];
 
 /// Does a schema without `type` assert only [`KIND_SCOPED`] keywords? Its value is a `serde_json::Value` whose checks
@@ -557,6 +566,14 @@ fn beside_union(s: &Value) -> Option<Value> {
 /// Returns the keyword of the union that `o` holds: `oneOf` or `anyOf` with a list of branches.
 fn union_keyword(o: &serde_json::Map<String, Value>) -> Option<&'static str> {
     ["oneOf", "anyOf"].into_iter().find(|k| o.get(*k).is_some_and(Value::is_array))
+}
+
+/// Puts the `enum` and `const` of `s` into `c` when no Rust type holds their values: the value is compared as JSON.
+fn untyped_value_checks(s: &Value, c: &mut Constraints) {
+    if let Some(o) = s.as_object().filter(|o| untyped_values(o)) {
+        c.enum_values = o.get("enum").and_then(Value::as_array).cloned();
+        c.const_value = o.get("const").cloned();
+    }
 }
 
 /// Returns the pointer of `key` under the schema at `at`.
@@ -1013,7 +1030,7 @@ impl<'a> Builder<'a> {
             || tuple
             || mixed
             || self.loose_union(s)
-            || matches!(s, Value::Object(o) if UNTYPED_KEYWORDS.iter().any(|k| o.contains_key(*k) && !conditional_key(k)) || untyped_values(o))
+            || matches!(s, Value::Object(o) if UNTYPED_KEYWORDS.iter().any(|k| o.contains_key(*k) && !conditional_key(k)))
         {
             // The resource of the schema starts the dynamic scope that a `$dynamicRef` resolves in.
             let scope: Vec<String> = at.map_or_else(Vec::new, |p| vec![self.dynamic.resource_of(p)]);
@@ -1044,6 +1061,7 @@ impl<'a> Builder<'a> {
                     c.also.push(self.queue_subschema(m, at.as_deref().map(|a| join(a, &i.to_string()))));
                 }
             }
+            untyped_value_checks(s, &mut c);
             for (name, sub) in dependent_schemas.into_iter().flatten() {
                 let at = at.map(|p| join(&join(p, "dependentSchemas"), name));
                 c.dependent_schemas.push((name.clone(), self.queue_subschema(sub, at)));

@@ -991,3 +991,14 @@ fn an_all_of_that_loses_keywords_checks_each_member() {
             .to_owned();
     assert!(types.contains("serde_json::from_value") && !types.contains("check_schema"), "{types}");
 }
+
+/// An `enum` or `const` of values that no Rust type holds (numbers with strings, objects) compares the value as JSON:
+/// no schema is checked whole.
+#[test]
+fn values_that_no_type_holds_are_compared_as_json() {
+    let mixed = json!({"type": "object", "properties": {"size": {"enum": [1, "large", {"w": 2}]}, "unit": {"const": {"si": true}}}});
+    let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Sized": mixed}}));
+    let types = common::file(&common::generate("untyped-values", &doc, &crate::emit::Options::default()), "types.rs")
+        .to_owned();
+    assert!(types.contains("runtime::json_equal") && !types.contains("check_schema"), "{types}");
+}
