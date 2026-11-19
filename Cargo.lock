@@ -1038,7 +1038,6 @@ dependencies = [
  "http",
  "http-body",
  "idna",
- "ipnet",
  "itoa",
  "jiff",
  "js-sys",

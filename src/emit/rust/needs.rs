@@ -9,7 +9,7 @@ use crate::ir::media::MediaKind;
 use crate::ir::security::{SchemeKind, SecurityScheme};
 use crate::ir::types::{Format, Ty, def_types};
 use crate::settings::{
-    BASE64, CLIENT, COOKIE, DateLib, FormatLibs, IDN, IPNET, JIFF, MULTIPART, OAUTH, PKCE, REGRESS, SERVER, XML,
+    BASE64, CLIENT, COOKIE, DateLib, FormatLibs, IDN, JIFF, MULTIPART, OAUTH, PKCE, REGRESS, SERVER, XML,
 };
 
 /// Returns the runtime features that the description needs whatever the crate depends on. That is the halves that it
@@ -67,8 +67,7 @@ fn codecs(api: &Api, server: bool) -> Vec<&'static str> {
 }
 
 /// Returns the runtime features of the string formats that a description uses. `idn` is for the types of mail addresses
-/// and host names. `regress` checks `regex` without its library type. `ipnet` checks the CIDR blocks with or without
-/// theirs.
+/// and host names. `regress` checks `regex` without its library type.
 fn format_checks(api: &Api, libs: FormatLibs) -> Vec<&'static str> {
     let mut used = BTreeSet::new();
     for ty in every_ty(api) {
@@ -81,8 +80,6 @@ fn format_checks(api: &Api, libs: FormatLibs) -> Vec<&'static str> {
         (IDN, mail.iter().any(|f| used.contains(f))),
         // The libraries that would type these formats check them.
         (REGRESS, checked(&[Format::Regex])),
-        // The CIDR blocks: as text, and before `ipnet::Ipv4Net` reads one (`runtime::formats`).
-        (IPNET, used.contains(&Format::Ipv4Cidr) || used.contains(&Format::Ipv6Cidr)),
         // `runtime::FullTime`: a `time` with its offset.
         (JIFF, used.contains(&Format::Time) && libs.dates == Some(DateLib::Jiff)),
     ];

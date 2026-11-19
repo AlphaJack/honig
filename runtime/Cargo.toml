@@ -59,8 +59,6 @@ tracing = { version = "0.1", optional = true, default-features = false, features
 # `traceparent` and `tracestate`: the OpenTelemetry span context of a `tracing` span.
 opentelemetry = { version = "0.33", optional = true, default-features = false, features = ["trace"] }
 tracing-opentelemetry = { version = "0.34", optional = true, default-features = false }
-# String formats the crates check.
-ipnet = { version = "2", optional = true, default-features = false }
 jiff = { version = "1", optional = true, default-features = false }
 # `email`, `idn-email`, `hostname` and `idn-hostname` checks: IDNA2008 and punycode.
 idna = { version = "1", optional = true }
@@ -114,8 +112,6 @@ axum = ["server", "dep:axum", "axum/tokio"]
 tracing = ["server", "dep:tracing"]
 ## W3C Trace Context: `traceparent` and `tracestate`
 tracing-opentelemetry = ["dep:opentelemetry", "dep:tracing-opentelemetry", "dep:tracing"]
-## `format: ipv4-cidr` and `ipv6-cidr` checks
-ipnet = ["dep:ipnet"]
 ## `FullTime`: `format: time` with its offset in `jiff` types
 jiff = ["dep:jiff"]
 ## `email`, `idn-email`, `hostname` and `idn-hostname` checks
@@ -180,7 +176,7 @@ required-features = ["cookie", "multipart", "server", "xml"]
 [[bench]]
 name = "formats"
 harness = false
-required-features = ["idn", "ipnet"]
+required-features = ["idn"]
 
 [[bench]]
 name = "simd"

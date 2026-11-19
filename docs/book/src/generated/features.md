@@ -11,7 +11,6 @@
 | `axum` | axum | `Server::into_axum` and the address of the client from the `ConnectInfo` of axum | `server = { adapters = ["axum"] }` |
 | `tracing` | tracing | A span per request and a log line for each wide event | `server = { adapters = ["tracing"] }` |
 | `tracing-opentelemetry` | opentelemetry | W3C Trace Context: `traceparent` and `tracestate` | `adapters = ["tracing-opentelemetry"]` in `client` or `server` |
-| `ipnet` | ipnet | `format: ipv4-cidr` and `ipv6-cidr` checks | The description calls for it |
 | `jiff` | jiff | `FullTime`: `format: time` with its offset in `jiff` types | The description calls for it |
 | `idn` | idna | `email`, `idn-email`, `hostname` and `idn-hostname` checks | The description calls for it |
 | `regress` | regress | `pattern` and `patternProperties` checks (ECMA-262) | The description calls for it |
