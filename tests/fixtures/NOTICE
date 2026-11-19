@@ -5,3 +5,6 @@ Some fixtures are copied or adapted from the OpenAPI Initiative's repositories, 
   v3.2-dev
 - overlay: the compliance sets and worked examples of OAI/Overlay-Specification
 - v32/spec-examples.yaml, v32/spec-xml.yaml: the examples in the text of the OpenAPI Specification 3.2.1
+
+json-schema-test-suite holds tests/*.json of the validation folder of json-schema-org/JSON-Schema-Test-Suite at
+commit e2a68a1, under the MIT License (LICENSE-JSON-SCHEMA-TEST-SUITE).

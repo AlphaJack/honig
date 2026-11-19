@@ -25,6 +25,7 @@ mod oai_conformance;
 #[cfg(feature = "overlays")]
 mod overlay;
 mod patterns;
+mod schema_suite;
 mod spec_roundtrip;
 mod validate_native;
 
