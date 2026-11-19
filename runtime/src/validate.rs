@@ -1077,10 +1077,13 @@ mod mail {
     /// holds 1 to 63 octets of letters, digits and inner hyphens. The name holds 253 in all. A punycode label (`xn--`)
     /// must decode to a valid one.
     fn hostname(value: &str, unicode: bool) -> bool {
+        // The labels as UTS 46 maps them: `\u{3002}` separates two labels and a zero width space is dropped.
+        let (mapped, mapping) = Uts46::new().to_unicode(value.as_bytes(), AsciiDenyList::STD3, Hyphens::Check);
         (unicode || value.is_ascii())
             && !value.is_empty()
+            && mapping.is_ok()
             && Uts46::new().to_ascii(value.as_bytes(), AsciiDenyList::STD3, Hyphens::Check, DnsLength::Verify).is_ok()
-            && value.trim_end_matches('.').split('.').all(idna2008_label)
+            && mapped.trim_end_matches('.').split('.').all(idna2008_label)
     }
 
     /// The prefix of an A-label (RFC 5890 section 2.3.2.1).
@@ -1132,10 +1135,28 @@ mod mail {
                 '\u{5F3}' | '\u{5F4}' => before.is_some_and(|&b| hebrew(b)),
                 // A.7 KATAKANA MIDDLE DOT: the label has Hiragana, Katakana or Han.
                 '\u{30FB}' => chars.iter().any(|&x| japanese(x)),
-                // A decoded label holds no control character.
-                c => !c.is_control(),
+                c => letter_digit(c),
             }
         })
+    }
+
+    /// Returns RFC 5892 section 2.1 `LetterDigits` (letters, decimal digits and marks), the hyphen and the PVALID
+    /// exceptions of section 2.6. The joiners of appendix A.1 and A.2 stay to UTS 46. Punctuation, symbols and spaces
+    /// are DISALLOWED: `xn--7a` decodes to an inverted exclamation mark.
+    fn letter_digit(c: char) -> bool {
+        use icu_properties::props::GeneralCategory as Gc;
+        let category = icu_properties::CodePointMapData::<Gc>::new().get(c);
+        matches!(c, '-' | '\u{200C}' | '\u{200D}' | '\u{6FD}' | '\u{6FE}' | '\u{F0B}' | '\u{3007}')
+            || matches!(
+                category,
+                Gc::LowercaseLetter
+                    | Gc::UppercaseLetter
+                    | Gc::OtherLetter
+                    | Gc::ModifierLetter
+                    | Gc::DecimalNumber
+                    | Gc::NonspacingMark
+                    | Gc::SpacingMark
+            )
     }
 
     /// Returns an RFC 5321 Mailbox (`email`) or an RFC 6531 one that may hold UTF-8 (`idn-email`). It is a dot-atom or
@@ -1284,6 +1305,15 @@ mod mail {
         fn idn_hostname_follows_the_context_rules() {
             assert!(hostname("l\u{B7}l", true) && !hostname("a\u{B7}b", true));
             assert!(hostname("\u{30A2}\u{30FB}\u{30A2}", true) && !hostname("a\u{30FB}b", true));
+        }
+
+        /// RFC 5892 section 2.1: a label holds letters, digits and marks. `xn--7a` is an inverted exclamation mark.
+        #[test]
+        fn an_idn_label_holds_letters_digits_and_marks() {
+            assert!(!hostname("xn--7a", true) && !hostname("a\u{A1}b", true));
+            assert!(hostname("b\u{FC}cher", true) && hostname("xn--bcher-kva", true) && hostname("a-b", true));
+            assert!(hostname("\u{915}\u{94D}\u{200D}", true), "a joiner after a virama stays valid");
+            assert!(hostname("a\u{3002}b", true) && hostname("a\u{200B}b", true), "UTS 46 maps these first");
         }
     }
 }
