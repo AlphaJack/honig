@@ -875,3 +875,15 @@ fn contains_counts_the_items_of_its_type() {
         common::file(&common::generate("contains", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
     assert!(types.contains("matching items, more than allowed") && !types.contains("check_schema"), "{types}");
 }
+
+/// An `anyOf` with a branch that asserts nothing holds for every value: no schema is checked whole.
+#[test]
+fn an_any_of_with_a_branch_of_any_value_is_typed() {
+    let money = json!({"type": "object", "properties": {"amount": {"type": "integer"}}});
+    let price =
+        json!({"type": "object", "properties": {"price": {"anyOf": [{"$ref": "#/components/schemas/Money"}, {}]}}});
+    let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Money": money, "Price": price}}));
+    let types =
+        common::file(&common::generate("any-branch", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
+    assert!(!types.contains("check_schema"), "{types}");
+}

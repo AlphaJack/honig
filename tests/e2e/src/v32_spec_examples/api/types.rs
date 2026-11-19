@@ -755,56 +755,38 @@ impl MultipartFormWithMultipleFilesBody {
         Self { file: None }
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
-#[serde(transparent)]
-pub struct OrderedMultipartWithRequiredHeaderBodyItem(
-    pub(super) OrderedMultipartWithRequiredHeaderBodyItemVariants,
-);
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum OrderedMultipartWithRequiredHeaderBodyItem {
+    String(String),
+    Other(serde_json::Value),
+}
+impl serde::Serialize for OrderedMultipartWithRequiredHeaderBodyItem {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        match self {
+            Self::String(v) => serde::Serialize::serialize(v, s),
+            Self::Other(v) => serde::Serialize::serialize(v, s),
+        }
+    }
+}
 impl<'de> serde::Deserialize<'de> for OrderedMultipartWithRequiredHeaderBodyItem {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <OrderedMultipartWithRequiredHeaderBodyItemVariants as serde::Deserialize>::deserialize(
-            d,
-        )?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
-    }
-}
-impl TryFrom<OrderedMultipartWithRequiredHeaderBodyItemVariants>
-for OrderedMultipartWithRequiredHeaderBodyItem {
-    type Error = runtime::BuildError;
-    fn try_from(
-        value: OrderedMultipartWithRequiredHeaderBodyItemVariants,
-    ) -> Result<Self, runtime::BuildError> {
-        let mut violations: Vec<runtime::Violation> = Vec::new();
-        {
-            let out = &mut violations;
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&value).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"anyOf\":[{\"type\":\"string\"},{\"$comment\":\"To allow binary, this must always pass\"}]}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Root,
-                    &value,
-                    schema,
-                    None,
-                );
+        let v = <runtime::Content<'de> as serde::Deserialize>::deserialize(d)?;
+        match v.kind() {
+            runtime::Kind::String => {
+                match v.decode_ref::<String>() {
+                    Ok(x) => Ok(Self::String(x)),
+                    Err(_) => Ok(Self::Other(v.into_value())),
+                }
             }
+            runtime::Kind::Null
+            | runtime::Kind::Bool
+            | runtime::Kind::Integer
+            | runtime::Kind::Number
+            | runtime::Kind::Array
+            | runtime::Kind::Object => Ok(Self::Other(v.into_value())),
         }
-        runtime::first(violations)
-            .map(|()| Self(value))
-            .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(
-    OrderedMultipartWithRequiredHeaderBodyItem,
-    OrderedMultipartWithRequiredHeaderBodyItemVariants
-);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct ServerSentEventStreamsBodyItem(
@@ -1030,39 +1012,6 @@ impl ServerSentEventStreamsBodyItemAddJsonData2Content {
     }
 }
 pub type ServerSentEventStreamsBodyItemAddJsonRetry = EventRetry;
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum OrderedMultipartWithRequiredHeaderBodyItemVariants {
-    String(String),
-    Other(serde_json::Value),
-}
-impl serde::Serialize for OrderedMultipartWithRequiredHeaderBodyItemVariants {
-    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        match self {
-            Self::String(v) => serde::Serialize::serialize(v, s),
-            Self::Other(v) => serde::Serialize::serialize(v, s),
-        }
-    }
-}
-impl<'de> serde::Deserialize<'de>
-for OrderedMultipartWithRequiredHeaderBodyItemVariants {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let v = <runtime::Content<'de> as serde::Deserialize>::deserialize(d)?;
-        match v.kind() {
-            runtime::Kind::String => {
-                match v.decode_ref::<String>() {
-                    Ok(x) => Ok(Self::String(x)),
-                    Err(_) => Ok(Self::Other(v.into_value())),
-                }
-            }
-            runtime::Kind::Null
-            | runtime::Kind::Bool
-            | runtime::Kind::Integer
-            | runtime::Kind::Number
-            | runtime::Kind::Array
-            | runtime::Kind::Object => Ok(Self::Other(v.into_value())),
-        }
-    }
-}
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ServerSentEventStreamsBodyItemVariants {
     Event(ServerSentEventStreamsBodyItemEvent),
