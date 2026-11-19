@@ -964,3 +964,17 @@ fn a_map_checks_the_names_it_requires() {
         common::file(&common::generate("map-required", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
     assert!(types.contains("runtime::check_required") && types.contains("\"foo\""), "{types}");
 }
+
+/// Keywords beside a `oneOf` hold for whichever branch matches: the value also decodes as their type. No schema is
+/// checked whole.
+#[test]
+fn keywords_beside_a_union_hold_for_each_branch() {
+    let a = json!({"type": "object", "properties": {"kind": {"const": "a"}, "x": {"type": "integer"}}, "required": ["kind"]});
+    let b = json!({"type": "object", "properties": {"kind": {"const": "b"}, "y": {"type": "integer"}}, "required": ["kind"]});
+    let item = json!({"type": "object", "maxProperties": 3,
+        "oneOf": [{"$ref": "#/components/schemas/A"}, {"$ref": "#/components/schemas/B"}]});
+    let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"A": a, "B": b, "Item": item}}));
+    let types =
+        common::file(&common::generate("beside-union", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
+    assert!(types.contains("serde_json::from_value") && !types.contains("check_schema"), "{types}");
+}

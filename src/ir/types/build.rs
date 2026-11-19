@@ -63,8 +63,8 @@ impl Constraints {
         self.items.as_deref().cloned().unwrap_or_default()
     }
 
-    /// Returns the checks that judge the value as JSON (`not`, `dependentSchemas`, `if`, a counted `oneOf`), and no
-    /// other.
+    /// Returns the checks that judge the value as JSON (`not`, `dependentSchemas`, `if`, a counted `oneOf`, keywords
+    /// beside a union), and no other.
     pub(crate) fn json_checks(&self) -> Self {
         Self {
             not: self.not.clone(),
@@ -73,6 +73,7 @@ impl Constraints {
             one_of: self.one_of.clone(),
             pattern_properties: self.pattern_properties.clone(),
             closed_to: self.closed_to.clone(),
+            also: self.also.clone(),
             ..Self::default()
         }
     }
@@ -86,6 +87,7 @@ impl Constraints {
             one_of: vec![],
             pattern_properties: vec![],
             closed_to: None,
+            also: vec![],
             ..self.clone()
         }
     }
@@ -133,6 +135,7 @@ impl Constraints {
             pattern_properties: vec![],
             closed_to: None,
             tuple: None,
+            also: vec![],
             schema: None,
         }
     }
@@ -161,6 +164,7 @@ impl Constraints {
         if self.closed_to.is_none() {
             self.closed_to = other.closed_to;
         }
+        self.also.extend(other.also);
         self.schema = match (self.schema.take(), other.schema) {
             (Some(a), Some(b)) => Some(serde_json::json!({ "allOf": [a, b] })),
             (a, b) => a.or(b),
@@ -533,6 +537,26 @@ fn scoped_keywords(s: &Value, c: &mut Constraints) {
 /// Returns the names in `required` of `s`.
 fn required_names(s: &Value) -> impl Iterator<Item = &str> {
     json::strs(s.get("required").and_then(Value::as_array).map_or(&[][..], Vec::as_slice))
+}
+
+/// Returns the keywords beside a `oneOf` or `anyOf` as a schema of their own: they hold for whichever branch matches,
+/// so the value also decodes as its type. `None` without such keywords.
+fn beside_union(s: &Value) -> Option<Value> {
+    let o = s.as_object()?;
+    let union = union_keyword(o).is_some();
+    let quiet = |k: &str| {
+        matches!(k, "oneOf" | "anyOf" | "discriminator" | "description" | "title" | "example" | "examples")
+            || matches!(k, "deprecated" | "default" | "nullable")
+            || k.starts_with("x-")
+    };
+    let beside: serde_json::Map<String, Value> =
+        o.iter().filter(|(k, _)| !quiet(k)).map(|(k, v)| (k.clone(), v.clone())).collect();
+    (union && !beside.is_empty()).then_some(Value::Object(beside))
+}
+
+/// Returns the keyword of the union that `o` holds: `oneOf` or `anyOf` with a list of branches.
+fn union_keyword(o: &serde_json::Map<String, Value>) -> Option<&'static str> {
+    ["oneOf", "anyOf"].into_iter().find(|k| o.get(*k).is_some_and(Value::is_array))
 }
 
 /// Returns the pointer of `key` under the schema at `at`.
@@ -1011,6 +1035,9 @@ impl<'a> Builder<'a> {
             if typed_tuple {
                 c.tuple = Some(self.queue_tuple(s, at));
             }
+            if let Some(beside) = beside_union(s) {
+                c.also.push(self.queue_subschema(&beside, None));
+            }
             for (name, sub) in dependent_schemas.into_iter().flatten() {
                 let at = at.map(|p| join(&join(p, "dependentSchemas"), name));
                 c.dependent_schemas.push((name.clone(), self.queue_subschema(sub, at)));
@@ -1100,21 +1127,6 @@ impl<'a> Builder<'a> {
         else {
             return false;
         };
-        let quiet = [
-            "oneOf",
-            "anyOf",
-            "description",
-            "title",
-            "example",
-            "examples",
-            "deprecated",
-            "default",
-            "nullable",
-            "discriminator",
-        ];
-        if o.keys().any(|k| !quiet.contains(&k.as_str()) && !k.starts_with("x-")) {
-            return true;
-        }
         // The tag picks the one branch a value can match, and that variant checks the rest.
         if self.pins_every_tag(o, branches) {
             return false;
@@ -1906,7 +1918,7 @@ impl<'a> Builder<'a> {
     /// {oneOf}]`: the properties beside the union hold for each branch (Svix's `IngestSourceIn` has a `name` whatever
     /// its `type`). Typing the union alone would lose them.
     fn sibling_union(&self, o: &serde_json::Map<String, Value>, ptr: &str) -> Option<Value> {
-        let key = ["oneOf", "anyOf"].into_iter().find(|k| o.get(*k).is_some_and(Value::is_array))?;
+        let key = union_keyword(o)?;
         let own = own_object_keywords(Some(o))?;
         let mut union = serde_json::Map::from_iter([(key.to_owned(), o[key].clone())]);
         if let Some(d) = o.get("discriminator") {
@@ -2954,6 +2966,8 @@ mod tests {
             "type": "object",
             "properties": {"id": {"type": "string", "readOnly": true}, "name": {"type": "string"}},
             "anyOf": [{"$ref": "#/components/schemas/Named"}, {"$ref": "#/components/schemas/Other"}],
+            // Asserts nothing, and keeps the schema checked whole.
+            "unevaluatedProperties": true,
         });
         assert_eq!(check(&branch, &json!({"name": "x"})), Vec::<String>::new());
         assert_ne!(check(&branch, &json!({})), Vec::<String>::new());
