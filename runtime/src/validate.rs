@@ -212,6 +212,13 @@ pub fn check(out: &mut Vec<Violation>, path: &InstancePath<'_>, ok: bool, messag
     }
 }
 
+/// Checks `required` of a value without `type` that is an object: each of `names` is one of its properties.
+pub fn check_required(out: &mut Vec<Violation>, path: &InstancePath<'_>, object: &Map<String, Value>, names: &[&str]) {
+    for name in names.iter().filter(|name| !object.contains_key(**name)) {
+        violation(out, &InstancePath::Key(path, name), "is required");
+    }
+}
+
 /// Checks `minLength`/`maxLength`, `minItems`/`maxItems`, `minProperties`/`maxProperties`.
 pub fn check_len(
     out: &mut Vec<Violation>,

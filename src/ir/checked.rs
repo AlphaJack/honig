@@ -366,6 +366,9 @@ pub(crate) fn needs_checks(types: &TypeSpace, t: &Ty, c: &Constraints, hops: usi
                     .iter()
                     .any(Option::is_some)
                 || c.pattern.is_some()
+                || c.unique_items
+                || !c.required.is_empty()
+                || c.format.is_some()
         }
         Ty::Bool | Ty::Bytes | Ty::Binary | Ty::Unit | Ty::Tuple(_) => false,
     }

@@ -901,3 +901,16 @@ fn a_one_of_of_shared_types_counts_its_branches() {
         common::file(&common::generate("one-of-count", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
     assert!(types.contains("of `oneOf`, not exactly one") && !types.contains("check_schema"), "{types}");
 }
+
+/// `required`, `uniqueItems` and `format` without `type` apply to objects, arrays and strings: no schema is checked
+/// whole.
+#[test]
+fn required_unique_and_format_without_a_type_check_their_kind() {
+    let any =
+        json!({"type": "object", "properties": {"v": {"required": ["id"], "uniqueItems": true, "format": "uuid"}}});
+    let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Loose": any}}));
+    let types =
+        common::file(&common::generate("typeless-required", &doc, &crate::emit::Options::default()), "types.rs")
+            .to_owned();
+    assert!(types.contains("runtime::check_unique") && !types.contains("check_schema"), "{types}");
+}

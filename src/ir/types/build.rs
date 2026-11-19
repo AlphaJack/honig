@@ -108,6 +108,8 @@ impl Constraints {
             items: None,
             property_names: None,
             dependent_required: vec![],
+            required: vec![],
+            format: None,
             not: vec![],
             dependent_schemas: vec![],
             conditions: vec![],
@@ -127,6 +129,10 @@ impl Constraints {
         self.unique_items |= other.unique_items;
         self.decimal128 |= other.decimal128;
         self.dependent_required.extend(other.dependent_required);
+        self.required.extend(other.required);
+        if self.format.is_none() {
+            self.format = other.format;
+        }
         self.not.extend(other.not);
         self.dependent_schemas.extend(other.dependent_schemas);
         self.conditions.extend(other.conditions);
@@ -409,7 +415,7 @@ fn typeless_assertions(s: &Value) -> bool {
 
 /// Keywords that apply to one kind of value only and pass any other (JSON Schema 2020-12 section 7.2.1): checked on a
 /// `serde_json::Value` by its kind.
-const KIND_SCOPED: [&str; 12] = [
+const KIND_SCOPED: [&str; 15] = [
     "minLength",
     "maxLength",
     "pattern",
@@ -422,6 +428,9 @@ const KIND_SCOPED: [&str; 12] = [
     "maxItems",
     "minProperties",
     "maxProperties",
+    "uniqueItems",
+    "required",
+    "format",
 ];
 
 /// Does a schema without `type` assert only [`KIND_SCOPED`] keywords? Its value is a `serde_json::Value` whose checks
@@ -482,6 +491,15 @@ fn asserts_nothing(s: &Value) -> bool {
         }),
         Value::Null | Value::Number(_) | Value::String(_) | Value::Array(_) => false,
     }
+}
+
+/// Puts the keywords of a schema without `type` that a typed value's type would hold into `c`: `required` for an object
+/// and `format` for a string, each checked by its kind.
+fn scoped_keywords(s: &Value, c: &mut Constraints) {
+    c.required = json::strs(s.get("required").and_then(Value::as_array).map_or(&[][..], Vec::as_slice))
+        .map(str::to_owned)
+        .collect();
+    c.format = s.get("format").and_then(Value::as_str).map(str::to_owned);
 }
 
 /// Returns the pointer of `key` under the schema at `at`.
@@ -877,7 +895,11 @@ impl<'a> Builder<'a> {
         let tuple =
             s.get("prefixItems").is_some() || s.get("items") == Some(&Value::Bool(false)) || holds_dynamic_ref(s);
         let mixed = mixed(s);
-        if (typeless_assertions(s) && !kind_scoped(s))
+        let scoped = typeless_assertions(s) && kind_scoped(s);
+        if scoped {
+            scoped_keywords(s, &mut c);
+        }
+        if (typeless_assertions(s) && !scoped)
             || tuple
             || mixed
             || self.loose_union(s)
