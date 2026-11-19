@@ -495,12 +495,12 @@ pub const BENCH_SIZES: [usize; 4] = [256, 2 << 10, 16 << 10, 1 << 20];
 /// (`base`) measured, as wide as `sample`, their ratio, the budget of the kind and whether it holds.
 #[allow(dead_code, reason = "the memory bench prints a table of its own")]
 pub fn bench_table(head: &'static str, base: &'static str, sample: &str) -> Table {
-    let sizes = BENCH_SIZES.map(table::size);
+    let sizes = BENCH_SIZES.map(table::kib);
     let widest_size = sizes.iter().max_by_key(|s| s.len()).map_or("", String::as_str);
     let widest_path = paths(BENCH_SIZES[0]).iter().map(|p| p.name.len()).max().unwrap_or_default();
     Table::new(&[
-        Column::left("path", widest_path),
-        Column::right("size", widest_size),
+        Column::left("request", widest_path),
+        Column::right("size_KiB", widest_size),
         Column::right(head, sample),
         Column::right(base, sample),
         Column::right("ratio", "99.99"),
@@ -545,7 +545,7 @@ pub fn print_rows(table: &Table, mut rows: Vec<Measured>) -> Vec<String> {
         last = Some(path);
         let failed = ratio > max;
         let result = if failed { "FAIL" } else { "ok" };
-        let cells = [path.to_owned(), table::size(size), head, base, format!("{ratio:.2}"), format!("{max:.2}")];
+        let cells = [path.to_owned(), table::kib(size), head, base, format!("{ratio:.2}"), format!("{max:.2}")];
         table.row(&[cells.as_slice(), &[result.to_owned()]].concat());
         if failed {
             over.push(format!("{path} at {}", table::size(size)));
