@@ -1238,3 +1238,19 @@ fn a_loose_union_counts_its_branches() {
         assert!(types.contains(check) && !types.contains("check_schema"), "{keyword}: {types}");
     }
 }
+
+/// Keywords of one kind beside an implied shape (`required` beside `properties`, `minItems` beside `items`, no `type`)
+/// are checked on the value of the union by its kind: no schema is checked whole.
+#[test]
+fn keywords_of_one_kind_beside_an_implied_shape_are_checked() {
+    for (name, schema, check) in [
+        ("required", json!({"properties": {"a": {"type": "integer"}}, "required": ["a"]}), "check_required"),
+        ("min-items", json!({"items": {"type": "integer"}, "minItems": 2}), "check_len"),
+    ] {
+        let holder = json!({"type": "object", "required": ["v"], "properties": {"v": schema}});
+        let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Holder": holder}}));
+        let files = common::generate(&format!("implied-{name}"), &doc, &crate::emit::Options::default());
+        let types = common::file(&files, "types.rs");
+        assert!(types.contains(check) && !types.contains("check_schema"), "{name}: {types}");
+    }
+}
