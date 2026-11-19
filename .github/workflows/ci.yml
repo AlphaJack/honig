@@ -316,11 +316,17 @@ jobs:
         if: steps.changed.outputs.run == 'true' && matrix.valgrind
         run: |
           mkdir -p ~/valgrind-debs/partial
+          # apt downloads as `_apt`: it must own the folder, or it falls back to root and warns.
+          sudo chown -R _apt ~/valgrind-debs
           install() {
             sudo NEEDRESTART_SUSPEND=1 apt-get install -y --no-install-recommends \
               -o Dir::Cache::Archives="$HOME/valgrind-debs" valgrind
           }
           install || { sudo apt-get update -qq; install; }
+          # The cache keeps the packages only: apt's lock and its partial downloads are root's, and tar, run as the
+          # runner, cannot read them. Unreadable, they fail the save of the whole cache, cargo's included.
+          sudo rm -rf ~/valgrind-debs/partial ~/valgrind-debs/lock
+          sudo chown -R "$USER" ~/valgrind-debs
       - name: Bench
         if: steps.changed.outputs.run == 'true'
         env:
