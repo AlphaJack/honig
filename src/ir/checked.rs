@@ -103,7 +103,6 @@ fn split_own_checks(types: &mut TypeSpace, taken: &mut BTreeSet<String>) -> BTre
         let own = &def.own;
         // The keywords that the struct or union holds as a whole, not each field or branch.
         let constraints = Constraints {
-            schema: own.schema.clone(),
             dependent_required: own.dependent_required.clone(),
             property_names: own.property_names.clone(),
             not: own.not.clone(),
@@ -220,23 +219,6 @@ fn yours(types: &TypeSpace, t: &Ty) -> bool {
     }
 }
 
-/// Keywords of a schema that a `const` or an enum type holds whole: its values, its `type` and annotations.
-const ENUM_KEYWORDS: [&str; 13] = [
-    "const",
-    "enum",
-    "type",
-    "title",
-    "description",
-    "default",
-    "example",
-    "examples",
-    "deprecated",
-    "readOnly",
-    "writeOnly",
-    "nullable",
-    "$comment",
-];
-
 /// Does the type of `t` hold `schema` whole? A checked type of a struct or union holds its own schema
 /// (`split_own_checks`). A `{const: physical}` without `type` is checked as a whole schema, and its unit struct holds it
 /// already. So does an enum type for its `enum`.
@@ -282,41 +264,6 @@ pub(crate) fn json_held_by_type(types: &TypeSpace, t: &Ty, json: &Constraints, h
     }
 }
 
-fn held_by_type(types: &TypeSpace, t: &Ty, schema: &serde_json::Value, hops: usize) -> bool {
-    let only_values = schema.as_object().is_some_and(|o| o.keys().all(|k| ENUM_KEYWORDS.contains(&k.as_str())));
-    match t {
-        Ty::Option(x) | Ty::Indirect(x) => held_by_type(types, x, schema, hops),
-        Ty::Named(id) => match &types.get(*id).kind {
-            Kind::Alias(x) if hops < MAX_ALIAS_HOPS => held_by_type(types, x, schema, hops + 1),
-            Kind::Const(_) | Kind::StrEnum(_) | Kind::IntEnum(_) => only_values,
-            Kind::Checked(c) => c.constraints.schema.as_ref() == Some(schema),
-            Kind::Alias(_) | Kind::Struct(_) | Kind::Union(_) | Kind::Newtype(_) | Kind::Pending => false,
-        },
-        Ty::Bool
-        | Ty::I8
-        | Ty::I16
-        | Ty::I32
-        | Ty::I64
-        | Ty::U8
-        | Ty::U16
-        | Ty::U32
-        | Ty::U64
-        | Ty::F32
-        | Ty::F64
-        | Ty::Decimal
-        | Ty::String
-        | Ty::Bytes
-        | Ty::Binary
-        | Ty::Format(_)
-        | Ty::Any
-        | Ty::Unit
-        | Ty::Vec(_)
-        | Ty::Array(..)
-        | Ty::Tuple(_)
-        | Ty::Map(_) => false,
-    }
-}
-
 /// Does `c` hold a keyword of one kind that a `serde_json::Value` checks by its kind (`minimum`, `maxLength`,
 /// `required`, ...)?
 fn checked_by_kind(c: &Constraints) -> bool {
@@ -352,13 +299,6 @@ pub(crate) fn needs_checks(types: &TypeSpace, t: &Ty, c: &Constraints, hops: usi
         return true;
     }
     let c = &c.without_json();
-    if let Some(schema) = &c.schema {
-        if !held_by_type(types, t, schema, hops) {
-            return true;
-        }
-        let rest = Constraints { schema: None, ..c.clone() };
-        return needs_checks(types, t, &rest, hops);
-    }
     let range = [&c.minimum, &c.maximum, &c.exclusive_minimum, &c.exclusive_maximum, &c.multiple_of]
         .iter()
         .any(|b| b.is_some());

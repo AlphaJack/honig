@@ -69,11 +69,10 @@ pub(crate) const FILES: [(&str, &str); 7] = [
     ),
 ];
 
-/// The files of a generated module as syntax trees, not yet printed, and the definitions that its run-time checks share.
+/// The files of a generated module as syntax trees, not yet printed.
 #[derive(Debug)]
 pub(crate) struct Trees {
     files: Vec<(&'static str, TokenStream)>,
-    shared: Option<String>,
 }
 
 /// Returns every file of a generated module as a syntax tree, as (path relative to the module dir, tree). Each is
@@ -119,10 +118,7 @@ pub(crate) fn trees(api: &Api, opts: &super::Options) -> Trees {
     if let Some(examples) = examples {
         trees.push(("documented_examples.rs", examples));
     }
-    let shared = &space.types.shared;
-    let shared =
-        (!shared.is_empty()).then(|| serde_json::Value::Object(shared.clone().into_iter().collect()).to_string());
-    Trees { files: trees, shared }
+    Trees { files: trees }
 }
 
 /// Prints the files of `trees` as Rust source, with `runtime.rs` first. `binary`: for a binary crate.
@@ -137,7 +133,7 @@ pub(crate) fn print(trees: Trees, binary: bool) -> Result<Vec<(String, String)>,
         let code = syntax::print(name, tokens, binary)?;
         files.push((name.to_owned(), format!("{header}{code}")));
     }
-    let runtime = runtime_reexport(trees.shared.as_deref(), binary)?;
+    let runtime = runtime_reexport(binary)?;
     files.insert(0, ("runtime.rs".to_owned(), format!("{header}{runtime}")));
     Ok(files)
 }
@@ -220,21 +216,9 @@ fn one_line(s: &str) -> String {
     s.replace(['\n', '\r', '`'], " ")
 }
 
-/// Returns the generated `runtime.rs`: its docs, the runtime crate's items and `schema_defs`, the definitions that
-/// the module's run-time checks share (`defs`, JSON text).
-fn runtime_reexport(defs: Option<&str>, binary: bool) -> Result<String, Error> {
+/// Returns the generated `runtime.rs`: its docs and the runtime crate's items.
+fn runtime_reexport(binary: bool) -> Result<String, Error> {
     let runtime = syntax::ident("honig");
-    let defs = defs.map(|json| {
-        let json = syntax::lit(json);
-        quote! {
-            /// The definitions that the run-time checks of this module share, parsed once.
-            #[doc(hidden)]
-            pub fn schema_defs() -> Option<&'static serde_json::Map<String, serde_json::Value>> {
-                static DEFS: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                DEFS.get_or_init(|| serde_json::from_str(#json).unwrap_or_default()).as_object()
-            }
-        }
-    });
-    let reexport = quote!(pub use #runtime::*; #[doc(hidden)] pub use #runtime::__private::*; #defs);
+    let reexport = quote!(pub use #runtime::*; #[doc(hidden)] pub use #runtime::__private::*;);
     syntax::print("runtime.rs", reexport, binary)
 }

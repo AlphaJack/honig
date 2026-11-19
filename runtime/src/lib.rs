@@ -138,6 +138,7 @@ pub mod __private {
     pub use crate::client::transport::*;
     pub use crate::codec::*;
     pub use crate::coerce::*;
+    pub use crate::exact::is_multiple;
     pub use crate::header::header_text;
     pub use crate::json::to_value;
     pub use crate::links::*;

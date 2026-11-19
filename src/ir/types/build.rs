@@ -6,7 +6,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use serde_json::Value;
 
 use super::cycles::break_cycles;
-use super::rewrite::{FALLBACK, conditional_union, request_view, view};
+use super::rewrite::{FALLBACK, conditional_union};
 use super::{
     Access, Checked, Constraints, EnumValue, Evaluated, EvaluatedItems, Field, Format, JsonKind, Kind, Leftover, Rest,
     Struct, Ty, TypeDef, TypeId, TypeSpace, Union, UnionMode, Variant, XmlHint,
@@ -24,21 +24,12 @@ const MAX_ALIAS_HOPS: usize = 16;
 /// Subschemas read for constraints or inlined for run-time checks before the rest is left unchecked.
 const MAX_SCHEMA_DEPTH: usize = 8;
 
-/// Where an inlining walk is: the dynamic scope that it entered, the targets that it moved into `$defs`, whether it
-/// may move them, and whether it met a `$dynamicRef`.
-#[derive(Default)]
-struct Walk {
-    scope: Vec<String>,
-    cuts: Vec<String>,
-    cut: bool,
-    dynamic: bool,
-}
 /// Nested schemas typed before the rest becomes `serde_json::Value`.
 const MAX_TYPE_DEPTH: usize = 48;
 /// The most `prefixItems` a tuple takes: std implements the traits up to 12.
 const MAX_TUPLE: usize = 12;
 
-/// Keywords `runtime::check_schema` handles that typed checks cannot.
+/// Keywords that a typed check holds only in some shapes: in any other, generation stops and says so.
 pub(crate) const UNTYPED_KEYWORDS: [&str; 14] = [
     "contains",
     "minContains",
@@ -161,7 +152,6 @@ impl Constraints {
             closed_to: None,
             tuple: None,
             also: vec![],
-            schema: None,
         }
     }
 
@@ -196,10 +186,6 @@ impl Constraints {
             self.closed_to = other.closed_to;
         }
         self.also.extend(other.also);
-        self.schema = match (self.schema.take(), other.schema) {
-            (Some(a), Some(b)) => Some(serde_json::json!({ "allOf": [a, b] })),
-            (a, b) => a.or(b),
-        };
     }
 }
 
@@ -236,6 +222,22 @@ fn typed_conditional(s: &Value) -> bool {
 fn checked_items(s: &Value) -> bool {
     let typeless_items = s.get("type").is_none() && s.get("items").is_some_and(Value::is_object);
     s.get("prefixItems").is_some() || s.get("items") == Some(&Value::Bool(false)) || typeless_items
+}
+
+/// Returns why no generated check holds `s`: its keywords that no type holds, and the shapes that none does. Empty
+/// when every keyword is typed. `shapes` says whether a `$dynamicRef` varies and whether keywords beside an implied
+/// shape are of no one kind ([`mixed`]).
+fn untyped(s: &Value, scoped: bool, shapes: [bool; 2], conditional_key: &dyn Fn(&str) -> bool) -> Vec<&'static str> {
+    let reasons = [
+        ("keywords without a `type` of their own", typeless_assertions(s) && !scoped),
+        ("a `$dynamicRef` whose anchor another resource that reaches it declares", shapes[0]),
+        ("`enum` or `const` beside an implied shape", shapes[1]),
+    ];
+    (s.as_object().into_iter())
+        .flat_map(|o| UNTYPED_KEYWORDS.iter().filter(|k| o.contains_key(**k) && !conditional_key(k)))
+        .copied()
+        .chain(reasons.iter().filter(|(_, on)| *on).map(|(why, _)| *why))
+        .collect()
 }
 
 /// Whether the schema `o` takes an object: its `type` names `object`.
@@ -275,12 +277,7 @@ fn typed_property_names(s: &Value) -> Option<Box<Constraints>> {
     // Only an object has names to check: a schema without `type: object` may take any value, which no map holds.
     s.as_object().filter(|o| is_object(o))?;
     let names = s.get("propertyNames")?.as_object()?;
-    let text = names.iter().all(|(k, v)| match k.as_str() {
-        "pattern" | "minLength" | "maxLength" => true,
-        "type" => v == "string",
-        _ => false,
-    });
-    text.then(|| Box::new(Constraints::own(&Value::Object(names.clone()))))
+    json::text_only(names).then(|| Box::new(Constraints::own(&Value::Object(names.clone()))))
 }
 
 /// `dependentRequired`: each name that triggers it, with the names that it requires then.
@@ -561,7 +558,9 @@ const KIND_SCOPED: [&str; 17] = [
 /// apply each keyword to values of its kind, with no schema checked whole.
 fn kind_scoped(s: &Value) -> bool {
     s.as_object().is_some_and(|o| {
-        ASSERTIONS.iter().filter(|k| o.contains_key(**k)).all(|k| KIND_SCOPED.contains(k))
+        // A tuple and `additionalProperties` are checked on the JSON array or object (`tuple`, `closed_to`).
+        let on_json = |k: &str| matches!(k, "items" | "prefixItems" | "additionalProperties");
+        ASSERTIONS.iter().filter(|k| o.contains_key(**k)).all(|k| KIND_SCOPED.contains(k) || on_json(k))
             && json::object(o, "properties").is_none_or(serde_json::Map::is_empty)
     })
 }
@@ -695,23 +694,19 @@ impl Evaluation for EvaluatedItems {
     }
 }
 
-/// Returns the pointer of `key` under the schema at `at`.
-fn child_ptr(at: &str, key: &str) -> String {
-    format!("{at}/{}", escape_token(key))
-}
-
-/// Collects each `$dynamicRef` of `s` and its subschemas (not data such as `enum`) into `out`.
-fn dynamic_refs<'s>(s: &'s Value, out: &mut Vec<&'s str>) {
+/// Collects each reference under one of `keys` (`$ref`, `$dynamicRef`) of `s` and its subschemas (not data such as
+/// `enum`) into `out`.
+fn references<'s>(s: &'s Value, keys: &[&str], out: &mut Vec<&'s str>) {
     match s {
         Value::Object(o) => {
-            out.extend(o.get("$dynamicRef").and_then(Value::as_str));
+            out.extend(keys.iter().filter_map(|k| o.get(*k).and_then(Value::as_str)));
             for (k, v) in o {
                 if !matches!(k.as_str(), "enum" | "const" | "default" | "examples" | "example") {
-                    dynamic_refs(v, out);
+                    references(v, keys, out);
                 }
             }
         }
-        Value::Array(a) => a.iter().for_each(|x| dynamic_refs(x, out)),
+        Value::Array(a) => a.iter().for_each(|x| references(x, keys, out)),
         Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_) => {}
     }
 }
@@ -825,7 +820,7 @@ pub(crate) struct Builder<'a> {
     pub doc: &'a Doc,
     /// Where problems are reported.
     pub diags: &'a mut Diagnostics,
-    /// Schema resources and their dynamic anchors: `$dynamicRef` in run-time checks.
+    /// The dynamic anchors of the document: a `$dynamicRef` whose anchor several resources declare is not typed.
     dynamic: crate::schema_ids::Dynamic,
     /// Named types built so far.
     pub defs: Vec<TypeDef>,
@@ -850,13 +845,6 @@ pub(crate) struct Builder<'a> {
     pub from_v20: bool,
     /// The `$ref` targets whose keywords are being read: one met again is a cycle, whose keywords its own type holds.
     reading: RefCell<Vec<String>>,
-    /// The definitions that schemas checked whole reach by pointer, inlined once for the whole document
-    /// ([`Builder::inlined`]). A schema that many others reach is then inlined once, not once per schema.
-    shared: RefCell<BTreeMap<String, Value>>,
-    /// [`Builder::shared`] as a request sees each: what the request view of a schema that refers to one reads.
-    viewed: RefCell<BTreeMap<String, Value>>,
-    /// [`Builder::shared`] in the request view that run-time checks use: `TypeSpace::shared`.
-    checked: RefCell<BTreeMap<String, Value>>,
     /// The schemas that typed checks decode the value as (`not`, `dependentSchemas`), by index, with the pointer of
     /// each when it has one. `finish` builds a type for each.
     subschemas: RefCell<Vec<(Value, Option<String>)>>,
@@ -864,9 +852,8 @@ pub(crate) struct Builder<'a> {
     subschema_index: RefCell<BTreeMap<(Option<String>, String), usize>>,
     /// The JSON kind of each type once it is final ([`Kinds`]).
     kinds: RefCell<Vec<Option<JsonKind>>>,
-    /// Where a schema was cut short at `MAX_SCHEMA_DEPTH`, by pointer: what is deeper is not checked. Reported once
-    /// each by `finish`.
-    cut_short: RefCell<BTreeMap<String, String>>,
+    /// Schemas that no generated check holds, by pointer, with what makes them so. `finish` reports each as an error.
+    unchecked: RefCell<BTreeMap<String, String>>,
 }
 
 /// Returns `ty` with its aliases in `defs` followed at most 16 deep. An alias chain can loop.
@@ -899,25 +886,11 @@ impl<'a> Builder<'a> {
             crates: vec![],
             from_v20: false,
             reading: RefCell::new(vec![]),
-            shared: RefCell::default(),
-            viewed: RefCell::default(),
-            checked: RefCell::default(),
             kinds: RefCell::default(),
             subschemas: RefCell::default(),
             subschema_index: RefCell::default(),
-            cut_short: RefCell::new(BTreeMap::new()),
+            unchecked: RefCell::default(),
         }
-    }
-
-    /// Records that the schema at `at`, reached past `MAX_SCHEMA_DEPTH` nested schemas of a schema checked whole, is
-    /// not checked there.
-    fn cut_short(&self, at: &str) {
-        self.cut_short.borrow_mut().entry(at.to_owned()).or_insert_with(|| {
-            format!(
-                "reached past {MAX_SCHEMA_DEPTH} nested schemas of a schema checked whole: a value there is not checked \
-                 against it"
-            )
-        });
     }
 
     /// Registers and convert every `components.schemas` entry and keep their names.
@@ -1123,11 +1096,16 @@ impl<'a> Builder<'a> {
             Value::Object(o) => o,
             Value::Null | Value::Number(_) | Value::String(_) | Value::Array(_) => return None,
         };
-        if o.contains_key("dependentSchemas") || o.contains_key("$dynamicRef") {
+        if o.contains_key("$dynamicRef") {
             return None;
         }
         let index = |b: &Value| if queue { self.queue_subschema(b, None) } else { 0 };
         let mut ev = E::own(o, depth, &index);
+        // A dependent schema evaluates when its name is present: when the value decodes as `{required: [name]}`.
+        for (name, d) in o.get("dependentSchemas").and_then(Value::as_object).into_iter().flatten() {
+            let branch = self.evaluation(d, depth + 1, queue)?;
+            ev.branches().push((index(&serde_json::json!({"required": [name]})), true, branch));
+        }
         if let Some(r) = o.get("$ref").and_then(Value::as_str) {
             let p = self.doc.local_pointer(r)?;
             let target = pointer(&self.doc.root, &p)?;
@@ -1165,16 +1143,31 @@ impl<'a> Builder<'a> {
     /// ([`Builder::dynamic_ref_varies`]).
     fn dynamic_refs_vary(&self, s: &Value) -> bool {
         let mut refs = vec![];
-        dynamic_refs(s, &mut refs);
+        references(s, &["$dynamicRef"], &mut refs);
         refs.iter().any(|r| self.dynamic_ref_varies(r))
     }
 
     /// Does `$dynamicRef` `r` resolve to a schema that depends on where evaluation came from? Only when its target
-    /// bookends it ([`Builder::bookend`]) and more than one resource of the document declares that `$dynamicAnchor`:
-    /// the outermost of them in scope wins. With one, the reference always lands on it, as its type does.
+    /// bookends it ([`Builder::bookend`]) and another resource that declares that `$dynamicAnchor` reaches the resource
+    /// of the target: the outermost of them in scope wins. A binding site is specialized into a copy of its own, which
+    /// does not reach the generic. Otherwise the reference always lands on its target, as its type does.
     fn dynamic_ref_varies(&self, r: &str) -> bool {
-        let (_, Some(name)) = self.bookend(r) else { return false };
-        self.dynamic.anchors.keys().filter(|(_, n)| *n == name).count() > 1
+        let (Some(target), Some(name)) = self.bookend(r) else { return false };
+        let resource = self.dynamic.resource_of(&target);
+        (self.dynamic.anchors.keys())
+            .filter(|(res, n)| *n == name && *res != resource)
+            .any(|(res, _)| self.reaches(res, &resource, &mut BTreeSet::new()))
+    }
+
+    /// Does the schema at `from` refer, through any chain of references, into the schema at `to`?
+    fn reaches(&self, from: &str, to: &str, seen: &mut BTreeSet<String>) -> bool {
+        let mut refs = vec![];
+        if let Some(s) = pointer(&self.doc.root, from) {
+            references(s, &["$ref", "$dynamicRef"], &mut refs);
+        }
+        refs.into_iter().filter_map(|r| self.doc.local_pointer(r)).any(|p| {
+            p == to || p.starts_with(&format!("{to}/")) || (seen.insert(p.clone()) && self.reaches(&p, to, seen))
+        })
     }
 
     /// Returns the index of `schema`, at `at`, in [`Builder::subschemas`], queued once.
@@ -1281,15 +1274,8 @@ impl<'a> Builder<'a> {
         if scoped || s.as_object().is_some_and(|o| inferred_kind(o).is_some()) {
             scoped_keywords(s, &mut c);
         }
-        if (typeless_assertions(s) && !scoped)
-            || dynamic
-            || mixed
-            || matches!(s, Value::Object(o) if UNTYPED_KEYWORDS.iter().any(|k| o.contains_key(*k) && !conditional_key(k)))
-        {
-            // The resource of the schema starts the dynamic scope that a `$dynamicRef` resolves in.
-            let scope: Vec<String> = at.map_or_else(Vec::new, |p| vec![self.dynamic.resource_of(p)]);
-            c.schema = Some(self.inlined(s, at, scope));
-        } else {
+        let untyped = untyped(s, scoped, [dynamic, mixed], &conditional_key);
+        if untyped.is_empty() {
             self.queue_not_and_if(s, at, typed_conditional, &mut c);
             if let Some(sub) = s.get("contains").filter(|_| typed_contains) {
                 let n = self.queue_subschema(sub, at.map(|p| join(p, "contains")));
@@ -1312,6 +1298,9 @@ impl<'a> Builder<'a> {
                 let at = at.map(|p| join(&join(p, "dependentSchemas"), name));
                 c.dependent_schemas.push((name.clone(), self.queue_subschema(sub, at)));
             }
+        } else {
+            // No generated check holds them: generation stops with the keywords that it cannot check.
+            self.unchecked.borrow_mut().entry(at.unwrap_or_default().to_owned()).or_insert_with(|| untyped.join(", "));
         }
         for m in s.get("allOf").and_then(Value::as_array).into_iter().flatten().filter(|m| !conditional_member(m)) {
             c.merge(self.constraints_at(m, depth + 1, None));
@@ -1370,7 +1359,21 @@ impl<'a> Builder<'a> {
         // The schema's own keywords beside `allOf` merge in too.
         let mut own = o.clone();
         own.remove("allOf");
-        for m in std::iter::once(Value::Object(own)).chain(members.iter().cloned()) {
+        let all: Vec<Value> = std::iter::once(Value::Object(own)).chain(members.iter().cloned()).collect();
+        let has = |m: &Value, ks: &[&str]| ks.iter().any(|k| m.get(*k).is_some());
+        // `additionalProperties` sees only the names of its own schema, and `items` only its own `prefixItems`: a
+        // merged type would extend them to those of the others.
+        let lone = |ks: &[&str], others: &[&str]| {
+            all.iter()
+                .enumerate()
+                .any(|(i, m)| has(m, ks) && all.iter().enumerate().any(|(j, n)| i != j && has(n, others)))
+        };
+        if lone(&["additionalProperties"], &["properties", "patternProperties", "additionalProperties"])
+            || lone(&["items", "prefixItems"], &["items", "prefixItems"])
+        {
+            return true;
+        }
+        for m in &all {
             let Some(mo) = m.as_object() else { continue };
             for k in mo.keys() {
                 // A member's untyped keywords (`if`, `not`) are checked whole with that member already. A property
@@ -1838,191 +1841,6 @@ impl<'a> Builder<'a> {
         ty
     }
 
-    /// Returns `s` with its references inlined for run-time checks, from the dynamic scope `scope`.
-    ///
-    /// A reference points into `$defs` at the root, which holds each target once. So the fragment grows with the
-    /// schemas it reaches and not with the paths to them, a recursive schema stays its own size, and the run-time check
-    /// follows it as deep as the value goes. A `$dynamicRef` resolves by where evaluation came from: with one in reach,
-    /// references are inlined to `MAX_SCHEMA_DEPTH` as before.
-    fn inlined(&self, s: &Value, at: Option<&str>, scope: Vec<String>) -> Value {
-        let mut walk = Walk { scope: scope.clone(), cut: true, ..Walk::default() };
-        let mut root = self.inline_scoped(s, 0, at, &mut walk);
-        if walk.dynamic {
-            let mut root = self.inline_scoped(s, 0, at, &mut Walk { scope, ..Walk::default() });
-            request_view(&mut root);
-            return root;
-        }
-        let mut added = vec![];
-        let mut i = 0;
-        while let Some(p) = walk.cuts.get(i).cloned() {
-            i += 1;
-            // Inlined for an earlier schema already, with every definition that it reaches.
-            if self.shared.borrow().contains_key(&p) {
-                continue;
-            }
-            // Taken first: a cycle back to `p` finds it.
-            self.shared.borrow_mut().insert(p.clone(), Value::Null);
-            let target = pointer(&self.doc.root, &p).cloned().unwrap_or(Value::Bool(true));
-            walk.scope = vec![self.dynamic.resource_of(&p)];
-            let def = self.inline_scoped(&target, 1, Some(&p), &mut walk);
-            self.shared.borrow_mut().insert(p.clone(), def);
-            added.push(p);
-        }
-        // Each definition as a request sees it first: a subschema that refers to one then sees what is left to strip.
-        let raw = self.shared.borrow();
-        let mut viewed = self.viewed.borrow_mut();
-        for p in &added {
-            let mut d = raw.get(p).cloned().unwrap_or_default();
-            view(&mut d, &raw);
-            viewed.insert(p.clone(), d);
-        }
-        let mut checked = self.checked.borrow_mut();
-        for p in &added {
-            let mut d = raw.get(p).cloned().unwrap_or_default();
-            view(&mut d, &viewed);
-            checked.insert(p.clone(), d);
-        }
-        view(&mut root, &viewed);
-        root
-    }
-
-    /// Returns `s` with every `$ref` replaced by its target for runtime checks. `depth` counts the references followed:
-    /// past 8 a reference accepts anything, so a cycle ends. So does an unresolvable one. Nesting without references is
-    /// copied whole: a document is finite, and a value deep inside it (`type: [string, null]`) stays what it says. `s`
-    /// with every `$ref` replaced by its target for run-time checks, in a dynamic scope: `scope` is the schema
-    /// resources that evaluation entered on its way here, outermost first, and `at` the pointer of `s` when it is
-    /// known. A bookended `$dynamicRef` resolves to the outermost resource in scope with its `$dynamicAnchor` (2020-12
-    /// core section 8.2.3.2). Others act as `$ref`.
-    fn inline_scoped(&self, s: &Value, depth: usize, at: Option<&str>, walk: &mut Walk) -> Value {
-        let child = |key: &str| at.map(|p| child_ptr(p, key));
-        match s {
-            Value::Object(o) if o.contains_key("$ref") || o.contains_key("$dynamicRef") => {
-                let reference = o.get("$ref").or_else(|| o.get("$dynamicRef"));
-                let statically = reference.and_then(Value::as_str).and_then(|r| self.doc.local_pointer(r));
-                // A bookended `$dynamicRef`: the outermost resource in scope with its anchor, else where it points.
-                let dynamically = o
-                    .get("$dynamicRef")
-                    .filter(|_| o.get("$ref").is_none())
-                    .and_then(Value::as_str)
-                    .and_then(|r| self.bookend(r).1)
-                    .and_then(|name| {
-                        walk.scope.iter().find_map(|r| self.dynamic.anchors.get(&(r.clone(), name.clone())))
-                    })
-                    .cloned();
-                walk.dynamic |= o.contains_key("$dynamicRef");
-                let target_ptr = dynamically.or(statically);
-                let mut target = match target_ptr.as_deref() {
-                    // Each target goes into `$defs` once, at any depth. Copying it at each reference copies a shared
-                    // target once per path to it: a large description reaches hundreds of schemas over millions of
-                    // paths. A cycle ends there
-                    // too, and is checked as deep as the value goes.
-                    Some(p) if walk.cut => {
-                        if !walk.cuts.iter().any(|c| c == p) {
-                            walk.cuts.push(p.to_owned());
-                        }
-                        serde_json::json!({ "$ref": format!("#/$defs/{}", escape_token(p)) })
-                    }
-                    Some(p) if depth >= MAX_SCHEMA_DEPTH => {
-                        self.cut_short(p);
-                        Value::Bool(true)
-                    }
-                    Some(p) => match pointer(&self.doc.root, p) {
-                        Some(t) => {
-                            // Following a reference enters the resource of its target, and leaves it after.
-                            let resource = self.dynamic.resource_of(p);
-                            let entered = walk.scope.last() != Some(&resource);
-                            if entered {
-                                walk.scope.push(resource);
-                            }
-                            let inlined = self.inline_scoped(t, depth + 1, Some(p), walk);
-                            if entered {
-                                walk.scope.pop();
-                            }
-                            inlined
-                        }
-                        None => Value::Bool(true),
-                    },
-                    None => Value::Bool(true),
-                };
-                // Siblings of `$ref` (3.1) apply too. The target joins them as an `allOf` member of the same object:
-                // what it evaluates stays visible to their `unevaluated*` (2020-12 core 11.2).
-                let mut rest = o.clone();
-                for k in ["$ref", "$dynamicRef"] {
-                    rest.remove(k);
-                }
-                if !rest.is_empty()
-                    && let Value::Object(mut rest) = self.inline_object(&rest, depth, at, walk)
-                {
-                    match rest.get_mut("allOf") {
-                        Some(Value::Array(members)) => members.push(target),
-                        _ => {
-                            rest.insert("allOf".to_owned(), Value::Array(vec![target]));
-                        }
-                    }
-                    target = Value::Object(rest);
-                }
-                target
-            }
-            Value::Object(o) => self.inline_object(o, depth, at, walk),
-            Value::Array(a) => Value::Array(
-                a.iter()
-                    .enumerate()
-                    .map(|(i, v)| self.inline_scoped(v, depth, child(&i.to_string()).as_deref(), walk))
-                    .collect(),
-            ),
-            Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_) => s.clone(),
-        }
-    }
-
-    /// Returns the keywords of a schema object inlined. A schema with an `$id` is a resource: evaluation enters it.
-    fn inline_object(
-        &self,
-        o: &serde_json::Map<String, Value>,
-        depth: usize,
-        at: Option<&str>,
-        walk: &mut Walk,
-    ) -> Value {
-        let entered = at.filter(|_| o.contains_key("$id")).map(String::from).filter(|p| walk.scope.last() != Some(p));
-        if let Some(p) = &entered {
-            walk.scope.push(p.clone());
-        }
-        let out = Value::Object(
-            o.iter()
-                // Annotations and examples do not validate anything.
-                .filter(|(k, _)| {
-                    !matches!(
-                        k.as_str(),
-                        "description" | "title" | "example" | "examples" | "xml" | "externalDocs" | "discriminator"
-                    )
-                })
-                .map(|(k, v)| {
-                    let v = match (k.as_str(), v) {
-                        // Data: `{"$ref": ...}` in an `enum` is a value to compare and not a reference.
-                        ("enum" | "const" | "default", _) => v.clone(),
-                        // Maps of schemas: a property may be called `$ref`.
-                        (
-                            "properties" | "patternProperties" | "$defs" | "definitions" | "dependentSchemas",
-                            Value::Object(m),
-                        ) => Value::Object(
-                            m.iter()
-                                .map(|(n, x)| {
-                                    let p = at.map(|p| child_ptr(&child_ptr(p, k), n));
-                                    (n.clone(), self.inline_scoped(x, depth, p.as_deref(), walk))
-                                })
-                                .collect(),
-                        ),
-                        _ => self.inline_scoped(v, depth, at.map(|p| child_ptr(p, k)).as_deref(), walk),
-                    };
-                    (k.clone(), v)
-                })
-                .collect(),
-        );
-        if entered.is_some() {
-            walk.scope.pop();
-        }
-        out
-    }
-
     /// Returns where `$dynamicRef` `r` points statically, and its anchor name when the target bookends it: the target
     /// declares a `$dynamicAnchor` that `r` names (`#node`), or `r` is the pointer the `$id` pass wrote for a bookended
     /// reference.
@@ -2110,11 +1928,10 @@ impl<'a> Builder<'a> {
         };
         // `additionalProperties: false` (JSON Schema 2020-12 section 10.3.2.3). An
         // undeclared property fails validation. `patternProperties` and
-        // `unevaluatedProperties` admit more names. `runtime::check_schema` judges
-        // those. A readOnly / writeOnly property is declared even where its
-        // split type leaves it out. So such structs stay open too.
-        // `patternProperties`, `unevaluatedProperties` and `propertyNames` judge the names a struct does not declare. The run-time
-        // check sees the value as it re-serializes, so those names must survive decoding.
+        // `unevaluatedProperties` admit more names, which their checks judge. A readOnly / writeOnly property is
+        // declared even where its split type leaves it out. So such structs stay open too.
+        // `patternProperties`, `unevaluatedProperties` and `propertyNames` judge the names a struct does not declare.
+        // Their checks see the value as it re-serializes, so those names must survive decoding.
         // A dependent keyword that reads a name the struct does not declare looks for that name. With
         // `additionalProperties: false` that name is refused anyway: the struct stays closed.
         let undeclared_dependent = o.get("additionalProperties") != Some(&Value::Bool(false))
@@ -2573,8 +2390,8 @@ impl<'a> Builder<'a> {
     /// with `Box`.
     pub(crate) fn finish(mut self) -> TypeSpace {
         let subschemas = self.build_subschemas();
-        for (at, message) in std::mem::take(self.cut_short.get_mut()) {
-            self.diags.warning(at, message);
+        for (at, why) in std::mem::take(self.unchecked.get_mut()) {
+            self.diags.error(at, format!("generated code cannot check this schema: {why}"));
         }
         for d in &mut self.defs {
             if matches!(d.kind, Kind::Pending) {
@@ -2595,7 +2412,6 @@ impl<'a> Builder<'a> {
             }
         }
         let mut space = TypeSpace::new(self.defs);
-        space.shared = self.checked.into_inner();
         space.subschemas = subschemas;
         break_cycles(&mut space);
         space
@@ -3033,15 +2849,6 @@ mod tests {
     use super::*;
     use serde_json::json;
 
-    /// Returns `schema` with the definitions that it shares as its own `$defs`: what the generated check reads.
-    fn whole(b: &Builder<'_>, mut schema: Value) -> Value {
-        let defs: serde_json::Map<String, Value> = b.checked.borrow().clone().into_iter().collect();
-        if let (Value::Object(o), false) = (&mut schema, defs.is_empty()) {
-            o.insert("$defs".to_owned(), Value::Object(defs));
-        }
-        schema
-    }
-
     fn build(schemas: &Value) -> TypeSpace {
         let doc = Doc::new(json!({"openapi": "3.2.0", "components": {"schemas": schemas}}));
         let mut d = Diagnostics::default();
@@ -3067,90 +2874,6 @@ mod tests {
         );
         let Kind::Struct(mixed) = &by_name(&s, "Mixed").kind else { panic!("a struct") };
         assert_eq!(mixed.fields[0].ty, Ty::Any, "{:?}", mixed.fields[0].ty);
-    }
-
-    /// A schema that refers back to itself is checked whole with the cycle in `$defs`. Its reference must reach the
-    /// definition: a reader unescapes the token of `#/$defs/~1components~1schemas~1Rec` to the key.
-    #[test]
-    fn a_cycle_in_a_checked_schema_resolves_to_its_definition() {
-        let rec = json!({
-            "type": "array",
-            "prefixItems": [{"type": "string"}, {"oneOf": [{"$ref": "#/components/schemas/Rec"}, {"type": "null"}]}],
-            "items": false,
-            // Checked whole: a tuple alone is checked item by item.
-            "dependencies": {},
-            "minItems": 2,
-        });
-        let doc = Doc::new(json!({"openapi": "3.2.0", "components": {"schemas": {"Rec": rec}}}));
-        let mut d = Diagnostics::default();
-        let b = Builder::new(&doc, &mut d, Reserved::default());
-        let schema = whole(&b, b.constraints_at_ptr(&rec, "/components/schemas/Rec").schema.expect("checked whole"));
-        let defs = schema.get("$defs").and_then(Value::as_object).expect("the cycle is in `$defs`");
-        assert_eq!(defs.keys().collect::<Vec<_>>(), ["/components/schemas/Rec"]);
-        let mut out = vec![];
-        runtime::__private::check_schema(&mut out, &runtime::InstancePath::Root, &json!(["a", null]), &schema);
-        assert!(out.is_empty(), "`null` matches only the second branch: {out:?}");
-        runtime::__private::check_schema(&mut out, &runtime::InstancePath::Root, &json!(["a", ["b", 1]]), &schema);
-        assert!(!out.is_empty(), "the nested pair needs a string or `null` second");
-    }
-
-    /// A document whose `Top` tuple reaches the recursive tuple `Rec` through a chain of `n` references.
-    fn chained(n: usize) -> Value {
-        let mut schemas = serde_json::Map::new();
-        let link = |i: usize| json!({"$ref": format!("#/components/schemas/{}", if i == n { "Rec".to_owned() } else { format!("L{i}") })});
-        schemas.insert(
-            "Top".into(),
-            json!({"type": "array", "prefixItems": [link(0)], "items": false,
-            // Checked whole: a tuple alone is checked item by item.
-            "dependencies": {}, "minItems": 1}),
-        );
-        for i in 0..n {
-            schemas.insert(format!("L{i}"), link(i + 1));
-        }
-        schemas.insert(
-            "Rec".into(),
-            json!({
-                "type": "array",
-                "prefixItems": [{"type": "string"}, {"oneOf": [{"$ref": "#/components/schemas/Rec"}, {"type": "null"}]}],
-                "items": false,
-            // Checked whole: a tuple alone is checked item by item.
-            "dependencies": {},
-                "minItems": 2,
-            }),
-        );
-        json!({"openapi": "3.2.0", "components": {"schemas": schemas}})
-    }
-
-    /// A cycle is cut into `$defs` however deep the walk met it: it is checked as deep as the value goes. So is a chain
-    /// of plain references longer than `MAX_SCHEMA_DEPTH`. With a `$dynamicRef` in reach, the walk copies each
-    /// reference: past `MAX_SCHEMA_DEPTH` it is cut short, and generation says so.
-    #[test]
-    fn a_schema_checked_whole_is_checked_through_its_cycles_or_says_where_it_stops() {
-        let deep_bad = json!([["a", ["b", ["c", 1]]]]);
-        for n in 0..MAX_SCHEMA_DEPTH + 3 {
-            let doc = Doc::new(chained(n));
-            let mut d = Diagnostics::default();
-            let b = Builder::new(&doc, &mut d, Reserved::default());
-            let top = pointer(&doc.root, "/components/schemas/Top").cloned().expect("Top");
-            let schema = whole(
-                &b,
-                b.constraints_at_ptr(&top, "/components/schemas/Top").schema.expect("a tuple is checked whole"),
-            );
-            let mut out = vec![];
-            runtime::__private::check_schema(&mut out, &runtime::InstancePath::Root, &deep_bad, &schema);
-            assert!(!out.is_empty(), "{n} references: the `1` three levels down is neither a string nor `null`");
-            b.finish();
-            assert!(d.is_empty(), "{n} references: nothing is cut short: {d:?}");
-        }
-        let mut chain = chained(MAX_SCHEMA_DEPTH + 2);
-        chain["components"]["schemas"]["Top"]["prefixItems"][0] = json!({"$dynamicRef": "#/components/schemas/L0"});
-        let doc = Doc::new(chain);
-        let mut d = Diagnostics::default();
-        let b = Builder::new(&doc, &mut d, Reserved::default());
-        let top = pointer(&doc.root, "/components/schemas/Top").cloned().expect("Top");
-        drop(b.constraints_at_ptr(&top, "/components/schemas/Top"));
-        b.finish();
-        assert!(d.iter().any(|w| w.message.contains("a value there is not checked against it")), "{d:?}");
     }
 
     #[test]
@@ -3204,64 +2927,6 @@ mod tests {
         let s = build(&Value::Object(schemas));
         let Kind::Union(top) = &by_name(&s, "Top").kind else { panic!("{:?}", by_name(&s, "Top").kind) };
         assert_eq!(top.mode, UnionMode::ByKind);
-    }
-
-    #[test]
-    fn a_schema_reached_by_many_paths_is_inlined_once() {
-        // Each layer refers twice to the next: 16 paths reach `L4`.
-        let mut schemas = serde_json::Map::new();
-        for i in 0..4 {
-            let next = json!({"$ref": format!("#/components/schemas/L{}", i + 1)});
-            schemas.insert(format!("L{i}"), json!({"type": "object", "properties": {"a": next, "b": next}}));
-        }
-        schemas.insert("L4".to_owned(), json!({"type": "string", "minLength": 7}));
-        let doc = Doc::new(json!({"openapi": "3.2.0", "components": {"schemas": schemas}}));
-        let mut d = Diagnostics::default();
-        let b = Builder::new(&doc, &mut d, Reserved::default());
-        // `dependencies` beside the `$ref` has no Rust type: the schema is checked whole at run time.
-        let c = b.constraints(&json!({"$ref": "#/components/schemas/L0", "dependencies": {}}));
-        let schema = whole(&b, c.schema.expect("checked at run time"));
-        let text = schema.to_string();
-        assert_eq!(text.matches(r#""minLength":7"#).count(), 1, "{text}");
-        // The references still reach it: a short string at the bottom fails.
-        let value = |leaf: &str| json!({"b": {"a": {"b": {"a": leaf}}}});
-        let mut out = vec![];
-        runtime::__private::check_schema(&mut out, &runtime::InstancePath::Root, &value("1234567"), &schema);
-        assert!(out.is_empty(), "{out:?}");
-        runtime::__private::check_schema(&mut out, &runtime::InstancePath::Root, &value("123"), &schema);
-        assert!(!out.is_empty(), "`L4` needs 7 characters");
-    }
-
-    /// A request leaves out `readOnly` properties: no `required` asks for them, also when the schema that declares them,
-    /// or the one that requires them, is a `$ref` into the `$defs` of a schema checked whole.
-    #[test]
-    fn a_request_checked_whole_does_not_need_a_read_only_property_behind_a_ref() {
-        let doc = Doc::new(json!({"openapi": "3.2.0", "components": {"schemas": {
-            "Base": {"type": "object", "properties": {"id": {"type": "string", "readOnly": true}, "name": {"type": "string"}}},
-            "Named": {"type": "object", "required": ["id", "name"]},
-            "Other": {"type": "object", "required": ["kind"]},
-        }}}));
-        let mut d = Diagnostics::default();
-        let b = Builder::new(&doc, &mut d, Reserved::default());
-        let check = |schema: &Value, value: &Value| {
-            let schema = whole(&b, b.constraints(schema).schema.expect("checked whole"));
-            let mut out = vec![];
-            runtime::__private::check_schema(&mut out, &runtime::InstancePath::Root, value, &schema);
-            out.into_iter().map(|v| format!("{} {}", v.path, v.message)).collect::<Vec<_>>()
-        };
-        // The properties are in the referenced schema, the `required` beside the reference.
-        let beside = json!({"$ref": "#/components/schemas/Base", "required": ["id"], "dependencies": {}});
-        assert_eq!(check(&beside, &json!({"name": "x"})), Vec::<String>::new());
-        // The properties are beside a union, the `required` in a referenced branch. `name` is still required.
-        let branch = json!({
-            "type": "object",
-            "properties": {"id": {"type": "string", "readOnly": true}, "name": {"type": "string"}},
-            "anyOf": [{"$ref": "#/components/schemas/Named"}, {"$ref": "#/components/schemas/Other"}],
-            // Asserts nothing, and keeps the schema checked whole.
-            "dependencies": {},
-        });
-        assert_eq!(check(&branch, &json!({"name": "x"})), Vec::<String>::new());
-        assert_ne!(check(&branch, &json!({})), Vec::<String>::new());
     }
 
     #[test]

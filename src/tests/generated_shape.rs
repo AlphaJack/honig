@@ -1319,3 +1319,44 @@ fn an_undeclared_dependent_required_name_is_checked() {
     .to_owned();
     assert!(types.contains("`cvc` is required when `card` is present") && !types.contains("check_schema"), "{types}");
 }
+
+/// `items` and `additionalProperties` see only their own schema's `prefixItems` and `properties`, not those of an
+/// `allOf` member. Without `type` both are checked on the JSON value, and each member is decoded as its own type.
+#[test]
+fn keywords_beside_an_all_of_see_only_their_own_schema() {
+    let doc = common::spec(
+        "3.2.0",
+        &json!({}),
+        &json!({"schemas": {
+            "List": {"allOf": [{"prefixItems": [{"minimum": 3}]}], "items": {"minimum": 5}},
+            "Bag": {"allOf": [{"properties": {"foo": {}}}], "additionalProperties": {"type": "boolean"}},
+            "Holder": {"type": "object", "properties": {
+                "list": {"$ref": "#/components/schemas/List"},
+                "bag": {"$ref": "#/components/schemas/Bag"},
+            }},
+        }}),
+    );
+    let types =
+        common::file(&common::generate("all-of-own", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
+    assert!(types.contains(".skip(0)") && types.contains("InstancePath::Key"), "{types}");
+}
+
+/// `unevaluatedProperties` sees the names that a `dependentSchemas` schema evaluates when its name is present.
+#[test]
+fn unevaluated_properties_see_dependent_schemas() {
+    let doc = common::spec(
+        "3.2.0",
+        &json!({}),
+        &json!({"schemas": {"Dep": {"type": "object", "properties": {"foo": {"type": "string"}},
+            "dependentSchemas": {"foo": {"properties": {"bar": {"const": "bar"}}, "required": ["bar"]}},
+            "unevaluatedProperties": false},
+            "Holder": {"type": "object", "properties": {"dep": {"$ref": "#/components/schemas/Dep"}}}}}),
+    );
+    let types =
+        common::file(&common::generate("dependent-unevaluated", &doc, &crate::emit::Options::default()), "types.rs")
+            .to_owned();
+    assert!(
+        types.contains("is present: ") && types.contains("(matched_0 && (matches!(name.as_str(), \"bar\")))"),
+        "{types}"
+    );
+}

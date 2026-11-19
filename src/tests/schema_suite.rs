@@ -160,10 +160,15 @@ fn generable(i: usize, case: &Case) -> Result<(), String> {
     }
     let doc = super::common::spec("3.2.0", &json!({}), &json!({"schemas": {format!("Case{i}"): component(i, case)}}));
     let spec = super::common::write(&format!("suite-{i}"), &doc, &[]);
-    crate::generate::generate(&spec, &crate::emit::Options::default()).map(drop).map_err(|d| {
-        let first = d.0.iter().find(|x| x.level == crate::diag::Level::Error).map(|x| x.message.clone());
-        format!("does not generate: {}", one_line(&first.unwrap_or_default()))
-    })
+    // An error stops generation, also when files come out anyway.
+    let diagnostics = match crate::generate::generate(&spec, &crate::emit::Options::default()) {
+        Ok(generated) => generated.diagnostics,
+        Err(d) => d,
+    };
+    match diagnostics.0.iter().find(|x| x.level == crate::diag::Level::Error) {
+        Some(error) => Err(format!("does not generate: {}", one_line(&error.message))),
+        None => Ok(()),
+    }
 }
 
 /// Does `schema` hold a `$ref` to an absolute URI that no `$id` within it names? A relative one resolves against an

@@ -241,23 +241,7 @@ pub(crate) fn server_params(
     // `415` before decoding: JSON sent as `text/plain` is not JSON the description accepts.
     let media_check = op.body.as_ref().map(|b| {
         let media = b.contents.iter().map(|c| lit(&c.media));
-        // A body checked whole is checked as sent: decoding would drop what the run-time check must judge.
-        let raw = match (b.contents.as_slice(), &b.constraints.schema) {
-            // A type of yours (`x-rust-type`) keeps its own invariants: the body is not checked for it.
-            ([c], Some(schema)) if c.kind == MediaKind::Json && !space.is_external(&c.ty) => {
-                let json = json_tokens(schema);
-                // The definitions that it reaches by pointer are in `runtime.rs` once for the whole module.
-                let shared = if space.types.shared.is_empty() { quote!(None) } else { quote!(runtime::schema_defs()) };
-                quote! {
-                    if !#body_expr.is_empty() {
-                        static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                        runtime::check_raw_json_in(&#body_expr, SCHEMA.get_or_init(|| #json), #shared)?;
-                    }
-                }
-            }
-            _ => TokenStream::new(),
-        };
-        quote!(runtime::check_media(runtime::Message::content_type(req), &[#(#media),*])?; #raw)
+        quote!(runtime::check_media(runtime::Message::content_type(req), &[#(#media),*])?;)
     });
     // Which listed type each part went out as is the client's choice; the parts carry their own `Content-Type`.
     let part_types = crate::emit::rust::http::shared::part_types_init(op);

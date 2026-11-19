@@ -1,93 +1,11 @@
 //! Schema rewrites that the builder types instead of the schema as written. That is the request view without
 //! `readOnly` requirements and `if`/`then`/`else` on one property as the `oneOf` that it means.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 
 use serde_json::Value;
 
 use crate::json;
-
-/// Rewrites an inlined schema as a request sees it.
-///
-/// `readOnly` properties travel in responses only. So no `required` (at any
-/// depth) asks for them. That is neither the own `required` of the object nor that of a subschema
-/// that applies to the same object (`allOf`, `anyOf`, `oneOf`, `then`, `else`,
-/// `dependentSchemas`). A subschema may be a `$ref` into the `$defs` of the root, which holds each schema once for
-/// every place that refers to it: its properties count, and a `required` of its own to strip makes it a copy.
-pub(crate) fn request_view(schema: &mut Value) {
-    let raw: BTreeMap<String, Value> =
-        schema.get("$defs").and_then(Value::as_object).cloned().unwrap_or_default().into_iter().collect();
-    // Each definition as a request sees it first: a subschema that refers to one then sees what is left to strip.
-    let mut defs = raw.clone();
-    for d in defs.values_mut() {
-        view(d, &raw);
-    }
-    view(schema, &defs);
-}
-
-/// [`request_view`] where `#/$defs/<pointer>` references resolve in `defs`, as a request sees each of them already.
-pub(crate) fn view(schema: &mut Value, defs: &BTreeMap<String, Value>) {
-    // A subschema that is only a `$ref` into `defs`: the schema that it stands for.
-    let target = |s: &Value| -> Option<Value> {
-        let o = s.as_object().filter(|o| o.len() == 1)?;
-        let token = o.get("$ref")?.as_str()?.strip_prefix("#/$defs/")?;
-        defs.get(&json::unescape_token(token)).cloned()
-    };
-    match schema {
-        Value::Object(o) => {
-            let read_only = |o: &serde_json::Map<String, Value>| -> Vec<String> {
-                o.get("properties")
-                    .and_then(Value::as_object)
-                    .into_iter()
-                    .flatten()
-                    .filter(|(_, p)| p.get("readOnly") == Some(&Value::Bool(true)))
-                    .map(|(k, _)| k.clone())
-                    .collect()
-            };
-            // `required` may sit beside the properties or in an `allOf` member.
-            let mut skip = read_only(o);
-            for m in o.get("allOf").and_then(Value::as_array).into_iter().flatten() {
-                if let Value::Object(m) = target(m).as_ref().unwrap_or(m) {
-                    skip.extend(read_only(m));
-                }
-            }
-            if !skip.is_empty() {
-                let keep = |r: &Value| r.as_str().is_none_or(|r| !skip.iter().any(|s| s == r));
-                let strip = |s: &mut Value| {
-                    // The definition is shared: the subschema gets a copy without those requirements.
-                    if let Some(mut t) = target(s)
-                        && t.get("required").and_then(Value::as_array).is_some_and(|req| !req.iter().all(keep))
-                    {
-                        if let Some(Value::Array(req)) = t.get_mut("required") {
-                            req.retain(keep);
-                        }
-                        *s = t;
-                    }
-                    if let Some(Value::Array(req)) = s.get_mut("required") {
-                        req.retain(keep);
-                    }
-                };
-                if let Some(Value::Array(req)) = o.get_mut("required") {
-                    req.retain(keep);
-                }
-                for key in ["allOf", "anyOf", "oneOf"] {
-                    o.get_mut(key).and_then(Value::as_array_mut).into_iter().flatten().for_each(strip);
-                }
-                for key in ["then", "else"] {
-                    o.get_mut(key).into_iter().for_each(strip);
-                }
-                o.get_mut("dependentSchemas")
-                    .and_then(Value::as_object_mut)
-                    .into_iter()
-                    .flatten()
-                    .for_each(|(_, s)| strip(s));
-            }
-            o.values_mut().for_each(|v| view(v, defs));
-        }
-        Value::Array(a) => a.iter_mut().for_each(|v| view(v, defs)),
-        Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_) => {}
-    }
-}
 
 /// Returns the values that an `if` tests: `{properties: {P: {const: V}}}` or a string
 /// `enum` with an optional `required: [P]`. Returns (P, values).
