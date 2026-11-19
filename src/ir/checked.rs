@@ -109,6 +109,7 @@ fn split_own_checks(types: &mut TypeSpace, taken: &mut BTreeSet<String>) -> BTre
             not: own.not.clone(),
             dependent_schemas: own.dependent_schemas.clone(),
             conditions: own.conditions.clone(),
+            one_of: own.one_of.clone(),
             ..Constraints::default()
         };
         if def.rust_type.is_some() || constraints.is_empty() {

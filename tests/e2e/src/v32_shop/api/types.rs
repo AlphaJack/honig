@@ -408,22 +408,21 @@ impl TryFrom<ItemVariants> for Item {
         {
             let out = &mut violations;
             {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&value).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"oneOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Product\"},{\"$ref\":\"#/$defs/~1components~1schemas~1Variant\"}]}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Root,
-                    &value,
-                    schema,
-                    runtime::schema_defs(),
-                );
+                let json = runtime::to_value(&value).unwrap_or_default();
+                let hits = [
+                    serde_json::from_value::<Product>(json.clone()).is_ok(),
+                    serde_json::from_value::<Variant>(json.clone()).is_ok(),
+                ]
+                    .into_iter()
+                    .filter(|hit| *hit)
+                    .count();
+                if hits != 1 {
+                    runtime::violation(
+                        out,
+                        &runtime::InstancePath::Root,
+                        format!("matches {hits} of `oneOf`, not exactly one"),
+                    );
+                }
             }
         }
         runtime::first(violations)
@@ -4269,22 +4268,21 @@ impl TryFrom<ItemRequestVariants> for ItemRequest {
         {
             let out = &mut violations;
             {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&value).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"oneOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Product\"},{\"$ref\":\"#/$defs/~1components~1schemas~1Variant\"}]}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Root,
-                    &value,
-                    schema,
-                    runtime::schema_defs(),
-                );
+                let json = runtime::to_value(&value).unwrap_or_default();
+                let hits = [
+                    serde_json::from_value::<Product>(json.clone()).is_ok(),
+                    serde_json::from_value::<Variant>(json.clone()).is_ok(),
+                ]
+                    .into_iter()
+                    .filter(|hit| *hit)
+                    .count();
+                if hits != 1 {
+                    runtime::violation(
+                        out,
+                        &runtime::InstancePath::Root,
+                        format!("matches {hits} of `oneOf`, not exactly one"),
+                    );
+                }
             }
         }
         runtime::first(violations)

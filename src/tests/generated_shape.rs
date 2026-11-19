@@ -887,3 +887,17 @@ fn an_any_of_with_a_branch_of_any_value_is_typed() {
         common::file(&common::generate("any-branch", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
     assert!(!types.contains("check_schema"), "{types}");
 }
+
+/// A `oneOf` whose discriminator picks one branch while two share a type counts the branches that the value decodes
+/// as: no schema is checked whole.
+#[test]
+fn a_one_of_of_shared_types_counts_its_branches() {
+    let car = json!({"type": "object", "properties": {"kind": {"type": "string"}, "wheels": {"type": "integer"}}});
+    let van = json!({"type": "object", "properties": {"kind": {"type": "string"}, "doors": {"type": "integer"}}});
+    let vehicle = json!({"oneOf": [{"$ref": "#/components/schemas/Car"}, {"$ref": "#/components/schemas/Van"}],
+        "discriminator": {"propertyName": "kind"}});
+    let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Car": car, "Van": van, "Vehicle": vehicle}}));
+    let types =
+        common::file(&common::generate("one-of-count", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
+    assert!(types.contains("of `oneOf`, not exactly one") && !types.contains("check_schema"), "{types}");
+}

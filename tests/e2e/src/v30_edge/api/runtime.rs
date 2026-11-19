@@ -8,7 +8,7 @@ pub fn schema_defs() -> Option<&'static serde_json::Map<String, serde_json::Valu
     static DEFS: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
     DEFS.get_or_init(|| {
             serde_json::from_str(
-                    "{\"/components/schemas/Car\":{\"type\":\"object\",\"required\":[\"kind\",\"seats\"],\"properties\":{\"kind\":{\"type\":\"string\"},\"seats\":{\"type\":\"integer\"}}},\"/components/schemas/Customer\":{\"type\":\"object\",\"additionalProperties\":true,\"required\":[\"name\"],\"properties\":{\"name\":{\"type\":\"string\",\"minLength\":1},\"email\":{\"type\":[\"string\",\"null\"]}}},\"/components/schemas/Van\":{\"type\":\"object\",\"required\":[\"kind\",\"cargoLitres\"],\"properties\":{\"kind\":{\"type\":\"string\"},\"cargoLitres\":{\"type\":\"integer\"}}}}",
+                    "{\"/components/schemas/Customer\":{\"type\":\"object\",\"additionalProperties\":true,\"required\":[\"name\"],\"properties\":{\"name\":{\"type\":\"string\",\"minLength\":1},\"email\":{\"type\":[\"string\",\"null\"]}}}}",
                 )
                 .unwrap_or_default()
         })
