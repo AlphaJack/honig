@@ -41,6 +41,35 @@ macro_rules! try_from_impl {
                 let mut violations: Vec<runtime::Violation> = Vec::new();
                 {
                     let out = &mut violations;
+                    runtime::check(
+                        out,
+                        &runtime::InstancePath::Root,
+                        runtime::pattern_matches(
+                            {
+                                static RE: runtime::Pattern = runtime::Pattern::new();
+                                &RE
+                            },
+                            "^[a-z]+$",
+                            value.as_str(),
+                        ),
+                        "does not match `^[a-z]+$`",
+                    );
+                }
+                runtime::first(violations)
+                    .map(|()| Self(value))
+                    .map_err(runtime::BuildError::value)
+            }
+        }
+    };
+}
+macro_rules! try_from_impl_2 {
+    ($t:ty) => {
+        impl TryFrom<String> for $t {
+            type Error = runtime::BuildError;
+            fn try_from(value: String) -> Result<Self, runtime::BuildError> {
+                let mut violations: Vec<runtime::Violation> = Vec::new();
+                {
+                    let out = &mut violations;
                     let n = (value.as_str()).chars().count();
                     runtime::check_len(
                         out,
@@ -67,7 +96,7 @@ macro_rules! serialize_impl_2 {
         }
     };
 }
-macro_rules! try_from_impl_2 {
+macro_rules! try_from_impl_3 {
     ($t:ty) => {
         impl TryFrom<String> for $t {
             type Error = runtime::BuildError;
@@ -334,6 +363,48 @@ macro_rules! checked_impls {
             }
         }
     };
+}
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Slug {
+    Empty(SlugEmpty),
+    Variant2(SlugVariant2),
+}
+impl serde::Serialize for Slug {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        match self {
+            Self::Empty(v) => serde::Serialize::serialize(v, s),
+            Self::Variant2(v) => serde::Serialize::serialize(v, s),
+        }
+    }
+}
+impl<'de> serde::Deserialize<'de> for Slug {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let v = <runtime::Content<'de> as serde::Deserialize>::deserialize(d)?;
+        let fit_0 = v.kind() == runtime::Kind::String;
+        let fit_1 = v.kind() == runtime::Kind::String;
+        let mut first: Option<String> = None;
+        if fit_0 {
+            match v.decode_ref::<SlugEmpty>() {
+                Ok(x) => return Ok(Self::Empty(x)),
+                Err(e) => {
+                    first.get_or_insert(e.to_string());
+                }
+            }
+        }
+        if fit_1 {
+            match v.decode_ref::<SlugVariant2>() {
+                Ok(x) => return Ok(Self::Variant2(x)),
+                Err(e) => {
+                    first.get_or_insert(e.to_string());
+                }
+            }
+        }
+        Err(
+            serde::de::Error::custom(
+                first.unwrap_or_else(|| "matches no variant".to_owned()),
+            ),
+        )
+    }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -1466,6 +1537,38 @@ impl runtime::XmlShape for User {
         &NODE
     }
 }
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum SlugEmpty {
+    Empty,
+}
+impl SlugEmpty {
+    #[must_use]
+    pub const fn as_str(&self) -> &'static str {
+        match self {
+            Self::Empty => "",
+        }
+    }
+}
+impl TryFrom<&str> for SlugEmpty {
+    type Error = runtime::BuildError;
+    fn try_from(s: &str) -> Result<Self, runtime::BuildError> {
+        match s {
+            "" => Ok(Self::Empty),
+            other => {
+                Err(runtime::BuildError::value(format!("`{other}` is not one of ``")))
+            }
+        }
+    }
+}
+str_enum_impls!(SlugEmpty);
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
+#[serde(transparent)]
+pub struct SlugVariant2(pub(super) String);
+impl SlugVariant2 {
+    pub const PATTERN: &'static str = "^[a-z]+$";
+}
+try_from_impl!(SlugVariant2);
+checked_str_impls!(SlugVariant2);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize)]
 #[serde(transparent)]
 pub struct ExactTenth(pub(super) runtime::Decimal);
@@ -1747,7 +1850,7 @@ impl runtime::XmlShape for TreeVariant2 {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct LineNote(pub(super) String);
-try_from_impl!(LineNote);
+try_from_impl_2!(LineNote);
 checked_str_impls!(LineNote);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 pub struct RefusalObject;
@@ -1795,7 +1898,7 @@ str_enum_impls!(ProblemCode);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct BadgeLabel(pub(super) String);
-try_from_impl_2!(BadgeLabel);
+try_from_impl_3!(BadgeLabel);
 checked_str_impls!(BadgeLabel);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
@@ -2309,7 +2412,7 @@ checked_num_impls!(UserScore, f64);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct UserTagsItem(pub(super) String);
-try_from_impl!(UserTagsItem);
+try_from_impl_2!(UserTagsItem);
 checked_str_impls!(UserTagsItem);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum UserRole {
@@ -2389,13 +2492,13 @@ checked_num_impls!(UserLoyaltyVariant1, i64);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct UserLoyaltyVariant2(pub(super) String);
-try_from_impl!(UserLoyaltyVariant2);
+try_from_impl_2!(UserLoyaltyVariant2);
 checked_str_impls!(UserLoyaltyVariant2);
 pub type UserNote = UserNote2;
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct UserNote2(pub(super) String);
-try_from_impl_2!(UserNote2);
+try_from_impl_3!(UserNote2);
 checked_str_impls!(UserNote2);
 #[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
@@ -2425,31 +2528,7 @@ pub struct CreateUserXTeam(pub(super) String);
 impl CreateUserXTeam {
     pub const PATTERN: &'static str = "^[a-z]+$";
 }
-impl TryFrom<String> for CreateUserXTeam {
-    type Error = runtime::BuildError;
-    fn try_from(value: String) -> Result<Self, runtime::BuildError> {
-        let mut violations: Vec<runtime::Violation> = Vec::new();
-        {
-            let out = &mut violations;
-            runtime::check(
-                out,
-                &runtime::InstancePath::Root,
-                runtime::pattern_matches(
-                    {
-                        static RE: runtime::Pattern = runtime::Pattern::new();
-                        &RE
-                    },
-                    "^[a-z]+$",
-                    value.as_str(),
-                ),
-                "does not match `^[a-z]+$`",
-            );
-        }
-        runtime::first(violations)
-            .map(|()| Self(value))
-            .map_err(runtime::BuildError::value)
-    }
-}
+try_from_impl!(CreateUserXTeam);
 checked_str_impls!(CreateUserXTeam);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]

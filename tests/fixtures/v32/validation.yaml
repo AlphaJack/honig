@@ -93,6 +93,9 @@ paths:
           description: Created.
 components:
   schemas:
+    # `anyOf` of two strings: the first branch that decodes, with its keywords, is the answer.
+    Slug:
+      anyOf: [{type: string, enum: [""]}, {type: string, pattern: '^[a-z]+$'}]
     # A decimal keeps its digits: its range and `multipleOf` hold on them, past what an `f64` tells apart.
     Exact:
       type: object

@@ -723,7 +723,7 @@ impl<'a> Builder<'a> {
     }
 
     /// Returns a `oneOf` or `anyOf` that its union type cannot judge alone: a branch without one `type` of its own, two
-    /// branches of one type (`oneOf` means exactly one) or keywords beside the union (`type: string` next to
+    /// `oneOf` branches of one type (it means exactly one) or keywords beside the union (`type: string` next to
     /// `anyOf`). Branches of distinct types (`integer` or `string`) are judged by their variant. A discriminator does
     /// not change this (3.2: it "MUST NOT change the validation outcome").
     fn loose_union(&self, s: &Value) -> bool {
@@ -754,11 +754,15 @@ impl<'a> Builder<'a> {
         {
             return false;
         }
+        // `anyOf` asks for one branch at least: decoding checks every keyword of a branch, so the first branch that
+        // decodes proves it, whatever types the branches share. `oneOf` asks for exactly one: two branches of one type
+        // could both match.
+        let one_of = o.contains_key("oneOf");
         let mut types = BTreeSet::new();
         for b in branches {
             let Some((b, _)) = self.deref(b) else { return true };
             let Some(t) = b.get("type").and_then(Value::as_str) else { return true };
-            if !types.insert(t.to_owned()) {
+            if !types.insert(t.to_owned()) && one_of {
                 return true;
             }
         }

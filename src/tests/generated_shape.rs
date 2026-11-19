@@ -704,3 +704,22 @@ fn only_a_struct_with_a_checked_field_gets_a_builder() {
     assert!(types.contains("impl super::Coded {"), "{types}");
     assert!(types.contains("impl super::Tagged {"), "{types}");
 }
+
+/// An `anyOf` whose branches share a type needs no check of the whole value: decoding checks every keyword of a
+/// branch, so the first branch that decodes proves that one matches. A `oneOf` still counts its matches.
+#[test]
+fn an_any_of_is_judged_by_its_variants() {
+    let union = |key: &str| {
+        json!({key: [
+            {"type": "string", "enum": [""]},
+            {"type": "string", "maxLength": 5000},
+        ]})
+    };
+    let doc = common::spec("3.1.0", &json!({}), &json!({"schemas": {"Any": union("anyOf"), "One": union("oneOf")}}));
+    let files = common::generate("shape-any-of-typed", &doc, &crate::emit::Options::default());
+    let types = common::file(&files, "types.rs");
+    // A union checked whole is the checked type of its variants.
+    let checked = |name: &str| types.contains(&format!("pub struct {name}(pub(super) {name}Variants)"));
+    assert!(!checked("Any"), "{types}");
+    assert!(checked("One"), "{types}");
+}
