@@ -646,17 +646,19 @@ fn child_ptr(at: &str, key: &str) -> String {
     format!("{at}/{}", escape_token(key))
 }
 
-/// Does `s` or a subschema of it (not data such as `enum`) have a `$dynamicRef`?
-fn holds_dynamic_ref(s: &Value) -> bool {
+/// Collects each `$dynamicRef` of `s` and its subschemas (not data such as `enum`) into `out`.
+fn dynamic_refs<'s>(s: &'s Value, out: &mut Vec<&'s str>) {
     match s {
         Value::Object(o) => {
-            o.contains_key("$dynamicRef")
-                || o.iter().any(|(k, v)| {
-                    !matches!(k.as_str(), "enum" | "const" | "default" | "examples" | "example") && holds_dynamic_ref(v)
-                })
+            out.extend(o.get("$dynamicRef").and_then(Value::as_str));
+            for (k, v) in o {
+                if !matches!(k.as_str(), "enum" | "const" | "default" | "examples" | "example") {
+                    dynamic_refs(v, out);
+                }
+            }
         }
-        Value::Array(a) => a.iter().any(holds_dynamic_ref),
-        Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_) => false,
+        Value::Array(a) => a.iter().for_each(|x| dynamic_refs(x, out)),
+        Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_) => {}
     }
 }
 
@@ -1088,6 +1090,22 @@ impl<'a> Builder<'a> {
         Some(ev)
     }
 
+    /// Does a `$dynamicRef` in `s` resolve to a schema that depends on where evaluation came from?
+    /// ([`Builder::dynamic_ref_varies`]).
+    fn dynamic_refs_vary(&self, s: &Value) -> bool {
+        let mut refs = vec![];
+        dynamic_refs(s, &mut refs);
+        refs.iter().any(|r| self.dynamic_ref_varies(r))
+    }
+
+    /// Does `$dynamicRef` `r` resolve to a schema that depends on where evaluation came from? Only when its target
+    /// bookends it ([`Builder::bookend`]) and more than one resource of the document declares that `$dynamicAnchor`:
+    /// the outermost of them in scope wins. With one, the reference always lands on it, as its type does.
+    fn dynamic_ref_varies(&self, r: &str) -> bool {
+        let (_, Some(name)) = self.bookend(r) else { return false };
+        self.dynamic.anchors.keys().filter(|(_, n)| *n == name).count() > 1
+    }
+
     /// Returns the index of `schema`, at `at`, in [`Builder::subschemas`], queued once.
     fn queue_subschema(&self, schema: &Value, at: Option<String>) -> usize {
         let mut subschemas = self.subschemas.borrow_mut();
@@ -1177,18 +1195,18 @@ impl<'a> Builder<'a> {
             typed_conditional
                 && m.as_object().is_some_and(|m| m.contains_key("if") && m.keys().all(|k| conditional_key(k)))
         };
-        // A `$dynamicRef` anywhere inside resolves in the dynamic scope from here: only the run-time check of the whole
-        // schema follows it there.
+        // A `$dynamicRef` inside whose anchor several resources declare resolves in the dynamic scope from here: only
+        // the run-time check of the whole schema follows it there.
+        let dynamic = self.dynamic_refs_vary(s);
         // A tuple (`prefixItems`, maybe closed by `items: false`) is checked item by item ([`Constraints::tuple`]).
-        let tuple = holds_dynamic_ref(s);
-        let typed_tuple = !tuple && (s.get("prefixItems").is_some() || s.get("items") == Some(&Value::Bool(false)));
+        let typed_tuple = !dynamic && (s.get("prefixItems").is_some() || s.get("items") == Some(&Value::Bool(false)));
         let mixed = mixed(s);
         let scoped = typeless_assertions(s) && kind_scoped(s);
         if scoped {
             scoped_keywords(s, &mut c);
         }
         if (typeless_assertions(s) && !scoped)
-            || tuple
+            || dynamic
             || mixed
             || self.loose_union(s)
             || matches!(s, Value::Object(o) if UNTYPED_KEYWORDS.iter().any(|k| o.contains_key(*k) && !conditional_key(k)))
@@ -1509,9 +1527,9 @@ impl<'a> Builder<'a> {
             return self.ty_non_null(&merged, ptr, hint);
         }
         if let Some(r) = o.get("$dynamicRef").and_then(Value::as_str) {
-            // Bookended and not bound by a generic: it resolves in the dynamic scope, somewhere a type cannot know.
-            // The run-time check judges the value.
-            if r.starts_with("#/") && self.bookend(r).1.is_some() {
+            // Bookended by more than one resource and not bound by a generic: it resolves in the dynamic scope,
+            // somewhere a type cannot know. The run-time check judges the value.
+            if self.dynamic_ref_varies(r) {
                 return Ty::Any;
             }
             return self.ty_ref(r, ptr);

@@ -73,46 +73,25 @@ impl Product {
         Self { name }
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
-#[serde(transparent)]
-pub struct Page(pub(super) PageFields);
-impl<'de> serde::Deserialize<'de> for Page {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <PageFields as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
+#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct Page {
+    pub items: Vec<serde_json::Value>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub next: Option<String>,
+}
+deserialize_impl!(Page);
+serialize_impl!(Page);
+impl Page {
+    #[must_use]
+    pub const fn new(items: Vec<serde_json::Value>) -> Self {
+        Self { items, next: None }
     }
 }
-impl TryFrom<PageFields> for Page {
-    type Error = runtime::BuildError;
-    fn try_from(value: PageFields) -> Result<Self, runtime::BuildError> {
-        let mut violations: Vec<runtime::Violation> = Vec::new();
-        {
-            let out = &mut violations;
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&value).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"type\":\"object\",\"required\":[\"items\"],\"properties\":{\"items\":{\"type\":\"array\",\"items\":{\"$dynamicAnchor\":\"item\"}},\"next\":{\"type\":\"string\"}},\"$defs\":{\"item\":{\"$dynamicAnchor\":\"item\"}}}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Root,
-                    &value,
-                    schema,
-                    runtime::schema_defs(),
-                );
-            }
-        }
-        runtime::first(violations)
-            .map(|()| Self(value))
-            .map_err(runtime::BuildError::value)
-    }
-}
-checked_impls!(Page, PageFields);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct ProductPage {
@@ -132,46 +111,25 @@ impl ProductPage {
         Self { items, next: None }
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
-#[serde(transparent)]
-pub struct Tree(pub(super) TreeFields);
-impl<'de> serde::Deserialize<'de> for Tree {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <TreeFields as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
+#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct Tree {
+    pub value: serde_json::Value,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub children: Option<Vec<Self>>,
+}
+deserialize_impl!(Tree);
+serialize_impl!(Tree);
+impl Tree {
+    #[must_use]
+    pub const fn new(value: serde_json::Value) -> Self {
+        Self { value, children: None }
     }
 }
-impl TryFrom<TreeFields> for Tree {
-    type Error = runtime::BuildError;
-    fn try_from(value: TreeFields) -> Result<Self, runtime::BuildError> {
-        let mut violations: Vec<runtime::Violation> = Vec::new();
-        {
-            let out = &mut violations;
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&value).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"type\":\"object\",\"required\":[\"value\"],\"properties\":{\"value\":{\"$dynamicAnchor\":\"node\",\"type\":\"string\"},\"children\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"required\":[\"value\"],\"properties\":{\"value\":{\"$dynamicAnchor\":\"node\",\"type\":\"string\"},\"children\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"required\":[\"value\"],\"properties\":{\"value\":{\"$dynamicAnchor\":\"node\",\"type\":\"string\"},\"children\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"required\":[\"value\"],\"properties\":{\"value\":{\"$dynamicAnchor\":\"node\",\"type\":\"string\"},\"children\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"required\":[\"value\"],\"properties\":{\"value\":{\"$dynamicAnchor\":\"node\",\"type\":\"string\"},\"children\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"required\":[\"value\"],\"properties\":{\"value\":{\"$dynamicAnchor\":\"node\",\"type\":\"string\"},\"children\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"required\":[\"value\"],\"properties\":{\"value\":{\"$dynamicAnchor\":\"node\",\"type\":\"string\"},\"children\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"required\":[\"value\"],\"properties\":{\"value\":{\"$dynamicAnchor\":\"node\",\"type\":\"string\"},\"children\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"required\":[\"value\"],\"properties\":{\"value\":true,\"children\":{\"type\":\"array\",\"items\":true}},\"$defs\":{\"node\":{\"$dynamicAnchor\":\"node\"}}}}},\"$defs\":{\"node\":{\"$dynamicAnchor\":\"node\"}}}}},\"$defs\":{\"node\":{\"$dynamicAnchor\":\"node\"}}}}},\"$defs\":{\"node\":{\"$dynamicAnchor\":\"node\"}}}}},\"$defs\":{\"node\":{\"$dynamicAnchor\":\"node\"}}}}},\"$defs\":{\"node\":{\"$dynamicAnchor\":\"node\"}}}}},\"$defs\":{\"node\":{\"$dynamicAnchor\":\"node\"}}}}},\"$defs\":{\"node\":{\"$dynamicAnchor\":\"node\"}}}}},\"$defs\":{\"node\":{\"$dynamicAnchor\":\"node\"}}}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Root,
-                    &value,
-                    schema,
-                    runtime::schema_defs(),
-                );
-            }
-        }
-        runtime::first(violations)
-            .map(|()| Self(value))
-            .map_err(runtime::BuildError::value)
-    }
-}
-checked_impls!(Tree, TreeFields);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct StringTree {
@@ -188,44 +146,6 @@ serialize_impl!(StringTree);
 impl StringTree {
     #[must_use]
     pub const fn new(value: String) -> Self {
-        Self { value, children: None }
-    }
-}
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct PageFields {
-    pub items: PageItems,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub next: Option<String>,
-}
-deserialize_impl!(PageFields);
-serialize_impl!(PageFields);
-impl PageFields {
-    #[must_use]
-    pub const fn new(items: PageItems) -> Self {
-        Self { items, next: None }
-    }
-}
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct TreeFields {
-    pub value: TreeValue,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub children: Option<Vec<Tree>>,
-}
-deserialize_impl!(TreeFields);
-serialize_impl!(TreeFields);
-impl TreeFields {
-    #[must_use]
-    pub const fn new(value: TreeValue) -> Self {
         Self { value, children: None }
     }
 }
@@ -274,115 +194,11 @@ impl TryFrom<Vec<Product>> for ProductPageItems {
     }
 }
 checked_impls!(ProductPageItems, Vec < Product >);
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
-#[serde(transparent)]
-pub struct PageItems(pub(super) Vec<serde_json::Value>);
-impl<'de> serde::Deserialize<'de> for PageItems {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <Vec<serde_json::Value> as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
-    }
-}
-impl TryFrom<Vec<serde_json::Value>> for PageItems {
-    type Error = runtime::BuildError;
-    fn try_from(value: Vec<serde_json::Value>) -> Result<Self, runtime::BuildError> {
-        let mut violations: Vec<runtime::Violation> = Vec::new();
-        {
-            let out = &mut violations;
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&value).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"type\":\"array\",\"items\":{\"$dynamicAnchor\":\"item\"}}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Root,
-                    &value,
-                    schema,
-                    runtime::schema_defs(),
-                );
-            }
-        }
-        runtime::first(violations)
-            .map(|()| Self(value))
-            .map_err(runtime::BuildError::value)
-    }
-}
-checked_impls!(PageItems, Vec < serde_json::Value >);
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
-#[serde(transparent)]
-pub struct TreeValue(pub(super) serde_json::Value);
-impl<'de> serde::Deserialize<'de> for TreeValue {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <serde_json::Value as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
-    }
-}
-impl TryFrom<serde_json::Value> for TreeValue {
-    type Error = runtime::BuildError;
-    fn try_from(value: serde_json::Value) -> Result<Self, runtime::BuildError> {
-        let mut violations: Vec<runtime::Violation> = Vec::new();
-        {
-            let out = &mut violations;
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&value).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str("{\"$dynamicAnchor\":\"node\"}")
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Root,
-                    &value,
-                    schema,
-                    runtime::schema_defs(),
-                );
-            }
-        }
-        runtime::first(violations)
-            .map(|()| Self(value))
-            .map_err(runtime::BuildError::value)
-    }
-}
-checked_impls!(TreeValue, serde_json::Value);
 /// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
 /// its field. `build` returns the first field that did not convert.
 pub mod builders {
     use super as types;
     use super::runtime;
-    impl super::Page {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            items: impl TryInto<types::PageItems, Error: std::fmt::Display>,
-        ) -> Page {
-            Page(
-                runtime::Builder::start(|| Ok(
-                    super::PageFields::new(runtime::field("items", items)?),
-                )),
-            )
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct Page(runtime::Builder<super::PageFields>);
-    impl Page {
-        pub fn next(
-            self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("next", value, |s, v| s.next = Some(v)))
-        }
-        /// Returns the value once its whole schema holds.
-        pub fn build(self) -> Result<super::Page, runtime::BuildError> {
-            self.0.build().and_then(super::Page::try_from)
-        }
-    }
     impl super::ProductPage {
         /// Starts a builder from the required properties.
         pub fn builder(
@@ -406,84 +222,6 @@ pub mod builders {
         }
         /// Returns the value.
         pub fn build(self) -> Result<super::ProductPage, runtime::BuildError> {
-            self.0.build()
-        }
-    }
-    impl super::Tree {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            value: impl TryInto<types::TreeValue, Error: std::fmt::Display>,
-        ) -> Tree {
-            Tree(
-                runtime::Builder::start(|| Ok(
-                    super::TreeFields::new(runtime::field("value", value)?),
-                )),
-            )
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct Tree(runtime::Builder<super::TreeFields>);
-    impl Tree {
-        pub fn children(
-            self,
-            value: impl TryInto<Vec<types::Tree>, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("children", value, |s, v| s.children = Some(v)))
-        }
-        /// Returns the value once its whole schema holds.
-        pub fn build(self) -> Result<super::Tree, runtime::BuildError> {
-            self.0.build().and_then(super::Tree::try_from)
-        }
-    }
-    impl super::PageFields {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            items: impl TryInto<types::PageItems, Error: std::fmt::Display>,
-        ) -> PageFields {
-            PageFields(
-                runtime::Builder::start(|| Ok(
-                    Self::new(runtime::field("items", items)?),
-                )),
-            )
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct PageFields(runtime::Builder<super::PageFields>);
-    impl PageFields {
-        pub fn next(
-            self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("next", value, |s, v| s.next = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::PageFields, runtime::BuildError> {
-            self.0.build()
-        }
-    }
-    impl super::TreeFields {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            value: impl TryInto<types::TreeValue, Error: std::fmt::Display>,
-        ) -> TreeFields {
-            TreeFields(
-                runtime::Builder::start(|| Ok(
-                    Self::new(runtime::field("value", value)?),
-                )),
-            )
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct TreeFields(runtime::Builder<super::TreeFields>);
-    impl TreeFields {
-        pub fn children(
-            self,
-            value: impl TryInto<Vec<types::Tree>, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("children", value, |s, v| s.children = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::TreeFields, runtime::BuildError> {
             self.0.build()
         }
     }
