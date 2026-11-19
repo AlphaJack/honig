@@ -863,7 +863,8 @@ fn check(choices: &[u64], profile: Profile) -> Result<(), String> {
             let files = if emitted.contains(&key) {
                 Ok(0)
             } else {
-                crate::emit::rust::module(&ir, &crate::emit::Options::default()).map(|files| files.len())
+                crate::emit::rust::print(crate::emit::rust::trees(&ir, &crate::emit::Options::default()), false)
+                    .map(|files| files.len())
             };
             (ir, key, files)
         });

@@ -35,6 +35,39 @@ pub fn generate(spec: &Path, opts: &Options) -> Result<Generated, Diagnostics> {
 /// # Errors
 /// As [`generate`]. Also when two files describe the same operation or give one component name two values.
 pub fn generate_all(specs: &[std::path::PathBuf], opts: &Options) -> Result<Generated, Diagnostics> {
+    let loaded = load(specs, opts)?;
+    let built = ir(&loaded, opts);
+    let trees = emit(&built, opts);
+    print(&loaded, built, trees, opts)
+}
+
+/// A description loaded, bundled and checked: what [`ir()`] builds from.
+///
+/// [`generate_all`] runs the phases in turn: [`load()`], [`ir()`], [`emit()`] and [`print()`]. The scaling bench
+/// measures each alone.
+#[derive(Debug)]
+pub struct Loaded {
+    doc: crate::json::Doc,
+    diagnostics: Diagnostics,
+    from_v20: bool,
+}
+
+/// The types and operations of a description: what [`emit()`] turns into syntax trees.
+#[derive(Debug)]
+pub struct Ir {
+    api: crate::ir::Api,
+    diagnostics: Diagnostics,
+}
+
+/// The files of a module as syntax trees: what [`print()`] writes as Rust source.
+#[derive(Debug)]
+pub struct Trees(rust::Trees);
+
+/// Loads `specs` merged into one description, bundles their references and checks what generated code cannot hold.
+///
+/// # Errors
+/// As [`generate_all`].
+pub fn load(specs: &[std::path::PathBuf], opts: &Options) -> Result<Loaded, Diagnostics> {
     let loaded = crate::load::load_paths_with(specs, &opts.overlays);
     let mut diagnostics = loaded.diagnostics.clone();
     if loaded.model.is_none() {
@@ -59,32 +92,58 @@ pub fn generate_all(specs: &[std::path::PathBuf], opts: &Options) -> Result<Gene
         return Err(diagnostics);
     }
     let from_v20 = loaded.source == Some(crate::version::Version::V20);
+    Ok(Loaded { doc, diagnostics, from_v20 })
+}
+
+/// Builds the types and operations of `loaded`.
+pub fn ir(loaded: &Loaded, opts: &Options) -> Ir {
+    let mut diagnostics = Diagnostics::default();
     let api = crate::ir::build_with(
-        &doc,
+        &loaded.doc,
         &mut diagnostics,
         opts.keep_unknown,
-        from_v20,
+        loaded.from_v20,
         rust::names::RESERVED,
         &opts.rust.crates,
         !opts.strict_client,
     );
-    let files = match rust::module(&api, opts) {
+    Ir { api, diagnostics }
+}
+
+/// Returns the files of the module of `built` as syntax trees.
+pub fn emit(built: &Ir, opts: &Options) -> Trees {
+    Trees(rust::trees(&built.api, opts))
+}
+
+/// Prints `trees` as the files of the module, with what [`generate_all`] reports beside them.
+///
+/// # Errors
+/// The trees do not form Rust files: a bug of the generator, reported as an error.
+pub fn print(loaded: &Loaded, built: Ir, trees: Trees, opts: &Options) -> Result<Generated, Diagnostics> {
+    let mut diagnostics = loaded.diagnostics.clone();
+    diagnostics.0.extend(built.diagnostics.0);
+    let api = &built.api;
+    let files = match rust::print(trees.0, opts.rust.binary) {
         Ok(files) => files,
         Err(e) => {
             diagnostics.error("", format!("{e} (a honig bug: please report it)"));
             return Err(diagnostics);
         }
     };
-    diagnostics.0.extend(rust::warnings(&api, opts));
+    diagnostics.0.extend(rust::warnings(api, opts));
     Ok(Generated {
         runtime_features: needs::runtime_features(
-            &api,
+            api,
             opts.rust.libs,
             opts.client,
             opts.server,
             needs::Uses {
-                patterns: needs::uses_pattern(&doc.root, ""),
-                mail_formats: needs::uses_format(&doc.root, "", &["email", "idn-email", "hostname", "idn-hostname"]),
+                patterns: needs::uses_pattern(&loaded.doc.root, ""),
+                mail_formats: needs::uses_format(
+                    &loaded.doc.root,
+                    "",
+                    &["email", "idn-email", "hostname", "idn-hostname"],
+                ),
             },
         ),
         files,
