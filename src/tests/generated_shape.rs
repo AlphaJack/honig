@@ -943,3 +943,24 @@ fn additional_properties_beside_patterns_checks_the_other_names() {
     .to_owned();
     assert!(types.contains("let mut matched = false;") && !types.contains("check_schema"), "{types}");
 }
+
+/// A tuple that no Rust tuple holds (`prefixItems` with fewer `minItems`, or open) checks each item against the type
+/// of its schema: no schema is checked whole.
+#[test]
+fn a_tuple_checks_each_item_against_its_schema() {
+    let pair = json!({"type": "array", "prefixItems": [{"type": "string"}, {"type": "integer"}], "items": false});
+    let holder = json!({"type": "object", "properties": {"pair": pair}});
+    let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Holder": holder}}));
+    let types = common::file(&common::generate("tuple", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
+    assert!(types.contains("runtime::InstancePath::Index") && !types.contains("check_schema"), "{types}");
+}
+
+/// `required` of an object without `properties` is a map that must have those names.
+#[test]
+fn a_map_checks_the_names_it_requires() {
+    let holder = json!({"type": "object", "properties": {"tags": {"type": "object", "required": ["foo"]}}});
+    let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Holder": holder}}));
+    let types =
+        common::file(&common::generate("map-required", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
+    assert!(types.contains("runtime::check_required") && types.contains("\"foo\""), "{types}");
+}

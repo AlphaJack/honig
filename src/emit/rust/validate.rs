@@ -10,7 +10,7 @@ use serde_json::Number;
 
 use super::syntax::lit;
 use crate::emit::rust::space::Space;
-use crate::ir::types::{Constraints, Kind, Ty};
+use crate::ir::types::{Constraints, Kind, Rest, Ty};
 
 /// Checks of `value`, an `&Option<t>`. Nested options peel in one pattern
 /// (`if let Some(Some(v))`) and never one `if let` inside another.
@@ -106,7 +106,7 @@ pub(super) fn subschema_checks(
     value: &TokenStream,
     path: &TokenStream,
 ) -> TokenStream {
-    if c.json_checks().is_empty() {
+    if c.json_checks().is_empty() && c.tuple.is_none() {
         return TokenStream::new();
     }
     let ty = |n: usize| super::syntax::ty(space, &space.types.subschemas[n].0, false);
@@ -166,6 +166,7 @@ pub(super) fn subschema_checks(
         }
     });
     let patterns = pattern_checks(c, &ty, path);
+    let tuple = tuple_checks(c, &ty, path);
     quote! {
         {
             let json = runtime::to_value(#value).unwrap_or_default();
@@ -174,6 +175,7 @@ pub(super) fn subschema_checks(
             #(#conditions)*
             #one_of
             #patterns
+            #tuple
         }
     }
 }
@@ -287,10 +289,12 @@ pub(super) fn checks(
         return TokenStream::new();
     }
     let json = c.json_checks();
-    if !json.is_empty() {
-        let held = crate::ir::checked::json_held_by_type(space.types, t, &json, 0);
+    // A Rust tuple holds its items by their types.
+    let tuple = c.tuple.is_some() && !matches!(t, Ty::Tuple(_));
+    if !json.is_empty() || tuple {
+        let held = !tuple && crate::ir::checked::json_held_by_type(space.types, t, &json, 0);
         let typed = (!held).then(|| subschema_checks(space, c, value, path));
-        let rest = c.without_json();
+        let rest = Constraints { tuple: None, ..c.without_json() };
         let rest = checks(space, t, &rest, value, path);
         return quote!(#typed #rest);
     }
@@ -344,14 +348,13 @@ pub(super) fn checks(
             quote!(#items #contains)
         }
         // A value of a named type in the map checks itself where it decodes.
-        Ty::Map(_) if c.min_properties.is_some() || c.max_properties.is_some() || c.property_names.is_some() => {
-            let r = receiver(value);
-            let len = (c.min_properties.is_some() || c.max_properties.is_some()).then(|| {
-                let (min, max) = (opt_u64(c.min_properties), opt_u64(c.max_properties));
-                quote!(runtime::check_len(out, #path, #r.len(), #min, #max, "properties");)
-            });
-            let names = c.property_names.as_deref().map(|n| name_checks(n, &quote!(#r.keys()), path));
-            quote!(#len #names)
+        Ty::Map(_)
+            if c.min_properties.is_some()
+                || c.max_properties.is_some()
+                || c.property_names.is_some()
+                || !c.required.is_empty() =>
+        {
+            map_checks(c, value, path)
         }
         Ty::Named(id) => match &space.types.get(*id).kind {
             Kind::Alias(x) => checks(space, x, c, value, path),
@@ -728,12 +731,9 @@ fn any_checks(c: &Constraints, value: &TokenStream, path: &TokenStream) -> Token
     let unique = c.unique_items.then(|| quote!(runtime::check_unique(out, #path, n);));
     let items = count(c.min_items, c.max_items, "items");
     let items = (items.is_some() || unique.is_some()).then(|| quote!(#items #unique));
-    let required = (!c.required.is_empty()).then(|| {
-        let names = c.required.iter().map(|n| lit(n));
-        quote!(runtime::check_required(out, #path, n, &[#(#names),*]);)
-    });
+    let required = required_checks(c, &quote!(|name| n.contains_key(name)), path);
     let properties = count(c.min_properties, c.max_properties, "properties");
-    let properties = (properties.is_some() || required.is_some()).then(|| quote!(#properties #required));
+    let properties = (properties.is_some() || !required.is_empty()).then(|| quote!(#properties #required));
     // Each kind as (its pattern, its checks): a kind without checks passes.
     let kinds = [
         (
@@ -769,3 +769,68 @@ fn any_checks(c: &Constraints, value: &TokenStream, path: &TokenStream) -> Token
 
 /// Bounds past this have no whole `i128` worth writing: they are left unchecked.
 const MAX_WHOLE: f64 = 1e30;
+
+/// Returns `required` of `c` on an object whose names `has` (a closure from `&str` to `bool`) looks up.
+fn required_checks(c: &Constraints, has: &TokenStream, path: &TokenStream) -> TokenStream {
+    if c.required.is_empty() {
+        return TokenStream::new();
+    }
+    let names = c.required.iter().map(|n| lit(n));
+    quote!(runtime::check_required(out, #path, #has, &[#(#names),*]);)
+}
+
+/// Returns the checks of `c`'s tuple on the list in `json`: each leading item decodes as the type of its schema, then
+/// the rest as `items` says.
+fn tuple_checks(c: &Constraints, ty: &dyn Fn(usize) -> TokenStream, path: &TokenStream) -> TokenStream {
+    let Some((prefix, rest)) = &c.tuple else { return TokenStream::new() };
+    let decodes = |n: usize, at: &TokenStream| {
+        let t = ty(n);
+        quote! {
+            if let Err(e) = serde_json::from_value::<#t>(item.clone()) {
+                runtime::violation(out, &runtime::InstancePath::Index(#path, #at), e.to_string());
+            }
+        }
+    };
+    let leading = prefix.iter().enumerate().map(|(i, &n)| {
+        let item = if i == 0 { quote!(items.first()) } else { quote!(items.get(#i)) };
+        let (i, t) = (Literal::usize_unsuffixed(i), ty(n));
+        quote! {
+            if let Some(item) = #item
+                && let Err(e) = serde_json::from_value::<#t>(item.clone())
+            {
+                runtime::violation(out, &runtime::InstancePath::Index(#path, #i), e.to_string());
+            }
+        }
+    });
+    let len = Literal::usize_unsuffixed(prefix.len());
+    let rest = match rest {
+        Rest::Any => None,
+        Rest::Refused => Some(quote! {
+            if items.len() > #len {
+                runtime::violation(out, &runtime::InstancePath::Index(#path, #len), "no value is allowed here");
+            }
+        }),
+        Rest::Schema(n) => {
+            let check = decodes(*n, &quote!(i));
+            Some(quote!(for (i, item) in items.iter().enumerate().skip(#len) { #check }))
+        }
+    };
+    // A value of another kind has no items to check.
+    quote! {
+        let items = json.as_array().map_or(&[][..], Vec::as_slice);
+        #(#leading)*
+        #rest
+    }
+}
+
+/// Returns the checks of `c` on the map `value`: its size, its names and the names it must have.
+fn map_checks(c: &Constraints, value: &TokenStream, path: &TokenStream) -> TokenStream {
+    let r = receiver(value);
+    let len = (c.min_properties.is_some() || c.max_properties.is_some()).then(|| {
+        let (min, max) = (opt_u64(c.min_properties), opt_u64(c.max_properties));
+        quote!(runtime::check_len(out, #path, #r.len(), #min, #max, "properties");)
+    });
+    let names = c.property_names.as_deref().map(|n| name_checks(n, &quote!(#r.keys()), path));
+    let required = required_checks(c, &quote!(|name| #r.contains_key(name)), path);
+    quote!(#len #names #required)
+}

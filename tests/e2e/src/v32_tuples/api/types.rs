@@ -90,22 +90,42 @@ impl TryFrom<Point> for RouteStart {
         {
             let out = &mut violations;
             {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&value).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"type\":\"array\",\"prefixItems\":[{\"type\":\"number\"},{\"type\":\"number\"},{\"type\":\"string\"}],\"items\":false,\"minItems\":3}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Root,
-                    &value,
-                    schema,
-                    None,
-                );
+                let json = runtime::to_value(&value).unwrap_or_default();
+                let items = json.as_array().map_or(&[][..], Vec::as_slice);
+                if let Some(item) = items.first()
+                    && let Err(e) = serde_json::from_value::<f64>(item.clone())
+                {
+                    runtime::violation(
+                        out,
+                        &runtime::InstancePath::Index(&runtime::InstancePath::Root, 0),
+                        e.to_string(),
+                    );
+                }
+                if let Some(item) = items.get(1usize)
+                    && let Err(e) = serde_json::from_value::<f64>(item.clone())
+                {
+                    runtime::violation(
+                        out,
+                        &runtime::InstancePath::Index(&runtime::InstancePath::Root, 1),
+                        e.to_string(),
+                    );
+                }
+                if let Some(item) = items.get(2usize)
+                    && let Err(e) = serde_json::from_value::<String>(item.clone())
+                {
+                    runtime::violation(
+                        out,
+                        &runtime::InstancePath::Index(&runtime::InstancePath::Root, 2),
+                        e.to_string(),
+                    );
+                }
+                if items.len() > 3 {
+                    runtime::violation(
+                        out,
+                        &runtime::InstancePath::Index(&runtime::InstancePath::Root, 3),
+                        "no value is allowed here",
+                    );
+                }
             }
         }
         runtime::first(violations)
@@ -133,22 +153,56 @@ impl TryFrom<Vec<Point>> for RouteStops {
                 let base = &runtime::InstancePath::Root;
                 for (i, v) in value.iter().enumerate() {
                     {
-                        static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                        let value = runtime::to_value(v).unwrap_or_default();
-                        let schema = SCHEMA
-                            .get_or_init(|| {
-                                serde_json::from_str(
-                                        "{\"type\":\"array\",\"prefixItems\":[{\"type\":\"number\"},{\"type\":\"number\"},{\"type\":\"string\"}],\"items\":false,\"minItems\":3}",
-                                    )
-                                    .unwrap_or_default()
-                            });
-                        runtime::check_schema_in(
-                            out,
-                            &runtime::InstancePath::Index(base, i),
-                            &value,
-                            schema,
-                            None,
-                        );
+                        let json = runtime::to_value(v).unwrap_or_default();
+                        let items = json.as_array().map_or(&[][..], Vec::as_slice);
+                        if let Some(item) = items.first()
+                            && let Err(e) = serde_json::from_value::<f64>(item.clone())
+                        {
+                            runtime::violation(
+                                out,
+                                &runtime::InstancePath::Index(
+                                    &runtime::InstancePath::Index(base, i),
+                                    0,
+                                ),
+                                e.to_string(),
+                            );
+                        }
+                        if let Some(item) = items.get(1usize)
+                            && let Err(e) = serde_json::from_value::<f64>(item.clone())
+                        {
+                            runtime::violation(
+                                out,
+                                &runtime::InstancePath::Index(
+                                    &runtime::InstancePath::Index(base, i),
+                                    1,
+                                ),
+                                e.to_string(),
+                            );
+                        }
+                        if let Some(item) = items.get(2usize)
+                            && let Err(e) = serde_json::from_value::<
+                                String,
+                            >(item.clone())
+                        {
+                            runtime::violation(
+                                out,
+                                &runtime::InstancePath::Index(
+                                    &runtime::InstancePath::Index(base, i),
+                                    2,
+                                ),
+                                e.to_string(),
+                            );
+                        }
+                        if items.len() > 3 {
+                            runtime::violation(
+                                out,
+                                &runtime::InstancePath::Index(
+                                    &runtime::InstancePath::Index(base, i),
+                                    3,
+                                ),
+                                "no value is allowed here",
+                            );
+                        }
                     }
                 }
             }
@@ -175,22 +229,17 @@ impl TryFrom<Open> for RouteTags {
         {
             let out = &mut violations;
             {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&value).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"type\":\"array\",\"prefixItems\":[{\"type\":\"string\"}]}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Root,
-                    &value,
-                    schema,
-                    None,
-                );
+                let json = runtime::to_value(&value).unwrap_or_default();
+                let items = json.as_array().map_or(&[][..], Vec::as_slice);
+                if let Some(item) = items.first()
+                    && let Err(e) = serde_json::from_value::<String>(item.clone())
+                {
+                    runtime::violation(
+                        out,
+                        &runtime::InstancePath::Index(&runtime::InstancePath::Root, 0),
+                        e.to_string(),
+                    );
+                }
             }
         }
         runtime::first(violations)

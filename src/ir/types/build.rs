@@ -8,8 +8,8 @@ use serde_json::Value;
 use super::cycles::break_cycles;
 use super::rewrite::{FALLBACK, conditional_union, request_view, view};
 use super::{
-    Access, Checked, Constraints, EnumValue, Field, Format, JsonKind, Kind, Struct, Ty, TypeDef, TypeId, TypeSpace,
-    Union, UnionMode, Variant, XmlHint,
+    Access, Checked, Constraints, EnumValue, Field, Format, JsonKind, Kind, Rest, Struct, Ty, TypeDef, TypeId,
+    TypeSpace, Union, UnionMode, Variant, XmlHint,
 };
 use crate::diag::Diagnostics;
 use crate::ir::names::{Name, Reserved, reserved, unique};
@@ -118,7 +118,12 @@ impl Constraints {
             items: None,
             property_names: None,
             dependent_required: vec![],
-            required: vec![],
+            // A struct holds the names that it declares. A map has none: its names are checked.
+            required: if json::object(s, "properties").is_none_or(serde_json::Map::is_empty) {
+                required_names(s).map(str::to_owned).collect()
+            } else {
+                vec![]
+            },
             format: None,
             not: vec![],
             dependent_schemas: vec![],
@@ -127,6 +132,7 @@ impl Constraints {
             one_of: vec![],
             pattern_properties: vec![],
             closed_to: None,
+            tuple: None,
             schema: None,
         }
     }
@@ -137,7 +143,7 @@ impl Constraints {
             ($($f:ident),*) => { $( if self.$f.is_none() { self.$f = other.$f; } )* };
         }
         take!(min_length, max_length, pattern, minimum, maximum, exclusive_minimum, exclusive_maximum, multiple_of);
-        take!(min_items, max_items, min_properties, max_properties, items, property_names, contains);
+        take!(min_items, max_items, min_properties, max_properties, items, property_names, contains, tuple);
         self.unique_items |= other.unique_items;
         self.decimal128 |= other.decimal128;
         self.dependent_required.extend(other.dependent_required);
@@ -238,8 +244,7 @@ fn typed_dependents(s: &Value) -> Option<Vec<(String, Vec<String>)>> {
 /// `default`. `None` when `s` declares no properties.
 fn absence_shows(s: &Value) -> Option<impl Fn(&str) -> bool + '_> {
     let props = s.get("properties")?.as_object()?;
-    let required: Vec<&str> =
-        json::strs(s.get("required").and_then(Value::as_array).map_or(&[][..], Vec::as_slice)).collect();
+    let required: Vec<&str> = required_names(s).collect();
     Some(move |n: &str| props.get(n).is_some_and(|p| required.contains(&n) || p.get("default").is_none()))
 }
 
@@ -521,10 +526,13 @@ fn asserts_nothing(s: &Value) -> bool {
 /// Puts the keywords of a schema without `type` that a typed value's type would hold into `c`: `required` for an object
 /// and `format` for a string, each checked by its kind.
 fn scoped_keywords(s: &Value, c: &mut Constraints) {
-    c.required = json::strs(s.get("required").and_then(Value::as_array).map_or(&[][..], Vec::as_slice))
-        .map(str::to_owned)
-        .collect();
+    c.required = required_names(s).map(str::to_owned).collect();
     c.format = s.get("format").and_then(Value::as_str).map(str::to_owned);
+}
+
+/// Returns the names in `required` of `s`.
+fn required_names(s: &Value) -> impl Iterator<Item = &str> {
+    json::strs(s.get("required").and_then(Value::as_array).map_or(&[][..], Vec::as_slice))
 }
 
 /// Returns the pointer of `key` under the schema at `at`.
@@ -908,6 +916,21 @@ impl<'a> Builder<'a> {
         subschemas.len() - 1
     }
 
+    /// Queues the item schemas of a tuple (`prefixItems`, then `items`) as subschemas.
+    fn queue_tuple(&self, s: &Value, at: Option<&str>) -> (Vec<usize>, Rest) {
+        let prefix = s.get("prefixItems").and_then(Value::as_array).map_or(&[][..], Vec::as_slice);
+        let at_prefix = at.map(|p| join(p, "prefixItems"));
+        let prefix = (prefix.iter().enumerate())
+            .map(|(i, p)| self.queue_subschema(p, at_prefix.as_deref().map(|a| join(a, &i.to_string()))))
+            .collect();
+        let rest = match s.get("items") {
+            None | Some(Value::Bool(true)) => Rest::Any,
+            Some(Value::Bool(false)) => Rest::Refused,
+            Some(items) => Rest::Schema(self.queue_subschema(items, at.map(|p| join(p, "items")))),
+        };
+        (prefix, rest)
+    }
+
     fn constraints_at(&self, s: &Value, depth: usize, at: Option<&str>) -> Constraints {
         // Keywords further down belong to the named types on the way, which hold them. Only a schema checked whole
         // loses what it cuts (`inline_scoped`).
@@ -944,8 +967,9 @@ impl<'a> Builder<'a> {
         // A tuple (`prefixItems`, maybe closed by `items: false`) has no Rust type that checks its length and items.
         // A `$dynamicRef` anywhere inside resolves in the dynamic scope from here: only the run-time check of the whole
         // schema follows it there.
-        let tuple =
-            s.get("prefixItems").is_some() || s.get("items") == Some(&Value::Bool(false)) || holds_dynamic_ref(s);
+        // A tuple (`prefixItems`, maybe closed by `items: false`) is checked item by item ([`Constraints::tuple`]).
+        let tuple = holds_dynamic_ref(s);
+        let typed_tuple = !tuple && (s.get("prefixItems").is_some() || s.get("items") == Some(&Value::Bool(false)));
         let mixed = mixed(s);
         let scoped = typeless_assertions(s) && kind_scoped(s);
         if scoped {
@@ -984,6 +1008,9 @@ impl<'a> Builder<'a> {
             if let Some(patterns) = patterns {
                 self.queue_patterns(s, patterns, at, &mut c);
             }
+            if typed_tuple {
+                c.tuple = Some(self.queue_tuple(s, at));
+            }
             for (name, sub) in dependent_schemas.into_iter().flatten() {
                 let at = at.map(|p| join(&join(p, "dependentSchemas"), name));
                 c.dependent_schemas.push((name.clone(), self.queue_subschema(sub, at)));
@@ -1015,7 +1042,9 @@ impl<'a> Builder<'a> {
         if let [branch] = only_non_null_branch(s).as_slice() {
             c.merge(self.constraints_at(branch, depth + 1, None));
         }
+        // Beside `prefixItems`, `items` holds for the rest only: the tuple checks it.
         if c.items.is_none()
+            && s.get("prefixItems").is_none()
             && let Some(items) = s.get("items")
         {
             let ic = self.constraints_at(items, depth + 1, None);
@@ -2745,6 +2774,8 @@ mod tests {
             "type": "array",
             "prefixItems": [{"type": "string"}, {"oneOf": [{"$ref": "#/components/schemas/Rec"}, {"type": "null"}]}],
             "items": false,
+            // Checked whole: a tuple alone is checked item by item.
+            "unevaluatedItems": false,
             "minItems": 2,
         });
         let doc = Doc::new(json!({"openapi": "3.2.0", "components": {"schemas": {"Rec": rec}}}));
@@ -2764,7 +2795,12 @@ mod tests {
     fn chained(n: usize) -> Value {
         let mut schemas = serde_json::Map::new();
         let link = |i: usize| json!({"$ref": format!("#/components/schemas/{}", if i == n { "Rec".to_owned() } else { format!("L{i}") })});
-        schemas.insert("Top".into(), json!({"type": "array", "prefixItems": [link(0)], "items": false, "minItems": 1}));
+        schemas.insert(
+            "Top".into(),
+            json!({"type": "array", "prefixItems": [link(0)], "items": false,
+            // Checked whole: a tuple alone is checked item by item.
+            "unevaluatedItems": false, "minItems": 1}),
+        );
         for i in 0..n {
             schemas.insert(format!("L{i}"), link(i + 1));
         }
@@ -2774,6 +2810,8 @@ mod tests {
                 "type": "array",
                 "prefixItems": [{"type": "string"}, {"oneOf": [{"$ref": "#/components/schemas/Rec"}, {"type": "null"}]}],
                 "items": false,
+            // Checked whole: a tuple alone is checked item by item.
+            "unevaluatedItems": false,
                 "minItems": 2,
             }),
         );

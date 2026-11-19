@@ -59,17 +59,16 @@ macro_rules! serialize_impl_2 {
     ($t:ty) => {
         impl serde::Serialize for $t {
             fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-                s.serialize_str(Self::VALUE)
+                Self::serialize(self, runtime::UniqueKeys(s))
             }
         }
     };
 }
-macro_rules! deserialize_impl_2 {
+macro_rules! serialize_impl_3 {
     ($t:ty) => {
-        impl<'de> serde::Deserialize<'de> for $t {
-            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-                let value = <Vec<serde_json::Value> as serde::Deserialize>::deserialize(d)?;
-                Self::try_from(value).map_err(serde::de::Error::custom)
+        impl serde::Serialize for $t {
+            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                s.serialize_str(Self::VALUE)
             }
         }
     };
@@ -494,11 +493,7 @@ pub struct CollectionLinksLinksetItem {
     pub additional_properties: std::collections::BTreeMap<String, SimpleLinkContext>,
 }
 deserialize_impl!(CollectionLinksLinksetItem);
-impl serde::Serialize for CollectionLinksLinksetItem {
-    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        Self::serialize(self, runtime::UniqueKeys(s))
-    }
-}
+serialize_impl_2!(CollectionLinksLinksetItem);
 impl CollectionLinksLinksetItem {
     #[must_use]
     pub const fn new() -> Self {
@@ -875,7 +870,7 @@ pub struct ServerSentEventStreamsBodyItemEventEvent;
 impl ServerSentEventStreamsBodyItemEventEvent {
     pub const VALUE: &'static str = "addString";
 }
-serialize_impl_2!(ServerSentEventStreamsBodyItemEventEvent);
+serialize_impl_3!(ServerSentEventStreamsBodyItemEventEvent);
 impl<'de> serde::Deserialize<'de> for ServerSentEventStreamsBodyItemEventEvent {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         runtime::expect_const(d, &serde_json::Value::String("addString".to_owned()))
@@ -924,7 +919,7 @@ pub struct ServerSentEventStreamsBodyItemAddInt64Event;
 impl ServerSentEventStreamsBodyItemAddInt64Event {
     pub const VALUE: &'static str = "addInt64";
 }
-serialize_impl_2!(ServerSentEventStreamsBodyItemAddInt64Event);
+serialize_impl_3!(ServerSentEventStreamsBodyItemAddInt64Event);
 impl<'de> serde::Deserialize<'de> for ServerSentEventStreamsBodyItemAddInt64Event {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         runtime::expect_const(d, &serde_json::Value::String("addInt64".to_owned()))
@@ -974,7 +969,7 @@ pub struct ServerSentEventStreamsBodyItemAddJsonEvent;
 impl ServerSentEventStreamsBodyItemAddJsonEvent {
     pub const VALUE: &'static str = "addJSON";
 }
-serialize_impl_2!(ServerSentEventStreamsBodyItemAddJsonEvent);
+serialize_impl_3!(ServerSentEventStreamsBodyItemAddJsonEvent);
 impl<'de> serde::Deserialize<'de> for ServerSentEventStreamsBodyItemAddJsonEvent {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         runtime::expect_const(d, &serde_json::Value::String("addJSON".to_owned()))
@@ -1012,6 +1007,50 @@ impl ServerSentEventStreamsBodyItemAddJsonData2Content {
     }
 }
 pub type ServerSentEventStreamsBodyItemAddJsonRetry = EventRetry;
+#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct Not {
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub author: Option<String>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub created: Option<String>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub copyright: Option<String>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub license: Option<String>,
+    #[serde(flatten)]
+    pub additional_properties: std::collections::BTreeMap<String, serde_json::Value>,
+}
+deserialize_impl!(Not);
+serialize_impl_2!(Not);
+impl Not {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self {
+            author: None,
+            created: None,
+            copyright: None,
+            license: None,
+            additional_properties: std::collections::BTreeMap::new(),
+        }
+    }
+}
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ServerSentEventStreamsBodyItemVariants {
     Event(ServerSentEventStreamsBodyItemEvent),
@@ -1144,31 +1183,53 @@ impl TryFrom<FormDataCode> for FormDataCodeChecked {
 checked_impls!(FormDataCodeChecked, FormDataCode);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
-pub struct OrderedUnnamedMultipartBody(pub(super) Vec<serde_json::Value>);
-deserialize_impl_2!(OrderedUnnamedMultipartBody);
-impl TryFrom<Vec<serde_json::Value>> for OrderedUnnamedMultipartBody {
+pub struct NotChecked(pub(super) Vec<serde_json::Value>);
+impl<'de> serde::Deserialize<'de> for NotChecked {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <Vec<serde_json::Value> as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
+    }
+}
+impl TryFrom<Vec<serde_json::Value>> for NotChecked {
     type Error = runtime::BuildError;
     fn try_from(value: Vec<serde_json::Value>) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
             {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&value).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"type\":\"array\",\"prefixItems\":[{\"type\":\"object\",\"properties\":{\"author\":{\"type\":\"string\"},\"created\":{\"type\":\"string\",\"format\":\"datetime\"},\"copyright\":{\"type\":\"string\"},\"license\":{\"type\":\"string\"}}},{}]}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Root,
-                    &value,
-                    schema,
-                    None,
-                );
+                let json = runtime::to_value(&value).unwrap_or_default();
+                let items = json.as_array().map_or(&[][..], Vec::as_slice);
+                if let Some(item) = items.first()
+                    && let Err(e) = serde_json::from_value::<
+                        std::collections::BTreeMap<String, serde_json::Value>,
+                    >(item.clone())
+                {
+                    runtime::violation(
+                        out,
+                        &runtime::InstancePath::Index(&runtime::InstancePath::Root, 0),
+                        e.to_string(),
+                    );
+                }
+                if let Some(item) = items.get(1usize)
+                    && let Err(e) = serde_json::from_value::<String>(item.clone())
+                {
+                    runtime::violation(
+                        out,
+                        &runtime::InstancePath::Index(&runtime::InstancePath::Root, 1),
+                        e.to_string(),
+                    );
+                }
+                if let Some(item) = items.get(2usize)
+                    && let Err(e) = serde_json::from_value::<
+                        serde_json::Value,
+                    >(item.clone())
+                {
+                    runtime::violation(
+                        out,
+                        &runtime::InstancePath::Index(&runtime::InstancePath::Root, 2),
+                        e.to_string(),
+                    );
+                }
             }
         }
         runtime::first(violations)
@@ -1176,7 +1237,7 @@ impl TryFrom<Vec<serde_json::Value>> for OrderedUnnamedMultipartBody {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(OrderedUnnamedMultipartBody, Vec < serde_json::Value >);
+checked_impls!(NotChecked, Vec < serde_json::Value >);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct OrderedMultipartWithRequiredHeaderBody(
@@ -1228,41 +1289,6 @@ checked_impls!(
     OrderedMultipartWithRequiredHeaderBody, (String, Vec <
     OrderedMultipartWithRequiredHeaderBodyItem >,)
 );
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
-#[serde(transparent)]
-pub struct NestedMultipartMixedBody(pub(super) Vec<serde_json::Value>);
-deserialize_impl_2!(NestedMultipartMixedBody);
-impl TryFrom<Vec<serde_json::Value>> for NestedMultipartMixedBody {
-    type Error = runtime::BuildError;
-    fn try_from(value: Vec<serde_json::Value>) -> Result<Self, runtime::BuildError> {
-        let mut violations: Vec<runtime::Violation> = Vec::new();
-        {
-            let out = &mut violations;
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&value).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"type\":\"array\",\"prefixItems\":[{\"type\":\"array\"},{\"type\":\"array\",\"prefixItems\":[{\"type\":\"object\"},{\"type\":\"string\"},{}]}]}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Root,
-                    &value,
-                    schema,
-                    None,
-                );
-            }
-        }
-        runtime::first(violations)
-            .map(|()| Self(value))
-            .map_err(runtime::BuildError::value)
-    }
-}
-checked_impls!(NestedMultipartMixedBody, Vec < serde_json::Value >);
 /// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
 /// its field. `build` returns the first field that did not convert.
 pub mod builders {

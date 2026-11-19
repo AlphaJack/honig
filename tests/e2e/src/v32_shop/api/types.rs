@@ -5705,51 +5705,6 @@ impl TryFrom<Vec<serde_json::Value>> for PaginatedResourceData {
     }
 }
 checked_impls!(PaginatedResourceData, Vec < serde_json::Value >);
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
-#[serde(transparent)]
-pub struct UploadPhotosBody(pub(super) (PhotoBatchMeta, Vec<runtime::Binary>));
-impl<'de> serde::Deserialize<'de> for UploadPhotosBody {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <(
-            PhotoBatchMeta,
-            Vec<runtime::Binary>,
-        ) as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
-    }
-}
-impl TryFrom<(PhotoBatchMeta, Vec<runtime::Binary>)> for UploadPhotosBody {
-    type Error = runtime::BuildError;
-    fn try_from(
-        value: (PhotoBatchMeta, Vec<runtime::Binary>),
-    ) -> Result<Self, runtime::BuildError> {
-        let mut violations: Vec<runtime::Violation> = Vec::new();
-        {
-            let out = &mut violations;
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&value).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"type\":\"array\",\"prefixItems\":[{\"$ref\":\"#/$defs/~1components~1schemas~1PhotoBatchMeta\"}],\"items\":{\"type\":\"string\",\"format\":\"binary\"}}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Root,
-                    &value,
-                    schema,
-                    runtime::schema_defs(),
-                );
-            }
-        }
-        runtime::first(violations)
-            .map(|()| Self(value))
-            .map_err(runtime::BuildError::value)
-    }
-}
-checked_impls!(UploadPhotosBody, (PhotoBatchMeta, Vec < runtime::Binary >,));
 /// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
 /// its field. `build` returns the first field that did not convert.
 pub mod builders {
