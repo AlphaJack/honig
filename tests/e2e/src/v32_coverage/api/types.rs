@@ -897,7 +897,12 @@ impl TryFrom<serde_json::Value> for NotChecked {
         {
             let out = &mut violations;
             if let serde_json::Value::Object(n) = &value {
-                runtime::check_required(out, &runtime::InstancePath::Root, n, &["size"]);
+                runtime::check_required(
+                    out,
+                    &runtime::InstancePath::Root,
+                    |name| n.contains_key(name),
+                    &["size"],
+                );
             }
         }
         runtime::first(violations)

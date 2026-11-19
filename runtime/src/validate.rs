@@ -212,9 +212,9 @@ pub fn check(out: &mut Vec<Violation>, path: &InstancePath<'_>, ok: bool, messag
     }
 }
 
-/// Checks `required` of a value without `type` that is an object: each of `names` is one of its properties.
-pub fn check_required(out: &mut Vec<Violation>, path: &InstancePath<'_>, object: &Map<String, Value>, names: &[&str]) {
-    for name in names.iter().filter(|name| !object.contains_key(**name)) {
+/// Checks `required` of an object whose names `has` looks up: each of `names` is one of its properties.
+pub fn check_required(out: &mut Vec<Violation>, path: &InstancePath<'_>, has: impl Fn(&str) -> bool, names: &[&str]) {
+    for name in names.iter().filter(|name| !has(name)) {
         violation(out, &InstancePath::Key(path, name), "is required");
     }
 }

@@ -112,6 +112,7 @@ fn split_own_checks(types: &mut TypeSpace, taken: &mut BTreeSet<String>) -> BTre
             one_of: own.one_of.clone(),
             pattern_properties: own.pattern_properties.clone(),
             closed_to: own.closed_to.clone(),
+            tuple: own.tuple.clone(),
             ..Constraints::default()
         };
         if def.rust_type.is_some() || constraints.is_empty() {
@@ -318,6 +319,10 @@ pub(crate) fn needs_checks(types: &TypeSpace, t: &Ty, c: &Constraints, hops: usi
     if !json.is_empty() && !json_held_by_type(types, t, &json, hops) {
         return true;
     }
+    // A Rust tuple holds its items by their types.
+    if c.tuple.is_some() && !matches!(t, Ty::Tuple(_)) {
+        return true;
+    }
     let c = &c.without_json();
     if let Some(schema) = &c.schema {
         if !held_by_type(types, t, schema, hops) {
@@ -347,7 +352,12 @@ pub(crate) fn needs_checks(types: &TypeSpace, t: &Ty, c: &Constraints, hops: usi
         Ty::Array(x, _) => {
             c.unique_items || c.contains.is_some() || needs_checks(types, x, &c.item_constraints(), hops)
         }
-        Ty::Map(_) => c.min_properties.is_some() || c.max_properties.is_some() || c.property_names.is_some(),
+        Ty::Map(_) => {
+            c.min_properties.is_some()
+                || c.max_properties.is_some()
+                || c.property_names.is_some()
+                || !c.required.is_empty()
+        }
         Ty::Named(id) => match &types.get(*id).kind {
             Kind::Alias(x) if hops < MAX_ALIAS_HOPS => needs_checks(types, x, c, hops + 1),
             Kind::Alias(_)

@@ -1035,11 +1035,14 @@ pub mod upload_photos {
     pub struct Params {
         /// The ID of the product to get
         pub product_id: i64,
-        pub body: types::UploadPhotosBody,
+        pub body: (types::PhotoBatchMeta, Vec<runtime::Binary>),
     }
     impl Params {
         #[must_use]
-        pub const fn new(product_id: i64, body: types::UploadPhotosBody) -> Self {
+        pub const fn new(
+            product_id: i64,
+            body: (types::PhotoBatchMeta, Vec<runtime::Binary>),
+        ) -> Self {
             Self { product_id, body }
         }
     }

@@ -259,10 +259,24 @@ pub(crate) struct Constraints {
     /// `additionalProperties` beside `patternProperties`: the declared names, and the schema that any other name that no
     /// pattern matches decodes as, an index into [`TypeSpace::subschemas`]. `None` for `false`: such a name is refused.
     pub closed_to: Option<(Vec<String>, Option<usize>)>,
+    /// `prefixItems` and `items` of a list that no Rust tuple holds: the schema of each leading item, as an index into
+    /// [`TypeSpace::subschemas`], then what the rest take.
+    pub tuple: Option<(Vec<usize>, Rest)>,
     /// The schema with `$ref`s inlined when it uses keywords that no type expresses on its own
     /// (`contains`, `patternProperties`, `if`, `not`, ...). `runtime::check_schema`
     /// checks it at runtime.
     pub schema: Option<Value>,
+}
+
+/// What the items after `prefixItems` take: `items` beside them.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Rest {
+    /// Any value: no `items`, or `items: true`.
+    Any,
+    /// None at all: `items: false`.
+    Refused,
+    /// A schema, as an index into [`TypeSpace::subschemas`].
+    Schema(usize),
 }
 
 /// An `xml` object (XML Object of the specification).

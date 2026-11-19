@@ -292,12 +292,11 @@ pub mod multipart_form_with_multiple_files {
     }
 }
 pub mod ordered_unnamed_multipart {
-    use super::super::types;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/multipart/ordered";
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct Params {
-        pub body: Option<types::OrderedUnnamedMultipartBody>,
+        pub body: Option<Vec<serde_json::Value>>,
     }
     impl Params {
         #[must_use]
@@ -359,12 +358,11 @@ pub mod ordered_multipart_with_required_header {
     }
 }
 pub mod nested_multipart_mixed {
-    use super::super::types;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/multipart/nested";
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct Params {
-        pub body: Option<types::NestedMultipartMixedBody>,
+        pub body: Option<Vec<serde_json::Value>>,
     }
     impl Params {
         #[must_use]
