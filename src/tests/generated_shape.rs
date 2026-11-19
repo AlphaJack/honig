@@ -1117,3 +1117,31 @@ fn property_names_of_any_schema_decode_each_name() {
             .to_owned();
     assert!(types.contains("is not an allowed property name") && !types.contains("check_schema"), "{types}");
 }
+
+/// `dependentSchemas` of a name that the struct does not declare keeps that name and checks the schema when it is
+/// present: no schema is checked whole.
+#[test]
+fn dependent_schemas_of_an_undeclared_name_are_typed() {
+    let card = json!({"type": "object", "properties": {"cvc": {"type": "string"}},
+        "dependentSchemas": {"card": {"type": "object", "required": ["cvc"]}}});
+    let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Payment": card}}));
+    let types =
+        common::file(&common::generate("dependent-undeclared", &doc, &crate::emit::Options::default()), "types.rs")
+            .to_owned();
+    assert!(types.contains("is present: ") && !types.contains("check_schema"), "{types}");
+}
+
+/// A `dependentSchemas` of an undeclared name beside `additionalProperties: false` keeps the struct closed: the name
+/// is refused anyway.
+#[test]
+fn an_undeclared_dependent_name_keeps_a_closed_struct_closed() {
+    let item = json!({"type": "object", "properties": {"a": {"type": "string"}},
+        "dependentSchemas": {"b": {"required": ["a"]}}, "additionalProperties": false});
+    let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Item": item}}));
+    let types = common::file(
+        &common::generate("dependent-undeclared-closed", &doc, &crate::emit::Options::default()),
+        "types.rs",
+    )
+    .to_owned();
+    assert!(types.contains("deny_unknown_fields") && !types.contains("additional_properties"), "{types}");
+}

@@ -268,12 +268,15 @@ fn absence_shows(s: &Value) -> Option<impl Fn(&str) -> bool + '_> {
     Some(move |n: &str| props.get(n).is_some_and(|p| required.contains(&n) || p.get("default").is_none()))
 }
 
-/// Returns `dependentSchemas` of `s` when its struct holds it: each name is a property whose absence shows
-/// ([`absence_shows`]). `None` leaves it to the run-time check of the whole schema.
+/// Returns `dependentSchemas` of `s` when generated code checks it: each name is a property whose absence shows
+/// ([`absence_shows`]), or one that `s` does not declare, which its struct keeps. A declared property with a `default`
+/// hides its absence: `None` leaves it to the run-time check of the whole schema.
 fn typed_dependent_schemas(s: &Value) -> Option<&serde_json::Map<String, Value>> {
     let deps = s.get("dependentSchemas")?.as_object()?;
-    let seen = absence_shows(s)?;
-    deps.keys().all(|n| seen(n)).then_some(deps)
+    let props = s.get("properties").and_then(Value::as_object);
+    let seen = absence_shows(s);
+    let shows = |n: &str| !props.is_some_and(|p| p.contains_key(n)) || seen.as_ref().is_some_and(|f| f(n));
+    deps.keys().all(|n| shows(n)).then_some(deps)
 }
 
 /// Returns a property schema's `example` and `examples` (an array in JSON Schema).
@@ -2033,10 +2036,15 @@ impl<'a> Builder<'a> {
         // split type leaves it out. So such structs stay open too.
         // `patternProperties`, `unevaluatedProperties` and `propertyNames` judge the names a struct does not declare. The run-time
         // check sees the value as it re-serializes, so those names must survive decoding.
+        // A `dependentSchemas` of a name that the struct does not declare looks for that name. With
+        // `additionalProperties: false` that name is refused anyway: the struct stays closed.
+        let undeclared_dependent = o.get("additionalProperties") != Some(&Value::Bool(false))
+            && (o.get("dependentSchemas").and_then(Value::as_object).into_iter())
+                .flat_map(serde_json::Map::keys)
+                .any(|k| !o.get("properties").and_then(Value::as_object).is_some_and(|p| p.contains_key(k)));
         let additional = additional.or_else(|| {
-            ["patternProperties", "unevaluatedProperties", "propertyNames"]
-                .iter()
-                .any(|k| o.contains_key(*k))
+            (["patternProperties", "unevaluatedProperties", "propertyNames"].iter().any(|k| o.contains_key(*k))
+                || undeclared_dependent)
                 .then_some(Ty::Any)
         });
         let closed = o.get("additionalProperties") == Some(&Value::Bool(false))
