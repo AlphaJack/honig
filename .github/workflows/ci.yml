@@ -267,6 +267,11 @@ jobs:
             paths: src benches tests/bench-support :!src/tests :!src/tests.rs
             valgrind: true
             run: cargo bench -p cargo-honig --bench scaling --locked
+          # Decoding into generated types: the code that the generator writes, run on bodies that grow.
+          - bench: scaling-e2e
+            paths: runtime src tests/e2e tests/bench-support :!runtime/tests :!src/tests :!src/tests.rs :!tests/e2e/tests
+            valgrind: true
+            run: cargo bench -p e2e --bench scaling --locked
           - bench: time
             paths: runtime/src src/emit tests/e2e
             valgrind: false
