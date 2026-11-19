@@ -240,6 +240,9 @@ pub(crate) struct Constraints {
     /// `dependentSchemas` that the struct holds: when a property is present, the value decodes as the type of its schema,
     /// an index into [`TypeSpace::subschemas`]. Each name is a field whose absence shows.
     pub dependent_schemas: Vec<(String, usize)>,
+    /// Each `if` with its `then` and `else`, as indices into [`TypeSpace::subschemas`]: a value that decodes as the
+    /// type of `if` decodes as that of `then`, any other as that of `else`.
+    pub conditions: Vec<(usize, Option<usize>, Option<usize>)>,
     /// The schema with `$ref`s inlined when it uses keywords that no type expresses on its own
     /// (`contains`, `patternProperties`, `if`, `not`, ...). `runtime::check_schema`
     /// checks it at runtime.

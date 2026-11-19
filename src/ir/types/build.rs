@@ -93,6 +93,7 @@ impl Constraints {
             dependent_required: vec![],
             not: vec![],
             dependent_schemas: vec![],
+            conditions: vec![],
             schema: None,
         }
     }
@@ -109,6 +110,7 @@ impl Constraints {
         self.dependent_required.extend(other.dependent_required);
         self.not.extend(other.not);
         self.dependent_schemas.extend(other.dependent_schemas);
+        self.conditions.extend(other.conditions);
         self.schema = match (self.schema.take(), other.schema) {
             (Some(a), Some(b)) => Some(serde_json::json!({ "allOf": [a, b] })),
             (a, b) => a.or(b),
@@ -812,7 +814,8 @@ impl<'a> Builder<'a> {
         // conditions. Only conditions that it cannot type stay a run-time check.
         let typed_conditional = s.as_object().is_some_and(|o| conditional_union(o).is_some());
         let conditional_key = |k: &str| {
-            (typed_conditional && matches!(k, "if" | "then" | "else"))
+            // An `if` that is no tagged union is a check of the types of its schemas.
+            matches!(k, "if" | "then" | "else")
                 || (dependents && k == "dependentRequired")
                 || (names && k == "propertyNames")
                 || (pattern_map && matches!(k, "patternProperties" | "additionalProperties"))
@@ -844,6 +847,14 @@ impl<'a> Builder<'a> {
         } else {
             if let Some(not) = s.get("not") {
                 c.not.push(self.queue_subschema(not, at.map(|p| join(p, "not"))));
+            }
+            if let Some(cond) = s.get("if").filter(|_| !typed_conditional) {
+                let queue = |k: &str| s.get(k).map(|b| self.queue_subschema(b, at.map(|p| join(p, k))));
+                c.conditions.push((
+                    self.queue_subschema(cond, at.map(|p| join(p, "if"))),
+                    queue("then"),
+                    queue("else"),
+                ));
             }
             for (name, sub) in dependent_schemas.into_iter().flatten() {
                 let at = at.map(|p| join(&join(p, "dependentSchemas"), name));
