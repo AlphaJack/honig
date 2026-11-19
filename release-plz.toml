@@ -57,11 +57,11 @@ header = """
 # Changelog
 
 """
-# Each group lists its commits under a heading per scope, in the order of CONTRIBUTING.md, breaking ones first.
+# Each group lists its commits under a heading per scope, Runtime, Generator then CLI, breaking ones first.
 # Commits with no listed scope come before the headings. The comment before each group name sets the order of the
 # groups, which would otherwise be alphabetical.
 body = """
-{%- set scopes = ["cli", "generator", "runtime"] %}
+{%- set scopes = ["runtime", "generator", "cli"] %}
 ## [{{ version }}]{%- if release_link -%}({{ release_link }}){% endif %} - {{ timestamp | date(format="%Y-%m-%d") }}
 {% for group, commits in commits | group_by(attribute="group") %}
 ### {{ group | striptags | trim | upper_first }}
@@ -70,7 +70,7 @@ body = """
 {%- endif %}{% endfor %}
 {%- for scope in scopes %}{% set scoped = commits | filter(attribute="scope", value=scope) %}{% if scoped %}
 
-#### {{ scope }}
+#### {% if scope == "cli" %}CLI{% else %}{{ scope | upper_first }}{% endif %}
 {% for c in scoped | filter(attribute="breaking", value=true) %}
 - **Breaking:** {{ c.message | upper_first }}
 {%- endfor %}
