@@ -4,3 +4,5 @@
 tests/e2e/src/*/api/** linguist-generated=true
 examples/*/src/api/** linguist-generated=true
 docs/book/src/generated/** linguist-generated=true
+# Vendored: the JSON Schema Test Suite, copied as it is. Collapsed too.
+tests/fixtures/json-schema-test-suite/** linguist-generated=true
