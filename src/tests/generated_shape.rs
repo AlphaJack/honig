@@ -1145,3 +1145,21 @@ fn an_undeclared_dependent_name_keeps_a_closed_struct_closed() {
     .to_owned();
     assert!(types.contains("deny_unknown_fields") && !types.contains("additional_properties"), "{types}");
 }
+
+/// `contains`, `patternProperties`, `propertyNames` and `dependentRequired` on a schema without `type` apply to values
+/// of their kind only: each is checked on its own, and no schema is checked whole.
+#[test]
+fn keywords_of_one_kind_without_a_type_are_checked() {
+    for (keyword, schema, check) in [
+        ("contains", json!({"contains": {"minimum": 5}}), "matching item(s)"),
+        ("patternProperties", json!({"patternProperties": {"^f": {"type": "integer"}}}), "pattern_matches"),
+        ("propertyNames", json!({"propertyNames": {"maxLength": 3}}), "is not an allowed property name"),
+        ("dependentRequired", json!({"dependentRequired": {"a": ["b"]}}), "is required when"),
+    ] {
+        let holder = json!({"type": "object", "required": ["v"], "properties": {"v": schema}});
+        let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Holder": holder}}));
+        let files = common::generate(&format!("typeless-{keyword}"), &doc, &crate::emit::Options::default());
+        let types = common::file(&files, "types.rs");
+        assert!(types.contains(check) && !types.contains("check_schema"), "{keyword}: {types}");
+    }
+}

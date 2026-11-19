@@ -209,6 +209,12 @@ fn is_object(o: &serde_json::Map<String, Value>) -> bool {
     type_set(o).0.iter().any(|t| t == "object")
 }
 
+/// Whether the schema `o` may take a value of kind `kind`: its `type` names it, or it has no `type`. Without one, its
+/// value is a `serde_json::Value`, whose checks apply a keyword to values of its kind only.
+fn may_be(o: &serde_json::Map<String, Value>, kind: &str) -> bool {
+    !o.contains_key("type") || type_set(o).0.iter().any(|t| t == kind)
+}
+
 /// Returns the pattern of `s` when it is a map that generated code holds whole: `type: object` with one
 /// `patternProperties` entry, no `properties` and `additionalProperties: false`. Its type is a map of the pattern's
 /// schema ([`Builder::scalar`]), so each value decodes as that schema, and every name must match the pattern.
@@ -223,7 +229,7 @@ fn typed_pattern_map(s: &Value) -> Option<String> {
 /// absent, `true` or `false`. A schema there would type the names that patterns match too. `None` leaves it to the
 /// run-time check of the whole schema.
 fn typed_patterns(s: &Value) -> Option<&serde_json::Map<String, Value>> {
-    let o = s.as_object().filter(|o| is_object(o))?;
+    let o = s.as_object().filter(|o| may_be(o, "object"))?;
     let extra = o.get("additionalProperties");
     o.get("patternProperties")?.as_object().filter(|_| extra.is_none_or(|e| e.is_boolean() || e.is_object()))
 }
@@ -243,16 +249,23 @@ fn typed_property_names(s: &Value) -> Option<Box<Constraints>> {
     text.then(|| Box::new(Constraints::own(&Value::Object(names.clone()))))
 }
 
-/// Returns `dependentRequired` of `s` when its struct holds it: every name is a property that `s` declares, and an
-/// optional one has no `default`, so that its absence shows. `None` leaves it to the run-time check of the whole schema.
+/// Returns `dependentRequired` of `s` when generated code checks it: on a struct, every name is a property that `s`
+/// declares, and an optional one has no `default`, so that its absence shows. A map or a value without `type` keeps
+/// every name. `None` leaves it to the run-time check of the whole schema.
 fn typed_dependents(s: &Value) -> Option<Vec<(String, Vec<String>)>> {
     let deps = s.get("dependentRequired")?.as_object()?;
-    let seen = absence_shows(s)?;
+    // Without properties the value is a map or a `serde_json::Value`, which keeps every name it was sent.
+    let declares = json::object(s, "properties").is_some_and(|p| !p.is_empty());
+    let seen = absence_shows(s);
+    if declares && seen.is_none() || !s.as_object().is_some_and(|o| may_be(o, "object")) {
+        return None;
+    }
+    let shows = |n: &str| !declares || seen.as_ref().is_some_and(|f| f(n));
     let mut out = vec![];
     for (name, needs) in deps {
         let needs: Vec<String> =
             needs.as_array()?.iter().map(|n| n.as_str().map(String::from)).collect::<Option<_>>()?;
-        if !seen(name) || !needs.iter().all(|n| seen(n)) {
+        if !shows(name) || !needs.iter().all(|n| shows(n)) {
             return None;
         }
         out.push((name.clone(), needs));
@@ -1177,11 +1190,11 @@ impl<'a> Builder<'a> {
         let unevaluated_items =
             s.get("unevaluatedItems").is_some() && self.evaluation::<EvaluatedItems>(s, 0, false).is_some();
         // `propertyNames` of any other schema: each name decodes as its type.
-        let names_any = !names && s.get("propertyNames").is_some() && s.as_object().is_some_and(is_object);
+        let names_any =
+            !names && s.get("propertyNames").is_some() && s.as_object().is_some_and(|o| may_be(o, "object"));
         let dependent_schemas = typed_dependent_schemas(s);
         // `contains` on an array type counts the items that decode as the type of its schema.
-        let typed_contains =
-            s.get("contains").is_some() && s.as_object().is_some_and(|o| type_set(o).0.iter().any(|t| t == "array"));
+        let typed_contains = s.get("contains").is_some() && s.as_object().is_some_and(|o| may_be(o, "array"));
         let patterns = (!pattern_map).then(|| typed_patterns(s)).flatten();
         // `if`/`then` on one property's constants becomes a tagged union (`conditional_union`): its variants hold the
         // conditions. Only conditions that it cannot type stay a run-time check.
