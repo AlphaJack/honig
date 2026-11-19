@@ -1040,6 +1040,15 @@ pub(crate) fn shared_arms(arms: Vec<(TokenStream, Option<Ty>, TokenStream)>) -> 
     groups.into_iter().map(|(_, patterns, body)| match_arm(&patterns, &body)).collect()
 }
 
+/// Returns the name of the field that holds the other properties of `s`.
+pub(crate) fn extra_field(s: &crate::ir::types::Struct) -> String {
+    let mut name = "additional_properties".to_owned();
+    while s.fields.iter().any(|f| snake(&f.name) == name) {
+        name.push('_');
+    }
+    name
+}
+
 #[cfg(test)]
 mod tests {
     use super::{grouped, lit, rustdoc};

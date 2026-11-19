@@ -1485,6 +1485,126 @@ impl TryFrom<PaymentFields> for Payment {
     }
 }
 checked_impls!(Payment, PaymentFields);
+#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct Labelled {
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub labels: Option<LabelledLabels>,
+}
+deserialize_impl!(Labelled);
+serialize_impl!(Labelled);
+impl Labelled {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self { labels: None }
+    }
+}
+impl runtime::XmlShape for Labelled {
+    fn xml() -> &'static runtime::XmlNode {
+        static NODE: runtime::XmlNode = runtime::XmlNode {
+            name: "Labelled",
+            namespace: "",
+            prefix: "",
+            fields: &[
+                runtime::XmlField {
+                    wire: "labels",
+                    name: "labels",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "labels",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+            ],
+        };
+        &NODE
+    }
+}
+pub type Labels = std::collections::BTreeMap<String, String>;
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
+pub struct Profile(pub(super) ProfileFields);
+impl<'de> serde::Deserialize<'de> for Profile {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <ProfileFields as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
+    }
+}
+impl TryFrom<ProfileFields> for Profile {
+    type Error = runtime::BuildError;
+    fn try_from(value: ProfileFields) -> Result<Self, runtime::BuildError> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            if value.name.is_some() {
+                {
+                    let name = "name";
+                    runtime::check(
+                        out,
+                        &runtime::InstancePath::Key(&runtime::InstancePath::Root, name),
+                        runtime::pattern_matches(
+                            {
+                                static RE: runtime::Pattern = runtime::Pattern::new();
+                                &RE
+                            },
+                            "^[a-z]+$",
+                            name,
+                        ),
+                        "does not match `^[a-z]+$`",
+                    );
+                }
+            }
+            if value.nick_name.is_some() {
+                {
+                    let name = "Nick-Name";
+                    runtime::check(
+                        out,
+                        &runtime::InstancePath::Key(&runtime::InstancePath::Root, name),
+                        runtime::pattern_matches(
+                            {
+                                static RE: runtime::Pattern = runtime::Pattern::new();
+                                &RE
+                            },
+                            "^[a-z]+$",
+                            name,
+                        ),
+                        "does not match `^[a-z]+$`",
+                    );
+                }
+            }
+            for name in value.additional_properties.keys() {
+                runtime::check(
+                    out,
+                    &runtime::InstancePath::Key(&runtime::InstancePath::Root, name),
+                    runtime::pattern_matches(
+                        {
+                            static RE: runtime::Pattern = runtime::Pattern::new();
+                            &RE
+                        },
+                        "^[a-z]+$",
+                        name,
+                    ),
+                    "does not match `^[a-z]+$`",
+                );
+            }
+        }
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
+    }
+}
+checked_impls!(Profile, ProfileFields);
 #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Price {
@@ -3242,6 +3362,81 @@ impl runtime::XmlShape for PaymentFields {
         &NODE
     }
 }
+#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct ProfileFields {
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub name: Option<String>,
+    #[serde(
+        rename = "Nick-Name",
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub nick_name: Option<String>,
+    #[serde(flatten)]
+    pub additional_properties: std::collections::BTreeMap<String, serde_json::Value>,
+}
+deserialize_impl!(ProfileFields);
+serialize_impl_4!(ProfileFields);
+impl ProfileFields {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self {
+            name: None,
+            nick_name: None,
+            additional_properties: std::collections::BTreeMap::new(),
+        }
+    }
+}
+impl runtime::XmlShape for ProfileFields {
+    fn xml() -> &'static runtime::XmlNode {
+        static NODE: runtime::XmlNode = runtime::XmlNode {
+            name: "ProfileFields",
+            namespace: "",
+            prefix: "",
+            fields: &[
+                runtime::XmlField {
+                    wire: "name",
+                    name: "name",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "name",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "Nick-Name",
+                    name: "Nick-Name",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "Nick-Name",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+            ],
+        };
+        &NODE
+    }
+}
 /// label
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -4075,6 +4270,54 @@ impl TryFrom<Vec<String>> for BadgeHolders {
 checked_impls!(BadgeHolders, Vec < String >);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
+pub struct LabelledLabels(pub(super) Labels);
+impl<'de> serde::Deserialize<'de> for LabelledLabels {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <Labels as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
+    }
+}
+impl TryFrom<Labels> for LabelledLabels {
+    type Error = runtime::BuildError;
+    fn try_from(value: Labels) -> Result<Self, runtime::BuildError> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            for name in value.keys() {
+                let n = name.chars().count();
+                runtime::check_len(
+                    out,
+                    &runtime::InstancePath::Key(&runtime::InstancePath::Root, name),
+                    n,
+                    None,
+                    Some(8),
+                    "characters",
+                );
+                if n <= 8 {
+                    runtime::check(
+                        out,
+                        &runtime::InstancePath::Key(&runtime::InstancePath::Root, name),
+                        runtime::pattern_matches(
+                            {
+                                static RE: runtime::Pattern = runtime::Pattern::new();
+                                &RE
+                            },
+                            "^[a-z]+$",
+                            name,
+                        ),
+                        "does not match `^[a-z]+$`",
+                    );
+                }
+            }
+        }
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
+    }
+}
+checked_impls!(LabelledLabels, Labels);
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
 pub struct UserTags(pub(super) Vec<UserTagsItem>);
 impl<'de> serde::Deserialize<'de> for UserTags {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
@@ -4597,6 +4840,52 @@ pub mod builders {
         /// Returns the value once its whole schema holds.
         pub fn build(self) -> Result<super::Payment, runtime::BuildError> {
             self.0.build().and_then(super::Payment::try_from)
+        }
+    }
+    impl super::Labelled {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> Labelled {
+            Labelled(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct Labelled(runtime::Builder<super::Labelled>);
+    impl Labelled {
+        pub fn labels(
+            self,
+            value: impl TryInto<types::LabelledLabels, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("labels", value, |s, v| s.labels = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::Labelled, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::Profile {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> Profile {
+            Profile(runtime::Builder::start(|| Ok(super::ProfileFields::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct Profile(runtime::Builder<super::ProfileFields>);
+    impl Profile {
+        pub fn name(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("name", value, |s, v| s.name = Some(v)))
+        }
+        pub fn nick_name(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("Nick-Name", value, |s, v| s.nick_name = Some(v)))
+        }
+        /// Returns the value once its whole schema holds.
+        pub fn build(self) -> Result<super::Profile, runtime::BuildError> {
+            self.0.build().and_then(super::Profile::try_from)
         }
     }
     impl super::Price {

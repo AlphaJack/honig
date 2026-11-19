@@ -229,6 +229,9 @@ pub(crate) struct Constraints {
     pub decimal128: bool,
     /// Constraints of an array's items.
     pub items: Option<Box<Self>>,
+    /// `propertyNames` that a map or a struct holds: the string checks (`pattern`, `minLength`, `maxLength`) of each
+    /// name that the object has.
+    pub property_names: Option<Box<Self>>,
     /// `dependentRequired` that the struct holds: each property, by its name on the wire, with the properties that must
     /// be present when it is. Every name is a field whose absence shows: required, or optional without a default.
     pub dependent_required: Vec<(String, Vec<String>)>,

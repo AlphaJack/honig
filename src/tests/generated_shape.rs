@@ -761,3 +761,19 @@ fn dependent_required_checks_the_fields() {
         "cvc": {"type": "string", "default": "000"}}, "dependentRequired": {"card": ["cvc"]}}));
     assert!(defaulted.contains("check_schema"), "{defaulted}");
 }
+
+/// `propertyNames` of `pattern`, `minLength` and `maxLength` is a check of each name: no schema is checked whole. Any
+/// other schema of names keeps the whole check. A map component holds it where it is used, as `minProperties`.
+#[test]
+fn property_names_checks_each_name() {
+    let types = |names: serde_json::Value| {
+        let labels = json!({"type": "object", "additionalProperties": {"type": "string"}, "propertyNames": names});
+        let tagged = json!({"type": "object", "properties": {"labels": {"$ref": "#/components/schemas/Labels"}}});
+        let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Labels": labels, "Tagged": tagged}}));
+        common::file(&common::generate("property-names", &doc, &crate::emit::Options::default()), "types.rs").to_owned()
+    };
+    let typed = types(json!({"pattern": "^[a-z]+$", "maxLength": 8}));
+    assert!(typed.contains("for name in") && !typed.contains("check_schema"), "{typed}");
+    let other = types(json!({"enum": ["a", "b"]}));
+    assert!(other.contains("check_schema"), "{other}");
+}

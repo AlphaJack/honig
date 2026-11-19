@@ -263,6 +263,24 @@ components:
       dependentRequired:
         card: [cvc, holder]
 
+    # `propertyNames` that checks only text: a check of each name, with no schema checked whole. A map component is an
+    # alias: its keywords hold where it is used, as `minProperties` does.
+    Labelled:
+      type: object
+      properties:
+        labels: {$ref: '#/components/schemas/Labels'}
+    Labels:
+      type: object
+      additionalProperties: {type: string}
+      propertyNames: {pattern: '^[a-z]+$', maxLength: 8}
+    # On a struct the names of the declared properties that are present count, and so do the names it does not declare.
+    Profile:
+      type: object
+      properties:
+        name: {type: string}
+        Nick-Name: {type: string}
+      propertyNames: {pattern: '^[a-z]+$'}
+
     Price:
       type: object
       properties:

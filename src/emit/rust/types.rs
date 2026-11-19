@@ -962,7 +962,7 @@ fn structure(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, s: &St
     let can_default = struct_default(space, s, &mut vec![id]);
     let derive = derives(space, id, can_default && defaults.is_empty());
     let fields = s.fields.iter().map(|f| field(space, f, &pascal(&def.name)));
-    let extra = ident(&extra_field(s));
+    let extra = ident(&super::syntax::extra_field(s));
     let additional = s.additional.as_ref().map(|t| {
         let read = holds_text(space, t).map(|h| {
             let read = lit(&format!("runtime::formats::read::<_, _, runtime::formats::Values<{h}>>"));
@@ -1216,14 +1216,6 @@ fn builder(space: &Space<'_>, name: &proc_macro2::Ident, shape: &proc_macro2::Id
 fn many_arguments(count: usize) -> Option<TokenStream> {
     (count > super::syntax::MAX_ARGUMENTS)
         .then(|| quote!(#![allow(clippy::too_many_arguments, reason = "one argument per required property")]))
-}
-
-fn extra_field(s: &Struct) -> String {
-    let mut name = "additional_properties".to_owned();
-    while s.fields.iter().any(|f| snake(&f.name) == name) {
-        name.push('_');
-    }
-    name
 }
 
 /// Emits a newtype carried as JSON text inside a string.
