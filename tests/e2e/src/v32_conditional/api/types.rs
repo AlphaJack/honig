@@ -642,21 +642,7 @@ impl ConstOneOfEmail {
     }
 }
 pub use EmailType as ConstOneOfEmailType;
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct ConstOneOfSms {
-    #[serde(rename = "type")]
-    pub type_: ConstOneOfSmsType,
-    pub phone: String,
-}
-deserialize_impl!(ConstOneOfSms);
-serialize_impl!(ConstOneOfSms);
-impl ConstOneOfSms {
-    #[must_use]
-    pub const fn new(type_: ConstOneOfSmsType, phone: String) -> Self {
-        Self { type_, phone }
-    }
-}
+pub type ConstOneOfSms = IfThenSms;
 pub use SmsType as ConstOneOfSmsType;
 /// pickup
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]

@@ -129,30 +129,7 @@ pub(super) fn subschema_checks(
             }
         }
     });
-    let conditions = c.conditions.iter().map(|&(cond, then, otherwise)| {
-        // Each branch as (the `let` that its error binds, the violation).
-        let branch = |b: usize, name: &str| {
-            let (b, name) = (ty(b), lit(&format!("`{name}`: ")));
-            (
-                quote!(let Err(e) = serde_json::from_value::<#b>(json.clone())),
-                quote!(runtime::violation(out, #path, format!("{}{e}", #name));),
-            )
-        };
-        let cond = ty(cond);
-        let matched = quote!(serde_json::from_value::<#cond>(json.clone()).is_ok());
-        match (then.map(|b| branch(b, "then")), otherwise.map(|b| branch(b, "else"))) {
-            (Some((then, v)), Some((otherwise, w))) => quote! {
-                if #matched {
-                    if #then { #v }
-                } else if #otherwise {
-                    #w
-                }
-            },
-            (Some((then, v)), None) => quote!(if #matched && #then { #v }),
-            (None, Some((otherwise, w))) => quote!(if !#matched && #otherwise { #w }),
-            (None, None) => TokenStream::new(),
-        }
-    });
+    let conditions = condition_checks(c, &ty, path);
     let one_of = (!c.one_of.is_empty()).then(|| {
         let branches = c.one_of.iter().map(|&n| ty(n));
         quote! {
@@ -175,16 +152,18 @@ pub(super) fn subschema_checks(
             }
         }
     });
+    let values = value_checks(c, path);
     quote! {
         {
             let json = runtime::to_value(#value).unwrap_or_default();
             #(#nots)*
             #(#dependents)*
-            #(#conditions)*
+            #conditions
             #one_of
             #patterns
             #tuple
             #(#also)*
+            #values
         }
     }
 }
@@ -842,4 +821,57 @@ fn map_checks(c: &Constraints, value: &TokenStream, path: &TokenStream) -> Token
     let names = c.property_names.as_deref().map(|n| name_checks(n, &quote!(#r.keys()), path));
     let required = required_checks(c, &quote!(|name| #r.contains_key(name)), path);
     quote!(#len #names #required)
+}
+
+/// Returns `enum` and `const` of `c` on `json` when no type holds their values: the value is compared as JSON.
+fn value_checks(c: &Constraints, path: &TokenStream) -> TokenStream {
+    let one_of_values = c.enum_values.as_ref().map(|values| {
+        let values = values.iter().map(super::syntax::json_tokens);
+        quote! {
+            static VALUES: std::sync::OnceLock<Vec<serde_json::Value>> = std::sync::OnceLock::new();
+            if !VALUES.get_or_init(|| vec![#(#values),*]).iter().any(|v| runtime::json_equal(&json, v)) {
+                runtime::violation(out, #path, "is not one of the allowed values");
+            }
+        }
+    });
+    let constant = c.const_value.as_ref().map(|v| {
+        let (message, v) = (lit(&format!("must be {v}")), super::syntax::json_tokens(v));
+        quote! {
+            static VALUE: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+            if !runtime::json_equal(&json, VALUE.get_or_init(|| #v)) {
+                runtime::violation(out, #path, #message);
+            }
+        }
+    });
+    quote!(#one_of_values #constant)
+}
+
+/// Returns each `if` of `c` on `json`: a value that decodes as the type of `if` decodes as that of `then`, any other as
+/// that of `else`.
+fn condition_checks(c: &Constraints, ty: &dyn Fn(usize) -> TokenStream, path: &TokenStream) -> TokenStream {
+    let conditions = c.conditions.iter().map(|&(cond, then, otherwise)| {
+        // Each branch as (the `let` that its error binds, the violation).
+        let branch = |b: usize, name: &str| {
+            let (b, name) = (ty(b), lit(&format!("`{name}`: ")));
+            (
+                quote!(let Err(e) = serde_json::from_value::<#b>(json.clone())),
+                quote!(runtime::violation(out, #path, format!("{}{e}", #name));),
+            )
+        };
+        let cond = ty(cond);
+        let matched = quote!(serde_json::from_value::<#cond>(json.clone()).is_ok());
+        match (then.map(|b| branch(b, "then")), otherwise.map(|b| branch(b, "else"))) {
+            (Some((then, v)), Some((otherwise, w))) => quote! {
+                if #matched {
+                    if #then { #v }
+                } else if #otherwise {
+                    #w
+                }
+            },
+            (Some((then, v)), None) => quote!(if #matched && #then { #v }),
+            (None, Some((otherwise, w))) => quote!(if !#matched && #otherwise { #w }),
+            (None, None) => TokenStream::new(),
+        }
+    });
+    quote!(#(#conditions)*)
 }
