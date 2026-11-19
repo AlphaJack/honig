@@ -1,0 +1,87 @@
+anchor: $ref to $ref finds detached $anchor: non-number is invalid	refers to another document
+anchor: $ref to $ref finds detached $anchor: number is valid	refers to another document
+anchor: Location-independent identifier in remote ref: integer is valid	refers to another document
+anchor: Location-independent identifier in remote ref: string is invalid	refers to another document
+anchor: Location-independent identifier with base URI change in subschema: match	refers to another document
+anchor: Location-independent identifier with base URI change in subschema: mismatch	refers to another document
+anchor: anchor within remote ref: remote anchor invalid	refers to another document
+anchor: anchor within remote ref: remote anchor valid	refers to another document
+dynamicRef: $ref and $dynamicAnchor are independent of order - $defs first (2020): correct extended schema	refers to another document
+dynamicRef: $ref and $dynamicAnchor are independent of order - $defs first (2020): incorrect extended schema	refers to another document
+dynamicRef: $ref and $dynamicAnchor are independent of order - $defs first (2020): incorrect parent schema	refers to another document
+dynamicRef: $ref and $dynamicAnchor are independent of order - $ref first (2020): correct extended schema	refers to another document
+dynamicRef: $ref and $dynamicAnchor are independent of order - $ref first (2020): incorrect extended schema	refers to another document
+dynamicRef: $ref and $dynamicAnchor are independent of order - $ref first (2020): incorrect parent schema	refers to another document
+dynamicRef: $ref to $dynamicRef finds detached $dynamicAnchor (2020): non-number is invalid	refers to another document
+dynamicRef: $ref to $dynamicRef finds detached $dynamicAnchor (2020): number is valid	refers to another document
+dynamicRef: A $dynamicRef that initially resolves to a schema with a matching $dynamicAnchor resolves to the first $dynamicAnchor in the dynamic scope: The recursive part is not valid against the root	decodes an invalid instance
+dynamicRef: strict-tree schema, guards against misspelled properties (2020): instance with correct field	refuses a valid instance: /children: is not allowed (unevaluatedProperties)
+dynamicRef: tests for implementation dynamic anchor and reference link (2020): correct extended schema	refers to another document
+dynamicRef: tests for implementation dynamic anchor and reference link (2020): incorrect extended schema	refers to another document
+dynamicRef: tests for implementation dynamic anchor and reference link (2020): incorrect parent schema	refers to another document
+enum: heterogeneous enum validation: one of the enum is valid	refuses a valid instance: invalid type: sequence, expected i64
+enum: heterogeneous enum validation: valid object matches	refuses a valid instance: invalid type: map, expected i64
+format-date-time: date-time annotation: invalid date-time string is only an annotation by default	refuses a valid instance: is not a valid date-time
+format-date: date format annotation: invalid date string is only an annotation by default	refuses a valid instance: is not a valid date
+format-duration: duration format annotation: invalid duration string is only an annotation by default	refuses a valid instance: is not a valid duration
+format-email: email format annotation: invalid email string is only an annotation by default	refuses a valid instance: is not a valid email
+format-hostname: hostname format annotation: invalid hostname string is only an annotation by default	refuses a valid instance: is not a valid hostname
+format-idn-email: idn-email format: invalid idn-email string is only an annotation by default	refuses a valid instance: is not a valid idn-email
+format-idn-hostname: idn-hostname format annotation: invalid idn-hostname string is only an annotation by default	refuses a valid instance: is not a valid idn-hostname
+format-idn-hostname: validation of internationalized host names: A-label that decodes to a disallowed code point is invalid	decodes an invalid instance
+format-ipv4: ipv4 format annotation: invalid ipv4 string is only an annotation by default	refuses a valid instance: is not a valid ipv4
+format-ipv6: ipv6 format: invalid ipv6 string is only an annotation by default	refuses a valid instance: is not a valid ipv6
+format-iri-reference: iri-reference format annotation: invalid iri-reference string is only an annotation by default	refuses a valid instance: is not a valid iri-reference
+format-iri: iri format: invalid iri string is only an annotation by default	refuses a valid instance: is not a valid iri
+format-json-pointer: json-pointer format: invalid json-pointer string is only an annotation by default	refuses a valid instance: is not a valid json-pointer
+format-regex: regex format: invalid regex string is only an annotation by default	refuses a valid instance: is not a valid regex
+format-relative-json-pointer: relative-json-pointer format: invalid relative-json-pointer string is only an annotation by default	refuses a valid instance: is not a valid relative-json-pointer
+format-time: time format: invalid time string is only an annotation by default	refuses a valid instance: is not a valid time
+format-uri-reference: uri-reference format annotation: invalid uri-reference string is only an annotation by default	refuses a valid instance: is not a valid uri-reference
+format-uri-template: uri-template format annotation: invalid uri-template string is only an annotation by default	refuses a valid instance: is not a valid uri-template
+format-uri: uri format annotation: invalid uri string is only an annotation by default	refuses a valid instance: is not a valid uri
+format-uuid: uuid format annotation: invalid uuid string is only an annotation by default	refuses a valid instance: is not a valid uuid
+id: $id must be resolved against nearest parent, not just immediate parent: non-number is invalid	refers to another document
+id: $id must be resolved against nearest parent, not just immediate parent: number is valid	refers to another document
+id: base URI change - change folder in subschema: number is valid	refers to another document
+id: base URI change - change folder in subschema: string is invalid	refers to another document
+id: base URI change - change folder: number is valid	refers to another document
+id: base URI change - change folder: string is invalid	refers to another document
+id: base URI change: base URI change ref invalid	refers to another document
+id: base URI change: base URI change ref valid	refers to another document
+id: order of evaluation: $id and $ref on nested schema: data is invalid against nested sibling	refers to another document
+id: order of evaluation: $id and $ref on nested schema: data is valid against nested sibling	refers to another document
+id: remote HTTP ref with different $id: number is invalid	refers to another document
+id: remote HTTP ref with different $id: string is valid	refers to another document
+id: remote HTTP ref with different URN $id: number is invalid	refers to another document
+id: remote HTTP ref with different URN $id: string is valid	refers to another document
+id: remote HTTP ref with nested absolute ref: number is invalid	refers to another document
+id: remote HTTP ref with nested absolute ref: string is valid	refers to another document
+id: retrieved nested refs resolve relative to their URI not $id: number is invalid	refers to another document
+id: retrieved nested refs resolve relative to their URI not $id: string is valid	refers to another document
+ref: Recursive references between schemas: invalid tree	refers to another document
+ref: Recursive references between schemas: valid tree	refers to another document
+ref: fragment within remote ref: remote fragment invalid	refers to another document
+ref: fragment within remote ref: remote fragment valid	refers to another document
+ref: ref within remote ref: ref within ref invalid	refers to another document
+ref: ref within remote ref: ref within ref valid	refers to another document
+ref: remote ref with ref to defs: invalid	refers to another document
+ref: remote ref with ref to defs: valid	refers to another document
+ref: remote ref: remote ref invalid	refers to another document
+ref: remote ref: remote ref valid	refers to another document
+ref: root ref in remote ref: null is valid	refers to another document
+ref: root ref in remote ref: object is invalid	refers to another document
+ref: root ref in remote ref: string is valid	refers to another document
+type: integer type matches integers (6): a float with zero fractional part is an integer	refuses a valid instance: invalid type: floating point `1.0`, expected i64
+unevaluatedProperties: dynamic evaluation inside nested refs: b + c is invalid	decodes an invalid instance
+unevaluatedProperties: dynamic evaluation inside nested refs: b + d is invalid	decodes an invalid instance
+unevaluatedProperties: dynamic evaluation inside nested refs: xx + b is invalid	decodes an invalid instance
+unevaluatedProperties: dynamic evaluation inside nested refs: xx + c is invalid	decodes an invalid instance
+unevaluatedProperties: dynamic evaluation inside nested refs: xx + d is invalid	decodes an invalid instance
+unevaluatedProperties: unevaluatedProperties before $ref: with no unevaluated properties	refuses a valid instance: /bar: is not allowed (unevaluatedProperties)
+unevaluatedProperties: unevaluatedProperties with $dynamicRef (2020): with no unevaluated properties	refuses a valid instance: /bar: is not allowed (unevaluatedProperties)
+unevaluatedProperties: unevaluatedProperties with $ref: with no unevaluated properties	refuses a valid instance: /bar: is not allowed (unevaluatedProperties)
+unevaluatedProperties: unevaluatedProperties with anyOf: when one matches and has unevaluated properties	decodes an invalid instance
+unevaluatedProperties: unevaluatedProperties with anyOf: when two match and has unevaluated properties	decodes an invalid instance
+unevaluatedProperties: unevaluatedProperties with oneOf: with unevaluated properties	decodes an invalid instance
+vocabulary: schema that uses custom metaschema with no validation vocabulary: no validation: invalid number, but it still validates	refuses a valid instance: 1 is less than the minimum 10

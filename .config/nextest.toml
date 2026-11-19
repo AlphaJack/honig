@@ -7,5 +7,5 @@ leak-timeout = "1s"
 
 # Tests that compile crates of their own.
 [[profile.default.overrides]]
-filter = 'test(=tests::generated_crates::wasm_client) | test(=tests::fuzz::generated_crates_compile_and_pass_their_tests) | test(=tests::generated_crates::library_types_read_only_their_format) | test(=tests::generated_crates::library_types_in_requests_read_only_their_format)'
+filter = 'test(=tests::generated_crates::wasm_client) | test(=tests::fuzz::generated_crates_compile_and_pass_their_tests) | test(=tests::generated_crates::library_types_read_only_their_format) | test(=tests::generated_crates::library_types_in_requests_read_only_their_format) | test(=tests::schema_suite::generated_types_follow_the_json_schema_test_suite)'
 slow-timeout = { period = "300s", terminate-after = 4 }
