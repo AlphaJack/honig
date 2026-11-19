@@ -1696,22 +1696,33 @@ impl TryFrom<Vec<serde_json::Value>> for ProductPoint {
         {
             let out = &mut violations;
             {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&value).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"type\":\"array\",\"prefixItems\":[{\"type\":\"number\"},{\"type\":\"number\"}],\"items\":false,\"unevaluatedItems\":false}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Root,
-                    &value,
-                    schema,
-                    runtime::schema_defs(),
-                );
+                let json = runtime::to_value(&value).unwrap_or_default();
+                let items = json.as_array().map_or(&[][..], Vec::as_slice);
+                if let Some(item) = items.first()
+                    && let Err(e) = serde_json::from_value::<f64>(item.clone())
+                {
+                    runtime::violation(
+                        out,
+                        &runtime::InstancePath::Index(&runtime::InstancePath::Root, 0),
+                        e.to_string(),
+                    );
+                }
+                if let Some(item) = items.get(1usize)
+                    && let Err(e) = serde_json::from_value::<f64>(item.clone())
+                {
+                    runtime::violation(
+                        out,
+                        &runtime::InstancePath::Index(&runtime::InstancePath::Root, 1),
+                        e.to_string(),
+                    );
+                }
+                if items.len() > 2 {
+                    runtime::violation(
+                        out,
+                        &runtime::InstancePath::Index(&runtime::InstancePath::Root, 2),
+                        "no value is allowed here",
+                    );
+                }
             }
         }
         runtime::first(violations)
