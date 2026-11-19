@@ -457,7 +457,7 @@ impl<T: runtime::Transport> Client<T> {
             })
         }
             .await;
-        Ok(runtime::Streamed::Other(other?))
+        Ok(runtime::Streamed::Whole(other?))
     }
     pub async fn streaming_byte_ranges(
         &self,
@@ -539,7 +539,7 @@ impl<T: runtime::Transport> Client<T> {
             })
         }
             .await;
-        Ok(runtime::Streamed::Other(other?))
+        Ok(runtime::Streamed::Whole(other?))
     }
     pub async fn querystring_jsonpath(
         &self,
@@ -855,7 +855,7 @@ impl<T: runtime::Transport> Client<T> {
             })
         }
             .await;
-        Ok(runtime::Streamed::Other(other?))
+        Ok(runtime::Streamed::Whole(other?))
     }
     pub async fn log_excerpt(
         &self,
@@ -1044,7 +1044,7 @@ impl<T: runtime::Transport> Client<T> {
             })
         }
             .await;
-        Ok(runtime::Streamed::Other(other?))
+        Ok(runtime::Streamed::Whole(other?))
     }
     pub async fn server_sent_event_streams(
         &self,

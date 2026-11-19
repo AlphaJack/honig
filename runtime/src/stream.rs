@@ -31,7 +31,7 @@ pub enum Streamed<S, R> {
     /// A success status: the body's chunks or items as they arrive.
     Ok(S),
     /// Another declared status such as an error or a redirect. It is decoded whole.
-    Other(R),
+    Whole(R),
 }
 
 /// A sequential body (JSON Lines, `json-seq` or SSE): every item in memory or items that arrive or leave one at a

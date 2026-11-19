@@ -158,6 +158,6 @@ impl<T: runtime::Transport> Client<T> {
             })
         }
             .await;
-        Ok(runtime::Streamed::Other(other?))
+        Ok(runtime::Streamed::Whole(other?))
     }
 }

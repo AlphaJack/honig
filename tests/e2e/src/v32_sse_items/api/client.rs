@@ -127,7 +127,7 @@ impl<T: runtime::Transport> Client<T> {
             })
         }
             .await;
-        Ok(runtime::Streamed::Other(other?))
+        Ok(runtime::Streamed::Whole(other?))
     }
     pub async fn tile_lines(
         &self,
@@ -208,7 +208,7 @@ impl<T: runtime::Transport> Client<T> {
             })
         }
             .await;
-        Ok(runtime::Streamed::Other(other?))
+        Ok(runtime::Streamed::Whole(other?))
     }
     pub async fn tile_updates(
         &self,
@@ -294,7 +294,7 @@ impl<T: runtime::Transport> Client<T> {
             })
         }
             .await;
-        Ok(runtime::Streamed::Other(other?))
+        Ok(runtime::Streamed::Whole(other?))
     }
     pub async fn chat_stream(
         &self,
@@ -380,7 +380,7 @@ impl<T: runtime::Transport> Client<T> {
             })
         }
             .await;
-        Ok(runtime::Streamed::Other(other?))
+        Ok(runtime::Streamed::Whole(other?))
     }
     pub async fn tile_batch(
         &self,
@@ -504,6 +504,6 @@ impl<T: runtime::Transport> Client<T> {
             })
         }
             .await;
-        Ok(runtime::Streamed::Other(other?))
+        Ok(runtime::Streamed::Whole(other?))
     }
 }

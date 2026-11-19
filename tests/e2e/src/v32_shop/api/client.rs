@@ -1565,7 +1565,7 @@ impl<T: runtime::Transport> Client<T> {
             })
         }
             .await;
-        Ok(runtime::Streamed::Other(other?))
+        Ok(runtime::Streamed::Whole(other?))
     }
     /// Send a mixed multipart stream of one metadata part, then any number of image parts. `prefixEncoding` describes the leading, fixed parts and `itemEncoding` applies to every repeated item that follows.
     pub async fn upload_photos(

@@ -412,7 +412,7 @@ impl<T: runtime::Transport> Client<T> {
             })
         }
             .await;
-        Ok(runtime::Streamed::Other(other?))
+        Ok(runtime::Streamed::Whole(other?))
     }
     /// List products
     pub async fn list_products(
@@ -698,7 +698,7 @@ impl<T: runtime::Transport> Client<T> {
             }
         }
             .await;
-        Ok(runtime::Streamed::Other(other?))
+        Ok(runtime::Streamed::Whole(other?))
     }
     /// Products collection
     ///
@@ -1139,7 +1139,7 @@ impl<T: runtime::Transport> Client<T> {
             })
         }
             .await;
-        Ok(runtime::Streamed::Other(other?))
+        Ok(runtime::Streamed::Whole(other?))
     }
 }
 #[derive(Debug, Clone)]
