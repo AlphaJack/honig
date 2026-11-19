@@ -10,6 +10,7 @@
 
 use std::process::{Command, ExitCode};
 
+use crate::functions::{self, Report};
 use crate::table::{Column, Table};
 use crate::{Path, Phased, Work};
 
@@ -95,19 +96,21 @@ fn check(targets: &[&Target], sizes: &[usize], program: &str) -> ExitCode {
     targets.sort_by_key(|t| t.name);
     let phased = targets.iter().any(|t| !t.phases.is_empty());
 
-    let mut columns = vec![Column::left("path", targets.iter().map(|t| t.name.len()).max().unwrap_or_default())];
+    let mut columns = vec![Column::left("bench", targets.iter().map(|t| t.name.len()).max().unwrap_or_default())];
     if phased {
         let widest = targets.iter().flat_map(|t| t.phases).map(|p| p.len()).max().unwrap_or_default();
         columns.push(Column::left("phase", widest));
     }
     columns.extend([Column::right("n^k", &format!("{MAX_EXPONENT:.2}")), Column::left("result", "stopped".len())]);
     // Counted first: the header and the rows then print together, however long the runs take.
-    let counted = counted(&targets, sizes, program);
+    let runs = counted(&targets, sizes, program);
     // The cost grows as n^k with the size n of the input. The limit is the same for every path.
     println!("k may be at most {MAX_EXPONENT}; stopped: a step was steeper than k = {STOP_EXPONENT}");
     let table = Table::new(&columns);
-    for (target, growths) in targets.iter().zip(counted) {
-        let growths = match growths {
+    let mut functions = vec![];
+    for (target, runs) in targets.iter().zip(&runs) {
+        functions.extend(steep_functions(target, sizes, runs).into_iter().map(|s| (target.name, s)));
+        let growths = match growth(target, sizes, runs) {
             Ok(growths) => growths,
             Err(why) => {
                 std::io::Write::flush(&mut std::io::stdout()).ok();
@@ -135,22 +138,81 @@ fn check(targets: &[&Target], sizes: &[usize], program: &str) -> ExitCode {
             }
         }
     }
-    if steep.is_empty() {
+    print_functions(&targets, &functions);
+    if steep.is_empty() && functions.is_empty() {
         return ExitCode::SUCCESS;
     }
-    // stdout is buffered in a pipe and stderr is not: the table goes out first, then the verdict under it.
+    // stdout is buffered in a pipe and stderr is not: the tables go out first, then the verdict under them.
     std::io::Write::flush(&mut std::io::stdout()).ok();
-    eprintln!("cost grows faster than n^{MAX_EXPONENT}: {}", steep.join(", "));
+    let mut verdict = vec![];
+    if !steep.is_empty() {
+        verdict.push(format!("{} of the phases above", steep.len()));
+    }
+    if !functions.is_empty() {
+        verdict.push(format!("{} of the functions above", functions.len()));
+    }
+    eprintln!("cost grows faster than n^{MAX_EXPONENT}: {}", verdict.join(" and "));
     ExitCode::FAILURE
 }
 
-/// What one run counted: one count, or one per phase. `None` for a run that a steep step skipped.
-type Counts = Option<Result<Vec<u64>, String>>;
+/// The functions of `target` whose own cost grew faster than [`MAX_EXPONENT`], over the sizes that it ran at.
+fn steep_functions(target: &Target, sizes: &[usize], runs: &[Counts]) -> Vec<functions::Steep> {
+    let mut bytes = vec![];
+    let mut reports = vec![];
+    for (&size, run) in sizes.iter().zip(runs) {
+        let Some(Ok(r)) = run else { break };
+        bytes.push(to_f64(u64::try_from((target.prepare)(size).0).unwrap_or(u64::MAX)));
+        reports.push(r.clone());
+    }
+    functions::steep(&bytes, &reports, MAX_EXPONENT)
+}
+
+/// The longest function name a row shows: a generic Rust path can run to hundreds of characters.
+const FUNCTION_WIDTH: usize = 90;
+
+/// Prints the functions whose own cost grew faster than the limit, if any: their bench, their phase when the bench has
+/// phases, their name, growth and share of their phase at the largest size.
+fn print_functions(targets: &[&Target], steep: &[(&str, functions::Steep)]) {
+    if steep.is_empty() {
+        return;
+    }
+    let phase_name = |name: &str, i: usize| {
+        targets.iter().find(|t| t.name == name).and_then(|t| t.phases.get(i)).copied().unwrap_or("")
+    };
+    let phased = steep.iter().any(|(n, s)| !phase_name(n, s.phase).is_empty());
+    let cut = |f: &str| f.chars().take(FUNCTION_WIDTH).collect::<String>();
+    println!();
+    println!("functions whose own cost grows faster than n^{MAX_EXPONENT}:");
+    let mut columns = vec![Column::left("bench", steep.iter().map(|(n, _)| n.len()).max().unwrap_or_default())];
+    if phased {
+        columns.push(Column::left(
+            "phase",
+            steep.iter().map(|(n, s)| phase_name(n, s.phase).len()).max().unwrap_or_default(),
+        ));
+    }
+    columns.extend([
+        Column::left("function", steep.iter().map(|(_, s)| cut(&s.function).chars().count()).max().unwrap_or_default()),
+        Column::right("n^k", "9.99"),
+        Column::right("share", "100.0%"),
+    ]);
+    let table = Table::new(&columns);
+    for (name, s) in steep {
+        let mut row = vec![(*name).to_owned()];
+        if phased {
+            row.push(phase_name(name, s.phase).to_owned());
+        }
+        row.extend([cut(&s.function), format!("{:.2}", s.exponent), format!("{:.1}%", s.share * 100.0)]);
+        table.row(&row);
+    }
+}
+
+/// What one run counted: one report, or one per phase. `None` for a run that a steep step skipped.
+type Counts = Option<Result<Vec<Report>, String>>;
 
 /// [`growth`] of every target. Each core takes the next run (a target at a size) as soon as it is free, the sizes of a
 /// target side by side. The smallest sizes go first: a target's largest run starts last, and is skipped when a step
 /// that already finished is steeper than [`STOP_EXPONENT`].
-fn counted(targets: &[&Target], sizes: &[usize], program: &str) -> Vec<Result<Vec<Growth>, String>> {
+fn counted(targets: &[&Target], sizes: &[usize], program: &str) -> Vec<Vec<Counts>> {
     use std::sync::atomic::{AtomicUsize, Ordering};
     use std::sync::{Mutex, PoisonError};
     let cores = std::thread::available_parallelism().map_or(1, std::num::NonZero::get);
@@ -173,8 +235,7 @@ fn counted(targets: &[&Target], sizes: &[usize], program: &str) -> Vec<Result<Ve
             });
         }
     });
-    let done = done.into_inner().unwrap_or_else(PoisonError::into_inner);
-    targets.iter().zip(&done).map(|(t, runs)| growth(t, sizes, runs)).collect()
+    done.into_inner().unwrap_or_else(PoisonError::into_inner)
 }
 
 /// How `target` grew over the runs that counted it, in the order of `sizes`, each phase apart. A run that did not
@@ -189,7 +250,7 @@ fn growth(target: &Target, sizes: &[usize], runs: &[Counts]) -> Result<Vec<Growt
             }
             break;
         };
-        let counts: Vec<f64> = counts.clone()?.into_iter().map(to_f64).collect();
+        let counts: Vec<f64> = counts.clone()?.iter().map(|r| to_f64(r.total)).collect();
         let (bytes, _) = (target.prepare)(size);
         let bytes = to_f64(u64::try_from(bytes).map_err(|e| e.to_string())?);
         if let Some((x0, ref y0)) = before {
@@ -206,7 +267,7 @@ fn growth(target: &Target, sizes: &[usize], runs: &[Counts]) -> Result<Vec<Growt
 /// one per phase in the order they ran. The error says which step failed.
 #[expect(clippy::disallowed_methods, reason = "runs the bench under valgrind and reads its report")]
 #[expect(clippy::needless_collect, reason = "the reports are read before they are removed")]
-fn instructions(program: &str, target: &Target, size: usize) -> Result<Vec<u64>, String> {
+fn instructions(program: &str, target: &Target, size: usize) -> Result<Vec<Report>, String> {
     let out = std::env::temp_dir().join(format!("callgrind-{}-{size}-{}", target.name, std::process::id()));
     let mut valgrind = Command::new("valgrind");
     valgrind.args(["--tool=callgrind", "--collect-atstart=no"]);
@@ -227,8 +288,7 @@ fn instructions(program: &str, target: &Target, size: usize) -> Result<Vec<u64>,
     } else {
         (1..=target.phases.len()).map(|i| std::path::PathBuf::from(format!("{}.{i}", out.display()))).collect()
     };
-    let counts: Vec<Option<u64>> =
-        reports.iter().map(|r| std::fs::read_to_string(r).ok().as_deref().and_then(totals)).collect();
+    let counts: Vec<Option<Report>> = reports.iter().map(|r| functions::read(r)).collect();
     std::fs::remove_file(&out).ok();
     for r in &reports {
         std::fs::remove_file(r).ok();
@@ -248,11 +308,6 @@ fn instructions(program: &str, target: &Target, size: usize) -> Result<Vec<u64>,
             })
         })
         .collect()
-}
-
-/// The `totals:` line of a callgrind report: the instructions of every counted call.
-fn totals(report: &str) -> Option<u64> {
-    report.lines().find_map(|l| l.strip_prefix("totals:"))?.split_whitespace().next()?.parse().ok()
 }
 
 /// `k` in `y ~ x^k` between two points.
