@@ -62,7 +62,7 @@ pub fn violation(out: &mut Vec<Violation>, path: &InstancePath<'_>, message: imp
 /// description uses them: `uuid` (`uuid`), the dates and times (`time`), `uri` (`url`) and the CIDR blocks
 /// (`ipnet`). Mail addresses and host names are types of their own (feature `idn`). Decoding checks them. Other
 /// formats are not checked.
-#[cfg_attr(feature = "idn", doc = "\nThose types are [`Email`] and [`Hostname`].")]
+#[cfg_attr(feature = "idn", doc = "\nThose types are [`Email`](crate::Email) and [`Hostname`](crate::Hostname).")]
 pub fn check_format(out: &mut Vec<Violation>, path: &InstancePath<'_>, value: &str, format: &str) {
     if !is_format(value, format) {
         violation(out, path, format!("is not a valid {format}"));
@@ -1040,9 +1040,6 @@ fn type_is(v: &Value, t: &str) -> bool {
     }
 }
 
-#[cfg(feature = "idn")]
-pub use mail::{Email, Hostname, IdnEmail, IdnHostname};
-
 /// Mail addresses and host names: types only a valid value can be.
 #[cfg(feature = "idn")]
 mod mail {
@@ -1057,106 +1054,6 @@ mod mail {
     }
 
     use idna::uts46::{AsciiDenyList, DnsLength, Hyphens, Uts46};
-
-    /// A string of a `format` that only a valid value can be. `TryFrom`, `FromStr` and decoding check it.
-    macro_rules! checked_text {
-        ($(#[$doc:meta])* $name:ident, $format:literal, $check:expr) => {
-            $(#[$doc])*
-            #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
-            #[serde(transparent)]
-            pub struct $name(String);
-
-            impl $name {
-                /// The `format` it stands for.
-                pub const FORMAT: &'static str = $format;
-
-                /// Returns the value as text.
-                #[must_use]
-                pub fn as_str(&self) -> &str {
-                    &self.0
-                }
-
-                /// Returns the value as an owned `String`.
-                #[must_use]
-                pub fn into_inner(self) -> String {
-                    self.0
-                }
-            }
-
-            impl TryFrom<String> for $name {
-                type Error = crate::BuildError;
-
-                fn try_from(value: String) -> Result<Self, crate::BuildError> {
-                    if $check(&value) {
-                        Ok(Self(value))
-                    } else {
-                        Err(crate::BuildError::value(format!("`{value}` is not a valid {}", $format)))
-                    }
-                }
-            }
-
-            impl TryFrom<&str> for $name {
-                type Error = crate::BuildError;
-
-                fn try_from(value: &str) -> Result<Self, crate::BuildError> {
-                    Self::try_from(value.to_owned())
-                }
-            }
-
-            impl std::str::FromStr for $name {
-                type Err = crate::BuildError;
-
-                fn from_str(value: &str) -> Result<Self, crate::BuildError> {
-                    Self::try_from(value)
-                }
-            }
-
-            impl AsRef<str> for $name {
-                fn as_ref(&self) -> &str {
-                    &self.0
-                }
-            }
-
-            impl std::fmt::Display for $name {
-                fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                    f.write_str(&self.0)
-                }
-            }
-
-            impl<'de> serde::Deserialize<'de> for $name {
-                fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-                    let s = <String as serde::Deserialize>::deserialize(d)?;
-                    Self::try_from(s).map_err(serde::de::Error::custom)
-                }
-            }
-        };
-    }
-
-    checked_text!(
-        /// An RFC 5321 mail address (`format: email`). It is an ASCII dot-atom or quoted local part, then `@`, then a
-        /// host name or an address literal.
-        Email,
-        "email",
-        |v: &str| email(v, false)
-    );
-    checked_text!(
-        /// An RFC 6531 mail address (`format: idn-email`): an [`Email`] that may hold UTF-8.
-        IdnEmail,
-        "idn-email",
-        |v: &str| email(v, true)
-    );
-    checked_text!(
-        /// An RFC 1123 host name (`format: hostname`) with ASCII labels. A punycode label must decode to a valid name.
-        Hostname,
-        "hostname",
-        |v: &str| hostname(v, false)
-    );
-    checked_text!(
-        /// An IDNA2008 host name (`format: idn-hostname`): a [`Hostname`] whose labels may be Unicode.
-        IdnHostname,
-        "idn-hostname",
-        |v: &str| hostname(v, true)
-    );
 
     /// RFC 5321 section 4.5.3.1.1: the longest local part in octets.
     const LOCAL: usize = 64;
@@ -1284,8 +1181,8 @@ mod mail {
 
     #[cfg(test)]
     mod tests {
-
-        use super::{Email, IdnHostname, email, hostname};
+        use super::{email, hostname};
+        use crate::{Email, IdnHostname};
 
         #[test]
         fn only_a_valid_value_is_one() {
