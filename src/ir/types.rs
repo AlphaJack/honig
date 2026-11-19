@@ -221,6 +221,8 @@ pub(crate) struct Constraints {
     pub max_items: Option<u64>,
     /// `uniqueItems`.
     pub unique_items: bool,
+    /// The schema is `false`: no value is valid.
+    pub never: bool,
     /// `minProperties`.
     pub min_properties: Option<u64>,
     /// `maxProperties`.

@@ -1201,3 +1201,26 @@ fn keywords_beside_an_implied_shape_are_checked() {
         assert!(types.contains(check) && !types.contains("check_schema"), "{keyword}: {types}");
     }
 }
+
+/// `false` refuses any value that is present, and `items`, `prefixItems` or `additionalProperties` without `type` are
+/// held by the union of their implied shape: no schema is checked whole.
+#[test]
+fn false_and_implied_shapes_are_checked_by_types() {
+    let holder = json!({"type": "object", "properties": {
+        "list": {"items": {"multipleOf": 2}},
+        "pair": {"prefixItems": [{"type": "integer"}]},
+        "map": {"additionalProperties": {"type": "integer"}},
+        "named": {"patternProperties": {"^a": {}}, "additionalProperties": false},
+        "nothing": false,
+    }});
+    let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Holder": holder}}));
+    let types = common::file(&common::generate("false-and-shapes", &doc, &crate::emit::Options::default()), "types.rs")
+        .to_owned();
+    assert!(types.contains("no value is allowed here") && !types.contains("check_schema"), "{types}");
+    // The names of the object that `named` takes match its one pattern.
+    assert!(types.contains("does not match `^a`"), "{types}");
+    // Each item of `list` and each value of `map` decodes as its schema: two item checks besides those of `pair`, and
+    // one key check besides the pattern of `named`, whose names its pattern alone judges.
+    assert_eq!(types.matches("InstancePath::Index").count(), 4, "{types}");
+    assert_eq!(types.matches("InstancePath::Key").count(), 2, "{types}");
+}

@@ -328,7 +328,9 @@ pub mod ordered_multipart_with_required_header {
     pub const PATH: &str = "/multipart/related";
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct Params {
-        pub body: Option<types::OrderedMultipartWithRequiredHeaderBody>,
+        pub body: Option<
+            (String, Vec<types::OrderedMultipartWithRequiredHeaderBodyItem>),
+        >,
         pub part_types: runtime::PartTypes,
     }
     impl Params {

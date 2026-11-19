@@ -321,6 +321,9 @@ pub(crate) fn needs_checks(types: &TypeSpace, t: &Ty, c: &Constraints, hops: usi
     if yours(types, t) {
         return false;
     }
+    if c.never {
+        return true;
+    }
     let json = c.json_checks();
     if !json.is_empty() && !json_held_by_type(types, t, &json, hops) {
         return true;
