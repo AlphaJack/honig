@@ -16,9 +16,14 @@ const DIALECT: u32 = 2020;
 /// The base of the `$id` that each case gets, so that its `#` is the case and not the description.
 const BASE: &str = "https://suite.honig.test/case/";
 
+/// Where the suite's cases retrieve the documents that they refer to.
+const REMOTE: &str = "http://localhost:1234/";
+
 /// One schema of the suite and its tests.
 struct Case {
     schema: Value,
+    /// The documents that the schema refers to, by the URI that it retrieves them at (`externalSchemas`).
+    external: serde_json::Map<String, Value>,
     /// Each test as (its key, its instance, whether the instance is valid).
     tests: Vec<(String, Value, bool)>,
 }
@@ -78,7 +83,8 @@ fn cases() -> Vec<Case> {
                     (key, t["data"].clone(), t["valid"].as_bool().unwrap())
                 })
                 .collect();
-            out.push(Case { schema: case["schema"].clone(), tests });
+            let external = case["externalSchemas"].as_object().cloned().unwrap_or_default();
+            out.push(Case { schema: case["schema"].clone(), external, tests });
         }
     }
     out
@@ -122,13 +128,34 @@ fn component(i: usize, case: &Case) -> Value {
     let mut schema = case.schema.clone();
     if let Some(o) = schema.as_object_mut() {
         o.entry("$id").or_insert_with(|| json!(format!("{BASE}{i}")));
+        embed(o, &case.external);
     }
+    // Cases retrieve different documents at the same URI: each case gets URIs of its own.
+    let text = schema.to_string().replace(REMOTE, &format!("{REMOTE}case{i}/"));
+    let schema: Value = serde_json::from_str(&text).unwrap();
     json!({"type": "object", "required": ["v"], "properties": {"v": schema}})
+}
+
+/// Puts each document that a case retrieves into the `$defs` of its schema, with the URI that it is retrieved at as its
+/// `$id`, as the suite's README suggests. A document with an `$id` of its own keeps it: the URI becomes a `$ref` to it.
+fn embed(schema: &mut serde_json::Map<String, Value>, external: &serde_json::Map<String, Value>) {
+    for (n, (uri, document)) in external.iter().enumerate() {
+        let mut document = document.clone();
+        let own = document.get("$id").and_then(Value::as_str).filter(|id| *id != uri).map(str::to_owned);
+        let defs = schema.entry("$defs").or_insert_with(|| json!({})).as_object_mut().unwrap();
+        if let Some(own) = own {
+            defs.insert(format!("retrieved{n}"), json!({"$id": uri, "$ref": own}));
+        } else if let Some(o) = document.as_object_mut() {
+            o.insert("$id".to_owned(), json!(uri));
+        }
+        defs.insert(format!("external{n}"), document);
+    }
 }
 
 /// Does case `i` generate on its own? A case that refers to another document is not tried: that would fetch it.
 fn generable(i: usize, case: &Case) -> Result<(), String> {
-    if refers_outside(&case.schema) {
+    // The documents that the case retrieves may refer further: a document outside them would be fetched.
+    if refers_outside(&component(i, case)) {
         return Err("refers to another document".to_owned());
     }
     let doc = super::common::spec("3.2.0", &json!({}), &json!({"schemas": {format!("Case{i}"): component(i, case)}}));
@@ -139,14 +166,15 @@ fn generable(i: usize, case: &Case) -> Result<(), String> {
     })
 }
 
-/// Does `schema` hold a `$ref` that no `$id` within it names, other than a fragment of its own?
+/// Does `schema` hold a `$ref` to an absolute URI that no `$id` within it names? A relative one resolves against an
+/// `$id` within it.
 fn refers_outside(schema: &Value) -> bool {
     let mut ids = vec![];
     let mut refs = vec![];
     collect(schema, &mut ids, &mut refs);
     refs.iter().any(|r| {
         let doc = r.split('#').next().unwrap_or_default();
-        !doc.is_empty() && !ids.iter().any(|id: &&str| id.trim_end_matches('#').ends_with(doc))
+        doc.contains(':') && !ids.iter().any(|id: &&str| id.trim_end_matches('#') == doc)
     })
 }
 
