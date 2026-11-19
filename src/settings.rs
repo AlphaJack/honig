@@ -96,6 +96,9 @@ pub(crate) struct Settings {
     pub derives: Vec<(String, Vec<String>)>,
     /// `unknown_fields = "keep"`.
     pub keep_unknown: bool,
+    /// `client = { strict = false }`: response types read an enum value or a property that the description does not
+    /// list. `true` unless set: requests are always strict.
+    pub strict_client: bool,
     /// The crate has no library target (no `[lib]` and no `src/lib.rs`). The module is visible to the crate only.
     pub binary: bool,
     /// `client = { operations = [...] }`: the only operations that the client calls by `operationId`. `None` for every
@@ -482,7 +485,8 @@ pub(crate) fn settings<'a>(module: impl Into<Module<'a>>, path: &Path) -> Result
         None => manifest.linted_mod_rs().unwrap_or(true),
         Some(item) => item.as_bool().ok_or_else(|| setting(&name, "mod_rs", "true or false", shown(item)))?,
     };
-    let Halves { client, server, client_operations, allow_unimplemented, adapters } = halves(manifest, table, &name)?;
+    let Halves { client, server, client_operations, allow_unimplemented, adapters, strict_client } =
+        halves(manifest, table, &name)?;
     Ok(Settings {
         table: name.clone(),
         root,
@@ -497,6 +501,7 @@ pub(crate) fn settings<'a>(module: impl Into<Module<'a>>, path: &Path) -> Result
         derives: derives(table, &name)?,
         binary,
         client_operations,
+        strict_client,
         overlays: match table.get("overlays") {
             None => vec![],
             Some(item) => string_array(Some(item))
@@ -522,11 +527,12 @@ struct Halves {
     client_operations: Option<Vec<String>>,
     allow_unimplemented: bool,
     adapters: Vec<&'static str>,
+    strict_client: bool,
 }
 
 /// Returns `client` and `server` of the module table `name`.
 fn halves(manifest: &Manifest, table: &dyn TableLike, name: &str) -> Result<Halves, Error> {
-    let (client, client_table) = half(table, name, "client", &["adapters", "operations"])?;
+    let (client, client_table) = half(table, name, "client", &["adapters", "operations", "strict"])?;
     let (server, server_table) = half(table, name, "server", &["adapters", "allow_unimplemented"])?;
     let mut adapters = half_adapters(manifest, client_table, &format!("{name}.client"), Side::Client)?;
     for adapter in half_adapters(manifest, server_table, &format!("{name}.server"), Side::Server)? {
@@ -547,7 +553,13 @@ fn halves(manifest: &Manifest, table: &dyn TableLike, name: &str) -> Result<Halv
             .as_bool()
             .ok_or_else(|| setting(&format!("{name}.server"), "allow_unimplemented", "true or false", shown(item)))?,
     };
-    Ok(Halves { client, server, client_operations, allow_unimplemented, adapters })
+    let strict_client = match client_table.and_then(|t| t.get("strict")) {
+        None => true,
+        Some(item) => {
+            item.as_bool().ok_or_else(|| setting(&format!("{name}.client"), "strict", "true or false", shown(item)))?
+        }
+    };
+    Ok(Halves { client, server, client_operations, allow_unimplemented, adapters, strict_client })
 }
 
 /// Returns the half `key` (`client` or `server`): whether it is generated and its table of settings. It is `true`,
@@ -1038,8 +1050,11 @@ mod tests {
         );
         assert_eq!(
             one("client = \"yes\"\n").unwrap_err().to_string(),
-            "[package.metadata.honig.api] `client` must be true, false or a table with adapters, operations, found \"yes\""
+            "[package.metadata.honig.api] `client` must be true, false or a table with adapters, operations, strict, found \"yes\""
         );
+        let strict = |client: &str| one(&format!("client = {client}\n")).unwrap()[0].strict_client;
+        assert!(strict("true"), "strict unless set");
+        assert!(!strict("{ strict = false }"));
     }
 
     #[test]

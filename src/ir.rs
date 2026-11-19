@@ -72,12 +72,13 @@ pub(crate) struct Server {
 /// Build the IR of a bundled 3.2 document.
 #[cfg(test)]
 pub(crate) fn build(doc: &Doc, diags: &mut Diagnostics) -> Api {
-    build_with(doc, diags, false, false, Reserved::default(), &[])
+    build_with(doc, diags, false, false, Reserved::default(), &[], false)
 }
 
 /// Returns the IR of a bundled 3.2 document, built with the options of the generator.
 ///
-/// `keep_unknown`: objects without `additionalProperties` keep unknown keys. `from_v20` (the description was
+/// `lenient`: response types read an enum value or a property that the description does not list
+/// (`client = { strict = false }`). `keep_unknown`: objects without `additionalProperties` keep unknown keys. `from_v20` (the description was
 /// Swagger 2.0): every optional property reads `null` as absent. `reserved`: names that the target language keeps for
 /// itself. Nothing generated takes them.
 pub(crate) fn build_with(
@@ -87,6 +88,7 @@ pub(crate) fn build_with(
     from_v20: bool,
     reserved: Reserved<'_>,
     crates: &[String],
+    lenient: bool,
 ) -> Api {
     dialects(&doc.root, "", "", diags);
     // `$dynamicRef` generics become one specialized schema per binding site.
@@ -100,7 +102,7 @@ pub(crate) fn build_with(
     let schemes = security::schemes(&b);
     let mut http = Http::build(&mut b, &schemes);
     let mut types = b.finish();
-    http.use_request_types(&types.split_directions());
+    http.use_request_types(&types.split_directions(lenient));
     // After the split: each direction's type wraps its own fields.
     checked::wrap(&mut types, &mut http);
     let servers = doc

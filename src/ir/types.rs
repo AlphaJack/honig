@@ -190,6 +190,10 @@ pub(crate) struct TypeDef {
     /// The keywords of the schema itself, as a value of the type meets them: with `$ref`s and `allOf` members
     /// followed. Keywords that no type holds (`if`, `not`, `oneOf`'s one match) make it a checked type.
     pub own: Constraints,
+    /// A response type of a lenient client (`client = { strict = false }`): an enum reads a value that it does not
+    /// list as `Other`, a closed struct reads a property that it does not declare, and a tagged union reads a tag
+    /// that names no variant as `Other`. Its request copy is strict.
+    pub lenient: bool,
 }
 
 /// Validation keywords of a schema (JSON Schema 2020-12 validation vocabulary).
@@ -287,9 +291,9 @@ impl XmlHint {
 pub(crate) enum Kind {
     /// An object with known properties.
     Struct(Struct),
-    /// Open string enum: known values plus an `Other(String)` fallback.
+    /// String enum: its values. Closed, but the response type of a lenient client adds `Other(String)`.
     StrEnum(Vec<EnumValue>),
-    /// Open integer enum: (variant name, value) plus an `Other(i64)` fallback.
+    /// Integer enum: (variant name, value). Closed, but the response type of a lenient client adds `Other(i64)`.
     IntEnum(Vec<(Name, i64)>),
     /// One of several types (`oneOf` / `anyOf`).
     Union(Union),
@@ -446,7 +450,7 @@ pub(crate) enum JsonKind {
     Array,
     /// An object.
     Object,
-    /// Unknown: any kind.
+    /// Other: any kind.
     Any,
 }
 
@@ -593,18 +597,33 @@ impl Format {
 }
 
 impl TypeSpace {
-    /// Splits request types for `readOnly` / `writeOnly` properties.
+    /// Splits request types for `readOnly` / `writeOnly` properties, and with `lenient` for what a response may hold
+    /// past the description.
     ///
     /// Every struct with such a property and every type that reaches one
     /// gets a `<Name>Request` copy. The original keeps what responses carry.
     /// `writeOnly` properties are dropped and required `readOnly` ones stay
     /// required. The copy is the reverse. Returns the request type of each type.
-    pub(crate) fn split_directions(&mut self) -> Vec<Option<TypeId>> {
+    ///
+    /// With `lenient` (`client = { strict = false }`) every enum, closed struct and tagged union splits too, and every
+    /// original is [`TypeDef::lenient`]: a response reads a value that the server added, and a request stays as
+    /// strict as before.
+    pub(crate) fn split_directions(&mut self, lenient: bool) -> Vec<Option<TypeId>> {
         let n = self.defs.len();
         let mut split = vec![false; n];
         for (i, d) in self.defs.iter().enumerate() {
+            let open_in_responses = lenient
+                && match &d.kind {
+                    Kind::StrEnum(_) | Kind::IntEnum(_) => true,
+                    Kind::Struct(s) => s.closed,
+                    // A tag that names no variant is a member that the server added. A union with a default variant
+                    // reads it already, and an untagged value that fits no branch may as well be broken.
+                    Kind::Union(u) => matches!(u.mode, UnionMode::Tagged { default: None, .. }),
+                    Kind::Alias(_) | Kind::Newtype(_) | Kind::Const(_) | Kind::Checked(_) | Kind::Pending => false,
+                };
             split[i] = d.rust_type.is_none()
-                && matches!(&d.kind, Kind::Struct(s) if s.fields.iter().any(|f| f.access != Access::ReadWrite));
+                && (open_in_responses
+                    || matches!(&d.kind, Kind::Struct(s) if s.fields.iter().any(|f| f.access != Access::ReadWrite)));
         }
         // Types reaching a split type split too (your own `x-rust-type`s stay as they are).
         loop {
@@ -641,6 +660,7 @@ impl TypeSpace {
             self.defs[req.0].kind = direction(kind, Access::WriteOnly);
             let base = std::mem::replace(&mut self.defs[i].kind, Kind::Pending);
             self.defs[i].kind = direction(base, Access::ReadOnly);
+            self.defs[i].lenient = lenient;
         }
         request_of
     }

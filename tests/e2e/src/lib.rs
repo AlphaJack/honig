@@ -48,6 +48,9 @@ pub mod v32_kitchen_sink {
 pub mod v32_lambda {
     pub mod api;
 }
+pub mod v32_lenient {
+    pub mod api;
+}
 pub mod v32_mtls {
     pub mod api;
 }

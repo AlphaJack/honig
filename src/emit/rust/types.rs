@@ -234,7 +234,9 @@ fn canonical_ty(t: &Ty, canon: &dyn Fn(TypeId) -> TypeId) -> Ty {
 /// holds no two identical function bodies. Only the kinds that the description has.
 fn enum_macros(space: &Space<'_>) -> TokenStream {
     let has = |f: fn(&Kind) -> bool| space.types.defs.iter().any(|d| f(&d.kind));
-    let str_enums = has(|k| matches!(k, Kind::StrEnum(_))).then(|| {
+    // A lenient string enum implements its own: its `as_str` borrows the unknown value.
+    let closed_str_enum = space.types.defs.iter().any(|d| matches!(d.kind, Kind::StrEnum(_)) && !d.lenient);
+    let str_enums = closed_str_enum.then(|| {
         quote! {
             macro_rules! str_enum_impls {
                 ($n:ident) => {
@@ -966,7 +968,8 @@ fn structure(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, s: &St
     });
     // `additionalProperties: false`: an undeclared property is a decode error,
     // so a server answers 400 and a client reports a server off its contract.
-    let closed = (s.closed && s.additional.is_none()).then(|| quote!(#[serde(deny_unknown_fields)]));
+    // A lenient client's response type reads a property that the server added. Its request copy refuses it.
+    let closed = (s.closed && s.additional.is_none() && !def.lenient).then(|| quote!(#[serde(deny_unknown_fields)]));
     // `remote = "Self"` turns the derives into inherent functions. The trait impls call them, decoding through
     // `NoSeq`: a derived struct would also read a JSON array field by field, and `type: object` allows none.
     // An extra map encodes through `UniqueKeys`: an entry named like a declared field would write the name twice.
@@ -1246,17 +1249,29 @@ fn int_enum(items: &mut Vec<TokenStream>, def: &TypeDef, values: &[(Name, i64)])
     let names: Vec<_> = values.iter().map(|(v, _)| pascal_ident(v)).collect();
     let nums: Vec<_> = values.iter().map(|(_, x)| proc_macro2::Literal::i64_unsuffixed(*x)).collect();
     let allowed = lit(&one_of(values.iter().map(|(_, v)| v.to_string())));
+    // A lenient client's response reads a value that the server added as `Other`. Its request copy is closed.
+    let (unknown, unknown_value, other) = if def.lenient {
+        (
+            quote!(#[doc = #OTHER_DOC] Other(i64),),
+            quote!(Self::Other(v) => v,),
+            quote!(other => Ok(Self::Other(other)),),
+        )
+    } else {
+        (TokenStream::new(), TokenStream::new(), quote!(other => Err(runtime::BuildError::value(format!(#allowed))),))
+    };
     items.push(quote! {
         #doc
         #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
         pub enum #n {
             #(#names,)*
+            #unknown
         }
         impl #n {
             #[must_use]
             pub const fn value(self) -> i64 {
                 match self {
                     #(Self::#names => #nums,)*
+                    #unknown_value
                 }
             }
         }
@@ -1265,7 +1280,7 @@ fn int_enum(items: &mut Vec<TokenStream>, def: &TypeDef, values: &[(Name, i64)])
             fn try_from(v: i64) -> Result<Self, runtime::BuildError> {
                 match v {
                     #(#nums => Ok(Self::#names),)*
-                    other => Err(runtime::BuildError::value(format!(#allowed))),
+                    #other
                 }
             }
         }
@@ -1331,6 +1346,12 @@ fn checked_type(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, def
         }
         Base::Other => {
             let checks = super::validate::checks(space, &c.base, &c.constraints, &quote!(&value), &path);
+            // A member that the server added meets no keyword of the description: a lenient client takes it as it is.
+            let added = matches!(&c.base, Ty::Named(inner) if {
+                let inner = space.types.get(*inner);
+                matches!(&inner.kind, Kind::Union(union) if reads_added(inner, union))
+            });
+            let checks = if added { quote!(if !matches!(value, #base::Other(_)) { #checks }) } else { checks };
             let eq = (!has_float(space, &Ty::Named(id))).then(|| quote!(Eq,));
             // The base reads the text of its library formats checked, as a field of it would.
             let read = match holds(space, &c.base) {
@@ -1421,6 +1442,9 @@ fn constant(items: &mut Vec<TokenStream>, def: &TypeDef, value: &serde_json::Val
 }
 
 fn str_enum(items: &mut Vec<TokenStream>, def: &TypeDef, values: &[EnumValue]) {
+    if def.lenient {
+        return open_str_enum(items, def, values);
+    }
     let n = pascal_ident(&def.name);
     let doc = doc_opt(def.doc.as_deref());
     let variants = values.iter().map(|v| {
@@ -1459,10 +1483,74 @@ fn str_enum(items: &mut Vec<TokenStream>, def: &TypeDef, values: &[EnumValue]) {
     });
 }
 
+/// The doc of the variant that a lenient client reads an unlisted value into.
+const OTHER_DOC: &str = " A value that the description does not list: the server added it. It is sent back as it came.";
+
+/// Emits the string enum of a lenient client's response: a value that it does not list is `Other`, so a value that
+/// the server added reads instead of failing the response. Its request copy is closed.
+fn open_str_enum(items: &mut Vec<TokenStream>, def: &TypeDef, values: &[EnumValue]) {
+    let n = pascal_ident(&def.name);
+    let doc = doc_opt(def.doc.as_deref());
+    let variants = values.iter().map(|v| {
+        let (d, name) = (doc_opt(v.doc.as_deref()), pascal_ident(&v.name));
+        quote!(#d #name,)
+    });
+    let names: Vec<_> = values.iter().map(|v| pascal_ident(&v.name)).collect();
+    let wires: Vec<_> = values.iter().map(|v| lit(&v.wire)).collect();
+    items.push(quote! {
+        #doc
+        #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+        pub enum #n {
+            #(#variants)*
+            #[doc = #OTHER_DOC]
+            Other(String),
+        }
+        impl #n {
+            #[must_use]
+            pub fn as_str(&self) -> &str {
+                match self {
+                    #(Self::#names => #wires,)*
+                    Self::Other(other) => other,
+                }
+            }
+        }
+        impl From<&str> for #n {
+            fn from(s: &str) -> Self {
+                match s {
+                    #(#wires => Self::#names,)*
+                    other => Self::Other(other.to_owned()),
+                }
+            }
+        }
+        impl std::fmt::Display for #n {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                f.write_str(self.as_str())
+            }
+        }
+        impl serde::Serialize for #n {
+            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                s.serialize_str(self.as_str())
+            }
+        }
+        impl<'de> serde::Deserialize<'de> for #n {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                let s = <std::borrow::Cow<'de, str> as serde::Deserialize>::deserialize(d)?;
+                Ok(Self::from(&*s))
+            }
+        }
+    });
+}
+
 /// Does the union have an `Other` variant? Only one that the schema leaves open does: a branch takes any value
 /// (`open`), or a kind that no variant covers is valid (`rest`).
 const fn has_other(u: &Union) -> bool {
     u.open || u.rest
+}
+
+/// Does `Other` hold a member that the server added? Only the response type of a lenient client's tagged union does:
+/// its tag names no variant. A union with a default variant reads an unknown tag as that variant already.
+const fn reads_added(def: &TypeDef, u: &Union) -> bool {
+    def.lenient && matches!(u.mode, UnionMode::Tagged { default: None, .. })
 }
 
 /// Returns the value that no variant of the union takes: `Other` holds it when the union has one. Else decoding fails.
@@ -1489,9 +1577,10 @@ fn union(
         quote!(#name(#t),)
     });
     let ser = union_serialize(space, aliases, u);
-    let deserialize = union_deserialize_impl(space, &n, u);
-    // Only a union that the schema leaves open holds a value that no variant takes. A closed one fails to decode it.
-    let (other, other_ser) = if has_other(u) {
+    let deserialize = union_deserialize_impl(space, &n, def, u);
+    // Only a union that the schema leaves open holds a value that no variant takes, or a lenient client's member that
+    // the server added. A closed one fails to decode it.
+    let (other, other_ser) = if has_other(u) || reads_added(def, u) {
         (quote!(Other(serde_json::Value),), quote!(Self::Other(v) => serde::Serialize::serialize(v, s),))
     } else {
         (TokenStream::new(), TokenStream::new())
@@ -1517,8 +1606,8 @@ fn union(
 
 /// Returns `impl Deserialize`. Tagged unions also implement `runtime::TaggedUnion`. So a
 /// discriminator sent first streams straight into the variant.
-fn union_deserialize_impl(space: &Space<'_>, n: &proc_macro2::Ident, u: &Union) -> TokenStream {
-    let de = union_deserialize(space, u);
+fn union_deserialize_impl(space: &Space<'_>, n: &proc_macro2::Ident, def: &TypeDef, u: &Union) -> TokenStream {
+    let de = union_deserialize(space, def, u);
     // A buffered number is an `f64`. So a union that holds a `Decimal` decodes from the JSON text instead. An
     // untagged one pays one parse per branch that it tries. A tagged one reads its tag and then parses the one branch.
     let exact = u.variants.iter().any(|v| holds_decimal(space, &v.ty, &mut vec![]));
@@ -1651,7 +1740,7 @@ fn decode_ref(space: &Space<'_>, t: &Ty) -> TokenStream {
     }
 }
 
-fn union_deserialize(space: &Space<'_>, u: &Union) -> TokenStream {
+fn union_deserialize(space: &Space<'_>, def: &TypeDef, u: &Union) -> TokenStream {
     match &u.mode {
         UnionMode::Tagged { property, default } => {
             let property = lit(property);
@@ -1678,13 +1767,23 @@ fn union_deserialize(space: &Space<'_>, u: &Union) -> TokenStream {
                 None => no_variant(u),
             };
             let none = proc_macro2::Literal::usize_unsuffixed(tagged.len());
+            // A lenient client reads a tag that names no variant as `Other`: the server added the member. A value
+            // without a tag still fails.
+            let (added_pick, added_arm) = if reads_added(def, u) {
+                let added = proc_macro2::Literal::usize_unsuffixed(tagged.len() + 1);
+                (quote!(Some(_) => #added,), quote!(#added => Ok(Self::Other(v.into_value())),))
+            } else {
+                (TokenStream::new(), TokenStream::new())
+            };
             quote! {
                 let which = match v.tag(#property).as_deref() {
                     #(#picks)*
+                    #added_pick
                     _ => #none,
                 };
                 match which {
                     #(#arms)*
+                    #added_arm
                     _ => #fallback,
                 }
             }
@@ -1729,8 +1828,10 @@ fn untagged(space: &Space<'_>, u: &Union) -> TokenStream {
         // An open union always decodes because its `Other` takes anything. As a branch it matches only through one
         // of its own variants. So the branches after it still get their turn. A boxed one too.
         let (inner, boxed) = if let Ty::Indirect(i) = &v.ty { (i.as_ref(), true) } else { (&v.ty, false) };
-        let union =
-            matches!(inner, Ty::Named(id) if matches!(&space.types.get(*id).kind, Kind::Union(x) if has_other(x)));
+        let union = matches!(inner, Ty::Named(id) if {
+            let d = space.types.get(*id);
+            matches!(&d.kind, Kind::Union(x) if has_other(x) || reads_added(d, x))
+        });
         let attempt = if union {
             let it = ty(space, inner, false);
             let x = if boxed { quote!(x.as_ref()) } else { quote!(x) };

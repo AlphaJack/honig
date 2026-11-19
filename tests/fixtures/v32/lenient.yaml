@@ -1,0 +1,55 @@
+openapi: 3.2.0
+info: {title: Lenient client, version: "1"}
+# `lenient.toml` sets `client = { strict = false }`: responses read what the server added, requests stay strict.
+paths:
+  /orders/{id}:
+    get:
+      operationId: getOrder
+      parameters: [{name: id, in: path, required: true, schema: {type: string}}]
+      responses:
+        "200":
+          description: The order.
+          content: {application/json: {schema: {$ref: '#/components/schemas/Order'}}}
+  /orders:
+    post:
+      operationId: putOrder
+      requestBody:
+        required: true
+        content: {application/json: {schema: {$ref: '#/components/schemas/Order'}}}
+      responses:
+        "204": {description: Stored.}
+components:
+  schemas:
+    Order:
+      type: object
+      required: [id, status]
+      additionalProperties: false
+      properties:
+        id: {type: string}
+        status: {$ref: '#/components/schemas/Status'}
+        priority: {type: integer, enum: [1, 2, 3]}
+        delivery: {$ref: '#/components/schemas/Delivery'}
+    Status:
+      type: string
+      enum: [open, closed]
+    Delivery:
+      oneOf:
+        - $ref: '#/components/schemas/Pickup'
+        - $ref: '#/components/schemas/Courier'
+      discriminator:
+        propertyName: kind
+        mapping:
+          pickup: '#/components/schemas/Pickup'
+          courier: '#/components/schemas/Courier'
+    Pickup:
+      type: object
+      required: [kind, store]
+      properties:
+        kind: {type: string}
+        store: {type: string}
+    Courier:
+      type: object
+      required: [kind, address]
+      properties:
+        kind: {type: string}
+        address: {type: string}

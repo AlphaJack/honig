@@ -506,6 +506,7 @@ impl<'a> Builder<'a> {
             json_string: false,
             component: named_by_description(ptr),
             own: Constraints::default(),
+            lenient: false,
         });
         self.by_ptr.insert(ptr.to_owned(), id);
         id
