@@ -133,6 +133,15 @@ macro_rules! try_from_impl_3 {
         }
     };
 }
+macro_rules! serialize_impl_4 {
+    ($t:ty) => {
+        impl serde::Serialize for $t {
+            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                Self::serialize(self, runtime::UniqueKeys(s))
+            }
+        }
+    };
+}
 macro_rules! deserialize_impl_2 {
     ($t:ty) => {
         impl<'de> serde::Deserialize<'de> for $t {
@@ -354,6 +363,46 @@ macro_rules! checked_impls {
         }
     };
 }
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
+pub struct Tagged(pub(super) TaggedVariants);
+impl<'de> serde::Deserialize<'de> for Tagged {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <TaggedVariants as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
+    }
+}
+impl TryFrom<TaggedVariants> for Tagged {
+    type Error = runtime::BuildError;
+    fn try_from(value: TaggedVariants) -> Result<Self, runtime::BuildError> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            {
+                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                let value = runtime::to_value(&value).unwrap_or_default();
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"type\":\"object\",\"properties\":{\"size\":{\"type\":\"integer\"}},\"anyOf\":[{\"properties\":{\"label\":{\"const\":\"a\"}},\"required\":[\"label\"]},{\"properties\":{\"colour\":{\"const\":\"red\"}},\"required\":[\"colour\"]}],\"unevaluatedProperties\":false}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
+                    out,
+                    &runtime::InstancePath::Root,
+                    &value,
+                    schema,
+                    runtime::schema_defs(),
+                );
+            }
+        }
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
+    }
+}
+checked_impls!(Tagged, TaggedVariants);
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Slug {
     Empty(SlugEmpty),
@@ -1737,6 +1786,112 @@ impl runtime::XmlShape for User {
         &NODE
     }
 }
+/// label
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
+pub struct TaggedLabel(pub(super) TaggedLabelFields);
+impl<'de> serde::Deserialize<'de> for TaggedLabel {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <TaggedLabelFields as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
+    }
+}
+impl TryFrom<TaggedLabelFields> for TaggedLabel {
+    type Error = runtime::BuildError;
+    fn try_from(value: TaggedLabelFields) -> Result<Self, runtime::BuildError> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            {
+                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                let value = runtime::to_value(&value).unwrap_or_default();
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"properties\":{\"label\":{\"const\":\"a\"}},\"required\":[\"label\"]}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
+                    out,
+                    &runtime::InstancePath::Root,
+                    &value,
+                    schema,
+                    runtime::schema_defs(),
+                );
+            }
+        }
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
+    }
+}
+checked_impls!(TaggedLabel, TaggedLabelFields);
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
+pub struct TaggedLabelLabel;
+impl TaggedLabelLabel {
+    pub const VALUE: &'static str = "a";
+}
+serialize_impl_3!(TaggedLabelLabel);
+impl<'de> serde::Deserialize<'de> for TaggedLabelLabel {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        runtime::expect_const(d, &serde_json::Value::String("a".to_owned()))
+            .map(|()| Self)
+    }
+}
+/// colour
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
+pub struct TaggedColour(pub(super) TaggedColourFields);
+impl<'de> serde::Deserialize<'de> for TaggedColour {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <TaggedColourFields as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
+    }
+}
+impl TryFrom<TaggedColourFields> for TaggedColour {
+    type Error = runtime::BuildError;
+    fn try_from(value: TaggedColourFields) -> Result<Self, runtime::BuildError> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            {
+                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                let value = runtime::to_value(&value).unwrap_or_default();
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"properties\":{\"colour\":{\"const\":\"red\"}},\"required\":[\"colour\"]}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
+                    out,
+                    &runtime::InstancePath::Root,
+                    &value,
+                    schema,
+                    runtime::schema_defs(),
+                );
+            }
+        }
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
+    }
+}
+checked_impls!(TaggedColour, TaggedColourFields);
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
+pub struct TaggedColourColour;
+impl TaggedColourColour {
+    pub const VALUE: &'static str = "red";
+}
+serialize_impl_3!(TaggedColourColour);
+impl<'de> serde::Deserialize<'de> for TaggedColourColour {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        runtime::expect_const(d, &serde_json::Value::String("red".to_owned()))
+            .map(|()| Self)
+    }
+}
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 pub struct SlugEmpty;
 impl SlugEmpty {
@@ -2846,6 +3001,48 @@ impl runtime::XmlShape for LoginRequest {
         &NODE
     }
 }
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TaggedVariants {
+    Label(TaggedLabel),
+    Colour(TaggedColour),
+}
+impl serde::Serialize for TaggedVariants {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        match self {
+            Self::Label(v) => serde::Serialize::serialize(v, s),
+            Self::Colour(v) => serde::Serialize::serialize(v, s),
+        }
+    }
+}
+impl<'de> serde::Deserialize<'de> for TaggedVariants {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let v = <runtime::Content<'de> as serde::Deserialize>::deserialize(d)?;
+        let fit_0 = v.kind() == runtime::Kind::Object;
+        let fit_1 = v.kind() == runtime::Kind::Object;
+        let mut first: Option<String> = None;
+        if fit_0 {
+            match v.decode_ref::<TaggedLabel>() {
+                Ok(x) => return Ok(Self::Label(x)),
+                Err(e) => {
+                    first.get_or_insert(e.to_string());
+                }
+            }
+        }
+        if fit_1 {
+            match v.decode_ref::<TaggedColour>() {
+                Ok(x) => return Ok(Self::Colour(x)),
+                Err(e) => {
+                    first.get_or_insert(e.to_string());
+                }
+            }
+        }
+        Err(
+            serde::de::Error::custom(
+                first.unwrap_or_else(|| "matches no variant".to_owned()),
+            ),
+        )
+    }
+}
 #[derive(Debug, Clone, PartialEq)]
 pub enum ShipmentVariants {
     International(ShipmentInternational),
@@ -2896,6 +3093,146 @@ impl<'de> runtime::TaggedUnion<'de> for ShipmentVariants {
             0 => v.decode_into(Self::International),
             _ => v.decode_into(Self::Otherwise),
         }
+    }
+}
+/// label
+#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct TaggedLabelFields {
+    pub label: TaggedLabelLabel,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub size: Option<i64>,
+    #[serde(flatten)]
+    pub additional_properties: std::collections::BTreeMap<String, serde_json::Value>,
+}
+deserialize_impl!(TaggedLabelFields);
+serialize_impl_4!(TaggedLabelFields);
+impl TaggedLabelFields {
+    #[must_use]
+    pub const fn new(label: TaggedLabelLabel) -> Self {
+        Self {
+            label,
+            size: None,
+            additional_properties: std::collections::BTreeMap::new(),
+        }
+    }
+}
+impl runtime::XmlShape for TaggedLabelFields {
+    fn xml() -> &'static runtime::XmlNode {
+        static NODE: runtime::XmlNode = runtime::XmlNode {
+            name: "TaggedLabelFields",
+            namespace: "",
+            prefix: "",
+            fields: &[
+                runtime::XmlField {
+                    wire: "label",
+                    name: "label",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: true,
+                    item: "label",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "size",
+                    name: "size",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "size",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+            ],
+        };
+        &NODE
+    }
+}
+/// colour
+#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct TaggedColourFields {
+    pub colour: TaggedColourColour,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub size: Option<i64>,
+    #[serde(flatten)]
+    pub additional_properties: std::collections::BTreeMap<String, serde_json::Value>,
+}
+deserialize_impl!(TaggedColourFields);
+serialize_impl_4!(TaggedColourFields);
+impl TaggedColourFields {
+    #[must_use]
+    pub const fn new(colour: TaggedColourColour) -> Self {
+        Self {
+            colour,
+            size: None,
+            additional_properties: std::collections::BTreeMap::new(),
+        }
+    }
+}
+impl runtime::XmlShape for TaggedColourFields {
+    fn xml() -> &'static runtime::XmlNode {
+        static NODE: runtime::XmlNode = runtime::XmlNode {
+            name: "TaggedColourFields",
+            namespace: "",
+            prefix: "",
+            fields: &[
+                runtime::XmlField {
+                    wire: "colour",
+                    name: "colour",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: true,
+                    item: "colour",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "size",
+                    name: "size",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "size",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+            ],
+        };
+        &NODE
     }
 }
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -4175,6 +4512,52 @@ pub mod builders {
         /// Returns the value.
         pub fn build(self) -> Result<super::User, runtime::BuildError> {
             self.0.build()
+        }
+    }
+    impl super::TaggedLabel {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            label: impl TryInto<types::TaggedLabelLabel, Error: std::fmt::Display>,
+        ) -> TaggedLabel {
+            TaggedLabel(
+                runtime::Builder::start(|| Ok(
+                    super::TaggedLabelFields::new(runtime::field("label", label)?),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct TaggedLabel(runtime::Builder<super::TaggedLabelFields>);
+    impl TaggedLabel {
+        pub fn size(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("size", value, |s, v| s.size = Some(v)))
+        }
+        /// Returns the value once its whole schema holds.
+        pub fn build(self) -> Result<super::TaggedLabel, runtime::BuildError> {
+            self.0.build().and_then(super::TaggedLabel::try_from)
+        }
+    }
+    impl super::TaggedColour {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            colour: impl TryInto<types::TaggedColourColour, Error: std::fmt::Display>,
+        ) -> TaggedColour {
+            TaggedColour(
+                runtime::Builder::start(|| Ok(
+                    super::TaggedColourFields::new(runtime::field("colour", colour)?),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct TaggedColour(runtime::Builder<super::TaggedColourFields>);
+    impl TaggedColour {
+        pub fn size(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("size", value, |s, v| s.size = Some(v)))
+        }
+        /// Returns the value once its whole schema holds.
+        pub fn build(self) -> Result<super::TaggedColour, runtime::BuildError> {
+            self.0.build().and_then(super::TaggedColour::try_from)
         }
     }
     impl super::ShipmentInternational {
