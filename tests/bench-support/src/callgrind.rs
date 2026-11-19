@@ -2,8 +2,8 @@
 //! `n^MAX_EXPONENT`. So a quadratic path shows on the run that adds it.
 //!
 //! The cost is the count of instructions that the callgrind of Valgrind sees. It is the same on every run, so there is
-//! no noise and no retry. Each path runs at each size in a process of its own, and paths run side by side, one per
-//! core. Only the call of its work is counted and
+//! no noise and no retry. Each path runs at each size in a process of its own. The runs go side by side, one per core,
+//! the smallest sizes first. Only the call of its work is counted and
 //! not the building of its input. A [`Phased`] path counts each phase apart in that one run: callgrind writes a count
 //! each time a phase ends. The steepest step between two sizes counts. So fixed costs at the small sizes cannot hide
 //! growth at the large ones. Needs `valgrind` on the path (Linux).
@@ -144,39 +144,57 @@ fn check(targets: &[&Target], sizes: &[usize], program: &str) -> ExitCode {
     ExitCode::FAILURE
 }
 
-/// [`growth`] of every target, as many at once as the machine has cores: each callgrind run is one thread. The sizes
-/// of one target still run in turn, so a steep step stops it before its larger sizes.
-#[expect(clippy::needless_collect, reason = "every run of a batch starts before the first is joined")]
+/// What one run counted: one count, or one per phase. `None` for a run that a steep step skipped.
+type Counts = Option<Result<Vec<u64>, String>>;
+
+/// [`growth`] of every target. Each core takes the next run (a target at a size) as soon as it is free, the sizes of a
+/// target side by side. The smallest sizes go first: a target's largest run starts last, and is skipped when a step
+/// that already finished is steeper than [`STOP_EXPONENT`].
 fn counted(targets: &[&Target], sizes: &[usize], program: &str) -> Vec<Result<Vec<Growth>, String>> {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::{Mutex, PoisonError};
     let cores = std::thread::available_parallelism().map_or(1, std::num::NonZero::get);
-    let mut out = vec![];
-    for batch in targets.chunks(cores) {
-        std::thread::scope(|scope| {
-            let running: Vec<_> = batch.iter().map(|t| scope.spawn(|| growth(t, sizes, program))).collect();
-            out.extend(running.into_iter().map(|r| r.join().unwrap_or_else(|_| Err("the run panicked".to_owned()))));
-        });
-    }
-    out
+    let runs: Vec<(usize, usize)> = (0..sizes.len()).flat_map(|s| (0..targets.len()).map(move |t| (t, s))).collect();
+    let next = AtomicUsize::new(0);
+    let done: Mutex<Vec<Vec<Counts>>> = Mutex::new(vec![vec![None; sizes.len()]; targets.len()]);
+    std::thread::scope(|scope| {
+        for _ in 0..cores.min(runs.len()) {
+            scope.spawn(|| {
+                while let Some(&(t, s)) = runs.get(next.fetch_add(1, Ordering::Relaxed)) {
+                    let steep = {
+                        let d = done.lock().unwrap_or_else(PoisonError::into_inner);
+                        growth(targets[t], sizes, &d[t]).is_ok_and(|g| g.iter().any(|g| g.steepest > STOP_EXPONENT))
+                    };
+                    if !steep {
+                        let counts = instructions(program, targets[t], sizes[s]);
+                        done.lock().unwrap_or_else(PoisonError::into_inner)[t][s] = Some(counts);
+                    }
+                }
+            });
+        }
+    });
+    let done = done.into_inner().unwrap_or_else(PoisonError::into_inner);
+    targets.iter().zip(&done).map(|(t, runs)| growth(t, sizes, runs)).collect()
 }
 
-/// Counts `target` at each size in turn, each phase apart. A step steeper than [`STOP_EXPONENT`] in any phase ends it:
-/// a quadratic path at the next, larger size could run for hours under callgrind.
-fn growth(target: &Target, sizes: &[usize], program: &str) -> Result<Vec<Growth>, String> {
+/// How `target` grew over the runs that counted it, in the order of `sizes`, each phase apart. A run that did not
+/// count (skipped, or not yet done) ends it: the target is marked stopped.
+fn growth(target: &Target, sizes: &[usize], runs: &[Counts]) -> Result<Vec<Growth>, String> {
     let mut growths = vec![Growth { steepest: 0.0, stopped: false }; target.phases.len().max(1)];
     let mut before: Option<(f64, Vec<f64>)> = None;
-    for &size in sizes {
+    for (&size, run) in sizes.iter().zip(runs) {
+        let Some(counts) = run else {
+            for g in &mut growths {
+                g.stopped = true;
+            }
+            break;
+        };
+        let counts: Vec<f64> = counts.clone()?.into_iter().map(to_f64).collect();
         let (bytes, _) = (target.prepare)(size);
         let bytes = to_f64(u64::try_from(bytes).map_err(|e| e.to_string())?);
-        let counts: Vec<f64> = instructions(program, target, size)?.into_iter().map(to_f64).collect();
         if let Some((x0, ref y0)) = before {
             for (g, (y0, y1)) in growths.iter_mut().zip(y0.iter().zip(&counts)) {
                 g.steepest = g.steepest.max(exponent((x0, *y0), (bytes, *y1)));
-            }
-            if growths.iter().any(|g| g.steepest > STOP_EXPONENT) {
-                for g in &mut growths {
-                    g.stopped = true;
-                }
-                break;
             }
         }
         before = Some((bytes, counts));
