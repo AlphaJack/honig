@@ -590,7 +590,7 @@ impl IfThenEmail {
         Self { type_, email }
     }
 }
-pub type IfThenEmailType = EmailType;
+pub use EmailType as IfThenEmailType;
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct IfThenSms {
@@ -606,7 +606,7 @@ impl IfThenSms {
         Self { type_, phone }
     }
 }
-pub type IfThenSmsType = SmsType;
+pub use SmsType as IfThenSmsType;
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct IfThenOtherwise {
@@ -641,7 +641,7 @@ impl ConstOneOfEmail {
         Self { type_, email }
     }
 }
-pub type ConstOneOfEmailType = EmailType;
+pub use EmailType as ConstOneOfEmailType;
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct ConstOneOfSms {
@@ -657,7 +657,7 @@ impl ConstOneOfSms {
         Self { type_, phone }
     }
 }
-pub type ConstOneOfSmsType = SmsType;
+pub use SmsType as ConstOneOfSmsType;
 /// pickup
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]

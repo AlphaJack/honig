@@ -35,7 +35,12 @@ pub(super) fn emit(
         let name = pascal_ident(&def.name);
         if let Some(&first) = aliases.get(&i) {
             let (doc, first) = (doc_opt(def.doc.as_deref()), pascal_ident(&space.types.defs[first].name));
-            items.push(quote! { #doc pub type #name = #first; });
+            // A unit struct is a value too: `use` names both, where `type` names only the type.
+            if matches!(def.kind, Kind::Const(_)) {
+                items.push(quote! { #doc pub use #first as #name; });
+            } else {
+                items.push(quote! { #doc pub type #name = #first; });
+            }
             continue;
         }
         let first = items.len();
@@ -791,8 +796,8 @@ fn is_arg(space: &Space<'_>, f: &Field) -> bool {
     f.required && field_default(space, f).is_none()
 }
 
-/// Returns `impl Default`. Spec defaults go through their functions. A required unit struct is itself. The rest is
-/// empty.
+/// Returns `impl Default`. Spec defaults go through their functions. A required unit struct is its value, `Unit {}`. The
+/// rest is empty.
 fn default_impl(space: &Space<'_>, name: &proc_macro2::Ident, s: &Struct, extra: &proc_macro2::Ident) -> TokenStream {
     let inits = s.fields.iter().map(|f| {
         let (n, t) = (snake_ident(&f.name), field_ty(space, f));
@@ -802,7 +807,8 @@ fn default_impl(space: &Space<'_>, name: &proc_macro2::Ident, s: &Struct, extra:
             let fun = format_ident!("default_{}", snake(&f.name));
             quote!(#n: Self::#fun(),)
         } else if f.required && unit {
-            quote!(#n: #t,)
+            // Braces: the field's type may be an alias of the unit struct, which is no value by its name.
+            quote!(#n: #t {},)
         } else {
             quote!(#n: <#t>::default(),)
         }

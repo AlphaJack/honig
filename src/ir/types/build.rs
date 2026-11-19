@@ -214,6 +214,47 @@ fn untyped_values(o: &serde_json::Map<String, Value>) -> bool {
             || o.get("const").is_some_and(untyped))
 }
 
+/// Adds property `name` of schema `schema` to `props`. A property that another `allOf` member declared already must
+/// meet both schemas: it becomes their `allOf`, which its field types and checks as one. The same schema twice is one.
+fn both(props: &mut serde_json::Map<String, Value>, name: &str, schema: &Value) {
+    match props.get_mut(name) {
+        Some(existing) if existing == schema || implied(schema, existing) => {}
+        Some(existing) if implied(existing, schema) => *existing = schema.clone(),
+        Some(existing) => *existing = serde_json::json!({"allOf": [existing.take(), schema.clone()]}),
+        None => {
+            props.insert(name.to_owned(), schema.clone());
+        }
+    }
+}
+
+/// Does `narrow` imply all that `wide` says? `wide` says only its `type` (and annotations), and every value of
+/// `narrow` is of one of those types: its own `type`s are among them, or its `const` or `enum` values are.
+/// `{const: image}` implies `{type: string}`, and `{type: string, maxLength: 5}` implies `{type: [string, null]}`.
+fn implied(wide: &Value, narrow: &Value) -> bool {
+    let (Some(w), Some(n)) = (wide.as_object(), narrow.as_object()) else { return false };
+    if w.keys().any(|k| k != "type" && !ANNOTATIONS.contains(&k.as_str())) {
+        return false;
+    }
+    let (wide_types, _) = type_set(w);
+    if wide_types.is_empty() {
+        return false;
+    }
+    let of_type = |v: &Value| {
+        wide_types.iter().any(|t| match t.as_str() {
+            "string" => v.is_string(),
+            "integer" => v.is_i64() || v.is_u64(),
+            "number" => v.is_number(),
+            "boolean" => v.is_boolean(),
+            "null" => v.is_null(),
+            _ => false,
+        })
+    };
+    let (narrow_types, _) = type_set(n);
+    (!narrow_types.is_empty() && narrow_types.iter().all(|t| wide_types.contains(t)))
+        || n.get("const").is_some_and(of_type)
+        || n.get("enum").and_then(Value::as_array).is_some_and(|e| !e.is_empty() && e.iter().all(of_type))
+}
+
 /// Keywords that assert something about a value whatever its type.
 const ASSERTIONS: [&str; 20] = [
     // Asserted (JSON Schema 2020-12 section 7.2.1 allows it): a value of another kind passes.
@@ -692,9 +733,9 @@ impl<'a> Builder<'a> {
     }
 
     /// Returns an `allOf` that one merged type cannot hold. The members merge into one struct (or the type they share)
-    /// with one schema per property and one value per keyword. So two members that declare the same property or the
-    /// same keyword (two `maximum`s, two `additionalProperties`), or whose `type`s share none, would lose one of them:
-    /// the whole schema is then checked at run time. `required` adds up, one shared `type` is kept and each member's
+    /// with one value per keyword. So two members that set the same keyword (two `maximum`s, two
+    /// `additionalProperties`), or whose `type`s share none, would lose one of them: the whole schema is then checked
+    /// at run time. A property that two members declare is the `allOf` of its schemas, which its field holds. `required` adds up, one shared `type` is kept and each member's
     /// untyped keywords are checked with it. So the usual `allOf: [$ref: Base, {type: object, properties: ...}]` and an
     /// `allOf` of `if`/`then` pairs stay typed.
     fn lossy_all_of(&self, s: &Value) -> bool {
@@ -707,24 +748,19 @@ impl<'a> Builder<'a> {
             .filter(|m| !is_annotation_only(m))
             .collect();
         let mut keys = BTreeSet::new();
-        let mut names = BTreeSet::new();
         // The schema's own keywords beside `allOf` merge in too.
         let mut own = o.clone();
         own.remove("allOf");
         for m in std::iter::once(Value::Object(own)).chain(members.iter().cloned()) {
             let Some(mo) = m.as_object() else { continue };
-            for (k, v) in mo {
-                // A member's untyped keywords (`if`, `not`) are checked whole with that member already.
-                let lossless = matches!(k.as_str(), "type" | "required" | "allOf" | "$ref")
+            for k in mo.keys() {
+                // A member's untyped keywords (`if`, `not`) are checked whole with that member already. A property
+                // that two members declare merges into the `allOf` of its schemas: its field holds both.
+                let lossless = matches!(k.as_str(), "type" | "required" | "allOf" | "$ref" | "properties")
                     || UNTYPED_KEYWORDS.contains(&k.as_str())
                     || ANNOTATIONS.contains(&k.as_str())
                     || k.starts_with("x-");
-                if k == "properties" {
-                    let fresh = v.as_object().into_iter().flatten().all(|(n, _)| names.insert(n.clone()));
-                    if !fresh {
-                        return true;
-                    }
-                } else if !lossless && !keys.insert(k.clone()) {
+                if !lossless && !keys.insert(k.clone()) {
                     return true;
                 }
             }
@@ -1558,7 +1594,7 @@ impl<'a> Builder<'a> {
                 object_like = true;
                 // Refs in OpenAPI are document-absolute. So values copy safely.
                 for (k, v) in p {
-                    props.insert(k.clone(), v.clone());
+                    both(&mut props, k, v);
                 }
             }
             if let Some(Value::Array(r)) = mo.get("required") {
@@ -1571,7 +1607,7 @@ impl<'a> Builder<'a> {
         }
         if let Some(Value::Object(p)) = o.get("properties") {
             for (k, v) in p {
-                props.insert(k.clone(), v.clone());
+                both(&mut props, k, v);
             }
         }
         if let Some(Value::Array(r)) = o.get("required") {

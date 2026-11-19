@@ -509,9 +509,9 @@ fn a_null_only_property_takes_only_null() {
     assert_eq!(serde_json::to_value(&sent).unwrap(), json!({"retired": null}));
 }
 
-/// An `allOf` item whose members both declare `lines` is checked whole. Keywords deep inside it keep their values
-/// after its references are inlined: `type: [string, null]` nine levels down still takes a string and `null`, and
-/// `maxLength` still applies. So does the `maxItems` of the member that one merged struct would drop.
+/// An `allOf` item whose members both declare `lines` holds both: the field is the `allOf` of the two schemas. Keywords
+/// deep inside keep their values: `type: [string, null]` still takes a string and `null`, `maxLength` still applies,
+/// and so does the `maxItems` of the second member.
 #[test]
 fn a_whole_checked_schema_keeps_its_deep_keywords() {
     let check = |lines: serde_json::Value| {
@@ -521,9 +521,9 @@ fn a_whole_checked_schema_keeps_its_deep_keywords() {
     };
     assert_eq!(check(json!([{"note": "ok"}, {"note": null}])), Ok(()));
     let long = check(json!([{"note": "long"}])).expect_err("past maxLength");
-    assert!(long.starts_with("/lines/0/note: at most 3 characters allowed, found 4"), "{long}");
+    assert!(long.contains("at most 3 characters allowed, found 4"), "{long}");
     let many = check(json!([{}, {}, {}])).expect_err("past maxItems");
-    assert!(many.starts_with("at most 2 items allowed, found 3"), "{many}");
+    assert!(many.contains("at most 2 items allowed, found 3"), "{many}");
 }
 
 /// `^(a+)+$` takes exponential time on a long value that almost matches. `handle` is a pattern type: past `maxLength`
@@ -651,4 +651,18 @@ fn a_one_value_enum_is_a_constant() {
     assert!(serde_json::from_str::<types::AlwaysTrue>("true").is_ok());
     assert!(serde_json::from_str::<types::AlwaysTrue>("false").is_err());
     const { assert!(types::AlwaysTrue::VALUE) };
+}
+
+/// A property that two `allOf` members declare must meet both: here a string of at most 5 characters, never `null`.
+/// The struct holds it as one typed field, with no check of the whole value.
+#[test]
+fn a_property_of_two_all_of_members_meets_both() {
+    let ok: types::NarrowStamp = serde_json::from_str(r#"{"at":"12:00"}"#).expect("both hold");
+    assert_eq!(ok.at.as_str(), "12:00");
+    // A plain struct: no checked type around its fields.
+    let built = types::NarrowStamp { at: "12:00".try_into().expect("short") };
+    assert_eq!(built, ok);
+    for bad in [r#"{"at":null}"#, r#"{"at":"12:00:00"}"#, "{}"] {
+        assert!(serde_json::from_str::<types::NarrowStamp>(bad).is_err(), "{bad}");
+    }
 }
