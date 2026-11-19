@@ -137,12 +137,42 @@ macro_rules! serialize_impl_4 {
     ($t:ty) => {
         impl serde::Serialize for $t {
             fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-                Self::serialize(self, runtime::UniqueKeys(s))
+                match self {
+                    Self::Object(v) => serde::Serialize::serialize(v, s),
+                    Self::Other(v) => serde::Serialize::serialize(v, s),
+                }
             }
         }
     };
 }
 macro_rules! deserialize_impl_2 {
+    ($t:ty) => {
+        impl<'de> serde::Deserialize<'de> for $t {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                let v = <runtime::Content<'de> as serde::Deserialize>::deserialize(d)?;
+                match v.kind() {
+                    runtime::Kind::Object => v.decode_into(Self::Object),
+                    runtime::Kind::Null
+                    | runtime::Kind::Bool
+                    | runtime::Kind::Integer
+                    | runtime::Kind::Number
+                    | runtime::Kind::String
+                    | runtime::Kind::Array => Ok(Self::Other(v.into_value())),
+                }
+            }
+        }
+    };
+}
+macro_rules! serialize_impl_5 {
+    ($t:ty) => {
+        impl serde::Serialize for $t {
+            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                Self::serialize(self, runtime::UniqueKeys(s))
+            }
+        }
+    };
+}
+macro_rules! deserialize_impl_3 {
     ($t:ty) => {
         impl<'de> serde::Deserialize<'de> for $t {
             fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
@@ -152,7 +182,7 @@ macro_rules! deserialize_impl_2 {
         }
     };
 }
-macro_rules! deserialize_impl_3 {
+macro_rules! deserialize_impl_4 {
     ($t:ty) => {
         impl<'de> serde::Deserialize<'de> for $t {
             fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
@@ -403,7 +433,7 @@ impl TryFrom<TaggedVariants> for Tagged {
                     &runtime::InstancePath::Root,
                     &value,
                     schema,
-                    runtime::schema_defs(),
+                    None,
                 );
             }
         }
@@ -1437,22 +1467,14 @@ impl TryFrom<ShipmentVariants> for Shipment {
         {
             let out = &mut violations;
             {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&value).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"type\":\"object\",\"required\":[\"kind\",\"parcels\"],\"properties\":{\"kind\":{\"type\":\"string\",\"enum\":[\"domestic\",\"international\"]},\"customs\":{\"type\":\"string\"},\"insured\":{\"type\":\"boolean\"},\"insurer\":{\"type\":\"string\"},\"options\":{\"$ref\":\"#/$defs/~1components~1schemas~1NoOptions\"},\"rating\":{\"minimum\":1},\"meta\":{\"properties\":{\"count\":{\"type\":\"integer\"}}},\"label\":{\"type\":\"string\",\"minLength\":4,\"default\":\"bad\"},\"parcels\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"fragile\":{\"type\":\"boolean\"}}},\"contains\":{\"properties\":{\"fragile\":{\"const\":true}},\"required\":[\"fragile\"]},\"maxContains\":2},\"scores\":{\"type\":\"object\",\"patternProperties\":{\"^[a-z]+$\":{\"type\":\"integer\",\"minimum\":0}},\"additionalProperties\":false},\"priority\":{\"type\":[\"number\",\"null\"],\"minimum\":0,\"maximum\":2},\"weight\":{\"type\":[\"integer\",\"null\"],\"minimum\":256},\"labels\":{\"type\":\"object\",\"propertyNames\":{\"pattern\":\"^[a-z]+$\"},\"patternProperties\":{\"^x\":{\"type\":\"string\",\"maxLength\":3}},\"additionalProperties\":{\"type\":\"string\"}}},\"dependentRequired\":{\"insured\":[\"insurer\"]},\"if\":{\"properties\":{\"kind\":{\"const\":\"international\"}}},\"then\":{\"required\":[\"customs\"]},\"not\":{\"required\":[\"customs\",\"insurer\"],\"properties\":{\"customs\":{\"const\":\"none\"}}}}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Root,
-                    &value,
-                    schema,
-                    runtime::schema_defs(),
-                );
+                let json = runtime::to_value(&value).unwrap_or_default();
+                if serde_json::from_value::<Not3>(json.clone()).is_ok() {
+                    runtime::violation(
+                        out,
+                        &runtime::InstancePath::Root,
+                        "matches `not`",
+                    );
+                }
             }
         }
         runtime::first(violations)
@@ -2074,7 +2096,7 @@ impl TryFrom<TaggedLabelFields> for TaggedLabel {
                     &runtime::InstancePath::Root,
                     &value,
                     schema,
-                    runtime::schema_defs(),
+                    None,
                 );
             }
         }
@@ -2127,7 +2149,7 @@ impl TryFrom<TaggedColourFields> for TaggedColour {
                     &runtime::InstancePath::Root,
                     &value,
                     schema,
-                    runtime::schema_defs(),
+                    None,
                 );
             }
         }
@@ -2555,23 +2577,21 @@ impl TryFrom<ShipmentInternationalFields> for ShipmentInternational {
         {
             let out = &mut violations;
             {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&value).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"type\":\"object\",\"required\":[\"kind\",\"parcels\",\"customs\"],\"properties\":{\"kind\":{\"const\":\"international\"},\"customs\":{\"type\":\"string\"},\"insured\":{\"type\":\"boolean\"},\"insurer\":{\"type\":\"string\"},\"options\":{\"$ref\":\"#/$defs/~1components~1schemas~1NoOptions\"},\"rating\":{\"minimum\":1},\"meta\":{\"properties\":{\"count\":{\"type\":\"integer\"}}},\"label\":{\"type\":\"string\",\"minLength\":4,\"default\":\"bad\"},\"parcels\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"fragile\":{\"type\":\"boolean\"}}},\"contains\":{\"properties\":{\"fragile\":{\"const\":true}},\"required\":[\"fragile\"]},\"maxContains\":2},\"scores\":{\"type\":\"object\",\"patternProperties\":{\"^[a-z]+$\":{\"type\":\"integer\",\"minimum\":0}},\"additionalProperties\":false},\"priority\":{\"type\":[\"number\",\"null\"],\"minimum\":0,\"maximum\":2},\"weight\":{\"type\":[\"integer\",\"null\"],\"minimum\":256},\"labels\":{\"type\":\"object\",\"propertyNames\":{\"pattern\":\"^[a-z]+$\"},\"patternProperties\":{\"^x\":{\"type\":\"string\",\"maxLength\":3}},\"additionalProperties\":{\"type\":\"string\"}}},\"dependentRequired\":{\"insured\":[\"insurer\"]},\"not\":{\"required\":[\"customs\",\"insurer\"],\"properties\":{\"customs\":{\"const\":\"none\"}}}}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Root,
-                    &value,
-                    schema,
-                    runtime::schema_defs(),
-                );
+                let json = runtime::to_value(&value).unwrap_or_default();
+                if serde_json::from_value::<Not>(json.clone()).is_ok() {
+                    runtime::violation(
+                        out,
+                        &runtime::InstancePath::Root,
+                        "matches `not`",
+                    );
+                }
             }
+            runtime::check(
+                out,
+                &runtime::InstancePath::Root,
+                value.insured.is_none() || value.insurer.is_some(),
+                "`insurer` is required when `insured` is present",
+            );
         }
         runtime::first(violations)
             .map(|()| Self(value))
@@ -2596,28 +2616,8 @@ pub enum ShipmentInternationalMeta {
     Object(MetaObject),
     Other(serde_json::Value),
 }
-impl serde::Serialize for ShipmentInternationalMeta {
-    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        match self {
-            Self::Object(v) => serde::Serialize::serialize(v, s),
-            Self::Other(v) => serde::Serialize::serialize(v, s),
-        }
-    }
-}
-impl<'de> serde::Deserialize<'de> for ShipmentInternationalMeta {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let v = <runtime::Content<'de> as serde::Deserialize>::deserialize(d)?;
-        match v.kind() {
-            runtime::Kind::Object => v.decode_into(Self::Object),
-            runtime::Kind::Null
-            | runtime::Kind::Bool
-            | runtime::Kind::Integer
-            | runtime::Kind::Number
-            | runtime::Kind::String
-            | runtime::Kind::Array => Ok(Self::Other(v.into_value())),
-        }
-    }
-}
+serialize_impl_4!(ShipmentInternationalMeta);
+deserialize_impl_2!(ShipmentInternationalMeta);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct MetaObject {
@@ -2817,23 +2817,21 @@ impl TryFrom<ShipmentOtherwiseFields> for ShipmentOtherwise {
         {
             let out = &mut violations;
             {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&value).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"type\":\"object\",\"required\":[\"kind\",\"parcels\"],\"properties\":{\"kind\":{\"type\":\"string\",\"enum\":[\"domestic\",\"international\"]},\"customs\":{\"type\":\"string\"},\"insured\":{\"type\":\"boolean\"},\"insurer\":{\"type\":\"string\"},\"options\":{\"$ref\":\"#/$defs/~1components~1schemas~1NoOptions\"},\"rating\":{\"minimum\":1},\"meta\":{\"properties\":{\"count\":{\"type\":\"integer\"}}},\"label\":{\"type\":\"string\",\"minLength\":4,\"default\":\"bad\"},\"parcels\":{\"type\":\"array\",\"items\":{\"type\":\"object\",\"properties\":{\"fragile\":{\"type\":\"boolean\"}}},\"contains\":{\"properties\":{\"fragile\":{\"const\":true}},\"required\":[\"fragile\"]},\"maxContains\":2},\"scores\":{\"type\":\"object\",\"patternProperties\":{\"^[a-z]+$\":{\"type\":\"integer\",\"minimum\":0}},\"additionalProperties\":false},\"priority\":{\"type\":[\"number\",\"null\"],\"minimum\":0,\"maximum\":2},\"weight\":{\"type\":[\"integer\",\"null\"],\"minimum\":256},\"labels\":{\"type\":\"object\",\"propertyNames\":{\"pattern\":\"^[a-z]+$\"},\"patternProperties\":{\"^x\":{\"type\":\"string\",\"maxLength\":3}},\"additionalProperties\":{\"type\":\"string\"}}},\"dependentRequired\":{\"insured\":[\"insurer\"]},\"not\":{\"required\":[\"customs\",\"insurer\"],\"properties\":{\"customs\":{\"const\":\"none\"}}},\"x-honig-fallback\":true}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Root,
-                    &value,
-                    schema,
-                    runtime::schema_defs(),
-                );
+                let json = runtime::to_value(&value).unwrap_or_default();
+                if serde_json::from_value::<Not2>(json.clone()).is_ok() {
+                    runtime::violation(
+                        out,
+                        &runtime::InstancePath::Root,
+                        "matches `not`",
+                    );
+                }
             }
+            runtime::check(
+                out,
+                &runtime::InstancePath::Root,
+                value.insured.is_none() || value.insurer.is_some(),
+                "`insurer` is required when `insured` is present",
+            );
         }
         runtime::first(violations)
             .map(|()| Self(value))
@@ -3143,6 +3141,188 @@ impl CreateUserXTeam {
 }
 try_from_impl!(CreateUserXTeam);
 checked_str_impls!(CreateUserXTeam);
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
+pub struct Not(pub(super) NotVariants);
+impl<'de> serde::Deserialize<'de> for Not {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <NotVariants as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
+    }
+}
+impl TryFrom<NotVariants> for Not {
+    type Error = runtime::BuildError;
+    fn try_from(value: NotVariants) -> Result<Self, runtime::BuildError> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            {
+                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                let value = runtime::to_value(&value).unwrap_or_default();
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"required\":[\"customs\",\"insurer\"],\"properties\":{\"customs\":{\"const\":\"none\"}}}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
+                    out,
+                    &runtime::InstancePath::Root,
+                    &value,
+                    schema,
+                    None,
+                );
+            }
+        }
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
+    }
+}
+checked_impls!(Not, NotVariants);
+#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct NotObject {
+    pub customs: ObjectCustoms,
+    #[serde(flatten)]
+    pub additional_properties: std::collections::BTreeMap<String, serde_json::Value>,
+}
+deserialize_impl!(NotObject);
+serialize_impl_5!(NotObject);
+impl NotObject {
+    #[must_use]
+    pub const fn new(customs: ObjectCustoms) -> Self {
+        Self {
+            customs,
+            additional_properties: std::collections::BTreeMap::new(),
+        }
+    }
+}
+impl runtime::XmlShape for NotObject {
+    fn xml() -> &'static runtime::XmlNode {
+        static NODE: runtime::XmlNode = runtime::XmlNode {
+            name: "NotObject",
+            namespace: "",
+            prefix: "",
+            fields: &[
+                runtime::XmlField {
+                    wire: "customs",
+                    name: "customs",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: true,
+                    item: "customs",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+            ],
+        };
+        &NODE
+    }
+}
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
+pub struct ObjectCustoms;
+impl ObjectCustoms {
+    pub const VALUE: &'static str = "none";
+}
+serialize_impl_3!(ObjectCustoms);
+impl<'de> serde::Deserialize<'de> for ObjectCustoms {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        runtime::expect_const(d, &serde_json::Value::String("none".to_owned()))
+            .map(|()| Self)
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
+pub struct Not2(pub(super) Not2Variants);
+impl<'de> serde::Deserialize<'de> for Not2 {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <Not2Variants as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
+    }
+}
+impl TryFrom<Not2Variants> for Not2 {
+    type Error = runtime::BuildError;
+    fn try_from(value: Not2Variants) -> Result<Self, runtime::BuildError> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            {
+                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                let value = runtime::to_value(&value).unwrap_or_default();
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"required\":[\"customs\",\"insurer\"],\"properties\":{\"customs\":{\"const\":\"none\"}}}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
+                    out,
+                    &runtime::InstancePath::Root,
+                    &value,
+                    schema,
+                    None,
+                );
+            }
+        }
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
+    }
+}
+checked_impls!(Not2, Not2Variants);
+pub type Not2Object = NotObject;
+pub use ObjectCustoms as Not2ObjectCustoms;
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
+pub struct Not3(pub(super) Not3Variants);
+impl<'de> serde::Deserialize<'de> for Not3 {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <Not3Variants as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
+    }
+}
+impl TryFrom<Not3Variants> for Not3 {
+    type Error = runtime::BuildError;
+    fn try_from(value: Not3Variants) -> Result<Self, runtime::BuildError> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            {
+                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                let value = runtime::to_value(&value).unwrap_or_default();
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"required\":[\"customs\",\"insurer\"],\"properties\":{\"customs\":{\"const\":\"none\"}}}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
+                    out,
+                    &runtime::InstancePath::Root,
+                    &value,
+                    schema,
+                    None,
+                );
+            }
+        }
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
+    }
+}
+checked_impls!(Not3, Not3Variants);
+pub type Not3Object = NotObject;
+pub use ObjectCustoms as Not3ObjectCustoms;
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct BadgeRequest {
@@ -3486,7 +3666,7 @@ pub struct ProfileFields {
     pub additional_properties: std::collections::BTreeMap<String, serde_json::Value>,
 }
 deserialize_impl!(ProfileFields);
-serialize_impl_4!(ProfileFields);
+serialize_impl_5!(ProfileFields);
 impl ProfileFields {
     #[must_use]
     pub const fn new() -> Self {
@@ -3556,7 +3736,7 @@ pub struct TaggedLabelFields {
     pub additional_properties: std::collections::BTreeMap<String, serde_json::Value>,
 }
 deserialize_impl!(TaggedLabelFields);
-serialize_impl_4!(TaggedLabelFields);
+serialize_impl_5!(TaggedLabelFields);
 impl TaggedLabelFields {
     #[must_use]
     pub const fn new(label: TaggedLabelLabel) -> Self {
@@ -3626,7 +3806,7 @@ pub struct TaggedColourFields {
     pub additional_properties: std::collections::BTreeMap<String, serde_json::Value>,
 }
 deserialize_impl!(TaggedColourFields);
-serialize_impl_4!(TaggedColourFields);
+serialize_impl_5!(TaggedColourFields);
 impl TaggedColourFields {
     #[must_use]
     pub const fn new(colour: TaggedColourColour) -> Self {
@@ -4295,6 +4475,15 @@ impl runtime::XmlShape for ShipmentOtherwiseFields {
         &NODE
     }
 }
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum NotVariants {
+    Object(NotObject),
+    Other(serde_json::Value),
+}
+serialize_impl_4!(NotVariants);
+deserialize_impl_2!(NotVariants);
+pub type Not2Variants = NotVariants;
+pub type Not3Variants = NotVariants;
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct EntryLinesChecked(pub(super) EntryLines);
@@ -4355,7 +4544,7 @@ impl TryFrom<Vec<String>> for BadgeHolders {
                     &runtime::InstancePath::Root,
                     &value,
                     schema,
-                    runtime::schema_defs(),
+                    None,
                 );
             }
         }
@@ -4368,7 +4557,7 @@ checked_impls!(BadgeHolders, Vec < String >);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct LooseV(pub(super) serde_json::Value);
-deserialize_impl_2!(LooseV);
+deserialize_impl_3!(LooseV);
 impl TryFrom<serde_json::Value> for LooseV {
     type Error = runtime::BuildError;
     fn try_from(value: serde_json::Value) -> Result<Self, runtime::BuildError> {
@@ -4527,7 +4716,7 @@ checked_impls!(UserTags, Vec < UserTagsItem >);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct UserMeta(pub(super) std::collections::BTreeMap<String, String>);
-deserialize_impl_3!(UserMeta);
+deserialize_impl_4!(UserMeta);
 impl TryFrom<std::collections::BTreeMap<String, String>> for UserMeta {
     type Error = runtime::BuildError;
     fn try_from(
@@ -4555,7 +4744,7 @@ pub type BadgeRequestHolders = BadgeHolders;
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct ShipmentInternationalRating(pub(super) serde_json::Value);
-deserialize_impl_2!(ShipmentInternationalRating);
+deserialize_impl_3!(ShipmentInternationalRating);
 impl TryFrom<serde_json::Value> for ShipmentInternationalRating {
     type Error = runtime::BuildError;
     fn try_from(value: serde_json::Value) -> Result<Self, runtime::BuildError> {
@@ -4608,7 +4797,7 @@ impl TryFrom<Vec<ParcelsItem>> for ShipmentInternationalParcels {
                     &runtime::InstancePath::Root,
                     &value,
                     schema,
-                    runtime::schema_defs(),
+                    None,
                 );
             }
         }
@@ -4671,7 +4860,7 @@ checked_impls!(
 pub struct ShipmentInternationalLabels(
     pub(super) std::collections::BTreeMap<String, String>,
 );
-deserialize_impl_3!(ShipmentInternationalLabels);
+deserialize_impl_4!(ShipmentInternationalLabels);
 impl TryFrom<std::collections::BTreeMap<String, String>>
 for ShipmentInternationalLabels {
     type Error = runtime::BuildError;
@@ -4696,7 +4885,7 @@ for ShipmentInternationalLabels {
                     &runtime::InstancePath::Root,
                     &value,
                     schema,
-                    runtime::schema_defs(),
+                    None,
                 );
             }
         }
@@ -4743,7 +4932,7 @@ impl TryFrom<Vec<ShipmentOtherwiseParcelsItem>> for ShipmentOtherwiseParcels {
                     &runtime::InstancePath::Root,
                     &value,
                     schema,
-                    runtime::schema_defs(),
+                    None,
                 );
             }
         }

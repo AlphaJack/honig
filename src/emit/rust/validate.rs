@@ -98,6 +98,28 @@ pub(super) fn string_checks(c: &Constraints, value: &TokenStream, path: &TokenSt
     }
 }
 
+/// Returns `not` of `c` on `value` (an expression of type `&T`) at `path`: a value that decodes as the type of a `not`
+/// schema is one that the schema allows.
+pub(super) fn not_checks(space: &Space<'_>, c: &Constraints, value: &TokenStream, path: &TokenStream) -> TokenStream {
+    if c.not.is_empty() {
+        return TokenStream::new();
+    }
+    let nots = c.not.iter().map(|&n| {
+        let not = super::syntax::ty(space, &space.types.nots[n].0, false);
+        quote! {
+            if serde_json::from_value::<#not>(json.clone()).is_ok() {
+                runtime::violation(out, #path, "matches `not`");
+            }
+        }
+    });
+    quote! {
+        {
+            let json = runtime::to_value(#value).unwrap_or_default();
+            #(#nots)*
+        }
+    }
+}
+
 /// Checks of `value` (an expression of type `&T` for `t`) at `path`.
 /// Empty when nothing can be violated.
 pub(super) fn checks(
@@ -110,6 +132,11 @@ pub(super) fn checks(
     // A type of yours keeps its own invariants (see `live_types`): the schema where it is used is not checked either.
     if space.is_external(t) {
         return TokenStream::new();
+    }
+    if !c.not.is_empty() {
+        let nots = not_checks(space, c, value, path);
+        let rest = checks(space, t, &Constraints { not: vec![], ..c.clone() }, value, path);
+        return quote!(#nots #rest);
     }
     // Keywords without a Rust type of their own. The whole fragment (refs
     // inlined) is checked on the serialized value. Typed checks are skipped.

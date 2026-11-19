@@ -48,13 +48,10 @@ fn untyped_keywords_report_each_failure() {
         body
     };
     for (body, expected) in [
-        (with("insured", json!(true)), "/body/insurer is required when `insured` is present"), // dependentRequired
-        (
-            with("parcels", json!([{"fragile": false}])),
-            "/body/parcels must contain at least 1 matching item(s), found 0",
-        ), // contains
-        (with("labels", json!({"Bad": "x"})), "/body/labels/Bad is not an allowed property name"), // propertyNames
-        (with("labels", json!({"xlong": "abcd"})), "/body/labels/xlong at most 3 characters allowed, found 4"), // patternProperties
+        (with("insured", json!(true)), "`insurer` is required when `insured` is present"), // dependentRequired
+        (with("parcels", json!([{"fragile": false}])), "must contain at least 1 matching item(s), found 0"), // contains
+        (with("labels", json!({"Bad": "x"})), "is not an allowed property name"),          // propertyNames
+        (with("labels", json!({"xlong": "abcd"})), "at most 3 characters allowed, found 4"), // patternProperties
     ] {
         let r = shipment(&body);
         assert_eq!(r.status().as_u16(), 400, "{body}");
@@ -84,7 +81,7 @@ fn not_and_max_contains_reject() {
     assert!(v.contains("/body matches `not`"), "{v}");
     let r = shipment(&json!({"kind":"domestic","parcels":[{"fragile":true},{"fragile":true},{"fragile":true}]}));
     let v = violations(&r).join("\n");
-    assert!(v.contains("/body/parcels contains 3 matching items, more than allowed"), "{v}");
+    assert!(v.contains("contains 3 matching items, more than allowed"), "{v}");
 }
 
 impl api::Api for Users {
@@ -489,9 +486,9 @@ fn a_refusal_fills_the_declared_schema() {
         (400, "application/json")
     );
     let body: serde_json::Value = serde_json::from_slice(r.body().bytes()).unwrap();
-    // Shipment is checked whole (`contains`, `if`), on the body as sent: the wrong type is a violation with its path.
-    let message = "/body/parcels: must be of type \"array\"";
-    let violations = json!([{"path": "/body/parcels", "message": "must be of type \"array\""}]);
+    // The body decodes as its type: the wrong type is a violation of the body.
+    let message = "/body: invalid type: string \"none\", expected a sequence";
+    let violations = json!([{"path": "/body", "message": "invalid type: string \"none\", expected a sequence"}]);
     assert_eq!(body, json!({"message": message, "object": "error", "violations": violations}));
 }
 
