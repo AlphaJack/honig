@@ -15,32 +15,32 @@ dynamicRef: $ref and $dynamicAnchor are independent of order - $ref first (2020)
 dynamicRef: $ref to $dynamicRef finds detached $dynamicAnchor (2020): non-number is invalid	refers to another document
 dynamicRef: $ref to $dynamicRef finds detached $dynamicAnchor (2020): number is valid	refers to another document
 dynamicRef: A $dynamicRef that initially resolves to a schema with a matching $dynamicAnchor resolves to the first $dynamicAnchor in the dynamic scope: The recursive part is not valid against the root	decodes an invalid instance
-dynamicRef: strict-tree schema, guards against misspelled properties (2020): instance with correct field	refuses a valid instance: /children: is not allowed (unevaluatedProperties)
+dynamicRef: strict-tree schema, guards against misspelled properties (2020): instance with correct field	refuses a valid instance: /children: is not allowed (unevaluatedProperties) at line 1 column 31
 dynamicRef: tests for implementation dynamic anchor and reference link (2020): correct extended schema	refers to another document
 dynamicRef: tests for implementation dynamic anchor and reference link (2020): incorrect extended schema	refers to another document
 dynamicRef: tests for implementation dynamic anchor and reference link (2020): incorrect parent schema	refers to another document
-enum: heterogeneous enum validation: one of the enum is valid	refuses a valid instance: invalid type: sequence, expected i64
-enum: heterogeneous enum validation: valid object matches	refuses a valid instance: invalid type: map, expected i64
-format-date-time: date-time annotation: invalid date-time string is only an annotation by default	refuses a valid instance: is not a valid date-time
-format-date: date format annotation: invalid date string is only an annotation by default	refuses a valid instance: is not a valid date
-format-duration: duration format annotation: invalid duration string is only an annotation by default	refuses a valid instance: is not a valid duration
-format-email: email format annotation: invalid email string is only an annotation by default	refuses a valid instance: is not a valid email
-format-hostname: hostname format annotation: invalid hostname string is only an annotation by default	refuses a valid instance: is not a valid hostname
-format-idn-email: idn-email format: invalid idn-email string is only an annotation by default	refuses a valid instance: is not a valid idn-email
-format-idn-hostname: idn-hostname format annotation: invalid idn-hostname string is only an annotation by default	refuses a valid instance: is not a valid idn-hostname
+enum: heterogeneous enum validation: one of the enum is valid	refuses a valid instance: invalid type: sequence, expected i64 at line 1 column 5
+enum: heterogeneous enum validation: valid object matches	refuses a valid instance: invalid type: map, expected i64 at line 1 column 5
+format-date-time: date-time annotation: invalid date-time string is only an annotation by default	refuses a valid instance: is not a valid date-time at line 1 column 37
+format-date: date format annotation: invalid date string is only an annotation by default	refuses a valid instance: is not a valid date at line 1 column 18
+format-duration: duration format annotation: invalid duration string is only an annotation by default	refuses a valid instance: is not a valid duration at line 1 column 12
+format-email: email format annotation: invalid email string is only an annotation by default	refuses a valid instance: is not a valid email at line 1 column 12
+format-hostname: hostname format annotation: invalid hostname string is only an annotation by default	refuses a valid instance: is not a valid hostname at line 1 column 39
+format-idn-email: idn-email format: invalid idn-email string is only an annotation by default	refuses a valid instance: is not a valid idn-email at line 1 column 12
+format-idn-hostname: idn-hostname format annotation: invalid idn-hostname string is only an annotation by default	refuses a valid instance: is not a valid idn-hostname at line 1 column 27
 format-idn-hostname: validation of internationalized host names: A-label that decodes to a disallowed code point is invalid	decodes an invalid instance
-format-ipv4: ipv4 format annotation: invalid ipv4 string is only an annotation by default	refuses a valid instance: is not a valid ipv4
-format-ipv6: ipv6 format: invalid ipv6 string is only an annotation by default	refuses a valid instance: is not a valid ipv6
-format-iri-reference: iri-reference format annotation: invalid iri-reference string is only an annotation by default	refuses a valid instance: is not a valid iri-reference
-format-iri: iri format: invalid iri string is only an annotation by default	refuses a valid instance: is not a valid iri
-format-json-pointer: json-pointer format: invalid json-pointer string is only an annotation by default	refuses a valid instance: is not a valid json-pointer
-format-regex: regex format: invalid regex string is only an annotation by default	refuses a valid instance: is not a valid regex
-format-relative-json-pointer: relative-json-pointer format: invalid relative-json-pointer string is only an annotation by default	refuses a valid instance: is not a valid relative-json-pointer
-format-time: time format: invalid time string is only an annotation by default	refuses a valid instance: is not a valid time
-format-uri-reference: uri-reference format annotation: invalid uri-reference string is only an annotation by default	refuses a valid instance: is not a valid uri-reference
-format-uri-template: uri-template format annotation: invalid uri-template string is only an annotation by default	refuses a valid instance: is not a valid uri-template
-format-uri: uri format annotation: invalid uri string is only an annotation by default	refuses a valid instance: is not a valid uri
-format-uuid: uuid format annotation: invalid uuid string is only an annotation by default	refuses a valid instance: is not a valid uuid
+format-ipv4: ipv4 format annotation: invalid ipv4 string is only an annotation by default	refuses a valid instance: is not a valid ipv4 at line 1 column 19
+format-ipv6: ipv6 format: invalid ipv6 string is only an annotation by default	refuses a valid instance: is not a valid ipv6 at line 1 column 15
+format-iri-reference: iri-reference format annotation: invalid iri-reference string is only an annotation by default	refuses a valid instance: is not a valid iri-reference at line 1 column 33
+format-iri: iri format: invalid iri string is only an annotation by default	refuses a valid instance: is not a valid iri at line 1 column 54
+format-json-pointer: json-pointer format: invalid json-pointer string is only an annotation by default	refuses a valid instance: is not a valid json-pointer at line 1 column 17
+format-regex: regex format: invalid regex string is only an annotation by default	refuses a valid instance: is not a valid regex at line 1 column 14
+format-relative-json-pointer: relative-json-pointer format: invalid relative-json-pointer string is only an annotation by default	refuses a valid instance: is not a valid relative-json-pointer at line 1 column 16
+format-time: time format: invalid time string is only an annotation by default	refuses a valid instance: is not a valid time at line 1 column 20
+format-uri-reference: uri-reference format annotation: invalid uri-reference string is only an annotation by default	refuses a valid instance: is not a valid uri-reference at line 1 column 30
+format-uri-template: uri-template format annotation: invalid uri-template string is only an annotation by default	refuses a valid instance: is not a valid uri-template at line 1 column 52
+format-uri: uri format annotation: invalid uri string is only an annotation by default	refuses a valid instance: is not a valid uri at line 1 column 31
+format-uuid: uuid format annotation: invalid uuid string is only an annotation by default	refuses a valid instance: is not a valid uuid at line 1 column 43
 id: $id must be resolved against nearest parent, not just immediate parent: non-number is invalid	refers to another document
 id: $id must be resolved against nearest parent, not just immediate parent: number is valid	refers to another document
 id: base URI change - change folder in subschema: number is valid	refers to another document
@@ -72,16 +72,15 @@ ref: remote ref: remote ref valid	refers to another document
 ref: root ref in remote ref: null is valid	refers to another document
 ref: root ref in remote ref: object is invalid	refers to another document
 ref: root ref in remote ref: string is valid	refers to another document
-type: integer type matches integers (6): a float with zero fractional part is an integer	refuses a valid instance: invalid type: floating point `1.0`, expected i64
 unevaluatedProperties: dynamic evaluation inside nested refs: b + c is invalid	decodes an invalid instance
 unevaluatedProperties: dynamic evaluation inside nested refs: b + d is invalid	decodes an invalid instance
 unevaluatedProperties: dynamic evaluation inside nested refs: xx + b is invalid	decodes an invalid instance
 unevaluatedProperties: dynamic evaluation inside nested refs: xx + c is invalid	decodes an invalid instance
 unevaluatedProperties: dynamic evaluation inside nested refs: xx + d is invalid	decodes an invalid instance
-unevaluatedProperties: unevaluatedProperties before $ref: with no unevaluated properties	refuses a valid instance: /bar: is not allowed (unevaluatedProperties)
-unevaluatedProperties: unevaluatedProperties with $dynamicRef (2020): with no unevaluated properties	refuses a valid instance: /bar: is not allowed (unevaluatedProperties)
-unevaluatedProperties: unevaluatedProperties with $ref: with no unevaluated properties	refuses a valid instance: /bar: is not allowed (unevaluatedProperties)
+unevaluatedProperties: unevaluatedProperties before $ref: with no unevaluated properties	refuses a valid instance: /bar: is not allowed (unevaluatedProperties) at line 1 column 31
+unevaluatedProperties: unevaluatedProperties with $dynamicRef (2020): with no unevaluated properties	refuses a valid instance: /bar: is not allowed (unevaluatedProperties) at line 1 column 31
+unevaluatedProperties: unevaluatedProperties with $ref: with no unevaluated properties	refuses a valid instance: /bar: is not allowed (unevaluatedProperties) at line 1 column 31
 unevaluatedProperties: unevaluatedProperties with anyOf: when one matches and has unevaluated properties	decodes an invalid instance
 unevaluatedProperties: unevaluatedProperties with anyOf: when two match and has unevaluated properties	decodes an invalid instance
 unevaluatedProperties: unevaluatedProperties with oneOf: with unevaluated properties	decodes an invalid instance
-vocabulary: schema that uses custom metaschema with no validation vocabulary: no validation: invalid number, but it still validates	refuses a valid instance: 1 is less than the minimum 10
+vocabulary: schema that uses custom metaschema with no validation vocabulary: no validation: invalid number, but it still validates	refuses a valid instance: 1 is less than the minimum 10 at line 1 column 26

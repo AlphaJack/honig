@@ -208,11 +208,13 @@ fn decode_all(cases: &[Case], decoded: &[usize]) -> Vec<(String, Option<String>)
     outcome
 }
 
-/// The `lib.rs` of the suite crate. Its test decodes each instance of `instances.json` as the type of its case. It
+/// The `lib.rs` of the suite crate. Its test decodes each instance of `instances.json` as the type of its case, as
+/// generated code decodes a JSON body: `1.0` is an integer there. It
 /// prints `decoded<TAB>ok` or `decoded<TAB>err<TAB><error>` per instance, in order. `ARMS` is one arm per case.
 const DECODER: &str = r#"pub mod api;
 
-fn decode(case: u64, data: serde_json::Value) -> Result<(), serde_json::Error> {
+fn decode(case: u64, data: serde_json::Value) -> Result<(), api::runtime::Error> {
+    let body = serde_json::to_vec(&data).unwrap();
     match case {
 ARMS        _ => unreachable!("no case {case}"),
     }
@@ -225,6 +227,7 @@ fn decode_every_instance() {
     for (case, data) in instances {
         match decode(case, data) {
             Ok(()) => println!("decoded\tok"),
+            Err(api::runtime::Error::Decode { message, .. }) => println!("decoded\terr\t{}", message.replace(['\n', '\t'], " ")),
             Err(e) => println!("decoded\terr\t{}", e.to_string().replace(['\n', '\t'], " ")),
         }
     }
@@ -234,7 +237,7 @@ fn decode_every_instance() {
 fn decoder(decoded: &[usize]) -> String {
     let arms: String = decoded
         .iter()
-        .map(|i| format!("        {i} => serde_json::from_value::<api::types::Case{i}>(data).map(drop),\n"))
+        .map(|i| format!("        {i} => api::runtime::json_decode::<api::types::Case{i}>(200, &body).map(drop),\n"))
         .collect();
     DECODER.replace("ARMS", &arms)
 }
