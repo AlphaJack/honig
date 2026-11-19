@@ -1224,3 +1224,17 @@ fn false_and_implied_shapes_are_checked_by_types() {
     assert_eq!(types.matches("InstancePath::Index").count(), 4, "{types}");
     assert_eq!(types.matches("InstancePath::Key").count(), 2, "{types}");
 }
+
+/// A `oneOf` or `anyOf` whose branches no union tells apart (a branch without one `type`) counts the branches that the
+/// value decodes as: exactly one of `oneOf`, one at least of `anyOf`. No schema is checked whole.
+#[test]
+fn a_loose_union_counts_its_branches() {
+    for (keyword, check) in [("oneOf", "not exactly one"), ("anyOf", "matches none of `anyOf`")] {
+        let v = json!({keyword: [{"type": "integer"}, {"minimum": 2}]});
+        let holder = json!({"type": "object", "required": ["v"], "properties": {"v": v}});
+        let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Holder": holder}}));
+        let files = common::generate(&format!("loose-{keyword}"), &doc, &crate::emit::Options::default());
+        let types = common::file(&files, "types.rs");
+        assert!(types.contains(check) && !types.contains("check_schema"), "{keyword}: {types}");
+    }
+}

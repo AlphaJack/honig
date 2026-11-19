@@ -2,15 +2,3 @@
 pub use honig::*;
 #[doc(hidden)]
 pub use honig::__private::*;
-/// The definitions that the run-time checks of this module share, parsed once.
-#[doc(hidden)]
-pub fn schema_defs() -> Option<&'static serde_json::Map<String, serde_json::Value>> {
-    static DEFS: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-    DEFS.get_or_init(|| {
-            serde_json::from_str(
-                    "{\"/components/schemas/Customer\":{\"type\":\"object\",\"additionalProperties\":true,\"required\":[\"name\"],\"properties\":{\"name\":{\"type\":\"string\",\"minLength\":1},\"email\":{\"type\":[\"string\",\"null\"]}}}}",
-                )
-                .unwrap_or_default()
-        })
-        .as_object()
-}

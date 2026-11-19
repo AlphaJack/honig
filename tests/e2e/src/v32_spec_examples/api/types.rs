@@ -137,6 +137,26 @@ macro_rules! serialize_impl_4 {
         }
     };
 }
+macro_rules! serialize_impl_5 {
+    ($t:ty) => {
+        impl serde::Serialize for $t {
+            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                let text = serde_json::to_string(&self.0).map_err(serde::ser::Error::custom)?;
+                s.serialize_str(&text)
+            }
+        }
+    };
+}
+macro_rules! deserialize_impl_3 {
+    ($t:ty) => {
+        impl<'de> serde::Deserialize<'de> for $t {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                let text = <String as serde::Deserialize>::deserialize(d)?;
+                runtime::json_text(&text).map(Self).map_err(serde::de::Error::custom)
+            }
+        }
+    };
+}
 macro_rules! try_from_impl_3 {
     ($t:ty) => {
         impl TryFrom<String> for $t {
@@ -162,6 +182,46 @@ macro_rules! try_from_impl_3 {
                 runtime::first(violations)
                     .map(|()| Self(value))
                     .map_err(runtime::BuildError::value)
+            }
+        }
+    };
+}
+macro_rules! serialize_impl_6 {
+    ($t:ty) => {
+        impl serde::Serialize for $t {
+            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                match self {
+                    Self::Object(v) => serde::Serialize::serialize(v, s),
+                    Self::Other(v) => serde::Serialize::serialize(v, s),
+                }
+            }
+        }
+    };
+}
+macro_rules! deserialize_impl_4 {
+    ($t:ty) => {
+        impl<'de> serde::Deserialize<'de> for $t {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                let v = <runtime::Content<'de> as serde::Deserialize>::deserialize(d)?;
+                match v.kind() {
+                    runtime::Kind::Object => v.decode_into(Self::Object),
+                    runtime::Kind::Null
+                    | runtime::Kind::Bool
+                    | runtime::Kind::Integer
+                    | runtime::Kind::Number
+                    | runtime::Kind::String
+                    | runtime::Kind::Array => Ok(Self::Other(v.into_value())),
+                }
+            }
+        }
+    };
+}
+macro_rules! deserialize_impl_5 {
+    ($t:ty) => {
+        impl<'de> serde::Deserialize<'de> for $t {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                let value = <serde_json::Value as serde::Deserialize>::deserialize(d)?;
+                Self::try_from(value).map_err(serde::de::Error::custom)
             }
         }
     };
@@ -848,22 +908,25 @@ impl TryFrom<ServerSentEventStreamsBodyItemVariants> for ServerSentEventStreamsB
         {
             let out = &mut violations;
             {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&value).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"oneOf\":[{\"properties\":{\"event\":{\"const\":\"addString\"}}},{\"properties\":{\"event\":{\"const\":\"addInt64\"},\"data\":{\"format\":\"int64\"}}},{\"properties\":{\"event\":{\"const\":\"addJSON\"},\"data\":{\"contentMediaType\":\"application/json\",\"contentSchema\":{\"type\":\"object\",\"required\":[\"foo\"],\"properties\":{\"foo\":{\"type\":\"integer\"}}}}}}],\"required\":[\"event\"]}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Root,
-                    &value,
-                    schema,
-                    None,
-                );
+                let json = runtime::to_value(&value).unwrap_or_default();
+                let hits = [
+                    serde_json::from_value::<Not6>(json.clone()).is_ok(),
+                    serde_json::from_value::<Not7>(json.clone()).is_ok(),
+                    serde_json::from_value::<Not8>(json.clone()).is_ok(),
+                ]
+                    .into_iter()
+                    .filter(|hit| *hit)
+                    .count();
+                if hits != 1 {
+                    runtime::violation(
+                        out,
+                        &runtime::InstancePath::Root,
+                        format!("matches {hits} of `oneOf`, not exactly one"),
+                    );
+                }
+                if let Err(e) = serde_json::from_value::<NotChecked2>(json.clone()) {
+                    runtime::violation(out, &runtime::InstancePath::Root, e.to_string());
+                }
             }
         }
         runtime::first(violations)
@@ -1025,18 +1088,8 @@ pub type ServerSentEventStreamsBodyItemAddJsonData = ServerSentEventStreamsBodyI
 pub struct ServerSentEventStreamsBodyItemAddJsonData2(
     pub ServerSentEventStreamsBodyItemAddJsonData2Content,
 );
-impl serde::Serialize for ServerSentEventStreamsBodyItemAddJsonData2 {
-    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        let text = serde_json::to_string(&self.0).map_err(serde::ser::Error::custom)?;
-        s.serialize_str(&text)
-    }
-}
-impl<'de> serde::Deserialize<'de> for ServerSentEventStreamsBodyItemAddJsonData2 {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let text = <String as serde::Deserialize>::deserialize(d)?;
-        runtime::json_text(&text).map(Self).map_err(serde::de::Error::custom)
-    }
-}
+serialize_impl_5!(ServerSentEventStreamsBodyItemAddJsonData2);
+deserialize_impl_3!(ServerSentEventStreamsBodyItemAddJsonData2);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct ServerSentEventStreamsBodyItemAddJsonData2Content {
@@ -1177,6 +1230,135 @@ pub enum Not5 {
 serialize_impl_3!(Not5);
 deserialize_impl_2!(Not5);
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Not6 {
+    Object(Not6Object),
+    Other(serde_json::Value),
+}
+serialize_impl_6!(Not6);
+deserialize_impl_4!(Not6);
+#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct Not6Object {
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub event: Option<Not6ObjectEvent>,
+    #[serde(flatten)]
+    pub additional_properties: std::collections::BTreeMap<String, serde_json::Value>,
+}
+deserialize_impl!(Not6Object);
+serialize_impl_2!(Not6Object);
+impl Not6Object {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self {
+            event: None,
+            additional_properties: std::collections::BTreeMap::new(),
+        }
+    }
+}
+pub use ServerSentEventStreamsBodyItemEventEvent as Not6ObjectEvent;
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Not7 {
+    Object(Not7Object),
+    Other(serde_json::Value),
+}
+serialize_impl_6!(Not7);
+deserialize_impl_4!(Not7);
+#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct Not7Object {
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub event: Option<Not7ObjectEvent>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub data: Option<Not7ObjectData>,
+    #[serde(flatten)]
+    pub additional_properties: std::collections::BTreeMap<String, serde_json::Value>,
+}
+deserialize_impl!(Not7Object);
+serialize_impl_2!(Not7Object);
+impl Not7Object {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self {
+            event: None,
+            data: None,
+            additional_properties: std::collections::BTreeMap::new(),
+        }
+    }
+}
+pub use ServerSentEventStreamsBodyItemAddInt64Event as Not7ObjectEvent;
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Not8 {
+    Object(Not8Object),
+    Other(serde_json::Value),
+}
+serialize_impl_6!(Not8);
+deserialize_impl_4!(Not8);
+#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct Not8Object {
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub event: Option<Not8ObjectEvent>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub data: Option<Not8ObjectData>,
+    #[serde(flatten)]
+    pub additional_properties: std::collections::BTreeMap<String, serde_json::Value>,
+}
+deserialize_impl!(Not8Object);
+serialize_impl_2!(Not8Object);
+impl Not8Object {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self {
+            event: None,
+            data: None,
+            additional_properties: std::collections::BTreeMap::new(),
+        }
+    }
+}
+pub use ServerSentEventStreamsBodyItemAddJsonEvent as Not8ObjectEvent;
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Not8ObjectData(pub Not8ObjectDataContent);
+serialize_impl_5!(Not8ObjectData);
+deserialize_impl_3!(Not8ObjectData);
+#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct Not8ObjectDataContent {
+    pub foo: i64,
+    #[serde(flatten)]
+    pub additional_properties: std::collections::BTreeMap<String, serde_json::Value>,
+}
+deserialize_impl!(Not8ObjectDataContent);
+serialize_impl_2!(Not8ObjectDataContent);
+impl Not8ObjectDataContent {
+    #[must_use]
+    pub const fn new(foo: i64) -> Self {
+        Self {
+            foo,
+            additional_properties: std::collections::BTreeMap::new(),
+        }
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ServerSentEventStreamsBodyItemVariants {
     Event(ServerSentEventStreamsBodyItemEvent),
     AddInt64(ServerSentEventStreamsBodyItemAddInt64),
@@ -1299,6 +1481,26 @@ impl TryFrom<FormDataCode> for FormDataCodeChecked {
 checked_impls!(FormDataCodeChecked, FormDataCode);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
+pub struct Not7ObjectData(pub(super) serde_json::Value);
+deserialize_impl_5!(Not7ObjectData);
+impl TryFrom<serde_json::Value> for Not7ObjectData {
+    type Error = runtime::BuildError;
+    fn try_from(value: serde_json::Value) -> Result<Self, runtime::BuildError> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            if let serde_json::Value::String(text) = &value {
+                runtime::check_format(out, &runtime::InstancePath::Root, text, "int64");
+            }
+        }
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
+    }
+}
+checked_impls!(Not7ObjectData, serde_json::Value);
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
 pub struct NotChecked(pub(super) Vec<serde_json::Value>);
 impl<'de> serde::Deserialize<'de> for NotChecked {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
@@ -1354,6 +1556,31 @@ impl TryFrom<Vec<serde_json::Value>> for NotChecked {
     }
 }
 checked_impls!(NotChecked, Vec < serde_json::Value >);
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
+pub struct NotChecked2(pub(super) serde_json::Value);
+deserialize_impl_5!(NotChecked2);
+impl TryFrom<serde_json::Value> for NotChecked2 {
+    type Error = runtime::BuildError;
+    fn try_from(value: serde_json::Value) -> Result<Self, runtime::BuildError> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            if let serde_json::Value::Object(n) = &value {
+                runtime::check_required(
+                    out,
+                    &runtime::InstancePath::Root,
+                    |name| n.contains_key(name),
+                    &["event"],
+                );
+            }
+        }
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
+    }
+}
+checked_impls!(NotChecked2, serde_json::Value);
 /// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
 /// its field. `build` returns the first field that did not convert.
 pub mod builders {
@@ -1714,6 +1941,32 @@ pub mod builders {
         pub fn build(
             self,
         ) -> Result<super::ServerSentEventStreamsBodyItemAddJson, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::Not7Object {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> Not7Object {
+            Not7Object(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct Not7Object(runtime::Builder<super::Not7Object>);
+    impl Not7Object {
+        pub fn event(
+            self,
+            value: impl TryInto<types::Not7ObjectEvent, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("event", value, |s, v| s.event = Some(v)))
+        }
+        pub fn data(
+            self,
+            value: impl TryInto<types::Not7ObjectData, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("data", value, |s, v| s.data = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::Not7Object, runtime::BuildError> {
             self.0.build()
         }
     }

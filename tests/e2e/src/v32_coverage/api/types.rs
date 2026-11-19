@@ -290,22 +290,21 @@ impl TryFrom<CropVariants> for Crop {
         {
             let out = &mut violations;
             {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&value).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"oneOf\":[{\"type\":\"string\"},{\"oneOf\":[{\"type\":\"integer\"},{\"type\":\"object\",\"properties\":{\"x\":{\"type\":\"integer\"},\"y\":{\"type\":\"integer\"}}}]}]}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Root,
-                    &value,
-                    schema,
-                    None,
-                );
+                let json = runtime::to_value(&value).unwrap_or_default();
+                let hits = [
+                    serde_json::from_value::<String>(json.clone()).is_ok(),
+                    serde_json::from_value::<CropVariant2>(json.clone()).is_ok(),
+                ]
+                    .into_iter()
+                    .filter(|hit| *hit)
+                    .count();
+                if hits != 1 {
+                    runtime::violation(
+                        out,
+                        &runtime::InstancePath::Root,
+                        format!("matches {hits} of `oneOf`, not exactly one"),
+                    );
+                }
             }
         }
         runtime::first(violations)

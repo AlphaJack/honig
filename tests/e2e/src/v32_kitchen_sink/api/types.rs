@@ -426,22 +426,28 @@ impl TryFrom<ShapeVariants> for Shape {
         {
             let out = &mut violations;
             {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&value).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"oneOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Book\"},{\"$ref\":\"#/$defs/~1components~1schemas~1Gadget\"}],\"anyOf\":[true]}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Root,
-                    &value,
-                    schema,
-                    runtime::schema_defs(),
-                );
+                let json = runtime::to_value(&value).unwrap_or_default();
+                let hits = [
+                    serde_json::from_value::<Book>(json.clone()).is_ok(),
+                    serde_json::from_value::<NotChecked4>(json.clone()).is_ok(),
+                ]
+                    .into_iter()
+                    .filter(|hit| *hit)
+                    .count();
+                if hits != 1 {
+                    runtime::violation(
+                        out,
+                        &runtime::InstancePath::Root,
+                        format!("matches {hits} of `oneOf`, not exactly one"),
+                    );
+                }
+                if serde_json::from_value::<serde_json::Value>(json.clone()).is_err() {
+                    runtime::violation(
+                        out,
+                        &runtime::InstancePath::Root,
+                        "matches none of `anyOf`",
+                    );
+                }
             }
         }
         runtime::first(violations)
@@ -1055,22 +1061,28 @@ impl TryFrom<ShapeRequestVariants> for ShapeRequest {
         {
             let out = &mut violations;
             {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&value).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"oneOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Book\"},{\"$ref\":\"#/$defs/~1components~1schemas~1Gadget\"}],\"anyOf\":[true]}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Root,
-                    &value,
-                    schema,
-                    runtime::schema_defs(),
-                );
+                let json = runtime::to_value(&value).unwrap_or_default();
+                let hits = [
+                    serde_json::from_value::<Book>(json.clone()).is_ok(),
+                    serde_json::from_value::<NotChecked4>(json.clone()).is_ok(),
+                ]
+                    .into_iter()
+                    .filter(|hit| *hit)
+                    .count();
+                if hits != 1 {
+                    runtime::violation(
+                        out,
+                        &runtime::InstancePath::Root,
+                        format!("matches {hits} of `oneOf`, not exactly one"),
+                    );
+                }
+                if serde_json::from_value::<serde_json::Value>(json.clone()).is_err() {
+                    runtime::violation(
+                        out,
+                        &runtime::InstancePath::Root,
+                        "matches none of `anyOf`",
+                    );
+                }
             }
         }
         runtime::first(violations)
@@ -1984,6 +1996,66 @@ impl TryFrom<serde_json::Value> for NotChecked3 {
     }
 }
 checked_impls!(NotChecked3, serde_json::Value);
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+#[serde(transparent)]
+pub struct NotChecked4(pub(super) Gadget);
+impl<'de> serde::Deserialize<'de> for NotChecked4 {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <Gadget as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
+    }
+}
+impl TryFrom<Gadget> for NotChecked4 {
+    type Error = runtime::BuildError;
+    fn try_from(value: Gadget) -> Result<Self, runtime::BuildError> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            {
+                let json = runtime::to_value(&value).unwrap_or_default();
+                if serde_json::from_value::<Not2>(json.clone()).is_ok() {
+                    if let Err(e) = serde_json::from_value::<NotChecked2>(json.clone()) {
+                        runtime::violation(
+                            out,
+                            &runtime::InstancePath::Root,
+                            format!("{}{e}", "`then`: "),
+                        );
+                    }
+                } else if let Err(e) = serde_json::from_value::<
+                    NotChecked3,
+                >(json.clone()) {
+                    runtime::violation(
+                        out,
+                        &runtime::InstancePath::Root,
+                        format!("{}{e}", "`else`: "),
+                    );
+                }
+            }
+            {
+                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                let value = runtime::to_value(&value).unwrap_or_default();
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"$id\":\"https://example.com/schemas/product\",\"$schema\":\"https://spec.openapis.org/oas/3.2/dialect/2025-09-17\",\"$comment\":\"A product\",\"type\":\"object\",\"required\":[\"name\",\"kind\"],\"properties\":{\"id\":{\"type\":\"integer\",\"format\":\"int64\",\"readOnly\":true,\"minimum\":0,\"exclusiveMaximum\":9007199254740991},\"name\":{\"type\":\"string\",\"minLength\":1,\"maxLength\":64,\"pattern\":\"^[A-Za-z ]+$\"},\"kind\":{\"type\":\"string\",\"enum\":[\"book\",\"gadget\"]},\"nickname\":{\"type\":[\"string\",\"null\"],\"default\":null},\"secret\":{\"type\":\"string\",\"writeOnly\":true,\"deprecated\":true},\"tags\":{\"type\":\"array\",\"items\":{\"type\":\"string\"},\"uniqueItems\":true,\"minItems\":0,\"maxItems\":10,\"contains\":{\"const\":\"vip\"},\"minContains\":0,\"maxContains\":1},\"point\":{\"type\":\"array\",\"prefixItems\":[{\"type\":\"number\"},{\"type\":\"number\"}],\"items\":false,\"unevaluatedItems\":false},\"attrs\":{\"type\":\"object\",\"patternProperties\":{\"^x_\":{\"type\":\"string\"}},\"propertyNames\":{\"pattern\":\"^[a-z_]+$\"},\"minProperties\":0,\"maxProperties\":20,\"unevaluatedProperties\":false},\"weight\":{\"type\":\"number\",\"multipleOf\":0.01,\"exclusiveMinimum\":0},\"owner\":{\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Owner\"}]}},\"dependentRequired\":{\"nickname\":[\"name\"]},\"dependentSchemas\":{\"secret\":{\"required\":[]}},\"x-rust-type\":{\"crate\":\"products\",\"version\":\"1\",\"path\":\"products::Product\"}}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
+                    out,
+                    &runtime::InstancePath::Root,
+                    &value,
+                    schema,
+                    runtime::schema_defs(),
+                );
+            }
+        }
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
+    }
+}
+checked_impls!(NotChecked4, Gadget);
 /// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
 /// its field. `build` returns the first field that did not convert.
 pub mod builders {

@@ -130,18 +130,7 @@ pub(super) fn subschema_checks(
         }
     });
     let conditions = condition_checks(c, &ty, path);
-    let one_of = (!c.one_of.is_empty()).then(|| {
-        let branches = c.one_of.iter().map(|&n| ty(n));
-        quote! {
-            let hits = [#(serde_json::from_value::<#branches>(json.clone()).is_ok()),*]
-                .into_iter()
-                .filter(|hit| *hit)
-                .count();
-            if hits != 1 {
-                runtime::violation(out, #path, format!("matches {hits} of `oneOf`, not exactly one"));
-            }
-        }
-    });
+    let branches = branch_count_checks(c, &ty, path);
     let patterns = pattern_checks(c, &ty, path);
     let tuple = tuple_checks(c, &ty, path);
     let also = c.also.iter().map(|&n| {
@@ -168,7 +157,7 @@ pub(super) fn subschema_checks(
             #(#nots)*
             #(#dependents)*
             #conditions
-            #one_of
+            #branches
             #patterns
             #tuple
             #(#also)*
@@ -1115,4 +1104,42 @@ fn names_schema_checks(c: &Constraints, ty: &dyn Fn(usize) -> TokenStream, path:
             }
         }
     }
+}
+
+/// Returns the counts of the branches of a union that its type cannot judge alone, on `json`: exactly one of `oneOf`,
+/// one at least of `anyOf`.
+fn branch_count_checks(c: &Constraints, ty: &dyn Fn(usize) -> TokenStream, path: &TokenStream) -> TokenStream {
+    let one_of = (!c.one_of.is_empty()).then(|| {
+        let branches = c.one_of.iter().map(|&n| ty(n));
+        quote! {
+            let hits = [#(serde_json::from_value::<#branches>(json.clone()).is_ok()),*]
+                .into_iter()
+                .filter(|hit| *hit)
+                .count();
+            if hits != 1 {
+                runtime::violation(out, #path, format!("matches {hits} of `oneOf`, not exactly one"));
+            }
+        }
+    });
+    // One branch: the value fails it. Several: it decodes as none.
+    let any_of = match c.any_of.as_slice() {
+        [] => None,
+        [n] => {
+            let t = ty(*n);
+            Some(quote! {
+                if serde_json::from_value::<#t>(json.clone()).is_err() {
+                    runtime::violation(out, #path, "matches none of `anyOf`");
+                }
+            })
+        }
+        branches => {
+            let branches = branches.iter().map(|&n| ty(n));
+            Some(quote! {
+                if !(#(serde_json::from_value::<#branches>(json.clone()).is_ok())||*) {
+                    runtime::violation(out, #path, "matches none of `anyOf`");
+                }
+            })
+        }
+    };
+    quote!(#one_of #any_of)
 }

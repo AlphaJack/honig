@@ -53,7 +53,7 @@ fn documented_examples_decode() {
         String,
     >(
         &mut bad,
-        "#/x-honig-not/3/properties/text/examples/0",
+        "#/x-honig-not/5/properties/text/examples/0",
         serde_json::Value::String("hello".to_owned()),
     );
     param::<
