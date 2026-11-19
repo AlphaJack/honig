@@ -224,6 +224,48 @@ const ENUM_KEYWORDS: [&str; 13] = [
 /// Does the type of `t` hold `schema` whole? A checked type of a struct or union holds its own schema
 /// (`split_own_checks`). A `{const: physical}` without `type` is checked as a whole schema, and its unit struct holds it
 /// already. So does an enum type for its `enum`.
+/// Does the named type `t` check `json` (the checks of [`Constraints::json_checks`]) itself? A checked type of the same
+/// schema does: a value of it needs them checked no second time.
+pub(crate) fn json_held_by_type(types: &TypeSpace, t: &Ty, json: &Constraints, hops: usize) -> bool {
+    match t {
+        Ty::Option(x) | Ty::Indirect(x) => json_held_by_type(types, x, json, hops),
+        Ty::Named(id) => match &types.get(*id).kind {
+            Kind::Alias(x) if hops < MAX_ALIAS_HOPS => json_held_by_type(types, x, json, hops + 1),
+            Kind::Checked(c) => c.constraints.json_checks() == *json,
+            Kind::Alias(_)
+            | Kind::Const(_)
+            | Kind::StrEnum(_)
+            | Kind::IntEnum(_)
+            | Kind::Struct(_)
+            | Kind::Union(_)
+            | Kind::Newtype(_)
+            | Kind::Pending => false,
+        },
+        Ty::Bool
+        | Ty::I8
+        | Ty::I16
+        | Ty::I32
+        | Ty::I64
+        | Ty::U8
+        | Ty::U16
+        | Ty::U32
+        | Ty::U64
+        | Ty::F32
+        | Ty::F64
+        | Ty::Decimal
+        | Ty::String
+        | Ty::Bytes
+        | Ty::Binary
+        | Ty::Format(_)
+        | Ty::Any
+        | Ty::Unit
+        | Ty::Vec(_)
+        | Ty::Array(..)
+        | Ty::Map(_)
+        | Ty::Tuple(_) => false,
+    }
+}
+
 fn held_by_type(types: &TypeSpace, t: &Ty, schema: &serde_json::Value, hops: usize) -> bool {
     let only_values = schema.as_object().is_some_and(|o| o.keys().all(|k| ENUM_KEYWORDS.contains(&k.as_str())));
     match t {
@@ -269,9 +311,11 @@ pub(crate) fn needs_checks(types: &TypeSpace, t: &Ty, c: &Constraints, hops: usi
     if yours(types, t) {
         return false;
     }
-    if !c.not.is_empty() || !c.dependent_schemas.is_empty() || !c.conditions.is_empty() {
+    let json = c.json_checks();
+    if !json.is_empty() && !json_held_by_type(types, t, &json, hops) {
         return true;
     }
+    let c = &c.without_json();
     if let Some(schema) = &c.schema {
         if !held_by_type(types, t, schema, hops) {
             return true;

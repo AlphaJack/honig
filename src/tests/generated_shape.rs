@@ -852,3 +852,14 @@ fn if_then_else_checks_against_the_types_of_its_schemas() {
         common::file(&common::generate("if-then-else", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
     assert!(types.contains("`then`: ") && !types.contains("check_schema"), "{types}");
 }
+
+/// A named type checks its own `not`: a field of it takes no checked type of its own.
+#[test]
+fn a_field_of_a_type_that_checks_itself_takes_no_second_check() {
+    let code = json!({"type": "object", "properties": {"a": {"type": "string"}}, "not": {"required": ["a"]}});
+    let holder = json!({"type": "object", "properties": {"code": {"$ref": "#/components/schemas/Code"}}});
+    let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Code": code, "Holder": holder}}));
+    let types =
+        common::file(&common::generate("held-not", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
+    assert!(types.contains("pub code: Option<Code>"), "{types}");
+}
