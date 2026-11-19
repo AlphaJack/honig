@@ -48,7 +48,10 @@ fn form(priority: types::SubmitFormBodyPriority) -> ops::submit_form::Params {
 fn integer_enum_values_are_checked() {
     assert_eq!(form(types::SubmitFormBodyPriority::N2).body.priority, types::SubmitFormBodyPriority::N2);
     assert_eq!(types::SubmitFormBodyPriority::try_from(2), Ok(types::SubmitFormBodyPriority::N2));
-    assert_eq!(types::SubmitFormBodyPriority::try_from(7), Err("`7` is not one of `1`, `2`, `3`".to_owned()));
+    assert_eq!(
+        types::SubmitFormBodyPriority::try_from(7).map_err(|e| e.to_string()),
+        Err("`7` is not one of `1`, `2`, `3`".to_owned())
+    );
     assert!(serde_json::from_str::<types::SubmitFormBodyPriority>("7").is_err());
 }
 

@@ -98,8 +98,8 @@ impl<'de> serde::Deserialize<'de> for Product {
     }
 }
 impl TryFrom<ProductVariants> for Product {
-    type Error = String;
-    fn try_from(value: ProductVariants) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: ProductVariants) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -122,7 +122,9 @@ impl TryFrom<ProductVariants> for Product {
                 );
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_impls!(Product, ProductVariants);
@@ -175,8 +177,8 @@ impl<'de> serde::Deserialize<'de> for ProductGadget {
     }
 }
 impl TryFrom<ProductGadgetFields> for ProductGadget {
-    type Error = String;
-    fn try_from(value: ProductGadgetFields) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: ProductGadgetFields) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -199,7 +201,9 @@ impl TryFrom<ProductGadgetFields> for ProductGadget {
                 );
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_impls!(ProductGadget, ProductGadgetFields);
@@ -214,8 +218,8 @@ impl<'de> serde::Deserialize<'de> for ProductBook {
     }
 }
 impl TryFrom<ProductBookFields> for ProductBook {
-    type Error = String;
-    fn try_from(value: ProductBookFields) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: ProductBookFields) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -238,7 +242,9 @@ impl TryFrom<ProductBookFields> for ProductBook {
                 );
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_impls!(ProductBook, ProductBookFields);
@@ -519,11 +525,7 @@ pub mod builders {
         }
         /// Returns the value once its whole schema holds.
         pub fn build(self) -> Result<super::ProductGadget, runtime::BuildError> {
-            self.0
-                .build()
-                .and_then(|v| {
-                    super::ProductGadget::try_from(v).map_err(runtime::BuildError::value)
-                })
+            self.0.build().and_then(super::ProductGadget::try_from)
         }
     }
     impl super::ProductBook {
@@ -546,11 +548,7 @@ pub mod builders {
         }
         /// Returns the value once its whole schema holds.
         pub fn build(self) -> Result<super::ProductBook, runtime::BuildError> {
-            self.0
-                .build()
-                .and_then(|v| {
-                    super::ProductBook::try_from(v).map_err(runtime::BuildError::value)
-                })
+            self.0.build().and_then(super::ProductBook::try_from)
         }
     }
     impl super::UploadBody {

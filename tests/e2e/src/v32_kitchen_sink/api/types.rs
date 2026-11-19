@@ -85,7 +85,7 @@ macro_rules! str_enum_impls {
             }
         }
         impl std::str::FromStr for $n {
-            type Err = String;
+            type Err = runtime::BuildError;
             fn from_str(s: &str) -> Result<Self, Self::Err> {
                 Self::try_from(s)
             }
@@ -136,14 +136,14 @@ macro_rules! checked_str_impls {
             }
         }
         impl TryFrom<&str> for $n {
-            type Error = String;
-            fn try_from(value: &str) -> Result<Self, String> {
+            type Error = runtime::BuildError;
+            fn try_from(value: &str) -> Result<Self, runtime::BuildError> {
                 Self::try_from(value.to_owned())
             }
         }
         impl std::str::FromStr for $n {
-            type Err = String;
-            fn from_str(s: &str) -> Result<Self, String> {
+            type Err = runtime::BuildError;
+            fn from_str(s: &str) -> Result<Self, runtime::BuildError> {
                 Self::try_from(s)
             }
         }
@@ -195,9 +195,11 @@ macro_rules! checked_num_impls {
             }
         }
         impl std::str::FromStr for $n {
-            type Err = String;
-            fn from_str(s: &str) -> Result<Self, String> {
-                let v: $t = s.parse().map_err(|e| format!("{e}"))?;
+            type Err = runtime::BuildError;
+            fn from_str(s: &str) -> Result<Self, runtime::BuildError> {
+                let v: $t = s
+                    .parse()
+                    .map_err(|e| runtime::BuildError::value(format!("{e}")))?;
                 Self::try_from(v)
             }
         }
@@ -276,8 +278,8 @@ impl<'de> serde::Deserialize<'de> for Product {
     }
 }
 impl TryFrom<ProductFields> for Product {
-    type Error = String;
-    fn try_from(value: ProductFields) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: ProductFields) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -300,7 +302,9 @@ impl TryFrom<ProductFields> for Product {
                 );
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_impls!(Product, ProductFields);
@@ -314,8 +318,8 @@ impl<'de> serde::Deserialize<'de> for Book {
     }
 }
 impl TryFrom<BookFields> for Book {
-    type Error = String;
-    fn try_from(value: BookFields) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: BookFields) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -338,7 +342,9 @@ impl TryFrom<BookFields> for Book {
                 );
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_impls!(Book, BookFields);
@@ -353,8 +359,8 @@ impl<'de> serde::Deserialize<'de> for Owner {
     }
 }
 impl TryFrom<OwnerFields> for Owner {
-    type Error = String;
-    fn try_from(value: OwnerFields) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: OwnerFields) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -377,7 +383,9 @@ impl TryFrom<OwnerFields> for Owner {
                 );
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_impls!(Owner, OwnerFields);
@@ -391,8 +399,8 @@ impl<'de> serde::Deserialize<'de> for Shape {
     }
 }
 impl TryFrom<ShapeVariants> for Shape {
-    type Error = String;
-    fn try_from(value: ShapeVariants) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: ShapeVariants) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -415,7 +423,9 @@ impl TryFrom<ShapeVariants> for Shape {
                 );
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_impls!(Shape, ShapeVariants);
@@ -449,8 +459,8 @@ pub type Nothing = serde_json::Value;
 #[serde(transparent)]
 pub struct ProductId(pub(super) i64);
 impl TryFrom<i64> for ProductId {
-    type Error = String;
-    fn try_from(value: i64) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: i64) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -461,7 +471,9 @@ impl TryFrom<i64> for ProductId {
                 [Some(0), None, None, Some(9_007_199_254_740_991)],
             );
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_num_impls!(ProductId, i64);
@@ -472,8 +484,8 @@ impl ProductName {
     pub const PATTERN: &'static str = "^[A-Za-z ]+$";
 }
 impl TryFrom<String> for ProductName {
-    type Error = String;
-    fn try_from(value: String) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: String) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -502,7 +514,9 @@ impl TryFrom<String> for ProductName {
                 );
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_str_impls!(ProductName);
@@ -521,12 +535,18 @@ impl ProductKind {
     }
 }
 impl TryFrom<&str> for ProductKind {
-    type Error = String;
-    fn try_from(s: &str) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(s: &str) -> Result<Self, runtime::BuildError> {
         match s {
             "book" => Ok(Self::Book),
             "gadget" => Ok(Self::Gadget),
-            other => Err(format!("`{other}` is not one of `book`, `gadget`")),
+            other => {
+                Err(
+                    runtime::BuildError::value(
+                        format!("`{other}` is not one of `book`, `gadget`"),
+                    ),
+                )
+            }
         }
     }
 }
@@ -535,8 +555,8 @@ str_enum_impls!(ProductKind);
 #[serde(transparent)]
 pub struct ProductWeight(pub(super) f64);
 impl TryFrom<f64> for ProductWeight {
-    type Error = String;
-    fn try_from(value: f64) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: f64) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -548,7 +568,9 @@ impl TryFrom<f64> for ProductWeight {
             );
             runtime::check_multiple(out, &runtime::InstancePath::Root, value, "0.01");
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_num_impls!(ProductWeight, f64);
@@ -566,8 +588,8 @@ impl<'de> serde::Deserialize<'de> for Gadget2 {
     }
 }
 impl TryFrom<Gadget2Fields> for Gadget2 {
-    type Error = String;
-    fn try_from(value: Gadget2Fields) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: Gadget2Fields) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -590,7 +612,9 @@ impl TryFrom<Gadget2Fields> for Gadget2 {
                 );
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_impls!(Gadget2, Gadget2Fields);
@@ -688,13 +712,19 @@ impl SubmitFormBodyPriority {
     }
 }
 impl TryFrom<i64> for SubmitFormBodyPriority {
-    type Error = String;
-    fn try_from(v: i64) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(v: i64) -> Result<Self, runtime::BuildError> {
         match v {
             1 => Ok(Self::N1),
             2 => Ok(Self::N2),
             3 => Ok(Self::N3),
-            other => Err(format!("`{other}` is not one of `1`, `2`, `3`")),
+            other => {
+                Err(
+                    runtime::BuildError::value(
+                        format!("`{other}` is not one of `1`, `2`, `3`"),
+                    ),
+                )
+            }
         }
     }
 }
@@ -722,8 +752,8 @@ impl PutBlobOkXQuota {
 #[serde(transparent)]
 pub struct ListProductsLimit(pub(super) i32);
 impl TryFrom<i32> for ListProductsLimit {
-    type Error = String;
-    fn try_from(value: i32) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: i32) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -734,7 +764,9 @@ impl TryFrom<i32> for ListProductsLimit {
                 [Some(1), Some(100), None, None],
             );
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_num_impls!(ListProductsLimit, i32);
@@ -851,8 +883,8 @@ impl<'de> serde::Deserialize<'de> for ProductRequest {
     }
 }
 impl TryFrom<ProductRequestFields> for ProductRequest {
-    type Error = String;
-    fn try_from(value: ProductRequestFields) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: ProductRequestFields) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -875,7 +907,9 @@ impl TryFrom<ProductRequestFields> for ProductRequest {
                 );
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_impls!(ProductRequest, ProductRequestFields);
@@ -889,8 +923,8 @@ impl<'de> serde::Deserialize<'de> for BookRequest {
     }
 }
 impl TryFrom<BookRequestFields> for BookRequest {
-    type Error = String;
-    fn try_from(value: BookRequestFields) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: BookRequestFields) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -913,7 +947,9 @@ impl TryFrom<BookRequestFields> for BookRequest {
                 );
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_impls!(BookRequest, BookRequestFields);
@@ -928,8 +964,8 @@ impl<'de> serde::Deserialize<'de> for ShapeRequest {
     }
 }
 impl TryFrom<ShapeRequestVariants> for ShapeRequest {
-    type Error = String;
-    fn try_from(value: ShapeRequestVariants) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: ShapeRequestVariants) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -952,7 +988,9 @@ impl TryFrom<ShapeRequestVariants> for ShapeRequest {
                 );
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_impls!(ShapeRequest, ShapeRequestVariants);
@@ -966,8 +1004,8 @@ impl<'de> serde::Deserialize<'de> for Gadget2Request {
     }
 }
 impl TryFrom<Gadget2RequestFields> for Gadget2Request {
-    type Error = String;
-    fn try_from(value: Gadget2RequestFields) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: Gadget2RequestFields) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -990,7 +1028,9 @@ impl TryFrom<Gadget2RequestFields> for Gadget2Request {
                 );
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_impls!(Gadget2Request, Gadget2RequestFields);
@@ -1546,8 +1586,8 @@ impl<'de> serde::Deserialize<'de> for ProductTags {
     }
 }
 impl TryFrom<Vec<String>> for ProductTags {
-    type Error = String;
-    fn try_from(value: Vec<String>) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: Vec<String>) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -1570,7 +1610,9 @@ impl TryFrom<Vec<String>> for ProductTags {
                 );
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_impls!(ProductTags, Vec < String >);
@@ -1579,8 +1621,8 @@ checked_impls!(ProductTags, Vec < String >);
 pub struct ProductPoint(pub(super) Vec<serde_json::Value>);
 deserialize_impl_3!(ProductPoint);
 impl TryFrom<Vec<serde_json::Value>> for ProductPoint {
-    type Error = String;
-    fn try_from(value: Vec<serde_json::Value>) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: Vec<serde_json::Value>) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -1603,7 +1645,9 @@ impl TryFrom<Vec<serde_json::Value>> for ProductPoint {
                 );
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_impls!(ProductPoint, Vec < serde_json::Value >);
@@ -1620,10 +1664,10 @@ impl<'de> serde::Deserialize<'de> for ProductAttrs {
     }
 }
 impl TryFrom<std::collections::BTreeMap<String, String>> for ProductAttrs {
-    type Error = String;
+    type Error = runtime::BuildError;
     fn try_from(
         value: std::collections::BTreeMap<String, String>,
-    ) -> Result<Self, String> {
+    ) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -1646,7 +1690,9 @@ impl TryFrom<std::collections::BTreeMap<String, String>> for ProductAttrs {
                 );
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_impls!(ProductAttrs, std::collections::BTreeMap < String, String >);
@@ -1658,8 +1704,8 @@ pub type BookAttrs = ProductAttrs;
 pub struct OwnerChildren(pub(super) Vec<serde_json::Value>);
 deserialize_impl_3!(OwnerChildren);
 impl TryFrom<Vec<serde_json::Value>> for OwnerChildren {
-    type Error = String;
-    fn try_from(value: Vec<serde_json::Value>) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: Vec<serde_json::Value>) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -1682,7 +1728,9 @@ impl TryFrom<Vec<serde_json::Value>> for OwnerChildren {
                 );
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_impls!(OwnerChildren, Vec < serde_json::Value >);
@@ -1771,11 +1819,7 @@ pub mod builders {
         }
         /// Returns the value once its whole schema holds.
         pub fn build(self) -> Result<super::Product, runtime::BuildError> {
-            self.0
-                .build()
-                .and_then(|v| {
-                    super::Product::try_from(v).map_err(runtime::BuildError::value)
-                })
+            self.0.build().and_then(super::Product::try_from)
         }
     }
     impl super::Book {
@@ -1852,11 +1896,7 @@ pub mod builders {
         }
         /// Returns the value once its whole schema holds.
         pub fn build(self) -> Result<super::Book, runtime::BuildError> {
-            self.0
-                .build()
-                .and_then(|v| {
-                    super::Book::try_from(v).map_err(runtime::BuildError::value)
-                })
+            self.0.build().and_then(super::Book::try_from)
         }
     }
     impl super::Owner {
@@ -1876,11 +1916,7 @@ pub mod builders {
         }
         /// Returns the value once its whole schema holds.
         pub fn build(self) -> Result<super::Owner, runtime::BuildError> {
-            self.0
-                .build()
-                .and_then(|v| {
-                    super::Owner::try_from(v).map_err(runtime::BuildError::value)
-                })
+            self.0.build().and_then(super::Owner::try_from)
         }
     }
     impl super::Error {
@@ -1974,11 +2010,7 @@ pub mod builders {
         }
         /// Returns the value once its whole schema holds.
         pub fn build(self) -> Result<super::Gadget2, runtime::BuildError> {
-            self.0
-                .build()
-                .and_then(|v| {
-                    super::Gadget2::try_from(v).map_err(runtime::BuildError::value)
-                })
+            self.0.build().and_then(super::Gadget2::try_from)
         }
     }
     impl super::SubmitFormBody {
@@ -2233,12 +2265,7 @@ pub mod builders {
         }
         /// Returns the value once its whole schema holds.
         pub fn build(self) -> Result<super::ProductRequest, runtime::BuildError> {
-            self.0
-                .build()
-                .and_then(|v| {
-                    super::ProductRequest::try_from(v)
-                        .map_err(runtime::BuildError::value)
-                })
+            self.0.build().and_then(super::ProductRequest::try_from)
         }
     }
     impl super::BookRequest {
@@ -2319,11 +2346,7 @@ pub mod builders {
         }
         /// Returns the value once its whole schema holds.
         pub fn build(self) -> Result<super::BookRequest, runtime::BuildError> {
-            self.0
-                .build()
-                .and_then(|v| {
-                    super::BookRequest::try_from(v).map_err(runtime::BuildError::value)
-                })
+            self.0.build().and_then(super::BookRequest::try_from)
         }
     }
     impl super::Gadget2Request {
@@ -2398,12 +2421,7 @@ pub mod builders {
         }
         /// Returns the value once its whole schema holds.
         pub fn build(self) -> Result<super::Gadget2Request, runtime::BuildError> {
-            self.0
-                .build()
-                .and_then(|v| {
-                    super::Gadget2Request::try_from(v)
-                        .map_err(runtime::BuildError::value)
-                })
+            self.0.build().and_then(super::Gadget2Request::try_from)
         }
     }
     impl super::CreateProductBodyRequest {

@@ -247,5 +247,8 @@ fn a_base64_field_travels_transfer_encoded() {
 #[test]
 fn a_part_header_is_checked_against_its_schema() {
     assert_eq!(types::UploadImageXChecksum::try_from("abcd").map(String::from), Ok("abcd".to_owned()));
-    assert_eq!(types::UploadImageXChecksum::try_from("abc"), Err("at least 4 characters required, found 3".to_owned()));
+    assert_eq!(
+        types::UploadImageXChecksum::try_from("abc").map_err(|e| e.to_string()),
+        Err("at least 4 characters required, found 3".to_owned())
+    );
 }

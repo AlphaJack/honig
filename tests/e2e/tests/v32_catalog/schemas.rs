@@ -11,7 +11,7 @@ fn a_struct_starts_from_its_required_properties() {
 }
 
 #[test]
-fn try_into_builds_a_checked_field() -> Result<(), Box<dyn std::error::Error>> {
+fn try_into_builds_a_checked_field() -> Result<(), e2e::v32_catalog::api::BuildError> {
     // ANCHOR: try-into
     let lamp = types::Physical {
         sku: Some("LMP-0042".try_into()?),
@@ -20,6 +20,20 @@ fn try_into_builds_a_checked_field() -> Result<(), Box<dyn std::error::Error>> {
     // ANCHOR_END: try-into
     assert_eq!(lamp.sku.as_deref(), Some("LMP-0042"));
     Ok(())
+}
+
+/// `try_into`, `parse` and `build` fail with one error type: a function that mixes them needs one `?` each and no
+/// `Box<dyn Error>`.
+#[test]
+fn every_way_to_build_a_value_fails_with_build_error() {
+    fn lamp(sku: &str) -> Result<types::Physical, e2e::v32_catalog::api::BuildError> {
+        let sku: types::PhysicalSku = sku.parse()?;
+        let checked: types::PhysicalSku = sku.as_str().try_into()?;
+        types::Physical::builder(types::PhysicalKind, "Desk lamp").sku(checked).build()
+    }
+    assert!(lamp("LMP-0042").is_ok());
+    let e = lamp("lamp").expect_err("not the pattern");
+    assert!(e.to_string().contains("does not match"), "{e}");
 }
 
 #[test]

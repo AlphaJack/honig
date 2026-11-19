@@ -1084,25 +1084,29 @@ mod mail {
             }
 
             impl TryFrom<String> for $name {
-                type Error = String;
+                type Error = crate::BuildError;
 
-                fn try_from(value: String) -> Result<Self, String> {
-                    if $check(&value) { Ok(Self(value)) } else { Err(format!("`{value}` is not a valid {}", $format)) }
+                fn try_from(value: String) -> Result<Self, crate::BuildError> {
+                    if $check(&value) {
+                        Ok(Self(value))
+                    } else {
+                        Err(crate::BuildError::value(format!("`{value}` is not a valid {}", $format)))
+                    }
                 }
             }
 
             impl TryFrom<&str> for $name {
-                type Error = String;
+                type Error = crate::BuildError;
 
-                fn try_from(value: &str) -> Result<Self, String> {
+                fn try_from(value: &str) -> Result<Self, crate::BuildError> {
                     Self::try_from(value.to_owned())
                 }
             }
 
             impl std::str::FromStr for $name {
-                type Err = String;
+                type Err = crate::BuildError;
 
-                fn from_str(value: &str) -> Result<Self, String> {
+                fn from_str(value: &str) -> Result<Self, crate::BuildError> {
                     Self::try_from(value)
                 }
             }
@@ -1286,7 +1290,7 @@ mod mail {
         #[test]
         fn only_a_valid_value_is_one() {
             assert_eq!(Email::try_from("ann@example.com").map(Email::into_inner), Ok("ann@example.com".to_owned()));
-            assert_eq!(Email::try_from("x"), Err("`x` is not a valid email".to_owned()));
+            assert_eq!(Email::try_from("x"), Err(crate::BuildError::value("`x` is not a valid email".to_owned())));
             let decoded: Result<Email, _> = serde_json::from_str("\"x\"");
             assert!(decoded.unwrap_err().to_string().contains("is not a valid email"));
             let site: IdnHostname = serde_json::from_str("\"bücher.example\"").unwrap();

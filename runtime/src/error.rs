@@ -159,9 +159,25 @@ impl From<Box<dyn std::error::Error + Send + Sync>> for ApiError {
     }
 }
 
+/// A value that a handler built and that its schema refuses. A handler's inputs are checked already, so the value
+/// came from the server's own data: `500 Internal Server Error`.
+impl From<crate::BuildError> for ApiError {
+    fn from(e: crate::BuildError) -> Self {
+        Self::new(http::StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::Error;
+    use super::{ApiError, Error};
+
+    /// `?` on a value that a handler built turns its schema's refusal into a `500`.
+    #[test]
+    fn a_value_that_its_schema_refuses_is_a_server_error() {
+        let e = ApiError::from(crate::BuildError::value("`x` is not a valid uuid".to_owned()));
+        assert_eq!(e.status, http::StatusCode::INTERNAL_SERVER_ERROR);
+        assert_eq!(e.message, "`x` is not a valid uuid");
+    }
 
     #[derive(Debug)]
     struct Wrapped(std::io::Error);
@@ -206,7 +222,7 @@ mod tests {
 
     #[test]
     fn an_api_error_shows_its_status_and_message() {
-        let e = super::ApiError::new(http::StatusCode::CONFLICT, "taken");
+        let e = ApiError::new(http::StatusCode::CONFLICT, "taken");
         assert_eq!(e.to_string(), "409: taken");
     }
 }

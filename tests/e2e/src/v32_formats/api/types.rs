@@ -52,9 +52,11 @@ macro_rules! checked_num_impls {
             }
         }
         impl std::str::FromStr for $n {
-            type Err = String;
-            fn from_str(s: &str) -> Result<Self, String> {
-                let v: $t = s.parse().map_err(|e| format!("{e}"))?;
+            type Err = runtime::BuildError;
+            fn from_str(s: &str) -> Result<Self, runtime::BuildError> {
+                let v: $t = s
+                    .parse()
+                    .map_err(|e| runtime::BuildError::value(format!("{e}")))?;
                 Self::try_from(v)
             }
         }
@@ -101,9 +103,11 @@ macro_rules! checked_decimal_impls {
             }
         }
         impl std::str::FromStr for $n {
-            type Err = String;
-            fn from_str(s: &str) -> Result<Self, String> {
-                let v: runtime::Decimal = s.parse().map_err(|e| format!("{e}"))?;
+            type Err = runtime::BuildError;
+            fn from_str(s: &str) -> Result<Self, runtime::BuildError> {
+                let v: runtime::Decimal = s
+                    .parse()
+                    .map_err(|e| runtime::BuildError::value(format!("{e}")))?;
                 Self::try_from(v)
             }
         }
@@ -430,8 +434,8 @@ impl Transfer {
 #[serde(transparent)]
 pub struct EventPort(pub(super) u16);
 impl TryFrom<u16> for EventPort {
-    type Error = String;
-    fn try_from(value: u16) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: u16) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -442,7 +446,9 @@ impl TryFrom<u16> for EventPort {
                 [Some(1024), None, None, None],
             );
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_num_impls!(EventPort, u16);
@@ -450,8 +456,8 @@ checked_num_impls!(EventPort, u16);
 #[serde(transparent)]
 pub struct EventAmount(pub(super) runtime::Decimal);
 impl TryFrom<runtime::Decimal> for EventAmount {
-    type Error = String;
-    fn try_from(value: runtime::Decimal) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: runtime::Decimal) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -462,7 +468,9 @@ impl TryFrom<runtime::Decimal> for EventAmount {
                 [Some("0"), None, None, None],
             );
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_decimal_impls!(EventAmount);
@@ -470,14 +478,16 @@ checked_decimal_impls!(EventAmount);
 #[serde(transparent)]
 pub struct EventSum(pub(super) runtime::Decimal);
 impl TryFrom<runtime::Decimal> for EventSum {
-    type Error = String;
-    fn try_from(value: runtime::Decimal) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: runtime::Decimal) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
             runtime::check_decimal128(out, &runtime::InstancePath::Root, value.as_str());
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_decimal_impls!(EventSum);
@@ -491,8 +501,8 @@ impl<'de> serde::Deserialize<'de> for EventCharge {
     }
 }
 impl TryFrom<EventChargeVariants> for EventCharge {
-    type Error = String;
-    fn try_from(value: EventChargeVariants) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: EventChargeVariants) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -515,7 +525,9 @@ impl TryFrom<EventChargeVariants> for EventCharge {
                 );
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_impls!(EventCharge, EventChargeVariants);

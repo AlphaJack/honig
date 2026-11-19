@@ -42,7 +42,7 @@ macro_rules! str_enum_impls {
             }
         }
         impl std::str::FromStr for $n {
-            type Err = String;
+            type Err = runtime::BuildError;
             fn from_str(s: &str) -> Result<Self, Self::Err> {
                 Self::try_from(s)
             }
@@ -108,12 +108,18 @@ impl EventKind {
     }
 }
 impl TryFrom<&str> for EventKind {
-    type Error = String;
-    fn try_from(s: &str) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(s: &str) -> Result<Self, runtime::BuildError> {
         match s {
             "created" => Ok(Self::Created),
             "deleted" => Ok(Self::Deleted),
-            other => Err(format!("`{other}` is not one of `created`, `deleted`")),
+            other => {
+                Err(
+                    runtime::BuildError::value(
+                        format!("`{other}` is not one of `created`, `deleted`"),
+                    ),
+                )
+            }
         }
     }
 }

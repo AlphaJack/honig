@@ -46,8 +46,8 @@ macro_rules! deserialize_impl_2 {
 macro_rules! try_from_impl {
     ($t:ty) => {
         impl TryFrom<OrderCustomer> for $t {
-            type Error = String;
-            fn try_from(value: OrderCustomer) -> Result<Self, String> {
+            type Error = runtime::BuildError;
+            fn try_from(value: OrderCustomer) -> Result<Self, runtime::BuildError> {
                 let mut violations: Vec<runtime::Violation> = Vec::new();
                 {
                     let out = &mut violations;
@@ -70,7 +70,9 @@ macro_rules! try_from_impl {
                         );
                     }
                 }
-                runtime::first(violations).map(|()| Self(value))
+                runtime::first(violations)
+                    .map(|()| Self(value))
+                    .map_err(runtime::BuildError::value)
             }
         }
     };
@@ -84,7 +86,7 @@ macro_rules! str_enum_impls {
             }
         }
         impl std::str::FromStr for $n {
-            type Err = String;
+            type Err = runtime::BuildError;
             fn from_str(s: &str) -> Result<Self, Self::Err> {
                 Self::try_from(s)
             }
@@ -115,14 +117,14 @@ macro_rules! checked_str_impls {
             }
         }
         impl TryFrom<&str> for $n {
-            type Error = String;
-            fn try_from(value: &str) -> Result<Self, String> {
+            type Error = runtime::BuildError;
+            fn try_from(value: &str) -> Result<Self, runtime::BuildError> {
                 Self::try_from(value.to_owned())
             }
         }
         impl std::str::FromStr for $n {
-            type Err = String;
-            fn from_str(s: &str) -> Result<Self, String> {
+            type Err = runtime::BuildError;
+            fn from_str(s: &str) -> Result<Self, runtime::BuildError> {
                 Self::try_from(s)
             }
         }
@@ -174,9 +176,11 @@ macro_rules! checked_num_impls {
             }
         }
         impl std::str::FromStr for $n {
-            type Err = String;
-            fn from_str(s: &str) -> Result<Self, String> {
-                let v: $t = s.parse().map_err(|e| format!("{e}"))?;
+            type Err = runtime::BuildError;
+            fn from_str(s: &str) -> Result<Self, runtime::BuildError> {
+                let v: $t = s
+                    .parse()
+                    .map_err(|e| runtime::BuildError::value(format!("{e}")))?;
                 Self::try_from(v)
             }
         }
@@ -257,14 +261,20 @@ impl Status {
     }
 }
 impl TryFrom<&str> for Status {
-    type Error = String;
-    fn try_from(s: &str) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(s: &str) -> Result<Self, runtime::BuildError> {
         match s {
             "draft" => Ok(Self::Draft),
             "confirmed" => Ok(Self::Confirmed),
             "delivered" => Ok(Self::Delivered),
             other => {
-                Err(format!("`{other}` is not one of `draft`, `confirmed`, `delivered`"))
+                Err(
+                    runtime::BuildError::value(
+                        format!(
+                            "`{other}` is not one of `draft`, `confirmed`, `delivered`"
+                        ),
+                    ),
+                )
             }
         }
     }
@@ -375,8 +385,8 @@ impl<'de> serde::Deserialize<'de> for Vehicle {
     }
 }
 impl TryFrom<VehicleVariants> for Vehicle {
-    type Error = String;
-    fn try_from(value: VehicleVariants) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: VehicleVariants) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -399,7 +409,9 @@ impl TryFrom<VehicleVariants> for Vehicle {
                 );
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_impls!(Vehicle, VehicleVariants);
@@ -530,8 +542,8 @@ impl MoneyCurrency {
     pub const PATTERN: &'static str = "^[A-Z]{3}$";
 }
 impl TryFrom<String> for MoneyCurrency {
-    type Error = String;
-    fn try_from(value: String) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: String) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -549,7 +561,9 @@ impl TryFrom<String> for MoneyCurrency {
                 "does not match `^[A-Z]{3}$`",
             );
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_str_impls!(MoneyCurrency);
@@ -557,8 +571,8 @@ checked_str_impls!(MoneyCurrency);
 #[serde(transparent)]
 pub struct CustomerName(pub(super) String);
 impl TryFrom<String> for CustomerName {
-    type Error = String;
-    fn try_from(value: String) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: String) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -572,7 +586,9 @@ impl TryFrom<String> for CustomerName {
                 "characters",
             );
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_str_impls!(CustomerName);
@@ -580,8 +596,8 @@ checked_str_impls!(CustomerName);
 #[serde(transparent)]
 pub struct CardLast4(pub(super) String);
 impl TryFrom<String> for CardLast4 {
-    type Error = String;
-    fn try_from(value: String) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: String) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -595,7 +611,9 @@ impl TryFrom<String> for CardLast4 {
                 "characters",
             );
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_str_impls!(CardLast4);
@@ -611,8 +629,8 @@ impl<'de> serde::Deserialize<'de> for OrderPayment {
     }
 }
 impl TryFrom<OrderPaymentVariants> for OrderPayment {
-    type Error = String;
-    fn try_from(value: OrderPaymentVariants) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: OrderPaymentVariants) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -635,7 +653,9 @@ impl TryFrom<OrderPaymentVariants> for OrderPayment {
                 );
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_impls!(OrderPayment, OrderPaymentVariants);
@@ -649,8 +669,8 @@ impl<'de> serde::Deserialize<'de> for OrderDiscount {
     }
 }
 impl TryFrom<OrderDiscountVariants> for OrderDiscount {
-    type Error = String;
-    fn try_from(value: OrderDiscountVariants) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: OrderDiscountVariants) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -673,7 +693,9 @@ impl TryFrom<OrderDiscountVariants> for OrderDiscount {
                 );
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_impls!(OrderDiscount, OrderDiscountVariants);
@@ -681,8 +703,8 @@ checked_impls!(OrderDiscount, OrderDiscountVariants);
 #[serde(transparent)]
 pub struct ListOrdersLimit(pub(super) i32);
 impl TryFrom<i32> for ListOrdersLimit {
-    type Error = String;
-    fn try_from(value: i32) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: i32) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -693,7 +715,9 @@ impl TryFrom<i32> for ListOrdersLimit {
                 [Some(1), Some(100), None, None],
             );
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_num_impls!(ListOrdersLimit, i32);
@@ -712,12 +736,18 @@ impl ListOrdersSort {
     }
 }
 impl TryFrom<&str> for ListOrdersSort {
-    type Error = String;
-    fn try_from(s: &str) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(s: &str) -> Result<Self, runtime::BuildError> {
         match s {
             "newest" => Ok(Self::Newest),
             "oldest" => Ok(Self::Oldest),
-            other => Err(format!("`{other}` is not one of `newest`, `oldest`")),
+            other => {
+                Err(
+                    runtime::BuildError::value(
+                        format!("`{other}` is not one of `newest`, `oldest`"),
+                    ),
+                )
+            }
         }
     }
 }
@@ -729,8 +759,8 @@ impl ListOrdersCursor {
     pub const PATTERN: &'static str = "^[A-Za-z0-9_-]+$";
 }
 impl TryFrom<String> for ListOrdersCursor {
-    type Error = String;
-    fn try_from(value: String) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: String) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -748,7 +778,9 @@ impl TryFrom<String> for ListOrdersCursor {
                 "does not match `^[A-Za-z0-9_-]+$`",
             );
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_str_impls!(ListOrdersCursor);
@@ -781,12 +813,18 @@ impl UploadDocumentBodyKind {
     }
 }
 impl TryFrom<&str> for UploadDocumentBodyKind {
-    type Error = String;
-    fn try_from(s: &str) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(s: &str) -> Result<Self, runtime::BuildError> {
         match s {
             "invoice" => Ok(Self::Invoice),
             "contract" => Ok(Self::Contract),
-            other => Err(format!("`{other}` is not one of `invoice`, `contract`")),
+            other => {
+                Err(
+                    runtime::BuildError::value(
+                        format!("`{other}` is not one of `invoice`, `contract`"),
+                    ),
+                )
+            }
         }
     }
 }

@@ -83,8 +83,8 @@ impl<'de> serde::Deserialize<'de> for Page {
     }
 }
 impl TryFrom<PageFields> for Page {
-    type Error = String;
-    fn try_from(value: PageFields) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: PageFields) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -107,7 +107,9 @@ impl TryFrom<PageFields> for Page {
                 );
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_impls!(Page, PageFields);
@@ -140,8 +142,8 @@ impl<'de> serde::Deserialize<'de> for Tree {
     }
 }
 impl TryFrom<TreeFields> for Tree {
-    type Error = String;
-    fn try_from(value: TreeFields) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: TreeFields) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -164,7 +166,9 @@ impl TryFrom<TreeFields> for Tree {
                 );
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_impls!(Tree, TreeFields);
@@ -235,8 +239,8 @@ impl<'de> serde::Deserialize<'de> for ProductPageItems {
     }
 }
 impl TryFrom<Vec<Product>> for ProductPageItems {
-    type Error = String;
-    fn try_from(value: Vec<Product>) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: Vec<Product>) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -264,7 +268,9 @@ impl TryFrom<Vec<Product>> for ProductPageItems {
                 }
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_impls!(ProductPageItems, Vec < Product >);
@@ -278,8 +284,8 @@ impl<'de> serde::Deserialize<'de> for PageItems {
     }
 }
 impl TryFrom<Vec<serde_json::Value>> for PageItems {
-    type Error = String;
-    fn try_from(value: Vec<serde_json::Value>) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: Vec<serde_json::Value>) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -302,7 +308,9 @@ impl TryFrom<Vec<serde_json::Value>> for PageItems {
                 );
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_impls!(PageItems, Vec < serde_json::Value >);
@@ -316,8 +324,8 @@ impl<'de> serde::Deserialize<'de> for TreeValue {
     }
 }
 impl TryFrom<serde_json::Value> for TreeValue {
-    type Error = String;
-    fn try_from(value: serde_json::Value) -> Result<Self, String> {
+    type Error = runtime::BuildError;
+    fn try_from(value: serde_json::Value) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -338,7 +346,9 @@ impl TryFrom<serde_json::Value> for TreeValue {
                 );
             }
         }
-        runtime::first(violations).map(|()| Self(value))
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
     }
 }
 checked_impls!(TreeValue, serde_json::Value);
@@ -386,11 +396,7 @@ pub mod builders {
         }
         /// Returns the value once its whole schema holds.
         pub fn build(self) -> Result<super::Page, runtime::BuildError> {
-            self.0
-                .build()
-                .and_then(|v| {
-                    super::Page::try_from(v).map_err(runtime::BuildError::value)
-                })
+            self.0.build().and_then(super::Page::try_from)
         }
     }
     impl super::ProductPage {
@@ -442,11 +448,7 @@ pub mod builders {
         }
         /// Returns the value once its whole schema holds.
         pub fn build(self) -> Result<super::Tree, runtime::BuildError> {
-            self.0
-                .build()
-                .and_then(|v| {
-                    super::Tree::try_from(v).map_err(runtime::BuildError::value)
-                })
+            self.0.build().and_then(super::Tree::try_from)
         }
     }
     impl super::StringTree {
