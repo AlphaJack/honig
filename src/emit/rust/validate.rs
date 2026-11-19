@@ -10,7 +10,7 @@ use serde_json::Number;
 
 use super::syntax::lit;
 use crate::emit::rust::space::Space;
-use crate::ir::types::{Constraints, Kind, Rest, Ty};
+use crate::ir::types::{Constraints, Evaluated, Kind, Leftover, Rest, Ty};
 
 /// Checks of `value`, an `&Option<t>`. Nested options peel in one pattern
 /// (`if let Some(Some(v))`) and never one `if let` inside another.
@@ -153,6 +153,7 @@ pub(super) fn subschema_checks(
         }
     });
     let values = value_checks(c, path);
+    let unevaluated = c.unevaluated.as_ref().map(|(ev, leftover)| unevaluated_checks(ev, *leftover, &ty, path));
     quote! {
         {
             let json = runtime::to_value(#value).unwrap_or_default();
@@ -164,6 +165,7 @@ pub(super) fn subschema_checks(
             #tuple
             #(#also)*
             #values
+            #unevaluated
         }
     }
 }
@@ -213,14 +215,18 @@ fn pattern_checks(c: &Constraints, ty: &dyn Fn(usize) -> TokenStream, path: &Tok
     let closed = c.closed_to.is_some();
     let patterns = c.pattern_properties.iter().map(|(pattern, n)| {
         let (schema, pattern) = (ty(*n), lit(pattern));
-        let matched = closed.then(|| quote!(matched = true;));
-        quote! {
-            if runtime::pattern_matches({ static RE: runtime::Pattern = runtime::Pattern::new(); &RE }, #pattern, name) {
-                #matched
-                if let Err(e) = serde_json::from_value::<#schema>(item.clone()) {
-                    runtime::violation(out, &runtime::InstancePath::Key(#path, name), e.to_string());
+        let matches = quote!(runtime::pattern_matches({ static RE: runtime::Pattern = runtime::Pattern::new(); &RE }, #pattern, name));
+        let refuse = quote!(runtime::violation(out, &runtime::InstancePath::Key(#path, name), e.to_string()););
+        // Without `additionalProperties` nothing else happens on a match: one `if` holds both conditions.
+        if closed {
+            quote! {
+                if #matches {
+                    matched = true;
+                    if let Err(e) = serde_json::from_value::<#schema>(item.clone()) { #refuse }
                 }
             }
+        } else {
+            quote!(if #matches && let Err(e) = serde_json::from_value::<#schema>(item.clone()) { #refuse })
         }
     });
     let (start, refuse) = match &c.closed_to {
@@ -261,6 +267,87 @@ fn pattern_checks(c: &Constraints, ty: &dyn Fn(usize) -> TokenStream, path: &Tok
             }
         }
     }
+}
+
+/// Returns `unevaluatedProperties` on the object in `json`: each name that `ev` does not evaluate is refused, or decodes
+/// as the type of the schema of `leftover`. A branch that evaluates names decodes the value once, before the names.
+fn unevaluated_checks(
+    ev: &Evaluated,
+    leftover: Leftover,
+    ty: &dyn Fn(usize) -> TokenStream,
+    path: &TokenStream,
+) -> TokenStream {
+    // A schema that evaluates every name leaves none.
+    if ev.all {
+        return TokenStream::new();
+    }
+    let mut flags = vec![];
+    let evaluated = evaluated_expr(ev, ty, &mut flags);
+    let (binding, check) = match leftover {
+        Leftover::Refused => (
+            quote!(name),
+            quote!(runtime::violation(out, &runtime::InstancePath::Key(#path, name), "is not allowed (unevaluatedProperties)");),
+        ),
+        Leftover::Schema(n) => {
+            let t = ty(n);
+            (
+                quote!((name, item)),
+                quote! {
+                    if let Err(e) = serde_json::from_value::<#t>(item.clone()) {
+                        runtime::violation(out, &runtime::InstancePath::Key(#path, name), e.to_string());
+                    }
+                },
+            )
+        }
+    };
+    let names = match leftover {
+        Leftover::Refused => quote!(object.keys()),
+        Leftover::Schema(_) => quote!(object),
+    };
+    let body = match evaluated {
+        Some(evaluated) => quote!(if !(#evaluated) { #check }),
+        None => check,
+    };
+    quote! {
+        if let serde_json::Value::Object(object) = &json {
+            #(#flags)*
+            for #binding in #names {
+                #body
+            }
+        }
+    }
+}
+
+/// Returns whether `name` is evaluated by `ev`, as an expression, or `None` when no name is. Each branch adds its
+/// decode, run once, to `flags`.
+fn evaluated_expr(
+    ev: &Evaluated,
+    ty: &dyn Fn(usize) -> TokenStream,
+    flags: &mut Vec<TokenStream>,
+) -> Option<TokenStream> {
+    if ev.all {
+        return Some(quote!(true));
+    }
+    let mut parts = vec![];
+    if !ev.names.is_empty() {
+        let names = ev.names.iter().map(|n| lit(n));
+        parts.push(quote!(matches!(name.as_str(), #(#names)|*)));
+    }
+    for p in &ev.patterns {
+        let p = lit(p);
+        parts.push(
+            quote!(runtime::pattern_matches({ static RE: runtime::Pattern = runtime::Pattern::new(); &RE }, #p, name)),
+        );
+    }
+    for (n, decodes, branch) in &ev.branches {
+        let Some(inner) = evaluated_expr(branch, ty, flags) else { continue };
+        let flag = quote::format_ident!("matched_{}", flags.len());
+        let t = ty(*n);
+        flags.push(quote!(let #flag = serde_json::from_value::<#t>(json.clone()).is_ok();));
+        let flag = if *decodes { quote!(#flag) } else { quote!(!#flag) };
+        parts.push(if branch.all { flag } else { quote!((#flag && #inner)) });
+    }
+    (!parts.is_empty()).then(|| quote!(#(#parts)||*))
 }
 
 /// Checks of `value` (an expression of type `&T` for `t`) at `path`.

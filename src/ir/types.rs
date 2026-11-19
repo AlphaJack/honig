@@ -248,6 +248,8 @@ pub(crate) struct Constraints {
     pub enum_values: Option<Vec<Value>>,
     /// `const` whose value no Rust type holds.
     pub const_value: Option<Value>,
+    /// `unevaluatedProperties`: what the schema evaluates of an object's names, and what the other names take.
+    pub unevaluated: Option<(Evaluated, Leftover)>,
     /// Each `if` with its `then` and `else`, as indices into [`TypeSpace::subschemas`]: a value that decodes as the
     /// type of `if` decodes as that of `then`, any other as that of `else`.
     pub conditions: Vec<(usize, Option<usize>, Option<usize>)>,
@@ -281,6 +283,42 @@ pub(crate) enum Rest {
     /// Any value: no `items`, or `items: true`.
     Any,
     /// None at all: `items: false`.
+    Refused,
+    /// A schema, as an index into [`TypeSpace::subschemas`].
+    Schema(usize),
+}
+
+/// What a schema evaluates of an object's names (JSON Schema 2020-12 section 11.3): its own `properties`,
+/// `patternProperties` and `additionalProperties`, those of what it applies in place (`$ref`, `allOf`), and those of a
+/// branch that the value matches.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub(crate) struct Evaluated {
+    /// Names that it declares.
+    pub names: Vec<String>,
+    /// Patterns whose names it evaluates.
+    pub patterns: Vec<String>,
+    /// It evaluates every name (`additionalProperties`, or `unevaluatedProperties` further in).
+    pub all: bool,
+    /// What it evaluates only when the value decodes as a schema, an index into [`TypeSpace::subschemas`] (a branch of
+    /// `anyOf` or `oneOf`, `if` with `then`), or when it does not (`if` with `else`): (the schema, whether the value
+    /// must decode as it, what is evaluated then).
+    pub branches: Vec<(usize, bool, Self)>,
+}
+
+impl Evaluated {
+    /// Adds what `other` evaluates: a member of `allOf` or a `$ref` target, which apply in place.
+    pub(crate) fn merge(&mut self, other: Self) {
+        self.names.extend(other.names);
+        self.patterns.extend(other.patterns);
+        self.all |= other.all;
+        self.branches.extend(other.branches);
+    }
+}
+
+/// What the names that nothing evaluated take (`unevaluatedProperties`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Leftover {
+    /// None at all: `false`.
     Refused,
     /// A schema, as an index into [`TypeSpace::subschemas`].
     Schema(usize),

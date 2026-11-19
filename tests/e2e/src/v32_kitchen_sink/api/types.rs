@@ -1743,21 +1743,72 @@ impl TryFrom<std::collections::BTreeMap<String, serde_json::Value>> for ProductA
         {
             let out = &mut violations;
             {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&value).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"type\":\"object\",\"patternProperties\":{\"^x_\":{\"type\":\"string\"}},\"propertyNames\":{\"pattern\":\"^[a-z_]+$\"},\"minProperties\":0,\"maxProperties\":20,\"unevaluatedProperties\":false}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
+                let json = runtime::to_value(&value).unwrap_or_default();
+                if let serde_json::Value::Object(object) = &json {
+                    for (name, item) in object {
+                        if runtime::pattern_matches(
+                            {
+                                static RE: runtime::Pattern = runtime::Pattern::new();
+                                &RE
+                            },
+                            "^x_",
+                            name,
+                        ) && let Err(e) = serde_json::from_value::<String>(item.clone())
+                        {
+                            runtime::violation(
+                                out,
+                                &runtime::InstancePath::Key(
+                                    &runtime::InstancePath::Root,
+                                    name,
+                                ),
+                                e.to_string(),
+                            );
+                        }
+                    }
+                }
+                if let serde_json::Value::Object(object) = &json {
+                    for name in object.keys() {
+                        if !(runtime::pattern_matches(
+                            {
+                                static RE: runtime::Pattern = runtime::Pattern::new();
+                                &RE
+                            },
+                            "^x_",
+                            name,
+                        )) {
+                            runtime::violation(
+                                out,
+                                &runtime::InstancePath::Key(
+                                    &runtime::InstancePath::Root,
+                                    name,
+                                ),
+                                "is not allowed (unevaluatedProperties)",
+                            );
+                        }
+                    }
+                }
+            }
+            runtime::check_len(
+                out,
+                &runtime::InstancePath::Root,
+                value.len(),
+                Some(0),
+                Some(20),
+                "properties",
+            );
+            for name in value.keys() {
+                runtime::check(
                     out,
-                    &runtime::InstancePath::Root,
-                    &value,
-                    schema,
-                    runtime::schema_defs(),
+                    &runtime::InstancePath::Key(&runtime::InstancePath::Root, name),
+                    runtime::pattern_matches(
+                        {
+                            static RE: runtime::Pattern = runtime::Pattern::new();
+                            &RE
+                        },
+                        "^[a-z_]+$",
+                        name,
+                    ),
+                    "does not match `^[a-z_]+$`",
                 );
             }
         }
