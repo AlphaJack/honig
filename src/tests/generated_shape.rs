@@ -1064,3 +1064,28 @@ fn a_nested_branch_counts_only_inside_its_own() {
     assert!(flat.contains("is not allowed (unevaluatedItems)".replace(' ', "").as_str()), "{types}");
     assert!(flat.contains("&&(serde_json::from_value"), "{types}");
 }
+
+/// A `$dynamicRef` to an anchor that one resource declares always lands on it, as its type does: no schema is checked
+/// whole.
+#[test]
+fn a_dynamic_ref_to_one_anchor_is_typed() {
+    let tree = json!({"$dynamicAnchor": "node", "type": "object",
+        "properties": {"name": {"type": "string"}, "children": {"type": "array", "items": {"$dynamicRef": "#node"}}}});
+    let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Tree": tree}}));
+    let types =
+        common::file(&common::generate("dynamic-ref-typed", &doc, &crate::emit::Options::default()), "types.rs")
+            .to_owned();
+    assert!(!types.contains("check_schema"), "{types}");
+}
+
+/// A `$dynamicRef` in a resource with an `$id`, to the one `$dynamicAnchor` of that name, is typed as its target.
+#[test]
+fn a_dynamic_ref_in_a_resource_with_an_id_is_typed() {
+    let list = json!({"$id": "https://example.test/list", "type": "array", "items": {"$dynamicRef": "#items"},
+        "$defs": {"item": {"$dynamicAnchor": "items", "type": "string"}}});
+    let holder = json!({"type": "object", "required": ["v"], "properties": {"v": list}});
+    let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Holder": holder}}));
+    let types = common::file(&common::generate("dynamic-ref-id", &doc, &crate::emit::Options::default()), "types.rs")
+        .to_owned();
+    assert!(types.contains("pub v: Vec<String>,"), "{types}");
+}

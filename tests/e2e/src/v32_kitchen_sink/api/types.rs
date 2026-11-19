@@ -86,16 +86,6 @@ macro_rules! serialize_impl_3 {
         }
     };
 }
-macro_rules! deserialize_impl_3 {
-    ($t:ty) => {
-        impl<'de> serde::Deserialize<'de> for $t {
-            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-                let value = <Vec<serde_json::Value> as serde::Deserialize>::deserialize(d)?;
-                Self::try_from(value).map_err(serde::de::Error::custom)
-            }
-        }
-    };
-}
 use super::runtime;
 macro_rules! str_enum_impls {
     ($n:ident) => {
@@ -385,22 +375,14 @@ impl TryFrom<OwnerFields> for Owner {
         {
             let out = &mut violations;
             {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&value).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":true}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Root,
-                    &value,
-                    schema,
-                    runtime::schema_defs(),
-                );
+                let json = runtime::to_value(&value).unwrap_or_default();
+                if serde_json::from_value::<NotChecked>(json.clone()).is_ok() {
+                    runtime::violation(
+                        out,
+                        &runtime::InstancePath::Root,
+                        "matches `not`",
+                    );
+                }
             }
         }
         runtime::first(violations)
@@ -1256,7 +1238,7 @@ pub struct OwnerFields {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub children: Option<OwnerChildren>,
+    pub children: Option<Vec<Owner>>,
 }
 deserialize_impl!(OwnerFields);
 serialize_impl!(OwnerFields);
@@ -1688,7 +1670,12 @@ checked_impls!(ProductTags, Vec < String >);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct ProductPoint(pub(super) Vec<serde_json::Value>);
-deserialize_impl_3!(ProductPoint);
+impl<'de> serde::Deserialize<'de> for ProductPoint {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <Vec<serde_json::Value> as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
+    }
+}
 impl TryFrom<Vec<serde_json::Value>> for ProductPoint {
     type Error = runtime::BuildError;
     fn try_from(value: Vec<serde_json::Value>) -> Result<Self, runtime::BuildError> {
@@ -1832,41 +1819,6 @@ checked_impls!(ProductAttrs, std::collections::BTreeMap < String, serde_json::Va
 pub type BookTags = ProductTags;
 pub type BookPoint = ProductPoint;
 pub type BookAttrs = ProductAttrs;
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
-#[serde(transparent)]
-pub struct OwnerChildren(pub(super) Vec<serde_json::Value>);
-deserialize_impl_3!(OwnerChildren);
-impl TryFrom<Vec<serde_json::Value>> for OwnerChildren {
-    type Error = runtime::BuildError;
-    fn try_from(value: Vec<serde_json::Value>) -> Result<Self, runtime::BuildError> {
-        let mut violations: Vec<runtime::Violation> = Vec::new();
-        {
-            let out = &mut violations;
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&value).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":{\"$anchor\":\"owner\",\"$dynamicAnchor\":\"node\",\"type\":\"object\",\"properties\":{\"children\":{\"type\":\"array\",\"items\":true}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}},\"not\":{\"required\":[\"forbidden\"]},\"$defs\":{\"Inner\":{\"type\":\"string\"}},\"$vocabulary\":{\"https://json-schema.org/draft/2020-12/vocab/core\":true}}}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Root,
-                    &value,
-                    schema,
-                    runtime::schema_defs(),
-                );
-            }
-        }
-        runtime::first(violations)
-            .map(|()| Self(value))
-            .map_err(runtime::BuildError::value)
-    }
-}
-checked_impls!(OwnerChildren, Vec < serde_json::Value >);
 pub type Gadget2Tags = ProductTags;
 pub type Gadget2Point = ProductPoint;
 pub type Gadget2Attrs = ProductAttrs;
@@ -1879,6 +1831,36 @@ pub type BookRequestAttrs = ProductAttrs;
 pub type Gadget2RequestTags = ProductTags;
 pub type Gadget2RequestPoint = ProductPoint;
 pub type Gadget2RequestAttrs = ProductAttrs;
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
+pub struct NotChecked(pub(super) serde_json::Value);
+impl<'de> serde::Deserialize<'de> for NotChecked {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <serde_json::Value as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
+    }
+}
+impl TryFrom<serde_json::Value> for NotChecked {
+    type Error = runtime::BuildError;
+    fn try_from(value: serde_json::Value) -> Result<Self, runtime::BuildError> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            if let serde_json::Value::Object(n) = &value {
+                runtime::check_required(
+                    out,
+                    &runtime::InstancePath::Root,
+                    |name| n.contains_key(name),
+                    &["forbidden"],
+                );
+            }
+        }
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
+    }
+}
+checked_impls!(NotChecked, serde_json::Value);
 /// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
 /// its field. `build` returns the first field that did not convert.
 pub mod builders {
@@ -2043,7 +2025,7 @@ pub mod builders {
     impl Owner {
         pub fn children(
             self,
-            value: impl TryInto<types::OwnerChildren, Error: std::fmt::Display>,
+            value: impl TryInto<Vec<types::Owner>, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("children", value, |s, v| s.children = Some(v)))
         }
@@ -2569,7 +2551,7 @@ pub mod builders {
     impl OwnerFields {
         pub fn children(
             self,
-            value: impl TryInto<types::OwnerChildren, Error: std::fmt::Display>,
+            value: impl TryInto<Vec<types::Owner>, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("children", value, |s, v| s.children = Some(v)))
         }
