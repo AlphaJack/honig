@@ -613,10 +613,10 @@ fn an_unfillable_error_body_is_a_warning() {
 }
 
 /// `allOf: [$ref: Base, {type: object, properties: ...}]` merges into one struct that holds every member: its fields
-/// are checked as typed and the body is never checked whole. Two members that both declare `name` are checked whole:
-/// one struct would keep only one of their schemas.
+/// are checked as typed and the body is never checked whole. Two members that both declare `name` merge too, and the
+/// body also decodes as each member: one struct would keep only one of their schemas.
 #[test]
-fn only_an_all_of_that_one_struct_cannot_hold_is_checked_whole() {
+fn an_all_of_that_one_struct_cannot_hold_checks_each_member() {
     let body = json!({"/products": {"post": {
         "operationId": "createProduct",
         "requestBody": {"required": true, "content": {"application/json": {
@@ -634,5 +634,5 @@ fn only_an_all_of_that_one_struct_cannot_hold_is_checked_whole() {
     let typed = generated("all-of-typed", json!({"type": "object", "properties": {"sku": {"type": "string"}}}));
     assert!(!typed.contains("check_schema"), "{typed}");
     let lossy = generated("all-of-lossy", json!({"type": "object", "properties": {"name": {"maxLength": 5}}}));
-    assert!(lossy.contains("check_schema"), "{lossy}");
+    assert!(lossy.contains("serde_json::from_value") && !lossy.contains("check_schema"), "{lossy}");
 }

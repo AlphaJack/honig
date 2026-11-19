@@ -263,7 +263,7 @@ pub(crate) struct Constraints {
     /// [`TypeSpace::subschemas`], then what the rest take.
     pub tuple: Option<(Vec<usize>, Rest)>,
     /// Schemas that the value also decodes as, as indices into [`TypeSpace::subschemas`]: the keywords beside a
-    /// union, which hold for whichever branch matches.
+    /// union, which hold for whichever branch matches, and the members of an `allOf` that one merged type cannot hold.
     pub also: Vec<usize>,
     /// The schema with `$ref`s inlined when it uses keywords that no type expresses on its own
     /// (`contains`, `patternProperties`, `if`, `not`, ...). `runtime::check_schema`

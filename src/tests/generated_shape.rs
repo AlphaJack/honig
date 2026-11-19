@@ -978,3 +978,16 @@ fn keywords_beside_a_union_hold_for_each_branch() {
         common::file(&common::generate("beside-union", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
     assert!(types.contains("serde_json::from_value") && !types.contains("check_schema"), "{types}");
 }
+
+/// An `allOf` whose members one merged type cannot hold (two `maxLength`) is that type, and the value also decodes as
+/// each member: no schema is checked whole.
+#[test]
+fn an_all_of_that_loses_keywords_checks_each_member() {
+    let code = json!({"allOf": [{"type": "string", "maxLength": 8}, {"type": "string", "maxLength": 4}]});
+    let holder = json!({"type": "object", "properties": {"code": code}});
+    let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Holder": holder}}));
+    let types =
+        common::file(&common::generate("lossy-all-of-typed", &doc, &crate::emit::Options::default()), "types.rs")
+            .to_owned();
+    assert!(types.contains("serde_json::from_value") && !types.contains("check_schema"), "{types}");
+}
