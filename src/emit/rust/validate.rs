@@ -10,7 +10,7 @@ use serde_json::Number;
 
 use super::syntax::lit;
 use crate::emit::rust::space::Space;
-use crate::ir::types::{Constraints, Evaluated, Kind, Leftover, Rest, Ty};
+use crate::ir::types::{Constraints, Evaluated, EvaluatedItems, Kind, Leftover, Rest, Ty};
 
 /// Checks of `value`, an `&Option<t>`. Nested options peel in one pattern
 /// (`if let Some(Some(v))`) and never one `if let` inside another.
@@ -154,6 +154,8 @@ pub(super) fn subschema_checks(
     });
     let values = value_checks(c, path);
     let unevaluated = c.unevaluated.as_ref().map(|(ev, leftover)| unevaluated_checks(ev, *leftover, &ty, path));
+    let unevaluated_items =
+        c.unevaluated_items.as_ref().map(|(ev, leftover)| unevaluated_item_checks(ev, *leftover, &ty, path));
     quote! {
         {
             let json = runtime::to_value(#value).unwrap_or_default();
@@ -166,6 +168,7 @@ pub(super) fn subschema_checks(
             #(#also)*
             #values
             #unevaluated
+            #unevaluated_items
         }
     }
 }
@@ -318,6 +321,81 @@ fn unevaluated_checks(
     }
 }
 
+/// Returns `unevaluatedItems` on the list in `json`: each item that `ev` does not evaluate is refused, or decodes as the
+/// type of the schema of `leftover`.
+fn unevaluated_item_checks(
+    ev: &EvaluatedItems,
+    leftover: Leftover,
+    ty: &dyn Fn(usize) -> TokenStream,
+    path: &TokenStream,
+) -> TokenStream {
+    if ev.all {
+        return TokenStream::new();
+    }
+    let mut flags = vec![];
+    let evaluated = evaluated_item_expr(ev, ty, &mut flags);
+    let check = match leftover {
+        Leftover::Refused => {
+            quote!(runtime::violation(out, &runtime::InstancePath::Index(#path, i), "is not allowed (unevaluatedItems)");)
+        }
+        Leftover::Schema(n) => {
+            let t = ty(n);
+            quote! {
+                if let Err(e) = serde_json::from_value::<#t>(item.clone()) {
+                    runtime::violation(out, &runtime::InstancePath::Index(#path, i), e.to_string());
+                }
+            }
+        }
+    };
+    let body = match evaluated {
+        Some(evaluated) => quote!(if !(#evaluated) { #check }),
+        None => check,
+    };
+    quote! {
+        if let serde_json::Value::Array(items) = &json {
+            #(#flags)*
+            for (i, item) in items.iter().enumerate() {
+                #body
+            }
+        }
+    }
+}
+
+/// Returns whether item `i` (`item`) is evaluated by `ev`, as an expression, or `None` when no item is. Each branch adds
+/// its decode, run once, to `flags`.
+fn evaluated_item_expr(
+    ev: &EvaluatedItems,
+    ty: &dyn Fn(usize) -> TokenStream,
+    flags: &mut Vec<TokenStream>,
+) -> Option<TokenStream> {
+    if ev.all {
+        return Some(quote!(true));
+    }
+    let mut parts = vec![];
+    if ev.prefix > 0 {
+        let prefix = Literal::usize_unsuffixed(ev.prefix);
+        parts.push(quote!(i < #prefix));
+    }
+    for n in &ev.contains {
+        let t = ty(*n);
+        parts.push(quote!(serde_json::from_value::<#t>(item.clone()).is_ok()));
+    }
+    for (n, decodes, branch) in &ev.branches {
+        let Some(inner) = evaluated_item_expr(branch, ty, flags) else { continue };
+        let flag = quote::format_ident!("matched_{}", flags.len());
+        let t = ty(*n);
+        flags.push(quote!(let #flag = serde_json::from_value::<#t>(json.clone()).is_ok();));
+        let flag = if *decodes { quote!(#flag) } else { quote!(!#flag) };
+        parts.push(if branch.all { flag } else { quote!((#flag && (#inner))) });
+    }
+    either(&parts)
+}
+
+/// Returns `parts` joined by `||`, or `None` when there are none.
+fn either(parts: &[TokenStream]) -> Option<TokenStream> {
+    (!parts.is_empty()).then(|| quote!(#(#parts)||*))
+}
+
 /// Returns whether `name` is evaluated by `ev`, as an expression, or `None` when no name is. Each branch adds its
 /// decode, run once, to `flags`.
 fn evaluated_expr(
@@ -345,9 +423,9 @@ fn evaluated_expr(
         let t = ty(*n);
         flags.push(quote!(let #flag = serde_json::from_value::<#t>(json.clone()).is_ok();));
         let flag = if *decodes { quote!(#flag) } else { quote!(!#flag) };
-        parts.push(if branch.all { flag } else { quote!((#flag && #inner)) });
+        parts.push(if branch.all { flag } else { quote!((#flag && (#inner))) });
     }
-    (!parts.is_empty()).then(|| quote!(#(#parts)||*))
+    either(&parts)
 }
 
 /// Checks of `value` (an expression of type `&T` for `t`) at `path`.

@@ -8,8 +8,8 @@ use serde_json::Value;
 use super::cycles::break_cycles;
 use super::rewrite::{FALLBACK, conditional_union, request_view, view};
 use super::{
-    Access, Checked, Constraints, EnumValue, Evaluated, Field, Format, JsonKind, Kind, Leftover, Rest, Struct, Ty,
-    TypeDef, TypeId, TypeSpace, Union, UnionMode, Variant, XmlHint,
+    Access, Checked, Constraints, EnumValue, Evaluated, EvaluatedItems, Field, Format, JsonKind, Kind, Leftover, Rest,
+    Struct, Ty, TypeDef, TypeId, TypeSpace, Union, UnionMode, Variant, XmlHint,
 };
 use crate::diag::Diagnostics;
 use crate::ir::names::{Name, Reserved, reserved, unique};
@@ -77,6 +77,7 @@ impl Constraints {
             enum_values: self.enum_values.clone(),
             const_value: self.const_value.clone(),
             unevaluated: self.unevaluated.clone(),
+            unevaluated_items: self.unevaluated_items.clone(),
             ..Self::default()
         }
     }
@@ -94,6 +95,7 @@ impl Constraints {
             enum_values: None,
             const_value: None,
             unevaluated: None,
+            unevaluated_items: None,
             ..self.clone()
         }
     }
@@ -138,6 +140,7 @@ impl Constraints {
             enum_values: None,
             const_value: None,
             unevaluated: None,
+            unevaluated_items: None,
             conditions: vec![],
             contains: None,
             one_of: vec![],
@@ -155,7 +158,7 @@ impl Constraints {
             ($($f:ident),*) => { $( if self.$f.is_none() { self.$f = other.$f; } )* };
         }
         take!(min_length, max_length, pattern, minimum, maximum, exclusive_minimum, exclusive_maximum, multiple_of);
-        take!(enum_values, const_value, unevaluated);
+        take!(enum_values, const_value, unevaluated, unevaluated_items);
         take!(min_items, max_items, min_properties, max_properties, items, property_names, contains, tuple);
         self.unique_items |= other.unique_items;
         self.decimal128 |= other.decimal128;
@@ -559,8 +562,8 @@ fn beside_union(s: &Value) -> Option<Value> {
     let quiet = |k: &str| {
         matches!(k, "oneOf" | "anyOf" | "discriminator" | "description" | "title" | "example" | "examples")
             || matches!(k, "deprecated" | "default" | "nullable")
-            // It sees the names that the branches evaluate: the schema with the union checks it.
-            || k == "unevaluatedProperties"
+            // They see what the branches evaluate: the schema with the union checks them.
+            || matches!(k, "unevaluatedProperties" | "unevaluatedItems")
             || k.starts_with("x-")
     };
     let beside: serde_json::Map<String, Value> =
@@ -578,6 +581,63 @@ fn untyped_value_checks(s: &Value, c: &mut Constraints) {
     if let Some(o) = s.as_object().filter(|o| untyped_values(o)) {
         c.enum_values = o.get("enum").and_then(Value::as_array).cloned();
         c.const_value = o.get("const").cloned();
+    }
+}
+
+/// What [`Builder::evaluation`] works out: the names ([`Evaluated`]) or the items ([`EvaluatedItems`]) that a schema
+/// evaluates.
+trait Evaluation: Default {
+    /// What schema object `o` evaluates by its own keywords. `index` gives the type of a schema that it decodes as.
+    fn own(o: &serde_json::Map<String, Value>, depth: usize, index: &dyn Fn(&Value) -> usize) -> Self;
+    /// Adds what `other` evaluates.
+    fn merge(&mut self, other: Self);
+    /// What it evaluates only when the value decodes as a schema, or when it does not.
+    fn branches(&mut self) -> &mut Vec<(usize, bool, Self)>;
+}
+
+impl Evaluation for Evaluated {
+    fn own(o: &serde_json::Map<String, Value>, depth: usize, _: &dyn Fn(&Value) -> usize) -> Self {
+        let keys = |k: &str| o.get(k).and_then(Value::as_object).into_iter().flat_map(serde_json::Map::keys).cloned();
+        Self {
+            names: keys("properties").collect(),
+            patterns: keys("patternProperties").collect(),
+            // `unevaluatedProperties` further in evaluates every name that its own schema leaves.
+            all: o.contains_key("additionalProperties") || (depth > 0 && o.contains_key("unevaluatedProperties")),
+            branches: vec![],
+        }
+    }
+
+    fn merge(&mut self, other: Self) {
+        self.names.extend(other.names);
+        self.patterns.extend(other.patterns);
+        self.all |= other.all;
+        self.branches.extend(other.branches);
+    }
+
+    fn branches(&mut self) -> &mut Vec<(usize, bool, Self)> {
+        &mut self.branches
+    }
+}
+
+impl Evaluation for EvaluatedItems {
+    fn own(o: &serde_json::Map<String, Value>, depth: usize, index: &dyn Fn(&Value) -> usize) -> Self {
+        Self {
+            prefix: o.get("prefixItems").and_then(Value::as_array).map_or(0, Vec::len),
+            all: o.contains_key("items") || (depth > 0 && o.contains_key("unevaluatedItems")),
+            contains: o.get("contains").map(index).into_iter().collect(),
+            branches: vec![],
+        }
+    }
+
+    fn merge(&mut self, other: Self) {
+        self.prefix = self.prefix.max(other.prefix);
+        self.all |= other.all;
+        self.contains.extend(other.contains);
+        self.branches.extend(other.branches);
+    }
+
+    fn branches(&mut self) -> &mut Vec<(usize, bool, Self)> {
+        &mut self.branches
     }
 }
 
@@ -962,32 +1022,39 @@ impl<'a> Builder<'a> {
                 Leftover::Schema(self.queue_subschema(schema, at.map(|p| join(p, "unevaluatedProperties"))))
             }
         };
-        Some((self.evaluated(s, 0, true)?, leftover))
+        Some((self.evaluation(s, 0, true)?, leftover))
     }
 
-    /// Returns what `s` evaluates of an object's names ([`Evaluated`]). With `queue`, the schema of each branch is
-    /// queued for a type; without, nothing is. `None` when that is not known before the value is: a
+    /// Returns `unevaluatedItems` of `s` as generated code checks it: what `s` evaluates of a list, and what the other
+    /// items take. `None` for `unevaluatedItems: true`, which takes every item.
+    fn unevaluated_items(&self, s: &Value, at: Option<&str>) -> Option<(EvaluatedItems, Leftover)> {
+        let leftover = match s.get("unevaluatedItems")? {
+            Value::Bool(true) => return None,
+            Value::Bool(false) => Leftover::Refused,
+            schema @ (Value::Object(_) | Value::Null | Value::Number(_) | Value::String(_) | Value::Array(_)) => {
+                Leftover::Schema(self.queue_subschema(schema, at.map(|p| join(p, "unevaluatedItems"))))
+            }
+        };
+        Some((self.evaluation(s, 0, true)?, leftover))
+    }
+
+    /// Returns what `s` evaluates ([`Evaluated`] of names, [`EvaluatedItems`] of items). With `queue`, the schema of each
+    /// branch is queued for a type; without, nothing is. `None` when that is not known before the value is: a
     /// `dependentSchemas`, a `$dynamicRef` or a cycle of references.
-    fn evaluated(&self, s: &Value, depth: usize, queue: bool) -> Option<Evaluated> {
+    fn evaluation<E: Evaluation>(&self, s: &Value, depth: usize, queue: bool) -> Option<E> {
         if depth > MAX_SCHEMA_DEPTH {
             return None;
         }
         let o = match s {
-            Value::Bool(_) => return Some(Evaluated::default()),
+            Value::Bool(_) => return Some(E::default()),
             Value::Object(o) => o,
             Value::Null | Value::Number(_) | Value::String(_) | Value::Array(_) => return None,
         };
         if o.contains_key("dependentSchemas") || o.contains_key("$dynamicRef") {
             return None;
         }
-        let keys = |k: &str| o.get(k).and_then(Value::as_object).into_iter().flat_map(serde_json::Map::keys).cloned();
-        let mut ev = Evaluated {
-            names: keys("properties").collect(),
-            patterns: keys("patternProperties").collect(),
-            // `unevaluatedProperties` further in evaluates every name that its own schema leaves.
-            all: o.contains_key("additionalProperties") || (depth > 0 && o.contains_key("unevaluatedProperties")),
-            branches: vec![],
-        };
+        let index = |b: &Value| if queue { self.queue_subschema(b, None) } else { 0 };
+        let mut ev = E::own(o, depth, &index);
         if let Some(r) = o.get("$ref").and_then(Value::as_str) {
             let p = self.doc.local_pointer(r)?;
             let target = pointer(&self.doc.root, &p)?;
@@ -995,26 +1062,27 @@ impl<'a> Builder<'a> {
                 return None;
             }
             self.reading.borrow_mut().push(p.clone());
-            let reached = self.evaluated(target, depth + 1, queue);
+            let reached = self.evaluation(target, depth + 1, queue);
             self.reading.borrow_mut().pop();
             ev.merge(reached?);
         }
         for (_, m) in json::items(o.get("allOf")) {
-            ev.merge(self.evaluated(m, depth + 1, queue)?);
+            ev.merge(self.evaluation(m, depth + 1, queue)?);
         }
-        let index = |b: &Value| if queue { self.queue_subschema(b, None) } else { 0 };
         for (_, b) in ["anyOf", "oneOf"].iter().flat_map(|k| json::items(o.get(*k))) {
-            ev.branches.push((index(b), true, self.evaluated(b, depth + 1, queue)?));
+            let branch = self.evaluation(b, depth + 1, queue)?;
+            ev.branches().push((index(b), true, branch));
         }
         if let Some(cond) = o.get("if") {
             let n = index(cond);
-            let mut then = self.evaluated(cond, depth + 1, queue)?;
+            let mut then: E = self.evaluation(cond, depth + 1, queue)?;
             if let Some(t) = o.get("then") {
-                then.merge(self.evaluated(t, depth + 1, queue)?);
+                then.merge(self.evaluation(t, depth + 1, queue)?);
             }
-            ev.branches.push((n, true, then));
+            ev.branches().push((n, true, then));
             if let Some(e) = o.get("else") {
-                ev.branches.push((n, false, self.evaluated(e, depth + 1, queue)?));
+                let otherwise = self.evaluation(e, depth + 1, queue)?;
+                ev.branches().push((n, false, otherwise));
             }
         }
         Some(ev)
@@ -1056,6 +1124,21 @@ impl<'a> Builder<'a> {
         }
     }
 
+    /// Queues the schemas that a value also decodes as: the keywords beside a union, and the members of an `allOf` that
+    /// one merged type cannot hold.
+    fn queue_also(&self, s: &Value, at: Option<&str>, c: &mut Constraints) {
+        if let Some(beside) = beside_union(s) {
+            c.also.push(self.queue_subschema(&beside, None));
+        }
+        // Members that one merged type cannot hold: the value also decodes as each of them.
+        if self.lossy_all_of(s) {
+            let at = at.map(|p| join(p, "allOf"));
+            for (i, m) in json::items(s.get("allOf")) {
+                c.also.push(self.queue_subschema(m, at.as_deref().map(|a| join(a, &i.to_string()))));
+            }
+        }
+    }
+
     fn constraints_at(&self, s: &Value, depth: usize, at: Option<&str>) -> Constraints {
         // Keywords further down belong to the named types on the way, which hold them. Only a schema checked whole
         // loses what it cuts (`inline_scoped`).
@@ -1065,7 +1148,10 @@ impl<'a> Builder<'a> {
         let mut c = Constraints::own(s);
         let (dependents, names, pattern_map) = typed_object_keywords(s, &mut c);
         // What the names that nothing evaluated take is known before the value is.
-        let unevaluated = s.get("unevaluatedProperties").is_some() && self.evaluated(s, 0, false).is_some();
+        let unevaluated =
+            s.get("unevaluatedProperties").is_some() && self.evaluation::<Evaluated>(s, 0, false).is_some();
+        let unevaluated_items =
+            s.get("unevaluatedItems").is_some() && self.evaluation::<EvaluatedItems>(s, 0, false).is_some();
         let dependent_schemas = typed_dependent_schemas(s);
         // `contains` on an array type counts the items that decode as the type of its schema.
         let typed_contains =
@@ -1083,6 +1169,7 @@ impl<'a> Builder<'a> {
                 || k == "not"
                 || (dependent_schemas.is_some() && k == "dependentSchemas")
                 || (unevaluated && k == "unevaluatedProperties")
+                || (unevaluated_items && k == "unevaluatedItems")
                 || (typed_contains && matches!(k, "contains" | "minContains" | "maxContains"))
                 || (patterns.is_some() && k == "patternProperties")
         };
@@ -1090,8 +1177,6 @@ impl<'a> Builder<'a> {
             typed_conditional
                 && m.as_object().is_some_and(|m| m.contains_key("if") && m.keys().all(|k| conditional_key(k)))
         };
-        // Non-string `enum`/`const` have no type of their own either. An integer enum is the exception. The
-        // `validate` of its type rejects `kind: 7` when only 1, 2 and 3 are allowed.
         // A `$dynamicRef` anywhere inside resolves in the dynamic scope from here: only the run-time check of the whole
         // schema follows it there.
         // A tuple (`prefixItems`, maybe closed by `items: false`) is checked item by item ([`Constraints::tuple`]).
@@ -1127,19 +1212,13 @@ impl<'a> Builder<'a> {
             if typed_tuple {
                 c.tuple = Some(self.queue_tuple(s, at));
             }
-            if let Some(beside) = beside_union(s) {
-                c.also.push(self.queue_subschema(&beside, None));
-            }
-            // Members that one merged type cannot hold: the value also decodes as each of them.
-            if self.lossy_all_of(s) {
-                let at = at.map(|p| join(p, "allOf"));
-                for (i, m) in json::items(s.get("allOf")) {
-                    c.also.push(self.queue_subschema(m, at.as_deref().map(|a| join(a, &i.to_string()))));
-                }
-            }
+            self.queue_also(s, at, &mut c);
             untyped_value_checks(s, &mut c);
             if unevaluated {
                 c.unevaluated = self.unevaluated(s, at);
+            }
+            if unevaluated_items {
+                c.unevaluated_items = self.unevaluated_items(s, at);
             }
             for (name, sub) in dependent_schemas.into_iter().flatten() {
                 let at = at.map(|p| join(&join(p, "dependentSchemas"), name));
@@ -2890,7 +2969,7 @@ mod tests {
             "prefixItems": [{"type": "string"}, {"oneOf": [{"$ref": "#/components/schemas/Rec"}, {"type": "null"}]}],
             "items": false,
             // Checked whole: a tuple alone is checked item by item.
-            "unevaluatedItems": false,
+            "dependencies": {},
             "minItems": 2,
         });
         let doc = Doc::new(json!({"openapi": "3.2.0", "components": {"schemas": {"Rec": rec}}}));
@@ -2914,7 +2993,7 @@ mod tests {
             "Top".into(),
             json!({"type": "array", "prefixItems": [link(0)], "items": false,
             // Checked whole: a tuple alone is checked item by item.
-            "unevaluatedItems": false, "minItems": 1}),
+            "dependencies": {}, "minItems": 1}),
         );
         for i in 0..n {
             schemas.insert(format!("L{i}"), link(i + 1));
@@ -2926,7 +3005,7 @@ mod tests {
                 "prefixItems": [{"type": "string"}, {"oneOf": [{"$ref": "#/components/schemas/Rec"}, {"type": "null"}]}],
                 "items": false,
             // Checked whole: a tuple alone is checked item by item.
-            "unevaluatedItems": false,
+            "dependencies": {},
                 "minItems": 2,
             }),
         );

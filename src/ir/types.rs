@@ -250,6 +250,8 @@ pub(crate) struct Constraints {
     pub const_value: Option<Value>,
     /// `unevaluatedProperties`: what the schema evaluates of an object's names, and what the other names take.
     pub unevaluated: Option<(Evaluated, Leftover)>,
+    /// `unevaluatedItems`: what the schema evaluates of a list's items, and what the other items take.
+    pub unevaluated_items: Option<(EvaluatedItems, Leftover)>,
     /// Each `if` with its `then` and `else`, as indices into [`TypeSpace::subschemas`]: a value that decodes as the
     /// type of `if` decodes as that of `then`, any other as that of `else`.
     pub conditions: Vec<(usize, Option<usize>, Option<usize>)>,
@@ -305,14 +307,18 @@ pub(crate) struct Evaluated {
     pub branches: Vec<(usize, bool, Self)>,
 }
 
-impl Evaluated {
-    /// Adds what `other` evaluates: a member of `allOf` or a `$ref` target, which apply in place.
-    pub(crate) fn merge(&mut self, other: Self) {
-        self.names.extend(other.names);
-        self.patterns.extend(other.patterns);
-        self.all |= other.all;
-        self.branches.extend(other.branches);
-    }
+/// What a schema evaluates of a list's items (JSON Schema 2020-12 section 11.2): the leading ones of `prefixItems`, all of
+/// them for `items`, those that match `contains`, and those of a branch that the value matches.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub(crate) struct EvaluatedItems {
+    /// How many leading items it evaluates.
+    pub prefix: usize,
+    /// It evaluates every item (`items`, or `unevaluatedItems` further in).
+    pub all: bool,
+    /// Schemas of `contains`, as indices into [`TypeSpace::subschemas`]: an item that decodes as one is evaluated.
+    pub contains: Vec<usize>,
+    /// What it evaluates only when the value decodes as a schema, or when it does not, as [`Evaluated::branches`].
+    pub branches: Vec<(usize, bool, Self)>,
 }
 
 /// What the names that nothing evaluated take (`unevaluatedProperties`).

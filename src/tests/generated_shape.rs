@@ -539,13 +539,13 @@ fn a_named_schema_keeps_its_name_beside_a_twin() {
 
 #[test]
 fn a_body_of_your_own_type_is_left_to_it() {
-    // A body whose `unevaluatedItems` no Rust type judges: the generated code checks it as JSON, unless the schema is
-    // a type of yours. On an object it asserts nothing.
+    // A body whose `dependencies` no Rust type judges: the generated code checks it as JSON, unless the schema is a
+    // type of yours. Empty, it asserts nothing.
     let generate = |test: &str, rust_type: Option<&str>| {
         let mut note = json!({
             "type": "object",
             "properties": {"a": {"type": "string"}, "b": {"type": "string"}},
-            "unevaluatedItems": false,
+            "dependencies": {},
         });
         if let Some(path) = rust_type {
             note["x-rust-type"] = json!(path);
@@ -661,12 +661,12 @@ fn a_schema_that_many_whole_checks_reach_is_generated_once() {
     );
     let mut paths = serde_json::Map::new();
     for i in 0..20 {
-        // `unevaluatedItems` has no Rust type: each of these is checked whole at run time, and reaches `Big`. On an
-        // object it asserts nothing.
+        // `dependencies` has no Rust type: each of these is checked whole at run time, and reaches `Big`. Empty, it
+        // asserts nothing.
         schemas.insert(
             format!("S{i}"),
             json!({"type": "object", "properties": {"big": {"$ref": "#/components/schemas/Big"}},
-                "unevaluatedItems": false}),
+                "dependencies": {}}),
         );
         paths.insert(
             format!("/s{i}"),
@@ -1034,4 +1034,33 @@ fn unevaluated_properties_beside_a_union_sees_its_branches() {
             .to_owned();
     assert_eq!(types.matches("is not allowed (unevaluatedProperties)").count(), 1, "{types}");
     assert!(types.contains("matches!(name.as_str(), \"foo\")"), "{types}");
+}
+
+/// `unevaluatedItems` refuses the items that `contains` and the branches that the value matches leave: no schema is
+/// checked whole.
+#[test]
+fn unevaluated_items_refuses_what_nothing_evaluates() {
+    let pair = json!({"type": "array", "contains": {"type": "integer"}, "unevaluatedItems": false});
+    let holder = json!({"type": "object", "properties": {"pair": pair}});
+    let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Holder": holder}}));
+    let types =
+        common::file(&common::generate("unevaluated-items-typed", &doc, &crate::emit::Options::default()), "types.rs")
+            .to_owned();
+    assert!(types.contains("is not allowed (unevaluatedItems)") && !types.contains("check_schema"), "{types}");
+}
+
+/// What a nested `then` evaluates counts only when the `if` around it matched too: the branch keeps its own
+/// alternatives together.
+#[test]
+fn a_nested_branch_counts_only_inside_its_own() {
+    let contains = |v: &str| json!({"type": "array", "contains": {"const": v}});
+    let list = json!({"type": "array", "if": contains("a"), "then": {"type": "array", "if": contains("b")},
+        "unevaluatedItems": false});
+    let holder = json!({"type": "object", "properties": {"list": list}});
+    let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Holder": holder}}));
+    let types =
+        common::file(&common::generate("nested-branch", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
+    let flat: String = types.split_whitespace().collect();
+    assert!(flat.contains("is not allowed (unevaluatedItems)".replace(' ', "").as_str()), "{types}");
+    assert!(flat.contains("&&(serde_json::from_value"), "{types}");
 }
