@@ -91,6 +91,7 @@ impl Constraints {
             items: None,
             property_names: None,
             dependent_required: vec![],
+            not: vec![],
             schema: None,
         }
     }
@@ -105,6 +106,7 @@ impl Constraints {
         self.unique_items |= other.unique_items;
         self.decimal128 |= other.decimal128;
         self.dependent_required.extend(other.dependent_required);
+        self.not.extend(other.not);
         self.schema = match (self.schema.take(), other.schema) {
             (Some(a), Some(b)) => Some(serde_json::json!({ "allOf": [a, b] })),
             (a, b) => a.or(b),
@@ -391,6 +393,40 @@ fn kind_scoped(s: &Value) -> bool {
     })
 }
 
+/// Keywords beside an implied shape hold for the `Other` variant too (`{minimum: 30, properties: ...}`). A
+/// `$ref` with keywords beside it joins two schemas that one struct does not hold.
+fn mixed(s: &Value) -> bool {
+    s.as_object().is_some_and(|o| {
+        // Keywords that assert nothing about the value: annotations and the XML mapping.
+        let quiet = |k: &str| {
+            matches!(
+                k,
+                "$ref"
+                    | "$id"
+                    | "$schema"
+                    | "$comment"
+                    | "$defs"
+                    | "description"
+                    | "title"
+                    | "xml"
+                    | "example"
+                    | "examples"
+                    | "default"
+                    | "deprecated"
+                    | "readOnly"
+                    | "writeOnly"
+                    | "externalDocs"
+            )
+        };
+        (inferred_kind(o).is_some()
+            && ASSERTIONS
+                .iter()
+                .any(|k| !matches!(*k, "items" | "prefixItems" | "additionalProperties") && o.contains_key(*k)))
+            // An extension (`x-...`) asserts nothing either.
+            || (o.contains_key("$ref") && o.keys().any(|k| !quiet(k) && !k.starts_with("x-")))
+    })
+}
+
 /// Returns the pointer of `key` under the schema at `at`.
 fn child_ptr(at: &str, key: &str) -> String {
     format!("{at}/{}", escape_token(key))
@@ -551,6 +587,9 @@ pub(crate) struct Builder<'a> {
     viewed: RefCell<BTreeMap<String, Value>>,
     /// [`Builder::shared`] in the request view that run-time checks use: `TypeSpace::shared`.
     checked: RefCell<BTreeMap<String, Value>>,
+    /// The `not` schemas that typed checks refer to, by index, with the pointer of each when it has one. `finish`
+    /// builds a type for each.
+    nots: RefCell<Vec<(Value, Option<String>)>>,
     /// The JSON kind of each type once it is final ([`Kinds`]).
     kinds: RefCell<Vec<Option<JsonKind>>>,
     /// Where a schema was cut short at `MAX_SCHEMA_DEPTH`, by pointer: what is deeper is not checked. Reported once
@@ -592,6 +631,7 @@ impl<'a> Builder<'a> {
             viewed: RefCell::default(),
             checked: RefCell::default(),
             kinds: RefCell::default(),
+            nots: RefCell::default(),
             cut_short: RefCell::new(BTreeMap::new()),
         }
     }
@@ -733,6 +773,16 @@ impl<'a> Builder<'a> {
         self.constraints_at(s, 0, Some(ptr))
     }
 
+    /// Returns the index of the `not` schema `not` in [`Builder::nots`], queued once.
+    fn queue_not(&self, not: &Value, at: Option<String>) -> usize {
+        let mut nots = self.nots.borrow_mut();
+        if let Some(i) = nots.iter().position(|(s, p)| s == not && *p == at) {
+            return i;
+        }
+        nots.push((not.clone(), at));
+        nots.len() - 1
+    }
+
     fn constraints_at(&self, s: &Value, depth: usize, at: Option<&str>) -> Constraints {
         // Keywords further down belong to the named types on the way, which hold them. Only a schema checked whole
         // loses what it cuts (`inline_scoped`).
@@ -749,6 +799,7 @@ impl<'a> Builder<'a> {
                 || (dependents && k == "dependentRequired")
                 || (names && k == "propertyNames")
                 || (pattern_map && matches!(k, "patternProperties" | "additionalProperties"))
+                || k == "not"
         };
         let conditional_member = |m: &Value| {
             typed_conditional
@@ -761,37 +812,7 @@ impl<'a> Builder<'a> {
         // schema follows it there.
         let tuple =
             s.get("prefixItems").is_some() || s.get("items") == Some(&Value::Bool(false)) || holds_dynamic_ref(s);
-        // Keywords beside an implied shape hold for the `Other` variant too (`{minimum: 30, properties: ...}`). A
-        // `$ref` with keywords beside it joins two schemas that one struct does not hold.
-        let mixed = s.as_object().is_some_and(|o| {
-            // Keywords that assert nothing about the value: annotations and the XML mapping.
-            let quiet = |k: &str| {
-                matches!(
-                    k,
-                    "$ref"
-                        | "$id"
-                        | "$schema"
-                        | "$comment"
-                        | "$defs"
-                        | "description"
-                        | "title"
-                        | "xml"
-                        | "example"
-                        | "examples"
-                        | "default"
-                        | "deprecated"
-                        | "readOnly"
-                        | "writeOnly"
-                        | "externalDocs"
-                )
-            };
-            (inferred_kind(o).is_some()
-                && ASSERTIONS
-                    .iter()
-                    .any(|k| !matches!(*k, "items" | "prefixItems" | "additionalProperties") && o.contains_key(*k)))
-                // An extension (`x-...`) asserts nothing either.
-                || (o.contains_key("$ref") && o.keys().any(|k| !quiet(k) && !k.starts_with("x-")))
-        });
+        let mixed = mixed(s);
         if (typeless_assertions(s) && !kind_scoped(s))
             || tuple
             || mixed
@@ -802,6 +823,8 @@ impl<'a> Builder<'a> {
             // The resource of the schema starts the dynamic scope that a `$dynamicRef` resolves in.
             let scope: Vec<String> = at.map_or_else(Vec::new, |p| vec![self.dynamic.resource_of(p)]);
             c.schema = Some(self.inlined(s, at, scope));
+        } else if let Some(not) = s.get("not") {
+            c.not.push(self.queue_not(not, at.map(|p| format!("{p}/not"))));
         }
         for m in s.get("allOf").and_then(Value::as_array).into_iter().flatten().filter(|m| !conditional_member(m)) {
             c.merge(self.constraints_at(m, depth + 1, None));
@@ -2030,6 +2053,7 @@ impl<'a> Builder<'a> {
     /// Returns finish. Resolve placeholders, drop defaults that the type of their field cannot hold and break cycles
     /// with `Box`.
     pub(crate) fn finish(mut self) -> TypeSpace {
+        let nots = self.build_nots();
         for (at, message) in std::mem::take(self.cut_short.get_mut()) {
             self.diags.warning(at, message);
         }
@@ -2053,8 +2077,33 @@ impl<'a> Builder<'a> {
         }
         let mut space = TypeSpace::new(self.defs);
         space.shared = self.checked.into_inner();
+        space.nots = nots;
         break_cycles(&mut space);
         space
+    }
+}
+
+impl Builder<'_> {
+    /// Builds the type of each queued `not` schema, with its constraints. A `not` inside one queues more.
+    fn build_nots(&mut self) -> Vec<(Ty, Constraints)> {
+        let mut built = vec![];
+        // A `not` type judges the whole value: its objects keep the names that they do not declare, which its checks
+        // may need (`required` of an undeclared name).
+        let keep = std::mem::replace(&mut self.keep_unknown, true);
+        loop {
+            // The borrow ends here: building the type may queue more.
+            let next = self.nots.borrow().get(built.len()).cloned();
+            let Some((schema, at)) = next else { break };
+            let ptr = at.clone().unwrap_or_else(|| format!("#/x-honig-not/{}", built.len()));
+            let ty = self.ty(&schema, &ptr, &Name::new("Not"));
+            let c = match &at {
+                Some(p) => self.constraints_at_ptr(&schema, p),
+                None => self.constraints(&schema),
+            };
+            built.push((ty, c));
+        }
+        self.keep_unknown = keep;
+        built
     }
 }
 

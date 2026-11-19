@@ -1324,6 +1324,9 @@ fn checked_type(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, def
     let path = quote!(&runtime::InstancePath::Root);
     let base = ty(space, &c.base, false);
     let kind = Base::of(c);
+    // A scalar's own checks leave out `not`: it is checked here. `validate::checks` checks it for any other base.
+    let nots = (!matches!(kind, Base::Other))
+        .then(|| super::validate::not_checks(space, &c.constraints, &quote!(&value), &path));
     let (checks, derive, consts) = match kind {
         Base::Str => {
             let pat = c.constraints.pattern.as_deref().map(|p| {
@@ -1388,6 +1391,7 @@ fn checked_type(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, def
                 let mut violations: Vec<runtime::Violation> = Vec::new();
                 {
                     let out = &mut violations;
+                    #nots
                     #checks
                 }
                 runtime::first(violations).map(|()| Self(value)).map_err(runtime::BuildError::value)

@@ -539,13 +539,14 @@ fn a_named_schema_keeps_its_name_beside_a_twin() {
 
 #[test]
 fn a_body_of_your_own_type_is_left_to_it() {
-    // A body whose `not` no Rust type judges: the generated code checks it as JSON, unless the schema is a type of
+    // A body whose `if` no Rust type judges: the generated code checks it as JSON, unless the schema is a type of
     // yours.
     let generate = |test: &str, rust_type: Option<&str>| {
         let mut note = json!({
             "type": "object",
             "properties": {"a": {"type": "string"}, "b": {"type": "string"}},
-            "not": {"required": ["a", "b"]},
+            "if": {"required": ["a"]},
+            "then": {"required": ["b"]},
         });
         if let Some(path) = rust_type {
             note["x-rust-type"] = json!(path);
@@ -661,10 +662,11 @@ fn a_schema_that_many_whole_checks_reach_is_generated_once() {
     );
     let mut paths = serde_json::Map::new();
     for i in 0..20 {
-        // `not` has no Rust type: each of these is checked whole at run time, and reaches `Big`.
+        // An `if` on `required` has no Rust type: each of these is checked whole at run time, and reaches `Big`.
         schemas.insert(
             format!("S{i}"),
-            json!({"type": "object", "properties": {"big": {"$ref": "#/components/schemas/Big"}}, "not": {"required": ["x"]}}),
+            json!({"type": "object", "properties": {"big": {"$ref": "#/components/schemas/Big"}},
+                "if": {"required": ["x"]}, "then": {"required": ["big"]}}),
         );
         paths.insert(
             format!("/s{i}"),
@@ -807,4 +809,13 @@ fn keywords_without_a_type_check_values_of_their_kind() {
     let types =
         common::file(&common::generate("typeless", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
     assert!(types.contains("serde_json::Value::Number") && !types.contains("check_schema"), "{types}");
+}
+
+/// `not: S` is a check that the value does not decode as the type of `S`: no schema is checked whole.
+#[test]
+fn not_is_a_check_against_the_type_of_its_schema() {
+    let code = json!({"type": "object", "properties": {"code": {"type": "string", "not": {"type": "string", "pattern": "^x"}}}});
+    let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Coded": code}}));
+    let types = common::file(&common::generate("not", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
+    assert!(types.contains("serde_json::from_value") && !types.contains("check_schema"), "{types}");
 }

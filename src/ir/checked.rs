@@ -47,6 +47,13 @@ pub(crate) fn wrap(types: &mut TypeSpace, http: &mut Http) {
         }
         space.types.defs[i].kind = kind;
     }
+    // The type of a `not` schema checks all that the schema says: a value that decodes as it is one that the schema
+    // allows.
+    for n in 0..space.types.nots.len() {
+        let (ty, c) = std::mem::replace(&mut space.types.nots[n], (Ty::Any, Constraints::default()));
+        let ty = space.wrap(&ty, &c, &Name::new("Not"));
+        space.types.nots[n] = (ty, Constraints::default());
+    }
     for op in &mut http.operations {
         for p in &mut op.params {
             p.ty = space.wrap(&p.ty, &p.constraints, &op.name.and(&p.name));
@@ -94,9 +101,9 @@ fn split_own_checks(types: &mut TypeSpace, taken: &mut BTreeSet<String>) -> BTre
             | Kind::Pending => continue,
         };
         let own = &def.own;
-        let (schema, dependents, names) =
-            (own.schema.clone(), own.dependent_required.clone(), own.property_names.clone());
-        if def.rust_type.is_some() || (schema.is_none() && dependents.is_empty() && names.is_none()) {
+        let (schema, dependents, names, not) =
+            (own.schema.clone(), own.dependent_required.clone(), own.property_names.clone(), own.not.clone());
+        if def.rust_type.is_some() || (schema.is_none() && dependents.is_empty() && names.is_none() && not.is_empty()) {
             continue;
         }
         let raw = TypeId(types.defs.len());
@@ -118,8 +125,13 @@ fn split_own_checks(types: &mut TypeSpace, taken: &mut BTreeSet<String>) -> BTre
         };
         public.insert(raw.0, types.defs[i].name.clone());
         types.defs.push(shape);
-        let constraints =
-            Constraints { schema, dependent_required: dependents, property_names: names, ..Constraints::default() };
+        let constraints = Constraints {
+            schema,
+            dependent_required: dependents,
+            property_names: names,
+            not,
+            ..Constraints::default()
+        };
         types.defs[i].kind = Kind::Checked(Box::new(Checked { base: Ty::Named(raw), constraints }));
     }
     public
@@ -255,6 +267,9 @@ pub(crate) fn needs_checks(types: &TypeSpace, t: &Ty, c: &Constraints, hops: usi
     // A type of yours (`x-rust-type`) keeps its own invariants: nothing is checked for it.
     if yours(types, t) {
         return false;
+    }
+    if !c.not.is_empty() {
+        return true;
     }
     if let Some(schema) = &c.schema {
         if !held_by_type(types, t, schema, hops) {
