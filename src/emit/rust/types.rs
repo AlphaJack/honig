@@ -1346,6 +1346,12 @@ fn checked_type(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, def
         }
         Base::Other => {
             let checks = super::validate::checks(space, &c.base, &c.constraints, &quote!(&value), &path);
+            // A member that the server added meets no keyword of the description: a lenient client takes it as it is.
+            let added = matches!(&c.base, Ty::Named(inner) if {
+                let inner = space.types.get(*inner);
+                matches!(&inner.kind, Kind::Union(union) if reads_added(inner, union))
+            });
+            let checks = if added { quote!(if !matches!(value, #base::Other(_)) { #checks }) } else { checks };
             let eq = (!has_float(space, &Ty::Named(id))).then(|| quote!(Eq,));
             // The base reads the text of its library formats checked, as a field of it would.
             let read = match holds(space, &c.base) {
@@ -1541,6 +1547,12 @@ const fn has_other(u: &Union) -> bool {
     u.open || u.rest
 }
 
+/// Does `Other` hold a member that the server added? Only the response type of a lenient client's tagged union does:
+/// its tag names no variant. A union with a default variant reads an unknown tag as that variant already.
+const fn reads_added(def: &TypeDef, u: &Union) -> bool {
+    def.lenient && matches!(u.mode, UnionMode::Tagged { default: None, .. })
+}
+
 /// Returns the value that no variant of the union takes: `Other` holds it when the union has one. Else decoding fails.
 fn no_variant(u: &Union) -> TokenStream {
     if has_other(u) {
@@ -1565,9 +1577,10 @@ fn union(
         quote!(#name(#t),)
     });
     let ser = union_serialize(space, aliases, u);
-    let deserialize = union_deserialize_impl(space, &n, u);
-    // Only a union that the schema leaves open holds a value that no variant takes. A closed one fails to decode it.
-    let (other, other_ser) = if has_other(u) {
+    let deserialize = union_deserialize_impl(space, &n, def, u);
+    // Only a union that the schema leaves open holds a value that no variant takes, or a lenient client's member that
+    // the server added. A closed one fails to decode it.
+    let (other, other_ser) = if has_other(u) || reads_added(def, u) {
         (quote!(Other(serde_json::Value),), quote!(Self::Other(v) => serde::Serialize::serialize(v, s),))
     } else {
         (TokenStream::new(), TokenStream::new())
@@ -1593,8 +1606,8 @@ fn union(
 
 /// Returns `impl Deserialize`. Tagged unions also implement `runtime::TaggedUnion`. So a
 /// discriminator sent first streams straight into the variant.
-fn union_deserialize_impl(space: &Space<'_>, n: &proc_macro2::Ident, u: &Union) -> TokenStream {
-    let de = union_deserialize(space, u);
+fn union_deserialize_impl(space: &Space<'_>, n: &proc_macro2::Ident, def: &TypeDef, u: &Union) -> TokenStream {
+    let de = union_deserialize(space, def, u);
     // A buffered number is an `f64`. So a union that holds a `Decimal` decodes from the JSON text instead. An
     // untagged one pays one parse per branch that it tries. A tagged one reads its tag and then parses the one branch.
     let exact = u.variants.iter().any(|v| holds_decimal(space, &v.ty, &mut vec![]));
@@ -1727,7 +1740,7 @@ fn decode_ref(space: &Space<'_>, t: &Ty) -> TokenStream {
     }
 }
 
-fn union_deserialize(space: &Space<'_>, u: &Union) -> TokenStream {
+fn union_deserialize(space: &Space<'_>, def: &TypeDef, u: &Union) -> TokenStream {
     match &u.mode {
         UnionMode::Tagged { property, default } => {
             let property = lit(property);
@@ -1754,13 +1767,23 @@ fn union_deserialize(space: &Space<'_>, u: &Union) -> TokenStream {
                 None => no_variant(u),
             };
             let none = proc_macro2::Literal::usize_unsuffixed(tagged.len());
+            // A lenient client reads a tag that names no variant as `Other`: the server added the member. A value
+            // without a tag still fails.
+            let (added_pick, added_arm) = if reads_added(def, u) {
+                let added = proc_macro2::Literal::usize_unsuffixed(tagged.len() + 1);
+                (quote!(Some(_) => #added,), quote!(#added => Ok(Self::Other(v.into_value())),))
+            } else {
+                (TokenStream::new(), TokenStream::new())
+            };
             quote! {
                 let which = match v.tag(#property).as_deref() {
                     #(#picks)*
+                    #added_pick
                     _ => #none,
                 };
                 match which {
                     #(#arms)*
+                    #added_arm
                     _ => #fallback,
                 }
             }
@@ -1805,8 +1828,10 @@ fn untagged(space: &Space<'_>, u: &Union) -> TokenStream {
         // An open union always decodes because its `Other` takes anything. As a branch it matches only through one
         // of its own variants. So the branches after it still get their turn. A boxed one too.
         let (inner, boxed) = if let Ty::Indirect(i) = &v.ty { (i.as_ref(), true) } else { (&v.ty, false) };
-        let union =
-            matches!(inner, Ty::Named(id) if matches!(&space.types.get(*id).kind, Kind::Union(x) if has_other(x)));
+        let union = matches!(inner, Ty::Named(id) if {
+            let d = space.types.get(*id);
+            matches!(&d.kind, Kind::Union(x) if has_other(x) || reads_added(d, x))
+        });
         let attempt = if union {
             let it = ty(space, inner, false);
             let x = if boxed { quote!(x.as_ref()) } else { quote!(x) };

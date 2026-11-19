@@ -80,6 +80,32 @@ macro_rules! int_enum_impls {
         }
     };
 }
+macro_rules! checked_impls {
+    ($n:ident, $t:ty) => {
+        impl $n {
+            #[must_use]
+            pub fn into_inner(self) -> $t {
+                self.0
+            }
+        }
+        impl std::ops::Deref for $n {
+            type Target = $t;
+            fn deref(&self) -> &$t {
+                &self.0
+            }
+        }
+        impl AsRef<$t> for $n {
+            fn as_ref(&self) -> &$t {
+                &self.0
+            }
+        }
+        impl From<$n> for $t {
+            fn from(value: $n) -> Self {
+                value.0
+            }
+        }
+    };
+}
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Order {
@@ -91,13 +117,24 @@ pub struct Order {
         deserialize_with = "runtime::not_null"
     )]
     pub priority: Option<OrderPriority>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub delivery: Option<Delivery>,
 }
 deserialize_impl!(Order);
 serialize_impl!(Order);
 impl Order {
     #[must_use]
     pub const fn new(id: String, status: Status) -> Self {
-        Self { id, status, priority: None }
+        Self {
+            id,
+            status,
+            priority: None,
+            delivery: None,
+        }
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -140,6 +177,76 @@ impl<'de> serde::Deserialize<'de> for Status {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         let s = <std::borrow::Cow<'de, str> as serde::Deserialize>::deserialize(d)?;
         Ok(Self::from(&*s))
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
+pub struct Delivery(pub(super) DeliveryVariants);
+impl<'de> serde::Deserialize<'de> for Delivery {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <DeliveryVariants as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
+    }
+}
+impl TryFrom<DeliveryVariants> for Delivery {
+    type Error = runtime::BuildError;
+    fn try_from(value: DeliveryVariants) -> Result<Self, runtime::BuildError> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            if !matches!(value, DeliveryVariants::Other(_)) {
+                {
+                    static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                    let value = runtime::to_value(&value).unwrap_or_default();
+                    let schema = SCHEMA
+                        .get_or_init(|| {
+                            serde_json::from_str(
+                                    "{\"oneOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Pickup\"},{\"$ref\":\"#/$defs/~1components~1schemas~1Courier\"}]}",
+                                )
+                                .unwrap_or_default()
+                        });
+                    runtime::check_schema_in(
+                        out,
+                        &runtime::InstancePath::Root,
+                        &value,
+                        schema,
+                        runtime::schema_defs(),
+                    );
+                }
+            }
+        }
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
+    }
+}
+checked_impls!(Delivery, DeliveryVariants);
+#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct Pickup {
+    pub kind: String,
+    pub store: String,
+}
+deserialize_impl!(Pickup);
+serialize_impl!(Pickup);
+impl Pickup {
+    #[must_use]
+    pub const fn new(kind: String, store: String) -> Self {
+        Self { kind, store }
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct Courier {
+    pub kind: String,
+    pub address: String,
+}
+deserialize_impl!(Courier);
+serialize_impl!(Courier);
+impl Courier {
+    #[must_use]
+    pub const fn new(kind: String, address: String) -> Self {
+        Self { kind, address }
     }
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -185,13 +292,24 @@ pub struct OrderRequest {
         deserialize_with = "runtime::not_null"
     )]
     pub priority: Option<OrderPriorityRequest>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub delivery: Option<DeliveryRequest>,
 }
 deserialize_impl!(OrderRequest);
 serialize_impl!(OrderRequest);
 impl OrderRequest {
     #[must_use]
     pub const fn new(id: String, status: StatusRequest) -> Self {
-        Self { id, status, priority: None }
+        Self {
+            id,
+            status,
+            priority: None,
+            delivery: None,
+        }
     }
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -225,6 +343,46 @@ impl TryFrom<&str> for StatusRequest {
     }
 }
 str_enum_impls!(StatusRequest);
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
+pub struct DeliveryRequest(pub(super) DeliveryRequestVariants);
+impl<'de> serde::Deserialize<'de> for DeliveryRequest {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <DeliveryRequestVariants as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
+    }
+}
+impl TryFrom<DeliveryRequestVariants> for DeliveryRequest {
+    type Error = runtime::BuildError;
+    fn try_from(value: DeliveryRequestVariants) -> Result<Self, runtime::BuildError> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            {
+                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                let value = runtime::to_value(&value).unwrap_or_default();
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"oneOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Pickup\"},{\"$ref\":\"#/$defs/~1components~1schemas~1Courier\"}]}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
+                    out,
+                    &runtime::InstancePath::Root,
+                    &value,
+                    schema,
+                    runtime::schema_defs(),
+                );
+            }
+        }
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
+    }
+}
+checked_impls!(DeliveryRequest, DeliveryRequestVariants);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum OrderPriorityRequest {
     N1,
@@ -259,3 +417,131 @@ impl TryFrom<i64> for OrderPriorityRequest {
     }
 }
 int_enum_impls!(OrderPriorityRequest);
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum DeliveryVariants {
+    Pickup(Pickup),
+    Courier(Courier),
+    Other(serde_json::Value),
+}
+impl serde::Serialize for DeliveryVariants {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        match self {
+            Self::Pickup(v) => serde::Serialize::serialize(v, s),
+            Self::Courier(v) => serde::Serialize::serialize(v, s),
+            Self::Other(v) => serde::Serialize::serialize(v, s),
+        }
+    }
+}
+impl<'de> serde::Deserialize<'de> for DeliveryVariants {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        runtime::tagged::<D, Self>(d)
+    }
+}
+impl<'de> runtime::TaggedUnion<'de> for DeliveryVariants {
+    const TAG: &'static str = "kind";
+    fn knows(tag: &str) -> bool {
+        matches!(tag, "pickup" | "courier")
+    }
+    fn from_tag<D: serde::Deserializer<'de>>(tag: &str, d: D) -> Result<Self, D::Error> {
+        match tag {
+            "pickup" => <Pickup as serde::Deserialize>::deserialize(d).map(Self::Pickup),
+            "courier" => {
+                <Courier as serde::Deserialize>::deserialize(d).map(Self::Courier)
+            }
+            _ => Err(serde::de::Error::custom("unknown discriminator")),
+        }
+    }
+    fn from_content(v: runtime::Content<'de>) -> Result<Self, serde_json::Error> {
+        let which = match v.tag("kind").as_deref() {
+            Some("pickup") => 0,
+            Some("courier") => 1,
+            Some(_) => 3,
+            _ => 2,
+        };
+        match which {
+            0 => v.decode_into(Self::Pickup),
+            1 => v.decode_into(Self::Courier),
+            3 => Ok(Self::Other(v.into_value())),
+            _ => Err(serde::de::Error::custom("matches no variant")),
+        }
+    }
+}
+pub type DeliveryRequestVariants = DeliveryVariants;
+/// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
+/// its field. `build` returns the first field that did not convert.
+pub mod builders {
+    use super as types;
+    use super::runtime;
+    impl super::Order {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            id: impl TryInto<String, Error: std::fmt::Display>,
+            status: impl TryInto<types::Status, Error: std::fmt::Display>,
+        ) -> Order {
+            Order(
+                runtime::Builder::start(|| Ok(
+                    Self::new(
+                        runtime::field("id", id)?,
+                        runtime::field("status", status)?,
+                    ),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct Order(runtime::Builder<super::Order>);
+    impl Order {
+        pub fn priority(
+            self,
+            value: impl TryInto<types::OrderPriority, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("priority", value, |s, v| s.priority = Some(v)))
+        }
+        pub fn delivery(
+            self,
+            value: impl TryInto<types::Delivery, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("delivery", value, |s, v| s.delivery = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::Order, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+    impl super::OrderRequest {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            id: impl TryInto<String, Error: std::fmt::Display>,
+            status: impl TryInto<types::StatusRequest, Error: std::fmt::Display>,
+        ) -> OrderRequest {
+            OrderRequest(
+                runtime::Builder::start(|| Ok(
+                    Self::new(
+                        runtime::field("id", id)?,
+                        runtime::field("status", status)?,
+                    ),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct OrderRequest(runtime::Builder<super::OrderRequest>);
+    impl OrderRequest {
+        pub fn priority(
+            self,
+            value: impl TryInto<types::OrderPriorityRequest, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("priority", value, |s, v| s.priority = Some(v)))
+        }
+        pub fn delivery(
+            self,
+            value: impl TryInto<types::DeliveryRequest, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("delivery", value, |s, v| s.delivery = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::OrderRequest, runtime::BuildError> {
+            self.0.build()
+        }
+    }
+}

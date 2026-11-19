@@ -191,7 +191,8 @@ pub(crate) struct TypeDef {
     /// followed. Keywords that no type holds (`if`, `not`, `oneOf`'s one match) make it a checked type.
     pub own: Constraints,
     /// A response type of a lenient client (`client = { strict = false }`): an enum reads a value that it does not
-    /// list as `Other`, and a closed struct reads a property that it does not declare. Its request copy is strict.
+    /// list as `Other`, a closed struct reads a property that it does not declare, and a tagged union reads a tag
+    /// that names no variant as `Other`. Its request copy is strict.
     pub lenient: bool,
 }
 
@@ -604,8 +605,9 @@ impl TypeSpace {
     /// `writeOnly` properties are dropped and required `readOnly` ones stay
     /// required. The copy is the reverse. Returns the request type of each type.
     ///
-    /// With `lenient` (`client = { strict = false }`) every enum and closed struct splits too, and every original is
-    /// [`TypeDef::lenient`]: a response reads a value that the server added, and a request stays as strict as before.
+    /// With `lenient` (`client = { strict = false }`) every enum, closed struct and tagged union splits too, and every
+    /// original is [`TypeDef::lenient`]: a response reads a value that the server added, and a request stays as
+    /// strict as before.
     pub(crate) fn split_directions(&mut self, lenient: bool) -> Vec<Option<TypeId>> {
         let n = self.defs.len();
         let mut split = vec![false; n];
@@ -614,12 +616,10 @@ impl TypeSpace {
                 && match &d.kind {
                     Kind::StrEnum(_) | Kind::IntEnum(_) => true,
                     Kind::Struct(s) => s.closed,
-                    Kind::Union(_)
-                    | Kind::Alias(_)
-                    | Kind::Newtype(_)
-                    | Kind::Const(_)
-                    | Kind::Checked(_)
-                    | Kind::Pending => false,
+                    // A tag that names no variant is a member that the server added. A union with a default variant
+                    // reads it already, and an untagged value that fits no branch may as well be broken.
+                    Kind::Union(u) => matches!(u.mode, UnionMode::Tagged { default: None, .. }),
+                    Kind::Alias(_) | Kind::Newtype(_) | Kind::Const(_) | Kind::Checked(_) | Kind::Pending => false,
                 };
             split[i] = d.rust_type.is_none()
                 && (open_in_responses

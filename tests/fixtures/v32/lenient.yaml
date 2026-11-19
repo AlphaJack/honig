@@ -28,6 +28,28 @@ components:
         id: {type: string}
         status: {$ref: '#/components/schemas/Status'}
         priority: {type: integer, enum: [1, 2, 3]}
+        delivery: {$ref: '#/components/schemas/Delivery'}
     Status:
       type: string
       enum: [open, closed]
+    Delivery:
+      oneOf:
+        - $ref: '#/components/schemas/Pickup'
+        - $ref: '#/components/schemas/Courier'
+      discriminator:
+        propertyName: kind
+        mapping:
+          pickup: '#/components/schemas/Pickup'
+          courier: '#/components/schemas/Courier'
+    Pickup:
+      type: object
+      required: [kind, store]
+      properties:
+        kind: {type: string}
+        store: {type: string}
+    Courier:
+      type: object
+      required: [kind, address]
+      properties:
+        kind: {type: string}
+        address: {type: string}
