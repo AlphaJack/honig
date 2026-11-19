@@ -3,7 +3,7 @@
 use std::collections::BTreeMap;
 
 use crate::ir::TypeSpace;
-use crate::ir::types::{Kind, Ty, TypeId, all_refs, def_types};
+use crate::ir::types::{JsonKind, Kind, Ty, TypeId, all_refs, def_types};
 use crate::settings::FormatLibs;
 
 /// The types of the IR, the libraries that the target crate provides for `Ty::Format` and which types hold a float.
@@ -16,6 +16,8 @@ pub(crate) struct Space<'a> {
     floats: Vec<bool>,
     /// Which definitions hold a `Decimal` somewhere by `TypeId`.
     decimals: Vec<bool>,
+    /// The JSON kind of each definition by `TypeId`.
+    kinds: Vec<JsonKind>,
     /// The rough size of each definition by `TypeId` ([`Space::approx_size`]).
     sizes: Vec<usize>,
 }
@@ -56,7 +58,7 @@ impl<'a> Space<'a> {
     pub(crate) fn new(types: &'a TypeSpace, libs: FormatLibs) -> Self {
         let floats = reaching(types, |d| d.rust_type.is_some() || def_types(&d.kind).iter().any(|t| float_here(t)));
         let decimals = reaching(types, |d| def_types(&d.kind).iter().any(|t| decimal_here(t)));
-        Self { types, libs, floats, decimals, sizes: def_sizes(types) }
+        Self { types, libs, floats, decimals, kinds: types.kinds(), sizes: def_sizes(types) }
     }
 
     /// Returns the rough in-memory size in bytes of `ty` on a 64-bit target. It decides which enum variants to box
@@ -71,6 +73,19 @@ impl<'a> Space<'a> {
         let mut refs = vec![];
         all_refs(ty, &mut refs);
         float_here(ty) || refs.iter().any(|id| self.floats.get(id.0).copied().unwrap_or_default())
+    }
+
+    /// Resolves aliases and wrappers down to the JSON kind on the wire, as [`TypeSpace::kind_of`] does with each
+    /// definition's kind found once.
+    pub(crate) fn kind_of(&self, ty: &Ty) -> JsonKind {
+        if let Ty::Named(id) = ty {
+            return self.kinds.get(id.0).copied().unwrap_or(JsonKind::Any);
+        }
+        if let Ty::Option(t) | Ty::Indirect(t) = ty {
+            return self.kind_of(t);
+        }
+        // Any other type has its kind without a definition.
+        self.types.kind_of(ty)
     }
 
     /// Does `ty` hold a `Decimal` anywhere? A union that does decodes from the JSON text: a buffered number is an `f64`.
