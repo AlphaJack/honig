@@ -426,7 +426,7 @@ fn checked_num_macro() -> TokenStream {
 }
 
 /// Returns the macro of the impls of a checked value of any other base. Its `Deserialize` is its own: the base may hold
-/// the text of a library format, read through `runtime::validated`.
+/// the text of a library format, read through `runtime::formats`.
 fn checked_other_macro() -> TokenStream {
     quote! {
         macro_rules! checked_impls {
@@ -875,8 +875,8 @@ fn field(space: &Space<'_>, f: &Field, owner: &str) -> TokenStream {
     // field's own type does: `Option`, `runtime::Nullable` or itself.
     let checked = |t: &Ty, wrap: &str| {
         holds_text(space, t).map(|h| {
-            let h = if wrap.is_empty() { h } else { format!("runtime::validated::{wrap}<{h}>") };
-            let read = lit(&format!("runtime::validated::read::<_, _, {h}>"));
+            let h = if wrap.is_empty() { h } else { format!("runtime::formats::{wrap}<{h}>") };
+            let read = lit(&format!("runtime::formats::read::<_, _, {h}>"));
             quote!(deserialize_with = #read)
         })
     };
@@ -953,7 +953,7 @@ fn structure(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, s: &St
     let extra = ident(&extra_field(s));
     let additional = s.additional.as_ref().map(|t| {
         let read = holds_text(space, t).map(|h| {
-            let read = lit(&format!("runtime::validated::read::<_, _, runtime::validated::Values<{h}>>"));
+            let read = lit(&format!("runtime::formats::read::<_, _, runtime::formats::Values<{h}>>"));
             quote!(, deserialize_with = #read)
         });
         let t = ty(space, t, false);
@@ -1242,7 +1242,7 @@ fn newtype(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, def: &Ty
     let derive = derives(space, id, false);
     // A library type has its text checked before the library reads it.
     let read = holds_text(space, t).map(|h| {
-        let read = lit(&format!("runtime::validated::read::<_, _, {h}>"));
+        let read = lit(&format!("runtime::formats::read::<_, _, {h}>"));
         quote!(#[serde(deserialize_with = #read)])
     });
     let t = ty(space, t, false);
@@ -1289,7 +1289,7 @@ fn checked_type(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, def
             let eq = (!has_float(space, &Ty::Named(id))).then(|| quote!(Eq,));
             // The base reads the text of its library formats checked, as a field of it would.
             let read = match holds(space, &c.base) {
-                Some(h) => quote!(runtime::validated::read::<_, #base, #h>(d)?),
+                Some(h) => quote!(runtime::formats::read::<_, #base, #h>(d)?),
                 None => quote!(<#base as serde::Deserialize>::deserialize(d)?),
             };
             let de = quote! {
@@ -1502,7 +1502,7 @@ fn union_deserialize_impl(space: &Space<'_>, n: &proc_macro2::Ident, u: &Union) 
         let tags = v.tags.iter().map(|t| lit(t));
         let (name, t) = (pascal_ident(&v.name), ty(space, &v.ty, false));
         let read = match holds(space, &v.ty) {
-            Some(h) => quote!(runtime::validated::read::<_, #t, #h>(d)),
+            Some(h) => quote!(runtime::formats::read::<_, #t, #h>(d)),
             None => quote!(<#t as serde::Deserialize>::deserialize(d)),
         };
         quote!(#(#tags)|* => #read.map(Self::#name),)
@@ -1589,7 +1589,7 @@ fn conv(space: &Space<'_>, name: &str, t: &Ty) -> TokenStream {
     match holds(space, t) {
         Some(h) => {
             let t = ty(space, t, false);
-            quote!(v.decode_into(|c: runtime::validated::Validated<#t, #h>| Self::#name(c.into_inner())))
+            quote!(v.decode_into(|c: runtime::formats::Validated<#t, #h>| Self::#name(c.into_inner())))
         }
         None => quote!(v.decode_into(Self::#name)),
     }
@@ -1600,7 +1600,7 @@ fn decode_ref(space: &Space<'_>, t: &Ty) -> TokenStream {
     let rust = ty(space, t, false);
     match holds(space, t) {
         Some(h) => {
-            quote!(v.decode_ref::<runtime::validated::Validated<#rust, #h>>().map(runtime::validated::Validated::into_inner))
+            quote!(v.decode_ref::<runtime::formats::Validated<#rust, #h>>().map(runtime::formats::Validated::into_inner))
         }
         None => quote!(v.decode_ref::<#rust>()),
     }

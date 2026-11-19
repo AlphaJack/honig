@@ -506,7 +506,7 @@ pub struct Product {
         rename = "successCallbackUrl",
         default,
         skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::validated::read::<_, _, runtime::validated::Present<runtime::validated::Text<runtime::validated::format::Uri>>>"
+        deserialize_with = "runtime::formats::read::<_, _, runtime::formats::Present<runtime::formats::Text<runtime::formats::format::Uri>>>"
     )]
     pub success_callback_url: Option<url::Url>,
     /// URL which gets invoked upon a failed operation
@@ -514,7 +514,7 @@ pub struct Product {
         rename = "failureCallbackUrl",
         default,
         skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::validated::read::<_, _, runtime::validated::Present<runtime::validated::Text<runtime::validated::format::Uri>>>"
+        deserialize_with = "runtime::formats::read::<_, _, runtime::formats::Present<runtime::formats::Text<runtime::formats::format::Uri>>>"
     )]
     pub failure_callback_url: Option<url::Url>,
 }
@@ -4359,7 +4359,7 @@ pub struct ProductRequest {
         rename = "successCallbackUrl",
         default,
         skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::validated::read::<_, _, runtime::validated::Present<runtime::validated::Text<runtime::validated::format::Uri>>>"
+        deserialize_with = "runtime::formats::read::<_, _, runtime::formats::Present<runtime::formats::Text<runtime::formats::format::Uri>>>"
     )]
     pub success_callback_url: Option<url::Url>,
     /// URL which gets invoked upon a failed operation
@@ -4367,7 +4367,7 @@ pub struct ProductRequest {
         rename = "failureCallbackUrl",
         default,
         skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::validated::read::<_, _, runtime::validated::Present<runtime::validated::Text<runtime::validated::format::Uri>>>"
+        deserialize_with = "runtime::formats::read::<_, _, runtime::formats::Present<runtime::formats::Text<runtime::formats::format::Uri>>>"
     )]
     pub failure_callback_url: Option<url::Url>,
 }

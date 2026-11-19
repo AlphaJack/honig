@@ -17,7 +17,7 @@ use crate::{ApiError, Context, Message, Response, joined_header};
 /// These are the HTTP validators of RFC 9110 section 8.8 (`ETag` and `Last-Modified`). They have nothing to do with
 /// the keywords of a schema.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub struct Validators<'a> {
+pub struct CacheValidators<'a> {
     /// The `ETag` header value with its quotes, such as `"33a64df5"` or `W/"33a64df5"`.
     pub etag: Option<&'a str>,
     /// The `Last-Modified` header value. It is an HTTP date such as `Sun, 06 Nov 1994 08:49:37 GMT`.
@@ -35,7 +35,7 @@ impl<C, Id> Context<'_, C, Id> {
     ///
     /// # Errors
     /// `412 Precondition Failed` in the error schema of the description when a condition does not hold.
-    pub fn preconditions(&self, current: Option<Validators<'_>>) -> Result<(), ApiError> {
+    pub fn preconditions(&self, current: Option<CacheValidators<'_>>) -> Result<(), ApiError> {
         let header = |name| joined_header(self.request.headers(), name);
         let etag = current.and_then(|c| c.etag);
         if let Some(cond) = header("if-match") {
@@ -313,7 +313,7 @@ mod tests {
     fn check(
         method: &'static str,
         conditions: &[(&'static str, &'static str)],
-        current: Option<Validators<'_>>,
+        current: Option<CacheValidators<'_>>,
     ) -> Option<String> {
         let mut request = crate::new_request(method, "/products/1".to_owned(), vec![]).unwrap();
         for (k, v) in conditions {
@@ -326,7 +326,7 @@ mod tests {
 
     #[test]
     fn preconditions_refuse_a_change_to_a_representation_the_client_does_not_hold() {
-        let v1 = Some(Validators { etag: Some(r#""v1""#), last_modified: Some("Sun, 06 Nov 1994 08:49:37 GMT") });
+        let v1 = Some(CacheValidators { etag: Some(r#""v1""#), last_modified: Some("Sun, 06 Nov 1994 08:49:37 GMT") });
         assert_eq!(check("PUT", &[("if-match", r#""v1""#)], v1), None);
         assert_eq!(check("PUT", &[("if-match", r#""v0""#)], v1).as_deref(), Some("412 precondition failed: If-Match"));
         assert_eq!(

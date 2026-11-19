@@ -206,16 +206,16 @@ impl<T: DeserializeOwned> Items<T> {
     }
 
     /// Returns [`Items::received`] with the text of the library formats of each item checked first, as `H` says
-    /// (`runtime::validated`).
+    /// (`runtime::formats`).
     ///
     /// # Errors
     /// `body` does not decode.
-    pub fn received_validated<H: for<'de> crate::validated::Holds<'de, T>>(
+    pub fn received_validated<H: for<'de> crate::formats::Holds<'de, T>>(
         body: &[u8],
         stream: &ByteStream,
         framing: Framing,
     ) -> Result<Self, Error> {
-        type Validated<T, H> = crate::validated::Validated<T, H>;
+        type Validated<T, H> = crate::formats::Validated<T, H>;
         if let Some(source) = stream.take_source() {
             let items = ItemStream::new(REQUEST, ByteStream::pinned(source), framing).validated::<H>();
             return Ok(Self::Stream(items));
@@ -615,10 +615,10 @@ impl<T: DeserializeOwned> ItemStream<T> {
         Self::with(Inner::Decoding(Box::new(Decoder::new(status, body, framing))))
     }
 
-    /// Reads each item with the text of its library formats validated first, as `H` says (`runtime::validated`).
+    /// Reads each item with the text of its library formats validated first, as `H` says (`runtime::formats`).
     #[doc(hidden)]
     #[must_use]
-    pub fn validated<H: for<'de> crate::validated::Holds<'de, T>>(self) -> Self {
+    pub fn validated<H: for<'de> crate::formats::Holds<'de, T>>(self) -> Self {
         self.decoder(|items| items.item = read_validated::<T, H>);
         self
     }
@@ -785,7 +785,7 @@ pub(crate) struct Record<'a> {
     bytes: &'a [u8],
 }
 
-/// Returns `record` decoded as `U`: `T`, or `T` read through `runtime::validated`.
+/// Returns `record` decoded as `U`: `T`, or `T` read through `runtime::formats`.
 fn decode<U: DeserializeOwned>(record: &Record<'_>) -> Result<U, Error> {
     let (status, bytes) = (record.status, record.bytes);
     match record.framing {
@@ -807,10 +807,10 @@ fn decode<U: DeserializeOwned>(record: &Record<'_>) -> Result<U, Error> {
 }
 
 /// Reads a record as `Validated<T, H>`: the text of each library format in `T` is checked before its library reads it.
-fn read_validated<T: DeserializeOwned, H: for<'de> crate::validated::Holds<'de, T>>(
+fn read_validated<T: DeserializeOwned, H: for<'de> crate::formats::Holds<'de, T>>(
     record: &Record<'_>,
 ) -> Result<T, Error> {
-    decode::<crate::validated::Validated<T, H>>(record).map(crate::validated::Validated::into_inner)
+    decode::<crate::formats::Validated<T, H>>(record).map(crate::formats::Validated::into_inner)
 }
 
 impl<T: DeserializeOwned> Decoder<T> {

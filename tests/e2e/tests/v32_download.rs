@@ -102,7 +102,7 @@ impl api::Api for Server {
             .map_err(|_| api::ApiError::new(api::http::StatusCode::INTERNAL_SERVER_ERROR, "manifest lock poisoned"))?;
         let etag = format!("\"v{}\"", manifest.0);
         // 412 unless the client changed the version it read.
-        ctx.preconditions(Some(api::Validators { etag: Some(&etag), last_modified: Some(LAST_MODIFIED) }))?;
+        ctx.preconditions(Some(api::CacheValidators { etag: Some(&etag), last_modified: Some(LAST_MODIFIED) }))?;
         *manifest = (manifest.0 + 1, p.body);
         Ok(ops::replace_manifest::Response::NoContent)
     }

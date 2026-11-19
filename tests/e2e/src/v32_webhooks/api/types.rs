@@ -129,7 +129,7 @@ str_enum_impls!(EventKind);
 pub struct SubscribeBody {
     #[serde(
         rename = "callbackUrl",
-        deserialize_with = "runtime::validated::read::<_, _, runtime::validated::Text<runtime::validated::format::Uri>>"
+        deserialize_with = "runtime::formats::read::<_, _, runtime::formats::Text<runtime::formats::format::Uri>>"
     )]
     pub callback_url: url::Url,
 }

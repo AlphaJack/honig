@@ -73,13 +73,13 @@ pub fn check_format(out: &mut Vec<Violation>, path: &InstancePath<'_>, value: &s
 pub(crate) fn is_format(value: &str, format: &str) -> bool {
     match format {
         "uuid" => uuid(value),
-        "date" => crate::formats::is_date(value),
+        "date" => crate::format_checks::is_date(value),
         "time" => crate::full_time::is_full_time(value),
-        "time-local" => crate::formats::is_time_local(value),
-        "date-time" => crate::formats::is_date_time(value),
-        "date-time-local" => crate::formats::is_date_time_local(value),
-        "ipv4" => crate::formats::is_ipv4(value),
-        "ipv6" => crate::formats::is_ipv6(value),
+        "time-local" => crate::format_checks::is_time_local(value),
+        "date-time" => crate::format_checks::is_date_time(value),
+        "date-time-local" => crate::format_checks::is_date_time_local(value),
+        "ipv4" => crate::format_checks::is_ipv4(value),
+        "ipv6" => crate::format_checks::is_ipv6(value),
         "decimal" => decimal(value),
         "decimal128" => decimal128(value).is_ok(),
         "http-date" => crate::http_date::is_http_date(value),
@@ -98,9 +98,9 @@ pub(crate) fn is_format(value: &str, format: &str) -> bool {
         #[cfg(feature = "idn")]
         "email" | "idn-email" | "hostname" | "idn-hostname" => mail::is(value, format),
         #[cfg(feature = "ipnet")]
-        "ipv4-cidr" => cidr_address(value, crate::formats::is_ipv4) && value.parse::<ipnet::Ipv4Net>().is_ok(),
+        "ipv4-cidr" => cidr_address(value, crate::format_checks::is_ipv4) && value.parse::<ipnet::Ipv4Net>().is_ok(),
         #[cfg(feature = "ipnet")]
-        "ipv6-cidr" => cidr_address(value, crate::formats::is_ipv6) && value.parse::<ipnet::Ipv6Net>().is_ok(),
+        "ipv6-cidr" => cidr_address(value, crate::format_checks::is_ipv6) && value.parse::<ipnet::Ipv6Net>().is_ok(),
         _ => true,
     }
 }

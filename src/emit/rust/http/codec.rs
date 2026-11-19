@@ -229,12 +229,12 @@ fn form_encode_styles(c: &Content) -> Vec<TokenStream> {
         .collect()
 }
 
-/// Returns `.map(...)` that takes a decoded `runtime::validated::Validated` of `t` apart: the decoder reads `t` with the text
+/// Returns `.map(...)` that takes a decoded `runtime::formats::Validated` of `t` apart: the decoder reads `t` with the text
 /// of its library formats checked first. `None` when `t` holds none.
 pub(crate) fn validated_map(space: &Space<'_>, t: &Ty) -> Option<TokenStream> {
     let h = holds(space, t)?;
     let t = ty(space, t, true);
-    Some(quote!(.map(runtime::validated::Validated::<#t, #h>::into_inner)))
+    Some(quote!(.map(runtime::formats::Validated::<#t, #h>::into_inner)))
 }
 
 /// Returns the expression that decodes one content and whether it is a `Result`.
@@ -323,8 +323,8 @@ fn decode_sequence(space: &Space<'_>, c: &Content, d: &Decode) -> (TokenStream, 
     let checked = item.and_then(|item| {
         holds(space, item).map(|h| {
             let item = ty(space, item, true);
-            quote!(.map(|v: Vec<runtime::validated::Validated<#item, #h>>| {
-                v.into_iter().map(runtime::validated::Validated::into_inner).collect::<Vec<_>>()
+            quote!(.map(|v: Vec<runtime::formats::Validated<#item, #h>>| {
+                v.into_iter().map(runtime::formats::Validated::into_inner).collect::<Vec<_>>()
             }))
         })
     });

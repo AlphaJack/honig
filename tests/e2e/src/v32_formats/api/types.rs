@@ -243,19 +243,19 @@ pub struct Event {
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::validated::read::<_, _, runtime::validated::Present<runtime::validated::Text<runtime::validated::format::Uri>>>"
+        deserialize_with = "runtime::formats::read::<_, _, runtime::formats::Present<runtime::formats::Text<runtime::formats::format::Uri>>>"
     )]
     pub home: Option<url::Url>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::validated::read::<_, _, runtime::validated::Present<runtime::validated::Text<runtime::validated::format::Ipv4Cidr>>>"
+        deserialize_with = "runtime::formats::read::<_, _, runtime::formats::Present<runtime::formats::Text<runtime::formats::format::Ipv4Cidr>>>"
     )]
     pub net4: Option<ipnet::Ipv4Net>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::validated::read::<_, _, runtime::validated::Present<runtime::validated::Text<runtime::validated::format::Ipv6Cidr>>>"
+        deserialize_with = "runtime::formats::read::<_, _, runtime::formats::Present<runtime::formats::Text<runtime::formats::format::Ipv6Cidr>>>"
     )]
     pub net6: Option<ipnet::Ipv6Net>,
     #[serde(
