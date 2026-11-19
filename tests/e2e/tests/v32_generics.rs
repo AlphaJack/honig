@@ -5,7 +5,7 @@ use serde_json::json;
 
 #[test]
 fn bound_generics_are_monomorphized() {
-    let items = vec![types::Product { name: "Lamp".to_owned() }].try_into().expect("items of the bound type");
+    let items = vec![types::Product { name: "Lamp".to_owned() }];
     let page = types::ProductPage { items, next: None };
     let first: &types::Product = &page.items[0];
     assert_eq!(first.name, "Lamp");
@@ -27,7 +27,7 @@ fn unbound_generic_keeps_its_default() {
 struct Fixed;
 
 fn page() -> types::ProductPage {
-    let items = vec![types::Product { name: "Lamp".to_owned() }].try_into().expect("items of the bound type");
+    let items = vec![types::Product { name: "Lamp".to_owned() }];
     types::ProductPage { items, next: Some("2".to_owned()) }
 }
 

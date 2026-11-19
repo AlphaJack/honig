@@ -1254,3 +1254,26 @@ fn keywords_of_one_kind_beside_an_implied_shape_are_checked() {
         assert!(types.contains(check) && !types.contains("check_schema"), "{name}: {types}");
     }
 }
+
+/// A `$ref` with keywords beside it is the `allOf` of the two: the merged type holds them, and a member that it cannot
+/// hold is checked on its own. No schema is checked whole.
+#[test]
+fn keywords_beside_a_ref_are_checked() {
+    let doc = common::spec(
+        "3.2.0",
+        &json!({}),
+        &json!({"schemas": {
+            "Str": {"type": "string"},
+            "Obj": {"type": "object", "properties": {"a": {"type": "integer"}}},
+            "Holder": {"type": "object", "required": ["s", "o", "n"], "properties": {
+                "s": {"$ref": "#/components/schemas/Str", "maxLength": 3},
+                "o": {"$ref": "#/components/schemas/Obj", "properties": {"b": {"type": "string"}}, "required": ["b"]},
+                "n": {"$ref": "#/components/schemas/Obj", "not": {"required": ["a"]}},
+            }},
+        }}),
+    );
+    let types =
+        common::file(&common::generate("ref-siblings", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
+    assert!(types.contains("check_len") && types.contains("matches `not`"), "{types}");
+    assert!(types.contains("pub b: String") && !types.contains("check_schema"), "{types}");
+}

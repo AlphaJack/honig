@@ -34,32 +34,6 @@ macro_rules! serialize_impl {
     };
 }
 use super::runtime;
-macro_rules! checked_impls {
-    ($n:ident, $t:ty) => {
-        impl $n {
-            #[must_use]
-            pub fn into_inner(self) -> $t {
-                self.0
-            }
-        }
-        impl std::ops::Deref for $n {
-            type Target = $t;
-            fn deref(&self) -> &$t {
-                &self.0
-            }
-        }
-        impl AsRef<$t> for $n {
-            fn as_ref(&self) -> &$t {
-                &self.0
-            }
-        }
-        impl From<$n> for $t {
-            fn from(value: $n) -> Self {
-                value.0
-            }
-        }
-    };
-}
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Product {
@@ -92,10 +66,10 @@ impl Page {
         Self { items, next: None }
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct ProductPage {
-    pub items: ProductPageItems,
+    pub items: Vec<Product>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
@@ -107,7 +81,7 @@ deserialize_impl!(ProductPage);
 serialize_impl!(ProductPage);
 impl ProductPage {
     #[must_use]
-    pub const fn new(items: ProductPageItems) -> Self {
+    pub const fn new(items: Vec<Product>) -> Self {
         Self { items, next: None }
     }
 }
@@ -147,82 +121,5 @@ impl StringTree {
     #[must_use]
     pub const fn new(value: String) -> Self {
         Self { value, children: None }
-    }
-}
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
-#[serde(transparent)]
-pub struct ProductPageItems(pub(super) Vec<Product>);
-impl<'de> serde::Deserialize<'de> for ProductPageItems {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <Vec<Product> as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
-    }
-}
-impl TryFrom<Vec<Product>> for ProductPageItems {
-    type Error = runtime::BuildError;
-    fn try_from(value: Vec<Product>) -> Result<Self, runtime::BuildError> {
-        let mut violations: Vec<runtime::Violation> = Vec::new();
-        {
-            let out = &mut violations;
-            {
-                let base = &runtime::InstancePath::Root;
-                for (i, v) in value.iter().enumerate() {
-                    {
-                        static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                        let value = runtime::to_value(v).unwrap_or_default();
-                        let schema = SCHEMA
-                            .get_or_init(|| {
-                                serde_json::from_str(
-                                        "{\"$dynamicAnchor\":\"item\",\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Product\"}]}",
-                                    )
-                                    .unwrap_or_default()
-                            });
-                        runtime::check_schema_in(
-                            out,
-                            &runtime::InstancePath::Index(base, i),
-                            &value,
-                            schema,
-                            runtime::schema_defs(),
-                        );
-                    }
-                }
-            }
-        }
-        runtime::first(violations)
-            .map(|()| Self(value))
-            .map_err(runtime::BuildError::value)
-    }
-}
-checked_impls!(ProductPageItems, Vec < Product >);
-/// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
-/// its field. `build` returns the first field that did not convert.
-pub mod builders {
-    use super as types;
-    use super::runtime;
-    impl super::ProductPage {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            items: impl TryInto<types::ProductPageItems, Error: std::fmt::Display>,
-        ) -> ProductPage {
-            ProductPage(
-                runtime::Builder::start(|| Ok(
-                    Self::new(runtime::field("items", items)?),
-                )),
-            )
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct ProductPage(runtime::Builder<super::ProductPage>);
-    impl ProductPage {
-        pub fn next(
-            self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("next", value, |s, v| s.next = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::ProductPage, runtime::BuildError> {
-            self.0.build()
-        }
     }
 }
