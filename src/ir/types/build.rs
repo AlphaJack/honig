@@ -63,19 +63,21 @@ impl Constraints {
         self.items.as_deref().cloned().unwrap_or_default()
     }
 
-    /// Returns the checks that judge the value as JSON (`not`, `dependentSchemas`, `if`), and no other.
+    /// Returns the checks that judge the value as JSON (`not`, `dependentSchemas`, `if`, a counted `oneOf`), and no
+    /// other.
     pub(crate) fn json_checks(&self) -> Self {
         Self {
             not: self.not.clone(),
             dependent_schemas: self.dependent_schemas.clone(),
             conditions: self.conditions.clone(),
+            one_of: self.one_of.clone(),
             ..Self::default()
         }
     }
 
     /// Returns these constraints without the checks that judge the value as JSON ([`Self::json_checks`]).
     pub(crate) fn without_json(&self) -> Self {
-        Self { not: vec![], dependent_schemas: vec![], conditions: vec![], ..self.clone() }
+        Self { not: vec![], dependent_schemas: vec![], conditions: vec![], one_of: vec![], ..self.clone() }
     }
 
     /// Is there anything to check?
@@ -110,6 +112,7 @@ impl Constraints {
             dependent_schemas: vec![],
             conditions: vec![],
             contains: None,
+            one_of: vec![],
             schema: None,
         }
     }
@@ -127,6 +130,9 @@ impl Constraints {
         self.not.extend(other.not);
         self.dependent_schemas.extend(other.dependent_schemas);
         self.conditions.extend(other.conditions);
+        if self.one_of.is_empty() {
+            self.one_of = other.one_of;
+        }
         self.schema = match (self.schema.take(), other.schema) {
             (Some(a), Some(b)) => Some(serde_json::json!({ "allOf": [a, b] })),
             (a, b) => a.or(b),
@@ -897,6 +903,10 @@ impl<'a> Builder<'a> {
                 let n = self.queue_subschema(sub, at.map(|p| join(p, "contains")));
                 c.contains = Some((n, count_of(s, "minContains").unwrap_or(1), count_of(s, "maxContains")));
             }
+            for (i, branch) in self.counted_one_of(s).into_iter().flatten().enumerate() {
+                let at = at.map(|p| join(&join(p, "oneOf"), &i.to_string()));
+                c.one_of.push(self.queue_subschema(branch, at));
+            }
             for (name, sub) in dependent_schemas.into_iter().flatten() {
                 let at = at.map(|p| join(&join(p, "dependentSchemas"), name));
                 c.dependent_schemas.push((name.clone(), self.queue_subschema(sub, at)));
@@ -905,6 +915,13 @@ impl<'a> Builder<'a> {
         for m in s.get("allOf").and_then(Value::as_array).into_iter().flatten().filter(|m| !conditional_member(m)) {
             c.merge(self.constraints_at(m, depth + 1, None));
         }
+        self.merge_reached(s, depth, &mut c);
+        c
+    }
+
+    /// Merges into `c` the keywords of what `s` reaches as one value: its `$ref` target, the one branch beside `null`
+    /// and the constraints of its items.
+    fn merge_reached(&self, s: &Value, depth: usize, c: &mut Constraints) {
         // One hop: a target that has keywords beside its own `$ref` (3.1) keeps them. Following the whole chain
         // would skip them.
         // A target that is being read already is a cycle: its type holds its keywords where it recurs.
@@ -929,7 +946,6 @@ impl<'a> Builder<'a> {
                 c.items = Some(Box::new(ic));
             }
         }
-        c
     }
 
     /// Returns an `allOf` that one merged type cannot hold. The members merge into one struct (or the type they share)
@@ -993,11 +1009,8 @@ impl<'a> Builder<'a> {
         if o.keys().any(|k| !quiet.contains(&k.as_str()) && !k.starts_with("x-")) {
             return true;
         }
-        // Every branch fixes the discriminating property to its own value: the tag picks the one branch a value
-        // can match, and that variant checks the rest.
-        if let Some(prop) = o.get("discriminator").and_then(|d| d.get("propertyName")).and_then(Value::as_str)
-            && branches.iter().all(|b| self.pins_tag(b, prop, 0))
-        {
+        // The tag picks the one branch a value can match, and that variant checks the rest.
+        if self.pins_every_tag(o, branches) {
             return false;
         }
         // `anyOf` asks for one branch at least: decoding checks every keyword of a branch, so the first branch that
@@ -1005,21 +1018,36 @@ impl<'a> Builder<'a> {
         // decodes every branch and counts. A discriminator that does
         // not pin each branch picks one by its tag and would not count, so the whole schema is checked then.
         let one_of = o.contains_key("oneOf");
-        let tagged = o.contains_key("discriminator");
-        let mut types = BTreeSet::new();
         // A branch that asserts nothing takes any value: an `anyOf` with one holds for every value, which its variant of
         // any value decodes.
         if !one_of && branches.iter().any(asserts_nothing) {
             return false;
         }
-        for b in branches {
-            let Some((b, _)) = self.deref(b) else { return true };
-            let Some(t) = b.get("type").and_then(Value::as_str) else { return true };
-            if !types.insert(t.to_owned()) && one_of && tagged {
-                return true;
-            }
+        // Two branches of one type under a discriminator that picks one: `counted_one_of` counts the branches.
+        branches.iter().any(|b| self.deref(b).is_none_or(|(b, _)| b.get("type").and_then(Value::as_str).is_none()))
+    }
+
+    /// Returns the branches of a `oneOf` whose discriminator picks one branch by its tag, while two branches share a
+    /// type: a value may then match more than one. Its check counts the branches that the value decodes as.
+    fn counted_one_of<'s>(&self, s: &'s Value) -> Option<&'s Vec<Value>> {
+        let o = s.as_object()?;
+        let branches = o.get("oneOf")?.as_array().filter(|_| o.contains_key("discriminator"))?;
+        if self.pins_every_tag(o, branches) {
+            return None;
         }
-        false
+        let mut types = BTreeSet::new();
+        let shared = branches.iter().any(|b| {
+            let t = self.deref(b).and_then(|(b, _)| b.get("type").and_then(Value::as_str).map(str::to_owned));
+            t.is_some_and(|t| !types.insert(t))
+        });
+        (shared && !self.loose_union(s)).then_some(branches)
+    }
+
+    /// Does every branch of the union `o` fix its discriminating property to a value of its own? The tag then picks the
+    /// one branch that a value can match.
+    fn pins_every_tag(&self, o: &serde_json::Map<String, Value>, branches: &[Value]) -> bool {
+        let tag = o.get("discriminator").and_then(|d| d.get("propertyName")).and_then(Value::as_str);
+        tag.is_some_and(|prop| branches.iter().all(|b| self.pins_tag(b, prop, 0)))
     }
 
     /// Does `branch` (through `$ref`s and `allOf` members) fix `prop` with `const` or a one-value `enum`?

@@ -246,6 +246,9 @@ pub(crate) struct Constraints {
     /// `contains` of an array: the schema that items match, an index into [`TypeSpace::subschemas`], with
     /// `minContains` (1 unless set) and `maxContains`.
     pub contains: Option<(usize, u64, Option<u64>)>,
+    /// The branches of a `oneOf` that a value must decode as exactly one of, each an index into
+    /// [`TypeSpace::subschemas`]: a discriminator picks one branch, and two share a type.
+    pub one_of: Vec<usize>,
     /// The schema with `$ref`s inlined when it uses keywords that no type expresses on its own
     /// (`contains`, `patternProperties`, `if`, `not`, ...). `runtime::check_schema`
     /// checks it at runtime.

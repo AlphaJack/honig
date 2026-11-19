@@ -1745,33 +1745,6 @@ fn create_item_params(
 ) -> Result<ops::create_item::Params, runtime::Reason> {
     let runtime::Incoming { request: req, body, .. } = incoming;
     runtime::check_media(runtime::Message::content_type(req), &["application/json"])?;
-    if !body.is_empty() {
-        static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-        runtime::check_raw_json_in(
-            &body,
-            SCHEMA
-                .get_or_init(|| serde_json::Value::Object(
-                    serde_json::Map::from_iter([
-                        (
-                            "oneOf".to_owned(),
-                            serde_json::Value::Array(
-                                vec![
-                                    serde_json::Value::Object(serde_json::Map::from_iter([("$ref"
-                                    .to_owned(),
-                                    serde_json::Value::String("#/$defs/~1components~1schemas~1Product"
-                                    .to_owned()))])),
-                                    serde_json::Value::Object(serde_json::Map::from_iter([("$ref"
-                                    .to_owned(),
-                                    serde_json::Value::String("#/$defs/~1components~1schemas~1Variant"
-                                    .to_owned()))]))
-                                ],
-                            ),
-                        ),
-                    ]),
-                )),
-            runtime::schema_defs(),
-        )?;
-    }
     Ok(ops::create_item::Params {
         body: runtime::json_decode(0, &body)?,
     })

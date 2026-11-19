@@ -106,7 +106,7 @@ pub(super) fn subschema_checks(
     value: &TokenStream,
     path: &TokenStream,
 ) -> TokenStream {
-    if c.not.is_empty() && c.dependent_schemas.is_empty() && c.conditions.is_empty() {
+    if c.json_checks().is_empty() {
         return TokenStream::new();
     }
     let ty = |n: usize| super::syntax::ty(space, &space.types.subschemas[n].0, false);
@@ -153,12 +153,25 @@ pub(super) fn subschema_checks(
             (None, None) => TokenStream::new(),
         }
     });
+    let one_of = (!c.one_of.is_empty()).then(|| {
+        let branches = c.one_of.iter().map(|&n| ty(n));
+        quote! {
+            let hits = [#(serde_json::from_value::<#branches>(json.clone()).is_ok()),*]
+                .into_iter()
+                .filter(|hit| *hit)
+                .count();
+            if hits != 1 {
+                runtime::violation(out, #path, format!("matches {hits} of `oneOf`, not exactly one"));
+            }
+        }
+    });
     quote! {
         {
             let json = runtime::to_value(#value).unwrap_or_default();
             #(#nots)*
             #(#dependents)*
             #(#conditions)*
+            #one_of
         }
     }
 }
