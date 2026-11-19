@@ -281,6 +281,18 @@ components:
         Nick-Name: {type: string}
       propertyNames: {pattern: '^[a-z]+$'}
 
+    # One `patternProperties` entry of a closed map: every name matches the pattern and every value decodes as its
+    # schema, with no schema checked whole.
+    Scored:
+      type: object
+      properties:
+        scores: {$ref: '#/components/schemas/Scores'}
+    Scores:
+      type: object
+      patternProperties:
+        '^[a-z]+$': {type: integer, minimum: 0}
+      additionalProperties: false
+
     Price:
       type: object
       properties:
