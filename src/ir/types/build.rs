@@ -204,6 +204,14 @@ fn typed_object_keywords(s: &Value, c: &mut Constraints) -> (bool, bool, bool) {
     typed
 }
 
+/// Does `s` become the tagged union of its `if`/`then` on one property's constants (`conditional_union`)? Only a
+/// schema of `type: object` without a union of its own does: on any other the conditions are checks of their schemas.
+fn typed_conditional(s: &Value) -> bool {
+    s.as_object().is_some_and(|o| {
+        is_object(o) && !o.contains_key("oneOf") && !o.contains_key("anyOf") && conditional_union(o).is_some()
+    })
+}
+
 /// Whether the schema `o` takes an object: its `type` names `object`.
 fn is_object(o: &serde_json::Map<String, Value>) -> bool {
     type_set(o).0.iter().any(|t| t == "object")
@@ -1198,7 +1206,7 @@ impl<'a> Builder<'a> {
         let patterns = (!pattern_map).then(|| typed_patterns(s)).flatten();
         // `if`/`then` on one property's constants becomes a tagged union (`conditional_union`): its variants hold the
         // conditions. Only conditions that it cannot type stay a run-time check.
-        let typed_conditional = s.as_object().is_some_and(|o| conditional_union(o).is_some());
+        let typed_conditional = typed_conditional(s);
         let conditional_key = |k: &str| {
             // An `if` that is no tagged union is a check of the types of its schemas.
             matches!(k, "if" | "then" | "else")
