@@ -156,6 +156,7 @@ pub(super) fn subschema_checks(
     let unevaluated = c.unevaluated.as_ref().map(|(ev, leftover)| unevaluated_checks(ev, *leftover, &ty, path));
     let unevaluated_items =
         c.unevaluated_items.as_ref().map(|(ev, leftover)| unevaluated_item_checks(ev, *leftover, &ty, path));
+    let names = names_schema_checks(c, &ty, path);
     quote! {
         {
             let json = runtime::to_value(#value).unwrap_or_default();
@@ -169,6 +170,7 @@ pub(super) fn subschema_checks(
             #values
             #unevaluated
             #unevaluated_items
+            #names
         }
     }
 }
@@ -1039,4 +1041,20 @@ fn condition_checks(c: &Constraints, ty: &dyn Fn(usize) -> TokenStream, path: &T
         }
     });
     quote!(#(#conditions)*)
+}
+
+/// Returns `propertyNames` of `c` when no text check holds it: each name of the object in `json`, as a JSON string,
+/// decodes as the type of the schema.
+fn names_schema_checks(c: &Constraints, ty: &dyn Fn(usize) -> TokenStream, path: &TokenStream) -> TokenStream {
+    let Some(n) = c.names_schema else { return TokenStream::new() };
+    let t = ty(n);
+    quote! {
+        if let serde_json::Value::Object(object) = &json {
+            for name in object.keys() {
+                if serde_json::from_value::<#t>(serde_json::Value::String(name.clone())).is_err() {
+                    runtime::violation(out, &runtime::InstancePath::Key(#path, name), "is not an allowed property name");
+                }
+            }
+        }
+    }
 }

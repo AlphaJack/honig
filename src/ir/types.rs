@@ -252,6 +252,9 @@ pub(crate) struct Constraints {
     pub unevaluated: Option<(Evaluated, Leftover)>,
     /// `unevaluatedItems`: what the schema evaluates of a list's items, and what the other items take.
     pub unevaluated_items: Option<(EvaluatedItems, Leftover)>,
+    /// `propertyNames` of any other schema than text checks: each name, as a JSON string, decodes as its type, an index
+    /// into [`TypeSpace::subschemas`].
+    pub names_schema: Option<usize>,
     /// Each `if` with its `then` and `else`, as indices into [`TypeSpace::subschemas`]: a value that decodes as the
     /// type of `if` decodes as that of `then`, any other as that of `else`.
     pub conditions: Vec<(usize, Option<usize>, Option<usize>)>,

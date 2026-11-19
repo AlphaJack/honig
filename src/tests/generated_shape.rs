@@ -765,7 +765,8 @@ fn dependent_required_checks_the_fields() {
 }
 
 /// `propertyNames` of `pattern`, `minLength` and `maxLength` is a check of each name: no schema is checked whole. Any
-/// other schema of names keeps the whole check. A map component holds it where it is used, as `minProperties`.
+/// other schema of names is a type that each name decodes as. A map component holds it where it is used, as
+/// `minProperties`.
 #[test]
 fn property_names_checks_each_name() {
     let types = |names: serde_json::Value| {
@@ -777,7 +778,7 @@ fn property_names_checks_each_name() {
     let typed = types(json!({"pattern": "^[a-z]+$", "maxLength": 8}));
     assert!(typed.contains("for name in") && !typed.contains("check_schema"), "{typed}");
     let other = types(json!({"enum": ["a", "b"]}));
-    assert!(other.contains("check_schema"), "{other}");
+    assert!(other.contains("is not an allowed property name") && !other.contains("check_schema"), "{other}");
 }
 
 /// One `patternProperties` entry of a closed map is a map of the pattern's schema whose names are checked against the
@@ -1102,4 +1103,17 @@ fn a_root_dynamic_anchor_binds_the_generic_to_its_site() {
     let types =
         common::file(&common::generate("root-anchor", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
     assert!(types.contains("Option<Vec<Self>>"), "{types}");
+}
+
+/// `propertyNames` of any schema decodes each name, as a JSON string, as its type: no schema is checked whole.
+#[test]
+fn property_names_of_any_schema_decode_each_name() {
+    let labels = json!({"type": "object", "additionalProperties": {"type": "string"},
+        "propertyNames": {"enum": ["red", "green"]}});
+    let holder = json!({"type": "object", "properties": {"labels": labels}});
+    let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Holder": holder}}));
+    let types =
+        common::file(&common::generate("property-names-any", &doc, &crate::emit::Options::default()), "types.rs")
+            .to_owned();
+    assert!(types.contains("is not an allowed property name") && !types.contains("check_schema"), "{types}");
 }

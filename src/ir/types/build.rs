@@ -78,6 +78,7 @@ impl Constraints {
             const_value: self.const_value.clone(),
             unevaluated: self.unevaluated.clone(),
             unevaluated_items: self.unevaluated_items.clone(),
+            names_schema: self.names_schema,
             ..Self::default()
         }
     }
@@ -96,6 +97,7 @@ impl Constraints {
             const_value: None,
             unevaluated: None,
             unevaluated_items: None,
+            names_schema: None,
             ..self.clone()
         }
     }
@@ -141,6 +143,7 @@ impl Constraints {
             const_value: None,
             unevaluated: None,
             unevaluated_items: None,
+            names_schema: None,
             conditions: vec![],
             contains: None,
             one_of: vec![],
@@ -158,7 +161,7 @@ impl Constraints {
             ($($f:ident),*) => { $( if self.$f.is_none() { self.$f = other.$f; } )* };
         }
         take!(min_length, max_length, pattern, minimum, maximum, exclusive_minimum, exclusive_maximum, multiple_of);
-        take!(enum_values, const_value, unevaluated, unevaluated_items);
+        take!(enum_values, const_value, unevaluated, unevaluated_items, names_schema);
         take!(min_items, max_items, min_properties, max_properties, items, property_names, contains, tuple);
         self.unique_items |= other.unique_items;
         self.decimal128 |= other.decimal128;
@@ -1170,6 +1173,8 @@ impl<'a> Builder<'a> {
             s.get("unevaluatedProperties").is_some() && self.evaluation::<Evaluated>(s, 0, false).is_some();
         let unevaluated_items =
             s.get("unevaluatedItems").is_some() && self.evaluation::<EvaluatedItems>(s, 0, false).is_some();
+        // `propertyNames` of any other schema: each name decodes as its type.
+        let names_any = !names && s.get("propertyNames").is_some() && s.as_object().is_some_and(is_object);
         let dependent_schemas = typed_dependent_schemas(s);
         // `contains` on an array type counts the items that decode as the type of its schema.
         let typed_contains =
@@ -1182,7 +1187,7 @@ impl<'a> Builder<'a> {
             // An `if` that is no tagged union is a check of the types of its schemas.
             matches!(k, "if" | "then" | "else")
                 || (dependents && k == "dependentRequired")
-                || (names && k == "propertyNames")
+                || ((names || names_any) && k == "propertyNames")
                 || (pattern_map && matches!(k, "patternProperties" | "additionalProperties"))
                 || k == "not"
                 || (dependent_schemas.is_some() && k == "dependentSchemas")
@@ -1232,11 +1237,10 @@ impl<'a> Builder<'a> {
             }
             self.queue_also(s, at, &mut c);
             untyped_value_checks(s, &mut c);
-            if unevaluated {
-                c.unevaluated = self.unevaluated(s, at);
-            }
-            if unevaluated_items {
-                c.unevaluated_items = self.unevaluated_items(s, at);
+            c.unevaluated = unevaluated.then(|| self.unevaluated(s, at)).flatten();
+            c.unevaluated_items = unevaluated_items.then(|| self.unevaluated_items(s, at)).flatten();
+            if let Some(pn) = s.get("propertyNames").filter(|_| names_any) {
+                c.names_schema = Some(self.queue_subschema(pn, at.map(|p| join(p, "propertyNames"))));
             }
             for (name, sub) in dependent_schemas.into_iter().flatten() {
                 let at = at.map(|p| join(&join(p, "dependentSchemas"), name));
