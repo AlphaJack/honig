@@ -3,6 +3,7 @@
 //! than its input allows, and the [`table`] that the benches print.
 
 pub mod callgrind;
+mod functions;
 mod path;
 pub mod table;
 
