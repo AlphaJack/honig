@@ -741,3 +741,23 @@ fn a_time_with_its_offset_is_a_full_time_with_any_date_library() {
     let types = common::file(&files, "types.rs");
     assert!(types.contains("pub start: runtime::FullTime"), "{types}");
 }
+
+/// `dependentRequired` over properties that the struct declares is a check of its fields: no schema is checked whole.
+/// A name that the struct does not declare, or an optional one whose default hides its absence, keeps the whole check.
+#[test]
+fn dependent_required_checks_the_fields() {
+    let types = |schema: serde_json::Value| {
+        let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Payment": schema}}));
+        common::file(&common::generate("dependent-required", &doc, &crate::emit::Options::default()), "types.rs")
+            .to_owned()
+    };
+    let typed = types(json!({"type": "object", "properties": {"card": {"type": "string"}, "cvc": {"type": "string"}},
+        "dependentRequired": {"card": ["cvc"]}}));
+    assert!(typed.contains("is required when") && !typed.contains("check_schema"), "{typed}");
+    let undeclared = types(json!({"type": "object", "properties": {"card": {"type": "string"}},
+        "dependentRequired": {"card": ["cvc"]}}));
+    assert!(undeclared.contains("check_schema"), "{undeclared}");
+    let defaulted = types(json!({"type": "object", "properties": {"card": {"type": "string"},
+        "cvc": {"type": "string", "default": "000"}}, "dependentRequired": {"card": ["cvc"]}}));
+    assert!(defaulted.contains("check_schema"), "{defaulted}");
+}

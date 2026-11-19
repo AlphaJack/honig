@@ -229,6 +229,9 @@ pub(crate) struct Constraints {
     pub decimal128: bool,
     /// Constraints of an array's items.
     pub items: Option<Box<Self>>,
+    /// `dependentRequired` that the struct holds: each property, by its name on the wire, with the properties that must
+    /// be present when it is. Every name is a field whose absence shows: required, or optional without a default.
+    pub dependent_required: Vec<(String, Vec<String>)>,
     /// The schema with `$ref`s inlined when it uses keywords that no type expresses on its own
     /// (`contains`, `patternProperties`, `if`, `not`, ...). `runtime::check_schema`
     /// checks it at runtime.

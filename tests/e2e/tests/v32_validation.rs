@@ -674,3 +674,15 @@ fn unevaluated_properties_beside_any_of_sees_the_matching_branches() {
     assert!(tagged(json!({"label": "a", "colour": "red", "size": 1})).is_ok());
     assert!(tagged(json!({"label": "a", "shape": "round"})).is_err(), "a property that no branch evaluates");
 }
+
+/// `dependentRequired` over declared properties is a check of the fields: a card needs its code and its holder, which
+/// may be `null` but not absent.
+#[test]
+fn dependent_required_is_a_check_of_the_fields() {
+    let decode = |v: serde_json::Value| serde_json::from_value::<types::Payment>(v);
+    assert!(decode(json!({"card": "4111", "cvc": "123", "holder": null})).is_ok());
+    assert!(decode(json!({"note": "cash"})).is_ok(), "no card: nothing else is required");
+    let missing = decode(json!({"card": "4111", "holder": "Ann"})).expect_err("no cvc");
+    assert!(missing.to_string().contains("`cvc` is required when `card` is present"), "{missing}");
+    assert!(decode(json!({"card": "4111", "cvc": "123"})).is_err(), "an absent holder is not a null one");
+}

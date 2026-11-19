@@ -163,6 +163,8 @@ pub(super) fn checks(
         }
         Ty::Named(id) => match &space.types.get(*id).kind {
             Kind::Alias(x) => checks(space, x, c, value, path),
+            // The fields of a struct hold `dependentRequired` together: the checked type of its shape runs it.
+            Kind::Struct(s) if !c.dependent_required.is_empty() => dependent_checks(space, s, c, value, path),
             // Any other named type holds its own keywords: only a valid value decodes or is built.
             Kind::Struct(_)
             | Kind::StrEnum(_)
@@ -177,6 +179,43 @@ pub(super) fn checks(
             TokenStream::new()
         }
     }
+}
+
+/// Returns `dependentRequired` on the fields of `shape` (`value` is a `&` of it): when a property is present, so are the
+/// properties that it requires.
+fn dependent_checks(
+    space: &Space<'_>,
+    shape: &crate::ir::types::Struct,
+    c: &Constraints,
+    value: &TokenStream,
+    path: &TokenStream,
+) -> TokenStream {
+    let r = receiver(value);
+    // How the property `wire` shows that it is absent: `None` for a required field, which always is present. The IR
+    // keeps no name whose absence a default hides.
+    let absent = |wire: &str| -> Option<(TokenStream, TokenStream)> {
+        let f = shape.fields.iter().find(|f| f.wire == wire).filter(|f| !f.required)?;
+        let n = super::syntax::snake_ident(&f.name);
+        Some(if space.types.nullable(&f.ty).is_some() {
+            (quote!(#r.#n.is_absent()), quote!(!#r.#n.is_absent()))
+        } else {
+            (quote!(#r.#n.is_none()), quote!(#r.#n.is_some()))
+        })
+    };
+    let checks = c.dependent_required.iter().flat_map(|(name, needs)| {
+        let when = absent(name);
+        needs.iter().filter_map(move |need| {
+            // A required property is always there: nothing to check.
+            let (_, has) = absent(need)?;
+            let message = lit(&format!("`{need}` is required when `{name}` is present"));
+            let ok = match &when {
+                Some((missing, _)) => quote!(#missing || #has),
+                None => has,
+            };
+            Some(quote!(runtime::check(out, #path, #ok, #message);))
+        })
+    });
+    quote!(#(#checks)*)
 }
 
 /// Returns `uniqueItems` and the checks of each item for a `Vec` or an array.
