@@ -927,3 +927,19 @@ fn pattern_properties_check_each_matched_value() {
         common::file(&common::generate("patterns", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
     assert!(types.contains("no value is allowed here") && !types.contains("check_schema"), "{types}");
 }
+
+/// `additionalProperties` with a schema beside `patternProperties` holds for the names that no pattern matches and the
+/// object does not declare: no schema is checked whole.
+#[test]
+fn additional_properties_beside_patterns_checks_the_other_names() {
+    let tags = json!({"type": "object", "patternProperties": {"^x_": {"type": "string"}},
+        "additionalProperties": {"type": "integer"}});
+    let holder = json!({"type": "object", "properties": {"tags": tags}});
+    let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Holder": holder}}));
+    let types = common::file(
+        &common::generate("additional-beside-patterns", &doc, &crate::emit::Options::default()),
+        "types.rs",
+    )
+    .to_owned();
+    assert!(types.contains("let mut matched = false;") && !types.contains("check_schema"), "{types}");
+}

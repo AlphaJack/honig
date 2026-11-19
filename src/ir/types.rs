@@ -256,9 +256,9 @@ pub(crate) struct Constraints {
     /// `patternProperties` that generated code checks: each pattern with its schema, an index into
     /// [`TypeSpace::subschemas`]. A value of a name that the pattern matches decodes as the type of the schema.
     pub pattern_properties: Vec<(String, usize)>,
-    /// `additionalProperties: false` beside `patternProperties`: the declared names. Any other name that no pattern
-    /// matches is refused.
-    pub closed_to: Option<Vec<String>>,
+    /// `additionalProperties` beside `patternProperties`: the declared names, and the schema that any other name that no
+    /// pattern matches decodes as, an index into [`TypeSpace::subschemas`]. `None` for `false`: such a name is refused.
+    pub closed_to: Option<(Vec<String>, Option<usize>)>,
     /// The schema with `$ref`s inlined when it uses keywords that no type expresses on its own
     /// (`contains`, `patternProperties`, `if`, `not`, ...). `runtime::check_schema`
     /// checks it at runtime.

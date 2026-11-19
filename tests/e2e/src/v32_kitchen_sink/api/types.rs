@@ -1722,20 +1722,22 @@ impl TryFrom<Vec<serde_json::Value>> for ProductPoint {
 checked_impls!(ProductPoint, Vec < serde_json::Value >);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
-pub struct ProductAttrs(pub(super) std::collections::BTreeMap<String, String>);
+pub struct ProductAttrs(
+    pub(super) std::collections::BTreeMap<String, serde_json::Value>,
+);
 impl<'de> serde::Deserialize<'de> for ProductAttrs {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         let value = <std::collections::BTreeMap<
             String,
-            String,
+            serde_json::Value,
         > as serde::Deserialize>::deserialize(d)?;
         Self::try_from(value).map_err(serde::de::Error::custom)
     }
 }
-impl TryFrom<std::collections::BTreeMap<String, String>> for ProductAttrs {
+impl TryFrom<std::collections::BTreeMap<String, serde_json::Value>> for ProductAttrs {
     type Error = runtime::BuildError;
     fn try_from(
-        value: std::collections::BTreeMap<String, String>,
+        value: std::collections::BTreeMap<String, serde_json::Value>,
     ) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
@@ -1764,7 +1766,7 @@ impl TryFrom<std::collections::BTreeMap<String, String>> for ProductAttrs {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(ProductAttrs, std::collections::BTreeMap < String, String >);
+checked_impls!(ProductAttrs, std::collections::BTreeMap < String, serde_json::Value >);
 pub type BookTags = ProductTags;
 pub type BookPoint = ProductPoint;
 pub type BookAttrs = ProductAttrs;
