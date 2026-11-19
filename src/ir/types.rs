@@ -714,6 +714,13 @@ impl TypeSpace {
     pub(crate) fn kind_of(&self, ty: &Ty) -> JsonKind {
         kind_in(&self.defs, ty)
     }
+
+    /// Returns [`TypeSpace::kind_of`] of every definition by `TypeId`, each found once. Asked one at a time, a chain of
+    /// unions walks every union before it each time.
+    pub(crate) fn kinds(&self) -> Vec<JsonKind> {
+        let mut kinds = build::Kinds::new(&self.defs);
+        (0..self.defs.len()).map(|i| kinds.of(&Ty::Named(TypeId(i)))).collect()
+    }
 }
 
 #[cfg(test)]

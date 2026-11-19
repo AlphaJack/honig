@@ -72,7 +72,7 @@ pub(crate) fn user_types(op: &Operation) -> (TokenStream, TokenStream) {
 }
 
 pub(crate) fn shape(space: &Space<'_>, t: &Ty) -> TokenStream {
-    match space.types.kind_of(t.non_null()) {
+    match space.kind_of(t.non_null()) {
         JsonKind::Array => quote!(runtime::Shape::Array),
         JsonKind::Object => quote!(runtime::Shape::Object),
         JsonKind::Null | JsonKind::Bool | JsonKind::Integer | JsonKind::Number | JsonKind::String | JsonKind::Any => {

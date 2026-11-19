@@ -709,7 +709,7 @@ fn response_arm(
             let headers = r.headers.iter().map(|h| {
                 let (n, wire, s) = (snake_ident(&h.name), lit(&h.wire), shape(space, &h.ty));
                 let raw = if h.wire.eq_ignore_ascii_case("set-cookie") {
-                    let array = matches!(space.types.kind_of(h.ty.non_null()), JsonKind::Array);
+                    let array = matches!(space.kind_of(h.ty.non_null()), JsonKind::Array);
                     quote!(runtime::header_lines(&head.headers, #wire, #array))
                 } else if h.json {
                     quote!(runtime::json_header(runtime::first_header(&head.headers, #wire).as_deref()))

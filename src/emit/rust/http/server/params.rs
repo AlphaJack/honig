@@ -56,7 +56,7 @@ pub(crate) fn spread_object(space: &Space<'_>, op: &Operation, p: &Param, raw: T
         && p.content.is_none()
         && matches!(p.style, crate::ir::http::Style::Form)
         && p.explode
-        && matches!(space.types.kind_of(p.ty.non_null()), JsonKind::Object);
+        && matches!(space.kind_of(p.ty.non_null()), JsonKind::Object);
     if !spread {
         return raw;
     }
@@ -148,7 +148,7 @@ pub(crate) fn text_decode(
     at: &Literal,
 ) -> Option<TokenStream> {
     let scalar = matches!(
-        space.types.kind_of(p.ty.non_null()),
+        space.kind_of(p.ty.non_null()),
         JsonKind::Integer | JsonKind::Number | JsonKind::Bool | JsonKind::String
     );
     if !scalar || p.content.is_some() || p.default.is_some() || p.style == crate::ir::http::Style::DeepObject {

@@ -1790,7 +1790,7 @@ fn untagged(space: &Space<'_>, u: &Union) -> TokenStream {
         .map(|v| {
             // serde lets a struct read an array by position. So a branch of a known kind only sees values of
             // that kind.
-            let kind = match space.types.kind_of(&v.ty) {
+            let kind = match space.kind_of(&v.ty) {
                 JsonKind::Object => Some(rtkind::K::Object.path()),
                 JsonKind::Array => Some(rtkind::K::Array.path()),
                 JsonKind::String => Some(rtkind::K::String.path()),
@@ -1875,7 +1875,7 @@ fn fits(space: &Space<'_>, t: &Ty) -> Option<TokenStream> {
         .filter_map(|f| {
             let optional = space.types.nullable(&f.ty).is_some();
             let present = f.required && field_default(space, f).is_none() && !optional;
-            let mut kinds: Vec<K> = match space.types.kind_of(&f.ty) {
+            let mut kinds: Vec<K> = match space.kind_of(&f.ty) {
                 _ if reads_several_kinds(space, &f.ty, 0) => vec![],
                 JsonKind::Any => vec![],
                 JsonKind::Null => vec![K::Null],
@@ -1942,7 +1942,7 @@ fn reads_several_kinds(space: &Space<'_>, t: &Ty, depth: usize) -> bool {
 fn by_kind(space: &Space<'_>, u: &Union) -> TokenStream {
     use rtkind::K;
     let mut kinds: Vec<(JsonKind, String, &Ty)> =
-        u.variants.iter().map(|v| (space.types.kind_of(&v.ty), pascal(&v.name), &v.ty)).collect();
+        u.variants.iter().map(|v| (space.kind_of(&v.ty), pascal(&v.name), &v.ty)).collect();
     kinds.sort_by_key(|(k, ..)| *k);
     let has_integer = kinds.iter().any(|(k, ..)| *k == JsonKind::Integer);
     let mut covered: Vec<K> = vec![];

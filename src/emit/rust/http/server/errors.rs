@@ -41,8 +41,8 @@ pub(crate) fn error_schema(space: &Space<'_>, c: &Content) -> Option<TokenStream
             }
             continue;
         }
-        let kind = space.types.kind_of(f.ty.non_null());
-        let item_is_string = matches!(f.ty.non_null(), Ty::Vec(t) if space.types.kind_of(t) == JsonKind::String);
+        let kind = space.kind_of(f.ty.non_null());
+        let item_is_string = matches!(f.ty.non_null(), Ty::Vec(t) if space.kind_of(t) == JsonKind::String);
         let (status, detail) = (STATUS_FIELDS.contains(&wire.as_str()), DETAIL_FIELDS.contains(&wire.as_str()));
         let what = match (wire.as_str(), kind) {
             (_, JsonKind::Integer | JsonKind::Number) if status => quote!(Status),
@@ -212,7 +212,7 @@ pub(crate) fn error_conversions(api: &Api, space: &Space<'_>, aliases: &BTreeMap
                     && !is_enum(space, &f.ty)
                     && space.types.nullable(&f.ty).is_none()
                     && names.contains(&plain_name(&f.wire).as_str())
-                    && space.types.kind_of(&f.ty) == kind
+                    && space.kind_of(&f.ty) == kind
             })
         };
         let Some(status) = field(&STATUS_FIELDS, JsonKind::Integer) else { continue };
