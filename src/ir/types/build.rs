@@ -466,6 +466,18 @@ fn count_of(s: &Value, k: &str) -> Option<u64> {
     s.get(k).and_then(json::count)
 }
 
+/// Does schema `s` take every value: `true`, or an object of annotations only (`{}`, `{$comment: ...}`)?
+fn asserts_nothing(s: &Value) -> bool {
+    match s {
+        Value::Bool(b) => *b,
+        Value::Object(o) => o.keys().all(|k| {
+            matches!(k.as_str(), "$comment" | "description" | "title" | "examples" | "deprecated")
+                || k.starts_with("x-")
+        }),
+        Value::Null | Value::Number(_) | Value::String(_) | Value::Array(_) => false,
+    }
+}
+
 /// Returns the pointer of `key` under the schema at `at`.
 fn child_ptr(at: &str, key: &str) -> String {
     format!("{at}/{}", escape_token(key))
@@ -995,6 +1007,11 @@ impl<'a> Builder<'a> {
         let one_of = o.contains_key("oneOf");
         let tagged = o.contains_key("discriminator");
         let mut types = BTreeSet::new();
+        // A branch that asserts nothing takes any value: an `anyOf` with one holds for every value, which its variant of
+        // any value decodes.
+        if !one_of && branches.iter().any(asserts_nothing) {
+            return false;
+        }
         for b in branches {
             let Some((b, _)) = self.deref(b) else { return true };
             let Some(t) = b.get("type").and_then(Value::as_str) else { return true };

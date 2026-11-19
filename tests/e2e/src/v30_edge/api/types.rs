@@ -682,46 +682,38 @@ impl<'de> serde::Deserialize<'de> for OrderPayment {
         )
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
-#[serde(transparent)]
-pub struct OrderDiscount(pub(super) OrderDiscountVariants);
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum OrderDiscount {
+    Money(Money),
+    Other(serde_json::Value),
+}
+impl serde::Serialize for OrderDiscount {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        match self {
+            Self::Money(v) => serde::Serialize::serialize(v, s),
+            Self::Other(v) => serde::Serialize::serialize(v, s),
+        }
+    }
+}
 impl<'de> serde::Deserialize<'de> for OrderDiscount {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <OrderDiscountVariants as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
-    }
-}
-impl TryFrom<OrderDiscountVariants> for OrderDiscount {
-    type Error = runtime::BuildError;
-    fn try_from(value: OrderDiscountVariants) -> Result<Self, runtime::BuildError> {
-        let mut violations: Vec<runtime::Violation> = Vec::new();
-        {
-            let out = &mut violations;
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&value).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"anyOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Money\"},{}]}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Root,
-                    &value,
-                    schema,
-                    runtime::schema_defs(),
-                );
+        let v = <runtime::Content<'de> as serde::Deserialize>::deserialize(d)?;
+        match v.kind() {
+            runtime::Kind::Object => {
+                match v.decode_ref::<Money>() {
+                    Ok(x) => Ok(Self::Money(x)),
+                    Err(_) => Ok(Self::Other(v.into_value())),
+                }
             }
+            runtime::Kind::Null
+            | runtime::Kind::Bool
+            | runtime::Kind::Integer
+            | runtime::Kind::Number
+            | runtime::Kind::String
+            | runtime::Kind::Array => Ok(Self::Other(v.into_value())),
         }
-        runtime::first(violations)
-            .map(|()| Self(value))
-            .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(OrderDiscount, OrderDiscountVariants);
 #[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct ListOrdersLimit(pub(super) i32);
@@ -964,38 +956,6 @@ impl<'de> runtime::TaggedUnion<'de> for VehicleVariants {
             0 => v.decode_into(Self::Car),
             1 => v.decode_into(Self::Van),
             _ => Err(serde::de::Error::custom("matches no variant")),
-        }
-    }
-}
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum OrderDiscountVariants {
-    Money(Money),
-    Other(serde_json::Value),
-}
-impl serde::Serialize for OrderDiscountVariants {
-    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        match self {
-            Self::Money(v) => serde::Serialize::serialize(v, s),
-            Self::Other(v) => serde::Serialize::serialize(v, s),
-        }
-    }
-}
-impl<'de> serde::Deserialize<'de> for OrderDiscountVariants {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let v = <runtime::Content<'de> as serde::Deserialize>::deserialize(d)?;
-        match v.kind() {
-            runtime::Kind::Object => {
-                match v.decode_ref::<Money>() {
-                    Ok(x) => Ok(Self::Money(x)),
-                    Err(_) => Ok(Self::Other(v.into_value())),
-                }
-            }
-            runtime::Kind::Null
-            | runtime::Kind::Bool
-            | runtime::Kind::Integer
-            | runtime::Kind::Number
-            | runtime::Kind::String
-            | runtime::Kind::Array => Ok(Self::Other(v.into_value())),
         }
     }
 }
