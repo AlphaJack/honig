@@ -252,6 +252,12 @@ components:
       then: {required: [customs]}
       not: {required: [customs, insurer], properties: {customs: {const: "none"}}}
 
+    # Keywords without `type`: each applies to values of its kind, and any other value passes.
+    Loose:
+      type: object
+      properties:
+        v: {minimum: 1, maxLength: 3}
+
     # `dependentRequired` over declared properties: a check of the fields, with no schema checked whole.
     Payment:
       type: object

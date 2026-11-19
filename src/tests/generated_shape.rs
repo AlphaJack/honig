@@ -797,3 +797,14 @@ fn a_closed_map_of_one_pattern_is_typed() {
         "additionalProperties": false}));
     assert!(two.contains("check_schema"), "{two}");
 }
+
+/// A schema without `type` whose keywords each apply to one kind of value (`minimum`, `maxLength`, `maxItems`, ...) is
+/// a `serde_json::Value` checked by its kind: no schema is checked whole.
+#[test]
+fn keywords_without_a_type_check_values_of_their_kind() {
+    let any = json!({"type": "object", "properties": {"v": {"minimum": 1, "maxLength": 3, "maxItems": 2}}});
+    let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Loose": any}}));
+    let types =
+        common::file(&common::generate("typeless", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
+    assert!(types.contains("serde_json::Value::Number") && !types.contains("check_schema"), "{types}");
+}

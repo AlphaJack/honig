@@ -294,6 +294,15 @@ pub(crate) fn needs_checks(types: &TypeSpace, t: &Ty, c: &Constraints, hops: usi
             | Kind::Checked(_)
             | Kind::Pending => false,
         },
-        Ty::Bool | Ty::Bytes | Ty::Binary | Ty::Any | Ty::Unit | Ty::Tuple(_) => false,
+        Ty::Any => {
+            [&c.minimum, &c.maximum, &c.exclusive_minimum, &c.exclusive_maximum, &c.multiple_of]
+                .iter()
+                .any(|b| b.is_some())
+                || [c.min_length, c.max_length, c.min_items, c.max_items, c.min_properties, c.max_properties]
+                    .iter()
+                    .any(Option::is_some)
+                || c.pattern.is_some()
+        }
+        Ty::Bool | Ty::Bytes | Ty::Binary | Ty::Unit | Ty::Tuple(_) => false,
     }
 }

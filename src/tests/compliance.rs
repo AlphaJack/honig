@@ -633,6 +633,6 @@ fn only_an_all_of_that_one_struct_cannot_hold_is_checked_whole() {
     };
     let typed = generated("all-of-typed", json!({"type": "object", "properties": {"sku": {"type": "string"}}}));
     assert!(!typed.contains("check_schema"), "{typed}");
-    let lossy = generated("all-of-lossy", json!({"type": "object", "properties": {"name": {"minLength": 2}}}));
+    let lossy = generated("all-of-lossy", json!({"type": "object", "properties": {"name": {"maxLength": 5}}}));
     assert!(lossy.contains("check_schema"), "{lossy}");
 }
