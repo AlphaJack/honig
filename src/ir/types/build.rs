@@ -63,6 +63,21 @@ impl Constraints {
         self.items.as_deref().cloned().unwrap_or_default()
     }
 
+    /// Returns the checks that judge the value as JSON (`not`, `dependentSchemas`, `if`), and no other.
+    pub(crate) fn json_checks(&self) -> Self {
+        Self {
+            not: self.not.clone(),
+            dependent_schemas: self.dependent_schemas.clone(),
+            conditions: self.conditions.clone(),
+            ..Self::default()
+        }
+    }
+
+    /// Returns these constraints without the checks that judge the value as JSON ([`Self::json_checks`]).
+    pub(crate) fn without_json(&self) -> Self {
+        Self { not: vec![], dependent_schemas: vec![], conditions: vec![], ..self.clone() }
+    }
+
     /// Is there anything to check?
     pub(crate) fn is_empty(&self) -> bool {
         *self == Self::default()

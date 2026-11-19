@@ -176,9 +176,11 @@ pub(super) fn checks(
     if space.is_external(t) {
         return TokenStream::new();
     }
-    if !c.not.is_empty() || !c.dependent_schemas.is_empty() || !c.conditions.is_empty() {
-        let typed = subschema_checks(space, c, value, path);
-        let rest = Constraints { not: vec![], dependent_schemas: vec![], conditions: vec![], ..c.clone() };
+    let json = c.json_checks();
+    if !json.is_empty() {
+        let held = crate::ir::checked::json_held_by_type(space.types, t, &json, 0);
+        let typed = (!held).then(|| subschema_checks(space, c, value, path));
+        let rest = c.without_json();
         let rest = checks(space, t, &rest, value, path);
         return quote!(#typed #rest);
     }
