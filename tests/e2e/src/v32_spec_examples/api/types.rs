@@ -883,7 +883,7 @@ impl<'de> serde::Deserialize<'de> for ServerSentEventStreamsBodyItemEventEvent {
     }
 }
 pub type ServerSentEventStreamsBodyItemEventRetry = EventRetry;
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct ServerSentEventStreamsBodyItemAddInt64 {
     #[serde(
@@ -892,7 +892,7 @@ pub struct ServerSentEventStreamsBodyItemAddInt64 {
         deserialize_with = "runtime::not_null"
     )]
     pub event: Option<ServerSentEventStreamsBodyItemAddInt64Event>,
-    pub data: ServerSentEventStreamsBodyItemAddInt64DataChecked,
+    pub data: ServerSentEventStreamsBodyItemAddInt64Data,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
@@ -910,7 +910,7 @@ deserialize_impl!(ServerSentEventStreamsBodyItemAddInt64);
 serialize_impl!(ServerSentEventStreamsBodyItemAddInt64);
 impl ServerSentEventStreamsBodyItemAddInt64 {
     #[must_use]
-    pub const fn new(data: ServerSentEventStreamsBodyItemAddInt64DataChecked) -> Self {
+    pub const fn new(data: ServerSentEventStreamsBodyItemAddInt64Data) -> Self {
         Self {
             event: None,
             data,
@@ -1142,54 +1142,6 @@ impl TryFrom<FormDataCode> for FormDataCodeChecked {
     }
 }
 checked_impls!(FormDataCodeChecked, FormDataCode);
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
-#[serde(transparent)]
-pub struct ServerSentEventStreamsBodyItemAddInt64DataChecked(
-    pub(super) ServerSentEventStreamsBodyItemAddInt64Data,
-);
-impl<'de> serde::Deserialize<'de> for ServerSentEventStreamsBodyItemAddInt64DataChecked {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <ServerSentEventStreamsBodyItemAddInt64Data as serde::Deserialize>::deserialize(
-            d,
-        )?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
-    }
-}
-impl TryFrom<ServerSentEventStreamsBodyItemAddInt64Data>
-for ServerSentEventStreamsBodyItemAddInt64DataChecked {
-    type Error = runtime::BuildError;
-    fn try_from(
-        value: ServerSentEventStreamsBodyItemAddInt64Data,
-    ) -> Result<Self, runtime::BuildError> {
-        let mut violations: Vec<runtime::Violation> = Vec::new();
-        {
-            let out = &mut violations;
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&value).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str("{\"format\":\"int64\"}")
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Root,
-                    &value,
-                    schema,
-                    None,
-                );
-            }
-        }
-        runtime::first(violations)
-            .map(|()| Self(value))
-            .map_err(runtime::BuildError::value)
-    }
-}
-checked_impls!(
-    ServerSentEventStreamsBodyItemAddInt64DataChecked,
-    ServerSentEventStreamsBodyItemAddInt64Data
-);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct OrderedUnnamedMultipartBody(pub(super) Vec<serde_json::Value>);
@@ -1586,7 +1538,7 @@ pub mod builders {
         /// Starts a builder from the required properties.
         pub fn builder(
             data: impl TryInto<
-                types::ServerSentEventStreamsBodyItemAddInt64DataChecked,
+                types::ServerSentEventStreamsBodyItemAddInt64Data,
                 Error: std::fmt::Display,
             >,
         ) -> ServerSentEventStreamsBodyItemAddInt64 {

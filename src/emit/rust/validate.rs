@@ -651,7 +651,12 @@ pub(super) fn decimal_checks(c: &Constraints, value: &TokenStream, path: &TokenS
 /// Checks of a `serde_json::Value` (`value` is a `&` of one): each keyword on values of its kind only, as JSON Schema
 /// applies `minimum` to numbers and `minLength` to strings.
 fn any_checks(c: &Constraints, value: &TokenStream, path: &TokenStream) -> TokenStream {
+    let format = c.format.as_deref().map(|f| {
+        let f = lit(f);
+        quote!(runtime::check_format(out, #path, text, #f);)
+    });
     let text = string_checks(c, &quote!(text.as_str()), path);
+    let text = quote!(#text #format);
     let number = decimal_checks(c, &quote!(&text), path);
     let count = |min: Option<u64>, max: Option<u64>, unit: &str| {
         (min.is_some() || max.is_some()).then(|| {
@@ -659,8 +664,15 @@ fn any_checks(c: &Constraints, value: &TokenStream, path: &TokenStream) -> Token
             quote!(runtime::check_len(out, #path, n.len(), #min, #max, #unit);)
         })
     };
-    let (items, properties) =
-        (count(c.min_items, c.max_items, "items"), count(c.min_properties, c.max_properties, "properties"));
+    let unique = c.unique_items.then(|| quote!(runtime::check_unique(out, #path, n);));
+    let items = count(c.min_items, c.max_items, "items");
+    let items = (items.is_some() || unique.is_some()).then(|| quote!(#items #unique));
+    let required = (!c.required.is_empty()).then(|| {
+        let names = c.required.iter().map(|n| lit(n));
+        quote!(runtime::check_required(out, #path, n, &[#(#names),*]);)
+    });
+    let properties = count(c.min_properties, c.max_properties, "properties");
+    let properties = (properties.is_some() || required.is_some()).then(|| quote!(#properties #required));
     // Each kind as (its pattern, its checks): a kind without checks passes.
     let kinds = [
         (

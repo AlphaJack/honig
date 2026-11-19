@@ -896,21 +896,8 @@ impl TryFrom<serde_json::Value> for NotChecked {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&value).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str("{\"required\":[\"size\"]}")
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Root,
-                    &value,
-                    schema,
-                    runtime::schema_defs(),
-                );
+            if let serde_json::Value::Object(n) = &value {
+                runtime::check_required(out, &runtime::InstancePath::Root, n, &["size"]);
             }
         }
         runtime::first(violations)

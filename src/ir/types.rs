@@ -235,6 +235,10 @@ pub(crate) struct Constraints {
     /// `dependentRequired` that the struct holds: each property, by its name on the wire, with the properties that must
     /// be present when it is. Every name is a field whose absence shows: required, or optional without a default.
     pub dependent_required: Vec<(String, Vec<String>)>,
+    /// `required` of a value without `type`: the names that it must have when it is an object. A struct holds its own.
+    pub required: Vec<String>,
+    /// `format` of a value without `type`: what it must be when it is a string. A typed string holds its own.
+    pub format: Option<String>,
     /// `not` schemas that the value must fail to decode as: each an index into [`TypeSpace::subschemas`].
     pub not: Vec<usize>,
     /// `dependentSchemas` that the struct holds: when a property is present, the value decodes as the type of its schema,
