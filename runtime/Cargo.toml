@@ -62,6 +62,8 @@ tracing-opentelemetry = { version = "0.34", optional = true, default-features = 
 jiff = { version = "1", optional = true, default-features = false }
 # `email`, `idn-email`, `hostname` and `idn-hostname` checks: IDNA2008 and punycode.
 idna = { version = "1", optional = true }
+# The general category of a code point (RFC 5892 section 2.1). `idna` depends on it already.
+icu_properties = { version = "2", optional = true }
 # `pattern` checks: ECMA-262 as JSON Schema reads it.
 regress = { version = "0.12", optional = true }
 # `simd`: SIMD JSON, UTF-8 and base64. serde_json still reports where a body that fails to
@@ -115,7 +117,7 @@ tracing-opentelemetry = ["dep:opentelemetry", "dep:tracing-opentelemetry", "dep:
 ## `FullTime`: `format: time` with its offset in `jiff` types
 jiff = ["dep:jiff"]
 ## `email`, `idn-email`, `hostname` and `idn-hostname` checks
-idn = ["dep:idna"]
+idn = ["dep:idna", "dep:icu_properties"]
 ## `pattern` and `patternProperties` checks (ECMA-262)
 regress = ["dep:regress"]
 ## The `OAuth` 2.0 flows of the client: token grants, device authorization and discovery
