@@ -156,15 +156,23 @@ pub(super) fn checks(
         // The length is the type's: only uniqueness and the items are checked.
         Ty::Array(x, _) => item_checks(space, x, c, value, path),
         // A value of a named type in the map checks itself where it decodes.
-        Ty::Map(_) if c.min_properties.is_some() || c.max_properties.is_some() => {
-            let (min, max) = (opt_u64(c.min_properties), opt_u64(c.max_properties));
+        Ty::Map(_) if c.min_properties.is_some() || c.max_properties.is_some() || c.property_names.is_some() => {
             let r = receiver(value);
-            quote!(runtime::check_len(out, #path, #r.len(), #min, #max, "properties");)
+            let len = (c.min_properties.is_some() || c.max_properties.is_some()).then(|| {
+                let (min, max) = (opt_u64(c.min_properties), opt_u64(c.max_properties));
+                quote!(runtime::check_len(out, #path, #r.len(), #min, #max, "properties");)
+            });
+            let names = c.property_names.as_deref().map(|n| name_checks(n, &quote!(#r.keys()), path));
+            quote!(#len #names)
         }
         Ty::Named(id) => match &space.types.get(*id).kind {
             Kind::Alias(x) => checks(space, x, c, value, path),
             // The fields of a struct hold `dependentRequired` together: the checked type of its shape runs it.
-            Kind::Struct(s) if !c.dependent_required.is_empty() => dependent_checks(space, s, c, value, path),
+            Kind::Struct(s) if !c.dependent_required.is_empty() || c.property_names.is_some() => {
+                let names = c.property_names.as_deref().map(|n| struct_name_checks(space, s, n, value, path));
+                let dependents = dependent_checks(space, s, c, value, path);
+                quote!(#names #dependents)
+            }
             // Any other named type holds its own keywords: only a valid value decodes or is built.
             Kind::Struct(_)
             | Kind::StrEnum(_)
@@ -179,6 +187,58 @@ pub(super) fn checks(
             TokenStream::new()
         }
     }
+}
+
+/// Returns `propertyNames` on the name in `name`, at the path of that name.
+fn name_check(names: &Constraints, path: &TokenStream) -> TokenStream {
+    string_checks(names, &quote!(name), &quote!(&runtime::InstancePath::Key(#path, name)))
+}
+
+/// Returns `propertyNames` on each name that `keys` (an iterator of `&String`) yields.
+fn name_checks(names: &Constraints, keys: &TokenStream, path: &TokenStream) -> TokenStream {
+    let check = name_check(names, path);
+    quote! {
+        for name in #keys {
+            #check
+        }
+    }
+}
+
+/// Returns `propertyNames` on the names that a value of `shape` has: each declared property that is present and each
+/// name of its map of other properties.
+fn struct_name_checks(
+    space: &Space<'_>,
+    shape: &crate::ir::types::Struct,
+    names: &Constraints,
+    value: &TokenStream,
+    path: &TokenStream,
+) -> TokenStream {
+    let r = receiver(value);
+    let declared = shape.fields.iter().map(|f| {
+        let wire = lit(&f.wire);
+        let n = super::syntax::snake_ident(&f.name);
+        let present = if f.required {
+            None
+        } else if space.types.nullable(&f.ty).is_some() {
+            Some(quote!(!#r.#n.is_absent()))
+        } else {
+            Some(quote!(#r.#n.is_some()))
+        };
+        let check = name_check(names, path);
+        let check = quote! {{
+            let name = #wire;
+            #check
+        }};
+        match present {
+            Some(present) => quote!(if #present { #check }),
+            None => check,
+        }
+    });
+    let extra = shape.additional.is_some().then(|| {
+        let field = super::syntax::ident(&super::syntax::extra_field(shape));
+        name_checks(names, &quote!(#r.#field.keys()), path)
+    });
+    quote!(#(#declared)* #extra)
 }
 
 /// Returns `dependentRequired` on the fields of `shape` (`value` is a `&` of it): when a property is present, so are the

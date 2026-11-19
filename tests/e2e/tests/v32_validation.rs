@@ -686,3 +686,17 @@ fn dependent_required_is_a_check_of_the_fields() {
     assert!(missing.to_string().contains("`cvc` is required when `card` is present"), "{missing}");
     assert!(decode(json!({"card": "4111", "cvc": "123"})).is_err(), "an absent holder is not a null one");
 }
+
+/// `propertyNames` that checks only text is a check of each name: of a map's keys, and of a struct's present
+/// properties and the names it does not declare.
+#[test]
+fn property_names_is_a_check_of_each_name() {
+    let labels = |v: serde_json::Value| serde_json::from_value::<types::Labelled>(json!({"labels": v}));
+    assert!(labels(json!({"env": "prod", "team": "core"})).is_ok());
+    assert!(labels(json!({"Env": "prod"})).is_err(), "not lowercase");
+    assert!(labels(json!({"environment": "prod"})).is_err(), "longer than 8");
+    let profile = |v: serde_json::Value| serde_json::from_value::<types::Profile>(v);
+    assert!(profile(json!({"name": "Ann", "extra": 1})).is_ok());
+    assert!(profile(json!({"Nick-Name": "A"})).is_err(), "a declared property whose name fails");
+    assert!(profile(json!({"name": "Ann", "Other": 1})).is_err(), "a name the struct does not declare");
+}

@@ -89,6 +89,7 @@ impl Constraints {
             decimal128: s.get("format").and_then(Value::as_str) == Some("decimal128")
                 && s.as_object().is_some_and(|o| type_set(o).0.iter().any(|t| t == "number")),
             items: None,
+            property_names: None,
             dependent_required: vec![],
             schema: None,
         }
@@ -100,7 +101,7 @@ impl Constraints {
             ($($f:ident),*) => { $( if self.$f.is_none() { self.$f = other.$f; } )* };
         }
         take!(min_length, max_length, pattern, minimum, maximum, exclusive_minimum, exclusive_maximum, multiple_of);
-        take!(min_items, max_items, min_properties, max_properties, items);
+        take!(min_items, max_items, min_properties, max_properties, items, property_names);
         self.unique_items |= other.unique_items;
         self.decimal128 |= other.decimal128;
         self.dependent_required.extend(other.dependent_required);
@@ -109,6 +110,35 @@ impl Constraints {
             (a, b) => a.or(b),
         };
     }
+}
+
+/// Puts the keywords of an object that generated code checks into `c`: `dependentRequired` over properties that the
+/// struct declares is a check of its fields, and `propertyNames` that checks only text is a check of each name.
+/// Returns whether each was typed, so the run-time check of the whole schema can leave it out.
+fn typed_object_keywords(s: &Value, c: &mut Constraints) -> (bool, bool) {
+    let dependents = typed_dependents(s);
+    let names = typed_property_names(s);
+    let typed = (dependents.is_some(), names.is_some());
+    if let Some(d) = dependents {
+        c.dependent_required = d;
+    }
+    c.property_names = names;
+    typed
+}
+
+/// Returns `propertyNames` of `s` when generated code checks it: a schema of `pattern`, `minLength` and `maxLength`
+/// only, maybe with `type: string`, on a schema of `type: object`. A name is a string, so that type asserts nothing.
+/// `None` leaves any other schema to the run-time check of the whole schema.
+fn typed_property_names(s: &Value) -> Option<Box<Constraints>> {
+    // Only an object has names to check: a schema without `type: object` may take any value, which no map holds.
+    s.as_object().filter(|o| type_set(o).0.iter().any(|t| t == "object"))?;
+    let names = s.get("propertyNames")?.as_object()?;
+    let text = names.iter().all(|(k, v)| match k.as_str() {
+        "pattern" | "minLength" | "maxLength" => true,
+        "type" => v == "string",
+        _ => false,
+    });
+    text.then(|| Box::new(Constraints::own(&Value::Object(names.clone()))))
 }
 
 /// Returns `dependentRequired` of `s` when its struct holds it: every name is a property that `s` declares, and an
@@ -667,17 +697,14 @@ impl<'a> Builder<'a> {
             return Constraints::default();
         }
         let mut c = Constraints::own(s);
-        // `dependentRequired` over properties that the struct declares is a check of its fields.
-        let dependents = typed_dependents(s);
-        if let Some(d) = &dependents {
-            c.dependent_required.clone_from(d);
-        }
+        let (dependents, names) = typed_object_keywords(s, &mut c);
         // `if`/`then` on one property's constants becomes a tagged union (`conditional_union`): its variants hold the
         // conditions. Only conditions that it cannot type stay a run-time check.
         let typed_conditional = s.as_object().is_some_and(|o| conditional_union(o).is_some());
         let conditional_key = |k: &str| {
             (typed_conditional && matches!(k, "if" | "then" | "else"))
-                || (dependents.is_some() && k == "dependentRequired")
+                || (dependents && k == "dependentRequired")
+                || (names && k == "propertyNames")
         };
         let conditional_member = |m: &Value| {
             typed_conditional
@@ -1505,10 +1532,13 @@ impl<'a> Builder<'a> {
         // `unevaluatedProperties` admit more names. `runtime::check_schema` judges
         // those. A readOnly / writeOnly property is declared even where its
         // split type leaves it out. So such structs stay open too.
-        // `patternProperties` and `unevaluatedProperties` judge the names a struct does not declare. The run-time
+        // `patternProperties`, `unevaluatedProperties` and `propertyNames` judge the names a struct does not declare. The run-time
         // check sees the value as it re-serializes, so those names must survive decoding.
         let additional = additional.or_else(|| {
-            (o.contains_key("patternProperties") || o.contains_key("unevaluatedProperties")).then_some(Ty::Any)
+            ["patternProperties", "unevaluatedProperties", "propertyNames"]
+                .iter()
+                .any(|k| o.contains_key(*k))
+                .then_some(Ty::Any)
         });
         let closed = o.get("additionalProperties") == Some(&Value::Bool(false))
             && !o.contains_key("patternProperties")

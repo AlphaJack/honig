@@ -74,7 +74,7 @@ pub(crate) fn wrap(types: &mut TypeSpace, http: &mut Http) {
 }
 
 /// Splits each struct or union whose own schema has keywords that no type holds (`if`, `not`, the one match of a
-/// `oneOf`, ...) or that its fields hold together (`dependentRequired`). Its shape moves to a type of its own, `<Name>Fields` or `<Name>Variants`. Its name becomes a checked
+/// `oneOf`, ...) or that its fields hold together (`dependentRequired`, `propertyNames`). Its shape moves to a type of its own, `<Name>Fields` or `<Name>Variants`. Its name becomes a checked
 /// type of that shape. So every value of it is checked once, by its type, and no use of it needs a wrapper.
 ///
 /// Returns the name of the checked type of each shape, by the index of the shape.
@@ -93,8 +93,10 @@ fn split_own_checks(types: &mut TypeSpace, taken: &mut BTreeSet<String>) -> BTre
             | Kind::Checked(_)
             | Kind::Pending => continue,
         };
-        let (schema, dependents) = (def.own.schema.clone(), def.own.dependent_required.clone());
-        if def.rust_type.is_some() || (schema.is_none() && dependents.is_empty()) {
+        let own = &def.own;
+        let (schema, dependents, names) =
+            (own.schema.clone(), own.dependent_required.clone(), own.property_names.clone());
+        if def.rust_type.is_some() || (schema.is_none() && dependents.is_empty() && names.is_none()) {
             continue;
         }
         let raw = TypeId(types.defs.len());
@@ -116,7 +118,8 @@ fn split_own_checks(types: &mut TypeSpace, taken: &mut BTreeSet<String>) -> BTre
         };
         public.insert(raw.0, types.defs[i].name.clone());
         types.defs.push(shape);
-        let constraints = Constraints { schema, dependent_required: dependents, ..Constraints::default() };
+        let constraints =
+            Constraints { schema, dependent_required: dependents, property_names: names, ..Constraints::default() };
         types.defs[i].kind = Kind::Checked(Box::new(Checked { base: Ty::Named(raw), constraints }));
     }
     public
@@ -278,7 +281,7 @@ pub(crate) fn needs_checks(types: &TypeSpace, t: &Ty, c: &Constraints, hops: usi
         }
         // The length is the type's.
         Ty::Array(x, _) => c.unique_items || needs_checks(types, x, &c.item_constraints(), hops),
-        Ty::Map(_) => c.min_properties.is_some() || c.max_properties.is_some(),
+        Ty::Map(_) => c.min_properties.is_some() || c.max_properties.is_some() || c.property_names.is_some(),
         Ty::Named(id) => match &types.get(*id).kind {
             Kind::Alias(x) if hops < MAX_ALIAS_HOPS => needs_checks(types, x, c, hops + 1),
             Kind::Alias(_)
