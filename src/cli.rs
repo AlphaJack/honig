@@ -269,10 +269,9 @@ fn in_members(check: bool, module: Option<&str>, package: Option<&str>, args: &A
     Ok(code)
 }
 
-/// One module generated in memory: its settings, the warnings about its format libraries and its files.
+/// One module generated in memory: its settings and its files.
 struct Module {
     cfg: settings::Settings,
-    warnings: Vec<String>,
     generated: generate::Generated,
 }
 
@@ -359,27 +358,16 @@ fn generate_modules(manifest: &settings::Manifest, only: Option<&str>, args: &Ar
             }
         }
         if only.is_none_or(|o| module.name() == o) {
-            selected.push(Module { cfg, warnings: settings::format_lib_warnings(module), generated });
+            selected.push(Module { cfg, generated });
         }
     }
     Ok(Some(Plan { runtime, selected }))
 }
 
-/// Prints the diagnostics of each module and its warnings, each warning once.
+/// Prints the diagnostics of each module.
 fn print_diagnostics(selected: &[Module], args: &Args) {
-    let mut warnings: Vec<&String> = vec![];
     for module in selected {
         print_generated(&module.generated.diagnostics, args.quiet);
-        for w in &module.warnings {
-            if !warnings.contains(&w) {
-                warnings.push(w);
-            }
-        }
-    }
-    if !args.quiet {
-        for warning in warnings {
-            eprintln!("warning: {warning}");
-        }
     }
 }
 

@@ -88,6 +88,7 @@ axum = ["dep:axum", "honig/axum"]
 [package.metadata.honig.api]
 spec = "{spec_file}"
 output = "src/api"
+formats = {{}}
 "#
     )
 }

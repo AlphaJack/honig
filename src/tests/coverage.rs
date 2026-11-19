@@ -428,10 +428,9 @@ fn fixtures() -> Vec<(String, Value, crate::emit::Options, std::path::PathBuf)> 
             let deps = std::fs::read_to_string(path.with_extension("deps")).unwrap_or_default();
             let opts = crate::emit::Options {
                 rust: crate::emit::rust::Options {
-                    libs: crate::settings::format_libs(
+                    libs: crate::settings::detected_format_libs(
                         &crate::settings::Manifest::parse(&format!("[dependencies]\n{deps}")).unwrap(),
-                    )
-                    .unwrap(),
+                    ),
                     ..Default::default()
                 },
                 // The examples test is where examples reach the generated code.
