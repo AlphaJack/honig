@@ -235,8 +235,11 @@ pub(crate) struct Constraints {
     /// `dependentRequired` that the struct holds: each property, by its name on the wire, with the properties that must
     /// be present when it is. Every name is a field whose absence shows: required, or optional without a default.
     pub dependent_required: Vec<(String, Vec<String>)>,
-    /// `not` schemas that the value must fail to decode as: each an index into [`TypeSpace::nots`].
+    /// `not` schemas that the value must fail to decode as: each an index into [`TypeSpace::subschemas`].
     pub not: Vec<usize>,
+    /// `dependentSchemas` that the struct holds: when a property is present, the value decodes as the type of its schema,
+    /// an index into [`TypeSpace::subschemas`]. Each name is a field whose absence shows.
+    pub dependent_schemas: Vec<(String, usize)>,
     /// The schema with `$ref`s inlined when it uses keywords that no type expresses on its own
     /// (`contains`, `patternProperties`, `if`, `not`, ...). `runtime::check_schema`
     /// checks it at runtime.
@@ -473,8 +476,9 @@ pub(crate) struct TypeSpace {
     /// The definitions that schemas checked whole at run time reach, by pointer: `#/$defs/<pointer>` in
     /// `Constraints::schema` names one. Each is here once for the whole document.
     pub shared: std::collections::BTreeMap<String, Value>,
-    /// The type of each `not` schema, with its constraints until `checked::wrap` makes it a type that checks them.
-    pub nots: Vec<(Ty, Constraints)>,
+    /// The type of each schema that a typed check decodes the value as (`not`, `dependentSchemas`), with its constraints
+    /// until `checked::wrap` makes it a type that checks them.
+    pub subschemas: Vec<(Ty, Constraints)>,
 }
 
 /// A string `format` with a well-known type of its own.
@@ -730,7 +734,7 @@ impl TypeSpace {
 
     /// Creates a space of these definitions.
     pub(crate) const fn new(defs: Vec<TypeDef>) -> Self {
-        Self { defs, shared: std::collections::BTreeMap::new(), nots: vec![] }
+        Self { defs, shared: std::collections::BTreeMap::new(), subschemas: vec![] }
     }
 
     /// Returns `ty` with its aliases followed.

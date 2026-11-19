@@ -98,17 +98,34 @@ pub(super) fn string_checks(c: &Constraints, value: &TokenStream, path: &TokenSt
     }
 }
 
-/// Returns `not` of `c` on `value` (an expression of type `&T`) at `path`: a value that decodes as the type of a `not`
-/// schema is one that the schema allows.
-pub(super) fn not_checks(space: &Space<'_>, c: &Constraints, value: &TokenStream, path: &TokenStream) -> TokenStream {
-    if c.not.is_empty() {
+/// Returns `not` and `dependentSchemas` of `c` on `value` (an expression of type `&T`) at `path`. A value that decodes
+/// as the type of a schema is one that the schema allows.
+pub(super) fn subschema_checks(
+    space: &Space<'_>,
+    c: &Constraints,
+    value: &TokenStream,
+    path: &TokenStream,
+) -> TokenStream {
+    if c.not.is_empty() && c.dependent_schemas.is_empty() {
         return TokenStream::new();
     }
+    let ty = |n: usize| super::syntax::ty(space, &space.types.subschemas[n].0, false);
     let nots = c.not.iter().map(|&n| {
-        let not = super::syntax::ty(space, &space.types.nots[n].0, false);
+        let not = ty(n);
         quote! {
             if serde_json::from_value::<#not>(json.clone()).is_ok() {
                 runtime::violation(out, #path, "matches `not`");
+            }
+        }
+    });
+    let dependents = c.dependent_schemas.iter().map(|(name, n)| {
+        let (dependent, wire) = (ty(*n), lit(name));
+        let present = lit(&format!("`{name}` is present: "));
+        quote! {
+            if json.get(#wire).is_some()
+                && let Err(e) = serde_json::from_value::<#dependent>(json.clone())
+            {
+                runtime::violation(out, #path, format!("{}{e}", #present));
             }
         }
     });
@@ -116,6 +133,7 @@ pub(super) fn not_checks(space: &Space<'_>, c: &Constraints, value: &TokenStream
         {
             let json = runtime::to_value(#value).unwrap_or_default();
             #(#nots)*
+            #(#dependents)*
         }
     }
 }
@@ -133,10 +151,10 @@ pub(super) fn checks(
     if space.is_external(t) {
         return TokenStream::new();
     }
-    if !c.not.is_empty() {
-        let nots = not_checks(space, c, value, path);
-        let rest = checks(space, t, &Constraints { not: vec![], ..c.clone() }, value, path);
-        return quote!(#nots #rest);
+    if !c.not.is_empty() || !c.dependent_schemas.is_empty() {
+        let typed = subschema_checks(space, c, value, path);
+        let rest = checks(space, t, &Constraints { not: vec![], dependent_schemas: vec![], ..c.clone() }, value, path);
+        return quote!(#typed #rest);
     }
     // Keywords without a Rust type of their own. The whole fragment (refs
     // inlined) is checked on the serialized value. Typed checks are skipped.

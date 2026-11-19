@@ -1531,6 +1531,40 @@ impl runtime::XmlShape for Loose {
 }
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
+pub struct Voucher(pub(super) VoucherFields);
+impl<'de> serde::Deserialize<'de> for Voucher {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <VoucherFields as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
+    }
+}
+impl TryFrom<VoucherFields> for Voucher {
+    type Error = runtime::BuildError;
+    fn try_from(value: VoucherFields) -> Result<Self, runtime::BuildError> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            {
+                let json = runtime::to_value(&value).unwrap_or_default();
+                if json.get("code").is_some()
+                    && let Err(e) = serde_json::from_value::<Not4>(json.clone())
+                {
+                    runtime::violation(
+                        out,
+                        &runtime::InstancePath::Root,
+                        format!("{}{e}", "`code` is present: "),
+                    );
+                }
+            }
+        }
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
+    }
+}
+checked_impls!(Voucher, VoucherFields);
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
 pub struct Payment(pub(super) PaymentFields);
 impl<'de> serde::Deserialize<'de> for Payment {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
@@ -3323,6 +3357,92 @@ impl TryFrom<Not3Variants> for Not3 {
 checked_impls!(Not3, Not3Variants);
 pub type Not3Object = NotObject;
 pub use ObjectCustoms as Not3ObjectCustoms;
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
+pub struct Not4(pub(super) Not4Variants);
+impl<'de> serde::Deserialize<'de> for Not4 {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <Not4Variants as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
+    }
+}
+impl TryFrom<Not4Variants> for Not4 {
+    type Error = runtime::BuildError;
+    fn try_from(value: Not4Variants) -> Result<Self, runtime::BuildError> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            {
+                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                let value = runtime::to_value(&value).unwrap_or_default();
+                let schema = SCHEMA
+                    .get_or_init(|| {
+                        serde_json::from_str(
+                                "{\"properties\":{\"amount\":{\"maximum\":100}},\"required\":[\"amount\"]}",
+                            )
+                            .unwrap_or_default()
+                    });
+                runtime::check_schema_in(
+                    out,
+                    &runtime::InstancePath::Root,
+                    &value,
+                    schema,
+                    None,
+                );
+            }
+        }
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
+    }
+}
+checked_impls!(Not4, Not4Variants);
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct Not4Object {
+    pub amount: Not4ObjectAmount,
+    #[serde(flatten)]
+    pub additional_properties: std::collections::BTreeMap<String, serde_json::Value>,
+}
+deserialize_impl!(Not4Object);
+serialize_impl_5!(Not4Object);
+impl Not4Object {
+    #[must_use]
+    pub const fn new(amount: Not4ObjectAmount) -> Self {
+        Self {
+            amount,
+            additional_properties: std::collections::BTreeMap::new(),
+        }
+    }
+}
+impl runtime::XmlShape for Not4Object {
+    fn xml() -> &'static runtime::XmlNode {
+        static NODE: runtime::XmlNode = runtime::XmlNode {
+            name: "Not4Object",
+            namespace: "",
+            prefix: "",
+            fields: &[
+                runtime::XmlField {
+                    wire: "amount",
+                    name: "amount",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: true,
+                    item: "amount",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+            ],
+        };
+        &NODE
+    }
+}
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct BadgeRequest {
@@ -3531,6 +3651,74 @@ impl<'de> runtime::TaggedUnion<'de> for ShipmentVariants {
             0 => v.decode_into(Self::International),
             _ => v.decode_into(Self::Otherwise),
         }
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct VoucherFields {
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub code: Option<String>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub amount: Option<i64>,
+}
+deserialize_impl!(VoucherFields);
+serialize_impl!(VoucherFields);
+impl VoucherFields {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self { code: None, amount: None }
+    }
+}
+impl runtime::XmlShape for VoucherFields {
+    fn xml() -> &'static runtime::XmlNode {
+        static NODE: runtime::XmlNode = runtime::XmlNode {
+            name: "VoucherFields",
+            namespace: "",
+            prefix: "",
+            fields: &[
+                runtime::XmlField {
+                    wire: "code",
+                    name: "code",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "code",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "amount",
+                    name: "amount",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "amount",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+            ],
+        };
+        &NODE
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
@@ -4484,6 +4672,13 @@ serialize_impl_4!(NotVariants);
 deserialize_impl_2!(NotVariants);
 pub type Not2Variants = NotVariants;
 pub type Not3Variants = NotVariants;
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Not4Variants {
+    Object(Not4Object),
+    Other(serde_json::Value),
+}
+serialize_impl_4!(Not4Variants);
+deserialize_impl_2!(Not4Variants);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct EntryLinesChecked(pub(super) EntryLines);
@@ -4740,6 +4935,32 @@ impl TryFrom<std::collections::BTreeMap<String, String>> for UserMeta {
     }
 }
 checked_impls!(UserMeta, std::collections::BTreeMap < String, String >);
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
+pub struct Not4ObjectAmount(pub(super) serde_json::Value);
+deserialize_impl_3!(Not4ObjectAmount);
+impl TryFrom<serde_json::Value> for Not4ObjectAmount {
+    type Error = runtime::BuildError;
+    fn try_from(value: serde_json::Value) -> Result<Self, runtime::BuildError> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            if let serde_json::Value::Number(n) = &value {
+                let text = n.to_string();
+                runtime::check_decimal_range(
+                    out,
+                    &runtime::InstancePath::Root,
+                    text.as_str(),
+                    [None, Some("100"), None, None],
+                );
+            }
+        }
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
+    }
+}
+checked_impls!(Not4ObjectAmount, serde_json::Value);
 pub type BadgeRequestHolders = BadgeHolders;
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
@@ -5171,6 +5392,29 @@ pub mod builders {
         /// Returns the value.
         pub fn build(self) -> Result<super::Loose, runtime::BuildError> {
             self.0.build()
+        }
+    }
+    impl super::Voucher {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> Voucher {
+            Voucher(runtime::Builder::start(|| Ok(super::VoucherFields::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct Voucher(runtime::Builder<super::VoucherFields>);
+    impl Voucher {
+        pub fn code(
+            self,
+            value: impl TryInto<String, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("code", value, |s, v| s.code = Some(v)))
+        }
+        pub fn amount(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("amount", value, |s, v| s.amount = Some(v)))
+        }
+        /// Returns the value once its whole schema holds.
+        pub fn build(self) -> Result<super::Voucher, runtime::BuildError> {
+            self.0.build().and_then(super::Voucher::try_from)
         }
     }
     impl super::Payment {
@@ -5658,6 +5902,26 @@ pub mod builders {
         /// Returns the value once its whole schema holds.
         pub fn build(self) -> Result<super::ShipmentOtherwise, runtime::BuildError> {
             self.0.build().and_then(super::ShipmentOtherwise::try_from)
+        }
+    }
+    impl super::Not4Object {
+        /// Starts a builder from the required properties.
+        pub fn builder(
+            amount: impl TryInto<types::Not4ObjectAmount, Error: std::fmt::Display>,
+        ) -> Not4Object {
+            Not4Object(
+                runtime::Builder::start(|| Ok(
+                    Self::new(runtime::field("amount", amount)?),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct Not4Object(runtime::Builder<super::Not4Object>);
+    impl Not4Object {
+        /// Returns the value.
+        pub fn build(self) -> Result<super::Not4Object, runtime::BuildError> {
+            self.0.build()
         }
     }
     impl super::BadgeRequest {

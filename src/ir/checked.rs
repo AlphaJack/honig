@@ -47,12 +47,12 @@ pub(crate) fn wrap(types: &mut TypeSpace, http: &mut Http) {
         }
         space.types.defs[i].kind = kind;
     }
-    // The type of a `not` schema checks all that the schema says: a value that decodes as it is one that the schema
-    // allows.
-    for n in 0..space.types.nots.len() {
-        let (ty, c) = std::mem::replace(&mut space.types.nots[n], (Ty::Any, Constraints::default()));
+    // The type of a schema that a check decodes the value as (`not`, `dependentSchemas`) checks all that the schema
+    // says: a value that decodes as it is one that the schema allows.
+    for n in 0..space.types.subschemas.len() {
+        let (ty, c) = std::mem::replace(&mut space.types.subschemas[n], (Ty::Any, Constraints::default()));
         let ty = space.wrap(&ty, &c, &Name::new("Not"));
-        space.types.nots[n] = (ty, Constraints::default());
+        space.types.subschemas[n] = (ty, Constraints::default());
     }
     for op in &mut http.operations {
         for p in &mut op.params {
@@ -101,9 +101,16 @@ fn split_own_checks(types: &mut TypeSpace, taken: &mut BTreeSet<String>) -> BTre
             | Kind::Pending => continue,
         };
         let own = &def.own;
-        let (schema, dependents, names, not) =
-            (own.schema.clone(), own.dependent_required.clone(), own.property_names.clone(), own.not.clone());
-        if def.rust_type.is_some() || (schema.is_none() && dependents.is_empty() && names.is_none() && not.is_empty()) {
+        // The keywords that the struct or union holds as a whole, not each field or branch.
+        let constraints = Constraints {
+            schema: own.schema.clone(),
+            dependent_required: own.dependent_required.clone(),
+            property_names: own.property_names.clone(),
+            not: own.not.clone(),
+            dependent_schemas: own.dependent_schemas.clone(),
+            ..Constraints::default()
+        };
+        if def.rust_type.is_some() || constraints.is_empty() {
             continue;
         }
         let raw = TypeId(types.defs.len());
@@ -125,13 +132,6 @@ fn split_own_checks(types: &mut TypeSpace, taken: &mut BTreeSet<String>) -> BTre
         };
         public.insert(raw.0, types.defs[i].name.clone());
         types.defs.push(shape);
-        let constraints = Constraints {
-            schema,
-            dependent_required: dependents,
-            property_names: names,
-            not,
-            ..Constraints::default()
-        };
         types.defs[i].kind = Kind::Checked(Box::new(Checked { base: Ty::Named(raw), constraints }));
     }
     public
@@ -268,7 +268,7 @@ pub(crate) fn needs_checks(types: &TypeSpace, t: &Ty, c: &Constraints, hops: usi
     if yours(types, t) {
         return false;
     }
-    if !c.not.is_empty() {
+    if !c.not.is_empty() || !c.dependent_schemas.is_empty() {
         return true;
     }
     if let Some(schema) = &c.schema {
