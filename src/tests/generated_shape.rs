@@ -1177,3 +1177,27 @@ fn a_conditional_without_an_object_type_is_checked() {
             .to_owned();
     assert!(types.contains("`then`: ") || types.contains("check_schema"), "{types}");
 }
+
+/// `contains` and `dependentRequired` without `type` beside `properties` or `patternProperties`: the value is the union
+/// of an implied shape, and each keyword is still checked on the JSON value.
+#[test]
+fn keywords_beside_an_implied_shape_are_checked() {
+    for (keyword, schema, check) in [
+        (
+            "contains",
+            json!({"properties": {"a": {"type": "integer"}}, "contains": {"multipleOf": 3}}),
+            "matching item(s)",
+        ),
+        (
+            "dependentRequired",
+            json!({"patternProperties": {"^x": {"type": "integer"}}, "dependentRequired": {"a": ["b"]}}),
+            "is required when",
+        ),
+    ] {
+        let holder = json!({"type": "object", "required": ["v"], "properties": {"v": schema}});
+        let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Holder": holder}}));
+        let files = common::generate(&format!("implied-{keyword}"), &doc, &crate::emit::Options::default());
+        let types = common::file(&files, "types.rs");
+        assert!(types.contains(check) && !types.contains("check_schema"), "{keyword}: {types}");
+    }
+}

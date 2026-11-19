@@ -157,6 +157,11 @@ pub(super) fn subschema_checks(
     let unevaluated_items =
         c.unevaluated_items.as_ref().map(|(ev, leftover)| unevaluated_item_checks(ev, *leftover, &ty, path));
     let names = names_schema_checks(c, &ty, path);
+    let contains = json_contains_checks(c, &ty, path);
+    let required = (!c.json_dependents.is_empty()).then(|| {
+        let checks = object_dependent_checks(&c.json_dependents, &quote!(object), path);
+        quote!(if let serde_json::Value::Object(object) = &json { #checks })
+    });
     quote! {
         {
             let json = runtime::to_value(#value).unwrap_or_default();
@@ -171,6 +176,8 @@ pub(super) fn subschema_checks(
             #unevaluated
             #unevaluated_items
             #names
+            #contains
+            #required
         }
     }
 }
@@ -181,6 +188,34 @@ fn contains_checks(space: &Space<'_>, c: &Constraints, value: &TokenStream, path
     let Some((n, min, max)) = c.contains else { return TokenStream::new() };
     let ty = super::syntax::ty(space, &space.types.subschemas[n].0, false);
     let r = receiver(value);
+    let bounds = contains_bounds(min, max, path);
+    quote! {
+        {
+            let hits = #r
+                .iter()
+                .filter(|item| {
+                    runtime::to_value(item).is_ok_and(|json| serde_json::from_value::<#ty>(json).is_ok())
+                })
+                .count();
+            #bounds
+        }
+    }
+}
+
+/// Returns `contains` of a schema without `type` on the array in `json`, as [`contains_checks`] on a list.
+fn json_contains_checks(c: &Constraints, ty: &dyn Fn(usize) -> TokenStream, path: &TokenStream) -> TokenStream {
+    let Some((n, min, max)) = c.json_contains else { return TokenStream::new() };
+    let (t, bounds) = (ty(n), contains_bounds(min, max, path));
+    quote! {
+        if let serde_json::Value::Array(items) = &json {
+            let hits = items.iter().filter(|item| serde_json::from_value::<#t>((*item).clone()).is_ok()).count();
+            #bounds
+        }
+    }
+}
+
+/// Returns the checks of `hits`, the items that match `contains`, against `minContains` and `maxContains`.
+fn contains_bounds(min: u64, max: Option<u64>, path: &TokenStream) -> TokenStream {
     let at_least = (min > 0).then(|| {
         let min = Literal::u64_unsuffixed(min);
         quote! {
@@ -197,18 +232,7 @@ fn contains_checks(space: &Space<'_>, c: &Constraints, value: &TokenStream, path
             }
         }
     });
-    quote! {
-        {
-            let hits = #r
-                .iter()
-                .filter(|item| {
-                    runtime::to_value(item).is_ok_and(|json| serde_json::from_value::<#ty>(json).is_ok())
-                })
-                .count();
-            #at_least
-            #at_most
-        }
-    }
+    quote!(#at_least #at_most)
 }
 
 /// Returns `patternProperties` of `c` on the object in `json`: the value of each name that a pattern matches decodes as
@@ -522,7 +546,7 @@ pub(super) fn checks(
             | Kind::Checked(_)
             | Kind::Pending => TokenStream::new(),
         },
-        Ty::Any => any_checks(space, c, value, path),
+        Ty::Any => any_checks(c, value, path),
         Ty::Bool | Ty::Bytes | Ty::Binary | Ty::Format(_) | Ty::Unit | Ty::Tuple(_) => TokenStream::new(),
     }
 }
@@ -862,7 +886,7 @@ pub(super) fn decimal_checks(c: &Constraints, value: &TokenStream, path: &TokenS
 
 /// Checks of a `serde_json::Value` (`value` is a `&` of one): each keyword on values of its kind only, as JSON Schema
 /// applies `minimum` to numbers and `minLength` to strings.
-fn any_checks(space: &Space<'_>, c: &Constraints, value: &TokenStream, path: &TokenStream) -> TokenStream {
+fn any_checks(c: &Constraints, value: &TokenStream, path: &TokenStream) -> TokenStream {
     let format = c.format.as_deref().map(|f| {
         let f = lit(f);
         quote!(runtime::check_format(out, #path, text, #f);)
@@ -878,13 +902,10 @@ fn any_checks(space: &Space<'_>, c: &Constraints, value: &TokenStream, path: &To
     };
     let unique = c.unique_items.then(|| quote!(runtime::check_unique(out, #path, n);));
     let items = count(c.min_items, c.max_items, "items");
-    let contains = contains_checks(space, c, &quote!(n), path);
-    let items = (items.is_some() || unique.is_some() || !contains.is_empty()).then(|| quote!(#items #unique #contains));
+    let items = (items.is_some() || unique.is_some()).then(|| quote!(#items #unique));
     let required = required_checks(c, &quote!(|name| n.contains_key(name)), path);
-    let dependents = object_dependent_checks(c, &quote!(n), path);
     let properties = count(c.min_properties, c.max_properties, "properties");
-    let properties = (properties.is_some() || !required.is_empty() || !dependents.is_empty())
-        .then(|| quote!(#properties #required #dependents));
+    let properties = (properties.is_some() || !required.is_empty()).then(|| quote!(#properties #required));
     // Each kind as (its pattern, its checks): a kind without checks passes.
     let kinds = [
         (
@@ -983,13 +1004,17 @@ fn map_checks(c: &Constraints, value: &TokenStream, path: &TokenStream) -> Token
     });
     let names = c.property_names.as_deref().map(|n| name_checks(n, &quote!(#r.keys()), path));
     let required = required_checks(c, &quote!(|name| #r.contains_key(name)), path);
-    let dependents = object_dependent_checks(c, &r, path);
+    let dependents = object_dependent_checks(&c.dependent_required, &r, path);
     quote!(#len #names #required #dependents)
 }
 
-/// Returns `dependentRequired` of `c` on the map or JSON object `object`: when a name is present, each that it needs is.
-fn object_dependent_checks(c: &Constraints, object: &TokenStream, path: &TokenStream) -> TokenStream {
-    let checks = c.dependent_required.iter().map(|(name, needs)| {
+/// Returns `dependentRequired` on the map or JSON object `object`: when a name is present, each that it needs is.
+fn object_dependent_checks(
+    dependents: &[(String, Vec<String>)],
+    object: &TokenStream,
+    path: &TokenStream,
+) -> TokenStream {
+    let checks = dependents.iter().map(|(name, needs)| {
         let needs = needs.iter().map(|need| {
             let (message, need) = (lit(&format!("`{need}` is required when `{name}` is present")), lit(need));
             quote!(runtime::check(out, #path, #object.contains_key(#need), #message);)

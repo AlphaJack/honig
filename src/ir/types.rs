@@ -261,6 +261,11 @@ pub(crate) struct Constraints {
     /// `contains` of an array: the schema that items match, an index into [`TypeSpace::subschemas`], with
     /// `minContains` (1 unless set) and `maxContains`.
     pub contains: Option<(usize, u64, Option<u64>)>,
+    /// `contains` of a schema without `type`, as [`Self::contains`]: checked on the JSON array, whatever type the value
+    /// has (any value, or the union of an implied shape).
+    pub json_contains: Option<(usize, u64, Option<u64>)>,
+    /// `dependentRequired` of a schema without `type`: checked on the JSON object, whatever type the value has.
+    pub json_dependents: Vec<(String, Vec<String>)>,
     /// The branches of a `oneOf` that a value must decode as exactly one of, each an index into
     /// [`TypeSpace::subschemas`]: a discriminator picks one branch, and two share a type.
     pub one_of: Vec<usize>,
