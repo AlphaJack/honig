@@ -272,10 +272,11 @@ jobs:
             paths: runtime src tests/e2e tests/bench-support :!runtime/tests :!src/tests :!src/tests.rs :!tests/e2e/tests
             valgrind: true
             run: cargo bench -p e2e --bench scaling --locked
+          # The time and the peak heap of each kind of request, one build for both.
           - bench: time
             paths: runtime/src src/emit tests/e2e
             valgrind: false
-            run: cargo bench -p e2e --bench time --locked
+            run: cargo bench -p e2e --bench time --bench memory --locked
           - bench: roundtrip
             paths: runtime/src src/emit tests/e2e
             valgrind: false

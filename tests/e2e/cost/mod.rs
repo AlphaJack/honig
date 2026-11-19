@@ -6,7 +6,7 @@
 //! - `benches/time.rs`: no kind takes more than `max_time` times its baseline in a release build at any of them.
 //! - `roundtrip.rs` with `benches/roundtrip.rs` and `tests/allocations.rs`: the same through the generated client
 //!   against a hand-rolled one.
-//! - `benches/size_sweep.rs`: the CSV of every kind from 256 B to 32 MiB.
+//! - `benches/memory.rs`: no kind holds more peak heap than its limit at 1 MiB and 32 MiB.
 
 use std::alloc::{GlobalAlloc, Layout, System};
 use std::cell::Cell;
@@ -488,12 +488,12 @@ pub fn member_body() -> Bytes {
 
 /// The sizes that both benches check every kind at. A kind keeps one budget across them. 2 KiB is about the median
 /// JSON body of real APIs; 256 B, 16 KiB and 1 MiB bracket it.
-#[allow(dead_code, reason = "the size sweep picks its own sizes")]
+#[allow(dead_code, reason = "the memory bench picks its own sizes")]
 pub const BENCH_SIZES: [usize; 4] = [256, 2 << 10, 16 << 10, 1 << 20];
 
 /// The table that a bench prints: per kind of path and size, what the generated side (`head`) and its baseline
 /// (`base`) measured, as wide as `sample`, their ratio, the budget of the kind and whether it holds.
-#[allow(dead_code, reason = "the size sweep prints no bench")]
+#[allow(dead_code, reason = "the memory bench prints a table of its own")]
 pub fn bench_table(head: &'static str, base: &'static str, sample: &str) -> Table {
     let sizes = BENCH_SIZES.map(table::size);
     let widest_size = sizes.iter().max_by_key(|s| s.len()).map_or("", String::as_str);
@@ -510,7 +510,7 @@ pub fn bench_table(head: &'static str, base: &'static str, sample: &str) -> Tabl
 }
 
 /// One row of a bench: a kind of path at a size, both sides as measured, their ratio and the budget of the kind.
-#[allow(dead_code, reason = "the size sweep prints no bench")]
+#[allow(dead_code, reason = "the memory bench prints a table of its own")]
 pub struct Measured {
     pub path: &'static str,
     pub size: usize,
@@ -522,18 +522,18 @@ pub struct Measured {
 
 /// How much more time the smallest size may take: one run there is a few microseconds, and the jitter of a shared
 /// runner is a larger share of it than of a large body.
-#[allow(dead_code, reason = "the size sweep and the allocation tests time nothing")]
+#[allow(dead_code, reason = "the memory bench and the allocation tests time nothing")]
 const SMALLEST_SLACK: f64 = 1.25;
 
 /// Returns the time budget of a path whose budget is `max` at `size`: wider at the smallest of [`BENCH_SIZES`].
-#[allow(dead_code, reason = "the size sweep and the allocation tests time nothing")]
+#[allow(dead_code, reason = "the memory bench and the allocation tests time nothing")]
 pub fn time_budget(max: f64, size: usize) -> f64 {
     if Some(&size) == BENCH_SIZES.first() { max * SMALLEST_SLACK } else { max }
 }
 
 /// Prints `rows` by path and then by size, so the sizes of one kind sit together, with an empty line between kinds.
 /// Returns each row over its budget.
-#[allow(dead_code, reason = "the size sweep prints no bench")]
+#[allow(dead_code, reason = "the memory bench prints a table of its own")]
 pub fn print_rows(table: &Table, mut rows: Vec<Measured>) -> Vec<String> {
     rows.sort_by_key(|r| (r.path, r.size));
     let mut over = vec![];

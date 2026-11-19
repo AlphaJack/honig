@@ -80,7 +80,7 @@ opentelemetry = { version = "0.33", default-features = false, features = ["trace
 opentelemetry_sdk = { version = "0.33", default-features = false, features = ["trace"] }
 honig = { version = "=0.0.3", path = "../../runtime", features = ["tracing", "tracing-opentelemetry"] }
 
-# The time bench of a pull request: generated paths against hand-rolled baselines.
+# The time of each kind of request through the generated server against a hand-rolled axum baseline.
 [[bench]]
 name = "time"
 harness = false
@@ -90,9 +90,9 @@ harness = false
 name = "roundtrip"
 harness = false
 
-# How the cost of a request grows with its payload, against the hand-rolled baselines: `tests/e2e/cost`.
+# The peak heap of each kind of request at 1 MiB and 32 MiB, against the hand-rolled baselines: `tests/e2e/cost`.
 [[bench]]
-name = "size_sweep"
+name = "memory"
 harness = false
 
 # How the cost of decoding into generated types grows with the body, counted by callgrind.
