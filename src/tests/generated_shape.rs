@@ -680,3 +680,27 @@ fn a_schema_that_many_whole_checks_reach_is_generated_once() {
     assert_eq!(copies, 1, "{files:#?}");
     assert!(common::file(&files, "runtime.rs").contains("fn schema_defs"), "{files:#?}");
 }
+
+/// A builder gathers the `?` of each checked field into one. A struct without a checked field builds with `new` and
+/// struct update, with no `?`, so it gets no builder.
+#[test]
+fn only_a_struct_with_a_checked_field_gets_a_builder() {
+    let doc = common::spec(
+        "3.1.0",
+        &json!({}),
+        &json!({"schemas": {
+            "Plain": {"type": "object", "required": ["name"], "properties": {
+                "name": {"type": "string"}, "count": {"type": "integer"}, "kind": {"type": "string", "enum": ["a", "b"]},
+            }},
+            "Coded": {"type": "object", "properties": {"code": {"type": "string", "pattern": "^[A-Z]+$"}}},
+            "Tagged": {"type": "object", "properties": {
+                "tags": {"type": "array", "items": {"type": "string", "pattern": "^[a-z]+$"}},
+            }},
+        }}),
+    );
+    let files = common::generate("shape-builders-where-they-pay", &doc, &crate::emit::Options::default());
+    let types = common::file(&files, "types.rs");
+    assert!(!types.contains("impl super::Plain {"), "{types}");
+    assert!(types.contains("impl super::Coded {"), "{types}");
+    assert!(types.contains("impl super::Tagged {"), "{types}");
+}

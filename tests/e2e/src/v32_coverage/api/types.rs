@@ -748,46 +748,6 @@ pub type NoteTextNoteRgb = TextNoteRgb;
 pub mod builders {
     use super as types;
     use super::runtime;
-    impl super::Box2 {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            width: impl TryInto<i64, Error: std::fmt::Display>,
-            height: impl TryInto<i64, Error: std::fmt::Display>,
-            depth: impl TryInto<i64, Error: std::fmt::Display>,
-            weight: impl TryInto<i64, Error: std::fmt::Display>,
-            color: impl TryInto<i64, Error: std::fmt::Display>,
-            shelf: impl TryInto<i64, Error: std::fmt::Display>,
-            row: impl TryInto<i64, Error: std::fmt::Display>,
-            bin: impl TryInto<i64, Error: std::fmt::Display>,
-        ) -> Box2 {
-            #![allow(
-                clippy::too_many_arguments,
-                reason = "one argument per required property"
-            )]
-            Box2(
-                runtime::Builder::start(|| Ok(
-                    Self::new(
-                        runtime::field("width", width)?,
-                        runtime::field("height", height)?,
-                        runtime::field("depth", depth)?,
-                        runtime::field("weight", weight)?,
-                        runtime::field("color", color)?,
-                        runtime::field("shelf", shelf)?,
-                        runtime::field("row", row)?,
-                        runtime::field("bin", bin)?,
-                    ),
-                )),
-            )
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct Box2(runtime::Builder<super::Box2>);
-    impl Box2 {
-        /// Returns the value.
-        pub fn build(self) -> Result<super::Box2, runtime::BuildError> {
-            self.0.build()
-        }
-    }
     impl super::TextNote {
         /// Starts a builder from the required properties.
         pub fn builder(
@@ -943,70 +903,6 @@ pub mod builders {
         /// Returns the value once its whole schema holds.
         pub fn build(self) -> Result<super::NoteImageNote, runtime::BuildError> {
             self.0.build().and_then(super::NoteImageNote::try_from)
-        }
-    }
-    impl super::CropVariant2Variant2 {
-        /// Starts a builder from the required properties.
-        pub fn builder() -> CropVariant2Variant2 {
-            CropVariant2Variant2(runtime::Builder::start(|| Ok(Self::new())))
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct CropVariant2Variant2(runtime::Builder<super::CropVariant2Variant2>);
-    impl CropVariant2Variant2 {
-        pub fn x(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
-            Self(self.0.set("x", value, |s, v| s.x = Some(v)))
-        }
-        pub fn y(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
-            Self(self.0.set("y", value, |s, v| s.y = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::CropVariant2Variant2, runtime::BuildError> {
-            self.0.build()
-        }
-    }
-    impl super::ArchiveConflict {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            code: impl TryInto<i64, Error: std::fmt::Display>,
-            message: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> ArchiveConflict {
-            ArchiveConflict(
-                runtime::Builder::start(|| Ok(
-                    Self::new(
-                        runtime::field("code", code)?,
-                        runtime::field("message", message)?,
-                    ),
-                )),
-            )
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct ArchiveConflict(runtime::Builder<super::ArchiveConflict>);
-    impl ArchiveConflict {
-        /// Returns the value.
-        pub fn build(self) -> Result<super::ArchiveConflict, runtime::BuildError> {
-            self.0.build()
-        }
-    }
-    impl super::AddNoteCreatedXTags {
-        /// Starts a builder from the required properties.
-        pub fn builder() -> AddNoteCreatedXTags {
-            AddNoteCreatedXTags(runtime::Builder::start(|| Ok(Self::new())))
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct AddNoteCreatedXTags(runtime::Builder<super::AddNoteCreatedXTags>);
-    impl AddNoteCreatedXTags {
-        pub fn a(self, value: impl TryInto<String, Error: std::fmt::Display>) -> Self {
-            Self(self.0.set("a", value, |s, v| s.a = Some(v)))
-        }
-        pub fn b(self, value: impl TryInto<String, Error: std::fmt::Display>) -> Self {
-            Self(self.0.set("b", value, |s, v| s.b = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::AddNoteCreatedXTags, runtime::BuildError> {
-            self.0.build()
         }
     }
     impl super::TextNoteFields {

@@ -146,27 +146,6 @@ impl SubscribeBody {
 pub mod builders {
     use super as types;
     use super::runtime;
-    impl super::Product {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            id: impl TryInto<i64, Error: std::fmt::Display>,
-            name: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> Product {
-            Product(
-                runtime::Builder::start(|| Ok(
-                    Self::new(runtime::field("id", id)?, runtime::field("name", name)?),
-                )),
-            )
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct Product(runtime::Builder<super::Product>);
-    impl Product {
-        /// Returns the value.
-        pub fn build(self) -> Result<super::Product, runtime::BuildError> {
-            self.0.build()
-        }
-    }
     impl super::Event {
         /// Starts a builder from the required properties.
         pub fn builder(
@@ -188,26 +167,6 @@ pub mod builders {
         }
         /// Returns the value.
         pub fn build(self) -> Result<super::Event, runtime::BuildError> {
-            self.0.build()
-        }
-    }
-    impl super::SubscribeBody {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            callback_url: impl TryInto<url::Url, Error: std::fmt::Display>,
-        ) -> SubscribeBody {
-            SubscribeBody(
-                runtime::Builder::start(|| Ok(
-                    Self::new(runtime::field("callbackUrl", callback_url)?),
-                )),
-            )
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct SubscribeBody(runtime::Builder<super::SubscribeBody>);
-    impl SubscribeBody {
-        /// Returns the value.
-        pub fn build(self) -> Result<super::SubscribeBody, runtime::BuildError> {
             self.0.build()
         }
     }

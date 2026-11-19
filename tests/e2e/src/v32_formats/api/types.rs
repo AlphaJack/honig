@@ -705,30 +705,6 @@ impl<'de> serde::Deserialize<'de> for EventChargeVariants {
 pub mod builders {
     use super as types;
     use super::runtime;
-    impl super::StoreNetwork {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            first: impl TryInto<std::net::Ipv4Addr, Error: std::fmt::Display>,
-            last: impl TryInto<std::net::Ipv6Addr, Error: std::fmt::Display>,
-        ) -> StoreNetwork {
-            StoreNetwork(
-                runtime::Builder::start(|| Ok(
-                    Self::new(
-                        runtime::field("first", first)?,
-                        runtime::field("last", last)?,
-                    ),
-                )),
-            )
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct StoreNetwork(runtime::Builder<super::StoreNetwork>);
-    impl StoreNetwork {
-        /// Returns the value.
-        pub fn build(self) -> Result<super::StoreNetwork, runtime::BuildError> {
-            self.0.build()
-        }
-    }
     impl super::Event {
         /// Starts a builder from the required properties.
         pub fn builder(
@@ -975,62 +951,6 @@ pub mod builders {
     impl Transfer {
         /// Returns the value.
         pub fn build(self) -> Result<super::Transfer, runtime::BuildError> {
-            self.0.build()
-        }
-    }
-    impl super::EventChargeRefund {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            refund: impl TryInto<runtime::Decimal, Error: std::fmt::Display>,
-        ) -> EventChargeRefund {
-            EventChargeRefund(
-                runtime::Builder::start(|| Ok(
-                    Self::new(runtime::field("refund", refund)?),
-                )),
-            )
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct EventChargeRefund(runtime::Builder<super::EventChargeRefund>);
-    impl EventChargeRefund {
-        /// Returns the value.
-        pub fn build(self) -> Result<super::EventChargeRefund, runtime::BuildError> {
-            self.0.build()
-        }
-    }
-    impl super::EventChargeFee {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            fee: impl TryInto<runtime::Decimal, Error: std::fmt::Display>,
-        ) -> EventChargeFee {
-            EventChargeFee(
-                runtime::Builder::start(|| Ok(Self::new(runtime::field("fee", fee)?))),
-            )
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct EventChargeFee(runtime::Builder<super::EventChargeFee>);
-    impl EventChargeFee {
-        /// Returns the value.
-        pub fn build(self) -> Result<super::EventChargeFee, runtime::BuildError> {
-            self.0.build()
-        }
-    }
-    impl super::EventPayloadContent {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            n: impl TryInto<i64, Error: std::fmt::Display>,
-        ) -> EventPayloadContent {
-            EventPayloadContent(
-                runtime::Builder::start(|| Ok(Self::new(runtime::field("n", n)?))),
-            )
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct EventPayloadContent(runtime::Builder<super::EventPayloadContent>);
-    impl EventPayloadContent {
-        /// Returns the value.
-        pub fn build(self) -> Result<super::EventPayloadContent, runtime::BuildError> {
             self.0.build()
         }
     }

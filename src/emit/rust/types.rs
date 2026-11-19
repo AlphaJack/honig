@@ -10,7 +10,7 @@ use crate::emit::rust::space::Space;
 use crate::emit::rust::syntax::{pascal_ident, snake_ident};
 use crate::ir::names::Name;
 use crate::ir::types::{
-    Checked, EnumValue, Field, JsonKind, Kind, Struct, Ty, TypeDef, TypeId, Union, UnionMode, def_types,
+    Checked, EnumValue, Field, Format, JsonKind, Kind, Struct, Ty, TypeDef, TypeId, Union, UnionMode, def_types,
 };
 
 /// Returns `aliases`: from [`aliases`]. They are declared as `pub type` of the type that they repeat.
@@ -42,8 +42,10 @@ pub(super) fn emit(
         match &def.kind {
             Kind::Struct(s) => {
                 structure(&mut items, space, id, s);
-                builders.push(builder(space, &name, &name, s));
-                builders_name_types |= names_types(s);
+                if s.fields.iter().any(|f| holds_checked(space, &f.ty)) {
+                    builders.push(builder(space, &name, &name, s));
+                    builders_name_types |= names_types(s);
+                }
                 if xml {
                     items.push(xml_shape(space, def, s));
                 }
@@ -1061,6 +1063,49 @@ fn builders_mod(builders: &[TokenStream], names_types: bool) -> Option<TokenStre
             }
         }
     })
+}
+
+/// Does `t` hold a value that only a checked conversion makes: a checked type, the text of a format without its
+/// library, a mail address or host name, or one of them in a list, map, option or box? Each such field takes a `?`,
+/// which a builder gathers into one. Other fields build with `new` and struct update.
+fn holds_checked(space: &Space<'_>, t: &Ty) -> bool {
+    match t {
+        Ty::Named(id) => match &space.types.get(*id).kind {
+            Kind::Checked(_) => true,
+            Kind::Alias(x) => holds_checked(space, x),
+            Kind::Struct(_)
+            | Kind::StrEnum(_)
+            | Kind::IntEnum(_)
+            | Kind::Union(_)
+            | Kind::Newtype(_)
+            | Kind::Const(_)
+            | Kind::Pending => false,
+        },
+        Ty::Format(f) => {
+            super::syntax::untyped(space.libs, *f)
+                || matches!(f, Format::Email | Format::IdnEmail | Format::Hostname | Format::IdnHostname)
+        }
+        Ty::Bool
+        | Ty::I8
+        | Ty::I16
+        | Ty::I32
+        | Ty::I64
+        | Ty::U8
+        | Ty::U16
+        | Ty::U32
+        | Ty::U64
+        | Ty::F32
+        | Ty::F64
+        | Ty::Decimal
+        | Ty::String
+        | Ty::Bytes
+        | Ty::Binary
+        | Ty::Any
+        | Ty::Unit => false,
+        Ty::Vec(_) | Ty::Array(..) | Ty::Tuple(_) | Ty::Map(_) | Ty::Option(_) | Ty::Indirect(_) => {
+            t.children().iter().any(|c| holds_checked(space, c))
+        }
+    }
 }
 
 /// Does a field of `s` name a generated type? Then its builder names it through `types::`.

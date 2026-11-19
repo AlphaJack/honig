@@ -1919,29 +1919,6 @@ pub mod builders {
             self.0.build().and_then(super::Owner::try_from)
         }
     }
-    impl super::Error {
-        /// Starts a builder from the required properties.
-        pub fn builder() -> Error {
-            Error(runtime::Builder::start(|| Ok(Self::new())))
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct Error(runtime::Builder<super::Error>);
-    impl Error {
-        pub fn code(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
-            Self(self.0.set("code", value, |s, v| s.code = Some(v)))
-        }
-        pub fn message(
-            self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("message", value, |s, v| s.message = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::Error, runtime::BuildError> {
-            self.0.build()
-        }
-    }
     impl super::Gadget2 {
         /// Starts a builder from the required properties.
         pub fn builder(
@@ -2013,98 +1990,6 @@ pub mod builders {
             self.0.build().and_then(super::Gadget2::try_from)
         }
     }
-    impl super::SubmitFormBody {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            tags: impl TryInto<Vec<String>, Error: std::fmt::Display>,
-            priority: impl TryInto<
-                types::SubmitFormBodyPriority,
-                Error: std::fmt::Display,
-            >,
-        ) -> SubmitFormBody {
-            SubmitFormBody(
-                runtime::Builder::start(|| Ok(
-                    Self::new(
-                        runtime::field("tags", tags)?,
-                        runtime::field("priority", priority)?,
-                    ),
-                )),
-            )
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct SubmitFormBody(runtime::Builder<super::SubmitFormBody>);
-    impl SubmitFormBody {
-        pub fn filter(
-            self,
-            value: impl TryInto<types::SubmitFormBodyFilter, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("filter", value, |s, v| s.filter = Some(v)))
-        }
-        pub fn note(
-            self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("note", value, |s, v| s.note = Some(v)))
-        }
-        pub fn blob(
-            self,
-            value: impl TryInto<runtime::Binary, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("blob", value, |s, v| s.blob = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::SubmitFormBody, runtime::BuildError> {
-            self.0.build()
-        }
-    }
-    impl super::SubmitFormBodyFilter {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            a: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> SubmitFormBodyFilter {
-            SubmitFormBodyFilter(
-                runtime::Builder::start(|| Ok(Self::new(runtime::field("a", a)?))),
-            )
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct SubmitFormBodyFilter(runtime::Builder<super::SubmitFormBodyFilter>);
-    impl SubmitFormBodyFilter {
-        pub fn b(self, value: impl TryInto<String, Error: std::fmt::Display>) -> Self {
-            Self(self.0.set("b", value, |s, v| s.b = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::SubmitFormBodyFilter, runtime::BuildError> {
-            self.0.build()
-        }
-    }
-    impl super::PutBlobOkXQuota {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            limit: impl TryInto<i64, Error: std::fmt::Display>,
-        ) -> PutBlobOkXQuota {
-            PutBlobOkXQuota(
-                runtime::Builder::start(|| Ok(
-                    Self::new(runtime::field("limit", limit)?),
-                )),
-            )
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct PutBlobOkXQuota(runtime::Builder<super::PutBlobOkXQuota>);
-    impl PutBlobOkXQuota {
-        pub fn scope(
-            self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("scope", value, |s, v| s.scope = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::PutBlobOkXQuota, runtime::BuildError> {
-            self.0.build()
-        }
-    }
     impl super::CreateProductBody {
         /// Starts a builder from the required properties.
         pub fn builder() -> CreateProductBody {
@@ -2128,68 +2013,6 @@ pub mod builders {
         }
         /// Returns the value.
         pub fn build(self) -> Result<super::CreateProductBody, runtime::BuildError> {
-            self.0.build()
-        }
-    }
-    impl super::SearchQ {
-        /// Starts a builder from the required properties.
-        pub fn builder() -> SearchQ {
-            SearchQ(runtime::Builder::start(|| Ok(Self::new())))
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct SearchQ(runtime::Builder<super::SearchQ>);
-    impl SearchQ {
-        pub fn term(
-            self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("term", value, |s, v| s.term = Some(v)))
-        }
-        pub fn page(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
-            Self(self.0.set("page", value, |s, v| s.page = Some(v)))
-        }
-        pub fn filters(
-            self,
-            value: impl TryInto<
-                std::collections::BTreeMap<String, serde_json::Value>,
-                Error: std::fmt::Display,
-            >,
-        ) -> Self {
-            Self(self.0.set("filters", value, |s, v| s.filters = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::SearchQ, runtime::BuildError> {
-            self.0.build()
-        }
-    }
-    impl super::SearchOkItem {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            data: impl TryInto<types::SearchOkItemData, Error: std::fmt::Display>,
-        ) -> SearchOkItem {
-            SearchOkItem(
-                runtime::Builder::start(|| Ok(Self::new(runtime::field("data", data)?))),
-            )
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct SearchOkItem(runtime::Builder<super::SearchOkItem>);
-    impl SearchOkItem {
-        pub fn event(
-            self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("event", value, |s, v| s.event = Some(v)))
-        }
-        pub fn id(self, value: impl TryInto<String, Error: std::fmt::Display>) -> Self {
-            Self(self.0.set("id", value, |s, v| s.id = Some(v)))
-        }
-        pub fn retry(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
-            Self(self.0.set("retry", value, |s, v| s.retry = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::SearchOkItem, runtime::BuildError> {
             self.0.build()
         }
     }
@@ -2451,36 +2274,6 @@ pub mod builders {
         pub fn build(
             self,
         ) -> Result<super::CreateProductBodyRequest, runtime::BuildError> {
-            self.0.build()
-        }
-    }
-    impl super::SearchOkItemRequest {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            data: impl TryInto<types::SearchOkItemDataRequest, Error: std::fmt::Display>,
-        ) -> SearchOkItemRequest {
-            SearchOkItemRequest(
-                runtime::Builder::start(|| Ok(Self::new(runtime::field("data", data)?))),
-            )
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct SearchOkItemRequest(runtime::Builder<super::SearchOkItemRequest>);
-    impl SearchOkItemRequest {
-        pub fn event(
-            self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("event", value, |s, v| s.event = Some(v)))
-        }
-        pub fn id(self, value: impl TryInto<String, Error: std::fmt::Display>) -> Self {
-            Self(self.0.set("id", value, |s, v| s.id = Some(v)))
-        }
-        pub fn retry(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
-            Self(self.0.set("retry", value, |s, v| s.retry = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::SearchOkItemRequest, runtime::BuildError> {
             self.0.build()
         }
     }

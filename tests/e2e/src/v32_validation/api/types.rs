@@ -3860,26 +3860,6 @@ pub mod builders {
             self.0.build().and_then(super::Entry::try_from)
         }
     }
-    impl super::EntryFields {
-        /// Starts a builder from the required properties.
-        pub fn builder() -> EntryFields {
-            EntryFields(runtime::Builder::start(|| Ok(Self::new())))
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct EntryFields(runtime::Builder<super::EntryFields>);
-    impl EntryFields {
-        pub fn lines(
-            self,
-            value: impl TryInto<Vec<types::Line>, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("lines", value, |s, v| s.lines = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::EntryFields, runtime::BuildError> {
-            self.0.build()
-        }
-    }
     impl super::Line {
         /// Starts a builder from the required properties.
         pub fn builder() -> Line {
@@ -3897,86 +3877,6 @@ pub mod builders {
         }
         /// Returns the value.
         pub fn build(self) -> Result<super::Line, runtime::BuildError> {
-            self.0.build()
-        }
-    }
-    impl super::Refusal {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            message: impl TryInto<String, Error: std::fmt::Display>,
-            object: impl TryInto<types::RefusalObject, Error: std::fmt::Display>,
-        ) -> Refusal {
-            Refusal(
-                runtime::Builder::start(|| Ok(
-                    Self::new(
-                        runtime::field("message", message)?,
-                        runtime::field("object", object)?,
-                    ),
-                )),
-            )
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct Refusal(runtime::Builder<super::Refusal>);
-    impl Refusal {
-        /// Returns the value.
-        pub fn build(self) -> Result<super::Refusal, runtime::BuildError> {
-            self.0.build()
-        }
-    }
-    impl super::Problem {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            code: impl TryInto<types::ProblemCode, Error: std::fmt::Display>,
-            status: impl TryInto<i32, Error: std::fmt::Display>,
-            detail: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> Problem {
-            Problem(
-                runtime::Builder::start(|| Ok(
-                    Self::new(
-                        runtime::field("code", code)?,
-                        runtime::field("status", status)?,
-                        runtime::field("detail", detail)?,
-                    ),
-                )),
-            )
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct Problem(runtime::Builder<super::Problem>);
-    impl Problem {
-        /// Returns the value.
-        pub fn build(self) -> Result<super::Problem, runtime::BuildError> {
-            self.0.build()
-        }
-    }
-    impl super::Closed {
-        /// Starts a builder from the required properties.
-        pub fn builder(name: impl TryInto<String, Error: std::fmt::Display>) -> Closed {
-            Closed(
-                runtime::Builder::start(|| Ok(Self::new(runtime::field("name", name)?))),
-            )
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct Closed(runtime::Builder<super::Closed>);
-    impl Closed {
-        /// Returns the value.
-        pub fn build(self) -> Result<super::Closed, runtime::BuildError> {
-            self.0.build()
-        }
-    }
-    impl super::NoOptions {
-        /// Starts a builder from the required properties.
-        pub fn builder() -> NoOptions {
-            NoOptions(runtime::Builder::start(|| Ok(Self::new())))
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct NoOptions(runtime::Builder<super::NoOptions>);
-    impl NoOptions {
-        /// Returns the value.
-        pub fn build(self) -> Result<super::NoOptions, runtime::BuildError> {
             self.0.build()
         }
     }
@@ -4003,30 +3903,6 @@ pub mod builders {
     impl Badge {
         /// Returns the value.
         pub fn build(self) -> Result<super::Badge, runtime::BuildError> {
-            self.0.build()
-        }
-    }
-    impl super::Login {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            user: impl TryInto<String, Error: std::fmt::Display>,
-            token: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> Login {
-            Login(
-                runtime::Builder::start(|| Ok(
-                    Self::new(
-                        runtime::field("user", user)?,
-                        runtime::field("token", token)?,
-                    ),
-                )),
-            )
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct Login(runtime::Builder<super::Login>);
-    impl Login {
-        /// Returns the value.
-        pub fn build(self) -> Result<super::Login, runtime::BuildError> {
             self.0.build()
         }
     }
@@ -4298,43 +4174,6 @@ pub mod builders {
         /// Returns the value once its whole schema holds.
         pub fn build(self) -> Result<super::ShipmentInternational, runtime::BuildError> {
             self.0.build().and_then(super::ShipmentInternational::try_from)
-        }
-    }
-    impl super::MetaObject {
-        /// Starts a builder from the required properties.
-        pub fn builder() -> MetaObject {
-            MetaObject(runtime::Builder::start(|| Ok(Self::new())))
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct MetaObject(runtime::Builder<super::MetaObject>);
-    impl MetaObject {
-        pub fn count(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
-            Self(self.0.set("count", value, |s, v| s.count = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::MetaObject, runtime::BuildError> {
-            self.0.build()
-        }
-    }
-    impl super::ParcelsItem {
-        /// Starts a builder from the required properties.
-        pub fn builder() -> ParcelsItem {
-            ParcelsItem(runtime::Builder::start(|| Ok(Self::new())))
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct ParcelsItem(runtime::Builder<super::ParcelsItem>);
-    impl ParcelsItem {
-        pub fn fragile(
-            self,
-            value: impl TryInto<bool, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("fragile", value, |s, v| s.fragile = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::ParcelsItem, runtime::BuildError> {
-            self.0.build()
         }
     }
     impl super::ShipmentOtherwise {
