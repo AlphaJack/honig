@@ -87,6 +87,25 @@ pub async fn refresh_token<T: Transport>(
     token_call(transport, token_url, fields, client_id, client_secret).await
 }
 
+/// The OS gave no randomness for a PKCE verifier. Its `source` is the error of the OS.
+#[cfg(feature = "pkce")]
+#[derive(Debug)]
+pub struct NoRandomness(Box<dyn std::error::Error + Send + Sync>);
+
+#[cfg(feature = "pkce")]
+impl std::fmt::Display for NoRandomness {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("the OS gave no randomness for a PKCE verifier")
+    }
+}
+
+#[cfg(feature = "pkce")]
+impl std::error::Error for NoRandomness {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        Some(&*self.0)
+    }
+}
+
 /// A PKCE pair (RFC 7636). Send `challenge` in the authorization URL. Keep
 /// `verifier` for the code exchange.
 #[cfg(feature = "pkce")]

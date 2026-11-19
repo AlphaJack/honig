@@ -65,10 +65,10 @@ pub use binary::Base64Url;
 pub use binary::Binary;
 pub use builder::BuildError;
 pub use bytes::Bytes;
-#[cfg(feature = "pkce")]
-pub use client::oauth::Pkce;
 #[cfg(feature = "oauth")]
 pub use client::oauth::{AuthMetadata, DeviceCode, DevicePoll, Token};
+#[cfg(feature = "pkce")]
+pub use client::oauth::{NoRandomness, Pkce};
 #[cfg(feature = "client")]
 pub use client::transport::{Transport, send, send_streaming};
 #[cfg(feature = "multipart")]
