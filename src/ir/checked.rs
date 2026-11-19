@@ -108,6 +108,7 @@ fn split_own_checks(types: &mut TypeSpace, taken: &mut BTreeSet<String>) -> BTre
             property_names: own.property_names.clone(),
             not: own.not.clone(),
             dependent_schemas: own.dependent_schemas.clone(),
+            conditions: own.conditions.clone(),
             ..Constraints::default()
         };
         if def.rust_type.is_some() || constraints.is_empty() {
@@ -268,7 +269,7 @@ pub(crate) fn needs_checks(types: &TypeSpace, t: &Ty, c: &Constraints, hops: usi
     if yours(types, t) {
         return false;
     }
-    if !c.not.is_empty() || !c.dependent_schemas.is_empty() {
+    if !c.not.is_empty() || !c.dependent_schemas.is_empty() || !c.conditions.is_empty() {
         return true;
     }
     if let Some(schema) = &c.schema {

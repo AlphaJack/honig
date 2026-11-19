@@ -106,7 +106,7 @@ pub(super) fn subschema_checks(
     value: &TokenStream,
     path: &TokenStream,
 ) -> TokenStream {
-    if c.not.is_empty() && c.dependent_schemas.is_empty() {
+    if c.not.is_empty() && c.dependent_schemas.is_empty() && c.conditions.is_empty() {
         return TokenStream::new();
     }
     let ty = |n: usize| super::syntax::ty(space, &space.types.subschemas[n].0, false);
@@ -129,11 +129,36 @@ pub(super) fn subschema_checks(
             }
         }
     });
+    let conditions = c.conditions.iter().map(|&(cond, then, otherwise)| {
+        // Each branch as (the `let` that its error binds, the violation).
+        let branch = |b: usize, name: &str| {
+            let (b, name) = (ty(b), lit(&format!("`{name}`: ")));
+            (
+                quote!(let Err(e) = serde_json::from_value::<#b>(json.clone())),
+                quote!(runtime::violation(out, #path, format!("{}{e}", #name));),
+            )
+        };
+        let cond = ty(cond);
+        let matched = quote!(serde_json::from_value::<#cond>(json.clone()).is_ok());
+        match (then.map(|b| branch(b, "then")), otherwise.map(|b| branch(b, "else"))) {
+            (Some((then, v)), Some((otherwise, w))) => quote! {
+                if #matched {
+                    if #then { #v }
+                } else if #otherwise {
+                    #w
+                }
+            },
+            (Some((then, v)), None) => quote!(if #matched && #then { #v }),
+            (None, Some((otherwise, w))) => quote!(if !#matched && #otherwise { #w }),
+            (None, None) => TokenStream::new(),
+        }
+    });
     quote! {
         {
             let json = runtime::to_value(#value).unwrap_or_default();
             #(#nots)*
             #(#dependents)*
+            #(#conditions)*
         }
     }
 }
@@ -151,9 +176,10 @@ pub(super) fn checks(
     if space.is_external(t) {
         return TokenStream::new();
     }
-    if !c.not.is_empty() || !c.dependent_schemas.is_empty() {
+    if !c.not.is_empty() || !c.dependent_schemas.is_empty() || !c.conditions.is_empty() {
         let typed = subschema_checks(space, c, value, path);
-        let rest = checks(space, t, &Constraints { not: vec![], dependent_schemas: vec![], ..c.clone() }, value, path);
+        let rest = Constraints { not: vec![], dependent_schemas: vec![], conditions: vec![], ..c.clone() };
+        let rest = checks(space, t, &rest, value, path);
         return quote!(#typed #rest);
     }
     // Keywords without a Rust type of their own. The whole fragment (refs

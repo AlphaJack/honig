@@ -539,14 +539,13 @@ fn a_named_schema_keeps_its_name_beside_a_twin() {
 
 #[test]
 fn a_body_of_your_own_type_is_left_to_it() {
-    // A body whose `if` no Rust type judges: the generated code checks it as JSON, unless the schema is a type of
-    // yours.
+    // A body whose `unevaluatedProperties` no Rust type judges: the generated code checks it as JSON, unless the
+    // schema is a type of yours.
     let generate = |test: &str, rust_type: Option<&str>| {
         let mut note = json!({
             "type": "object",
             "properties": {"a": {"type": "string"}, "b": {"type": "string"}},
-            "if": {"required": ["a"]},
-            "then": {"required": ["b"]},
+            "unevaluatedProperties": false,
         });
         if let Some(path) = rust_type {
             note["x-rust-type"] = json!(path);
@@ -662,11 +661,11 @@ fn a_schema_that_many_whole_checks_reach_is_generated_once() {
     );
     let mut paths = serde_json::Map::new();
     for i in 0..20 {
-        // An `if` on `required` has no Rust type: each of these is checked whole at run time, and reaches `Big`.
+        // `unevaluatedProperties` has no Rust type: each of these is checked whole at run time, and reaches `Big`.
         schemas.insert(
             format!("S{i}"),
             json!({"type": "object", "properties": {"big": {"$ref": "#/components/schemas/Big"}},
-                "if": {"required": ["x"]}, "then": {"required": ["big"]}}),
+                "unevaluatedProperties": false}),
         );
         paths.insert(
             format!("/s{i}"),
@@ -838,4 +837,18 @@ fn dependent_schemas_check_against_the_type_of_the_schema() {
         common::file(&common::generate("dependent-schemas2", &doc, &crate::emit::Options::default()), "types.rs")
             .to_owned();
     assert!(types.contains("is present: ") && !types.contains("\\\"dependentSchemas\\\""), "{types}");
+}
+
+/// An `if` that is no tagged union checks the value against the types of its schemas: a value of the type of `if` is
+/// one of the type of `then`, any other one of the type of `else`. No schema is checked whole.
+#[test]
+fn if_then_else_checks_against_the_types_of_its_schemas() {
+    let size = json!({"type": "object", "properties": {"unit": {"type": "string"}, "value": {"type": "number"}},
+        "if": {"properties": {"unit": {"type": "string", "pattern": "^cm$"}}},
+        "then": {"properties": {"value": {"type": "number", "maximum": 300}}},
+        "else": {"properties": {"value": {"type": "number", "maximum": 120}}}});
+    let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Size": size}}));
+    let types =
+        common::file(&common::generate("if-then-else", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
+    assert!(types.contains("`then`: ") && !types.contains("check_schema"), "{types}");
 }
