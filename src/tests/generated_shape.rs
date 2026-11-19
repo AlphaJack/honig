@@ -819,3 +819,23 @@ fn not_is_a_check_against_the_type_of_its_schema() {
     let types = common::file(&common::generate("not", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
     assert!(types.contains("serde_json::from_value") && !types.contains("check_schema"), "{types}");
 }
+
+/// `dependentSchemas` over properties that the struct declares is a check that the value decodes as the type of the
+/// schema when the property is present: no schema is checked whole.
+#[test]
+fn dependent_schemas_check_against_the_type_of_the_schema() {
+    let card = json!({"type": "object", "properties": {"card": {"type": "string"}, "cvc": {"type": "string"}},
+        "dependentSchemas": {"card": {"required": ["cvc"]}}});
+    let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Payment": card}}));
+    let types =
+        common::file(&common::generate("dependent-schemas", &doc, &crate::emit::Options::default()), "types.rs")
+            .to_owned();
+    assert!(types.contains("is present: ") && !types.contains("\\\"dependentSchemas\\\""), "{types}");
+    let voucher = json!({"type": "object", "properties": {"code": {"type": "string"}, "amount": {"type": "integer"}},
+        "dependentSchemas": {"code": {"properties": {"amount": {"maximum": 100}}, "required": ["amount"]}}});
+    let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Voucher": voucher}}));
+    let types =
+        common::file(&common::generate("dependent-schemas2", &doc, &crate::emit::Options::default()), "types.rs")
+            .to_owned();
+    assert!(types.contains("is present: ") && !types.contains("\\\"dependentSchemas\\\""), "{types}");
+}

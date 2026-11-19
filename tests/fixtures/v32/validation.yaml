@@ -258,6 +258,15 @@ components:
       properties:
         v: {minimum: 1, maxLength: 3}
 
+    # `dependentSchemas` over declared properties: with a code, the voucher has an amount of at most 100.
+    Voucher:
+      type: object
+      properties:
+        code: {type: string}
+        amount: {type: integer}
+      dependentSchemas:
+        code: {properties: {amount: {maximum: 100}}, required: [amount]}
+
     # `dependentRequired` over declared properties: a check of the fields, with no schema checked whole.
     Payment:
       type: object

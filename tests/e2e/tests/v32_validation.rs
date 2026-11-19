@@ -719,3 +719,15 @@ fn keywords_without_a_type_apply_to_their_kind() {
     assert!(loose(json!(0)).is_err(), "a number below its minimum");
     assert!(loose(json!("abcd")).is_err(), "a string past its length");
 }
+
+/// `dependentSchemas` over declared properties: when the property is present, the value decodes as the type of its
+/// schema.
+#[test]
+fn dependent_schemas_hold_when_the_property_is_present() {
+    let decode = |v: serde_json::Value| serde_json::from_value::<types::Voucher>(v);
+    assert!(decode(json!({"code": "x", "amount": 50})).is_ok());
+    assert!(decode(json!({"amount": 500})).is_ok(), "no code: the schema does not apply");
+    let missing = decode(json!({"code": "x"})).expect_err("no amount");
+    assert!(missing.to_string().contains("`code` is present"), "{missing}");
+    assert!(decode(json!({"code": "x", "amount": 500})).is_err(), "an amount over 100");
+}

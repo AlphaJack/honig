@@ -92,6 +92,7 @@ impl Constraints {
             property_names: None,
             dependent_required: vec![],
             not: vec![],
+            dependent_schemas: vec![],
             schema: None,
         }
     }
@@ -107,6 +108,7 @@ impl Constraints {
         self.decimal128 |= other.decimal128;
         self.dependent_required.extend(other.dependent_required);
         self.not.extend(other.not);
+        self.dependent_schemas.extend(other.dependent_schemas);
         self.schema = match (self.schema.take(), other.schema) {
             (Some(a), Some(b)) => Some(serde_json::json!({ "allOf": [a, b] })),
             (a, b) => a.or(b),
@@ -164,10 +166,7 @@ fn typed_property_names(s: &Value) -> Option<Box<Constraints>> {
 /// optional one has no `default`, so that its absence shows. `None` leaves it to the run-time check of the whole schema.
 fn typed_dependents(s: &Value) -> Option<Vec<(String, Vec<String>)>> {
     let deps = s.get("dependentRequired")?.as_object()?;
-    let props = s.get("properties")?.as_object()?;
-    let required: Vec<&str> =
-        json::strs(s.get("required").and_then(Value::as_array).map_or(&[][..], Vec::as_slice)).collect();
-    let seen = |n: &str| props.get(n).is_some_and(|p| required.contains(&n) || p.get("default").is_none());
+    let seen = absence_shows(s)?;
     let mut out = vec![];
     for (name, needs) in deps {
         let needs: Vec<String> =
@@ -178,6 +177,23 @@ fn typed_dependents(s: &Value) -> Option<Vec<(String, Vec<String>)>> {
         out.push((name.clone(), needs));
     }
     Some(out)
+}
+
+/// Returns whether the absence of a property of `s` shows in its struct: it is declared, and required or without a
+/// `default`. `None` when `s` declares no properties.
+fn absence_shows(s: &Value) -> Option<impl Fn(&str) -> bool + '_> {
+    let props = s.get("properties")?.as_object()?;
+    let required: Vec<&str> =
+        json::strs(s.get("required").and_then(Value::as_array).map_or(&[][..], Vec::as_slice)).collect();
+    Some(move |n: &str| props.get(n).is_some_and(|p| required.contains(&n) || p.get("default").is_none()))
+}
+
+/// Returns `dependentSchemas` of `s` when its struct holds it: each name is a property whose absence shows
+/// ([`absence_shows`]). `None` leaves it to the run-time check of the whole schema.
+fn typed_dependent_schemas(s: &Value) -> Option<&serde_json::Map<String, Value>> {
+    let deps = s.get("dependentSchemas")?.as_object()?;
+    let seen = absence_shows(s)?;
+    deps.keys().all(|n| seen(n)).then_some(deps)
 }
 
 /// Returns a property schema's `example` and `examples` (an array in JSON Schema).
@@ -587,9 +603,9 @@ pub(crate) struct Builder<'a> {
     viewed: RefCell<BTreeMap<String, Value>>,
     /// [`Builder::shared`] in the request view that run-time checks use: `TypeSpace::shared`.
     checked: RefCell<BTreeMap<String, Value>>,
-    /// The `not` schemas that typed checks refer to, by index, with the pointer of each when it has one. `finish`
-    /// builds a type for each.
-    nots: RefCell<Vec<(Value, Option<String>)>>,
+    /// The schemas that typed checks decode the value as (`not`, `dependentSchemas`), by index, with the pointer of
+    /// each when it has one. `finish` builds a type for each.
+    subschemas: RefCell<Vec<(Value, Option<String>)>>,
     /// The JSON kind of each type once it is final ([`Kinds`]).
     kinds: RefCell<Vec<Option<JsonKind>>>,
     /// Where a schema was cut short at `MAX_SCHEMA_DEPTH`, by pointer: what is deeper is not checked. Reported once
@@ -631,7 +647,7 @@ impl<'a> Builder<'a> {
             viewed: RefCell::default(),
             checked: RefCell::default(),
             kinds: RefCell::default(),
-            nots: RefCell::default(),
+            subschemas: RefCell::default(),
             cut_short: RefCell::new(BTreeMap::new()),
         }
     }
@@ -773,14 +789,14 @@ impl<'a> Builder<'a> {
         self.constraints_at(s, 0, Some(ptr))
     }
 
-    /// Returns the index of the `not` schema `not` in [`Builder::nots`], queued once.
-    fn queue_not(&self, not: &Value, at: Option<String>) -> usize {
-        let mut nots = self.nots.borrow_mut();
-        if let Some(i) = nots.iter().position(|(s, p)| s == not && *p == at) {
+    /// Returns the index of `schema`, at `at`, in [`Builder::subschemas`], queued once.
+    fn queue_subschema(&self, schema: &Value, at: Option<String>) -> usize {
+        let mut subschemas = self.subschemas.borrow_mut();
+        if let Some(i) = subschemas.iter().position(|(s, p)| s == schema && *p == at) {
             return i;
         }
-        nots.push((not.clone(), at));
-        nots.len() - 1
+        subschemas.push((schema.clone(), at));
+        subschemas.len() - 1
     }
 
     fn constraints_at(&self, s: &Value, depth: usize, at: Option<&str>) -> Constraints {
@@ -791,6 +807,7 @@ impl<'a> Builder<'a> {
         }
         let mut c = Constraints::own(s);
         let (dependents, names, pattern_map) = typed_object_keywords(s, &mut c);
+        let dependent_schemas = typed_dependent_schemas(s);
         // `if`/`then` on one property's constants becomes a tagged union (`conditional_union`): its variants hold the
         // conditions. Only conditions that it cannot type stay a run-time check.
         let typed_conditional = s.as_object().is_some_and(|o| conditional_union(o).is_some());
@@ -800,6 +817,7 @@ impl<'a> Builder<'a> {
                 || (names && k == "propertyNames")
                 || (pattern_map && matches!(k, "patternProperties" | "additionalProperties"))
                 || k == "not"
+                || (dependent_schemas.is_some() && k == "dependentSchemas")
         };
         let conditional_member = |m: &Value| {
             typed_conditional
@@ -823,8 +841,14 @@ impl<'a> Builder<'a> {
             // The resource of the schema starts the dynamic scope that a `$dynamicRef` resolves in.
             let scope: Vec<String> = at.map_or_else(Vec::new, |p| vec![self.dynamic.resource_of(p)]);
             c.schema = Some(self.inlined(s, at, scope));
-        } else if let Some(not) = s.get("not") {
-            c.not.push(self.queue_not(not, at.map(|p| format!("{p}/not"))));
+        } else {
+            if let Some(not) = s.get("not") {
+                c.not.push(self.queue_subschema(not, at.map(|p| join(p, "not"))));
+            }
+            for (name, sub) in dependent_schemas.into_iter().flatten() {
+                let at = at.map(|p| join(&join(p, "dependentSchemas"), name));
+                c.dependent_schemas.push((name.clone(), self.queue_subschema(sub, at)));
+            }
         }
         for m in s.get("allOf").and_then(Value::as_array).into_iter().flatten().filter(|m| !conditional_member(m)) {
             c.merge(self.constraints_at(m, depth + 1, None));
@@ -2053,7 +2077,7 @@ impl<'a> Builder<'a> {
     /// Returns finish. Resolve placeholders, drop defaults that the type of their field cannot hold and break cycles
     /// with `Box`.
     pub(crate) fn finish(mut self) -> TypeSpace {
-        let nots = self.build_nots();
+        let subschemas = self.build_subschemas();
         for (at, message) in std::mem::take(self.cut_short.get_mut()) {
             self.diags.warning(at, message);
         }
@@ -2077,22 +2101,22 @@ impl<'a> Builder<'a> {
         }
         let mut space = TypeSpace::new(self.defs);
         space.shared = self.checked.into_inner();
-        space.nots = nots;
+        space.subschemas = subschemas;
         break_cycles(&mut space);
         space
     }
 }
 
 impl Builder<'_> {
-    /// Builds the type of each queued `not` schema, with its constraints. A `not` inside one queues more.
-    fn build_nots(&mut self) -> Vec<(Ty, Constraints)> {
+    /// Builds the type of each queued schema, with its constraints. A schema inside one may queue more.
+    fn build_subschemas(&mut self) -> Vec<(Ty, Constraints)> {
         let mut built = vec![];
-        // A `not` type judges the whole value: its objects keep the names that they do not declare, which its checks
-        // may need (`required` of an undeclared name).
+        // Such a type judges the whole value: its objects keep the names that they do not declare, which its checks may
+        // need (`required` of an undeclared name).
         let keep = std::mem::replace(&mut self.keep_unknown, true);
         loop {
             // The borrow ends here: building the type may queue more.
-            let next = self.nots.borrow().get(built.len()).cloned();
+            let next = self.subschemas.borrow().get(built.len()).cloned();
             let Some((schema, at)) = next else { break };
             let ptr = at.clone().unwrap_or_else(|| format!("#/x-honig-not/{}", built.len()));
             let ty = self.ty(&schema, &ptr, &Name::new("Not"));
