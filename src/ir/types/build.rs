@@ -199,7 +199,7 @@ fn typed_pattern_map(s: &Value) -> Option<String> {
 fn typed_patterns(s: &Value) -> Option<&serde_json::Map<String, Value>> {
     let o = s.as_object().filter(|o| is_object(o))?;
     let extra = o.get("additionalProperties");
-    o.get("patternProperties")?.as_object().filter(|_| extra.is_none_or(Value::is_boolean))
+    o.get("patternProperties")?.as_object().filter(|_| extra.is_none_or(|e| e.is_boolean() || e.is_object()))
 }
 
 /// Returns `propertyNames` of `s` when generated code checks it: a schema of `pattern`, `minLength` and `maxLength`
@@ -873,6 +873,31 @@ impl<'a> Builder<'a> {
         self.constraints_at(s, 0, Some(ptr))
     }
 
+    /// Puts `patternProperties` of `s` into `c`: each pattern with the type of its schema, and what `additionalProperties`
+    /// takes of the other names.
+    fn queue_patterns(
+        &self,
+        s: &Value,
+        patterns: &serde_json::Map<String, Value>,
+        at: Option<&str>,
+        c: &mut Constraints,
+    ) {
+        let at = at.map(|p| join(p, "patternProperties"));
+        c.pattern_properties = (patterns.iter())
+            .map(|(p, sub)| (p.clone(), self.queue_subschema(sub, at.as_deref().map(|a| join(a, p)))))
+            .collect();
+        let declared = s.get("properties").and_then(Value::as_object).into_iter().flat_map(serde_json::Map::keys);
+        let declared = declared.cloned().collect();
+        c.closed_to = match s.get("additionalProperties") {
+            Some(Value::Bool(false)) => Some((declared, None)),
+            Some(extra @ Value::Object(_)) => {
+                let n = self.queue_subschema(extra, None);
+                Some((declared, Some(n)))
+            }
+            _ => None,
+        };
+    }
+
     /// Returns the index of `schema`, at `at`, in [`Builder::subschemas`], queued once.
     fn queue_subschema(&self, schema: &Value, at: Option<String>) -> usize {
         let mut subschemas = self.subschemas.borrow_mut();
@@ -957,14 +982,7 @@ impl<'a> Builder<'a> {
                 c.one_of.push(self.queue_subschema(branch, at));
             }
             if let Some(patterns) = patterns {
-                let at = at.map(|p| join(p, "patternProperties"));
-                c.pattern_properties = (patterns.iter())
-                    .map(|(p, sub)| (p.clone(), self.queue_subschema(sub, at.as_deref().map(|a| join(a, p)))))
-                    .collect();
-                let declared =
-                    s.get("properties").and_then(Value::as_object).into_iter().flat_map(serde_json::Map::keys);
-                c.closed_to =
-                    (s.get("additionalProperties") == Some(&Value::Bool(false))).then(|| declared.cloned().collect());
+                self.queue_patterns(s, patterns, at, &mut c);
             }
             for (name, sub) in dependent_schemas.into_iter().flatten() {
                 let at = at.map(|p| join(&join(p, "dependentSchemas"), name));
@@ -1438,22 +1456,22 @@ impl<'a> Builder<'a> {
                 if let Some(c) = o.get("const") {
                     return const_ty(c);
                 }
-                // One `patternProperties` schema (and no other extra keys
-                // allowed) types every value; the key pattern is still checked.
+                // One `patternProperties` schema and no other name allowed types every value; the key pattern is still
+                // checked. An open map holds any value under a name that the pattern does not match.
                 let single_pattern = o.get("patternProperties").and_then(Value::as_object).filter(|p| p.len() == 1);
                 if let Some((pat, schema)) = single_pattern.and_then(|p| p.iter().next())
                     && !o.contains_key("properties")
-                    && o.get("additionalProperties").is_none_or(|a| *a == Value::Bool(false))
+                    && o.get("additionalProperties") == Some(&Value::Bool(false))
                 {
                     let at = join(&join(ptr, "patternProperties"), pat);
                     return Ty::Map(Box::new(self.ty(schema, &at, &hint.and(&Name::new("Value")))));
                 }
+                // Beside `patternProperties`, `additionalProperties` holds for the names that no pattern matches: the
+                // check judges each value.
                 match o.get("additionalProperties") {
-                    Some(ap @ Value::Object(m)) if !m.is_empty() => Ty::Map(Box::new(self.ty(
-                        ap,
-                        &join(ptr, "additionalProperties"),
-                        &hint.and(&Name::new("Value")),
-                    ))),
+                    Some(ap @ Value::Object(m)) if !m.is_empty() && !o.contains_key("patternProperties") => Ty::Map(
+                        Box::new(self.ty(ap, &join(ptr, "additionalProperties"), &hint.and(&Name::new("Value")))),
+                    ),
                     _ if t == Some("object")
                         || o.contains_key("properties")
                         || o.contains_key("additionalProperties") =>
@@ -1755,7 +1773,8 @@ impl<'a> Builder<'a> {
             // A name that `patternProperties` matches is not additional, so its value need not fit
             // `additionalProperties`: the map holds any value and the run-time check judges each by its name.
             Some(Value::Object(m)) if !m.is_empty() && o.contains_key("patternProperties") => Some(Ty::Any),
-            Some(ap @ Value::Object(m)) if !m.is_empty() => {
+            // Beside `patternProperties`, the schema holds only for names that no pattern matches: the check judges them.
+            Some(ap @ Value::Object(m)) if !m.is_empty() && !o.contains_key("patternProperties") => {
                 Some(self.ty(ap, &join(ptr, "additionalProperties"), &name.and(&Name::new("Value"))))
             }
             Some(Value::Bool(true) | Value::Object(_)) => Some(Ty::Any),

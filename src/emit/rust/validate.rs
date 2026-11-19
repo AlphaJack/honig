@@ -234,21 +234,31 @@ fn pattern_checks(c: &Constraints, ty: &dyn Fn(usize) -> TokenStream, path: &Tok
         }
     });
     let (start, refuse) = match &c.closed_to {
-        Some(declared) => {
-            let declared = declared.iter().map(|d| lit(d));
-            let undeclared = if c.closed_to.as_ref().is_some_and(Vec::is_empty) {
-                quote!(true)
-            } else {
-                quote!(![#(#declared),*].contains(&name.as_str()))
-            };
-            (
-                Some(quote!(let mut matched = false;)),
-                Some(quote! {
-                    if !matched && #undeclared {
+        Some((declared, extra)) => {
+            // `&& !declared.contains(name)`, or nothing when no name is declared.
+            let undeclared = (!declared.is_empty()).then(|| {
+                let declared = declared.iter().map(|d| lit(d));
+                quote!(&& ![#(#declared),*].contains(&name.as_str()))
+            });
+            let other = match extra {
+                None => quote! {
+                    if !matched #undeclared {
                         runtime::violation(out, &runtime::InstancePath::Key(#path, name), "no value is allowed here");
                     }
-                }),
-            )
+                },
+                Some(n) => {
+                    let t = ty(*n);
+                    quote! {
+                        if !matched
+                            #undeclared
+                            && let Err(e) = serde_json::from_value::<#t>(item.clone())
+                        {
+                            runtime::violation(out, &runtime::InstancePath::Key(#path, name), e.to_string());
+                        }
+                    }
+                }
+            };
+            (Some(quote!(let mut matched = false;)), Some(other))
         }
         None => (None, None),
     };

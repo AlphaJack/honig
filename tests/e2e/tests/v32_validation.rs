@@ -50,7 +50,7 @@ fn untyped_keywords_report_each_failure() {
     for (body, expected) in [
         (with("insured", json!(true)), "`insurer` is required when `insured` is present"), // dependentRequired
         (with("parcels", json!([{"fragile": false}])), "must contain at least 1 matching item(s), found 0"), // contains
-        (with("labels", json!({"Bad": "x"})), "is not an allowed property name"),          // propertyNames
+        (with("labels", json!({"Bad": "x"})), "does not match `^[a-z]+$`"),                // propertyNames
         (with("labels", json!({"xlong": "abcd"})), "at most 3 characters allowed, found 4"), // patternProperties
     ] {
         let r = shipment(&body);
