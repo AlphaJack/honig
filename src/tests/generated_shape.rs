@@ -539,13 +539,13 @@ fn a_named_schema_keeps_its_name_beside_a_twin() {
 
 #[test]
 fn a_body_of_your_own_type_is_left_to_it() {
-    // A body whose `unevaluatedProperties` no Rust type judges: the generated code checks it as JSON, unless the
-    // schema is a type of yours.
+    // A body whose `unevaluatedItems` no Rust type judges: the generated code checks it as JSON, unless the schema is
+    // a type of yours. On an object it asserts nothing.
     let generate = |test: &str, rust_type: Option<&str>| {
         let mut note = json!({
             "type": "object",
             "properties": {"a": {"type": "string"}, "b": {"type": "string"}},
-            "unevaluatedProperties": false,
+            "unevaluatedItems": false,
         });
         if let Some(path) = rust_type {
             note["x-rust-type"] = json!(path);
@@ -661,11 +661,12 @@ fn a_schema_that_many_whole_checks_reach_is_generated_once() {
     );
     let mut paths = serde_json::Map::new();
     for i in 0..20 {
-        // `unevaluatedProperties` has no Rust type: each of these is checked whole at run time, and reaches `Big`.
+        // `unevaluatedItems` has no Rust type: each of these is checked whole at run time, and reaches `Big`. On an
+        // object it asserts nothing.
         schemas.insert(
             format!("S{i}"),
             json!({"type": "object", "properties": {"big": {"$ref": "#/components/schemas/Big"}},
-                "unevaluatedProperties": false}),
+                "unevaluatedItems": false}),
         );
         paths.insert(
             format!("/s{i}"),
@@ -1001,4 +1002,36 @@ fn values_that_no_type_holds_are_compared_as_json() {
     let types = common::file(&common::generate("untyped-values", &doc, &crate::emit::Options::default()), "types.rs")
         .to_owned();
     assert!(types.contains("runtime::json_equal") && !types.contains("check_schema"), "{types}");
+}
+
+/// `unevaluatedProperties` refuses the names that the schema, what it applies in place and the branches that the value
+/// matches leave: no schema is checked whole.
+#[test]
+fn unevaluated_properties_refuses_what_nothing_evaluates() {
+    let base = json!({"type": "object", "properties": {"id": {"type": "string"}}});
+    let item = json!({"type": "object", "allOf": [{"$ref": "#/components/schemas/Base"}],
+        "properties": {"size": {"type": "integer"}},
+        "if": {"type": "object", "properties": {"size": {"type": "integer", "minimum": 10}}},
+        "then": {"type": "object", "properties": {"label": {"type": "string"}}},
+        "unevaluatedProperties": false});
+    let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Base": base, "Item": item}}));
+    let types = common::file(
+        &common::generate("unevaluated-properties-typed", &doc, &crate::emit::Options::default()),
+        "types.rs",
+    )
+    .to_owned();
+    assert!(types.contains("is not allowed (unevaluatedProperties)") && !types.contains("check_schema"), "{types}");
+}
+
+/// `unevaluatedProperties` beside a union sees the names that the matched branches evaluate: it is not split off.
+#[test]
+fn unevaluated_properties_beside_a_union_sees_its_branches() {
+    let item = json!({"type": "object", "anyOf": [{"type": "object", "properties": {"foo": {"type": "integer"}}}, true],
+        "unevaluatedProperties": false});
+    let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Item": item}}));
+    let types =
+        common::file(&common::generate("unevaluated-beside-union", &doc, &crate::emit::Options::default()), "types.rs")
+            .to_owned();
+    assert_eq!(types.matches("is not allowed (unevaluatedProperties)").count(), 1, "{types}");
+    assert!(types.contains("matches!(name.as_str(), \"foo\")"), "{types}");
 }

@@ -8,8 +8,8 @@ use serde_json::Value;
 use super::cycles::break_cycles;
 use super::rewrite::{FALLBACK, conditional_union, request_view, view};
 use super::{
-    Access, Checked, Constraints, EnumValue, Field, Format, JsonKind, Kind, Rest, Struct, Ty, TypeDef, TypeId,
-    TypeSpace, Union, UnionMode, Variant, XmlHint,
+    Access, Checked, Constraints, EnumValue, Evaluated, Field, Format, JsonKind, Kind, Leftover, Rest, Struct, Ty,
+    TypeDef, TypeId, TypeSpace, Union, UnionMode, Variant, XmlHint,
 };
 use crate::diag::Diagnostics;
 use crate::ir::names::{Name, Reserved, reserved, unique};
@@ -76,6 +76,7 @@ impl Constraints {
             also: self.also.clone(),
             enum_values: self.enum_values.clone(),
             const_value: self.const_value.clone(),
+            unevaluated: self.unevaluated.clone(),
             ..Self::default()
         }
     }
@@ -92,6 +93,7 @@ impl Constraints {
             also: vec![],
             enum_values: None,
             const_value: None,
+            unevaluated: None,
             ..self.clone()
         }
     }
@@ -135,6 +137,7 @@ impl Constraints {
             dependent_schemas: vec![],
             enum_values: None,
             const_value: None,
+            unevaluated: None,
             conditions: vec![],
             contains: None,
             one_of: vec![],
@@ -152,7 +155,7 @@ impl Constraints {
             ($($f:ident),*) => { $( if self.$f.is_none() { self.$f = other.$f; } )* };
         }
         take!(min_length, max_length, pattern, minimum, maximum, exclusive_minimum, exclusive_maximum, multiple_of);
-        take!(enum_values, const_value);
+        take!(enum_values, const_value, unevaluated);
         take!(min_items, max_items, min_properties, max_properties, items, property_names, contains, tuple);
         self.unique_items |= other.unique_items;
         self.decimal128 |= other.decimal128;
@@ -556,6 +559,8 @@ fn beside_union(s: &Value) -> Option<Value> {
     let quiet = |k: &str| {
         matches!(k, "oneOf" | "anyOf" | "discriminator" | "description" | "title" | "example" | "examples")
             || matches!(k, "deprecated" | "default" | "nullable")
+            // It sees the names that the branches evaluate: the schema with the union checks it.
+            || k == "unevaluatedProperties"
             || k.starts_with("x-")
     };
     let beside: serde_json::Map<String, Value> =
@@ -947,6 +952,74 @@ impl<'a> Builder<'a> {
         };
     }
 
+    /// Returns `unevaluatedProperties` of `s` as generated code checks it: what `s` evaluates, and what the other names
+    /// take. `None` for `unevaluatedProperties: true`, which takes every name.
+    fn unevaluated(&self, s: &Value, at: Option<&str>) -> Option<(Evaluated, Leftover)> {
+        let leftover = match s.get("unevaluatedProperties")? {
+            Value::Bool(true) => return None,
+            Value::Bool(false) => Leftover::Refused,
+            schema @ (Value::Object(_) | Value::Null | Value::Number(_) | Value::String(_) | Value::Array(_)) => {
+                Leftover::Schema(self.queue_subschema(schema, at.map(|p| join(p, "unevaluatedProperties"))))
+            }
+        };
+        Some((self.evaluated(s, 0, true)?, leftover))
+    }
+
+    /// Returns what `s` evaluates of an object's names ([`Evaluated`]). With `queue`, the schema of each branch is
+    /// queued for a type; without, nothing is. `None` when that is not known before the value is: a
+    /// `dependentSchemas`, a `$dynamicRef` or a cycle of references.
+    fn evaluated(&self, s: &Value, depth: usize, queue: bool) -> Option<Evaluated> {
+        if depth > MAX_SCHEMA_DEPTH {
+            return None;
+        }
+        let o = match s {
+            Value::Bool(_) => return Some(Evaluated::default()),
+            Value::Object(o) => o,
+            Value::Null | Value::Number(_) | Value::String(_) | Value::Array(_) => return None,
+        };
+        if o.contains_key("dependentSchemas") || o.contains_key("$dynamicRef") {
+            return None;
+        }
+        let keys = |k: &str| o.get(k).and_then(Value::as_object).into_iter().flat_map(serde_json::Map::keys).cloned();
+        let mut ev = Evaluated {
+            names: keys("properties").collect(),
+            patterns: keys("patternProperties").collect(),
+            // `unevaluatedProperties` further in evaluates every name that its own schema leaves.
+            all: o.contains_key("additionalProperties") || (depth > 0 && o.contains_key("unevaluatedProperties")),
+            branches: vec![],
+        };
+        if let Some(r) = o.get("$ref").and_then(Value::as_str) {
+            let p = self.doc.local_pointer(r)?;
+            let target = pointer(&self.doc.root, &p)?;
+            if self.reading.borrow().contains(&p) {
+                return None;
+            }
+            self.reading.borrow_mut().push(p.clone());
+            let reached = self.evaluated(target, depth + 1, queue);
+            self.reading.borrow_mut().pop();
+            ev.merge(reached?);
+        }
+        for (_, m) in json::items(o.get("allOf")) {
+            ev.merge(self.evaluated(m, depth + 1, queue)?);
+        }
+        let index = |b: &Value| if queue { self.queue_subschema(b, None) } else { 0 };
+        for (_, b) in ["anyOf", "oneOf"].iter().flat_map(|k| json::items(o.get(*k))) {
+            ev.branches.push((index(b), true, self.evaluated(b, depth + 1, queue)?));
+        }
+        if let Some(cond) = o.get("if") {
+            let n = index(cond);
+            let mut then = self.evaluated(cond, depth + 1, queue)?;
+            if let Some(t) = o.get("then") {
+                then.merge(self.evaluated(t, depth + 1, queue)?);
+            }
+            ev.branches.push((n, true, then));
+            if let Some(e) = o.get("else") {
+                ev.branches.push((n, false, self.evaluated(e, depth + 1, queue)?));
+            }
+        }
+        Some(ev)
+    }
+
     /// Returns the index of `schema`, at `at`, in [`Builder::subschemas`], queued once.
     fn queue_subschema(&self, schema: &Value, at: Option<String>) -> usize {
         let mut subschemas = self.subschemas.borrow_mut();
@@ -991,6 +1064,8 @@ impl<'a> Builder<'a> {
         }
         let mut c = Constraints::own(s);
         let (dependents, names, pattern_map) = typed_object_keywords(s, &mut c);
+        // What the names that nothing evaluated take is known before the value is.
+        let unevaluated = s.get("unevaluatedProperties").is_some() && self.evaluated(s, 0, false).is_some();
         let dependent_schemas = typed_dependent_schemas(s);
         // `contains` on an array type counts the items that decode as the type of its schema.
         let typed_contains =
@@ -1007,6 +1082,7 @@ impl<'a> Builder<'a> {
                 || (pattern_map && matches!(k, "patternProperties" | "additionalProperties"))
                 || k == "not"
                 || (dependent_schemas.is_some() && k == "dependentSchemas")
+                || (unevaluated && k == "unevaluatedProperties")
                 || (typed_contains && matches!(k, "contains" | "minContains" | "maxContains"))
                 || (patterns.is_some() && k == "patternProperties")
         };
@@ -1062,6 +1138,9 @@ impl<'a> Builder<'a> {
                 }
             }
             untyped_value_checks(s, &mut c);
+            if unevaluated {
+                c.unevaluated = self.unevaluated(s, at);
+            }
             for (name, sub) in dependent_schemas.into_iter().flatten() {
                 let at = at.map(|p| join(&join(p, "dependentSchemas"), name));
                 c.dependent_schemas.push((name.clone(), self.queue_subschema(sub, at)));
@@ -2991,7 +3070,7 @@ mod tests {
             "properties": {"id": {"type": "string", "readOnly": true}, "name": {"type": "string"}},
             "anyOf": [{"$ref": "#/components/schemas/Named"}, {"$ref": "#/components/schemas/Other"}],
             // Asserts nothing, and keeps the schema checked whole.
-            "unevaluatedProperties": true,
+            "dependencies": {},
         });
         assert_eq!(check(&branch, &json!({"name": "x"})), Vec::<String>::new());
         assert_ne!(check(&branch, &json!({})), Vec::<String>::new());
