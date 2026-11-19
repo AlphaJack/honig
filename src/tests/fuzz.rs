@@ -12,6 +12,9 @@
 //! - `common`: what 2.0 can express, compared across all four versions
 //! - `rich`: 3.x only with oneOf and discriminator, nullable, cookies, deepObject and status ranges
 //! - `v32`: query, additionalOperations, querystring, itemSchema streams and defaultMapping
+//! - `composition`: 3.1 and 3.2 with anyOf, undiscriminated and nested oneOf, allOf members that declare the same
+//!   property, `unevaluatedProperties`, `const`, bounded and unique arrays, recursive unions, every format, and random
+//!   generator options
 //!
 //! The generator reads its choices from a list of numbers that proptest draws. A failing API shrinks with that list.
 //! Every choice moves toward zero, the smallest one (one schema, one operation, no option). `PROPTEST_CASES` runs more.
@@ -56,6 +59,7 @@ enum Profile {
     Common,
     Rich,
     V32,
+    Composition,
 }
 
 #[derive(Debug, Clone)]
@@ -83,6 +87,24 @@ enum S {
         variants: Vec<usize>,
         default: bool,
     },
+    /// `anyOf` of its branches.
+    AnyOf(Vec<Self>),
+    /// `oneOf` with no discriminator.
+    Union(Vec<Self>),
+    /// `allOf` of two objects. The second declares at least one property of the first.
+    Shared(Vec<Prop>, Vec<Prop>),
+    /// `anyOf` of its branches with `unevaluatedProperties: false`.
+    Unevaluated(Vec<Self>),
+    Const(String),
+    /// An array with `minItems`, `maxItems` and `uniqueItems`.
+    Bounded {
+        items: Box<Self>,
+        min: Option<u64>,
+        max: Option<u64>,
+        unique: bool,
+    },
+    /// A number with `format: decimal` or `decimal128`.
+    Decimal(&'static str),
 }
 
 #[derive(Debug, Clone)]
@@ -169,6 +191,7 @@ struct Api {
     schemas: Vec<Named>,
     ops: Vec<Op>,
     schemes: Vec<Scheme>,
+    opts: crate::emit::Options,
 }
 
 const WORDS: &[&str] =
@@ -196,6 +219,9 @@ fn gen_prim(r: &mut Rng<'_>) -> S {
 }
 
 fn gen_schema(r: &mut Rng<'_>, depth: usize, named: usize, profile: Profile) -> S {
+    if profile == Profile::Composition && depth <= 2 && r.chance(40) {
+        return gen_composition(r, depth, named);
+    }
     let roll = if depth > 2 { 0 } else { r.below(10) };
     match roll {
         0..=3 => gen_prim(r),
@@ -204,6 +230,46 @@ fn gen_schema(r: &mut Rng<'_>, depth: usize, named: usize, profile: Profile) -> 
         6 | 7 => S::Obj(gen_props(r, depth + 1, named, profile)),
         _ if named > 0 => S::Ref(r.below(named)),
         _ => gen_prim(r),
+    }
+}
+
+fn gen_composition(r: &mut Rng<'_>, depth: usize, named: usize) -> S {
+    let profile = Profile::Composition;
+    let n = 2 + r.below(2);
+    match r.below(8) {
+        0 => S::AnyOf((0..n).map(|_| gen_schema(r, depth + 1, named, profile)).collect()),
+        1 => S::Union((0..n).map(|_| gen_schema(r, depth + 1, named, profile)).collect()),
+        2 => {
+            let first = gen_props(r, depth + 1, named, profile);
+            let mut second = gen_props(r, depth + 1, named, profile);
+            let mut shared = r.pick(&first).clone();
+            if r.chance(30) {
+                shared.s = gen_schema(r, depth + 1, named, profile);
+            }
+            shared.required = r.chance(50);
+            second.retain(|p| p.name != shared.name);
+            second.push(shared);
+            S::Shared(first, second)
+        }
+        3 => S::Unevaluated(
+            (0..n)
+                .map(|_| {
+                    if named > 0 && r.chance(50) {
+                        S::Ref(r.below(named))
+                    } else {
+                        S::Obj(gen_props(r, depth + 1, named, profile))
+                    }
+                })
+                .collect(),
+        ),
+        4 => S::Const(word(r, 0)),
+        5 => {
+            let min = r.chance(50).then(|| r.below(3) as u64);
+            let max = r.chance(50).then(|| min.unwrap_or(0) + 1 + r.below(4) as u64);
+            S::Bounded { items: Box::new(gen_schema(r, depth + 1, named, profile)), min, max, unique: r.chance(50) }
+        }
+        6 => S::Decimal(r.pick(&["decimal", "decimal128"])),
+        _ => S::Str { values: None, format: Some(r.pick(&crate::ir::types::Format::ALL).name()) },
     }
 }
 
@@ -256,7 +322,6 @@ fn gen_api(choices: &[u64], profile: Profile) -> Api {
             tag: None,
         });
     }
-    let named = schemas.len();
     let schemes = {
         let mut all = vec![Scheme::ApiKeyHeader, Scheme::ApiKeyQuery, Scheme::Basic, Scheme::OAuth];
         if profile != Profile::Common {
@@ -266,6 +331,8 @@ fn gen_api(choices: &[u64], profile: Profile) -> Api {
         all
     };
     let mut ops = vec![];
+    let schemas = if profile == Profile::Composition { recursive_unions(&mut r, schemas) } else { schemas };
+    let named = schemas.len();
     for i in 0..=r.below(5) {
         ops.push(gen_op(&mut r, i, named, &schemes, profile));
     }
@@ -284,7 +351,47 @@ fn gen_api(choices: &[u64], profile: Profile) -> Api {
         extra.method = "PURGE".into();
         ops.push(extra);
     }
-    Api { schemas, ops, schemes }
+    let opts = if profile == Profile::Composition { gen_options(&mut r) } else { crate::emit::Options::default() };
+    Api { schemas, ops, schemes, opts }
+}
+
+/// A JSON-like `anyOf` of text or an array of itself, and a `oneOf` tree whose branch holds its own children.
+fn recursive_unions(r: &mut Rng<'_>, mut schemas: Vec<Named>) -> Vec<Named> {
+    if r.chance(50) {
+        let me = schemas.len();
+        let text = S::Str { values: None, format: None };
+        schemas.push(Named { name: "Node".into(), s: S::AnyOf(vec![text, S::Arr(Box::new(S::Ref(me)))]), tag: None });
+    }
+    if r.chance(50) {
+        let me = schemas.len();
+        let leaf = Prop { name: "value".into(), s: S::Num, required: true, nullable: false };
+        let kids = Prop { name: "kids".into(), s: S::Arr(Box::new(S::Ref(me))), required: true, nullable: false };
+        schemas.push(Named {
+            name: "Tree".into(),
+            s: S::Union(vec![S::Obj(vec![leaf]), S::Obj(vec![kids])]),
+            tag: None,
+        });
+    }
+    schemas
+}
+
+/// Every choice at zero gives the default options.
+fn gen_options(r: &mut Rng<'_>) -> crate::emit::Options {
+    use crate::settings::DateLib;
+    let mut o = crate::emit::Options {
+        client: !r.chance(20),
+        server: !r.chance(30),
+        keep_unknown: r.chance(50),
+        strict_client: !r.chance(50),
+        allow_unimplemented: r.chance(30),
+        ..crate::emit::Options::default()
+    };
+    let libs = &mut o.rust.libs;
+    libs.uuid = r.chance(50);
+    libs.url = r.chance(50);
+    libs.ipnet = r.chance(50);
+    libs.dates = [None, Some(DateLib::Chrono), Some(DateLib::Jiff)][r.below(3)];
+    o
 }
 
 fn gen_op(r: &mut Rng<'_>, i: usize, named: usize, schemes: &[Scheme], profile: Profile) -> Op {
@@ -374,8 +481,8 @@ fn gen_responses(r: &mut Rng<'_>, named: usize, profile: Profile) -> Vec<Resp> {
                 }
                 let media = match profile {
                     Profile::V32 if r.chance(30) => *r.pick(&[Media::Sse, Media::JsonLines]),
-                    Profile::Rich | Profile::V32 if r.chance(15) => Media::Text,
-                    Profile::Common | Profile::Rich | Profile::V32 => Media::Json,
+                    Profile::Rich | Profile::V32 | Profile::Composition if r.chance(15) => Media::Text,
+                    Profile::Common | Profile::Rich | Profile::V32 | Profile::Composition => Media::Json,
                 };
                 let s = match media {
                     Media::Sse => S::Obj(vec![
@@ -468,6 +575,28 @@ fn schema(api: &Api, s: &S, v: V) -> Value {
         S::Extends(base, props) => {
             json!({"allOf": [{"$ref": format!("{}{}", v.schemas_ptr(), api.schemas[*base].name)}, object(api, props, v)]})
         }
+        S::AnyOf(branches) => json!({"anyOf": branches.iter().map(|b| schema(api, b, v)).collect::<Vec<_>>()}),
+        S::Union(branches) => json!({"oneOf": branches.iter().map(|b| schema(api, b, v)).collect::<Vec<_>>()}),
+        S::Shared(first, second) => json!({"allOf": [object(api, first, v), object(api, second, v)]}),
+        S::Unevaluated(branches) => json!({
+            "anyOf": branches.iter().map(|b| schema(api, b, v)).collect::<Vec<_>>(),
+            "unevaluatedProperties": false,
+        }),
+        S::Const(c) => json!({"const": c}),
+        S::Bounded { items, min, max, unique } => {
+            let mut o = json!({"type": "array", "items": schema(api, items, v)});
+            if let Some(m) = min {
+                o["minItems"] = json!(m);
+            }
+            if let Some(m) = max {
+                o["maxItems"] = json!(m);
+            }
+            if *unique {
+                o["uniqueItems"] = json!(true);
+            }
+            o
+        }
+        S::Decimal(format) => json!({"type": "number", "format": format}),
         S::OneOf { variants, default } => {
             let refs: Vec<Value> = variants
                 .iter()
@@ -836,6 +965,7 @@ fn check(choices: &[u64], profile: Profile) -> Result<(), String> {
         Profile::Common => &[V::V20, V::V30, V::V31, V::V32],
         Profile::Rich => &[V::V30, V::V31, V::V32],
         Profile::V32 => &[V::V32],
+        Profile::Composition => &[V::V31, V::V32],
     };
     let mut summaries: Vec<(V, String)> = vec![];
     // The IR of each version that was emitted. Emitting is a function of the IR, so an IR seen before is not emitted
@@ -863,8 +993,7 @@ fn check(choices: &[u64], profile: Profile) -> Result<(), String> {
             let files = if emitted.contains(&key) {
                 Ok(0)
             } else {
-                crate::emit::rust::print(crate::emit::rust::trees(&ir, &crate::emit::Options::default()), false)
-                    .map(|files| files.len())
+                crate::emit::rust::print(crate::emit::rust::trees(&ir, &api.opts), false).map(|files| files.len())
             };
             (ir, key, files)
         });
@@ -951,6 +1080,7 @@ shards! {
     common_profile_across_v20_v30_v31_v32: Profile::Common;
     rich_profile_across_v30_v31_v32: Profile::Rich;
     v32_only_features: Profile::V32;
+    composition_across_v31_v32: Profile::Composition;
 }
 
 /// Compile the generated crates of a few APIs with their test of the documented examples and run it.
@@ -960,17 +1090,18 @@ fn generated_crates_compile_and_pass_their_tests() {
     let mut runner = TestRunner::deterministic();
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("target").join("fuzz-crates");
     let mut members = vec![];
-    for (profile, v) in [(Profile::Common, V::V20), (Profile::Rich, V::V30), (Profile::V32, V::V32)] {
-        for index in 0..8 {
-            let name = format!("fuzz-{profile:?}-{index}").to_lowercase();
+    for (profile, v) in [(Profile::Composition, V::V31), (Profile::Composition, V::V32)] {
+        for index in 0..32 {
+            let name = format!("fuzz-{profile:?}-{v:?}-{index}").to_lowercase();
             let dir = root.join(&name);
             std::fs::create_dir_all(&dir).unwrap();
             let spec = dir.join("spec.json");
             let api = gen_api(&choices().new_tree(&mut runner).unwrap().current(), profile);
             std::fs::write(&spec, serde_json::to_string(&write(&api, v)).unwrap()).unwrap();
-            let opts = crate::emit::Options { tests: true, ..crate::emit::Options::default() };
+            let opts = crate::emit::Options { tests: true, ..api.opts };
             super::common::new_crate(&spec, &dir, &name, &opts);
             super::common::use_local_runtime(&dir.join("Cargo.toml"));
+            add_libs(&dir.join("Cargo.toml"), &opts.rust.libs);
             members.push(name);
         }
     }
@@ -984,4 +1115,26 @@ fn generated_crates_compile_and_pass_their_tests() {
         .status()
         .unwrap();
     assert!(status.success(), "generated fuzz crates failed their tests");
+}
+
+/// Adds the libraries that the options give formats to.
+fn add_libs(manifest: &std::path::Path, libs: &crate::settings::FormatLibs) {
+    use crate::settings::DateLib;
+    let mut doc: toml_edit::DocumentMut = std::fs::read_to_string(manifest).unwrap().parse().unwrap();
+    let dates = match libs.dates {
+        Some(DateLib::Jiff) => Some(("jiff", "1")),
+        Some(DateLib::Chrono) => Some(("chrono", "0.4")),
+        None => None,
+    };
+    let wanted = [(libs.uuid, "uuid", "1"), (libs.url, "url", "2"), (libs.ipnet, "ipnet", "2")]
+        .into_iter()
+        .filter_map(|(on, name, version)| on.then_some((name, version)))
+        .chain(dates);
+    for (name, version) in wanted {
+        let mut dep = toml_edit::InlineTable::new();
+        dep.insert("version", version.into());
+        dep.insert("features", toml_edit::Array::from_iter(["serde"]).into());
+        doc["dependencies"][name] = toml_edit::value(dep);
+    }
+    std::fs::write(manifest, doc.to_string()).unwrap();
 }
