@@ -94,3 +94,8 @@ harness = false
 [[bench]]
 name = "size_sweep"
 harness = false
+
+# How the cost of decoding into generated types grows with the body, counted by callgrind.
+[[bench]]
+name = "scaling"
+harness = false
