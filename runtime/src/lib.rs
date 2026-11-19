@@ -80,7 +80,7 @@ pub use formatted::UuidText;
 pub use formatted::{
     DateText, DateTimeLocalText, DateTimeText, Decimal128Text, DecimalText, DurationText, HttpDateText,
 };
-pub use formatted::{Email, Hostname, IdnEmail, IdnHostname};
+pub use formatted::{EmailText, HostnameText, IdnEmailText, IdnHostnameText};
 pub use formatted::{Ipv4CidrText, Ipv6CidrText, IriReferenceText, IriText, JsonPointerText, RegexText};
 pub use formatted::{RelativeJsonPointerText, TimeLocalText, UriReferenceText, UriTemplateText, UriText};
 pub use full_time::FullTime;

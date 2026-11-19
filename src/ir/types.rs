@@ -502,13 +502,13 @@ pub(crate) enum Format {
     /// `{type: string, format: decimal128}`: text checked as a decimal that IEEE 754 decimal128 holds exactly. That is
     /// at most 34 significant digits within its exponent range.
     Decimal128,
-    /// `format: email` (RFC 5321 Mailbox): `runtime::Email` (the runtime's `idn` feature).
+    /// `format: email` (RFC 5321 Mailbox): `runtime::EmailText` (the runtime's `idn` feature).
     Email,
-    /// `format: idn-email` (RFC 6531 with UTF-8 allowed): `runtime::IdnEmail`.
+    /// `format: idn-email` (RFC 6531 with UTF-8 allowed): `runtime::IdnEmailText`.
     IdnEmail,
-    /// `format: hostname` (RFC 1123; punycode labels must decode): `runtime::Hostname`.
+    /// `format: hostname` (RFC 1123; punycode labels must decode): `runtime::HostnameText`.
     Hostname,
-    /// `format: idn-hostname` (IDNA2008): `runtime::IdnHostname`.
+    /// `format: idn-hostname` (IDNA2008): `runtime::IdnHostnameText`.
     IdnHostname,
     /// `format: http-date` (RFC 9110 section 5.6.7): a `String` checked as one of the three forms.
     HttpDate,

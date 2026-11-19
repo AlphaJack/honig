@@ -49,8 +49,8 @@ fn a_pattern_string_is_checked_when_it_is_made() -> Result<(), Box<dyn std::erro
 #[test]
 fn an_email_is_checked_when_it_is_made() -> Result<(), Box<dyn std::error::Error>> {
     // ANCHOR: email
-    let to = e2e::v32_catalog::api::Email::try_from("ann@example.com")?;
-    assert!(e2e::v32_catalog::api::Email::try_from("ann").is_err());
+    let to = e2e::v32_catalog::api::EmailText::try_from("ann@example.com")?;
+    assert!(e2e::v32_catalog::api::EmailText::try_from("ann").is_err());
     println!("{}", to.as_str());
     // ANCHOR_END: email
     // It reads as a `str`, as every checked text does.

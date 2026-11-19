@@ -16,10 +16,10 @@
 | `uri` | `api::UriText` | `url::Url` | `url::Url` |
 | `ipv4-cidr` | `api::Ipv4CidrText` | `ipnet::Ipv4Net` | `ipnet::Ipv4Net` |
 | `ipv6-cidr` | `api::Ipv6CidrText` | `ipnet::Ipv6Net` | `ipnet::Ipv6Net` |
-| `email` | `api::Email` | `api::Email` | `api::Email` |
-| `idn-email` | `api::IdnEmail` | `api::IdnEmail` | `api::IdnEmail` |
-| `hostname` | `api::Hostname` | `api::Hostname` | `api::Hostname` |
-| `idn-hostname` | `api::IdnHostname` | `api::IdnHostname` | `api::IdnHostname` |
+| `email` | `api::EmailText` | `api::EmailText` | `api::EmailText` |
+| `idn-email` | `api::IdnEmailText` | `api::IdnEmailText` | `api::IdnEmailText` |
+| `hostname` | `api::HostnameText` | `api::HostnameText` | `api::HostnameText` |
+| `idn-hostname` | `api::IdnHostnameText` | `api::IdnHostnameText` | `api::IdnHostnameText` |
 | `http-date` | `api::HttpDateText` | `api::HttpDateText` | `api::HttpDateText` |
 | `duration` | `api::DurationText` | `api::DurationText` | `api::DurationText` |
 | `uri-reference` | `api::UriReferenceText` | `api::UriReferenceText` | `api::UriReferenceText` |

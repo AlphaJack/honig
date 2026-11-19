@@ -1507,13 +1507,13 @@ pub struct User {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub email: Option<runtime::Email>,
+    pub email: Option<runtime::EmailText>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub site: Option<runtime::IdnHostname>,
+    pub site: Option<runtime::IdnHostnameText>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
@@ -4144,13 +4144,13 @@ pub mod builders {
         }
         pub fn email(
             self,
-            value: impl TryInto<runtime::Email, Error: std::fmt::Display>,
+            value: impl TryInto<runtime::EmailText, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("email", value, |s, v| s.email = Some(v)))
         }
         pub fn site(
             self,
-            value: impl TryInto<runtime::IdnHostname, Error: std::fmt::Display>,
+            value: impl TryInto<runtime::IdnHostnameText, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("site", value, |s, v| s.site = Some(v)))
         }

@@ -105,13 +105,13 @@ macro_rules! str_enum_impls {
 pub struct EmailRequest {
     #[serde(rename = "type")]
     pub type_: EmailType,
-    pub email: runtime::Email,
+    pub email: runtime::EmailText,
 }
 deserialize_impl!(EmailRequest);
 serialize_impl!(EmailRequest);
 impl EmailRequest {
     #[must_use]
-    pub const fn new(type_: EmailType, email: runtime::Email) -> Self {
+    pub const fn new(type_: EmailType, email: runtime::EmailText) -> Self {
         Self { type_, email }
     }
 }
@@ -580,13 +580,13 @@ deserialize_impl_3!(SmsType);
 pub struct IfThenEmail {
     #[serde(rename = "type")]
     pub type_: IfThenEmailType,
-    pub email: runtime::Email,
+    pub email: runtime::EmailText,
 }
 deserialize_impl!(IfThenEmail);
 serialize_impl!(IfThenEmail);
 impl IfThenEmail {
     #[must_use]
-    pub const fn new(type_: IfThenEmailType, email: runtime::Email) -> Self {
+    pub const fn new(type_: IfThenEmailType, email: runtime::EmailText) -> Self {
         Self { type_, email }
     }
 }
@@ -861,7 +861,7 @@ pub mod builders {
         /// Starts a builder from the required properties.
         pub fn builder(
             type_: impl TryInto<types::EmailType, Error: std::fmt::Display>,
-            email: impl TryInto<runtime::Email, Error: std::fmt::Display>,
+            email: impl TryInto<runtime::EmailText, Error: std::fmt::Display>,
         ) -> EmailRequest {
             EmailRequest(
                 runtime::Builder::start(|| Ok(
@@ -885,7 +885,7 @@ pub mod builders {
         /// Starts a builder from the required properties.
         pub fn builder(
             type_: impl TryInto<types::IfThenEmailType, Error: std::fmt::Display>,
-            email: impl TryInto<runtime::Email, Error: std::fmt::Display>,
+            email: impl TryInto<runtime::EmailText, Error: std::fmt::Display>,
         ) -> IfThenEmail {
             IfThenEmail(
                 runtime::Builder::start(|| Ok(

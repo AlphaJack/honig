@@ -306,13 +306,13 @@ impl runtime::XmlShape for User {
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Credentials {
-    pub email: runtime::Email,
+    pub email: runtime::EmailText,
 }
 deserialize_impl!(Credentials);
 serialize_impl!(Credentials);
 impl Credentials {
     #[must_use]
-    pub const fn new(email: runtime::Email) -> Self {
+    pub const fn new(email: runtime::EmailText) -> Self {
         Self { email }
     }
 }
@@ -3983,13 +3983,13 @@ pub struct CreateUserBody {
         deserialize_with = "runtime::not_null"
     )]
     pub name: Option<String>,
-    pub email: runtime::Email,
+    pub email: runtime::EmailText,
 }
 deserialize_impl!(CreateUserBody);
 serialize_impl!(CreateUserBody);
 impl CreateUserBody {
     #[must_use]
-    pub const fn new(email: runtime::Email) -> Self {
+    pub const fn new(email: runtime::EmailText) -> Self {
         Self {
             id: None,
             name: None,
@@ -4072,13 +4072,13 @@ pub struct CreateUserBody2 {
         deserialize_with = "runtime::not_null"
     )]
     pub name: Option<String>,
-    pub email: runtime::Email,
+    pub email: runtime::EmailText,
 }
 deserialize_impl!(CreateUserBody2);
 serialize_impl!(CreateUserBody2);
 impl CreateUserBody2 {
     #[must_use]
-    pub const fn new(email: runtime::Email) -> Self {
+    pub const fn new(email: runtime::EmailText) -> Self {
         Self {
             id: None,
             name: None,
@@ -4197,14 +4197,14 @@ impl runtime::XmlShape for UserRequest {
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct CredentialsRequest {
-    pub email: runtime::Email,
+    pub email: runtime::EmailText,
     pub password: String,
 }
 deserialize_impl!(CredentialsRequest);
 serialize_impl!(CredentialsRequest);
 impl CredentialsRequest {
     #[must_use]
-    pub const fn new(email: runtime::Email, password: String) -> Self {
+    pub const fn new(email: runtime::EmailText, password: String) -> Self {
         Self { email, password }
     }
 }
@@ -5263,14 +5263,14 @@ pub struct CreateUserBodyRequest {
         deserialize_with = "runtime::not_null"
     )]
     pub name: Option<String>,
-    pub email: runtime::Email,
+    pub email: runtime::EmailText,
     pub password: String,
 }
 deserialize_impl!(CreateUserBodyRequest);
 serialize_impl!(CreateUserBodyRequest);
 impl CreateUserBodyRequest {
     #[must_use]
-    pub const fn new(email: runtime::Email, password: String) -> Self {
+    pub const fn new(email: runtime::EmailText, password: String) -> Self {
         Self {
             name: None,
             email,
@@ -5347,14 +5347,14 @@ pub struct CreateUserBody2Request {
         deserialize_with = "runtime::not_null"
     )]
     pub name: Option<String>,
-    pub email: runtime::Email,
+    pub email: runtime::EmailText,
     pub password: String,
 }
 deserialize_impl!(CreateUserBody2Request);
 serialize_impl!(CreateUserBody2Request);
 impl CreateUserBody2Request {
     #[must_use]
-    pub const fn new(email: runtime::Email, password: String) -> Self {
+    pub const fn new(email: runtime::EmailText, password: String) -> Self {
         Self {
             name: None,
             email,
@@ -5760,7 +5760,7 @@ pub mod builders {
     impl super::Credentials {
         /// Starts a builder from the required properties.
         pub fn builder(
-            email: impl TryInto<runtime::Email, Error: std::fmt::Display>,
+            email: impl TryInto<runtime::EmailText, Error: std::fmt::Display>,
         ) -> Credentials {
             Credentials(
                 runtime::Builder::start(|| Ok(
@@ -6304,7 +6304,7 @@ pub mod builders {
     impl super::CreateUserBody {
         /// Starts a builder from the required properties.
         pub fn builder(
-            email: impl TryInto<runtime::Email, Error: std::fmt::Display>,
+            email: impl TryInto<runtime::EmailText, Error: std::fmt::Display>,
         ) -> CreateUserBody {
             CreateUserBody(
                 runtime::Builder::start(|| Ok(
@@ -6333,7 +6333,7 @@ pub mod builders {
     impl super::CreateUserBody2 {
         /// Starts a builder from the required properties.
         pub fn builder(
-            email: impl TryInto<runtime::Email, Error: std::fmt::Display>,
+            email: impl TryInto<runtime::EmailText, Error: std::fmt::Display>,
         ) -> CreateUserBody2 {
             CreateUserBody2(
                 runtime::Builder::start(|| Ok(
@@ -6362,7 +6362,7 @@ pub mod builders {
     impl super::CredentialsRequest {
         /// Starts a builder from the required properties.
         pub fn builder(
-            email: impl TryInto<runtime::Email, Error: std::fmt::Display>,
+            email: impl TryInto<runtime::EmailText, Error: std::fmt::Display>,
             password: impl TryInto<String, Error: std::fmt::Display>,
         ) -> CredentialsRequest {
             CredentialsRequest(
@@ -6669,7 +6669,7 @@ pub mod builders {
     impl super::CreateUserBodyRequest {
         /// Starts a builder from the required properties.
         pub fn builder(
-            email: impl TryInto<runtime::Email, Error: std::fmt::Display>,
+            email: impl TryInto<runtime::EmailText, Error: std::fmt::Display>,
             password: impl TryInto<String, Error: std::fmt::Display>,
         ) -> CreateUserBodyRequest {
             CreateUserBodyRequest(
@@ -6699,7 +6699,7 @@ pub mod builders {
     impl super::CreateUserBody2Request {
         /// Starts a builder from the required properties.
         pub fn builder(
-            email: impl TryInto<runtime::Email, Error: std::fmt::Display>,
+            email: impl TryInto<runtime::EmailText, Error: std::fmt::Display>,
             password: impl TryInto<String, Error: std::fmt::Display>,
         ) -> CreateUserBody2Request {
             CreateUserBody2Request(
