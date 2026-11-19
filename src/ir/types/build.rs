@@ -79,6 +79,8 @@ impl Constraints {
             unevaluated: self.unevaluated.clone(),
             unevaluated_items: self.unevaluated_items.clone(),
             names_schema: self.names_schema,
+            json_contains: self.json_contains,
+            json_dependents: self.json_dependents.clone(),
             ..Self::default()
         }
     }
@@ -98,6 +100,8 @@ impl Constraints {
             unevaluated: None,
             unevaluated_items: None,
             names_schema: None,
+            json_contains: None,
+            json_dependents: vec![],
             ..self.clone()
         }
     }
@@ -146,6 +150,8 @@ impl Constraints {
             names_schema: None,
             conditions: vec![],
             contains: None,
+            json_contains: None,
+            json_dependents: vec![],
             one_of: vec![],
             pattern_properties: vec![],
             closed_to: None,
@@ -161,11 +167,12 @@ impl Constraints {
             ($($f:ident),*) => { $( if self.$f.is_none() { self.$f = other.$f; } )* };
         }
         take!(min_length, max_length, pattern, minimum, maximum, exclusive_minimum, exclusive_maximum, multiple_of);
-        take!(enum_values, const_value, unevaluated, unevaluated_items, names_schema);
+        take!(enum_values, const_value, unevaluated, unevaluated_items, names_schema, json_contains);
         take!(min_items, max_items, min_properties, max_properties, items, property_names, contains, tuple);
         self.unique_items |= other.unique_items;
         self.decimal128 |= other.decimal128;
         self.dependent_required.extend(other.dependent_required);
+        self.json_dependents.extend(other.json_dependents);
         self.required.extend(other.required);
         if self.format.is_none() {
             self.format = other.format;
@@ -196,8 +203,11 @@ fn typed_object_keywords(s: &Value, c: &mut Constraints) -> (bool, bool, bool) {
     let names = typed_property_names(s);
     let pattern = typed_pattern_map(s).filter(|_| names.is_none());
     let typed = (dependents.is_some(), names.is_some(), pattern.is_some());
-    if let Some(d) = dependents {
-        c.dependent_required = d;
+    // Without `type` the value may be any, or the union of an implied shape: the JSON object is checked.
+    match dependents {
+        Some(d) if s.get("type").is_none() => c.json_dependents = d,
+        Some(d) => c.dependent_required = d,
+        None => {}
     }
     c.property_names =
         names.or_else(|| pattern.map(|p| Box::new(Constraints { pattern: Some(p), ..Constraints::default() })));
@@ -1217,7 +1227,8 @@ impl<'a> Builder<'a> {
                 || (dependent_schemas.is_some() && k == "dependentSchemas")
                 || (unevaluated && k == "unevaluatedProperties")
                 || (unevaluated_items && k == "unevaluatedItems")
-                || (typed_contains && matches!(k, "contains" | "minContains" | "maxContains"))
+                // On a schema whose `type` takes no array, `contains` asserts nothing.
+                || matches!(k, "contains" | "minContains" | "maxContains")
                 || (patterns.is_some() && k == "patternProperties")
         };
         let conditional_member = |m: &Value| {
@@ -1247,7 +1258,8 @@ impl<'a> Builder<'a> {
             self.queue_not_and_if(s, at, typed_conditional, &mut c);
             if let Some(sub) = s.get("contains").filter(|_| typed_contains) {
                 let n = self.queue_subschema(sub, at.map(|p| join(p, "contains")));
-                c.contains = Some((n, count_of(s, "minContains").unwrap_or(1), count_of(s, "maxContains")));
+                let contains = Some((n, count_of(s, "minContains").unwrap_or(1), count_of(s, "maxContains")));
+                if s.get("type").is_none() { c.json_contains = contains } else { c.contains = contains }
             }
             for (i, branch) in self.counted_one_of(s).into_iter().flatten().enumerate() {
                 let at = at.map(|p| join(&join(p, "oneOf"), &i.to_string()));
