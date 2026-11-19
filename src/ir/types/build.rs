@@ -859,6 +859,18 @@ impl<'a> Builder<'a> {
     /// Schemas that need a named type of their own (struct, enum or union). `None`
     /// means that the schema maps to an existing type expression.
     fn named_kind(&mut self, s: &Value, ptr: &str, name: &Name) -> Option<Kind> {
+        // `unevaluatedProperties` judges the names that its branches and members leave. The run-time check sees the
+        // value as it re-serializes, so the objects it holds keep the names that they do not declare.
+        let unevaluated = s.get("unevaluatedProperties").is_some_and(|u| u != &Value::Bool(true));
+        let keep = self.keep_unknown;
+        self.keep_unknown |= unevaluated;
+        let kind = self.own_kind(s, ptr, name);
+        self.keep_unknown = keep;
+        kind
+    }
+
+    /// [`Self::named_kind`] without the scope of `unevaluatedProperties`.
+    fn own_kind(&mut self, s: &Value, ptr: &str, name: &Name) -> Option<Kind> {
         let o = s.as_object()?;
         if has_ref_only(o) {
             return None;
@@ -949,10 +961,18 @@ impl<'a> Builder<'a> {
             if has_ref_only(o) {
                 return self.ty_ref(r, ptr);
             }
-            // `$ref` with sibling constraints. Treat it as allOf [ref, rest].
+            // `$ref` with sibling constraints. Treat it as allOf [ref, rest]. `unevaluated*` stays beside the
+            // `allOf`: it sees what the reference evaluates too (2020-12 section 11.3).
             let mut rest = o.clone();
             rest.remove("$ref");
-            let merged = serde_json::json!({"allOf": [{"$ref": r}, Value::Object(rest)]});
+            let mut merged = serde_json::Map::new();
+            for k in ["unevaluatedProperties", "unevaluatedItems"] {
+                if let Some(v) = rest.remove(k) {
+                    merged.insert(k.to_owned(), v);
+                }
+            }
+            merged.insert("allOf".to_owned(), serde_json::json!([{"$ref": r}, Value::Object(rest)]));
+            let merged = Value::Object(merged);
             return self.ty_non_null(&merged, ptr, hint);
         }
         if let Some(r) = o.get("$dynamicRef").and_then(Value::as_str) {

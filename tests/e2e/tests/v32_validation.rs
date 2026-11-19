@@ -666,3 +666,11 @@ fn a_property_of_two_all_of_members_meets_both() {
         assert!(serde_json::from_str::<types::NarrowStamp>(bad).is_err(), "{bad}");
     }
 }
+
+/// `unevaluatedProperties` beside `anyOf` sees the properties of each branch that matches, and refuses the rest.
+#[test]
+fn unevaluated_properties_beside_any_of_sees_the_matching_branches() {
+    let tagged = |v: serde_json::Value| serde_json::from_value::<types::Tagged>(v);
+    assert!(tagged(json!({"label": "a", "colour": "red", "size": 1})).is_ok());
+    assert!(tagged(json!({"label": "a", "shape": "round"})).is_err(), "a property that no branch evaluates");
+}

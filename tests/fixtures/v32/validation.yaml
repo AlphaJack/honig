@@ -93,6 +93,15 @@ paths:
           description: Created.
 components:
   schemas:
+    # `unevaluatedProperties` beside `anyOf` sees the properties of each branch that matches.
+    Tagged:
+      type: object
+      properties:
+        size: {type: integer}
+      anyOf:
+        - {properties: {label: {const: a}}, required: [label]}
+        - {properties: {colour: {const: red}}, required: [colour]}
+      unevaluatedProperties: false
     # `anyOf` of two strings: the first branch that decodes, with its keywords, is the answer.
     Slug:
       anyOf: [{type: string, enum: [""]}, {type: string, pattern: '^[a-z]+$'}]
