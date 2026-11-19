@@ -10,7 +10,7 @@ use crate::emit::rust::space::Space;
 use crate::emit::rust::syntax::{pascal_ident, snake_ident};
 use crate::ir::names::Name;
 use crate::ir::types::{
-    Checked, EnumValue, Field, Format, JsonKind, Kind, Struct, Ty, TypeDef, TypeId, Union, UnionMode, def_types,
+    Checked, EnumValue, Field, Format, JsonKind, Kind, Struct, Ty, TypeDef, TypeId, Union, UnionMode,
 };
 
 /// Returns `aliases`: from [`aliases`]. They are declared as `pub type` of the type that they repeat.
@@ -1610,7 +1610,7 @@ fn union_deserialize_impl(space: &Space<'_>, n: &proc_macro2::Ident, def: &TypeD
     let de = union_deserialize(space, def, u);
     // A buffered number is an `f64`. So a union that holds a `Decimal` decodes from the JSON text instead. An
     // untagged one pays one parse per branch that it tries. A tagged one reads its tag and then parses the one branch.
-    let exact = u.variants.iter().any(|v| holds_decimal(space, &v.ty, &mut vec![]));
+    let exact = u.variants.iter().any(|v| space.has_decimal(&v.ty));
     let property = match &u.mode {
         UnionMode::Tagged { property, .. } if !exact => property,
         UnionMode::Tagged { .. } | UnionMode::ByKind | UnionMode::Untagged => {
@@ -1666,19 +1666,6 @@ fn union_deserialize_impl(space: &Space<'_>, n: &proc_macro2::Ident, def: &TypeD
             }
         }
     }
-}
-
-/// Does a value of `t` hold a `Decimal` itself or anywhere inside? `seen` holds the named types on the way. A
-/// recursive type reaches them again.
-fn holds_decimal(space: &Space<'_>, t: &Ty, seen: &mut Vec<TypeId>) -> bool {
-    if let Ty::Named(id) = t {
-        if seen.contains(id) {
-            return false;
-        }
-        seen.push(*id);
-        return def_types(&space.types.get(*id).kind).into_iter().any(|x| holds_decimal(space, x, seen));
-    }
-    *t == Ty::Decimal || t.children().iter().any(|x| holds_decimal(space, x, seen))
 }
 
 /// Does the variant type declare the discriminator itself (a required

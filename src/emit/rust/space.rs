@@ -14,6 +14,8 @@ pub(crate) struct Space<'a> {
     pub libs: FormatLibs,
     /// Which definitions hold a float somewhere by `TypeId`.
     floats: Vec<bool>,
+    /// Which definitions hold a `Decimal` somewhere by `TypeId`.
+    decimals: Vec<bool>,
     /// The rough size of each definition by `TypeId` ([`Space::approx_size`]).
     sizes: Vec<usize>,
 }
@@ -52,7 +54,9 @@ impl<'a> Space<'a> {
 
     /// Creates the view of the emitter on `types` for a crate with `libs`.
     pub(crate) fn new(types: &'a TypeSpace, libs: FormatLibs) -> Self {
-        Self { types, libs, floats: float_defs(types), sizes: def_sizes(types) }
+        let floats = reaching(types, |d| d.rust_type.is_some() || def_types(&d.kind).iter().any(|t| float_here(t)));
+        let decimals = reaching(types, |d| def_types(&d.kind).iter().any(|t| decimal_here(t)));
+        Self { types, libs, floats, decimals, sizes: def_sizes(types) }
     }
 
     /// Returns the rough in-memory size in bytes of `ty` on a 64-bit target. It decides which enum variants to box
@@ -69,6 +73,13 @@ impl<'a> Space<'a> {
         float_here(ty) || refs.iter().any(|id| self.floats.get(id.0).copied().unwrap_or_default())
     }
 
+    /// Does `ty` hold a `Decimal` anywhere? A union that does decodes from the JSON text: a buffered number is an `f64`.
+    pub(crate) fn has_decimal(&self, ty: &Ty) -> bool {
+        let mut refs = vec![];
+        all_refs(ty, &mut refs);
+        decimal_here(ty) || refs.iter().any(|id| self.decimals.get(id.0).copied().unwrap_or_default())
+    }
+
     /// Returns the type that `t` names once aliases are followed. That covers a twin declared as an alias of its first
     /// (`aliases`) and a `Kind::Alias`.
     pub(crate) fn resolved(&self, aliases: &BTreeMap<usize, usize>, t: &Ty) -> Ty {
@@ -81,21 +92,20 @@ impl<'a> Space<'a> {
     }
 }
 
-/// Returns [`Space::has_float`] for every definition. First those that hold one themselves and then whatever refers to
-/// them. Each definition is visited once. Asking each definition alone walks all that it reaches. That is O(n^2) on
-/// long `$ref` chains.
-fn float_defs(space: &TypeSpace) -> Vec<bool> {
-    let mut floats = vec![false; space.defs.len()];
+/// Returns for every definition whether it or a definition that it reaches is `own`: first those that are and then
+/// whatever refers to them. Each definition is visited once. Asking each definition alone walks all that it reaches.
+/// That is O(n^2) on long `$ref` chains, and a union of n branches that each reach the ones before asks n times.
+fn reaching(space: &TypeSpace, own: impl Fn(&crate::ir::types::TypeDef) -> bool) -> Vec<bool> {
+    let mut found = vec![false; space.defs.len()];
     let mut referrers: Vec<Vec<usize>> = vec![vec![]; space.defs.len()];
     let mut pending = vec![];
     for (i, d) in space.defs.iter().enumerate() {
-        let own = def_types(&d.kind);
-        if d.rust_type.is_some() || own.iter().any(|t| float_here(t)) {
-            floats[i] = true;
+        if own(d) {
+            found[i] = true;
             pending.push(i);
         }
         let mut refs = vec![];
-        for t in own {
+        for t in def_types(&d.kind) {
             all_refs(t, &mut refs);
         }
         for r in refs {
@@ -106,18 +116,23 @@ fn float_defs(space: &TypeSpace) -> Vec<bool> {
     }
     while let Some(i) = pending.pop() {
         for &r in referrers.get(i).into_iter().flatten() {
-            if !floats[r] {
-                floats[r] = true;
+            if !found[r] {
+                found[r] = true;
                 pending.push(r);
             }
         }
     }
-    floats
+    found
 }
 
 /// Returns whether `ty` holds a float itself. Named types that it refers to do not count.
 fn float_here(ty: &Ty) -> bool {
     matches!(ty, Ty::F32 | Ty::F64) || ty.children().iter().any(float_here)
+}
+
+/// Returns whether `ty` holds a `Decimal` itself. Named types that it refers to do not count.
+fn decimal_here(ty: &Ty) -> bool {
+    *ty == Ty::Decimal || ty.children().iter().any(decimal_here)
 }
 
 /// The size of a pointer, and of a variant that is boxed.
