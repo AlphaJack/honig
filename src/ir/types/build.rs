@@ -399,6 +399,8 @@ pub(crate) struct Builder<'a> {
     viewed: RefCell<BTreeMap<String, Value>>,
     /// [`Builder::shared`] in the request view that run-time checks use: `TypeSpace::shared`.
     checked: RefCell<BTreeMap<String, Value>>,
+    /// The JSON kind of each type once it is final ([`Kinds`]).
+    kinds: RefCell<Vec<Option<JsonKind>>>,
     /// Where a schema was cut short at `MAX_SCHEMA_DEPTH`, by pointer: what is deeper is not checked. Reported once
     /// each by `finish`.
     cut_short: RefCell<BTreeMap<String, String>>,
@@ -437,6 +439,7 @@ impl<'a> Builder<'a> {
             shared: RefCell::default(),
             viewed: RefCell::default(),
             checked: RefCell::default(),
+            kinds: RefCell::default(),
             cut_short: RefCell::new(BTreeMap::new()),
         }
     }
@@ -1824,7 +1827,7 @@ impl<'a> Builder<'a> {
     }
 
     fn space_kind(&self, ty: &Ty) -> JsonKind {
-        kind_in(&self.defs, ty)
+        Kinds::remembering(&self.defs, &self.kinds).of(ty)
     }
 
     /// Returns `type: [string, integer]` to union by JSON kind.
@@ -2178,16 +2181,21 @@ pub(crate) fn kind_in(defs: &[TypeDef], ty: &Ty) -> JsonKind {
 }
 
 /// The JSON kinds of the named types of `defs`, each found once. A union of unions asks for the kind of each type
-/// again on every path to it: found afresh each time, that grows with the paths and not with the types.
+/// again on every path to it: found afresh each time, that grows with the paths and not with the types. `known` keeps
+/// the kinds that are final across calls: a builder asks once per union, and a chain of unions would walk every union
+/// before it each time.
 pub(crate) struct Kinds<'d> {
     defs: &'d [TypeDef],
-    found: Vec<Found>,
+    /// The types met in this call: only those, so a call costs what it reaches and not the whole description.
+    found: BTreeMap<usize, Found>,
+    known: Option<&'d RefCell<Vec<Option<JsonKind>>>>,
+    /// Whether the kind being found met a type still being built or a cycle: then it is not final.
+    unsettled: bool,
 }
 
 /// Where finding the kind of a named type is.
 #[derive(Clone, Copy)]
 enum Found {
-    Unknown,
     /// Met again while it is found, the type is on a cycle and takes any value.
     Finding,
     Kind(JsonKind),
@@ -2195,7 +2203,12 @@ enum Found {
 
 impl<'d> Kinds<'d> {
     pub(crate) fn new(defs: &'d [TypeDef]) -> Self {
-        Self { defs, found: vec![Found::Unknown; defs.len()] }
+        Self { defs, found: BTreeMap::new(), known: None, unsettled: false }
+    }
+
+    /// [`Kinds::new`] that reads and keeps the final kinds in `known`.
+    fn remembering(defs: &'d [TypeDef], known: &'d RefCell<Vec<Option<JsonKind>>>) -> Self {
+        Self { known: Some(known), ..Self::new(defs) }
     }
 
     pub(crate) fn of(&mut self, ty: &Ty) -> JsonKind {
@@ -2214,12 +2227,19 @@ impl<'d> Kinds<'d> {
     }
 
     fn named(&mut self, i: usize) -> JsonKind {
-        match self.found[i] {
-            Found::Kind(kind) => return kind,
-            Found::Finding => return JsonKind::Any,
-            Found::Unknown => {}
+        if let Some(kind) = self.known.and_then(|k| k.borrow().get(i).copied().flatten()) {
+            return kind;
         }
-        self.found[i] = Found::Finding;
+        match self.found.get(&i) {
+            Some(Found::Kind(kind)) => return *kind,
+            Some(Found::Finding) => {
+                self.unsettled = true;
+                return JsonKind::Any;
+            }
+            None => {}
+        }
+        self.found.insert(i, Found::Finding);
+        let outer = std::mem::replace(&mut self.unsettled, false);
         let defs = self.defs;
         let kind = match &defs[i].kind {
             Kind::Struct(_) => JsonKind::Object,
@@ -2233,10 +2253,24 @@ impl<'d> Kinds<'d> {
                 let first = kinds.next().unwrap_or(JsonKind::Any);
                 if kinds.all(|k| k == first) { first } else { JsonKind::Any }
             }
-            Kind::Union(_) | Kind::Pending => JsonKind::Any,
+            Kind::Union(_) => JsonKind::Any,
+            Kind::Pending => {
+                self.unsettled = true;
+                JsonKind::Any
+            }
             Kind::Alias(t) | Kind::Newtype(t) => self.of(t),
         };
-        self.found[i] = Found::Kind(kind);
+        self.found.insert(i, Found::Kind(kind));
+        if !self.unsettled
+            && let Some(known) = self.known
+        {
+            let mut known = known.borrow_mut();
+            if known.len() <= i {
+                known.resize(i + 1, None);
+            }
+            known[i] = Some(kind);
+        }
+        self.unsettled |= outer;
         kind
     }
 }
