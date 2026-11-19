@@ -14,7 +14,7 @@ use serde_json::{Map, Value, json};
 use bench_support::{Phased, Work, callgrind, phase};
 
 /// Description sizes in bytes, each 4 times the one before. A fourth size of 1 MiB doubles the run under callgrind.
-const SIZES: [usize; 3] = [16 << 10, 64 << 10, 256 << 10];
+const SIZES: [usize; 3] = [4 << 10, 16 << 10, 64 << 10];
 /// About how many bytes of description one schema and its operation take.
 const SCHEMA_BYTES: usize = 400;
 /// The same for [`any_of_chain`].

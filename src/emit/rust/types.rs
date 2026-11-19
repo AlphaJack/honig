@@ -1616,7 +1616,7 @@ fn union_deserialize_impl(space: &Space<'_>, n: &proc_macro2::Ident, def: &TypeD
     let de = union_deserialize(space, def, u);
     // A buffered number is an `f64`. So a union that holds a `Decimal` decodes from the JSON text instead. An
     // untagged one pays one parse per branch that it tries. A tagged one reads its tag and then parses the one branch.
-    let exact = u.variants.iter().any(|v| space.has_decimal(&v.ty));
+    let exact = u.variants.iter().any(|v| holds_decimal(space, &v.ty, &mut vec![]));
     let property = match &u.mode {
         UnionMode::Tagged { property, .. } if !exact => property,
         UnionMode::Tagged { .. } | UnionMode::ByKind | UnionMode::Untagged => {
@@ -2060,4 +2060,16 @@ mod rtkind {
             }
         }
     }
+}
+
+/// The walk that #132 replaced, put back for an experiment: every union walks all that it reaches.
+fn holds_decimal(space: &Space<'_>, t: &Ty, seen: &mut Vec<TypeId>) -> bool {
+    if let Ty::Named(id) = t {
+        if seen.contains(id) {
+            return false;
+        }
+        seen.push(*id);
+        return crate::ir::types::def_types(&space.types.get(*id).kind).into_iter().any(|x| holds_decimal(space, x, seen));
+    }
+    *t == Ty::Decimal || t.children().iter().any(|x| holds_decimal(space, x, seen))
 }
