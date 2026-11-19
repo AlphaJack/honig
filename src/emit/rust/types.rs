@@ -108,7 +108,7 @@ pub(super) fn emit(
 /// Inlines types declared as an alias of an identical earlier one (one inline schema per operation): index to the
 /// first. A schema of `components/schemas` is never one, nor does an inline one alias it.
 /// A twin with derives of its own or a deprecation keeps its own declaration.
-pub(super) fn aliases(space: &Space<'_>, extra: &[(String, Vec<String>)]) -> std::collections::BTreeMap<usize, usize> {
+pub(crate) fn aliases(space: &Space<'_>, extra: &[(String, Vec<String>)]) -> std::collections::BTreeMap<usize, usize> {
     let mut twins = twins(space);
     twins.retain(|&i, _| extra_derives(&space.types.defs[i], extra).is_none() && !space.types.defs[i].deprecated);
     twins
@@ -176,20 +176,24 @@ fn twins(space: &Space<'_>) -> std::collections::BTreeMap<usize, usize> {
             let role = def.name.words().last().cloned().unwrap_or_default();
             format!("{:?}|{:?}|{}|{role}", canonical_kind(&def.kind, &canon), def.xml, def.json_string)
         };
-        let mut seen: std::collections::BTreeMap<String, usize> = std::collections::BTreeMap::new();
+        // Keys by their hash first: keys are long and share a long start, so ordering them by text compares that start
+        // again on every step down the map. The text still decides which keys are equal.
+        let mut seen: std::collections::BTreeMap<u64, Vec<(String, usize)>> = std::collections::BTreeMap::new();
         let mut next = std::collections::BTreeMap::new();
         for (i, def) in space.types.defs.iter().enumerate() {
             // A schema the description names is its own type: `Kdf` and `FileUploadType` may both be `enum: [0, 1]`.
             if def.component || def.rust_type.is_some() || matches!(def.kind, Kind::Pending | Kind::Alias(_)) {
                 continue;
             }
-            match seen.entry(key(def)) {
-                std::collections::btree_map::Entry::Occupied(e) => {
-                    next.insert(i, *e.get());
+            let key = key(def);
+            let mut hasher = std::hash::DefaultHasher::new();
+            std::hash::Hash::hash(&key, &mut hasher);
+            let bucket = seen.entry(std::hash::Hasher::finish(&hasher)).or_default();
+            match bucket.iter().find(|(k, _)| *k == key) {
+                Some(&(_, first)) => {
+                    next.insert(i, first);
                 }
-                std::collections::btree_map::Entry::Vacant(e) => {
-                    e.insert(i);
-                }
+                None => bucket.push((key, i)),
             }
         }
         if next == first {
