@@ -503,14 +503,7 @@ pub(super) fn checks(
             quote!(#items #contains)
         }
         // A value of a named type in the map checks itself where it decodes.
-        Ty::Map(_)
-            if c.min_properties.is_some()
-                || c.max_properties.is_some()
-                || c.property_names.is_some()
-                || !c.required.is_empty() =>
-        {
-            map_checks(c, value, path)
-        }
+        Ty::Map(_) => map_checks(c, value, path),
         Ty::Named(id) => match &space.types.get(*id).kind {
             Kind::Alias(x) => checks(space, x, c, value, path),
             // The fields of a struct hold `dependentRequired` together: the checked type of its shape runs it.
@@ -529,8 +522,8 @@ pub(super) fn checks(
             | Kind::Checked(_)
             | Kind::Pending => TokenStream::new(),
         },
-        Ty::Any => any_checks(c, value, path),
-        Ty::Map(_) | Ty::Bool | Ty::Bytes | Ty::Binary | Ty::Format(_) | Ty::Unit | Ty::Tuple(_) => TokenStream::new(),
+        Ty::Any => any_checks(space, c, value, path),
+        Ty::Bool | Ty::Bytes | Ty::Binary | Ty::Format(_) | Ty::Unit | Ty::Tuple(_) => TokenStream::new(),
     }
 }
 
@@ -869,7 +862,7 @@ pub(super) fn decimal_checks(c: &Constraints, value: &TokenStream, path: &TokenS
 
 /// Checks of a `serde_json::Value` (`value` is a `&` of one): each keyword on values of its kind only, as JSON Schema
 /// applies `minimum` to numbers and `minLength` to strings.
-fn any_checks(c: &Constraints, value: &TokenStream, path: &TokenStream) -> TokenStream {
+fn any_checks(space: &Space<'_>, c: &Constraints, value: &TokenStream, path: &TokenStream) -> TokenStream {
     let format = c.format.as_deref().map(|f| {
         let f = lit(f);
         quote!(runtime::check_format(out, #path, text, #f);)
@@ -885,10 +878,13 @@ fn any_checks(c: &Constraints, value: &TokenStream, path: &TokenStream) -> Token
     };
     let unique = c.unique_items.then(|| quote!(runtime::check_unique(out, #path, n);));
     let items = count(c.min_items, c.max_items, "items");
-    let items = (items.is_some() || unique.is_some()).then(|| quote!(#items #unique));
+    let contains = contains_checks(space, c, &quote!(n), path);
+    let items = (items.is_some() || unique.is_some() || !contains.is_empty()).then(|| quote!(#items #unique #contains));
     let required = required_checks(c, &quote!(|name| n.contains_key(name)), path);
+    let dependents = object_dependent_checks(c, &quote!(n), path);
     let properties = count(c.min_properties, c.max_properties, "properties");
-    let properties = (properties.is_some() || !required.is_empty()).then(|| quote!(#properties #required));
+    let properties = (properties.is_some() || !required.is_empty() || !dependents.is_empty())
+        .then(|| quote!(#properties #required #dependents));
     // Each kind as (its pattern, its checks): a kind without checks passes.
     let kinds = [
         (
@@ -987,7 +983,21 @@ fn map_checks(c: &Constraints, value: &TokenStream, path: &TokenStream) -> Token
     });
     let names = c.property_names.as_deref().map(|n| name_checks(n, &quote!(#r.keys()), path));
     let required = required_checks(c, &quote!(|name| #r.contains_key(name)), path);
-    quote!(#len #names #required)
+    let dependents = object_dependent_checks(c, &r, path);
+    quote!(#len #names #required #dependents)
+}
+
+/// Returns `dependentRequired` of `c` on the map or JSON object `object`: when a name is present, each that it needs is.
+fn object_dependent_checks(c: &Constraints, object: &TokenStream, path: &TokenStream) -> TokenStream {
+    let checks = c.dependent_required.iter().map(|(name, needs)| {
+        let needs = needs.iter().map(|need| {
+            let (message, need) = (lit(&format!("`{need}` is required when `{name}` is present")), lit(need));
+            quote!(runtime::check(out, #path, #object.contains_key(#need), #message);)
+        });
+        let name = lit(name);
+        quote!(if #object.contains_key(#name) { #(#needs)* })
+    });
+    quote!(#(#checks)*)
 }
 
 /// Returns `enum` and `const` of `c` on `json` when no type holds their values: the value is compared as JSON.

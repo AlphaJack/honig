@@ -362,6 +362,7 @@ pub(crate) fn needs_checks(types: &TypeSpace, t: &Ty, c: &Constraints, hops: usi
             c.min_properties.is_some()
                 || c.max_properties.is_some()
                 || c.property_names.is_some()
+                || !c.dependent_required.is_empty()
                 || !c.required.is_empty()
         }
         Ty::Named(id) => match &types.get(*id).kind {
@@ -387,6 +388,8 @@ pub(crate) fn needs_checks(types: &TypeSpace, t: &Ty, c: &Constraints, hops: usi
                 || c.unique_items
                 || !c.required.is_empty()
                 || c.format.is_some()
+                || c.contains.is_some()
+                || !c.dependent_required.is_empty()
         }
         Ty::Bool | Ty::Bytes | Ty::Binary | Ty::Unit | Ty::Tuple(_) => false,
     }
