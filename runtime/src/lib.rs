@@ -82,14 +82,10 @@ pub use formatted::{
 };
 pub use formatted::{Email, Hostname, IdnEmail, IdnHostname};
 pub use formatted::{Ipv4CidrText, Ipv6CidrText, IriReferenceText, IriText, JsonPointerText, RegexText};
-pub use formatted::{RelativeJsonPointerText, TimeLocalText, TimeText, UriReferenceText, UriTemplateText, UriText};
-#[cfg(feature = "jiff")]
+pub use formatted::{RelativeJsonPointerText, TimeLocalText, UriReferenceText, UriTemplateText, UriText};
 pub use full_time::FullTime;
 /// The `http` crate that [`Request`], [`Response`] and their parts come from.
 pub use http;
-/// The `jiff` crate that [`FullTime`] holds the types of.
-#[cfg(feature = "jiff")]
-pub use jiff;
 pub use links::Exchange;
 /// The string header helpers that generated code calls. Your code uses the `headers()` of `http`.
 #[doc(hidden)]

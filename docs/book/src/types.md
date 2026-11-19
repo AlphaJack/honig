@@ -111,6 +111,8 @@ The table is required. Without it, a dependency added for another reason would c
 
 {{#include generated/formats.md}}
 
+`format: time` has an offset (`08:30:06+02:00`), and no date library's time type holds one. So it is `api::FullTime` with any `dates` setting: plain numbers (`hour`, `minute`, `second`, `nanosecond`, `offset_seconds`) and whether the second was a leap second. With `dates = "jiff"`, `time()` and `offset()` read it as `jiff` types.
+
 A format without its library is its checked text, such as `api::UuidText` or `api::DateTimeText`. Only text of the format is one: `try_from`, `parse` and decoding check it as the library would on parsing. It reads as a `str`. `generate` turns on the runtime feature that each check needs. [Adapters](adapters.md) lists the features.
 
 A library reads more than its format allows. `jiff` and `chrono` read `2024-06-19 08:30Z` as a `date-time`. `uuid` reads `{...}` and `url` reads a space. So a library type in a property, a branch of a union, a newtype, a parameter or a body has its text validated first, as a `String` of that format is. The items of a body read as it arrives are validated one at a time. Then the library reads it. A server decoding a request and a client reading a response check alike. A fraction of a second past nine digits is cut: both date libraries hold nanoseconds.

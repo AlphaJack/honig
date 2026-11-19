@@ -22,23 +22,16 @@ fn types_rs(test: &str, dates: Option<DateLib>) -> String {
     common::file(&common::generate(test, &doc, &opts), "types.rs").to_owned()
 }
 
-/// `time` has an offset (`08:30:06Z`). `chrono::NaiveTime` has none and refuses it: the text stays checked text.
+/// `time` has an offset (`08:30:06Z`) that no date library's time type holds. It is the runtime's `FullTime`, plain
+/// numbers, whatever the date library.
 #[test]
-fn time_with_chrono_is_checked_text() {
-    let t = types_rs("time-chrono", Some(DateLib::Chrono));
-    assert!(t.contains("pub opens: runtime::TimeText"), "{t}");
-}
-
-/// With `jiff` a `time` is the runtime's `FullTime`: the clock and its offset in `jiff` types.
-#[test]
-fn time_with_jiff_is_a_full_time() {
-    let t = types_rs("time-jiff", Some(DateLib::Jiff));
-    assert!(t.contains("pub opens: runtime::FullTime"), "{t}");
-}
-
-#[test]
-fn time_without_a_date_library_is_checked_text() {
-    assert!(types_rs("time-none", None).contains("pub opens: runtime::TimeText"));
+fn time_is_a_full_time_with_any_date_library() {
+    for (test, dates) in
+        [("time-chrono", Some(DateLib::Chrono)), ("time-jiff", Some(DateLib::Jiff)), ("time-none", None)]
+    {
+        let t = types_rs(test, dates);
+        assert!(t.contains("pub opens: runtime::FullTime"), "{test}: {t}");
+    }
 }
 
 /// A `format: decimal` number keeps its digits (`runtime::Decimal` read through the raw value of `serde_json`). There
