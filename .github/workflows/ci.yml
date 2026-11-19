@@ -322,10 +322,10 @@ jobs:
         if: steps.changed.outputs.run == 'true' && matrix.valgrind
         run: |
           mkdir -p ~/valgrind-debs/partial
-          # apt downloads as `_apt`: it must own the folder, or it falls back to root and warns.
-          sudo chown -R _apt ~/valgrind-debs
-          sudo apt-get update -qq
-          sudo NEEDRESTART_SUSPEND=1 apt-get install -y --no-install-recommends \
+          # `_apt` cannot enter the home folder, so apt downloads as root. The archive drops connections at times.
+          apt_opts=(-o APT::Sandbox::User=root -o Acquire::Retries=5)
+          sudo apt-get update -qq "${apt_opts[@]}"
+          sudo NEEDRESTART_SUSPEND=1 apt-get install -y --no-install-recommends "${apt_opts[@]}" \
             -o Dir::Cache::Archives="$HOME/valgrind-debs" valgrind
           # The cache keeps the packages only: apt's lock and its partial downloads are root's, and tar, run as the
           # runner, cannot read them. Unreadable, they fail the save of the whole cache, cargo's included.
