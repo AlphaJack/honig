@@ -777,3 +777,23 @@ fn property_names_checks_each_name() {
     let other = types(json!({"enum": ["a", "b"]}));
     assert!(other.contains("check_schema"), "{other}");
 }
+
+/// One `patternProperties` entry of a closed map is a map of the pattern's schema whose names are checked against the
+/// pattern: no schema is checked whole. An open map or two patterns keep the whole check.
+#[test]
+fn a_closed_map_of_one_pattern_is_typed() {
+    let types = |scores: serde_json::Value| {
+        let scored = json!({"type": "object", "properties": {"scores": {"$ref": "#/components/schemas/Scores"}}});
+        let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Scores": scores, "Scored": scored}}));
+        common::file(&common::generate("pattern-properties", &doc, &crate::emit::Options::default()), "types.rs")
+            .to_owned()
+    };
+    let int = json!({"type": "integer", "minimum": 0});
+    let typed = types(json!({"type": "object", "patternProperties": {"^[a-z]+$": int}, "additionalProperties": false}));
+    assert!(typed.contains("for name in") && !typed.contains("check_schema"), "{typed}");
+    let open = types(json!({"type": "object", "patternProperties": {"^[a-z]+$": int}}));
+    assert!(open.contains("check_schema"), "{open}");
+    let two = types(json!({"type": "object", "patternProperties": {"^[a-z]+$": int, "^x": int},
+        "additionalProperties": false}));
+    assert!(two.contains("check_schema"), "{two}");
+}

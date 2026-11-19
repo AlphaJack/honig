@@ -115,15 +115,32 @@ impl Constraints {
 /// Puts the keywords of an object that generated code checks into `c`: `dependentRequired` over properties that the
 /// struct declares is a check of its fields, and `propertyNames` that checks only text is a check of each name.
 /// Returns whether each was typed, so the run-time check of the whole schema can leave it out.
-fn typed_object_keywords(s: &Value, c: &mut Constraints) -> (bool, bool) {
+fn typed_object_keywords(s: &Value, c: &mut Constraints) -> (bool, bool, bool) {
     let dependents = typed_dependents(s);
     let names = typed_property_names(s);
-    let typed = (dependents.is_some(), names.is_some());
+    let pattern = typed_pattern_map(s).filter(|_| names.is_none());
+    let typed = (dependents.is_some(), names.is_some(), pattern.is_some());
     if let Some(d) = dependents {
         c.dependent_required = d;
     }
-    c.property_names = names;
+    c.property_names =
+        names.or_else(|| pattern.map(|p| Box::new(Constraints { pattern: Some(p), ..Constraints::default() })));
     typed
+}
+
+/// Whether the schema `o` takes an object: its `type` names `object`.
+fn is_object(o: &serde_json::Map<String, Value>) -> bool {
+    type_set(o).0.iter().any(|t| t == "object")
+}
+
+/// Returns the pattern of `s` when it is a map that generated code holds whole: `type: object` with one
+/// `patternProperties` entry, no `properties` and `additionalProperties: false`. Its type is a map of the pattern's
+/// schema ([`Builder::scalar`]), so each value decodes as that schema, and every name must match the pattern.
+fn typed_pattern_map(s: &Value) -> Option<String> {
+    let o = s.as_object().filter(|o| is_object(o))?;
+    let patterns = o.get("patternProperties")?.as_object().filter(|p| p.len() == 1)?;
+    let closed = o.get("additionalProperties") == Some(&Value::Bool(false));
+    (closed && !o.contains_key("properties")).then(|| patterns.keys().next().cloned()).flatten()
 }
 
 /// Returns `propertyNames` of `s` when generated code checks it: a schema of `pattern`, `minLength` and `maxLength`
@@ -131,7 +148,7 @@ fn typed_object_keywords(s: &Value, c: &mut Constraints) -> (bool, bool) {
 /// `None` leaves any other schema to the run-time check of the whole schema.
 fn typed_property_names(s: &Value) -> Option<Box<Constraints>> {
     // Only an object has names to check: a schema without `type: object` may take any value, which no map holds.
-    s.as_object().filter(|o| type_set(o).0.iter().any(|t| t == "object"))?;
+    s.as_object().filter(|o| is_object(o))?;
     let names = s.get("propertyNames")?.as_object()?;
     let text = names.iter().all(|(k, v)| match k.as_str() {
         "pattern" | "minLength" | "maxLength" => true,
@@ -697,7 +714,7 @@ impl<'a> Builder<'a> {
             return Constraints::default();
         }
         let mut c = Constraints::own(s);
-        let (dependents, names) = typed_object_keywords(s, &mut c);
+        let (dependents, names, pattern_map) = typed_object_keywords(s, &mut c);
         // `if`/`then` on one property's constants becomes a tagged union (`conditional_union`): its variants hold the
         // conditions. Only conditions that it cannot type stay a run-time check.
         let typed_conditional = s.as_object().is_some_and(|o| conditional_union(o).is_some());
@@ -705,6 +722,7 @@ impl<'a> Builder<'a> {
             (typed_conditional && matches!(k, "if" | "then" | "else"))
                 || (dependents && k == "dependentRequired")
                 || (names && k == "propertyNames")
+                || (pattern_map && matches!(k, "patternProperties" | "additionalProperties"))
         };
         let conditional_member = |m: &Value| {
             typed_conditional

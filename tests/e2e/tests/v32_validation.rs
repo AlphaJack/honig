@@ -700,3 +700,13 @@ fn property_names_is_a_check_of_each_name() {
     assert!(profile(json!({"Nick-Name": "A"})).is_err(), "a declared property whose name fails");
     assert!(profile(json!({"name": "Ann", "Other": 1})).is_err(), "a name the struct does not declare");
 }
+
+/// One `patternProperties` entry of a closed map: every name matches the pattern and every value decodes as its schema.
+#[test]
+fn a_closed_map_of_one_pattern_checks_names_and_values() {
+    let scores = |v: serde_json::Value| serde_json::from_value::<types::Scored>(json!({"scores": v}));
+    assert!(scores(json!({"alice": 3, "bob": 0})).is_ok());
+    assert!(scores(json!({"Alice": 3})).is_err(), "a name the pattern does not match");
+    assert!(scores(json!({"alice": -1})).is_err(), "a value below its minimum");
+    assert!(scores(json!({"alice": "three"})).is_err(), "a value of another type");
+}

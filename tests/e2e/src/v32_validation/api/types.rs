@@ -1605,6 +1605,53 @@ impl TryFrom<ProfileFields> for Profile {
     }
 }
 checked_impls!(Profile, ProfileFields);
+#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct Scored {
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub scores: Option<ScoredScores>,
+}
+deserialize_impl!(Scored);
+serialize_impl!(Scored);
+impl Scored {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self { scores: None }
+    }
+}
+impl runtime::XmlShape for Scored {
+    fn xml() -> &'static runtime::XmlNode {
+        static NODE: runtime::XmlNode = runtime::XmlNode {
+            name: "Scored",
+            namespace: "",
+            prefix: "",
+            fields: &[
+                runtime::XmlField {
+                    wire: "scores",
+                    name: "scores",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "scores",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+            ],
+        };
+        &NODE
+    }
+}
+pub type Scores = std::collections::BTreeMap<String, ScoresValue>;
 #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Price {
@@ -2634,8 +2681,8 @@ impl runtime::XmlShape for ParcelsItem {
 }
 #[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
-pub struct ScoresValue(pub(super) i64);
-impl TryFrom<i64> for ScoresValue {
+pub struct ShipmentInternationalScoresValue(pub(super) i64);
+impl TryFrom<i64> for ShipmentInternationalScoresValue {
     type Error = runtime::BuildError;
     fn try_from(value: i64) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
@@ -2653,7 +2700,7 @@ impl TryFrom<i64> for ScoresValue {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_num_impls!(ScoresValue, i64);
+checked_num_impls!(ShipmentInternationalScoresValue, i64);
 #[derive(Debug, Clone, PartialEq, Copy, PartialOrd, serde::Serialize)]
 #[serde(transparent)]
 pub struct ShipmentInternationalPriority(pub(super) f64);
@@ -2773,9 +2820,10 @@ pub type ShipmentOtherwiseMeta = ShipmentInternationalMeta;
 pub type ShipmentOtherwiseMetaObject = MetaObject;
 pub type ShipmentOtherwiseLabel = ShipmentInternationalLabel;
 pub type ShipmentOtherwiseParcelsItem = ParcelsItem;
-pub type ShipmentOtherwiseScoresValue = ScoresValue;
+pub type ShipmentOtherwiseScoresValue = ShipmentInternationalScoresValue;
 pub type ShipmentOtherwisePriority = ShipmentInternationalPriority;
 pub type ShipmentOtherwiseWeight = ShipmentInternationalWeight;
+pub type ScoresValue = ShipmentInternationalScoresValue;
 #[derive(Debug, Clone, PartialEq, Copy, PartialOrd, serde::Serialize)]
 #[serde(transparent)]
 pub struct PriceAmount(pub(super) f64);
@@ -4318,6 +4366,43 @@ impl TryFrom<Labels> for LabelledLabels {
 checked_impls!(LabelledLabels, Labels);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
+pub struct ScoredScores(pub(super) Scores);
+impl<'de> serde::Deserialize<'de> for ScoredScores {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <Scores as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
+    }
+}
+impl TryFrom<Scores> for ScoredScores {
+    type Error = runtime::BuildError;
+    fn try_from(value: Scores) -> Result<Self, runtime::BuildError> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            for name in value.keys() {
+                runtime::check(
+                    out,
+                    &runtime::InstancePath::Key(&runtime::InstancePath::Root, name),
+                    runtime::pattern_matches(
+                        {
+                            static RE: runtime::Pattern = runtime::Pattern::new();
+                            &RE
+                        },
+                        "^[a-z]+$",
+                        name,
+                    ),
+                    "does not match `^[a-z]+$`",
+                );
+            }
+        }
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
+    }
+}
+checked_impls!(ScoredScores, Scores);
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
 pub struct UserTags(pub(super) Vec<UserTagsItem>);
 impl<'de> serde::Deserialize<'de> for UserTags {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
@@ -4455,42 +4540,39 @@ checked_impls!(ShipmentInternationalParcels, Vec < ParcelsItem >);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct ShipmentInternationalScores(
-    pub(super) std::collections::BTreeMap<String, ScoresValue>,
+    pub(super) std::collections::BTreeMap<String, ShipmentInternationalScoresValue>,
 );
 impl<'de> serde::Deserialize<'de> for ShipmentInternationalScores {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         let value = <std::collections::BTreeMap<
             String,
-            ScoresValue,
+            ShipmentInternationalScoresValue,
         > as serde::Deserialize>::deserialize(d)?;
         Self::try_from(value).map_err(serde::de::Error::custom)
     }
 }
-impl TryFrom<std::collections::BTreeMap<String, ScoresValue>>
+impl TryFrom<std::collections::BTreeMap<String, ShipmentInternationalScoresValue>>
 for ShipmentInternationalScores {
     type Error = runtime::BuildError;
     fn try_from(
-        value: std::collections::BTreeMap<String, ScoresValue>,
+        value: std::collections::BTreeMap<String, ShipmentInternationalScoresValue>,
     ) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&value).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"type\":\"object\",\"patternProperties\":{\"^[a-z]+$\":{\"type\":\"integer\",\"minimum\":0}},\"additionalProperties\":false}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
+            for name in value.keys() {
+                runtime::check(
                     out,
-                    &runtime::InstancePath::Root,
-                    &value,
-                    schema,
-                    runtime::schema_defs(),
+                    &runtime::InstancePath::Key(&runtime::InstancePath::Root, name),
+                    runtime::pattern_matches(
+                        {
+                            static RE: runtime::Pattern = runtime::Pattern::new();
+                            &RE
+                        },
+                        "^[a-z]+$",
+                        name,
+                    ),
+                    "does not match `^[a-z]+$`",
                 );
             }
         }
@@ -4500,7 +4582,8 @@ for ShipmentInternationalScores {
     }
 }
 checked_impls!(
-    ShipmentInternationalScores, std::collections::BTreeMap < String, ScoresValue >
+    ShipmentInternationalScores, std::collections::BTreeMap < String,
+    ShipmentInternationalScoresValue >
 );
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
@@ -4612,22 +4695,19 @@ for ShipmentOtherwiseScores {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&value).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"type\":\"object\",\"patternProperties\":{\"^[a-z]+$\":{\"type\":\"integer\",\"minimum\":0}},\"additionalProperties\":false}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
+            for name in value.keys() {
+                runtime::check(
                     out,
-                    &runtime::InstancePath::Root,
-                    &value,
-                    schema,
-                    runtime::schema_defs(),
+                    &runtime::InstancePath::Key(&runtime::InstancePath::Root, name),
+                    runtime::pattern_matches(
+                        {
+                            static RE: runtime::Pattern = runtime::Pattern::new();
+                            &RE
+                        },
+                        "^[a-z]+$",
+                        name,
+                    ),
+                    "does not match `^[a-z]+$`",
                 );
             }
         }
@@ -4886,6 +4966,26 @@ pub mod builders {
         /// Returns the value once its whole schema holds.
         pub fn build(self) -> Result<super::Profile, runtime::BuildError> {
             self.0.build().and_then(super::Profile::try_from)
+        }
+    }
+    impl super::Scored {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> Scored {
+            Scored(runtime::Builder::start(|| Ok(Self::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct Scored(runtime::Builder<super::Scored>);
+    impl Scored {
+        pub fn scores(
+            self,
+            value: impl TryInto<types::ScoredScores, Error: std::fmt::Display>,
+        ) -> Self {
+            Self(self.0.set("scores", value, |s, v| s.scores = Some(v)))
+        }
+        /// Returns the value.
+        pub fn build(self) -> Result<super::Scored, runtime::BuildError> {
+            self.0.build()
         }
     }
     impl super::Price {
