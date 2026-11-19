@@ -52,22 +52,16 @@ macro_rules! try_from_impl {
                 {
                     let out = &mut violations;
                     {
-                        static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                        let value = runtime::to_value(&value).unwrap_or_default();
-                        let schema = SCHEMA
-                            .get_or_init(|| {
-                                serde_json::from_str(
-                                        "{\"anyOf\":[{\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Customer\"}]},{\"type\":\"null\"}]}",
-                                    )
-                                    .unwrap_or_default()
-                            });
-                        runtime::check_schema_in(
-                            out,
-                            &runtime::InstancePath::Root,
-                            &value,
-                            schema,
-                            runtime::schema_defs(),
-                        );
+                        let json = runtime::to_value(&value).unwrap_or_default();
+                        if !(serde_json::from_value::<Not>(json.clone()).is_ok()
+                            || serde_json::from_value::<()>(json.clone()).is_ok())
+                        {
+                            runtime::violation(
+                                out,
+                                &runtime::InstancePath::Root,
+                                "matches none of `anyOf`",
+                            );
+                        }
                     }
                 }
                 runtime::first(violations)
@@ -843,6 +837,7 @@ impl TryFrom<&str> for UploadDocumentBodyKind {
     }
 }
 str_enum_impls!(UploadDocumentBodyKind);
+pub type Not = Customer;
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct OrderRequest {

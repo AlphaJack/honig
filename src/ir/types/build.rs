@@ -71,6 +71,7 @@ impl Constraints {
             dependent_schemas: self.dependent_schemas.clone(),
             conditions: self.conditions.clone(),
             one_of: self.one_of.clone(),
+            any_of: self.any_of.clone(),
             pattern_properties: self.pattern_properties.clone(),
             closed_to: self.closed_to.clone(),
             also: self.also.clone(),
@@ -92,6 +93,7 @@ impl Constraints {
             dependent_schemas: vec![],
             conditions: vec![],
             one_of: vec![],
+            any_of: vec![],
             pattern_properties: vec![],
             closed_to: None,
             also: vec![],
@@ -154,6 +156,7 @@ impl Constraints {
             json_contains: None,
             json_dependents: vec![],
             one_of: vec![],
+            any_of: vec![],
             pattern_properties: vec![],
             closed_to: None,
             tuple: None,
@@ -182,6 +185,9 @@ impl Constraints {
         self.not.extend(other.not);
         self.dependent_schemas.extend(other.dependent_schemas);
         self.conditions.extend(other.conditions);
+        if self.any_of.is_empty() {
+            self.any_of = other.any_of;
+        }
         if self.one_of.is_empty() {
             self.one_of = other.one_of;
         }
@@ -853,6 +859,8 @@ pub(crate) struct Builder<'a> {
     /// The schemas that typed checks decode the value as (`not`, `dependentSchemas`), by index, with the pointer of
     /// each when it has one. `finish` builds a type for each.
     subschemas: RefCell<Vec<(Value, Option<String>)>>,
+    /// The index of each queued subschema by its pointer and its text: queuing one looks it up in one step.
+    subschema_index: RefCell<BTreeMap<(Option<String>, String), usize>>,
     /// The JSON kind of each type once it is final ([`Kinds`]).
     kinds: RefCell<Vec<Option<JsonKind>>>,
     /// Where a schema was cut short at `MAX_SCHEMA_DEPTH`, by pointer: what is deeper is not checked. Reported once
@@ -895,6 +903,7 @@ impl<'a> Builder<'a> {
             checked: RefCell::default(),
             kinds: RefCell::default(),
             subschemas: RefCell::default(),
+            subschema_index: RefCell::default(),
             cut_short: RefCell::new(BTreeMap::new()),
         }
     }
@@ -1170,11 +1179,12 @@ impl<'a> Builder<'a> {
     /// Returns the index of `schema`, at `at`, in [`Builder::subschemas`], queued once.
     fn queue_subschema(&self, schema: &Value, at: Option<String>) -> usize {
         let mut subschemas = self.subschemas.borrow_mut();
-        if let Some(i) = subschemas.iter().position(|(s, p)| s == schema && *p == at) {
-            return i;
+        let n = subschemas.len();
+        let i = *self.subschema_index.borrow_mut().entry((at.clone(), schema.to_string())).or_insert(n);
+        if i == n {
+            subschemas.push((schema.clone(), at));
         }
-        subschemas.push((schema.clone(), at));
-        subschemas.len() - 1
+        i
     }
 
     /// Queues the item schemas of a tuple (`prefixItems`, then `items`) as subschemas.
@@ -1272,7 +1282,6 @@ impl<'a> Builder<'a> {
         if (typeless_assertions(s) && !scoped)
             || dynamic
             || mixed
-            || self.loose_union(s)
             || matches!(s, Value::Object(o) if UNTYPED_KEYWORDS.iter().any(|k| o.contains_key(*k) && !conditional_key(k)))
         {
             // The resource of the schema starts the dynamic scope that a `$dynamicRef` resolves in.
@@ -1285,10 +1294,7 @@ impl<'a> Builder<'a> {
                 let contains = Some((n, count_of(s, "minContains").unwrap_or(1), count_of(s, "maxContains")));
                 if s.get("type").is_none() { c.json_contains = contains } else { c.contains = contains }
             }
-            for (i, branch) in self.counted_one_of(s).into_iter().flatten().enumerate() {
-                let at = at.map(|p| join(&join(p, "oneOf"), &i.to_string()));
-                c.one_of.push(self.queue_subschema(branch, at));
-            }
+            self.queue_branch_counts(s, at, &mut c);
             self.queue_patterns(s, patterns, at, &mut c);
             if typed_tuple {
                 c.tuple = Some(self.queue_tuple(s, at));
@@ -1405,6 +1411,21 @@ impl<'a> Builder<'a> {
         }
         // Two branches of one type under a discriminator that picks one: `counted_one_of` counts the branches.
         branches.iter().any(|b| self.deref(b).is_none_or(|(b, _)| b.get("type").and_then(Value::as_str).is_none()))
+    }
+
+    /// Queues the branches of a union that its type cannot judge alone as subschemas of `c`: those of a `oneOf` that a
+    /// value must decode as exactly one of ([`Builder::counted_one_of`] or [`Builder::loose_union`]), and those of a
+    /// loose `anyOf`, one of which at least.
+    fn queue_branch_counts(&self, s: &Value, at: Option<&str>, c: &mut Constraints) {
+        let loose = self.loose_union(s);
+        let one_of = self.counted_one_of(s).or_else(|| s.get("oneOf").and_then(Value::as_array).filter(|_| loose));
+        let any_of = s.get("anyOf").and_then(Value::as_array).filter(|_| loose);
+        for (key, branches, out) in [("oneOf", one_of, &mut c.one_of), ("anyOf", any_of, &mut c.any_of)] {
+            for (i, branch) in branches.into_iter().flatten().enumerate() {
+                let at = at.map(|p| join(&join(p, key), &i.to_string()));
+                out.push(self.queue_subschema(branch, at));
+            }
+        }
     }
 
     /// Returns the branches of a `oneOf` whose discriminator picks one branch by its tag, while two branches share a
