@@ -1505,7 +1505,7 @@ impl TryFrom<ShipmentVariants> for Shipment {
         {
             let out = &mut violations;
             {
-                if json.decode_ref::<Not9>().is_ok() {
+                if json.decode_ref::<Not8>().is_ok() {
                     runtime::violation(
                         out,
                         &runtime::InstancePath::Root,
@@ -1584,8 +1584,7 @@ impl TryFrom<VoucherFields> for Voucher {
         {
             let out = &mut violations;
             {
-                if json.get("code").is_some() && let Err(e) = json.decode_ref::<Not10>()
-                {
+                if json.get("code").is_some() && let Err(e) = json.decode_ref::<Not9>() {
                     runtime::violation(
                         out,
                         &runtime::InstancePath::Root,
@@ -2819,7 +2818,7 @@ impl TryFrom<ShipmentInternationalFields> for ShipmentInternational {
         {
             let out = &mut violations;
             {
-                if json.decode_ref::<Not7>().is_ok() {
+                if json.decode_ref::<Not6>().is_ok() {
                     runtime::violation(
                         out,
                         &runtime::InstancePath::Root,
@@ -3025,6 +3024,63 @@ impl TryFrom<i64> for ShipmentInternationalWeight {
     }
 }
 checked_num_impls!(ShipmentInternationalWeight, i64);
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
+pub struct ShipmentInternationalLabels(pub(super) LabelsFields);
+impl<'de> serde::Deserialize<'de> for ShipmentInternationalLabels {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <LabelsFields as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
+    }
+}
+impl TryFrom<LabelsFields> for ShipmentInternationalLabels {
+    type Error = runtime::BuildError;
+    fn try_from(value: LabelsFields) -> Result<Self, runtime::BuildError> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            for name in value.additional_properties.keys() {
+                runtime::check(
+                    out,
+                    &runtime::InstancePath::Key(&runtime::InstancePath::Root, name),
+                    runtime::pattern_matches(
+                        {
+                            static RE: runtime::Pattern = runtime::Pattern::new();
+                            &RE
+                        },
+                        "^[a-z]+$",
+                        name,
+                    ),
+                    "does not match `^[a-z]+$`",
+                );
+            }
+            for name in value.pattern_1.keys() {
+                runtime::check(
+                    out,
+                    &runtime::InstancePath::Key(&runtime::InstancePath::Root, name),
+                    runtime::pattern_matches(
+                        {
+                            static RE: runtime::Pattern = runtime::Pattern::new();
+                            &RE
+                        },
+                        "^[a-z]+$",
+                        name,
+                    ),
+                    "does not match `^[a-z]+$`",
+                );
+            }
+        }
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
+    }
+}
+checked_impls!(ShipmentInternationalLabels, LabelsFields);
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
+#[serde(transparent)]
+pub struct LabelsPattern1(pub(super) String);
+try_from_impl_3!(LabelsPattern1);
+checked_str_impls!(LabelsPattern1);
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
 #[serde(transparent)]
 pub struct ShipmentOtherwise(pub(super) ShipmentOtherwiseFields);
@@ -3043,7 +3099,7 @@ impl TryFrom<ShipmentOtherwiseFields> for ShipmentOtherwise {
         {
             let out = &mut violations;
             {
-                if json.decode_ref::<Not8>().is_ok() {
+                if json.decode_ref::<Not7>().is_ok() {
                     runtime::violation(
                         out,
                         &runtime::InstancePath::Root,
@@ -3102,11 +3158,64 @@ pub type ShipmentOtherwiseParcelsItem = ParcelsItem;
 pub type ShipmentOtherwiseScoresValue = ShipmentInternationalScoresValue;
 pub type ShipmentOtherwisePriority = ShipmentInternationalPriority;
 pub type ShipmentOtherwiseWeight = ShipmentInternationalWeight;
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
-pub struct SettingsPattern1(pub(super) String);
-try_from_impl_3!(SettingsPattern1);
-checked_str_impls!(SettingsPattern1);
+pub struct ShipmentOtherwiseLabels(pub(super) ShipmentOtherwiseLabelsFields);
+impl<'de> serde::Deserialize<'de> for ShipmentOtherwiseLabels {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <ShipmentOtherwiseLabelsFields as serde::Deserialize>::deserialize(
+            d,
+        )?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
+    }
+}
+impl TryFrom<ShipmentOtherwiseLabelsFields> for ShipmentOtherwiseLabels {
+    type Error = runtime::BuildError;
+    fn try_from(
+        value: ShipmentOtherwiseLabelsFields,
+    ) -> Result<Self, runtime::BuildError> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            for name in value.additional_properties.keys() {
+                runtime::check(
+                    out,
+                    &runtime::InstancePath::Key(&runtime::InstancePath::Root, name),
+                    runtime::pattern_matches(
+                        {
+                            static RE: runtime::Pattern = runtime::Pattern::new();
+                            &RE
+                        },
+                        "^[a-z]+$",
+                        name,
+                    ),
+                    "does not match `^[a-z]+$`",
+                );
+            }
+            for name in value.pattern_1.keys() {
+                runtime::check(
+                    out,
+                    &runtime::InstancePath::Key(&runtime::InstancePath::Root, name),
+                    runtime::pattern_matches(
+                        {
+                            static RE: runtime::Pattern = runtime::Pattern::new();
+                            &RE
+                        },
+                        "^[a-z]+$",
+                        name,
+                    ),
+                    "does not match `^[a-z]+$`",
+                );
+            }
+        }
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
+    }
+}
+checked_impls!(ShipmentOtherwiseLabels, ShipmentOtherwiseLabelsFields);
+pub type ShipmentOtherwiseLabelsPattern1 = LabelsPattern1;
+pub type SettingsPattern1 = LabelsPattern1;
 #[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct SettingsPattern2(pub(super) i64);
@@ -3685,23 +3794,18 @@ impl Not5ObjectFragile {
 }
 serialize_impl!(Not5ObjectFragile);
 deserialize_impl!(Not5ObjectFragile);
-#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
-#[serde(transparent)]
-pub struct Not6(pub(super) String);
-try_from_impl_3!(Not6);
-checked_str_impls!(Not6);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
-pub struct Not7(pub(super) Not7Variants);
-impl<'de> serde::Deserialize<'de> for Not7 {
+pub struct Not6(pub(super) Not6Variants);
+impl<'de> serde::Deserialize<'de> for Not6 {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <Not7Variants as serde::Deserialize>::deserialize(d)?;
+        let value = <Not6Variants as serde::Deserialize>::deserialize(d)?;
         Self::try_from(value).map_err(serde::de::Error::custom)
     }
 }
-impl TryFrom<Not7Variants> for Not7 {
+impl TryFrom<Not6Variants> for Not6 {
     type Error = runtime::BuildError;
-    fn try_from(value: Not7Variants) -> Result<Self, runtime::BuildError> {
+    fn try_from(value: Not6Variants) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -3722,17 +3826,17 @@ impl TryFrom<Not7Variants> for Not7 {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(Not7, Not7Variants);
+checked_impls!(Not6, Not6Variants);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
-pub struct Not7Object {
+pub struct Not6Object {
     pub customs: ObjectCustoms,
     #[serde(flatten)]
     pub additional_properties: std::collections::BTreeMap<String, serde_json::Value>,
 }
-deserialize_impl_2!(Not7Object);
-serialize_impl_4!(Not7Object);
-impl Not7Object {
+deserialize_impl_2!(Not6Object);
+serialize_impl_4!(Not6Object);
+impl Not6Object {
     #[must_use]
     pub const fn new(customs: ObjectCustoms) -> Self {
         Self {
@@ -3741,10 +3845,10 @@ impl Not7Object {
         }
     }
 }
-impl runtime::XmlShape for Not7Object {
+impl runtime::XmlShape for Not6Object {
     fn xml() -> &'static runtime::XmlNode {
         static NODE: runtime::XmlNode = runtime::XmlNode {
-            name: "Not7Object",
+            name: "Not6Object",
             namespace: "",
             prefix: "",
             fields: &[
@@ -3783,6 +3887,41 @@ impl<'de> serde::Deserialize<'de> for ObjectCustoms {
 }
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
+pub struct Not7(pub(super) Not7Variants);
+impl<'de> serde::Deserialize<'de> for Not7 {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <Not7Variants as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
+    }
+}
+impl TryFrom<Not7Variants> for Not7 {
+    type Error = runtime::BuildError;
+    fn try_from(value: Not7Variants) -> Result<Self, runtime::BuildError> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            {
+                let json = runtime::to_value(&value).unwrap_or_default();
+                if let serde_json::Value::Object(n) = &json {
+                    runtime::check_required(
+                        out,
+                        &runtime::InstancePath::Root,
+                        |name| n.contains_key(name),
+                        &["customs", "insurer"],
+                    );
+                }
+            }
+        }
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
+    }
+}
+checked_impls!(Not7, Not7Variants);
+pub type Not7Object = Not6Object;
+pub use ObjectCustoms as Not7ObjectCustoms;
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
 pub struct Not8(pub(super) Not8Variants);
 impl<'de> serde::Deserialize<'de> for Not8 {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
@@ -3814,7 +3953,7 @@ impl TryFrom<Not8Variants> for Not8 {
     }
 }
 checked_impls!(Not8, Not8Variants);
-pub type Not8Object = Not7Object;
+pub type Not8Object = Not6Object;
 pub use ObjectCustoms as Not8ObjectCustoms;
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
@@ -3838,41 +3977,6 @@ impl TryFrom<Not9Variants> for Not9 {
                         out,
                         &runtime::InstancePath::Root,
                         |name| n.contains_key(name),
-                        &["customs", "insurer"],
-                    );
-                }
-            }
-        }
-        runtime::first(violations)
-            .map(|()| Self(value))
-            .map_err(runtime::BuildError::value)
-    }
-}
-checked_impls!(Not9, Not9Variants);
-pub type Not9Object = Not7Object;
-pub use ObjectCustoms as Not9ObjectCustoms;
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
-#[serde(transparent)]
-pub struct Not10(pub(super) Not10Variants);
-impl<'de> serde::Deserialize<'de> for Not10 {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <Not10Variants as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
-    }
-}
-impl TryFrom<Not10Variants> for Not10 {
-    type Error = runtime::BuildError;
-    fn try_from(value: Not10Variants) -> Result<Self, runtime::BuildError> {
-        let mut violations: Vec<runtime::Violation> = Vec::new();
-        {
-            let out = &mut violations;
-            {
-                let json = runtime::to_value(&value).unwrap_or_default();
-                if let serde_json::Value::Object(n) = &json {
-                    runtime::check_required(
-                        out,
-                        &runtime::InstancePath::Root,
-                        |name| n.contains_key(name),
                         &["amount"],
                     );
                 }
@@ -3883,29 +3987,29 @@ impl TryFrom<Not10Variants> for Not10 {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(Not10, Not10Variants);
+checked_impls!(Not9, Not9Variants);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
-pub struct Not10Object {
-    pub amount: Not10ObjectAmount,
+pub struct Not9Object {
+    pub amount: Not9ObjectAmount,
     #[serde(flatten)]
     pub additional_properties: std::collections::BTreeMap<String, serde_json::Value>,
 }
-deserialize_impl_2!(Not10Object);
-serialize_impl_4!(Not10Object);
-impl Not10Object {
+deserialize_impl_2!(Not9Object);
+serialize_impl_4!(Not9Object);
+impl Not9Object {
     #[must_use]
-    pub const fn new(amount: Not10ObjectAmount) -> Self {
+    pub const fn new(amount: Not9ObjectAmount) -> Self {
         Self {
             amount,
             additional_properties: std::collections::BTreeMap::new(),
         }
     }
 }
-impl runtime::XmlShape for Not10Object {
+impl runtime::XmlShape for Not9Object {
     fn xml() -> &'static runtime::XmlNode {
         static NODE: runtime::XmlNode = runtime::XmlNode {
-            name: "Not10Object",
+            name: "Not9Object",
             namespace: "",
             prefix: "",
             fields: &[
@@ -4805,6 +4909,52 @@ impl runtime::XmlShape for ShipmentInternationalFields {
         &NODE
     }
 }
+#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct LabelsFields {
+    /// The undeclared names that `^x` matches.
+    #[serde(flatten, deserialize_with = "LabelsFields::read_pattern_1")]
+    pub pattern_1: std::collections::BTreeMap<String, LabelsPattern1>,
+    /// The undeclared names that no pattern matches.
+    #[serde(flatten, deserialize_with = "LabelsFields::read_additional_properties")]
+    pub additional_properties: std::collections::BTreeMap<String, String>,
+}
+impl LabelsFields {
+    #[doc(hidden)]
+    pub fn read_pattern_1<'de, D: serde::Deserializer<'de>>(
+        d: D,
+    ) -> Result<std::collections::BTreeMap<String, LabelsPattern1>, D::Error> {
+        runtime::pattern_entries(d, &["^x"], 0usize)
+    }
+    #[doc(hidden)]
+    pub fn read_additional_properties<'de, D: serde::Deserializer<'de>>(
+        d: D,
+    ) -> Result<std::collections::BTreeMap<String, String>, D::Error> {
+        runtime::other_entries(d, &["^x"])
+    }
+}
+deserialize_impl_2!(LabelsFields);
+serialize_impl_4!(LabelsFields);
+impl LabelsFields {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self {
+            pattern_1: std::collections::BTreeMap::new(),
+            additional_properties: std::collections::BTreeMap::new(),
+        }
+    }
+}
+impl runtime::XmlShape for LabelsFields {
+    fn xml() -> &'static runtime::XmlNode {
+        static NODE: runtime::XmlNode = runtime::XmlNode {
+            name: "LabelsFields",
+            namespace: "",
+            prefix: "",
+            fields: &[],
+        };
+        &NODE
+    }
+}
 #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct ShipmentOtherwiseFields {
@@ -5114,6 +5264,7 @@ impl runtime::XmlShape for ShipmentOtherwiseFields {
         &NODE
     }
 }
+pub type ShipmentOtherwiseLabelsFields = LabelsFields;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Not2Variants {
     Object(Not2Object),
@@ -5136,21 +5287,21 @@ pub enum Not5Variants {
 serialize_impl_6!(Not5Variants);
 deserialize_impl_3!(Not5Variants);
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Not7Variants {
-    Object(Not7Object),
+pub enum Not6Variants {
+    Object(Not6Object),
     Other(serde_json::Value),
 }
-serialize_impl_6!(Not7Variants);
-deserialize_impl_3!(Not7Variants);
-pub type Not8Variants = Not7Variants;
-pub type Not9Variants = Not7Variants;
+serialize_impl_6!(Not6Variants);
+deserialize_impl_3!(Not6Variants);
+pub type Not7Variants = Not6Variants;
+pub type Not8Variants = Not6Variants;
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Not10Variants {
-    Object(Not10Object),
+pub enum Not9Variants {
+    Object(Not9Object),
     Other(serde_json::Value),
 }
-serialize_impl_6!(Not10Variants);
-deserialize_impl_3!(Not10Variants);
+serialize_impl_6!(Not9Variants);
+deserialize_impl_3!(Not9Variants);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct EntryLinesChecked(pub(super) EntryLines);
@@ -5417,9 +5568,9 @@ impl TryFrom<std::collections::BTreeMap<String, String>> for UserMeta {
 checked_impls!(UserMeta, std::collections::BTreeMap < String, String >);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
-pub struct Not10ObjectAmount(pub(super) serde_json::Value);
-deserialize_impl_4!(Not10ObjectAmount);
-impl TryFrom<serde_json::Value> for Not10ObjectAmount {
+pub struct Not9ObjectAmount(pub(super) serde_json::Value);
+deserialize_impl_4!(Not9ObjectAmount);
+impl TryFrom<serde_json::Value> for Not9ObjectAmount {
     type Error = runtime::BuildError;
     fn try_from(value: serde_json::Value) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
@@ -5440,7 +5591,7 @@ impl TryFrom<serde_json::Value> for Not10ObjectAmount {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(Not10ObjectAmount, serde_json::Value);
+checked_impls!(Not9ObjectAmount, serde_json::Value);
 pub type BadgeRequestHolders = BadgeHolders;
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
@@ -5563,92 +5714,6 @@ checked_impls!(
     ShipmentInternationalScores, std::collections::BTreeMap < String,
     ShipmentInternationalScoresValue >
 );
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
-#[serde(transparent)]
-pub struct ShipmentInternationalLabels(
-    pub(super) std::collections::BTreeMap<String, serde_json::Value>,
-);
-impl<'de> serde::Deserialize<'de> for ShipmentInternationalLabels {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <std::collections::BTreeMap<
-            String,
-            serde_json::Value,
-        > as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
-    }
-}
-impl TryFrom<std::collections::BTreeMap<String, serde_json::Value>>
-for ShipmentInternationalLabels {
-    type Error = runtime::BuildError;
-    fn try_from(
-        value: std::collections::BTreeMap<String, serde_json::Value>,
-    ) -> Result<Self, runtime::BuildError> {
-        let json = runtime::to_value(&value).unwrap_or_default();
-        let json = &runtime::Content::of(&json);
-        let mut violations: Vec<runtime::Violation> = Vec::new();
-        {
-            let out = &mut violations;
-            {
-                if let Some(object) = json.as_object() {
-                    for (name, item) in object {
-                        let mut matched = false;
-                        if runtime::pattern_matches(
-                            {
-                                static RE: runtime::Pattern = runtime::Pattern::new();
-                                &RE
-                            },
-                            "^x",
-                            name,
-                        ) {
-                            matched = true;
-                            if let Err(e) = item.decode_ref::<Not6>() {
-                                runtime::violation(
-                                    out,
-                                    &runtime::InstancePath::Key(
-                                        &runtime::InstancePath::Root,
-                                        name,
-                                    ),
-                                    e.to_string(),
-                                );
-                            }
-                        }
-                        if !matched && let Err(e) = item.decode_ref::<String>() {
-                            runtime::violation(
-                                out,
-                                &runtime::InstancePath::Key(
-                                    &runtime::InstancePath::Root,
-                                    name,
-                                ),
-                                e.to_string(),
-                            );
-                        }
-                    }
-                }
-            }
-            for name in value.keys() {
-                runtime::check(
-                    out,
-                    &runtime::InstancePath::Key(&runtime::InstancePath::Root, name),
-                    runtime::pattern_matches(
-                        {
-                            static RE: runtime::Pattern = runtime::Pattern::new();
-                            &RE
-                        },
-                        "^[a-z]+$",
-                        name,
-                    ),
-                    "does not match `^[a-z]+$`",
-                );
-            }
-        }
-        runtime::first(violations)
-            .map(|()| Self(value))
-            .map_err(runtime::BuildError::value)
-    }
-}
-checked_impls!(
-    ShipmentInternationalLabels, std::collections::BTreeMap < String, serde_json::Value >
-);
 pub type ShipmentOtherwiseRating = ShipmentInternationalRating;
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
@@ -5749,7 +5814,6 @@ checked_impls!(
     ShipmentOtherwiseScores, std::collections::BTreeMap < String,
     ShipmentOtherwiseScoresValue >
 );
-pub type ShipmentOtherwiseLabels = ShipmentInternationalLabels;
 /// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
 /// its field. `build` returns the first field that did not convert.
 pub mod builders {
@@ -6308,6 +6372,24 @@ pub mod builders {
             self.0.build().and_then(super::ShipmentInternational::try_from)
         }
     }
+    impl super::ShipmentInternationalLabels {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> ShipmentInternationalLabels {
+            ShipmentInternationalLabels(
+                runtime::Builder::start(|| Ok(super::LabelsFields::new())),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct ShipmentInternationalLabels(runtime::Builder<super::LabelsFields>);
+    impl ShipmentInternationalLabels {
+        /// Returns the value once its whole schema holds.
+        pub fn build(
+            self,
+        ) -> Result<super::ShipmentInternationalLabels, runtime::BuildError> {
+            self.0.build().and_then(super::ShipmentInternationalLabels::try_from)
+        }
+    }
     impl super::ShipmentOtherwise {
         /// Starts a builder from the required properties.
         pub fn builder(
@@ -6416,12 +6498,34 @@ pub mod builders {
             self.0.build().and_then(super::ShipmentOtherwise::try_from)
         }
     }
-    impl super::Not10Object {
+    impl super::ShipmentOtherwiseLabels {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> ShipmentOtherwiseLabels {
+            ShipmentOtherwiseLabels(
+                runtime::Builder::start(|| Ok(
+                    super::ShipmentOtherwiseLabelsFields::new(),
+                )),
+            )
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct ShipmentOtherwiseLabels(
+        runtime::Builder<super::ShipmentOtherwiseLabelsFields>,
+    );
+    impl ShipmentOtherwiseLabels {
+        /// Returns the value once its whole schema holds.
+        pub fn build(
+            self,
+        ) -> Result<super::ShipmentOtherwiseLabels, runtime::BuildError> {
+            self.0.build().and_then(super::ShipmentOtherwiseLabels::try_from)
+        }
+    }
+    impl super::Not9Object {
         /// Starts a builder from the required properties.
         pub fn builder(
-            amount: impl TryInto<types::Not10ObjectAmount, Error: std::fmt::Display>,
-        ) -> Not10Object {
-            Not10Object(
+            amount: impl TryInto<types::Not9ObjectAmount, Error: std::fmt::Display>,
+        ) -> Not9Object {
+            Not9Object(
                 runtime::Builder::start(|| Ok(
                     Self::new(runtime::field("amount", amount)?),
                 )),
@@ -6429,10 +6533,10 @@ pub mod builders {
         }
     }
     #[must_use = "a builder does nothing until `build`"]
-    pub struct Not10Object(runtime::Builder<super::Not10Object>);
-    impl Not10Object {
+    pub struct Not9Object(runtime::Builder<super::Not9Object>);
+    impl Not9Object {
         /// Returns the value.
-        pub fn build(self) -> Result<super::Not10Object, runtime::BuildError> {
+        pub fn build(self) -> Result<super::Not9Object, runtime::BuildError> {
             self.0.build()
         }
     }

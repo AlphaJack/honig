@@ -898,10 +898,10 @@ fn pattern_properties_beside_properties_are_typed_maps() {
     assert!(types.contains("runtime::Closed") && !types.contains("runtime::pattern_matches("), "{types}");
 }
 
-/// `additionalProperties` with a schema beside `patternProperties` holds for the names that no pattern matches and the
-/// object does not declare: no schema is checked whole.
+/// `additionalProperties` with a schema beside `patternProperties` types the names that no pattern matches: a map of
+/// each, decoded as its schema, with no check of the names after decoding.
 #[test]
-fn additional_properties_beside_patterns_checks_the_other_names() {
+fn additional_properties_beside_patterns_types_the_other_names() {
     let tags = json!({"type": "object", "patternProperties": {"^x_": {"type": "string"}},
         "additionalProperties": {"type": "integer"}});
     let holder = json!({"type": "object", "properties": {"tags": tags}});
@@ -911,7 +911,9 @@ fn additional_properties_beside_patterns_checks_the_other_names() {
         "types.rs",
     )
     .to_owned();
-    assert!(types.contains("let mut matched = false;") && !types.contains("check_schema"), "{types}");
+    assert!(types.contains("pub pattern_1: std::collections::BTreeMap<String, String>,"), "{types}");
+    assert!(types.contains("pub additional_properties: std::collections::BTreeMap<String, i64>,"), "{types}");
+    assert!(!types.contains("let mut matched = false;"), "{types}");
 }
 
 /// A tuple that no Rust tuple holds (`prefixItems` with fewer `minItems`, or open) checks each item against the type
