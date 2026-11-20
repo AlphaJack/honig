@@ -46,11 +46,11 @@ macro_rules! checked_impls {
 pub type Point = (f64, f64, String);
 /// Open prefixItems stay a list of JSON values.
 pub type Open = Vec<serde_json::Value>;
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Route {
-    pub start: RouteStart,
-    pub stops: RouteStops,
+    pub start: Point,
+    pub stops: Vec<Point>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
@@ -70,149 +70,10 @@ impl serde::Serialize for Route {
 }
 impl Route {
     #[must_use]
-    pub const fn new(start: RouteStart, stops: RouteStops) -> Self {
+    pub const fn new(start: Point, stops: Vec<Point>) -> Self {
         Self { start, stops, tags: None }
     }
 }
-#[derive(Debug, Clone, PartialEq, serde::Serialize)]
-#[serde(transparent)]
-pub struct RouteStart(pub(super) Point);
-impl<'de> serde::Deserialize<'de> for RouteStart {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <Point as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
-    }
-}
-impl TryFrom<Point> for RouteStart {
-    type Error = runtime::BuildError;
-    fn try_from(value: Point) -> Result<Self, runtime::BuildError> {
-        let json = runtime::to_value(&value).unwrap_or_default();
-        let json = &runtime::Content::of(&json);
-        let mut violations: Vec<runtime::Violation> = Vec::new();
-        {
-            let out = &mut violations;
-            {
-                let items = json.as_array().unwrap_or_default();
-                if let Some(item) = items.first()
-                    && let Err(e) = item.decode_ref::<f64>()
-                {
-                    runtime::violation(
-                        out,
-                        &runtime::InstancePath::Index(&runtime::InstancePath::Root, 0),
-                        e.to_string(),
-                    );
-                }
-                if let Some(item) = items.get(1usize)
-                    && let Err(e) = item.decode_ref::<f64>()
-                {
-                    runtime::violation(
-                        out,
-                        &runtime::InstancePath::Index(&runtime::InstancePath::Root, 1),
-                        e.to_string(),
-                    );
-                }
-                if let Some(item) = items.get(2usize)
-                    && let Err(e) = item.decode_ref::<String>()
-                {
-                    runtime::violation(
-                        out,
-                        &runtime::InstancePath::Index(&runtime::InstancePath::Root, 2),
-                        e.to_string(),
-                    );
-                }
-                if items.len() > 3 {
-                    runtime::violation(
-                        out,
-                        &runtime::InstancePath::Index(&runtime::InstancePath::Root, 3),
-                        "no value is allowed here",
-                    );
-                }
-            }
-        }
-        runtime::first(violations)
-            .map(|()| Self(value))
-            .map_err(runtime::BuildError::value)
-    }
-}
-checked_impls!(RouteStart, Point);
-#[derive(Debug, Clone, PartialEq, serde::Serialize)]
-#[serde(transparent)]
-pub struct RouteStops(pub(super) Vec<Point>);
-impl<'de> serde::Deserialize<'de> for RouteStops {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <Vec<Point> as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
-    }
-}
-impl TryFrom<Vec<Point>> for RouteStops {
-    type Error = runtime::BuildError;
-    fn try_from(value: Vec<Point>) -> Result<Self, runtime::BuildError> {
-        let mut violations: Vec<runtime::Violation> = Vec::new();
-        {
-            let out = &mut violations;
-            {
-                let base = &runtime::InstancePath::Root;
-                for (i, v) in value.iter().enumerate() {
-                    {
-                        let json = runtime::to_value(v).unwrap_or_default();
-                        let json = &runtime::Content::of(&json);
-                        let items = json.as_array().unwrap_or_default();
-                        if let Some(item) = items.first()
-                            && let Err(e) = item.decode_ref::<f64>()
-                        {
-                            runtime::violation(
-                                out,
-                                &runtime::InstancePath::Index(
-                                    &runtime::InstancePath::Index(base, i),
-                                    0,
-                                ),
-                                e.to_string(),
-                            );
-                        }
-                        if let Some(item) = items.get(1usize)
-                            && let Err(e) = item.decode_ref::<f64>()
-                        {
-                            runtime::violation(
-                                out,
-                                &runtime::InstancePath::Index(
-                                    &runtime::InstancePath::Index(base, i),
-                                    1,
-                                ),
-                                e.to_string(),
-                            );
-                        }
-                        if let Some(item) = items.get(2usize)
-                            && let Err(e) = item.decode_ref::<String>()
-                        {
-                            runtime::violation(
-                                out,
-                                &runtime::InstancePath::Index(
-                                    &runtime::InstancePath::Index(base, i),
-                                    2,
-                                ),
-                                e.to_string(),
-                            );
-                        }
-                        if items.len() > 3 {
-                            runtime::violation(
-                                out,
-                                &runtime::InstancePath::Index(
-                                    &runtime::InstancePath::Index(base, i),
-                                    3,
-                                ),
-                                "no value is allowed here",
-                            );
-                        }
-                    }
-                }
-            }
-        }
-        runtime::first(violations)
-            .map(|()| Self(value))
-            .map_err(runtime::BuildError::value)
-    }
-}
-checked_impls!(RouteStops, Vec < Point >);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct RouteTags(pub(super) Open);
@@ -257,8 +118,8 @@ pub mod builders {
     impl super::Route {
         /// Starts a builder from the required properties.
         pub fn builder(
-            start: impl TryInto<types::RouteStart, Error: std::fmt::Display>,
-            stops: impl TryInto<types::RouteStops, Error: std::fmt::Display>,
+            start: impl TryInto<types::Point, Error: std::fmt::Display>,
+            stops: impl TryInto<Vec<types::Point>, Error: std::fmt::Display>,
         ) -> Route {
             Route(
                 runtime::Builder::start(|| Ok(

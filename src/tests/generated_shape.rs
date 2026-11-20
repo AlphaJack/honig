@@ -1387,3 +1387,18 @@ fn typed_contains_reads_the_buffer() {
         .to_owned();
     assert!(types.contains("item.decode_ref::<") && !types.contains("runtime::to_value(item)"), "{types}");
 }
+
+/// A closed `prefixItems` tuple is a Rust tuple, which holds its items by their types: a field of it, or of a list of
+/// it, needs no wrapper that checks the items again.
+#[test]
+fn a_rust_tuple_is_checked_once() {
+    let point = json!({"type": "array", "prefixItems": [{"type": "number"}, {"type": "string"}], "items": false,
+        "minItems": 2});
+    let route = json!({"type": "object", "required": ["start", "stops"], "properties": {
+        "start": {"$ref": "#/components/schemas/Point"},
+        "stops": {"type": "array", "items": {"$ref": "#/components/schemas/Point"}}}});
+    let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Point": point, "Route": route}}));
+    let types =
+        common::file(&common::generate("tuple-once", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
+    assert!(types.contains("pub start: Point,") && types.contains("pub stops: Vec<Point>,"), "{types}");
+}
