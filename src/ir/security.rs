@@ -136,7 +136,7 @@ pub(crate) fn schemes(b: &Builder<'_>) -> Vec<SecurityScheme> {
 }
 
 /// Returns the requirements of scheme sets. An empty requirement (`{}`) makes
-/// authentication optional. A requirement that names an unknown scheme can never
+/// authentication optional. A requirement that refers to an unknown scheme can never
 /// be met. So it is dropped and never shortened. Shortening `{unknown}` to `{}`
 /// would make the operation public. When every requirement is dropped the
 /// result is empty. That reads as public. So `generate` refuses to emit a

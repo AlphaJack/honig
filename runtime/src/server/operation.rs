@@ -1,12 +1,12 @@
 //! The operations of a generated API as the server routes and serves them. The wide event and the steps of serving
-//! both name them.
+//! both refer to them.
 
 use crate::{ErrorSchema, Requirement};
 
 /// An operation of a generated API.
 ///
 /// The generated `Operation` enum implements it: one variant per operation. Your code matches on that enum. A layer
-/// meant for any API is generic over this trait and names the operation in its logs and metrics with
+/// meant for any API is generic over this trait and identifies the operation in its logs and metrics with
 /// [`Operation::name`].
 pub trait Operation: Copy + Eq + std::fmt::Debug + Send + Sync + 'static {
     /// Returns how the server routes and serves the operation.

@@ -65,14 +65,14 @@ fn implicit_names_in_a_referenced_document_resolve_from_the_entry_document() {
     assert_eq!(list.security, [vec![crate::ir::security::Requirement { scheme: "key".into(), scopes: vec![] }]]);
     let key = api.schemes.iter().find(|s| s.name == "key").expect("the scheme");
     assert_matches!(&key.kind, SchemeKind::ApiKey { location, param } if location == "header" && param == "X-Key");
-    // `mapping: {gadget: Gadget}` names the `Gadget` object of the entry document and not the string of the referenced document.
+    // `mapping: {gadget: Gadget}` refers to the `Gadget` object of the entry document and not the string of the referenced document.
     let Ty::Named(body) = &list.responses[0].contents[0].ty else { panic!("a named union") };
     let Kind::Union(u) = &api.types.get(*body).kind else { panic!("a union") };
     let gadget = u.variants.iter().find(|v| v.tags == ["gadget"]).expect("the `gadget` tag");
     let Ty::Named(gadget_ty) = &gadget.ty else { panic!("a named variant") };
     let Kind::Struct(s) = &api.types.get(*gadget_ty).kind else { panic!("the entry document's object") };
     assert!(s.fields.iter().any(|f| f.wire == "purrs"), "{s:?}");
-    // The link names an operation of the entry document.
+    // The link refers to an operation of the entry document.
     let link = &list.responses[0].links[0];
     assert_eq!(link.target, LinkTarget::Id("getProduct".into()));
     assert!(api.http.operations.iter().any(|o| crate::emit::rust::names::snake(&o.name) == "get_product"));

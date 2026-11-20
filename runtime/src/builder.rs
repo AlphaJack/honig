@@ -12,7 +12,7 @@ pub struct BuildError {
 }
 
 impl BuildError {
-    /// Returns the error of a built value that breaks a rule of its whole schema (`if`/`then`, `not`, ...). It names no
+    /// Returns the error of a built value that breaks a rule of its whole schema (`if`/`then`, `not`, ...). It points to no
     /// field.
     #[must_use]
     pub const fn value(message: String) -> Self {
@@ -47,7 +47,7 @@ impl std::error::Error for BuildError {}
 ///
 /// # Errors
 ///
-/// The value does not convert: the error names the field.
+/// The value does not convert: the error points to the field.
 pub fn field<F, V>(field: &'static str, value: V) -> Result<F, BuildError>
 where
     V: TryInto<F>,

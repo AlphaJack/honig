@@ -11,7 +11,7 @@
 //! 4. **The body**: read whole up to `max_body_bytes` (413). An operation that streams its body skips this step.
 //! 5. **Decoding and validation** (400 and 415). Then your handler runs and its response is encoded.
 //!
-//! [`Server::authenticate`] finds who is calling and puts the principal in the extensions. When your `Api` names a
+//! [`Server::authenticate`] finds who is calling and puts the principal in the extensions. When your `Api` declares a
 //! `Principal` the server builds into a service only once it does.
 
 use std::convert::Infallible;
@@ -77,12 +77,12 @@ pub trait Operations: Send + Sync + 'static {
 /// | an empty alternative (`[{}, {apiKey: []}]`) | `Option<Principal>` | the handler runs with `None` |
 /// | credentials required | `Principal` | 401 in the error schema |
 #[diagnostic::on_unimplemented(
-    message = "the `Api` names a `Principal` that no step finds",
+    message = "the `Api` declares a `Principal` that no step finds",
     label = "call `.authenticate(..)` on the server before this",
     note = "`authenticate` finds who is calling and gives the principal to the operations"
 )]
 pub trait Authentication<P>: Send + Sync + 'static {
-    /// Returns the principal of a request that no step authenticated: `()` when the `Api` names none.
+    /// Returns the principal of a request that no step authenticated: `()` when the `Api` declares none.
     #[doc(hidden)]
     fn anonymous() -> Option<P>;
 }
@@ -177,7 +177,7 @@ pub struct ClientCertificateVerified;
 
 /// What the server found out about a request before your layers, in its extensions.
 ///
-/// A layer for any API names the operation here, as axum's `MatchedPath`. A layer for one API reads the generated
+/// A layer for any API identifies the operation here, as axum's `MatchedPath`. A layer for one API reads the generated
 /// `Operation` instead. The credentials are read through [`Secured`].
 #[derive(Debug, Clone)]
 pub struct MatchedOperation {
@@ -187,7 +187,7 @@ pub struct MatchedOperation {
 }
 
 impl MatchedOperation {
-    /// Returns the operation as generated code names it (`get_order`).
+    /// Returns the operation as generated code spells it (`get_order`).
     #[must_use]
     pub const fn name(&self) -> &'static str {
         self.name

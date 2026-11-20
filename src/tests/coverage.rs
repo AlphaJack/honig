@@ -409,7 +409,7 @@ fn object_mut<'a>(doc: &'a mut Value, path: &[String]) -> Option<&'a mut Map<Str
 }
 
 /// The generated module of a 3.2 document as one string. `externals` are the files and URLs that its examples name:
-/// read once per fixture, since some are URLs and removing a field never names a new one.
+/// read once per fixture, since some are URLs and removing a field never adds a new one.
 fn generate(doc: &Value, externals: &crate::json::Externals, opts: &crate::emit::Options) -> String {
     let mut diags = crate::diag::Diagnostics::default();
     let mut d = crate::json::Doc::new(doc.clone());

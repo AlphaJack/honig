@@ -118,7 +118,7 @@ fn not_modified(resp: Response) -> Response {
     Response::from_parts(head, crate::Body::default())
 }
 
-/// Does an `If-Range` value name the representation of the response (RFC 9110 section 13.1.5)? An entity tag must
+/// Does an `If-Range` value refer to the representation of the response (RFC 9110 section 13.1.5)? An entity tag must
 /// match its `ETag` strongly. A date must match its `Last-Modified` exactly. Otherwise the client gets all of it.
 pub(crate) fn if_range_holds(cond: &str, resp: &Response) -> bool {
     let cond = cond.trim();

@@ -191,7 +191,7 @@ pub(crate) struct TypeDef {
     pub own: Constraints,
     /// A response type of a lenient client (`client = { strict = false }`): an enum reads a value that it does not
     /// list as `Other`, a closed struct reads a property that it does not declare, and a tagged union reads a tag
-    /// that names no variant as `Other`. Its request copy is strict.
+    /// that matches no variant as `Other`. Its request copy is strict.
     pub lenient: bool,
 }
 
@@ -762,7 +762,7 @@ impl TypeSpace {
                 && match &d.kind {
                     Kind::StrEnum(_) | Kind::IntEnum(_) => true,
                     Kind::Struct(s) => s.closed,
-                    // A tag that names no variant is a member that the server added. A union with a default variant
+                    // A tag that matches no variant is a member that the server added. A union with a default variant
                     // reads it already, and an untagged value that fits no branch may as well be broken.
                     Kind::Union(u) => matches!(u.mode, UnionMode::Tagged { default: None, .. }),
                     Kind::Alias(_) | Kind::Newtype(_) | Kind::Const(_) | Kind::Checked(_) | Kind::Pending => false,

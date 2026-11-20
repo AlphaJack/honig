@@ -64,7 +64,7 @@ pub(crate) fn op_path(op: &Operation) -> TokenStream {
     quote!(ops::#n)
 }
 
-/// Returns `Params` and `Response` of `op` as user code names them: `ops::<operation>::Params`.
+/// Returns `Params` and `Response` of `op` as user code refers to them: `ops::<operation>::Params`.
 /// One name per type: no short alias that exists only when it is unique.
 pub(crate) fn user_types(op: &Operation) -> (TokenStream, TokenStream) {
     let m = op_path(op);

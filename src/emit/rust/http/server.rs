@@ -76,14 +76,14 @@ pub(crate) fn api_method(op: &Operation, allow_unimplemented: bool) -> TokenStre
     }
 }
 
-/// Returns the generated enum that names `op`: `Operation` for a path operation, `WebhookOperation` for a webhook or
+/// Returns the generated enum of `op`: `Operation` for a path operation, `WebhookOperation` for a webhook or
 /// callback.
 fn operation_type(op: &Operation) -> proc_macro2::Ident {
     ident(if is_path(op) { "Operation" } else { "WebhookOperation" })
 }
 
 /// Returns `name`: one variant per operation of `ops`, each to its `runtime::Op`. Then the runtime types typed by it
-/// under the names in `aliases` (`Context` to `runtime::Context`), the one way your code names them.
+/// under the names in `aliases` (`Context` to `runtime::Context`), the one way your code refers to them.
 fn operation_enum(name: &str, ops: &[&Operation], aliases: &[(&str, &str)]) -> TokenStream {
     let name = ident(name);
     let variants = ops.iter().map(|op| operation_variant(op));
@@ -122,7 +122,7 @@ fn error_response_method(operation: &TokenStream, filled: bool) -> TokenStream {
          Default: RFC 9457 `problem+json`, or the error body of the description that it fills by name."
     } else {
         " Answers a request that the server refuses itself (no route, bad input, missing credentials, a handler `Err`) \
-         in the error body of the description. No standard names its fields, so this maps them: `rejection.reason` \
+         in the error body of the description. No standard defines its fields, so this maps them: `rejection.reason` \
          holds the status and the detail."
     };
     quote! {

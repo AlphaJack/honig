@@ -54,7 +54,7 @@ impl fmt::Display for ActionError {
         match self {
             Self::NotObject => write!(f, "an action is an object"),
             Self::NoTarget => write!(f, "an action needs a `target`"),
-            Self::BadRef => write!(f, "`$ref` names a reusable action as `#/components/actions/<name>`"),
+            Self::BadRef => write!(f, "`$ref` refers to a reusable action as `#/components/actions/<name>`"),
             Self::NoReusable(name) => write!(f, "no reusable action `{name}`"),
             Self::BadPath { path, reason } => write!(f, "`{path}` is not an RFC 9535 JSONPath: {reason}"),
             Self::UpdateAndCopy => write!(f, "an action has `update` or `copy`, not both"),
@@ -115,7 +115,7 @@ pub(crate) fn apply(doc: &mut Value, overlay: &Value, name: &str, diags: &mut Di
 }
 
 /// Returns the Overlay 1.2 document identity. `extends` and `$self` name whole documents. So
-/// they carry no fragment. An absolute `extends` names the `$self` of the description.
+/// they carry no fragment. An absolute `extends` refers to the `$self` of the description.
 fn identity(doc: &Value, overlay: &Value, at: &dyn Fn(&str) -> String, diags: &mut Diagnostics) {
     for (field, ptr) in [("extends", "/extends"), ("$self", "/$self")] {
         if overlay.get(field).and_then(Value::as_str).is_some_and(|u| u.contains('#')) {

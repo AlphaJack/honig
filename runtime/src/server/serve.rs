@@ -104,7 +104,7 @@ fn log<Id: Operation>(event: &RequestEvent<Id>) {
         scopes = %f.scopes.join(","),
         error = f.error.map(crate::Failure::name),
         violations = f.violations,
-        // `tracing` names its fields at compile time. So the fields that you set go as one JSON object.
+        // `tracing` fixes the names of its fields at compile time. So the fields that you set go as one JSON object.
         fields = %serde_json::Value::Object(f.extra),
         "request"
     );

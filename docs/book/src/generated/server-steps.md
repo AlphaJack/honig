@@ -13,5 +13,5 @@ description:
 4. **The body**: read whole up to `max_body_bytes` (413). An operation that streams its body skips this step.
 5. **Decoding and validation** (400 and 415). Then your handler runs and its response is encoded.
 
-`Server::authenticate` finds who is calling and puts the principal in the extensions. When your `Api` names a
+`Server::authenticate` finds who is calling and puts the principal in the extensions. When your `Api` declares a
 `Principal` the server builds into a service only once it does.

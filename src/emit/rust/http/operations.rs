@@ -20,7 +20,7 @@ use crate::ir::names::Name;
 use crate::ir::types::{Kind, Ty};
 
 /// Returns `conveniences`: `METHOD`, `PATH`, `Params::new` and the `tags` modules for code that calls the API. A binary
-/// that only serves it (no client) never names them. So they are left out and not left unused. `binary`: a binary
+/// that only serves it (no client) never refers to them. So they are left out and not left unused. `binary`: a binary
 /// crate, where an item that nothing names is dead code. `serves`: the server is generated. In a binary a handler may
 /// build only some of the responses of its operation, or none when it is left to its `501` default.
 pub(crate) fn operations(api: &Api, space: &Space<'_>, conveniences: bool, binary: bool, serves: bool) -> TokenStream {
@@ -32,7 +32,7 @@ pub(crate) fn operations(api: &Api, space: &Space<'_>, conveniences: bool, binar
         (true, false, true) => {
             Some("a binary calls part of the client: its `Params::new`, `METHOD` and `PATH` may go unused")
         }
-        (true, false, false) => Some("without a client or a server a binary names none of the operations"),
+        (true, false, false) => Some("without a client or a server a binary refers to none of the operations"),
     };
     let defaults = dead_code.map(|reason| quote!(#![allow(dead_code, reason = #reason)]));
     let header = quote!(#allow #defaults);
@@ -42,7 +42,7 @@ pub(crate) fn operations(api: &Api, space: &Space<'_>, conveniences: bool, binar
     quote! { #header #security #(#mods)* #responses #tags }
 }
 
-/// Returns `use super::super::types;` for a module of `operations.rs` that names a schema type.
+/// Returns `use super::super::types;` for a module of `operations.rs` that refers to a schema type.
 fn types_import(needed: bool) -> Option<TokenStream> {
     needed.then(|| {
         quote!(
@@ -52,7 +52,7 @@ fn types_import(needed: bool) -> Option<TokenStream> {
 }
 
 /// Returns `pub mod responses`: the body of each `components/responses` entry with several media types. Each is
-/// declared once. The `<Variant>Body` of an operation names it.
+/// declared once. The `<Variant>Body` of an operation refers to it.
 fn responses_mod(space: &Space<'_>, ops: &[Operation]) -> Option<TokenStream> {
     let mut seen = BTreeSet::new();
     let mut items = vec![];
@@ -149,7 +149,7 @@ pub(crate) fn tags_mod(api: &Api) -> Option<TokenStream> {
     })
 }
 
-/// Returns `use super::super::runtime;` for a module of an operation that names the runtime.
+/// Returns `use super::super::runtime;` for a module of an operation that refers to the runtime.
 fn runtime_import(uses: bool) -> Option<TokenStream> {
     uses.then(|| {
         quote!(
@@ -169,7 +169,7 @@ pub(crate) fn operation_mod(api: &Api, space: &Space<'_>, op: &Operation, conven
         items.push(content_enum(space, "Body", &body.contents, &bx.body_enum));
     }
     response_enum(&mut items, space, op, &bx);
-    // `Params`, the bodies and the responses name the runtime when they need one of its types or helpers. The links
+    // `Params`, the bodies and the responses refer to the runtime when they need one of its types or helpers. The links
     // and callbacks below import it for themselves.
     let uses_runtime = quote!(#(#items)*).to_string().contains("runtime ::");
     items.extend(links_mod(api, space, op));
@@ -754,7 +754,7 @@ fn into_ok(space: &Space<'_>, op: &Operation, bx: &Boxing) -> Option<TokenStream
 }
 
 /// Returns the type that the one success `resp` gives from `into_ok`, the match arm that takes it apart and the alias
-/// that names a tuple: nothing, its body, its one header, or its body and headers as `Success` in order.
+/// that stands for a tuple: nothing, its body, its one header, or its body and headers as `Success` in order.
 fn one_success(space: &Space<'_>, resp: &Resp, boxed_body: bool) -> (TokenStream, TokenStream, Option<TokenStream>) {
     let variant = pascal_ident(&resp.variant);
     let body = || {

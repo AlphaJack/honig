@@ -1,7 +1,7 @@
 //! Requests that break the description. They go through the tower `Service` that a framework calls. The server
 //! answers each one with a status below 500 and a body that reads to the end. A panic fails the test too.
 //!
-//! A fixture's test file names its routes and the words its handlers know. Then it runs [`check`] on each [`case`]
+//! A fixture's test file lists its routes and the words its handlers know. Then it runs [`check`] on each [`case`]
 //! in a `proptest!` block. A failure shrinks to the smallest request that fails.
 
 use std::convert::Infallible;

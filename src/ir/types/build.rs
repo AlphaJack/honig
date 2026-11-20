@@ -243,12 +243,12 @@ fn untyped(s: &Value, scoped: bool, shapes: [bool; 2], conditional_key: &dyn Fn(
         .collect()
 }
 
-/// Whether the schema `o` takes an object: its `type` names `object`.
+/// Whether the schema `o` takes an object: its `type` lists `object`.
 fn is_object(o: &serde_json::Map<String, Value>) -> bool {
     type_set(o).0.iter().any(|t| t == "object")
 }
 
-/// Whether the schema `o` may take a value of kind `kind`: its `type` names it, or it has no `type`. Without one, its
+/// Whether the schema `o` may take a value of kind `kind`: its `type` lists it, or it has no `type`. Without one, its
 /// value is a `serde_json::Value`, whose checks apply a keyword to values of its kind only.
 fn may_be(o: &serde_json::Map<String, Value>, kind: &str) -> bool {
     !o.contains_key("type") || type_set(o).0.iter().any(|t| t == kind)
@@ -826,7 +826,7 @@ pub(crate) fn int_enum_values(o: &serde_json::Map<String, Value>) -> Option<Vec<
 }
 
 /// Returns an integer enum. `x-enum-varnames` / `x-enumNames` (`openapi-generator` and `NSwag`)
-/// name its variants when present. Otherwise they are `N1` and `Minus1`.
+/// give the names of its variants when present. Otherwise they are `N1` and `Minus1`.
 pub(crate) fn int_enum(o: &serde_json::Map<String, Value>, values: &[i64]) -> Kind {
     let names: Option<Vec<&str>> = ["x-enum-varnames", "x-enumNames", "x-enum-names"]
         .iter()
@@ -900,7 +900,7 @@ pub(crate) struct Builder<'a> {
     /// Objects without `additionalProperties` keep unknown keys too (config
     /// `unknown_fields = "keep"`); explicitly open objects always do.
     pub keep_unknown: bool,
-    /// The generated crate's dependencies (`-` as `_`): an object-form `x-rust-type` names one of them.
+    /// The generated crate's dependencies (`-` as `_`): an object-form `x-rust-type` refers to one of them.
     pub crates: Vec<String>,
     /// The description was Swagger 2.0: an optional property reads `null` as absent ([`Field::null_as_absent`]).
     pub from_v20: bool,
@@ -1651,7 +1651,7 @@ impl<'a> Builder<'a> {
         None
     }
 
-    /// Returns the type expression for a schema at `ptr`. `hint` names any inline type.
+    /// Returns the type expression for a schema at `ptr`. `hint` gives the name of any inline type.
     pub(crate) fn ty(&mut self, s: &Value, ptr: &str, hint: &Name) -> Ty {
         let Some(o) = s.as_object() else { return Ty::Any };
         if self.depth > MAX_TYPE_DEPTH {
@@ -2294,7 +2294,7 @@ impl<'a> Builder<'a> {
         let mut named = vec![];
         for (i, (b, bptr)) in variants.iter().enumerate() {
             // `null` is the `Other` fallback of the union and not the payload of a variant.
-            // An inline branch with a `title` names its type after it. Others are numbered.
+            // An inline branch with a `title` takes its type name from it. Others are numbered.
             let branch =
                 b.get("title").and_then(Value::as_str).map_or_else(|| format!("Variant{}", i + 1), str::to_owned);
             let ty = self.ty(b, bptr, &name.and(&Name::new(&branch))).non_null().clone();

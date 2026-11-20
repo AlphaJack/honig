@@ -20,7 +20,7 @@ use super::{operations as ops, runtime};
 use std::future::Future;
 pub trait Api: Send + Sync + 'static {
     type Principal: Clone + Send + Sync + 'static;
-    /// Answers a request that the server refuses itself (no route, bad input, missing credentials, a handler `Err`) in the error body of the description. No standard names its fields, so this maps them: `rejection.reason` holds the status and the detail.
+    /// Answers a request that the server refuses itself (no route, bad input, missing credentials, a handler `Err`) in the error body of the description. No standard defines its fields, so this maps them: `rejection.reason` holds the status and the detail.
     fn error_response(rejection: runtime::Rejection<Operation>) -> runtime::Response;
     fn ping(
         &self,

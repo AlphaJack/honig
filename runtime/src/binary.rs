@@ -21,7 +21,7 @@ pub(crate) const BINARY: &str = concat!(env!("CARGO_PKG_NAME"), "::Binary");
 
 thread_local! {
     /// The binary parts of a multipart body while it is converted. They travel through `serde_json::Value` as a
-    /// short marker that names their place here. They do not travel as base64. That would cost two more passes over
+    /// short marker that refers to their place here. They do not travel as base64. That would cost two more passes over
     /// every byte and a third more memory. `None` outside a conversion.
     static RAW_PARTS: RefCell<Option<Vec<Binary>>> = const { RefCell::new(None) };
 }
@@ -278,7 +278,7 @@ mod tests {
         assert_eq!(read.bytes.as_ref(), b"hi");
     }
 
-    /// A marker read after its conversion ended names no part.
+    /// A marker read after its conversion ended refers to no part.
     #[cfg(feature = "multipart")]
     #[test]
     fn parts_are_dropped_when_the_conversion_ends() {

@@ -290,7 +290,7 @@ fn a_binary_gets_no_outer_allow() {
     }
 }
 
-/// A binary without a client or a server names none of the operations, nor their `SECURITY_<n>`: the file allows
+/// A binary without a client or a server refers to none of the operations, nor their `SECURITY_<n>`: the file allows
 /// that dead code once and no constant carries an `#[allow]` of its own.
 #[test]
 fn a_binary_without_halves_allows_dead_code_once() {
@@ -309,7 +309,7 @@ fn a_binary_without_halves_allows_dead_code_once() {
     let ops = common::file(&files, "operations.rs");
     assert!(ops.contains("const SECURITY_0"), "{ops}");
     assert!(!ops.contains("#[allow("), "{ops}");
-    assert!(ops.contains("reason = \"without a client or a server a binary names none"), "{ops}");
+    assert!(ops.contains("reason = \"without a client or a server a binary refers to none"), "{ops}");
 }
 
 /// A `text/plain` string error body holds the detail: the server fills it for the requests it refuses itself and no
@@ -336,8 +336,8 @@ fn a_text_error_body_is_filled() {
     assert!(!g.diagnostics.iter().any(|d| d.message.contains("cannot fill")), "{:?}", g.diagnostics);
 }
 
-/// Each operation names its span by the HTTP server conventions of OpenTelemetry. The `tracing`
-/// feature of the runtime opens it. So generated code never names `tracing`.
+/// Each operation sets the name of its span by the HTTP server conventions of OpenTelemetry. The `tracing`
+/// feature of the runtime opens it. So generated code never refers to `tracing`.
 #[test]
 fn operations_carry_their_otel_span_name() {
     let doc = common::spec(
@@ -354,7 +354,7 @@ fn operations_carry_their_otel_span_name() {
     for field in ["span: \"GET /products/{productId}\"", "route: \"/products/{productId}\"", "method: \"GET\""] {
         assert!(server.contains(field), "{field} in {server}");
     }
-    // The span itself is the runtime's `tracing` feature: generated code never names `tracing`.
+    // The span itself is the runtime's `tracing` feature: generated code never refers to `tracing`.
     assert!(!server.contains("tracing"), "{server}");
 }
 
@@ -1480,7 +1480,7 @@ fn a_long_chain_of_generics_binds_each() {
     assert!(last.split('}').next().is_some_and(|body| body.contains("pub me: Option<bool>,")), "{types}");
 }
 
-/// A multipart part whose schema names a `contentMediaType` is sent as that type when `encoding` names none.
+/// A multipart part whose schema gives a `contentMediaType` is sent as that type when `encoding` gives none.
 #[test]
 fn a_part_takes_the_media_type_of_its_schema() {
     let paths = json!({"/upload": {"post": {

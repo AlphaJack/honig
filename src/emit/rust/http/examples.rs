@@ -94,7 +94,7 @@ pub(crate) fn documented_examples<'a>(
             }
         }
         // The own examples of a property decode into the type of its field. Binary
-        // properties are left out. Their examples name a file and not base64.
+        // properties are left out. Their examples refer to a file and not base64.
         if let Kind::Struct(s) = &def.kind {
             for f in s.fields.iter().filter(|f| !mentions(&f.ty).1) {
                 let t = ty(space, &f.ty, true);
@@ -214,7 +214,7 @@ pub(crate) fn tests(api: &Api, space: &Space<'_>) -> Option<TokenStream> {
         quote! {
             fn param<T: serde::de::DeserializeOwned>(bad: &mut Vec<String>, at: &'static str, text: &str) {
                 // A parameter is read as its style coerces it: the documented value is parsed once for that. The error
-                // names `at`.
+                // points to `at`.
                 if let Err(e) = runtime::from_param::<T>(serde_json::from_str(text).ok(), at) {
                     bad.push(e.to_string());
                 }

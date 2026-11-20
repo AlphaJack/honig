@@ -42,7 +42,7 @@ fn nanoseconds(text: &str) -> Cow<'_, str> {
     Cow::Owned([text.get(..keep).unwrap_or(text), text.get(cut..).unwrap_or("")].concat())
 }
 
-/// The formats that a library type holds. Each names its `format`.
+/// The formats that a library type holds. Each states its `format`.
 pub mod format {
     use std::borrow::Cow;
 

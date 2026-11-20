@@ -2,7 +2,7 @@
 //! `OpenAPI` 3.1 and 3.2 adopt for Schema Objects). `{"$id": "http://x/tree", "$defs": {...}, "$ref": "#/$defs/node"}`
 //! means `http://x/tree#/$defs/node`, not the document's `#/$defs/node`. `list` beside it means `http://x/list`.
 //!
-//! Before bundling, each schema `$ref` is resolved against its base. One that names a resource of the document (a
+//! Before bundling, each schema `$ref` is resolved against its base. One that refers to a resource of the document (a
 //! schema with that `$id`, or an `$anchor` in one) becomes a local pointer to it. Any other becomes absolute, and the
 //! bundler fetches or reads it. A `$ref` with no `$id` above it is left as written.
 

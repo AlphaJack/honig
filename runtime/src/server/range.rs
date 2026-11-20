@@ -23,7 +23,7 @@
 use crate::server::conditional::if_range_holds;
 use crate::{Body, Response};
 
-/// The one range unit that HTTP defines. `Accept-Ranges` names it.
+/// The one range unit that HTTP defines. `Accept-Ranges` declares it.
 const BYTES: &str = "bytes";
 
 /// The `Range` and `If-Range` of a request. They are kept while the request goes through the layers.

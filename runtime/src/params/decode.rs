@@ -262,7 +262,7 @@ pub fn decode_cookie(header: Option<&str>, name: &str, style: Style, shape: Shap
 }
 
 /// Creates [`from_param`] for a scalar parameter given as its decoded text. `at` is where the parameter is in the
-/// request (`/query/limit`): a violation names it.
+/// request (`/query/limit`): a violation points to it.
 ///
 /// Numbers and booleans parse straight from the text with no `Value` and no allocation. Every other target reads it as
 /// [`Coerce`] reads a JSON string.
@@ -450,7 +450,7 @@ impl<'de> Deserializer<'de> for Text<'_> {
 ///
 /// Missing becomes `null`. That is fine for `Option` and an error for required parameters. A missing one is read
 /// strictly. The lenient [`Coerce`] would read `null` as an empty list. Then a required array would pass when it
-/// was not sent. `at` is where the parameter is in the request (`/query/limit`): a violation names it.
+/// was not sent. `at` is where the parameter is in the request (`/query/limit`): a violation points to it.
 pub fn from_param<T: DeserializeOwned>(v: Option<Value>, at: &str) -> Result<T, Reason> {
     match v {
         // Not sent: what the decoder says about `null` adds nothing.
@@ -465,7 +465,7 @@ pub fn json_param<T: Serialize>(v: &T) -> Result<Value, Error> {
     Ok(if j.is_null() { Value::Null } else { Value::String(j.to_string()) })
 }
 
-/// Deserializes a parameter value. The error names the parameter by `at` (`/header/X-Filter`).
+/// Deserializes a parameter value. The error points to the parameter by `at` (`/header/X-Filter`).
 pub fn from_json_param<T: DeserializeOwned>(v: Option<Value>, at: &str) -> Result<T, Reason> {
     match v {
         Some(Value::String(s)) => serde_json::from_str(&s).map_err(|e| Reason::invalid(at, e.to_string())),

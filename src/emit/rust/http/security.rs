@@ -1,4 +1,4 @@
-//! The security requirements that each operation declares as the client and server name them.
+//! The security requirements that each operation declares as the client and server refer to them.
 
 use std::collections::BTreeMap;
 
@@ -11,7 +11,7 @@ use crate::ir::http::Operation;
 use crate::ir::security::SchemeKind;
 
 /// Each distinct list of security requirements that the operations declare. Each is declared once in
-/// `operations.rs` as `SECURITY_<n>` in order of first use. An operation that needs none names `&[]`.
+/// `operations.rs` as `SECURITY_<n>` in order of first use. An operation that needs none refers to `&[]`.
 pub(crate) struct Securities(BTreeMap<String, (usize, TokenStream)>);
 
 impl Securities {

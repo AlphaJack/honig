@@ -1,5 +1,5 @@
 openapi: 3.2.0
-# Refs inside an `$id` resolve against that `$id` (JSON Schema): they name this document by its base.
+# Refs inside an `$id` resolve against that `$id` (JSON Schema): they refer to this document by its base.
 $self: https://shop.example.com/openapi.yaml
 info:
   title: Shop

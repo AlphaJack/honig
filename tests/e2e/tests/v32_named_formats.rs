@@ -1,4 +1,4 @@
-//! A type that the `formats` table names holds its format. `named-formats.toml` names `String` for `date-time`.
+//! A type that the `formats` table sets holds its format. `named-formats.toml` sets `String` for `date-time`.
 //! `String` reads any text: honig checks the format before it does.
 
 use e2e::v32_named_formats::api::types;

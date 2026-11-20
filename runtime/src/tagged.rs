@@ -291,7 +291,7 @@ fn raw_kind(text: &str) -> Kind {
     }
 }
 
-/// [`Content::tag`] over raw text. It gives the string member that it names and skips every other member.
+/// [`Content::tag`] over raw text. It gives the string member that it refers to and skips every other member.
 struct TagSeed<'p>(&'p str);
 
 impl<'de> DeserializeSeed<'de> for TagSeed<'_> {

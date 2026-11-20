@@ -28,7 +28,7 @@ pub enum Reason {
     PayloadTooLarge(usize),
     /// The `Content-Type` of the body is none that the operation declares: (sent, declared) (415).
     UnsupportedMediaType(String, String),
-    /// The body does not decode for a reason that names no place in the request (400).
+    /// The body does not decode for a reason that points to no place in the request (400).
     Body(String),
     /// The body could not be read. The connection broke or a read timeout of yours passed. It holds why (400).
     Unreadable(String),
@@ -262,7 +262,7 @@ impl Reason {
     }
 }
 
-/// Is the `Content-Type` of the body one that the operation declares? A request that names none passes. Many clients
+/// Is the `Content-Type` of the body one that the operation declares? A request that states none passes. Many clients
 /// leave it out. The body then decodes or not on its own.
 ///
 /// # Errors

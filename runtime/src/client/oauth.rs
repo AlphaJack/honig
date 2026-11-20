@@ -263,7 +263,7 @@ pub struct DeviceCode {
     pub interval: u64,
 }
 
-/// Seconds between device-flow polls when the server names none (RFC 8628 section 3.2).
+/// Seconds between device-flow polls when the server gives none (RFC 8628 section 3.2).
 const DEFAULT_INTERVAL: u64 = 5;
 
 const fn default_interval() -> u64 {
@@ -435,7 +435,7 @@ mod tests {
         );
     }
 
-    /// RFC 8628 section 3.2: a client waits 5 seconds between polls when the server names no interval.
+    /// RFC 8628 section 3.2: a client waits 5 seconds between polls when the server gives no interval.
     #[test]
     fn a_device_code_polls_every_5_seconds_by_default() {
         let code: DeviceCode = serde_json::from_str(

@@ -14,7 +14,7 @@ fn ok<T: Send>(r: T) -> impl Future<Output = Result<T, api::ApiError>> + Send {
     std::future::ready(Ok(r))
 }
 
-/// The token text names the permissions it holds: `Bearer read+write`.
+/// The token text lists the permissions it holds: `Bearer read+write`.
 struct Server;
 
 // ANCHOR: scopes
@@ -131,7 +131,7 @@ fn alternatives_are_typed() {
 /// Names who is calling: the text of the token or nobody for `Bearer anon`.
 struct Named;
 
-/// The token's text as the principal; `anon` is a token that names nobody.
+/// The token's text as the principal; `anon` is a token that stands for nobody.
 fn named(req: &api::Request) -> Option<String> {
     let token = server::credentials(req).into_iter().map(|Credential::Pat(t)| t.to_owned()).next();
     token.filter(|t| t != "anon")
