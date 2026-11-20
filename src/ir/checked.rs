@@ -120,6 +120,8 @@ fn split_own_checks(types: &mut TypeSpace, taken: &mut BTreeSet<String>) -> BTre
             unevaluated: own.unevaluated.clone(),
             unevaluated_items: own.unevaluated_items.clone(),
             names_schema: own.names_schema,
+            json_contains: own.json_contains,
+            json_dependents: own.json_dependents.clone(),
             ..Constraints::default()
         };
         // The union of an implied shape also checks the keywords of one kind beside the shape.

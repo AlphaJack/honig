@@ -213,8 +213,8 @@ fn typed_object_keywords(s: &Value, c: &mut Constraints) -> (bool, bool, bool) {
     let typed = (dependents.is_some(), names.is_some(), pattern.is_some());
     // Without `type` the value may be any, or the union of an implied shape: the JSON object is checked.
     match dependents {
-        Some(d) if s.get("type").is_none() => c.json_dependents = d,
-        Some(d) => c.dependent_required = d,
+        Some((d, undeclared)) if undeclared || s.get("type").is_none() => c.json_dependents = d,
+        Some((d, _)) => c.dependent_required = d,
         None => {}
     }
     c.property_names =
@@ -283,28 +283,38 @@ fn typed_property_names(s: &Value) -> Option<Box<Constraints>> {
     text.then(|| Box::new(Constraints::own(&Value::Object(names.clone()))))
 }
 
+/// `dependentRequired`: each name that triggers it, with the names that it requires then.
+type Dependents = Vec<(String, Vec<String>)>;
+
 /// Returns `dependentRequired` of `s` when generated code checks it: on a struct, every name is a property that `s`
-/// declares, whose absence shows ([`absence_shows`]). A map or a value without `type` keeps every name. `None` leaves
-/// it to the run-time check of the whole schema.
-fn typed_dependents(s: &Value) -> Option<Vec<(String, Vec<String>)>> {
+/// declares, whose absence shows ([`absence_shows`]); or one that it does not declare, which its struct keeps, and
+/// whether one is (it is checked on the JSON object then). A map or a value without `type` keeps every name. `None`
+/// leaves it to the run-time check of the whole schema.
+fn typed_dependents(s: &Value) -> Option<(Dependents, bool)> {
     let deps = s.get("dependentRequired")?.as_object()?;
     // Without properties the value is a map or a `serde_json::Value`, which keeps every name it was sent.
-    let declares = json::object(s, "properties").is_some_and(|p| !p.is_empty());
+    let props = json::object(s, "properties").filter(|p| !p.is_empty());
     let seen = absence_shows(s);
-    if declares && seen.is_none() || !s.as_object().is_some_and(|o| may_be(o, "object")) {
+    if props.is_some() && seen.is_none() || !s.as_object().is_some_and(|o| may_be(o, "object")) {
         return None;
     }
-    let shows = |n: &str| !declares || seen.as_ref().is_some_and(|f| f(n));
+    // A name that the struct does not declare is kept by it, and checked on the JSON object.
+    let declared = |n: &str| props.is_some_and(|p| p.contains_key(n));
     let mut out = vec![];
+    let mut undeclared = false;
     for (name, needs) in deps {
         let needs: Vec<String> =
             needs.as_array()?.iter().map(|n| n.as_str().map(String::from)).collect::<Option<_>>()?;
-        if !shows(name) || !needs.iter().all(|n| shows(n)) {
-            return None;
+        for n in std::iter::once(name).chain(&needs) {
+            if !declared(n) {
+                undeclared |= props.is_some();
+            } else if !seen.as_ref().is_some_and(|f| f(n)) {
+                return None;
+            }
         }
         out.push((name.clone(), needs));
     }
-    Some(out)
+    Some((out, undeclared))
 }
 
 /// Returns whether the absence of a property of `s` shows in its struct: it is declared. A name that a dependent
@@ -2105,11 +2115,11 @@ impl<'a> Builder<'a> {
         // split type leaves it out. So such structs stay open too.
         // `patternProperties`, `unevaluatedProperties` and `propertyNames` judge the names a struct does not declare. The run-time
         // check sees the value as it re-serializes, so those names must survive decoding.
-        // A `dependentSchemas` of a name that the struct does not declare looks for that name. With
+        // A dependent keyword that reads a name the struct does not declare looks for that name. With
         // `additionalProperties: false` that name is refused anyway: the struct stays closed.
         let undeclared_dependent = o.get("additionalProperties") != Some(&Value::Bool(false))
-            && (o.get("dependentSchemas").and_then(Value::as_object).into_iter())
-                .flat_map(serde_json::Map::keys)
+            && dependent_names(o)
+                .into_iter()
                 .any(|k| !o.get("properties").and_then(Value::as_object).is_some_and(|p| p.contains_key(k)));
         let additional = additional.or_else(|| {
             (["patternProperties", "unevaluatedProperties", "propertyNames"].iter().any(|k| o.contains_key(*k))

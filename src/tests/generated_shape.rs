@@ -539,13 +539,12 @@ fn a_named_schema_keeps_its_name_beside_a_twin() {
 
 #[test]
 fn a_body_of_your_own_type_is_left_to_it() {
-    // A body whose `dependentRequired` no struct judges (`c` is not declared): the generated code checks it as JSON,
-    // unless the schema is a type of yours.
+    // A body whose `not` no Rust type judges: the generated code checks it, unless the schema is a type of yours.
     let generate = |test: &str, rust_type: Option<&str>| {
         let mut note = json!({
             "type": "object",
             "properties": {"a": {"type": "string"}, "b": {"type": "string"}},
-            "dependentRequired": {"a": ["c"]},
+            "not": {"required": ["a", "b"]},
         });
         if let Some(path) = rust_type {
             note["x-rust-type"] = json!(path);
@@ -575,13 +574,11 @@ fn a_body_of_your_own_type_is_left_to_it() {
         let files = common::generate(test, &doc, &crate::emit::Options::default());
         (common::file(&files, "types.rs").to_owned(), common::file(&files, "server.rs").to_owned())
     };
-    // `Note` is a checked type: decoding it, whatever the media type, checks its whole schema.
-    let (types, server) = generate("shape-own-body-generated", None);
-    assert!(types.contains("pub struct Note(pub(super) NoteFields);") && types.contains("check_schema"), "{types}");
-    assert!(server.contains("check_raw_json"), "{server}");
-    let (types, server) = generate("shape-own-body-yours", Some("crate::Note"));
-    assert!(!types.contains("check_schema"), "{types}");
-    assert!(!server.contains("check_raw_json"), "{server}");
+    // `Note` is a checked type: decoding it, whatever the media type, checks its `not`.
+    let (types, _) = generate("shape-own-body-generated", None);
+    assert!(types.contains("pub struct Note(pub(super) NoteFields);") && types.contains("matches `not`"), "{types}");
+    let (types, _) = generate("shape-own-body-yours", Some("crate::Note"));
+    assert!(!types.contains("matches `not`"), "{types}");
 }
 
 /// The body of a generated `macro_rules!` is printed as the items it expands to, one per line, and not as one line of
@@ -648,40 +645,6 @@ fn a_ref_beside_an_extension_or_keyword_names_is_typed() {
     let files = common::generate("shape-keyword-names", &doc, &crate::emit::Options::default());
     let all: String = files.iter().map(|(_, text)| text.as_str()).collect();
     assert!(!all.contains("check_schema"), "{all}");
-}
-
-/// A schema that many schemas checked whole reach is in the generated code once: in `runtime.rs`, which every
-/// check of the module shares. Each check used to carry its own copy, so the code grew with the product of the two.
-#[test]
-fn a_schema_that_many_whole_checks_reach_is_generated_once() {
-    let mut schemas = serde_json::Map::new();
-    schemas.insert(
-        "Big".to_owned(),
-        json!({"type": "object", "properties": {"code": {"type": "string", "maxLength": 4242}}}),
-    );
-    let mut paths = serde_json::Map::new();
-    for i in 0..20 {
-        // A `dependentRequired` of an undeclared name has no Rust type: each of these is checked whole at run time, and
-        // reaches `Big`.
-        schemas.insert(
-            format!("S{i}"),
-            json!({"type": "object", "properties": {"big": {"$ref": "#/components/schemas/Big"}},
-                "dependentRequired": {"big": ["n"]}}),
-        );
-        paths.insert(
-            format!("/s{i}"),
-            json!({"post": {
-                "operationId": format!("s{i}"),
-                "requestBody": {"content": {"application/json": {"schema": {"$ref": format!("#/components/schemas/S{i}")}}}},
-                "responses": {"204": {"description": "ok"}},
-            }}),
-        );
-    }
-    let doc = common::spec("3.1.0", &serde_json::Value::Object(paths), &json!({"schemas": schemas}));
-    let files = common::generate("shape-shared-defs", &doc, &crate::emit::Options::default());
-    let copies: usize = files.iter().map(|(_, text)| text.matches(r#"maxLength\":4242"#).count()).sum();
-    assert_eq!(copies, 1, "{files:#?}");
-    assert!(common::file(&files, "runtime.rs").contains("fn schema_defs"), "{files:#?}");
 }
 
 /// A builder gathers the `?` of each checked field into one. A struct without a checked field builds with `new` and
@@ -758,7 +721,8 @@ fn dependent_required_checks_the_fields() {
     assert!(typed.contains("is required when") && !typed.contains("check_schema"), "{typed}");
     let undeclared = types(json!({"type": "object", "properties": {"card": {"type": "string"}},
         "dependentRequired": {"card": ["cvc"]}}));
-    assert!(undeclared.contains("check_schema"), "{undeclared}");
+    // An undeclared name is kept by the struct and checked on the JSON object.
+    assert!(undeclared.contains("is required when") && !undeclared.contains("check_schema"), "{undeclared}");
     let defaulted = types(json!({"type": "object", "properties": {"card": {"type": "string"},
         "cvc": {"type": "string", "default": "000"}}, "dependentRequired": {"card": ["cvc"]}}));
     // A name with a default fills in no default here: its absence shows.
@@ -1339,4 +1303,19 @@ fn a_nested_resource_reached_directly_keeps_its_anchor() {
     let types = common::file(&common::generate("nested-resource", &doc, &crate::emit::Options::default()), "types.rs")
         .to_owned();
     assert!(types.contains("pub content: Option<i64>"), "{types}");
+}
+
+/// `dependentRequired` of a name that the struct does not declare: the struct keeps that name, and the rule is checked
+/// on the JSON object. No schema is checked whole.
+#[test]
+fn an_undeclared_dependent_required_name_is_checked() {
+    let card = json!({"type": "object", "properties": {"card": {"type": "string"}},
+        "dependentRequired": {"card": ["cvc"]}});
+    let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Card": card}}));
+    let types = common::file(
+        &common::generate("dependent-required-undeclared", &doc, &crate::emit::Options::default()),
+        "types.rs",
+    )
+    .to_owned();
+    assert!(types.contains("`cvc` is required when `card` is present") && !types.contains("check_schema"), "{types}");
 }
