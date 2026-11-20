@@ -1373,46 +1373,74 @@ impl runtime::XmlShape for PhotoBatchMeta {
     }
 }
 /// A generic paginated resource. Specializing schemas bind the item type by declaring a `$dynamicAnchor` named `itemType`, the JSON Schema 2020-12 way to express `PaginatedResource<T>`.
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
-#[serde(transparent)]
-pub struct PaginatedResource(pub(super) PaginatedResourceFields);
-impl<'de> serde::Deserialize<'de> for PaginatedResource {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <PaginatedResourceFields as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
+#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct PaginatedResource {
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub data: Option<PaginatedResourceData>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub meta: Option<PaginatedResourceMeta>,
+}
+deserialize_impl!(PaginatedResource);
+serialize_impl!(PaginatedResource);
+impl PaginatedResource {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self { data: None, meta: None }
     }
 }
-impl TryFrom<PaginatedResourceFields> for PaginatedResource {
-    type Error = runtime::BuildError;
-    fn try_from(value: PaginatedResourceFields) -> Result<Self, runtime::BuildError> {
-        let mut violations: Vec<runtime::Violation> = Vec::new();
-        {
-            let out = &mut violations;
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&value).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"$id\":\"https://shop.example.com/schemas/PaginatedResource\",\"$defs\":{\"itemType\":{\"$dynamicAnchor\":\"itemType\",\"not\":{}}},\"type\":\"object\",\"properties\":{\"data\":{\"type\":\"array\",\"items\":{\"$dynamicAnchor\":\"itemType\",\"not\":{}}},\"meta\":{\"type\":\"object\",\"properties\":{\"limit\":{\"type\":\"integer\",\"format\":\"int64\"},\"offset\":{\"type\":\"integer\",\"format\":\"int64\"},\"total\":{\"type\":\"integer\",\"format\":\"int64\"},\"next\":{\"type\":[\"string\",\"null\"]}}}}}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Root,
-                    &value,
-                    schema,
-                    None,
-                );
-            }
-        }
-        runtime::first(violations)
-            .map(|()| Self(value))
-            .map_err(runtime::BuildError::value)
+impl runtime::XmlShape for PaginatedResource {
+    fn xml() -> &'static runtime::XmlNode {
+        static NODE: runtime::XmlNode = runtime::XmlNode {
+            name: "PaginatedResource",
+            namespace: "",
+            prefix: "",
+            fields: &[
+                runtime::XmlField {
+                    wire: "data",
+                    name: "data",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "data",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "meta",
+                    name: "meta",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "meta",
+                    child: Some(<PaginatedResourceMeta as runtime::XmlShape>::xml),
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+            ],
+        };
+        &NODE
     }
 }
-checked_impls!(PaginatedResource, PaginatedResourceFields);
 /// Message about an image upload
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -5460,75 +5488,6 @@ impl<'de> runtime::TaggedUnion<'de> for ItemVariants {
         }
     }
 }
-/// A generic paginated resource. Specializing schemas bind the item type by declaring a `$dynamicAnchor` named `itemType`, the JSON Schema 2020-12 way to express `PaginatedResource<T>`.
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct PaginatedResourceFields {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub data: Option<PaginatedResourceData>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub meta: Option<PaginatedResourceMeta>,
-}
-deserialize_impl!(PaginatedResourceFields);
-serialize_impl!(PaginatedResourceFields);
-impl PaginatedResourceFields {
-    #[must_use]
-    pub const fn new() -> Self {
-        Self { data: None, meta: None }
-    }
-}
-impl runtime::XmlShape for PaginatedResourceFields {
-    fn xml() -> &'static runtime::XmlNode {
-        static NODE: runtime::XmlNode = runtime::XmlNode {
-            name: "PaginatedResourceFields",
-            namespace: "",
-            prefix: "",
-            fields: &[
-                runtime::XmlField {
-                    wire: "data",
-                    name: "data",
-                    prefix: "",
-                    attribute: false,
-                    text: false,
-                    list: false,
-                    wrapped: false,
-                    required: false,
-                    item: "data",
-                    child: None,
-                    cdata: false,
-                    inline: false,
-                    nullable: false,
-                    object: false,
-                },
-                runtime::XmlField {
-                    wire: "meta",
-                    name: "meta",
-                    prefix: "",
-                    attribute: false,
-                    text: false,
-                    list: false,
-                    wrapped: false,
-                    required: false,
-                    item: "meta",
-                    child: Some(<PaginatedResourceMeta as runtime::XmlShape>::xml),
-                    cdata: false,
-                    inline: false,
-                    nullable: false,
-                    object: false,
-                },
-            ],
-        };
-        &NODE
-    }
-}
 /// A item which can be either a product or a variant
 #[derive(Debug, Clone, PartialEq)]
 pub enum ItemRequestVariants {
@@ -5585,22 +5544,21 @@ impl TryFrom<Vec<serde_json::Value>> for PaginatedResourceData {
         {
             let out = &mut violations;
             {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&value).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"type\":\"array\",\"items\":{\"$dynamicAnchor\":\"itemType\",\"not\":{}}}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Root,
-                    &value,
-                    schema,
-                    None,
-                );
+                let base = &runtime::InstancePath::Root;
+                for (i, v) in value.iter().enumerate() {
+                    {
+                        let json = runtime::to_value(v).unwrap_or_default();
+                        if serde_json::from_value::<serde_json::Value>(json.clone())
+                            .is_ok()
+                        {
+                            runtime::violation(
+                                out,
+                                &runtime::InstancePath::Index(base, i),
+                                "matches `not`",
+                            );
+                        }
+                    }
+                }
             }
         }
         runtime::first(violations)
@@ -5887,13 +5845,11 @@ pub mod builders {
     impl super::PaginatedResource {
         /// Starts a builder from the required properties.
         pub fn builder() -> PaginatedResource {
-            PaginatedResource(
-                runtime::Builder::start(|| Ok(super::PaginatedResourceFields::new())),
-            )
+            PaginatedResource(runtime::Builder::start(|| Ok(Self::new())))
         }
     }
     #[must_use = "a builder does nothing until `build`"]
-    pub struct PaginatedResource(runtime::Builder<super::PaginatedResourceFields>);
+    pub struct PaginatedResource(runtime::Builder<super::PaginatedResource>);
     impl PaginatedResource {
         pub fn data(
             self,
@@ -5907,9 +5863,9 @@ pub mod builders {
         ) -> Self {
             Self(self.0.set("meta", value, |s, v| s.meta = Some(v)))
         }
-        /// Returns the value once its whole schema holds.
+        /// Returns the value.
         pub fn build(self) -> Result<super::PaginatedResource, runtime::BuildError> {
-            self.0.build().and_then(super::PaginatedResource::try_from)
+            self.0.build()
         }
     }
     impl super::ImageUploadedMessage {
@@ -6361,34 +6317,6 @@ pub mod builders {
         pub fn build(
             self,
         ) -> Result<super::CreateUserBody2Request, runtime::BuildError> {
-            self.0.build()
-        }
-    }
-    impl super::PaginatedResourceFields {
-        /// Starts a builder from the required properties.
-        pub fn builder() -> PaginatedResourceFields {
-            PaginatedResourceFields(runtime::Builder::start(|| Ok(Self::new())))
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct PaginatedResourceFields(runtime::Builder<super::PaginatedResourceFields>);
-    impl PaginatedResourceFields {
-        pub fn data(
-            self,
-            value: impl TryInto<types::PaginatedResourceData, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("data", value, |s, v| s.data = Some(v)))
-        }
-        pub fn meta(
-            self,
-            value: impl TryInto<types::PaginatedResourceMeta, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("meta", value, |s, v| s.meta = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(
-            self,
-        ) -> Result<super::PaginatedResourceFields, runtime::BuildError> {
             self.0.build()
         }
     }
