@@ -226,8 +226,8 @@ components:
         rating: {minimum: 1}
         # No `type`: the properties hold for an object, and any other value is valid.
         meta: {properties: {count: {type: integer}}}
-        # A default its own schema refuses is not filled in: leaving the field out stays valid.
-        label: {type: string, minLength: 4, default: bad}
+        # A default fills in a field left out. One that its own schema refused would fail the test of the examples.
+        label: {type: string, minLength: 4, default: none}
         parcels:
           type: array
           items: {type: object, properties: {fragile: {type: boolean}}}

@@ -18,3 +18,6 @@ pub mod server;
 pub use server::Api;
 #[rustfmt::skip]
 pub use server::{Operation, Context, Rejection, RequestEvent, Server};
+#[cfg(test)]
+#[rustfmt::skip]
+mod documented_examples;
