@@ -264,12 +264,15 @@ fn typed_pattern_map(s: &Value) -> Option<String> {
     (closed && !o.contains_key("properties")).then(|| patterns.keys().next().cloned()).flatten()
 }
 
-/// Returns `patternProperties` of `s` when its struct holds them ([`Struct::patterns`]): an object with properties of
-/// its own beside them, and `additionalProperties` absent, a bool or a schema. Every pattern compiles, so the
+/// Returns `patternProperties` of `s` when its struct holds them ([`Struct::patterns`]): an object, with properties of
+/// its own or none, and `additionalProperties` absent, a bool or a schema. Every pattern compiles, so the
 /// generator can tell which declared names it matches.
 fn struct_patterns(s: &Value) -> Option<&serde_json::Map<String, Value>> {
     let o = s.as_object().filter(|o| is_object(o))?;
-    json::object(o, "properties").filter(|p| !p.is_empty())?;
+    // A closed map of one pattern is a map of that pattern's type already ([`typed_pattern_map`]).
+    if typed_pattern_map(s).is_some() {
+        return None;
+    }
     let typed_extra = matches!(o.get("additionalProperties"), None | Some(Value::Bool(_) | Value::Object(_)));
     let patterns = o.get("patternProperties")?.as_object().filter(|p| !p.is_empty())?;
     (typed_extra && patterns.keys().all(|p| regex(p).is_some())).then_some(patterns)
@@ -1645,7 +1648,8 @@ impl<'a> Builder<'a> {
             return Some(self.multi_type(o, &non_null, ptr, name));
         }
         let is_object = non_null.first() == Some(&"object") || (non_null.is_empty() && o.contains_key("properties"));
-        if is_object && (json::object(o, "properties").is_some_and(|p| !p.is_empty()) || only_empty(o)) {
+        let patterned = struct_patterns(s).is_some();
+        if is_object && (json::object(o, "properties").is_some_and(|p| !p.is_empty()) || only_empty(o) || patterned) {
             return Some(Kind::Struct(self.object(o, ptr, name)));
         }
         None
@@ -1759,7 +1763,8 @@ impl<'a> Builder<'a> {
     }
 
     fn needs_item(o: &serde_json::Map<String, Value>) -> bool {
-        if typed_const(o).is_some() || checked_scalar(o) || inferred_kind(o).is_some() {
+        let patterned = struct_patterns(&Value::Object(o.clone())).is_some();
+        if typed_const(o).is_some() || checked_scalar(o) || inferred_kind(o).is_some() || patterned {
             return true;
         }
         if o.contains_key("oneOf")
