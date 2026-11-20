@@ -160,7 +160,7 @@ impl From<Box<dyn std::error::Error + Send + Sync>> for ApiError {
 }
 
 /// A value that a handler built and that its schema refuses. A handler's inputs are checked already, so the value
-/// came from the server's own data: `500 Internal Server ClientError`.
+/// came from the server's own data: `500 Internal Server Error`.
 impl From<crate::BuildError> for ApiError {
     fn from(e: crate::BuildError) -> Self {
         Self::new(http::StatusCode::INTERNAL_SERVER_ERROR, e.to_string())

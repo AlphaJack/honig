@@ -62,9 +62,9 @@ pub(crate) fn allow_header(allow: &[&str]) -> String {
     methods
 }
 
-/// Returns the reason phrase of a status or else `ClientError`.
+/// Returns the reason phrase of a status or else `Error`.
 fn reason(status: u16) -> &'static str {
-    crate::status::reason(status).unwrap_or("ClientError")
+    crate::status::reason(status).unwrap_or("Error")
 }
 
 impl Reason {
@@ -510,6 +510,13 @@ mod tests {
             body,
             serde_json::json!({"type": "about:blank", "title": "Method Not Allowed", "status": 405, "instance": "urn:request:7"})
         );
+    }
+
+    #[test]
+    fn a_status_without_a_reason_phrase_is_titled_error() {
+        let status = http::StatusCode::from_u16(599).unwrap();
+        let problem = Reason::Handler(ApiError::new(status, "upstream")).problem();
+        assert_eq!(problem.title, "Error");
     }
 
     /// A request is refused at its first violation: the reason holds that one, and the body lists it.
