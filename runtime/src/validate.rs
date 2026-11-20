@@ -182,7 +182,7 @@ pub(crate) fn decimal128(s: &str) -> Result<(), String> {
     let Ok(exponent) = exponent.strip_prefix('+').unwrap_or(exponent).parse::<i64>() else {
         return Err("is out of the range of decimal128".to_owned());
     };
-    let count = |n: usize| i64::try_from(n).unwrap_or(i64::MAX);
+    let count = crate::exact::signed;
     // The exponent of the last significant digit, and of the first.
     let last = exponent.saturating_sub(count(fraction.len())).saturating_add(count(significant.len() - trimmed.len()));
     let first = last.saturating_add(count(trimmed.len()) - 1);

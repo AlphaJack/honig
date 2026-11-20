@@ -14,6 +14,11 @@ pub(crate) fn all_digits(s: &str) -> bool {
     s.bytes().all(|b| b.is_ascii_digit())
 }
 
+/// Returns the count `n` as an `i64`, `i64::MAX` past it: a count of digits to add to an exponent.
+pub(crate) fn signed(n: usize) -> i64 {
+    i64::try_from(n).unwrap_or(i64::MAX)
+}
+
 /// A decimal number as its significant digits and the power of ten they scale by: `-1.50e3` is `(true, "15", 2)`.
 /// The digits are `head` then `tail`, two slices of the text, so reading them copies nothing. Zero has no digits.
 struct Parts<'s> {
@@ -47,8 +52,7 @@ impl<'s> Parts<'s> {
         } else {
             (head, tail_trimmed, tail.len() - tail_trimmed.len())
         };
-        let len = |n: usize| i64::try_from(n).unwrap_or(i64::MAX);
-        let exponent = exponent.checked_sub(len(fraction.len()))?.checked_add(len(trailing_zeros))?;
+        let exponent = exponent.checked_sub(signed(fraction.len()))?.checked_add(signed(trailing_zeros))?;
         Some(Self { negative, head, tail, exponent })
     }
 
@@ -64,7 +68,7 @@ impl<'s> Parts<'s> {
 
     /// Returns the power of ten of the first significant digit: the order of magnitude.
     fn magnitude(&self) -> i64 {
-        self.exponent.saturating_add(i64::try_from(self.len()).unwrap_or(i64::MAX) - 1)
+        self.exponent.saturating_add(signed(self.len()) - 1)
     }
 }
 
@@ -108,7 +112,10 @@ pub(crate) fn is_multiple(value: &str, of: &str) -> Option<bool> {
         return Some(true);
     }
     let Some(shift) = v.exponent.checked_sub(m.exponent).filter(|s| *s >= 0) else { return Some(false) };
-    let Some(b) = m.digits().try_fold(0_u64, |b, d| b.checked_mul(10)?.checked_add(u64::from(d))).map(u128::from)
+    let Some(b) = m
+        .digits()
+        .try_fold(0_u64, |b, d| b.checked_mul(u64::from(DIGIT_BASE))?.checked_add(u64::from(d)))
+        .map(u128::from)
     else {
         return Some(divides_long(v.digits(), shift.unsigned_abs(), &m.digits().collect::<Vec<_>>()));
     };
