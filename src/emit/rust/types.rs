@@ -1481,14 +1481,9 @@ fn checked_type(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, def
                 Some(h) => quote!(runtime::formats::read::<_, #base, #h>(d)?),
                 None => quote!(<#base as serde::Deserialize>::deserialize(d)?),
             };
-            let de = quote! {
-                impl<'de> serde::Deserialize<'de> for #n {
-                    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-                        let value = #read;
-                        Self::try_from(value).map_err(serde::de::Error::custom)
-                    }
-                }
-            };
+            // JSON text is read once ([`checked_deserialize`]); a base read through a library format keeps `read`.
+            let once = holds(space, &c.base).is_none() && reads_json(subschemas.as_ref(), &checks);
+            let de = checked_deserialize(&n, &base, &read, once);
             (checks, quote!(#eq), Some(de))
         }
     };
@@ -1518,24 +1513,68 @@ fn checked_try_from(
     subschemas: Option<&TokenStream>,
     checks: &TokenStream,
 ) -> TokenStream {
-    let json = reads_json(subschemas, checks).then(|| {
-        quote! {
-            let json = runtime::to_value(&value).unwrap_or_default();
-            let json = &runtime::Content::of(&json);
+    let body = quote! {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            #subschemas
+            #checks
         }
-    });
+        runtime::first(violations).map(|()| Self(value)).map_err(runtime::BuildError::value)
+    };
+    if !reads_json(subschemas, checks) {
+        return quote! {
+            impl TryFrom<#base> for #n {
+                type Error = runtime::BuildError;
+                fn try_from(value: #base) -> Result<Self, runtime::BuildError> {
+                    #body
+                }
+            }
+        };
+    }
+    // The checks read the value as JSON: from the text that it was decoded from, or from the value written out once.
     quote! {
         impl TryFrom<#base> for #n {
             type Error = runtime::BuildError;
             fn try_from(value: #base) -> Result<Self, runtime::BuildError> {
-                #json
-                let mut violations: Vec<runtime::Violation> = Vec::new();
-                {
-                    let out = &mut violations;
-                    #subschemas
-                    #checks
+                let json = runtime::to_value(&value).unwrap_or_default();
+                Self::checked(value, &runtime::Content::of(&json))
+            }
+        }
+        impl #n {
+            fn checked(value: #base, json: &runtime::Content<'_>) -> Result<Self, runtime::BuildError> {
+                #body
+            }
+        }
+    }
+}
+
+/// Returns `Deserialize` of the checked type `n` of `base`, read by `read`. With `once`, JSON text is read once: the
+/// value decodes from it and the checks read it. Any other source of the value decodes as `read` does, and the checks
+/// read the value written out once.
+fn checked_deserialize(n: &proc_macro2::Ident, base: &TokenStream, read: &TokenStream, once: bool) -> TokenStream {
+    if !once {
+        return quote! {
+            impl<'de> serde::Deserialize<'de> for #n {
+                fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                    let value = #read;
+                    Self::try_from(value).map_err(serde::de::Error::custom)
                 }
-                runtime::first(violations).map(|()| Self(value)).map_err(runtime::BuildError::value)
+            }
+        };
+    }
+    quote! {
+        impl<'de> serde::Deserialize<'de> for #n {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                let (value, text) = runtime::read_once::<_, #base>(d)?;
+                match text {
+                    Some(text) => {
+                        let json = runtime::Content::parse(text).map_err(serde::de::Error::custom)?;
+                        Self::checked(value, &json)
+                    }
+                    None => Self::try_from(value),
+                }
+                .map_err(serde::de::Error::custom)
             }
         }
     }

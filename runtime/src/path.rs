@@ -12,6 +12,7 @@ where
     D: Deserializer<'de>,
     T: de::Deserialize<'de>,
 {
+    NESTED.with_borrow_mut(|n| *n = None);
     let failed = RefCell::new(None);
     let tracked = Tracked { de, at: &Chain::Root, failed: &failed };
     T::deserialize(tracked).map_err(|e| (failed.into_inner().unwrap_or_default(), e))
@@ -35,11 +36,24 @@ impl Chain<'_> {
     }
 }
 
-/// Keeps the innermost failure. That is the first one recorded because errors propagate outwards.
+thread_local! {
+    /// Where a value decoded from its own text ([`crate::tagged::read_once`]) failed, relative to that value. The tracker
+    /// around the value adds it to the value's own pointer.
+    static NESTED: RefCell<Option<String>> = const { RefCell::new(None) };
+}
+
+/// Records where a value decoded from its own text failed, relative to it: `/parcels/0/fragile`.
+pub(crate) fn nested_failure(pointer: String) {
+    NESTED.with_borrow_mut(|n| *n = Some(pointer));
+}
+
+/// Keeps the innermost failure. That is the first one recorded because errors propagate outwards. A value decoded from
+/// its own text adds where inside it the decode failed.
 fn record(failed: &RefCell<Option<String>>, at: &Chain<'_>) {
+    let inside = NESTED.with_borrow_mut(Option::take).unwrap_or_default();
     let mut f = failed.borrow_mut();
     if f.is_none() {
-        *f = Some(at.pointer());
+        *f = Some(at.pointer() + &inside);
     }
 }
 
