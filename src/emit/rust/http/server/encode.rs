@@ -147,7 +147,7 @@ fn encode_fn(
     let media = by_media.then(|| quote!(, media: usize));
     if fallible {
         quote! {
-            fn #name(resp: #resp #media) -> Result<runtime::Response, runtime::Error> {
+            fn #name(resp: #resp #media) -> Result<runtime::Response, runtime::ClientError> {
                 #bind
                 Ok(#expr)
             }

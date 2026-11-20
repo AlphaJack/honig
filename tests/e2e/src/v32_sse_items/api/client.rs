@@ -46,7 +46,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn tile_stream(
         &self,
         _p: impl runtime::IntoArg<'_, ops::tile_stream::Params>,
-    ) -> Result<ops::tile_stream::Response, runtime::Error> {
+    ) -> Result<ops::tile_stream::Response, runtime::ClientError> {
         let path = String::from("/tiles/stream");
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
@@ -70,7 +70,7 @@ impl<T: runtime::Transport> Client<T> {
                     .map(ops::tile_stream::Response::Ok)
             }
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -84,7 +84,7 @@ impl<T: runtime::Transport> Client<T> {
             runtime::ItemStream<types::TileEvent>,
             ops::tile_stream::Response,
         >,
-        runtime::Error,
+        runtime::ClientError,
     >
     where
         T: Clone + 'static,
@@ -118,10 +118,10 @@ impl<T: runtime::Transport> Client<T> {
             head,
             runtime::Body::new(body.collect().await?),
         );
-        let other: Result<ops::tile_stream::Response, runtime::Error> = async move {
+        let other: Result<ops::tile_stream::Response, runtime::ClientError> = async move {
             let (head, body) = resp.into_parts();
             let (body, _) = body.into_parts();
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -132,7 +132,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn tile_lines(
         &self,
         _p: impl runtime::IntoArg<'_, ops::tile_lines::Params>,
-    ) -> Result<ops::tile_lines::Response, runtime::Error> {
+    ) -> Result<ops::tile_lines::Response, runtime::ClientError> {
         let path = String::from("/tiles/lines");
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
@@ -156,7 +156,7 @@ impl<T: runtime::Transport> Client<T> {
                     .map(ops::tile_lines::Response::Ok)
             }
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -170,7 +170,7 @@ impl<T: runtime::Transport> Client<T> {
             runtime::ItemStream<types::TileEvent>,
             ops::tile_lines::Response,
         >,
-        runtime::Error,
+        runtime::ClientError,
     > {
         let path = String::from("/tiles/lines");
         let query = Vec::new();
@@ -199,10 +199,10 @@ impl<T: runtime::Transport> Client<T> {
             head,
             runtime::Body::new(body.collect().await?),
         );
-        let other: Result<ops::tile_lines::Response, runtime::Error> = async move {
+        let other: Result<ops::tile_lines::Response, runtime::ClientError> = async move {
             let (head, body) = resp.into_parts();
             let (body, _) = body.into_parts();
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -213,7 +213,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn tile_updates(
         &self,
         _p: impl runtime::IntoArg<'_, ops::tile_updates::Params>,
-    ) -> Result<ops::tile_updates::Response, runtime::Error> {
+    ) -> Result<ops::tile_updates::Response, runtime::ClientError> {
         let path = String::from("/tiles/updates");
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
@@ -237,7 +237,7 @@ impl<T: runtime::Transport> Client<T> {
                     .map(ops::tile_updates::Response::Ok)
             }
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -251,7 +251,7 @@ impl<T: runtime::Transport> Client<T> {
             runtime::ItemStream<types::TileUpdatesOkItem>,
             ops::tile_updates::Response,
         >,
-        runtime::Error,
+        runtime::ClientError,
     >
     where
         T: Clone + 'static,
@@ -285,10 +285,10 @@ impl<T: runtime::Transport> Client<T> {
             head,
             runtime::Body::new(body.collect().await?),
         );
-        let other: Result<ops::tile_updates::Response, runtime::Error> = async move {
+        let other: Result<ops::tile_updates::Response, runtime::ClientError> = async move {
             let (head, body) = resp.into_parts();
             let (body, _) = body.into_parts();
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -299,7 +299,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn chat_stream(
         &self,
         _p: impl runtime::IntoArg<'_, ops::chat_stream::Params>,
-    ) -> Result<ops::chat_stream::Response, runtime::Error> {
+    ) -> Result<ops::chat_stream::Response, runtime::ClientError> {
         let path = String::from("/chat/stream");
         let query = Vec::new();
         let mut req = runtime::new_request("POST", path, query)?;
@@ -323,7 +323,7 @@ impl<T: runtime::Transport> Client<T> {
                     .map(ops::chat_stream::Response::Ok)
             }
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -337,7 +337,7 @@ impl<T: runtime::Transport> Client<T> {
             runtime::ItemStream<std::collections::BTreeMap<String, serde_json::Value>>,
             ops::chat_stream::Response,
         >,
-        runtime::Error,
+        runtime::ClientError,
     >
     where
         T: Clone + 'static,
@@ -371,10 +371,10 @@ impl<T: runtime::Transport> Client<T> {
             head,
             runtime::Body::new(body.collect().await?),
         );
-        let other: Result<ops::chat_stream::Response, runtime::Error> = async move {
+        let other: Result<ops::chat_stream::Response, runtime::ClientError> = async move {
             let (head, body) = resp.into_parts();
             let (body, _) = body.into_parts();
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -385,7 +385,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn tile_batch(
         &self,
         p: impl runtime::IntoArg<'_, ops::tile_batch::Params>,
-    ) -> Result<ops::tile_batch::Response, runtime::Error> {
+    ) -> Result<ops::tile_batch::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p).into_owned();
         let path = String::from("/tiles/batch");
         let query = Vec::new();
@@ -405,7 +405,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::tile_batch::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -414,7 +414,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn tile_top(
         &self,
         _p: impl runtime::IntoArg<'_, ops::tile_top::Params>,
-    ) -> Result<ops::tile_top::Response, runtime::Error> {
+    ) -> Result<ops::tile_top::Response, runtime::ClientError> {
         let path = String::from("/tiles/top");
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
@@ -447,7 +447,7 @@ impl<T: runtime::Transport> Client<T> {
                     .map(ops::tile_top::Response::Ok)
             }
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -461,7 +461,7 @@ impl<T: runtime::Transport> Client<T> {
             runtime::ItemStream<types::TileEvent>,
             ops::tile_top::Response,
         >,
-        runtime::Error,
+        runtime::ClientError,
     > {
         let path = String::from("/tiles/top");
         let query = Vec::new();
@@ -495,10 +495,10 @@ impl<T: runtime::Transport> Client<T> {
             head,
             runtime::Body::new(body.collect().await?),
         );
-        let other: Result<ops::tile_top::Response, runtime::Error> = async move {
+        let other: Result<ops::tile_top::Response, runtime::ClientError> = async move {
             let (head, body) = resp.into_parts();
             let (body, _) = body.into_parts();
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })

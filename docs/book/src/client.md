@@ -72,7 +72,7 @@ The plain method reads the whole body before it decodes it. On a feed that never
 
 ## Conditional requests
 
-A client sends a conditional request when the operation declares an `If-None-Match` header parameter. It can then ask for a product only if its copy is stale. When the description declares no `304` for the operation a `304` is `Err(api::Error::NotModified)`. It has the headers of the response:
+A client sends a conditional request when the operation declares an `If-None-Match` header parameter. It can then ask for a product only if its copy is stale. When the description declares no `304` for the operation a `304` is `Err(api::ClientError::NotModified)`. It has the headers of the response:
 
 ```rust
 {{#include ../../../tests/e2e/tests/v32_shop/client.rs:not-modified}}
@@ -100,7 +100,7 @@ A streamed upload cannot be sent twice. So retry middleware does not retry it.
 
 ## Errors
 
-A call returns `Err(api::Error)` when it gets no response the description declares:
+A call returns `Err(api::ClientError)` when it gets no response the description declares:
 
 {{#include generated/errors.md}}
 

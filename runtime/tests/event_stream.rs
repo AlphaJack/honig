@@ -9,7 +9,7 @@ use std::time::Duration;
 
 use futures_util::StreamExt;
 use honig::__private::{Framing, set_items};
-use honig::{ByteStream, Bytes, Error, ItemStream, Items, Request, Response, Sse};
+use honig::{ByteStream, Bytes, ClientError, ItemStream, Items, Request, Response, Sse};
 
 /// One scripted answer. It is a status, a `Content-Type` and body pieces (`None` breaks the connection). Or it is a
 /// request that fails.
@@ -55,7 +55,7 @@ fn open(script: &Arc<Script>) -> ItemStream<String> {
 fn pieces(pieces: Vec<Option<&'static str>>) -> ByteStream {
     let pieces = pieces
         .into_iter()
-        .map(|p| p.map(|t| Bytes::from_static(t.as_bytes())).ok_or_else(|| Error::Transport("reset".into())));
+        .map(|p| p.map(|t| Bytes::from_static(t.as_bytes())).ok_or_else(|| ClientError::Transport("reset".into())));
     ByteStream::chunks(futures_util::stream::iter(pieces), None)
 }
 
@@ -65,10 +65,10 @@ struct Scripted(Arc<Script>);
 
 impl tower::Service<Request> for Scripted {
     type Response = Response;
-    type Error = Error;
-    type Future = std::future::Ready<Result<Response, Error>>;
+    type Error = ClientError;
+    type Future = std::future::Ready<Result<Response, ClientError>>;
 
-    fn poll_ready(&mut self, _: &mut std::task::Context<'_>) -> std::task::Poll<Result<(), Error>> {
+    fn poll_ready(&mut self, _: &mut std::task::Context<'_>) -> std::task::Poll<Result<(), ClientError>> {
         std::task::Poll::Ready(Ok(()))
     }
 
@@ -76,7 +76,7 @@ impl tower::Service<Request> for Scripted {
         self.0.sent.lock().unwrap().push(req);
         let answer = self.0.answers.lock().unwrap().pop_front();
         std::future::ready(match answer.unwrap_or(Answer::Stream(204, "", vec![])) {
-            Answer::Fail => Err(Error::Transport("refused".into())),
+            Answer::Fail => Err(ClientError::Transport("refused".into())),
             Answer::Stream(status, ct, body) => {
                 Ok(honig::__private::body_response(status, ct, honig::Body::stream(pieces(body))))
             }
@@ -85,7 +85,7 @@ impl tower::Service<Request> for Scripted {
 }
 
 /// Every item and error until the stream ends.
-fn drain(stream: &mut ItemStream<String>) -> Vec<Result<String, Error>> {
+fn drain(stream: &mut ItemStream<String>) -> Vec<Result<String, ClientError>> {
     std::iter::from_fn(|| honig::__private::block_on(stream.next())).collect()
 }
 
@@ -133,7 +133,10 @@ fn failed_reconnections_are_errors_until_the_budget_runs_out() {
     let got = drain(&mut stream);
     assert_matches!(
         got[..],
-        [Err(Error::Transport(_)), Err(Error::UnexpectedStatus { status: http::StatusCode::SERVICE_UNAVAILABLE, .. })],
+        [
+            Err(ClientError::Transport(_)),
+            Err(ClientError::UnexpectedStatus { status: http::StatusCode::SERVICE_UNAVAILABLE, .. })
+        ],
         "{got:?}"
     );
     assert_eq!(script.sent.lock().unwrap().len(), 3, "no third attempt");
@@ -150,7 +153,7 @@ fn too_many_requests_is_retried() {
     let got = drain(&mut open(&script).max_retries(2));
     assert_matches!(
         &got[..],
-        [Err(Error::UnexpectedStatus { status: http::StatusCode::TOO_MANY_REQUESTS, .. }), Ok(a)] if a == "a",
+        [Err(ClientError::UnexpectedStatus { status: http::StatusCode::TOO_MANY_REQUESTS, .. }), Ok(a)] if a == "a",
         "{got:?}"
     );
 }
@@ -163,8 +166,8 @@ fn another_status_or_media_type_ends_the_stream() {
         let script = Script::new([Answer::Stream(200, SSE, vec![Some("retry: 0\n\n")]), answer]);
         let got = drain(&mut open(&script));
         match &got[..] {
-            [Err(Error::UnexpectedMedia { .. })] => assert!(media),
-            [Err(Error::UnexpectedStatus { status: http::StatusCode::NOT_FOUND, .. })] => assert!(!media),
+            [Err(ClientError::UnexpectedMedia { .. })] => assert!(media),
+            [Err(ClientError::UnexpectedStatus { status: http::StatusCode::NOT_FOUND, .. })] => assert!(!media),
             other => panic!("{other:?}"),
         }
         assert_eq!(script.sent.lock().unwrap().len(), 2);
@@ -176,7 +179,7 @@ fn a_stream_without_its_request_ends_with_its_body() {
     let script = Script::new([Answer::Stream(200, SSE, vec![Some("data: \"a\"\n\n"), None])]);
     let mut stream = open(&script).no_reconnect();
     let got = drain(&mut stream);
-    assert_matches!(&got[..], [Ok(a), Err(Error::Transport(_))] if a == "a", "{got:?}");
+    assert_matches!(&got[..], [Ok(a), Err(ClientError::Transport(_))] if a == "a", "{got:?}");
 }
 
 /// The bytes a server sends for `items`.
@@ -199,7 +202,7 @@ fn a_server_writes_ids_names_retry_and_comments() {
     let bad = Sse::Event { id: Some("a\nb".into()), event: None, item: String::new() };
     let mut resp = honig::__private::new_response(200);
     set_items(&mut resp, SSE, Items::events(futures_util::stream::iter(vec![bad])), Framing::Sse).unwrap();
-    assert_matches!(honig::__private::block_on(resp.into_body().collect()), Err(Error::Encode(_)));
+    assert_matches!(honig::__private::block_on(resp.into_body().collect()), Err(ClientError::Encode(_)));
 }
 
 /// Items written into one piece: an item that fails halfway sends none of its bytes. The items before it go out.
@@ -216,7 +219,7 @@ fn an_item_that_fails_to_encode_sends_nothing_of_itself() {
     let mut chunks = resp.into_body().into_stream();
     let first = honig::__private::block_on(chunks.next()).unwrap().unwrap();
     assert_eq!(&first[..], b"data: {\"low\":1.0,\"high\":2.0}\n\n");
-    assert_matches!(honig::__private::block_on(chunks.next()), Some(Err(Error::Encode(_))));
+    assert_matches!(honig::__private::block_on(chunks.next()), Some(Err(ClientError::Encode(_))));
 }
 
 #[test]
@@ -230,7 +233,7 @@ fn a_quiet_stream_sends_a_heartbeat() {
 
 /// Body pieces and then a connection that stays open.
 fn open_ended(pieces: &[&'static str]) -> ByteStream {
-    let pieces: Vec<Result<Bytes, Error>> = pieces.iter().map(|p| Ok(Bytes::from_static(p.as_bytes()))).collect();
+    let pieces: Vec<Result<Bytes, ClientError>> = pieces.iter().map(|p| Ok(Bytes::from_static(p.as_bytes()))).collect();
     ByteStream::chunks(futures_util::stream::iter(pieces).chain(futures_util::stream::pending()), None)
 }
 

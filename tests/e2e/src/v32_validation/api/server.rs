@@ -86,18 +86,18 @@ impl runtime::Operation for Operation {
 pub type Context<'a, C = ()> = runtime::Context<'a, C, Operation>;
 pub type Rejection = runtime::Rejection<Operation>;
 pub type RequestEvent = runtime::RequestEvent<Operation>;
-const ERROR_SCHEMA_0: runtime::ErrorSchema = runtime::ErrorSchema {
+const ERROR_SCHEMA_0: runtime::ProblemSchema = runtime::ProblemSchema {
     media: "application/problem+json",
     fields: &[
-        ("detail", runtime::ErrorField::Detail),
-        ("object", runtime::ErrorField::Const("\"error\"")),
+        ("detail", runtime::ProblemMember::Detail),
+        ("object", runtime::ProblemMember::Const("\"error\"")),
     ],
     open: true,
 };
 fn error_schema(
     operation: Option<&str>,
     status: u16,
-) -> Option<&'static runtime::ErrorSchema> {
+) -> Option<&'static runtime::ProblemSchema> {
     match operation {
         Some("create_user") => {
             match status {
@@ -182,7 +182,7 @@ impl<A: Api> runtime::Operations for Routes<A> {
                 runtime::allowed_methods(methods),
             ))
     }
-    fn errors(&self) -> runtime::ErrorSchemas {
+    fn errors(&self) -> runtime::ProblemSchemas {
         error_schema
     }
     fn call<'r>(
@@ -282,7 +282,7 @@ fn create_user_params(
 }
 fn create_user_encode(
     resp: ops::create_user::Response,
-) -> Result<runtime::Response, runtime::Error> {
+) -> Result<runtime::Response, runtime::ClientError> {
     Ok(
         match resp {
             ops::create_user::Response::Created(body) => {
@@ -337,7 +337,7 @@ fn create_shipment_params(
 }
 fn create_shipment_encode(
     resp: ops::create_shipment::Response,
-) -> Result<runtime::Response, runtime::Error> {
+) -> Result<runtime::Response, runtime::ClientError> {
     Ok(
         match resp {
             ops::create_shipment::Response::Created => runtime::new_response(201),
@@ -386,7 +386,7 @@ fn login_params(
 }
 fn login_encode(
     resp: ops::login::Response,
-) -> Result<runtime::Response, runtime::Error> {
+) -> Result<runtime::Response, runtime::ClientError> {
     let ops::login::Response::Created(body) = resp;
     Ok(runtime::body_response(201, "application/json", runtime::json_encode(&body)?))
 }

@@ -15,7 +15,7 @@ use crate::media::is_xml_media;
 use crate::params::{encode_query_value, key_order, ordered};
 use crate::scalar::scalar;
 use crate::text::{decode_err, lossy};
-use crate::{Coerce, Enc, Error, Shape, Style, decode_query, parse_query};
+use crate::{ClientError, Coerce, Enc, Shape, Style, decode_query, parse_query};
 
 /// Returns the text of a form field in its `encoding.contentType`. That is XML elements or JSON or else
 /// [`form_scalar`].
@@ -63,14 +63,14 @@ fn form_scalar(v: &Value) -> String {
 }
 
 /// Returns `application/x-www-form-urlencoded`: arrays repeat the key. Nested objects are JSON.
-pub fn form_encode<T: Serialize>(v: &T) -> Result<Vec<u8>, Error> {
+pub fn form_encode<T: Serialize>(v: &T) -> Result<Vec<u8>, ClientError> {
     form_encode_styled(v, &[])
 }
 
 /// Returns [`form_encode`] where fields with a `style` encode like query parameters.
 /// Fields follow the schema's property order.
 /// Errors: the value does not serialize.
-pub fn form_encode_styled<T: Serialize>(v: &T, styles: &[(&str, Enc)]) -> Result<Vec<u8>, Error> {
+pub fn form_encode_styled<T: Serialize>(v: &T, styles: &[(&str, Enc)]) -> Result<Vec<u8>, ClientError> {
     form_encode_with(v, styles, &[])
 }
 
@@ -78,7 +78,11 @@ pub fn form_encode_styled<T: Serialize>(v: &T, styles: &[(&str, Enc)]) -> Result
 ///
 /// 3.2 "Parsing and Serializing": `extra` as `application/xml` and an `id` string as `application/json`.
 /// Errors: the value does not serialize.
-pub fn form_encode_with<T: Serialize>(v: &T, styles: &[(&str, Enc)], types: &[(&str, &str)]) -> Result<Vec<u8>, Error> {
+pub fn form_encode_with<T: Serialize>(
+    v: &T,
+    styles: &[(&str, Enc)],
+    types: &[(&str, &str)],
+) -> Result<Vec<u8>, ClientError> {
     let value = to_value(v)?;
     let mut parts = vec![];
     if let Value::Object(o) = &value {
@@ -111,7 +115,7 @@ pub fn form_decode_styled<T: DeserializeOwned>(
     status: u16,
     body: &[u8],
     styles: &[(&'static str, Style, Shape, bool)],
-) -> Result<T, Error> {
+) -> Result<T, ClientError> {
     form_decode_with(status, body, styles, &[])
 }
 
@@ -122,7 +126,7 @@ pub fn form_decode_with<T: DeserializeOwned>(
     body: &[u8],
     styles: &[(&'static str, Style, Shape, bool)],
     types: &[(&str, &str)],
-) -> Result<T, Error> {
+) -> Result<T, ClientError> {
     let fields = form_fields(status, body, styles, types)?;
     T::deserialize(Coerce(Value::Object(fields))).map_err(|e| {
         // Tracking the pointer allocates per key. So only a body that fails is read again with tracking to say where.
@@ -131,7 +135,7 @@ pub fn form_decode_with<T: DeserializeOwned>(
             .and_then(|fields| crate::path::deserialize::<_, T>(Coerce(Value::Object(fields))).err())
             .map(|(pointer, _)| pointer)
             .unwrap_or_default();
-        Error::Decode { status, message: e.to_string(), body: bytes::Bytes::copy_from_slice(body), pointer }
+        ClientError::Decode { status, message: e.to_string(), body: bytes::Bytes::copy_from_slice(body), pointer }
     })
 }
 
@@ -142,7 +146,7 @@ fn form_fields(
     body: &[u8],
     styles: &[(&'static str, Style, Shape, bool)],
     types: &[(&str, &str)],
-) -> Result<Map<String, Value>, Error> {
+) -> Result<Map<String, Value>, ClientError> {
     let text = lossy(body);
     let pairs = parse_query(&text);
     let mut o = Map::new();
@@ -169,13 +173,13 @@ fn form_fields(
 }
 
 /// Returns the error of the form field `name` that does not decode: it is at `/name` in the body.
-fn field_err(status: u16, body: &[u8], name: &str, e: &crate::Reason) -> Error {
+fn field_err(status: u16, body: &[u8], name: &str, e: &crate::Reason) -> ClientError {
     let message = e.violations().first().map_or_else(|| e.to_string(), |v| v.message.clone());
-    Error::Decode { status, message, body: bytes::Bytes::copy_from_slice(body), pointer: format!("/{name}") }
+    ClientError::Decode { status, message, body: bytes::Bytes::copy_from_slice(body), pointer: format!("/{name}") }
 }
 
 /// Decodes an `application/x-www-form-urlencoded` body.
-pub fn form_decode<T: DeserializeOwned>(status: u16, body: &[u8]) -> Result<T, Error> {
+pub fn form_decode<T: DeserializeOwned>(status: u16, body: &[u8]) -> Result<T, ClientError> {
     let text = lossy(body);
     T::deserialize(Form(sorted_pairs(&text))).map_err(|e| {
         // Read again with tracking only once it failed, to say where: tracking allocates per key.
@@ -183,7 +187,7 @@ pub fn form_decode<T: DeserializeOwned>(status: u16, body: &[u8]) -> Result<T, E
             .err()
             .map(|(pointer, _)| pointer)
             .unwrap_or_default();
-        Error::Decode { status, message: e.to_string(), body: bytes::Bytes::copy_from_slice(body), pointer }
+        ClientError::Decode { status, message: e.to_string(), body: bytes::Bytes::copy_from_slice(body), pointer }
     })
 }
 

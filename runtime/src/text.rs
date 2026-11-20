@@ -3,11 +3,16 @@
 use std::borrow::Cow;
 use std::fmt;
 
-use crate::Error;
+use crate::ClientError;
 
-/// Returns a body that does not decode as [`Error::Decode`].
-pub(crate) fn decode_err(status: u16, body: &[u8], e: impl fmt::Display) -> Error {
-    Error::Decode { status, message: e.to_string(), body: bytes::Bytes::copy_from_slice(body), pointer: String::new() }
+/// Returns a body that does not decode as [`ClientError::Decode`].
+pub(crate) fn decode_err(status: u16, body: &[u8], e: impl fmt::Display) -> ClientError {
+    ClientError::Decode {
+        status,
+        message: e.to_string(),
+        body: bytes::Bytes::copy_from_slice(body),
+        pointer: String::new(),
+    }
 }
 
 /// Encodes a text body.

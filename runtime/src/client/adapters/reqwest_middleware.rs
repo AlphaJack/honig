@@ -2,7 +2,7 @@
 
 use std::future::Future;
 
-use crate::{Error, Execute, MaybeSend, ReqwestTransport};
+use crate::{ClientError, Execute, MaybeSend, ReqwestTransport};
 
 /// `reqwest-middleware` transport: `Client::new(api::ReqwestMiddlewareTransport::with_client(stack, "https://api.example.com"))`.
 ///
@@ -10,8 +10,11 @@ use crate::{Error, Execute, MaybeSend, ReqwestTransport};
 pub type ReqwestMiddlewareTransport = ReqwestTransport<reqwest_middleware::ClientWithMiddleware>;
 
 impl Execute for reqwest_middleware::ClientWithMiddleware {
-    fn execute(&self, req: reqwest::Request) -> impl Future<Output = Result<reqwest::Response, Error>> + MaybeSend {
+    fn execute(
+        &self,
+        req: reqwest::Request,
+    ) -> impl Future<Output = Result<reqwest::Response, ClientError>> + MaybeSend {
         let client = self.clone();
-        async move { Self::execute(&client, req).await.map_err(Error::transport) }
+        async move { Self::execute(&client, req).await.map_err(ClientError::transport) }
     }
 }

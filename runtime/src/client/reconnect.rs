@@ -3,7 +3,7 @@
 use serde::de::DeserializeOwned;
 
 use crate::stream::{Reconnect, Reconnected};
-use crate::{Connecting, Error, ItemStream, Message, Request, Transport};
+use crate::{ClientError, Connecting, ItemStream, Message, Request, Transport};
 
 /// Sends `req` again through `transport` and expects the `status` of the stream.
 struct Resend<Tr> {
@@ -26,7 +26,7 @@ impl<Tr: Transport> Reconnect for Resend<Tr> {
                 Some(Ok(id)) => {
                     req.headers_mut().insert("last-event-id", id);
                 }
-                Some(Err(e)) => return Reconnected::Fatal(Error::Encode(format!("Last-Event-ID: {e}"))),
+                Some(Err(e)) => return Reconnected::Fatal(ClientError::Encode(format!("Last-Event-ID: {e}"))),
                 None => {}
             }
             let resp = match crate::send_streaming(&transport, req).await {
@@ -42,7 +42,7 @@ impl<Tr: Transport> Reconnect for Resend<Tr> {
                 (s, _) => {
                     let status = resp.status();
                     let body = resp.into_body().collect().await.unwrap_or_default();
-                    let e = Error::UnexpectedStatus { status, body };
+                    let e = ClientError::UnexpectedStatus { status, body };
                     let busy = s == http::StatusCode::TOO_MANY_REQUESTS
                         || http::StatusCode::from_u16(s).is_ok_and(|s| s.is_server_error());
                     if busy { Reconnected::Retry(e) } else { Reconnected::Fatal(e) }

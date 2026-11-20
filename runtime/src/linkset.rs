@@ -6,7 +6,7 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 use serde_json::{Map, Value};
 
-use crate::Error;
+use crate::ClientError;
 use crate::json::to_value;
 use crate::text::decode_err;
 
@@ -15,7 +15,7 @@ const LIST_ATTRIBUTES: [&str; 1] = ["hreflang"];
 
 /// Encodes a linkset (the `application/linkset+json` model) as `Link` header text.
 /// Errors: the value does not serialize.
-pub fn linkset_encode<T: Serialize>(v: &T) -> Result<String, Error> {
+pub fn linkset_encode<T: Serialize>(v: &T) -> Result<String, ClientError> {
     let value = to_value(v)?;
     let mut links = vec![];
     for context in value.get("linkset").and_then(Value::as_array).into_iter().flatten() {
@@ -48,7 +48,7 @@ pub fn linkset_encode<T: Serialize>(v: &T) -> Result<String, Error> {
 /// Decodes `Link` header text into a linkset (the `application/linkset+json` model). There is one link context per
 /// anchor in order. Each relation is a list of targets.
 /// Errors: the links do not fit `T`.
-pub fn linkset_decode<T: DeserializeOwned>(status: u16, text: &str) -> Result<T, Error> {
+pub fn linkset_decode<T: DeserializeOwned>(status: u16, text: &str) -> Result<T, ClientError> {
     let mut contexts: Vec<(Option<String>, Map<String, Value>)> = vec![];
     for link in split_outside_quotes(text, ',') {
         let link = link.trim();

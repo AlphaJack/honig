@@ -91,21 +91,21 @@ pub fn credentials(request: &impl runtime::Secured) -> Vec<Credential<'_>> {
         })
         .collect()
 }
-const ERROR_SCHEMA_0: runtime::ErrorSchema = runtime::ErrorSchema {
+const ERROR_SCHEMA_0: runtime::ProblemSchema = runtime::ProblemSchema {
     media: "application/problem+json",
     fields: &[
-        ("type", runtime::ErrorField::Type),
-        ("title", runtime::ErrorField::Title),
-        ("status", runtime::ErrorField::Status),
-        ("detail", runtime::ErrorField::Detail),
+        ("type", runtime::ProblemMember::Type),
+        ("title", runtime::ProblemMember::Title),
+        ("status", runtime::ProblemMember::Status),
+        ("detail", runtime::ProblemMember::Detail),
     ],
     open: true,
 };
-const ERROR_SCHEMA: Option<&runtime::ErrorSchema> = Some(&ERROR_SCHEMA_0);
+const ERROR_SCHEMA: Option<&runtime::ProblemSchema> = Some(&ERROR_SCHEMA_0);
 const fn error_schema(
     _operation: Option<&str>,
     _status: u16,
-) -> Option<&'static runtime::ErrorSchema> {
+) -> Option<&'static runtime::ProblemSchema> {
     ERROR_SCHEMA
 }
 static METHODS: &[&[(&str, (Op, Operation))]] = &[
@@ -160,7 +160,7 @@ impl<A: Api> runtime::Operations for Routes<A> {
                 runtime::allowed_methods(methods),
             ))
     }
-    fn errors(&self) -> runtime::ErrorSchemas {
+    fn errors(&self) -> runtime::ProblemSchemas {
         error_schema
     }
     fn call<'r>(
@@ -289,7 +289,7 @@ fn list_orders_params(
 }
 fn list_orders_encode(
     resp: ops::list_orders::Response,
-) -> Result<runtime::Response, runtime::Error> {
+) -> Result<runtime::Response, runtime::ClientError> {
     Ok(
         match resp {
             ops::list_orders::Response::Ok { body, x_next_cursor } => {
@@ -349,7 +349,7 @@ fn create_order_params(
 }
 fn create_order_encode(
     resp: ops::create_order::Response,
-) -> Result<runtime::Response, runtime::Error> {
+) -> Result<runtime::Response, runtime::ClientError> {
     Ok(
         match resp {
             ops::create_order::Response::Created(body) => {
@@ -410,7 +410,7 @@ fn get_order_params(
 }
 fn get_order_encode(
     resp: ops::get_order::Response,
-) -> Result<runtime::Response, runtime::Error> {
+) -> Result<runtime::Response, runtime::ClientError> {
     Ok(
         match resp {
             ops::get_order::Response::Ok { body, x_request_id } => {

@@ -3,7 +3,7 @@
 
 use std::collections::BTreeMap;
 
-use crate::{Error, Request};
+use crate::{ClientError, Request};
 
 /// One security scheme as declared in `components.securitySchemes`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -98,13 +98,13 @@ pub type Requirement = (Scheme, &'static [&'static str]);
 ///
 /// # Errors
 /// The pair holds a line break or another control character.
-pub(crate) fn add_cookie(req: &mut Request, pair: &str) -> Result<(), Error> {
+pub(crate) fn add_cookie(req: &mut Request, pair: &str) -> Result<(), ClientError> {
     let headers = req.headers_mut();
     let value = match headers.get(http::header::COOKIE).and_then(|v| v.to_str().ok()) {
         Some(sent) => format!("{sent}; {pair}"),
         None => pair.to_owned(),
     };
-    let value = http::HeaderValue::try_from(value).map_err(|e| Error::Encode(format!("cookie: {e}")))?;
+    let value = http::HeaderValue::try_from(value).map_err(|e| ClientError::Encode(format!("cookie: {e}")))?;
     headers.insert(http::header::COOKIE, value);
     Ok(())
 }

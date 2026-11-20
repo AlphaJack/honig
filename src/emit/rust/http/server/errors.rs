@@ -12,7 +12,7 @@ use crate::ir::http::{Content, Status};
 use crate::ir::media::MediaKind;
 use crate::ir::types::{JsonKind, Kind, Ty};
 
-/// Returns the `runtime::ErrorSchema` of the JSON body of an error response if the generator can fill it: RFC 9457
+/// Returns the `runtime::ProblemSchema` of the JSON body of an error response if the generator can fill it: RFC 9457
 /// `problem+json`, whose members the RFC names. Each of `type`, `title`, `status` and `detail` of the RFC's type is
 /// filled. A required `const` gets its value. Any other required member, or a member of the RFC of another type, has
 /// no value that the server knows: then `None`, and the server needs your `error_response`.
@@ -29,7 +29,7 @@ pub(crate) fn error_schema(space: &Space<'_>, c: &Content) -> Option<TokenStream
         if let Some(value) = const_value(space, &f.ty) {
             if f.required {
                 let v = lit(&value.to_string());
-                fields.push(quote!((#w, runtime::ErrorField::Const(#v))));
+                fields.push(quote!((#w, runtime::ProblemMember::Const(#v))));
             }
             continue;
         }
@@ -41,11 +41,11 @@ pub(crate) fn error_schema(space: &Space<'_>, c: &Content) -> Option<TokenStream
             _ if !f.required => continue,
             _ => return None,
         };
-        fields.push(quote!((#w, runtime::ErrorField::#what)));
+        fields.push(quote!((#w, runtime::ProblemMember::#what)));
     }
     let media = lit(&media);
     let open = !st.closed || st.additional.is_some();
-    Some(quote!(runtime::ErrorSchema { media: #media, fields: &[#(#fields),*], open: #open }))
+    Some(quote!(runtime::ProblemSchema { media: #media, fields: &[#(#fields),*], open: #open }))
 }
 
 /// Does the server fill every error body that the description declares by itself ([`declared_error_schema`])? Then
@@ -98,7 +98,7 @@ fn has_error_body(r: &crate::ir::http::Resp) -> bool {
     is_error(r) && !r.contents.is_empty()
 }
 
-/// Returns the `runtime::ErrorSchema` of the body of a response if the generator can fill it: a JSON body by its
+/// Returns the `runtime::ProblemSchema` of the body of a response if the generator can fill it: a JSON body by its
 /// fields, or a `text/*` string that holds the detail alone.
 fn declared_error_schema(space: &Space<'_>, r: &crate::ir::http::Resp) -> Option<TokenStream> {
     let json = r.contents.iter().find(|c| c.kind == MediaKind::Json).and_then(|c| error_schema(space, c));
@@ -107,7 +107,7 @@ fn declared_error_schema(space: &Space<'_>, r: &crate::ir::http::Resp) -> Option
         let media = send_media(text);
         media.starts_with("text/").then(|| {
             let media = lit(&media);
-            quote!(runtime::ErrorSchema { media: #media, fields: &[], open: false })
+            quote!(runtime::ProblemSchema { media: #media, fields: &[], open: false })
         })
     })
 }
@@ -143,7 +143,7 @@ pub(crate) fn error_schema_fn(api: &Api, space: &Space<'_>) -> TokenStream {
         let i = schemas.iter().position(|k| *k == key).unwrap_or_else(|| {
             schemas.push(key);
             let n = format_ident!("ERROR_SCHEMA_{}", schemas.len() - 1);
-            consts.push(quote!(const #n: runtime::ErrorSchema = #t;));
+            consts.push(quote!(const #n: runtime::ProblemSchema = #t;));
             schemas.len() - 1
         });
         format_ident!("ERROR_SCHEMA_{i}")
@@ -169,7 +169,7 @@ pub(crate) fn error_schema_fn(api: &Api, space: &Space<'_>) -> TokenStream {
     }
     if uses.is_empty() {
         return quote! {
-            const fn error_schema(_operation: Option<&str>, _status: u16) -> Option<&'static runtime::ErrorSchema> {
+            const fn error_schema(_operation: Option<&str>, _status: u16) -> Option<&'static runtime::ProblemSchema> {
                 None
             }
         };
@@ -198,9 +198,9 @@ pub(crate) fn error_schema_fn(api: &Api, space: &Space<'_>) -> TokenStream {
         // clippy cannot see that.
         return quote! {
             #(#consts)*
-            const ERROR_SCHEMA: Option<&runtime::ErrorSchema> = #global;
+            const ERROR_SCHEMA: Option<&runtime::ProblemSchema> = #global;
 
-            const fn error_schema(_operation: Option<&str>, _status: u16) -> Option<&'static runtime::ErrorSchema> {
+            const fn error_schema(_operation: Option<&str>, _status: u16) -> Option<&'static runtime::ProblemSchema> {
                 ERROR_SCHEMA
             }
         };
@@ -210,7 +210,7 @@ pub(crate) fn error_schema_fn(api: &Api, space: &Space<'_>) -> TokenStream {
     quote! {
         #(#consts)*
 
-        fn error_schema(operation: Option<&str>, #status: u16) -> Option<&'static runtime::ErrorSchema> {
+        fn error_schema(operation: Option<&str>, #status: u16) -> Option<&'static runtime::ProblemSchema> {
             match operation {
                 #(#arms)*
                 _ => #global,
@@ -219,7 +219,7 @@ pub(crate) fn error_schema_fn(api: &Api, space: &Space<'_>) -> TokenStream {
     }
 }
 
-/// Returns the error schema of one operation by status as an expression of type `Option<&runtime::ErrorSchema>`:
+/// Returns the error schema of one operation by status as an expression of type `Option<&runtime::ProblemSchema>`:
 /// `answer` per declared status and `otherwise` for the rest. A status that the next broader entry already answers the
 /// same way is dropped (`400` under a same-schema `4XX`). The rest share one arm per answer (`400 | 404 => ..`). The
 /// flag says whether it reads `status`.

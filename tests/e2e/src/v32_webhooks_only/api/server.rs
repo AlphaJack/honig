@@ -23,7 +23,7 @@ pub trait Api: Send + Sync + 'static {
 const fn error_schema(
     _operation: Option<&str>,
     _status: u16,
-) -> Option<&'static runtime::ErrorSchema> {
+) -> Option<&'static runtime::ProblemSchema> {
     None
 }
 pub trait Webhooks: Send + Sync + 'static {
@@ -96,7 +96,7 @@ impl<A: Webhooks> runtime::Operations for WebhookRoutes<A> {
             }
         }
     }
-    fn errors(&self) -> runtime::ErrorSchemas {
+    fn errors(&self) -> runtime::ProblemSchemas {
         error_schema
     }
     fn call<'r>(

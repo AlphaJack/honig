@@ -244,7 +244,7 @@ fn webhooks(api: &Api, allow_unimplemented: bool, filled: bool) -> Option<TokenS
                 }
             }
 
-            fn errors(&self) -> runtime::ErrorSchemas {
+            fn errors(&self) -> runtime::ProblemSchemas {
                 error_schema
             }
 

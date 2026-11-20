@@ -16,7 +16,7 @@ use crate::source::{Blob, BodySource, ByteStream, Feed, Slot, Sse, put_slot, tak
 #[cfg(feature = "multipart")]
 use crate::text::decode_err;
 use crate::transport::Pending;
-use crate::{Body, Error, Request, json_seq_encode, jsonl_encode, sse_encode};
+use crate::{Body, ClientError, Request, json_seq_encode, jsonl_encode, sse_encode};
 
 /// The byte order mark that an SSE stream may start with. It is not part of the first event.
 const BOM: &str = "\u{feff}";
@@ -25,7 +25,7 @@ const BOM: &str = "\u{feff}";
 ///
 /// A success status gives the body as it arrives. Any other status that the description declares gives the
 /// `Response` of the operation. It is decoded whole like the method without `_stream`. A status that the description
-/// does not declare is `Error::UnexpectedStatus` as there.
+/// does not declare is `ClientError::UnexpectedStatus` as there.
 #[derive(Debug)]
 pub enum Streamed<S, R> {
     /// A success status: the body's chunks or items as they arrive.
@@ -94,7 +94,7 @@ impl<T: Send + 'static> Items<T> {
 /// break a constraint and the next may still be read. A body that broke off or went past the `max_body_bytes` of the
 /// server ends after its error. `?` in a handler turns either into an [`ApiError`](crate::ApiError) with its status.
 impl<T: DeserializeOwned + Send + 'static> Stream for Items<T> {
-    type Item = Result<T, Error>;
+    type Item = Result<T, ClientError>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let this = self.get_mut();
@@ -122,7 +122,7 @@ impl<T: Serialize + DeserializeOwned + Send + 'static> Items<T> {
     ///
     /// # Errors
     /// The first item that fails as in the `Stream` of `Items`.
-    pub async fn collect(mut self) -> Result<Vec<T>, Error> {
+    pub async fn collect(mut self) -> Result<Vec<T>, ClientError> {
         if let Self::List(v) = self {
             return Ok(v);
         }
@@ -138,7 +138,7 @@ impl<T: Serialize + DeserializeOwned + Send + 'static> Items<T> {
     ///
     /// # Errors
     /// An item of a list does not serialize. Or `framing` is `Multipart`, which is only decoded.
-    pub fn into_body(self, framing: Framing) -> Result<Body, Error> {
+    pub fn into_body(self, framing: Framing) -> Result<Body, ClientError> {
         let items = match self {
             Self::List(v) => {
                 let body = match framing {
@@ -174,7 +174,7 @@ impl<T: DeserializeOwned> Items<T> {
     ///
     /// # Errors
     /// `body` does not decode.
-    pub fn received(body: &[u8], stream: &ByteStream, framing: Framing) -> Result<Self, Error> {
+    pub fn received(body: &[u8], stream: &ByteStream, framing: Framing) -> Result<Self, ClientError> {
         if let Some(source) = stream.take_source() {
             return Ok(Self::Stream(ItemStream::new(REQUEST, ByteStream::pinned(source), framing)));
         }
@@ -193,7 +193,7 @@ impl<T: DeserializeOwned> Items<T> {
     /// # Errors
     /// A list that does not meet them.
     #[doc(hidden)]
-    pub fn limited(self, limits: Limits) -> Result<Self, Error>
+    pub fn limited(self, limits: Limits) -> Result<Self, ClientError>
     where
         T: Serialize,
     {
@@ -214,7 +214,7 @@ impl<T: DeserializeOwned> Items<T> {
         body: &[u8],
         stream: &ByteStream,
         framing: Framing,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self, ClientError> {
         type Validated<T, H> = crate::formats::Validated<T, H>;
         if let Some(source) = stream.take_source() {
             let items = ItemStream::new(REQUEST, ByteStream::pinned(source), framing).validated::<H>();
@@ -258,8 +258,8 @@ impl<T: Eq> Eq for Items<T> {}
 
 /// Returns `Framing::Multipart` only decodes. A server returns a multipart body whole from a list.
 #[cfg(feature = "multipart")]
-fn not_encoded() -> Error {
-    Error::Encode("a multipart body is written whole, not item by item".to_owned())
+fn not_encoded() -> ClientError {
+    ClientError::Encode("a multipart body is written whole, not item by item".to_owned())
 }
 
 /// Returns where `needle` first starts in `hay`.
@@ -269,7 +269,7 @@ fn find(hay: &[u8], needle: &[u8]) -> Option<usize> {
 }
 
 /// Appends one item in a framing to `out`.
-fn frame_one<T: Serialize>(item: &T, framing: Framing, out: &mut Vec<u8>) -> Result<(), Error> {
+fn frame_one<T: Serialize>(item: &T, framing: Framing, out: &mut Vec<u8>) -> Result<(), ClientError> {
     match framing {
         Framing::JsonLines => crate::codec::jsonl_write(out, item),
         Framing::JsonSeq => crate::codec::json_seq_write(out, item),
@@ -281,7 +281,7 @@ fn frame_one<T: Serialize>(item: &T, framing: Framing, out: &mut Vec<u8>) -> Res
 
 /// Appends one [`Sse`] record in a framing to `out`. An `id`, an event name, a `retry` or a comment exists only in
 /// `text/event-stream`.
-fn frame_record<T: Serialize>(record: &Sse<T>, framing: Framing, out: &mut Vec<u8>) -> Result<(), Error> {
+fn frame_record<T: Serialize>(record: &Sse<T>, framing: Framing, out: &mut Vec<u8>) -> Result<(), ClientError> {
     match record {
         Sse::Event { id, event, item } if framing == Framing::Sse => {
             for (key, value) in [("id", id), ("event", event)] {
@@ -319,13 +319,13 @@ struct Framed<T> {
     framing: Framing,
     frame: Frame<T>,
     /// An item that failed to encode after others in the same piece: sent as the next piece.
-    failed: Option<Error>,
+    failed: Option<ClientError>,
     /// The items ended after the last piece was cut.
     ended: bool,
 }
 
 /// Appends one item in a framing to the piece that is being gathered.
-type Frame<T> = fn(&T, Framing, &mut Vec<u8>) -> Result<(), Error>;
+type Frame<T> = fn(&T, Framing, &mut Vec<u8>) -> Result<(), ClientError>;
 
 impl<T> Framed<T> {
     fn new(items: Feed<T>, framing: Framing, frame: Frame<T>) -> Self {
@@ -334,7 +334,7 @@ impl<T> Framed<T> {
 }
 
 impl<T: 'static> BodySource for Framed<T> {
-    fn poll_piece(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Result<bytes::Bytes, Error>>> {
+    fn poll_piece(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Result<bytes::Bytes, ClientError>>> {
         let this = self.get_mut();
         if let Some(e) = this.failed.take() {
             return Poll::Ready(Some(Err(e)));
@@ -374,7 +374,7 @@ pub fn set_items<T: Serialize + DeserializeOwned + Send + 'static>(
     content_type: impl Into<Cow<'static, str>>,
     items: Items<T>,
     framing: Framing,
-) -> Result<(), Error> {
+) -> Result<(), ClientError> {
     message.set_body(content_type, items.into_body(framing)?);
     Ok(())
 }
@@ -432,9 +432,9 @@ pub enum Reconnected {
     /// `204 No Content`: the server ends the stream.
     Done,
     /// The request failed or the server is busy (`429`) or failing (`5xx`). Wait and then try again.
-    Retry(Error),
+    Retry(ClientError),
     /// Another status or a body that is not an event stream. The stream ends.
-    Fatal(Error),
+    Fatal(ClientError),
 }
 
 impl fmt::Debug for Reconnected {
@@ -476,7 +476,7 @@ pub fn resendable(req: &Request) -> Option<Request> {
 pub struct ItemStream<T>(Slot<Inner<T>>);
 
 /// Reads the next item of an arriving body.
-type Decode<T> = fn(&mut Decoder<T>, &mut Context<'_>) -> Poll<Option<Result<T, Error>>>;
+type Decode<T> = fn(&mut Decoder<T>, &mut Context<'_>) -> Poll<Option<Result<T, ClientError>>>;
 
 /// What an [`ItemStream`] reads from.
 pub(crate) enum Inner<T> {
@@ -593,7 +593,7 @@ impl<T> ItemStream<T> {
 
     /// Polls what the stream reads from. `decode` reads an arriving body. Usually no clone shares the stream. Then it
     /// is read without the lock.
-    fn poll_with(&mut self, cx: &mut Context<'_>, decode: Decode<T>) -> Poll<Option<Result<T, Error>>> {
+    fn poll_with(&mut self, cx: &mut Context<'_>, decode: Decode<T>) -> Poll<Option<Result<T, ClientError>>> {
         let poll = |held: &mut Option<Inner<T>>, cx: &mut Context<'_>| match held.as_mut() {
             Some(Inner::Decoding(items)) => decode(items, cx),
             Some(Inner::Produced(feed)) => feed.as_mut().poll_next(cx).map(|item| item.map(Ok)),
@@ -659,7 +659,7 @@ impl<T: DeserializeOwned> ItemStream<T> {
 /// A `text/event-stream` that reconnects ends only on a `204 No Content` or a response that is not the stream. It
 /// also ends after [`ItemStream::max_retries`]. A reconnection that fails is an `Err`. The next poll tries again.
 impl<T: DeserializeOwned> Stream for ItemStream<T> {
-    type Item = Result<T, Error>;
+    type Item = Result<T, ClientError>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         self.get_mut().poll_with(cx, Decoder::poll_limited)
@@ -685,7 +685,7 @@ pub struct Limits {
 /// # Errors
 /// They do not: a decode error with this status.
 #[doc(hidden)]
-pub fn limit_items<T: Serialize>(status: u16, items: Vec<T>, limits: Limits) -> Result<Vec<T>, Error> {
+pub fn limit_items<T: Serialize>(status: u16, items: Vec<T>, limits: Limits) -> Result<Vec<T>, ClientError> {
     let mut out = vec![];
     crate::checks::check_len(&mut out, &InstancePath::Root, items.len(), limits.min, limits.max, "items");
     if limits.unique {
@@ -698,8 +698,8 @@ pub fn limit_items<T: Serialize>(status: u16, items: Vec<T>, limits: Limits) -> 
 }
 
 /// Returns the error of a sequence that breaks one of its [`Limits`].
-fn limit_error(status: u16, message: String) -> Error {
-    Error::Decode { status, message, body: bytes::Bytes::new(), pointer: String::new() }
+fn limit_error(status: u16, message: String) -> ClientError {
+    ClientError::Decode { status, message, body: bytes::Bytes::new(), pointer: String::new() }
 }
 
 /// What a sequence checked against its [`Limits`] has read so far.
@@ -715,7 +715,7 @@ struct Counted<T> {
 
 impl<T> Counted<T> {
     /// Returns `item` once it keeps the sequence within its limits.
-    fn admit(&mut self, status: u16, item: T) -> Result<T, Error> {
+    fn admit(&mut self, status: u16, item: T) -> Result<T, ClientError> {
         self.count += 1;
         if let Some(max) = self.limits.max.filter(|max| self.count > *max) {
             return Err(limit_error(status, format!("at most {max} items allowed, found more")));
@@ -727,7 +727,7 @@ impl<T> Counted<T> {
     }
 
     /// Returns the error of a sequence that ended short of `min`, once.
-    fn at_end(&mut self, status: u16) -> Option<Error> {
+    fn at_end(&mut self, status: u16) -> Option<ClientError> {
         let min = self.limits.min.filter(|min| self.count < *min && !self.short)?;
         self.short = true;
         Some(limit_error(status, format!("at least {min} items required, found {}", self.count)))
@@ -773,7 +773,7 @@ pub(crate) struct Decoder<T> {
 }
 
 /// Reads one record as an item.
-type ReadItem<T> = fn(&Record<'_>) -> Result<T, Error>;
+type ReadItem<T> = fn(&Record<'_>) -> Result<T, ClientError>;
 
 /// One record of an arriving body and what decoding it needs.
 pub(crate) struct Record<'a> {
@@ -786,7 +786,7 @@ pub(crate) struct Record<'a> {
 }
 
 /// Returns `record` decoded as `U`: `T`, or `T` read through `runtime::formats`.
-fn decode<U: DeserializeOwned>(record: &Record<'_>) -> Result<U, Error> {
+fn decode<U: DeserializeOwned>(record: &Record<'_>) -> Result<U, ClientError> {
     let (status, bytes) = (record.status, record.bytes);
     match record.framing {
         Framing::JsonLines | Framing::JsonSeq => crate::codec::json_record(status, bytes),
@@ -809,7 +809,7 @@ fn decode<U: DeserializeOwned>(record: &Record<'_>) -> Result<U, Error> {
 /// Reads a record as `Validated<T, H>`: the text of each library format in `T` is checked before its library reads it.
 fn read_validated<T: DeserializeOwned, H: for<'de> crate::formats::Holds<'de, T>>(
     record: &Record<'_>,
-) -> Result<T, Error> {
+) -> Result<T, ClientError> {
     decode::<crate::formats::Validated<T, H>>(record).map(crate::formats::Validated::into_inner)
 }
 
@@ -842,7 +842,7 @@ impl<T: DeserializeOwned> Decoder<T> {
     }
 
     /// Returns the next item checked against the [`Limits`] of the sequence, and the error of an end short of them.
-    fn poll_limited(&mut self, cx: &mut Context<'_>) -> Poll<Option<Result<T, Error>>> {
+    fn poll_limited(&mut self, cx: &mut Context<'_>) -> Poll<Option<Result<T, ClientError>>> {
         let next = ready!(self.poll_item(cx));
         let status = self.status;
         let Some(counted) = self.counted.as_mut() else { return Poll::Ready(next) };
@@ -862,7 +862,7 @@ impl<T: DeserializeOwned> Decoder<T> {
     }
 
     /// Returns the next item or `None` once the body has ended.
-    fn poll_item(&mut self, cx: &mut Context<'_>) -> Poll<Option<Result<T, Error>>> {
+    fn poll_item(&mut self, cx: &mut Context<'_>) -> Poll<Option<Result<T, ClientError>>> {
         if matches!(self.framing, Framing::JsonLines | Framing::JsonSeq) {
             return self.poll_line(cx);
         }
@@ -927,7 +927,7 @@ impl<T: DeserializeOwned> Decoder<T> {
     }
 
     /// Sends the request again after the wait. `None` when the stream may not. `Err` when this attempt failed.
-    fn poll_reconnect(&mut self, cx: &mut Context<'_>) -> Poll<Option<Result<(), Error>>> {
+    fn poll_reconnect(&mut self, cx: &mut Context<'_>) -> Poll<Option<Result<(), ClientError>>> {
         if self.connecting.is_none() {
             if self.max_retries.is_some_and(|max| self.failures >= max) {
                 self.reconnect = None;
@@ -967,7 +967,7 @@ impl<T: DeserializeOwned> Decoder<T> {
 
     /// Returns the next item of a line framing. It is decoded where it lies in its frame. A line that spans two frames
     /// is joined in `buf` first. Nothing else is copied.
-    fn poll_line(&mut self, cx: &mut Context<'_>) -> Poll<Option<Result<T, Error>>> {
+    fn poll_line(&mut self, cx: &mut Context<'_>) -> Poll<Option<Result<T, ClientError>>> {
         loop {
             let rest = self.frame.get(self.at..).unwrap_or_default();
             if let Some(end) = memchr::memchr(b'\n', rest) {

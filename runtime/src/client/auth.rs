@@ -5,7 +5,7 @@ use crate::auth::add_cookie;
 use crate::auth::{Credentials, KeyIn, Requirement, Scheme};
 #[cfg(feature = "base64")]
 use crate::base64;
-use crate::{Error, Message, Request, pct};
+use crate::{ClientError, Message, Request, pct};
 
 /// Applies the first requirement whose schemes all have credentials.
 ///
@@ -14,7 +14,7 @@ use crate::{Error, Message, Request, pct};
 ///
 /// # Errors
 /// A credential that a header or the query cannot carry: it holds a line break or another control character.
-pub fn apply_auth(req: &mut Request, creds: &Credentials, requirements: &[&[Requirement]]) -> Result<(), Error> {
+pub fn apply_auth(req: &mut Request, creds: &Credentials, requirements: &[&[Requirement]]) -> Result<(), ClientError> {
     let Some(alt) = requirements
         .iter()
         .filter(|alt| !alt.is_empty())
@@ -32,7 +32,7 @@ pub fn apply_auth(req: &mut Request, creds: &Credentials, requirements: &[&[Requ
                 let target = req.uri().to_string();
                 let sep = if target.contains('?') { '&' } else { '?' };
                 let target = format!("{target}{sep}{}={}", pct(p, false), pct(c, false));
-                *req.uri_mut() = http::Uri::try_from(target).map_err(|e| Error::Encode(e.to_string()))?;
+                *req.uri_mut() = http::Uri::try_from(target).map_err(|e| ClientError::Encode(e.to_string()))?;
             }
             #[cfg(feature = "cookie")]
             Scheme::ApiKey(_, KeyIn::Cookie, p) => add_cookie(req, &format!("{p}={c}"))?,

@@ -1,6 +1,6 @@
 //! Whether a body's `Content-Type` is one the description declares.
 
-use crate::Error;
+use crate::ClientError;
 
 /// Is the `Content-Type` of a body one that the operation declares? A body that states none passes. Many clients
 /// leave it out. The body then decodes or not on its own.
@@ -25,13 +25,13 @@ pub(crate) fn declared_media(actual: &str, declared: &[&str]) -> bool {
 /// stream because its body is not read yet.
 ///
 /// # Errors
-/// [`crate::Error::UnexpectedMedia`] with what was sent and what is declared.
+/// [`crate::ClientError::UnexpectedMedia`] with what was sent and what is declared.
 pub fn check_response_media(
     status: u16,
     content_type: &str,
     body: Option<&[u8]>,
     declared: &[&str],
-) -> Result<(), Error> {
+) -> Result<(), ClientError> {
     let fits = if content_type.trim().is_empty() {
         declared.len() == 1 || body.is_some_and(<[u8]>::is_empty)
     } else {
@@ -40,7 +40,7 @@ pub fn check_response_media(
     if fits {
         return Ok(());
     }
-    Err(Error::UnexpectedMedia {
+    Err(ClientError::UnexpectedMedia {
         status,
         content_type: content_type.to_owned(),
         declared: declared.join(", "),

@@ -1,7 +1,7 @@
 //! The operations of a generated API as the server routes and serves them. The wide event and the steps of serving
 //! both refer to them.
 
-use crate::{ErrorSchema, Requirement};
+use crate::{ProblemSchema, Requirement};
 
 /// An operation of a generated API.
 ///
@@ -25,7 +25,7 @@ pub trait Operation: Copy + Eq + std::fmt::Debug + Send + Sync + 'static {
 }
 
 /// The error schema the description declares for an operation (`None`: no route) and status.
-pub type ErrorSchemas = fn(Option<&str>, u16) -> Option<&'static ErrorSchema>;
+pub type ProblemSchemas = fn(Option<&str>, u16) -> Option<&'static ProblemSchema>;
 
 /// One operation as the server routes and serves it.
 #[derive(Debug)]
@@ -46,7 +46,7 @@ pub struct Op {
     /// every other body whole first.
     pub takes_body: bool,
     /// The description's error schemas.
-    pub errors: ErrorSchemas,
+    pub errors: ProblemSchemas,
     /// The media types of its success responses in the order of the description. `Accept` chooses among them (406
     /// when it takes none). Empty when they have no body.
     pub produces: &'static [&'static str],

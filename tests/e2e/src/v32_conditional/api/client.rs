@@ -45,7 +45,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn a(
         &self,
         p: impl runtime::IntoArg<'_, ops::a::Params>,
-    ) -> Result<ops::a::Response, runtime::Error> {
+    ) -> Result<ops::a::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/a");
         let query = Vec::new();
@@ -64,7 +64,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::a::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -73,7 +73,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn b(
         &self,
         p: impl runtime::IntoArg<'_, ops::b::Params>,
-    ) -> Result<ops::b::Response, runtime::Error> {
+    ) -> Result<ops::b::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/b");
         let query = Vec::new();
@@ -92,7 +92,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::b::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -101,7 +101,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn c(
         &self,
         p: impl runtime::IntoArg<'_, ops::c::Params>,
-    ) -> Result<ops::c::Response, runtime::Error> {
+    ) -> Result<ops::c::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/c");
         let query = Vec::new();
@@ -120,7 +120,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::c::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })

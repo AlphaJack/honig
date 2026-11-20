@@ -50,7 +50,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn list_products(
         &self,
         p: impl runtime::IntoArg<'_, ops::list_products::Params>,
-    ) -> Result<ops::list_products::Response, runtime::Error> {
+    ) -> Result<ops::list_products::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/products");
         let mut query: Vec<String> = Vec::new();
@@ -91,7 +91,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Next",
                         )
-                        .map_err(|e| runtime::Error::Decode {
+                        .map_err(|e| runtime::ClientError::Decode {
                             status,
                             message: e.to_string(),
                             body: body.clone(),
@@ -117,7 +117,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn create_product(
         &self,
         p: impl runtime::IntoArg<'_, ops::create_product::Params>,
-    ) -> Result<ops::create_product::Response, runtime::Error> {
+    ) -> Result<ops::create_product::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/products");
         let query = Vec::new();
@@ -163,7 +163,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn get_product(
         &self,
         p: impl runtime::IntoArg<'_, ops::get_product::Params>,
-    ) -> Result<ops::get_product::Response, runtime::Error> {
+    ) -> Result<ops::get_product::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let mut path = String::from("/products/");
         path.push_str(
@@ -199,7 +199,7 @@ impl<T: runtime::Transport> Client<T> {
                     .map(ops::get_product::Response::NotFound)
             }
             _ => {
-                Err(runtime::Error::UnexpectedStatus {
+                Err(runtime::ClientError::UnexpectedStatus {
                     status: head.status,
                     body,
                 })

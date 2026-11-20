@@ -123,7 +123,7 @@ pub fn credentials(request: &impl runtime::Secured) -> Vec<Credential<'_>> {
 const fn error_schema(
     _operation: Option<&str>,
     _status: u16,
-) -> Option<&'static runtime::ErrorSchema> {
+) -> Option<&'static runtime::ProblemSchema> {
     None
 }
 static METHODS: &[&[(&str, (Op, Operation))]] = &[
@@ -213,7 +213,7 @@ impl<A: Api> runtime::Operations for Routes<A> {
                 runtime::allowed_methods(methods),
             ))
     }
-    fn errors(&self) -> runtime::ErrorSchemas {
+    fn errors(&self) -> runtime::ProblemSchemas {
         error_schema
     }
     fn call<'r>(
@@ -370,7 +370,7 @@ fn get_item_params(
 }
 fn get_item_encode(
     resp: ops::get_item::Response,
-) -> Result<runtime::Response, runtime::Error> {
+) -> Result<runtime::Response, runtime::ClientError> {
     Ok(
         match resp {
             ops::get_item::Response::Success { status, body } => {
@@ -570,7 +570,7 @@ async fn cookies<A: Api>(
 }
 fn cookies_encode(
     resp: ops::cookies::Response,
-) -> Result<runtime::Response, runtime::Error> {
+) -> Result<runtime::Response, runtime::ClientError> {
     let ops::cookies::Response::NoContent { set_cookie } = resp;
     Ok({
         let mut r = runtime::new_response(204);

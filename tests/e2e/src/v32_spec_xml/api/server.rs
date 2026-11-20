@@ -164,7 +164,7 @@ pub type RequestEvent = runtime::RequestEvent<Operation>;
 const fn error_schema(
     _operation: Option<&str>,
     _status: u16,
-) -> Option<&'static runtime::ErrorSchema> {
+) -> Option<&'static runtime::ProblemSchema> {
     None
 }
 static METHODS: &[&[(&str, (Op, Operation))]] = &[
@@ -276,7 +276,7 @@ impl<A: Api> runtime::Operations for Routes<A> {
                 runtime::allowed_methods(methods),
             ))
     }
-    fn errors(&self) -> runtime::ErrorSchemas {
+    fn errors(&self) -> runtime::ProblemSchemas {
         error_schema
     }
     fn call<'r>(
@@ -373,7 +373,7 @@ async fn no_xml_object<A: Api>(
 }
 fn no_xml_object_encode(
     resp: ops::no_xml_object::Response,
-) -> Result<runtime::Response, runtime::Error> {
+) -> Result<runtime::Response, runtime::ClientError> {
     let ops::no_xml_object::Response::Ok(body) = resp;
     Ok(runtime::body_response(200, "application/xml", runtime::xml_encode(&body)?))
 }
@@ -404,7 +404,7 @@ async fn no_xml_object_array<A: Api>(
 }
 fn no_xml_object_array_encode(
     resp: ops::no_xml_object_array::Response,
-) -> Result<runtime::Response, runtime::Error> {
+) -> Result<runtime::Response, runtime::ClientError> {
     let ops::no_xml_object_array::Response::Ok(body) = resp;
     Ok(runtime::body_response(200, "application/xml", runtime::xml_encode(&body)?))
 }
@@ -480,7 +480,7 @@ async fn xml_array_item_names<A: Api>(
 }
 fn xml_array_item_names_encode(
     resp: ops::xml_array_item_names::Response,
-) -> Result<runtime::Response, runtime::Error> {
+) -> Result<runtime::Response, runtime::ClientError> {
     let ops::xml_array_item_names::Response::Ok(body) = resp;
     Ok(runtime::body_response(200, "application/xml", runtime::xml_encode(&body)?))
 }
@@ -511,7 +511,7 @@ async fn xml_array_name_without_wrapper<A: Api>(
 }
 fn xml_array_name_without_wrapper_encode(
     resp: ops::xml_array_name_without_wrapper::Response,
-) -> Result<runtime::Response, runtime::Error> {
+) -> Result<runtime::Response, runtime::ClientError> {
     let ops::xml_array_name_without_wrapper::Response::Ok(body) = resp;
     Ok(runtime::body_response(200, "application/xml", runtime::xml_encode(&body)?))
 }
@@ -541,7 +541,7 @@ async fn xml_array_wrapped<A: Api>(
 }
 fn xml_array_wrapped_encode(
     resp: ops::xml_array_wrapped::Response,
-) -> Result<runtime::Response, runtime::Error> {
+) -> Result<runtime::Response, runtime::ClientError> {
     let ops::xml_array_wrapped::Response::Ok(body) = resp;
     Ok(runtime::body_response(200, "application/xml", runtime::xml_encode(&body)?))
 }
@@ -572,7 +572,7 @@ async fn xml_array_wrapped_item_names<A: Api>(
 }
 fn xml_array_wrapped_item_names_encode(
     resp: ops::xml_array_wrapped_item_names::Response,
-) -> Result<runtime::Response, runtime::Error> {
+) -> Result<runtime::Response, runtime::ClientError> {
     let ops::xml_array_wrapped_item_names::Response::Ok(body) = resp;
     Ok(runtime::body_response(200, "application/xml", runtime::xml_encode(&body)?))
 }
@@ -603,7 +603,7 @@ async fn xml_array_wrapped_renamed<A: Api>(
 }
 fn xml_array_wrapped_renamed_encode(
     resp: ops::xml_array_wrapped_renamed::Response,
-) -> Result<runtime::Response, runtime::Error> {
+) -> Result<runtime::Response, runtime::ClientError> {
     let ops::xml_array_wrapped_renamed::Response::Ok(body) = resp;
     Ok(runtime::body_response(200, "application/xml", runtime::xml_encode(&body)?))
 }
@@ -665,7 +665,7 @@ async fn referenced_element_with_cdata<A: Api>(
 }
 fn referenced_element_with_cdata_encode(
     resp: ops::referenced_element_with_cdata::Response,
-) -> Result<runtime::Response, runtime::Error> {
+) -> Result<runtime::Response, runtime::ClientError> {
     let ops::referenced_element_with_cdata::Response::Ok(body) = resp;
     Ok(runtime::body_response(200, "application/xml", runtime::xml_encode(&body)?))
 }
@@ -755,7 +755,7 @@ async fn xml_with_null_values<A: Api>(
 }
 fn xml_with_null_values_encode(
     resp: ops::xml_with_null_values::Response,
-) -> Result<runtime::Response, runtime::Error> {
+) -> Result<runtime::Response, runtime::ClientError> {
     let ops::xml_with_null_values::Response::Ok(body) = resp;
     Ok(runtime::body_response(200, "application/xml", runtime::xml_encode(&body)?))
 }

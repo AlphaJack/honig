@@ -6,11 +6,11 @@ use serde_json::{Map, Value};
 use super::{Enc, Style, pct, pct_path};
 use crate::auth::add_cookie;
 use crate::scalar::{scalar, scalar_text};
-use crate::{Error, Request, to_value};
+use crate::{ClientError, Request, to_value};
 
 /// Encodes a path parameter. Returns the percent-encoded segment text.
 /// Errors: the value does not serialize.
-pub fn encode_path<T: Serialize + ?Sized>(name: &str, v: &T, enc: Enc) -> Result<String, Error> {
+pub fn encode_path<T: Serialize + ?Sized>(name: &str, v: &T, enc: Enc) -> Result<String, ClientError> {
     let Some(s) = scalar_text(v) else {
         let value = to_value(v)?;
         return Ok(encode_path_value(name, &value, enc, &object_order(&value, v)));
@@ -31,7 +31,7 @@ pub fn encode_path<T: Serialize + ?Sized>(name: &str, v: &T, enc: Enc) -> Result
 
 /// Encodes a header value (style `simple`). `None` for null (absent).
 /// Errors: the value does not serialize.
-pub fn encode_header<T: Serialize + ?Sized>(v: &T, explode: bool) -> Result<Option<String>, Error> {
+pub fn encode_header<T: Serialize + ?Sized>(v: &T, explode: bool) -> Result<Option<String>, ClientError> {
     match scalar_text(v) {
         Some(s) => Ok(Some(s)),
         None => {
@@ -43,7 +43,12 @@ pub fn encode_header<T: Serialize + ?Sized>(v: &T, explode: bool) -> Result<Opti
 
 /// Appends encoded `key=value` pairs for a query parameter. Nulls are skipped.
 /// Errors: the value does not serialize.
-pub fn encode_query<T: Serialize + ?Sized>(out: &mut Vec<String>, name: &str, v: &T, enc: Enc) -> Result<(), Error> {
+pub fn encode_query<T: Serialize + ?Sized>(
+    out: &mut Vec<String>,
+    name: &str,
+    v: &T,
+    enc: Enc,
+) -> Result<(), ClientError> {
     match scalar_text(v) {
         Some(s) => out.push(format!("{}={}", pct(name, false), pct(&s, enc.allow_reserved))),
         None => {
@@ -56,7 +61,12 @@ pub fn encode_query<T: Serialize + ?Sized>(out: &mut Vec<String>, name: &str, v:
 
 /// Appends a `name=value` cookie pair. `Style::Cookie` sends the value as is.
 /// Errors: the value does not serialize.
-pub fn encode_cookie<T: Serialize + ?Sized>(out: &mut Vec<String>, name: &str, v: &T, enc: Enc) -> Result<(), Error> {
+pub fn encode_cookie<T: Serialize + ?Sized>(
+    out: &mut Vec<String>,
+    name: &str,
+    v: &T,
+    enc: Enc,
+) -> Result<(), ClientError> {
     match scalar_text(v) {
         Some(s) if enc.style == Style::Cookie => out.push(format!("{name}={s}")),
         Some(s) => out.push(format!("{name}={}", pct(&s, false))),
@@ -258,7 +268,7 @@ fn encode_cookie_value(out: &mut Vec<String>, name: &str, v: &Value, enc: Enc, o
 ///
 /// # Errors
 /// A pair holds a line break or another control character.
-pub fn set_cookies(req: &mut Request, pairs: Vec<String>) -> Result<(), Error> {
+pub fn set_cookies(req: &mut Request, pairs: Vec<String>) -> Result<(), ClientError> {
     let mut joined = String::new();
     for p in pairs {
         if !joined.is_empty() {

@@ -75,7 +75,7 @@ pub type RequestEvent = runtime::RequestEvent<Operation>;
 const fn error_schema(
     _operation: Option<&str>,
     _status: u16,
-) -> Option<&'static runtime::ErrorSchema> {
+) -> Option<&'static runtime::ProblemSchema> {
     None
 }
 static METHODS: &[&[(&str, (Op, Operation))]] = &[
@@ -137,7 +137,7 @@ impl<A: Api> runtime::Operations for Routes<A> {
                 runtime::allowed_methods(methods),
             ))
     }
-    fn errors(&self) -> runtime::ErrorSchemas {
+    fn errors(&self) -> runtime::ProblemSchemas {
         error_schema
     }
     fn call<'r>(
@@ -246,7 +246,7 @@ async fn archive<A: Api>(
 }
 fn archive_encode(
     resp: ops::archive::Response,
-) -> Result<runtime::Response, runtime::Error> {
+) -> Result<runtime::Response, runtime::ClientError> {
     Ok(
         match resp {
             ops::archive::Response::NoContent => runtime::new_response(204),
@@ -286,7 +286,7 @@ async fn unarchive<A: Api>(
 }
 fn unarchive_encode(
     resp: ops::unarchive::Response,
-) -> Result<runtime::Response, runtime::Error> {
+) -> Result<runtime::Response, runtime::ClientError> {
     Ok(
         match resp {
             ops::unarchive::Response::NoContent => runtime::new_response(204),
@@ -335,7 +335,7 @@ fn add_note_params(
 }
 fn add_note_encode(
     resp: ops::add_note::Response,
-) -> Result<runtime::Response, runtime::Error> {
+) -> Result<runtime::Response, runtime::ClientError> {
     let ops::add_note::Response::Created { body, x_tags } = resp;
     Ok({
         let mut r = runtime::new_response(201);
@@ -415,7 +415,7 @@ fn find_box_params(
 }
 fn find_box_encode(
     resp: ops::find_box::Response,
-) -> Result<runtime::Response, runtime::Error> {
+) -> Result<runtime::Response, runtime::ClientError> {
     let ops::find_box::Response::Ok(body) = resp;
     Ok(runtime::body_response(200, "application/json", runtime::json_encode(&body)?))
 }

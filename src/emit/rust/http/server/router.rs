@@ -384,7 +384,7 @@ pub(crate) fn router(api: &Api) -> TokenStream {
                 #route
             }
 
-            fn errors(&self) -> runtime::ErrorSchemas {
+            fn errors(&self) -> runtime::ProblemSchemas {
                 error_schema
             }
 

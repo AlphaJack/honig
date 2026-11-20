@@ -4,18 +4,24 @@
 use std::future::Future;
 
 use crate::transport::Pending;
-use crate::{Body, ByteStream, Error, MaybeSend, MaybeSync, Request, Response};
+use crate::{Body, ByteStream, ClientError, MaybeSend, MaybeSync, Request, Response};
 
 /// A client that sends a built `reqwest` request: `reqwest::Client` or a `reqwest-middleware` stack.
 pub trait Execute: Clone + MaybeSend + MaybeSync + 'static {
     /// Sends `req` and returns once the response headers are in.
-    fn execute(&self, req: reqwest::Request) -> impl Future<Output = Result<reqwest::Response, Error>> + MaybeSend;
+    fn execute(
+        &self,
+        req: reqwest::Request,
+    ) -> impl Future<Output = Result<reqwest::Response, ClientError>> + MaybeSend;
 }
 
 impl Execute for reqwest::Client {
-    fn execute(&self, req: reqwest::Request) -> impl Future<Output = Result<reqwest::Response, Error>> + MaybeSend {
+    fn execute(
+        &self,
+        req: reqwest::Request,
+    ) -> impl Future<Output = Result<reqwest::Response, ClientError>> + MaybeSend {
         let sent = Self::execute(self, req);
-        async move { sent.await.map_err(Error::transport) }
+        async move { sent.await.map_err(ClientError::transport) }
     }
 }
 
@@ -54,14 +60,14 @@ use wasm as imp;
 
 impl<C: Execute> ReqwestTransport<C> {
     /// Sends `req` and returns the response once its head is in.
-    fn start(&self, req: Request) -> impl Future<Output = Result<reqwest::Response, Error>> + MaybeSend + use<C> {
+    fn start(&self, req: Request) -> impl Future<Output = Result<reqwest::Response, ClientError>> + MaybeSend + use<C> {
         let client = self.client.clone();
         let target = crate::target(&self.base_url, req.uri());
         async move {
             let (mut head, body) = req.into_parts();
-            head.uri = http::Uri::try_from(target).map_err(Error::transport)?;
+            head.uri = http::Uri::try_from(target).map_err(ClientError::transport)?;
             let req = http::Request::from_parts(head, imp::body(body).await?);
-            client.execute(reqwest::Request::try_from(req).map_err(Error::transport)?).await
+            client.execute(reqwest::Request::try_from(req).map_err(ClientError::transport)?).await
         }
     }
 }
@@ -76,10 +82,10 @@ fn response(resp: &reqwest::Response, body: Body) -> Response {
 
 impl<C: Execute> tower_service::Service<Request> for ReqwestTransport<C> {
     type Response = Response;
-    type Error = Error;
-    type Future = Pending<'static, Result<Response, Error>>;
+    type Error = ClientError;
+    type Future = Pending<'static, Result<Response, ClientError>>;
 
-    fn poll_ready(&mut self, _: &mut std::task::Context<'_>) -> std::task::Poll<Result<(), Error>> {
+    fn poll_ready(&mut self, _: &mut std::task::Context<'_>) -> std::task::Poll<Result<(), ClientError>> {
         std::task::Poll::Ready(Ok(()))
     }
 

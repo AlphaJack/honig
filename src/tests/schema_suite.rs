@@ -256,7 +256,7 @@ fn decode_all(cases: &[Case], decoded: &[usize]) -> Vec<(String, Option<String>)
 /// prints `decoded<TAB>ok` or `decoded<TAB>err<TAB><error>` per instance, in order. `ARMS` is one arm per case.
 const DECODER: &str = r#"pub mod api;
 
-fn decode(case: u64, data: serde_json::Value) -> Result<(), api::runtime::Error> {
+fn decode(case: u64, data: serde_json::Value) -> Result<(), api::runtime::ClientError> {
     let body = serde_json::to_vec(&data).unwrap();
     match case {
 ARMS        _ => unreachable!("no case {case}"),
@@ -270,7 +270,7 @@ fn decode_every_instance() {
     for (case, data) in instances {
         match decode(case, data) {
             Ok(()) => println!("decoded\tok"),
-            Err(api::runtime::Error::Decode { message, .. }) => println!("decoded\terr\t{}", message.replace(['\n', '\t'], " ")),
+            Err(api::runtime::ClientError::Decode { message, .. }) => println!("decoded\terr\t{}", message.replace(['\n', '\t'], " ")),
             Err(e) => println!("decoded\terr\t{}", e.to_string().replace(['\n', '\t'], " ")),
         }
     }

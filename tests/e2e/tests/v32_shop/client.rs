@@ -24,7 +24,9 @@ fn header<'r>(req: &'r api::Request, name: &str) -> Option<&'r str> {
 
 // ANCHOR: media
 /// One product as XML from an operation that answers in JSON unless asked otherwise.
-async fn product_as_xml(client: &api::Client<impl api::Transport>) -> Result<ops::get_product::Response, api::Error> {
+async fn product_as_xml(
+    client: &api::Client<impl api::Transport>,
+) -> Result<ops::get_product::Response, api::ClientError> {
     let params = ops::get_product::Params { media: ops::get_product::Media::Xml, ..ops::get_product::Params::new(7) };
     client.get_product(params).await
 }
@@ -36,7 +38,7 @@ async fn the_client_asks_for_the_media_type_it_picks() {
         assert_eq!(header(&req, "Accept"), Some("application/xml, application/json;q=0.9"));
         std::future::ready(api::runtime::body_response(500, "text/plain", b"down".to_vec()))
     });
-    assert_matches!(product_as_xml(&client).await, Err(api::Error::UnexpectedStatus { .. }));
+    assert_matches!(product_as_xml(&client).await, Err(api::ClientError::UnexpectedStatus { .. }));
 }
 
 // ANCHOR: not-modified
@@ -44,10 +46,10 @@ async fn the_client_asks_for_the_media_type_it_picks() {
 async fn product_if_changed(
     client: &api::Client<impl api::Transport>,
     etag: &str,
-) -> Result<Option<ops::get_product::Response>, api::Error> {
+) -> Result<Option<ops::get_product::Response>, api::ClientError> {
     let params = ops::get_product::Params { if_none_match: Some(etag.to_owned()), ..ops::get_product::Params::new(7) };
     match client.get_product(params).await {
-        Err(api::Error::NotModified { .. }) => Ok(None),
+        Err(api::ClientError::NotModified { .. }) => Ok(None),
         other => other.map(Some),
     }
 }
@@ -66,7 +68,7 @@ async fn a_304_says_the_held_copy_is_current() {
 
 // ANCHOR: device-flow
 /// Signs in on another device. The user opens a page and types the code. Meanwhile this polls until they did.
-async fn sign_in(client: &mut api::Client<impl api::Transport>) -> Result<(), api::Error> {
+async fn sign_in(client: &mut api::Client<impl api::Transport>) -> Result<(), api::ClientError> {
     let code = client.device_start_o_auth2("shop-cli", &["read:products"]).await?;
     println!("Open {} and enter {}", code.verification_uri, code.user_code);
     loop {
@@ -104,7 +106,9 @@ async fn the_device_flow_polls_until_the_token_is_ready() {
 
 // ANCHOR: stream
 /// Every product event of the feed read as they arrive. The feed ends with `data: [DONE]`. That is not an event.
-async fn product_events(client: &api::Client<impl api::Transport>) -> Result<Vec<types::ProductEvent>, api::Error> {
+async fn product_events(
+    client: &api::Client<impl api::Transport>,
+) -> Result<Vec<types::ProductEvent>, api::ClientError> {
     let params = ops::stream_product_events::Params::default();
     let api::Streamed::Ok(mut stream) = client.stream_product_events_stream(params).await? else {
         return Ok(vec![]); // another declared status, decoded whole
@@ -113,7 +117,7 @@ async fn product_events(client: &api::Client<impl api::Transport>) -> Result<Vec
     while let Some(item) = stream.next().await {
         match item {
             Ok(event) => events.push(event),
-            Err(api::Error::Decode { body, .. }) if body.ends_with(b"[DONE]") => break,
+            Err(api::ClientError::Decode { body, .. }) if body.ends_with(b"[DONE]") => break,
             Err(error) => return Err(error),
         }
     }
@@ -178,7 +182,7 @@ fn feed(
 async fn follow(
     client: &api::Client<impl api::Transport>,
     mut on_event: impl FnMut(types::ProductEvent),
-) -> Result<(), api::Error> {
+) -> Result<(), api::ClientError> {
     let params = ops::stream_product_events::Params::default();
     let api::Streamed::Ok(stream) = client.stream_product_events_stream(params).await? else {
         return Ok(()); // another declared status: the feed is gone

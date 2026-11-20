@@ -45,7 +45,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn get_file(
         &self,
         p: impl runtime::IntoArg<'_, ops::get_file::Params>,
-    ) -> Result<ops::get_file::Response, runtime::Error> {
+    ) -> Result<ops::get_file::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let mut path = String::from("/files/");
         path.push_str(&runtime::encode_path("path", &p.path, runtime::Enc::SIMPLE)?);
@@ -82,7 +82,7 @@ impl<T: runtime::Transport> Client<T> {
                 runtime::json_decode(status, &body).map(ops::get_file::Response::Ok)
             }
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -91,7 +91,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn admin(
         &self,
         _p: impl runtime::IntoArg<'_, ops::admin::Params>,
-    ) -> Result<ops::admin::Response, runtime::Error> {
+    ) -> Result<ops::admin::Response, runtime::ClientError> {
         let path = String::from("/admin");
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
@@ -104,7 +104,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::admin::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })

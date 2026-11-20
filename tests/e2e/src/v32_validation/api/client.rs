@@ -45,7 +45,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn create_user(
         &self,
         p: impl runtime::IntoArg<'_, ops::create_user::Params>,
-    ) -> Result<ops::create_user::Response, runtime::Error> {
+    ) -> Result<ops::create_user::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/users");
         let mut query: Vec<String> = Vec::new();
@@ -97,7 +97,7 @@ impl<T: runtime::Transport> Client<T> {
                 })
             }
             _ => {
-                Err(runtime::Error::UnexpectedStatus {
+                Err(runtime::ClientError::UnexpectedStatus {
                     status: head.status,
                     body,
                 })
@@ -107,7 +107,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn create_shipment(
         &self,
         p: impl runtime::IntoArg<'_, ops::create_shipment::Params>,
-    ) -> Result<ops::create_shipment::Response, runtime::Error> {
+    ) -> Result<ops::create_shipment::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/shipments");
         let query = Vec::new();
@@ -137,7 +137,7 @@ impl<T: runtime::Transport> Client<T> {
                     .map(ops::create_shipment::Response::BadRequest)
             }
             _ => {
-                Err(runtime::Error::UnexpectedStatus {
+                Err(runtime::ClientError::UnexpectedStatus {
                     status: head.status,
                     body,
                 })
@@ -147,7 +147,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn login(
         &self,
         p: impl runtime::IntoArg<'_, ops::login::Params>,
-    ) -> Result<ops::login::Response, runtime::Error> {
+    ) -> Result<ops::login::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/logins");
         let query = Vec::new();
@@ -175,7 +175,7 @@ impl<T: runtime::Transport> Client<T> {
                 runtime::json_decode(status, &body).map(ops::login::Response::Created)
             }
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -184,7 +184,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn add_member(
         &self,
         p: impl runtime::IntoArg<'_, ops::add_member::Params>,
-    ) -> Result<ops::add_member::Response, runtime::Error> {
+    ) -> Result<ops::add_member::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/members");
         let query = Vec::new();
@@ -214,7 +214,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 201 {
             Ok(ops::add_member::Response::Created)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -223,7 +223,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn add_closed(
         &self,
         p: impl runtime::IntoArg<'_, ops::add_closed::Params>,
-    ) -> Result<ops::add_closed::Response, runtime::Error> {
+    ) -> Result<ops::add_closed::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/closed");
         let query = Vec::new();
@@ -260,7 +260,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 201 {
             Ok(ops::add_closed::Response::Created)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -269,7 +269,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn add_badge(
         &self,
         p: impl runtime::IntoArg<'_, ops::add_badge::Params>,
-    ) -> Result<ops::add_badge::Response, runtime::Error> {
+    ) -> Result<ops::add_badge::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/badges");
         let query = Vec::new();
@@ -301,7 +301,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 201 {
             Ok(ops::add_badge::Response::Created)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })

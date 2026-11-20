@@ -45,7 +45,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn get_item(
         &self,
         p: impl runtime::IntoArg<'_, ops::get_item::Params>,
-    ) -> Result<ops::get_item::Response, runtime::Error> {
+    ) -> Result<ops::get_item::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let mut path = String::from("/items/");
         path.push_str(&runtime::encode_path("id", &p.id, runtime::Enc::SIMPLE)?);
@@ -76,7 +76,7 @@ impl<T: runtime::Transport> Client<T> {
                 runtime::json_decode(status, &body).map(ops::get_item::Response::Ok)
             }
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -85,7 +85,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn put_blob(
         &self,
         p: impl runtime::IntoArg<'_, ops::put_blob::Params>,
-    ) -> Result<ops::put_blob::Response, runtime::Error> {
+    ) -> Result<ops::put_blob::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p).into_owned();
         let mut path = String::from("/items/");
         path.push_str(&runtime::encode_path("id", &p.id, runtime::Enc::SIMPLE)?);
@@ -111,7 +111,7 @@ impl<T: runtime::Transport> Client<T> {
                 Ok(ops::put_blob::Response::Ok(runtime::Blob::from(Vec::from(body))))
             }
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -122,7 +122,7 @@ impl<T: runtime::Transport> Client<T> {
         p: impl runtime::IntoArg<'_, ops::put_blob::Params>,
     ) -> Result<
         runtime::Streamed<runtime::Response, ops::put_blob::Response>,
-        runtime::Error,
+        runtime::ClientError,
     > {
         let p = runtime::IntoArg::into_arg(p).into_owned();
         let mut path = String::from("/items/");
@@ -149,10 +149,10 @@ impl<T: runtime::Transport> Client<T> {
             head,
             runtime::Body::new(body.collect().await?),
         );
-        let other: Result<ops::put_blob::Response, runtime::Error> = async move {
+        let other: Result<ops::put_blob::Response, runtime::ClientError> = async move {
             let (head, body) = resp.into_parts();
             let (body, _) = body.into_parts();
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })

@@ -7,7 +7,7 @@ use serde_json::Value;
 
 use crate::header::{header_text, header_value};
 use crate::scalar::scalar;
-use crate::{Body, Error, to_value};
+use crate::{Body, ClientError, to_value};
 
 /// An HTTP request. Its target is the path and query, or a whole URL for a webhook or a token endpoint.
 pub type Request = http::Request<Body>;
@@ -27,7 +27,7 @@ pub trait Message {
     ///
     /// # Errors
     /// The name is not a header name or the value holds a line break or another control character.
-    fn set_header(&mut self, name: &str, value: impl Into<Cow<'static, str>>) -> Result<(), Error>;
+    fn set_header(&mut self, name: &str, value: impl Into<Cow<'static, str>>) -> Result<(), ClientError>;
 
     /// Sets the body and its `Content-Type`.
     fn set_body(&mut self, content_type: impl Into<Cow<'static, str>>, body: impl Into<Body>);
@@ -73,11 +73,11 @@ impl<M: Parts> Message for M {
         content_type_of(Parts::headers(self))
     }
 
-    fn set_header(&mut self, name: &str, value: impl Into<Cow<'static, str>>) -> Result<(), Error> {
+    fn set_header(&mut self, name: &str, value: impl Into<Cow<'static, str>>) -> Result<(), ClientError> {
         let key = http::HeaderName::from_bytes(name.as_bytes())
-            .map_err(|e| Error::Encode(format!("header name `{name}`: {e}")))?;
-        let value =
-            header_value(value.into()).ok_or_else(|| Error::Encode(format!("header `{name}`: not a valid value")))?;
+            .map_err(|e| ClientError::Encode(format!("header name `{name}`: {e}")))?;
+        let value = header_value(value.into())
+            .ok_or_else(|| ClientError::Encode(format!("header `{name}`: not a valid value")))?;
         Parts::headers_mut(self).append(key, value);
         Ok(())
     }
@@ -94,13 +94,13 @@ impl<M: Parts> Message for M {
 ///
 /// # Errors
 /// The path and query do not make a request target.
-pub fn new_request(method: &'static str, path: String, query: Vec<String>) -> Result<Request, Error> {
+pub fn new_request(method: &'static str, path: String, query: Vec<String>) -> Result<Request, ClientError> {
     let mut path = path;
     for (i, q) in query.into_iter().enumerate() {
         path.push(if i == 0 { '?' } else { '&' });
         path.push_str(&q);
     }
-    let bad = |e: &dyn std::fmt::Display| Error::Encode(format!("request target `{path}`: {e}"));
+    let bad = |e: &dyn std::fmt::Display| ClientError::Encode(format!("request target `{path}`: {e}"));
     let uri = http::Uri::try_from(path.as_str()).map_err(|e| bad(&e))?;
     let method = http::Method::from_bytes(method.as_bytes()).map_err(|e| bad(&e))?;
     let mut req = Request::new(Body::default());
@@ -136,8 +136,8 @@ pub fn body_response(status: u16, content_type: impl Into<Cow<'static, str>>, bo
 /// Returns whether the body of `resp` is one of the `declared` media types. No `Content-Type` fits only an empty body.
 ///
 /// # Errors
-/// [`Error::UnexpectedMedia`] with what was sent and what is declared.
-pub fn check_body_media(resp: &Response, declared: &[&str]) -> Result<(), Error> {
+/// [`ClientError::UnexpectedMedia`] with what was sent and what is declared.
+pub fn check_body_media(resp: &Response, declared: &[&str]) -> Result<(), ClientError> {
     let body = Some(resp.body().bytes());
     crate::media::check_response_media(resp.status().as_u16(), resp.content_type(), body, declared)
 }
@@ -196,7 +196,7 @@ pub fn header_lines(headers: &http::HeaderMap, name: &str, array: bool) -> Optio
 
 /// Returns a `Set-Cookie` value as header lines: one per array item.
 /// Errors: the value does not serialize.
-pub fn encode_header_lines<T: Serialize + ?Sized>(v: &T) -> Result<Vec<String>, Error> {
+pub fn encode_header_lines<T: Serialize + ?Sized>(v: &T) -> Result<Vec<String>, ClientError> {
     Ok(match to_value(v)? {
         Value::Null => vec![],
         Value::Array(a) => a.iter().filter(|x| !x.is_null()).map(scalar).collect(),
@@ -236,7 +236,7 @@ pub fn target(base_url: &str, uri: &http::Uri) -> String {
 #[cfg(test)]
 mod tests {
     use super::{body_response, check_body_media};
-    use crate::Error;
+    use crate::ClientError;
 
     #[test]
     fn a_body_of_an_undeclared_media_type_is_an_error() {
@@ -244,7 +244,7 @@ mod tests {
         assert!(check_body_media(&resp, &["text/html", "application/json"]).is_ok());
         let err = check_body_media(&resp, &["application/json"]).unwrap_err();
         assert!(
-            matches!(&err, Error::UnexpectedMedia { status: 200, content_type, declared, .. }
+            matches!(&err, ClientError::UnexpectedMedia { status: 200, content_type, declared, .. }
                 if content_type == "text/html" && declared == "application/json"),
             "{err:?}"
         );

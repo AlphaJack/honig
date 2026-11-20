@@ -91,7 +91,7 @@ pub type RequestEvent = runtime::RequestEvent<Operation>;
 const fn error_schema(
     _operation: Option<&str>,
     _status: u16,
-) -> Option<&'static runtime::ErrorSchema> {
+) -> Option<&'static runtime::ProblemSchema> {
     None
 }
 static METHODS: &[&[(&str, (Op, Operation))]] = &[
@@ -168,7 +168,7 @@ impl<A: Api> runtime::Operations for Routes<A> {
                 runtime::allowed_methods(methods),
             ))
     }
-    fn errors(&self) -> runtime::ErrorSchemas {
+    fn errors(&self) -> runtime::ProblemSchemas {
         error_schema
     }
     fn call<'r>(
@@ -251,7 +251,7 @@ async fn tile_stream<A: Api>(
 }
 fn tile_stream_encode(
     resp: ops::tile_stream::Response,
-) -> Result<runtime::Response, runtime::Error> {
+) -> Result<runtime::Response, runtime::ClientError> {
     let ops::tile_stream::Response::Ok(body) = resp;
     Ok({
         let mut r = runtime::new_response(200);
@@ -285,7 +285,7 @@ async fn tile_lines<A: Api>(
 }
 fn tile_lines_encode(
     resp: ops::tile_lines::Response,
-) -> Result<runtime::Response, runtime::Error> {
+) -> Result<runtime::Response, runtime::ClientError> {
     let ops::tile_lines::Response::Ok(body) = resp;
     Ok({
         let mut r = runtime::new_response(200);
@@ -324,7 +324,7 @@ async fn tile_updates<A: Api>(
 }
 fn tile_updates_encode(
     resp: ops::tile_updates::Response,
-) -> Result<runtime::Response, runtime::Error> {
+) -> Result<runtime::Response, runtime::ClientError> {
     let ops::tile_updates::Response::Ok(body) = resp;
     Ok({
         let mut r = runtime::new_response(200);
@@ -358,7 +358,7 @@ async fn chat_stream<A: Api>(
 }
 fn chat_stream_encode(
     resp: ops::chat_stream::Response,
-) -> Result<runtime::Response, runtime::Error> {
+) -> Result<runtime::Response, runtime::ClientError> {
     let ops::chat_stream::Response::Ok(body) = resp;
     Ok({
         let mut r = runtime::new_response(200);
@@ -437,7 +437,7 @@ async fn tile_top<A: Api>(
 }
 fn tile_top_encode(
     resp: ops::tile_top::Response,
-) -> Result<runtime::Response, runtime::Error> {
+) -> Result<runtime::Response, runtime::ClientError> {
     let ops::tile_top::Response::Ok(body) = resp;
     Ok({
         let mut r = runtime::new_response(200);

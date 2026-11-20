@@ -14,13 +14,13 @@ use sonic as imp;
 use serde::Serialize;
 use serde_json::{Map, Value};
 
-use crate::Error;
+use crate::ClientError;
 
 pub(crate) use imp::{from_slice, to_writer};
 
-/// Converts a value to JSON. Failures become [`Error::Encode`].
-pub fn to_value<T: Serialize + ?Sized>(v: &T) -> Result<Value, Error> {
-    serde_json::to_value(crate::finite::Finite(v)).map_err(|e| Error::Encode(e.to_string()))
+/// Converts a value to JSON. Failures become [`ClientError::Encode`].
+pub fn to_value<T: Serialize + ?Sized>(v: &T) -> Result<Value, ClientError> {
+    serde_json::to_value(crate::finite::Finite(v)).map_err(|e| ClientError::Encode(e.to_string()))
 }
 
 /// Adds `k` to an object. A key that it already has gets one more value and its values become a list.

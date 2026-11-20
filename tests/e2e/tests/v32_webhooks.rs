@@ -84,7 +84,7 @@ fn a_webhook_server_reads_every_request_as_its_own_webhook() {
     ));
     assert_matches!(
         got,
-        Err(api::Error::UnexpectedStatus { status: api::http::StatusCode::BAD_REQUEST, .. }),
+        Err(api::ClientError::UnexpectedStatus { status: api::http::StatusCode::BAD_REQUEST, .. }),
         "{got:?}"
     );
     assert!(receiver.products.lock().unwrap().is_empty() && receiver.events.lock().unwrap().is_empty());

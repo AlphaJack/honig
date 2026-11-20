@@ -45,7 +45,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn plan(
         &self,
         p: impl runtime::IntoArg<'_, ops::plan::Params>,
-    ) -> Result<ops::plan::Response, runtime::Error> {
+    ) -> Result<ops::plan::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/route");
         let query = Vec::new();
@@ -73,7 +73,7 @@ impl<T: runtime::Transport> Client<T> {
                 runtime::json_decode(status, &body).map(ops::plan::Response::Ok)
             }
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })

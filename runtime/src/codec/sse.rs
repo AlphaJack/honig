@@ -8,11 +8,11 @@ use serde_json::{Map, Value};
 
 use crate::json::to_value;
 use crate::text::decode_err;
-use crate::{Coerce, Error};
+use crate::{ClientError, Coerce};
 
 /// Returns server-Sent Events. The fields of each item (`event`, `data`, `id`, `retry`, ...)
 /// become SSE fields. Non-string values are written as JSON.
-pub fn sse_encode<T: Serialize>(items: &[T]) -> Result<Vec<u8>, Error> {
+pub fn sse_encode<T: Serialize>(items: &[T]) -> Result<Vec<u8>, ClientError> {
     let mut out = vec![];
     for i in items {
         sse_write(&mut out, i)?;
@@ -21,7 +21,7 @@ pub fn sse_encode<T: Serialize>(items: &[T]) -> Result<Vec<u8>, Error> {
 }
 
 /// Appends one item to `out` as an event. A stream writes each item into the piece that it sends: no buffer per item.
-pub(crate) fn sse_write<T: Serialize>(out: &mut Vec<u8>, item: &T) -> Result<(), Error> {
+pub(crate) fn sse_write<T: Serialize>(out: &mut Vec<u8>, item: &T) -> Result<(), ClientError> {
     // A struct decides by the fields that it declares. The fields that this
     // value sets do not count. `{id, data}` with `id: None` is still an event.
     // So `sse_item` reads it back the same way. Other values decide by their keys.
@@ -30,7 +30,7 @@ pub(crate) fn sse_write<T: Serialize>(out: &mut Vec<u8>, item: &T) -> Result<(),
     // would be a map, and its keys would come out sorted and not in the order that JSON Lines writes them.
     if declared.is_some_and(|d| !d.is_event()) {
         out.extend_from_slice(b"data: ");
-        crate::json::to_writer(out, item).map_err(Error::Encode)?;
+        crate::json::to_writer(out, item).map_err(ClientError::Encode)?;
         out.extend_from_slice(b"\n\n");
         return Ok(());
     }
@@ -73,9 +73,9 @@ pub(crate) fn push_text(out: &mut Vec<u8>, pieces: &[&str]) {
 
 /// Writes one field. A `data` value goes line by line. Any other value goes on its one line.
 /// Errors: an `id` or `event` with a line break or an `id` with a NUL. No parser reads these back as written.
-pub(crate) fn push_field(out: &mut Vec<u8>, key: &str, value: &str) -> Result<(), Error> {
+pub(crate) fn push_field(out: &mut Vec<u8>, key: &str, value: &str) -> Result<(), ClientError> {
     if key != "data" && (value.contains(['\r', '\n']) || (key == "id" && value.contains('\0'))) {
-        return Err(Error::Encode(format!("an event's `{key}` cannot hold a line break or a NUL: {value:?}")));
+        return Err(ClientError::Encode(format!("an event's `{key}` cannot hold a line break or a NUL: {value:?}")));
     }
     for line in text_lines(value) {
         push_text(out, &[key, ": ", line, "\n"]);
@@ -100,7 +100,7 @@ pub(crate) fn text_lines(text: &str) -> impl Iterator<Item = &str> {
 
 /// Decodes a `text/event-stream` body into one item per event. The body may end inside an event with no blank line
 /// after it. That event is dropped as WHATWG says. The stream broke off before it was whole.
-pub fn sse_decode<T: DeserializeOwned>(status: u16, body: &[u8]) -> Result<Vec<T>, Error> {
+pub fn sse_decode<T: DeserializeOwned>(status: u16, body: &[u8]) -> Result<Vec<T>, ClientError> {
     let body = body.strip_prefix("\u{feff}".as_bytes()).unwrap_or(body);
     let mut items = vec![];
     let mut rest = body;
@@ -198,7 +198,7 @@ fn sse_lines(block: &str) -> impl Iterator<Item = &str> {
 /// Returns one event of a `text/event-stream` body parsed as WHATWG says (3.2 section 4.14.5).
 /// `data` lines join with `\n`. The last `event` and `id` win. `retry` is a
 /// number that is kept only when all digits. Other fields and comments are ignored.
-pub(crate) fn sse_item<T: DeserializeOwned>(status: u16, block: &str) -> Result<T, Error> {
+pub(crate) fn sse_item<T: DeserializeOwned>(status: u16, block: &str) -> Result<T, ClientError> {
     let mut o = Map::new();
     for line in sse_lines(block).filter(|l| !l.starts_with(':')) {
         let (k, v) = line.split_once(':').unwrap_or((line, ""));
@@ -559,9 +559,9 @@ mod tests {
         assert_eq!(String::from_utf8_lossy(&body), "data: a\ndata: b\ndata: c\ndata: \ndata: d\n\n");
         assert_eq!(events(&String::from_utf8_lossy(&body))[0].data, "a\nb\nc\n\nd");
         for bad in [serde_json::json!({"data": "x", "id": "a\rb"}), serde_json::json!({"data": "x", "event": "a\nb"})] {
-            assert_matches!(sse_encode(&[bad]), Err(Error::Encode(_)));
+            assert_matches!(sse_encode(&[bad]), Err(ClientError::Encode(_)));
         }
-        assert_matches!(sse_encode(&[serde_json::json!({"data": "x", "id": "a\0"})]), Err(Error::Encode(_)));
+        assert_matches!(sse_encode(&[serde_json::json!({"data": "x", "id": "a\0"})]), Err(ClientError::Encode(_)));
     }
 
     #[test]

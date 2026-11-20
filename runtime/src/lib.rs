@@ -75,7 +75,7 @@ pub use client::transport::{Transport, send, send_streaming};
 #[cfg(feature = "multipart")]
 pub use codec::PartTypes;
 pub use decimal::Decimal;
-pub use error::{ApiError, Error};
+pub use error::{ApiError, ClientError};
 pub use formatted::Formatted;
 pub use formatted::UuidText;
 pub use formatted::{
@@ -93,7 +93,7 @@ pub use links::Exchange;
 pub use message::Message;
 pub use message::{Request, Response};
 pub use nullable::Nullable;
-pub use reject::{ErrorField, ErrorSchema, Problem, ProblemError, Reason, Rejection};
+pub use reject::{Problem, ProblemError, ProblemMember, ProblemSchema, Reason, Rejection};
 #[cfg(feature = "server")]
 pub use server::conditional::CacheValidators;
 #[cfg(feature = "server")]
@@ -105,7 +105,7 @@ pub use server::operation::Operation;
 #[cfg(feature = "server")]
 pub use server::service::{
     Anonymous, ApiService, Authenticate, AuthenticateLayer, Authenticated, Authentication, ClientCertificateVerified,
-    DeclaredSecurity, Endpoint, Errors, MatchedOperation, NoSecurity, Secured, Server, read_body,
+    DeclaredSecurity, Endpoint, ErrorResponses, MatchedOperation, NoSecurity, Secured, Server, read_body,
 };
 pub use source::{Blob, Body, ByteStream, Sse};
 pub use stream::{Framing, ItemStream, Items, Streamed};

@@ -45,7 +45,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn put_stamp(
         &self,
         p: impl runtime::IntoArg<'_, ops::put_stamp::Params>,
-    ) -> Result<ops::put_stamp::Response, runtime::Error> {
+    ) -> Result<ops::put_stamp::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/stamps");
         let query = Vec::new();
@@ -64,7 +64,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::put_stamp::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })

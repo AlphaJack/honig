@@ -45,7 +45,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn list_products(
         &self,
         _p: impl runtime::IntoArg<'_, ops::list_products::Params>,
-    ) -> Result<ops::list_products::Response, runtime::Error> {
+    ) -> Result<ops::list_products::Response, runtime::ClientError> {
         let path = String::from("/products");
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
@@ -67,7 +67,7 @@ impl<T: runtime::Transport> Client<T> {
                 runtime::json_decode(status, &body).map(ops::list_products::Response::Ok)
             }
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -76,7 +76,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn tag_tree(
         &self,
         _p: impl runtime::IntoArg<'_, ops::tag_tree::Params>,
-    ) -> Result<ops::tag_tree::Response, runtime::Error> {
+    ) -> Result<ops::tag_tree::Response, runtime::ClientError> {
         let path = String::from("/tags");
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
@@ -98,7 +98,7 @@ impl<T: runtime::Transport> Client<T> {
                 runtime::json_decode(status, &body).map(ops::tag_tree::Response::Ok)
             }
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -107,7 +107,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn any_page(
         &self,
         _p: impl runtime::IntoArg<'_, ops::any_page::Params>,
-    ) -> Result<ops::any_page::Response, runtime::Error> {
+    ) -> Result<ops::any_page::Response, runtime::ClientError> {
         let path = String::from("/any");
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
@@ -129,7 +129,7 @@ impl<T: runtime::Transport> Client<T> {
                 runtime::json_decode(status, &body).map(ops::any_page::Response::Ok)
             }
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })

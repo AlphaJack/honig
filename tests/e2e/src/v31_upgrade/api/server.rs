@@ -53,7 +53,7 @@ pub type RequestEvent = runtime::RequestEvent<Operation>;
 const fn error_schema(
     _operation: Option<&str>,
     _status: u16,
-) -> Option<&'static runtime::ErrorSchema> {
+) -> Option<&'static runtime::ProblemSchema> {
     None
 }
 static METHODS: &[&[(&str, (Op, Operation))]] = &[
@@ -109,7 +109,7 @@ impl<A: Api> runtime::Operations for Routes<A> {
                 runtime::allowed_methods(methods),
             ))
     }
-    fn errors(&self) -> runtime::ErrorSchemas {
+    fn errors(&self) -> runtime::ProblemSchemas {
         error_schema
     }
     fn call<'r>(
@@ -201,7 +201,7 @@ fn get_file_params(
 }
 fn get_file_encode(
     resp: ops::get_file::Response,
-) -> Result<runtime::Response, runtime::Error> {
+) -> Result<runtime::Response, runtime::ClientError> {
     let ops::get_file::Response::Ok(body) = resp;
     Ok(runtime::body_response(200, "application/json", runtime::json_encode(&body)?))
 }

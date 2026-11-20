@@ -60,7 +60,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn private(
         &self,
         _p: impl runtime::IntoArg<'_, ops::private::Params>,
-    ) -> Result<ops::private::Response, runtime::Error> {
+    ) -> Result<ops::private::Response, runtime::ClientError> {
         let path = String::from("/private");
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
@@ -73,7 +73,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::private::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -82,7 +82,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn token(
         &self,
         _p: impl runtime::IntoArg<'_, ops::token::Params>,
-    ) -> Result<ops::token::Response, runtime::Error> {
+    ) -> Result<ops::token::Response, runtime::ClientError> {
         let path = String::from("/token");
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
@@ -95,7 +95,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::token::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -104,7 +104,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn keyed(
         &self,
         _p: impl runtime::IntoArg<'_, ops::keyed::Params>,
-    ) -> Result<ops::keyed::Response, runtime::Error> {
+    ) -> Result<ops::keyed::Response, runtime::ClientError> {
         let path = String::from("/keyed");
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
@@ -117,7 +117,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::keyed::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })

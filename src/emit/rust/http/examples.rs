@@ -29,7 +29,7 @@ pub(crate) fn wire_checks(api: &Api, space: &Space<'_>) -> Vec<TokenStream> {
 /// Returns `wire`: compares a parameter as sent with its documented `serializedValue`.
 pub(crate) fn wire_fn() -> TokenStream {
     quote! {
-        fn wire(bad: &mut Vec<String>, at: &str, got: Result<String, runtime::Error>, want: &str) {
+        fn wire(bad: &mut Vec<String>, at: &str, got: Result<String, runtime::ClientError>, want: &str) {
             match got {
                 Ok(got) if got == want || runtime::pct_decode(&got) == want => {}
                 Ok(got) => bad.push(format!("{at}: sent `{got}`, documented `{want}`")),
@@ -72,7 +72,7 @@ pub(crate) fn wire_check(
     let (at, text, want) = (lit(at), lit(&v.to_string()), lit(want));
     Some(quote! {
         let got = serde_json::from_str::<#t>(#text)
-            .map_err(|e| runtime::Error::Encode(e.to_string()))
+            .map_err(|e| runtime::ClientError::Encode(e.to_string()))
             .map(|v| #encode);
         wire(&mut bad, #at, got, #want);
     })

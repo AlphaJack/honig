@@ -56,7 +56,7 @@ impl<T: runtime::Transport> WebhookClient<T> {
         &self,
         url: &str,
         p: impl runtime::IntoArg<'_, ops::order_shipped_post::Params>,
-    ) -> Result<ops::order_shipped_post::Response, runtime::Error> {
+    ) -> Result<ops::order_shipped_post::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = url.to_owned();
         let query = Vec::new();
@@ -75,7 +75,7 @@ impl<T: runtime::Transport> WebhookClient<T> {
         if status == 204 {
             Ok(ops::order_shipped_post::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })

@@ -131,7 +131,7 @@ impl<T: runtime::Transport> Client<T> {
         client_id: &str,
         client_secret: &str,
         scopes: &[&str],
-    ) -> Result<Self, runtime::Error> {
+    ) -> Result<Self, runtime::ClientError> {
         let token = runtime::client_credentials(
                 &self.transport,
                 "https://shop.example.com/oauth/token",
@@ -147,7 +147,7 @@ impl<T: runtime::Transport> Client<T> {
         &self,
         client_id: &str,
         scopes: &[&str],
-    ) -> Result<runtime::DeviceCode, runtime::Error> {
+    ) -> Result<runtime::DeviceCode, runtime::ClientError> {
         runtime::device_authorization(
                 &self.transport,
                 "https://shop.example.com/oauth/device",
@@ -160,7 +160,7 @@ impl<T: runtime::Transport> Client<T> {
         &mut self,
         client_id: &str,
         code: &runtime::DeviceCode,
-    ) -> Result<runtime::DevicePoll, runtime::Error> {
+    ) -> Result<runtime::DevicePoll, runtime::ClientError> {
         let poll = runtime::device_token(
                 &self.transport,
                 "https://shop.example.com/oauth/token",
@@ -180,7 +180,7 @@ impl<T: runtime::Transport> Client<T> {
         client_id: &str,
         client_secret: Option<&str>,
         scopes: &[&str],
-    ) -> Result<runtime::Token, runtime::Error> {
+    ) -> Result<runtime::Token, runtime::ClientError> {
         let token = runtime::password_grant(
                 &self.transport,
                 "https://shop.example.com/oauth/token",
@@ -201,7 +201,7 @@ impl<T: runtime::Transport> Client<T> {
         client_id: &str,
         client_secret: Option<&str>,
         pkce: &runtime::Pkce,
-    ) -> Result<runtime::Token, runtime::Error> {
+    ) -> Result<runtime::Token, runtime::ClientError> {
         let token = runtime::exchange_code(
                 &self.transport,
                 "https://shop.example.com/oauth/token",
@@ -220,7 +220,7 @@ impl<T: runtime::Transport> Client<T> {
         refresh_token: &str,
         client_id: &str,
         client_secret: Option<&str>,
-    ) -> Result<runtime::Token, runtime::Error> {
+    ) -> Result<runtime::Token, runtime::ClientError> {
         let token = runtime::refresh_token(
                 &self.transport,
                 "https://shop.example.com/oauth/token",
@@ -234,7 +234,7 @@ impl<T: runtime::Transport> Client<T> {
     }
     pub async fn discover_o_auth2(
         &self,
-    ) -> Result<runtime::AuthMetadata, runtime::Error> {
+    ) -> Result<runtime::AuthMetadata, runtime::ClientError> {
         runtime::discover(
                 &self.transport,
                 "https://shop.example.com/.well-known/oauth-authorization-server",
@@ -243,7 +243,7 @@ impl<T: runtime::Transport> Client<T> {
     }
     pub async fn discover_open_id_connect(
         &self,
-    ) -> Result<runtime::AuthMetadata, runtime::Error> {
+    ) -> Result<runtime::AuthMetadata, runtime::ClientError> {
         runtime::discover(
                 &self.transport,
                 "https://shop.example.com/.well-known/openid-configuration",
@@ -254,7 +254,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn get_all_data(
         &self,
         p: impl runtime::IntoArg<'_, ops::get_all_data::Params>,
-    ) -> Result<ops::get_all_data::Response, runtime::Error> {
+    ) -> Result<ops::get_all_data::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/products");
         let mut query: Vec<String> = Vec::new();
@@ -317,7 +317,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Request-ID",
                         )
-                        .map_err(|e| runtime::Error::Decode {
+                        .map_err(|e| runtime::ClientError::Decode {
                             status,
                             message: e.to_string(),
                             body: body.clone(),
@@ -332,7 +332,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Pagination-Total",
                         )
-                        .map_err(|e| runtime::Error::Decode {
+                        .map_err(|e| runtime::ClientError::Decode {
                             status,
                             message: e.to_string(),
                             body: body.clone(),
@@ -347,7 +347,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Pagination-Page",
                         )
-                        .map_err(|e| runtime::Error::Decode {
+                        .map_err(|e| runtime::ClientError::Decode {
                             status,
                             message: e.to_string(),
                             body: body.clone(),
@@ -365,7 +365,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Pagination-Per-Page",
                         )
-                        .map_err(|e| runtime::Error::Decode {
+                        .map_err(|e| runtime::ClientError::Decode {
                             status,
                             message: e.to_string(),
                             body: body.clone(),
@@ -380,7 +380,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Cache-Control",
                         )
-                        .map_err(|e| runtime::Error::Decode {
+                        .map_err(|e| runtime::ClientError::Decode {
                             status,
                             message: e.to_string(),
                             body: body.clone(),
@@ -389,7 +389,7 @@ impl<T: runtime::Transport> Client<T> {
                 })
             }
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -399,7 +399,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn create_product(
         &self,
         p: impl runtime::IntoArg<'_, ops::create_product::Params>,
-    ) -> Result<ops::create_product::Response, runtime::Error> {
+    ) -> Result<ops::create_product::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/products");
         let query = Vec::new();
@@ -468,7 +468,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Request-ID",
                         )
-                        .map_err(|e| runtime::Error::Decode {
+                        .map_err(|e| runtime::ClientError::Decode {
                             status,
                             message: e.to_string(),
                             body: body.clone(),
@@ -491,7 +491,7 @@ impl<T: runtime::Transport> Client<T> {
                                 >,
                             >::into_inner,
                         )
-                        .map_err(|e| runtime::Error::Decode {
+                        .map_err(|e| runtime::ClientError::Decode {
                             status,
                             message: e.to_string(),
                             body: body.clone(),
@@ -506,7 +506,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Processing-Time",
                         )
-                        .map_err(|e| runtime::Error::Decode {
+                        .map_err(|e| runtime::ClientError::Decode {
                             status,
                             message: e.to_string(),
                             body: body.clone(),
@@ -544,7 +544,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Request-ID",
                         )
-                        .map_err(|e| runtime::Error::Decode {
+                        .map_err(|e| runtime::ClientError::Decode {
                             status,
                             message: e.to_string(),
                             body: body.clone(),
@@ -578,7 +578,7 @@ impl<T: runtime::Transport> Client<T> {
                 )
             }
             _ => {
-                Err(runtime::Error::UnexpectedStatus {
+                Err(runtime::ClientError::UnexpectedStatus {
                     status: head.status,
                     body,
                 })
@@ -589,7 +589,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn query_products(
         &self,
         p: impl runtime::IntoArg<'_, ops::query_products::Params>,
-    ) -> Result<ops::query_products::Response, runtime::Error> {
+    ) -> Result<ops::query_products::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/products");
         let query = Vec::new();
@@ -630,7 +630,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Request-ID",
                         )
-                        .map_err(|e| runtime::Error::Decode {
+                        .map_err(|e| runtime::ClientError::Decode {
                             status,
                             message: e.to_string(),
                             body: body.clone(),
@@ -668,7 +668,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Request-ID",
                         )
-                        .map_err(|e| runtime::Error::Decode {
+                        .map_err(|e| runtime::ClientError::Decode {
                             status,
                             message: e.to_string(),
                             body: body.clone(),
@@ -677,7 +677,7 @@ impl<T: runtime::Transport> Client<T> {
                 })
             }
             _ => {
-                Err(runtime::Error::UnexpectedStatus {
+                Err(runtime::ClientError::UnexpectedStatus {
                     status: head.status,
                     body,
                 })
@@ -688,7 +688,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn search_products(
         &self,
         p: impl runtime::IntoArg<'_, ops::search_products::Params>,
-    ) -> Result<ops::search_products::Response, runtime::Error> {
+    ) -> Result<ops::search_products::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/products/search");
         let mut query: Vec<String> = Vec::new();
@@ -720,7 +720,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Request-ID",
                         )
-                        .map_err(|e| runtime::Error::Decode {
+                        .map_err(|e| runtime::ClientError::Decode {
                             status,
                             message: e.to_string(),
                             body: body.clone(),
@@ -729,7 +729,7 @@ impl<T: runtime::Transport> Client<T> {
                 })
             }
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -739,7 +739,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn get_product(
         &self,
         p: impl runtime::IntoArg<'_, ops::get_product::Params>,
-    ) -> Result<ops::get_product::Response, runtime::Error> {
+    ) -> Result<ops::get_product::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let mut path = String::from("/products/");
         path.push_str(
@@ -766,7 +766,7 @@ impl<T: runtime::Transport> Client<T> {
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
         if head.status == 304 {
-            return Err(runtime::Error::NotModified {
+            return Err(runtime::ClientError::NotModified {
                 headers: head.headers,
             });
         }
@@ -799,7 +799,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Request-ID",
                         )
-                        .map_err(|e| runtime::Error::Decode {
+                        .map_err(|e| runtime::ClientError::Decode {
                             status,
                             message: e.to_string(),
                             body: body.clone(),
@@ -813,7 +813,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/ETag",
                         )
-                        .map_err(|e| runtime::Error::Decode {
+                        .map_err(|e| runtime::ClientError::Decode {
                             status,
                             message: e.to_string(),
                             body: body.clone(),
@@ -828,7 +828,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/Last-Modified",
                         )
-                        .map_err(|e| runtime::Error::Decode {
+                        .map_err(|e| runtime::ClientError::Decode {
                             status,
                             message: e.to_string(),
                             body: body.clone(),
@@ -843,7 +843,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Cache-Control",
                         )
-                        .map_err(|e| runtime::Error::Decode {
+                        .map_err(|e| runtime::ClientError::Decode {
                             status,
                             message: e.to_string(),
                             body: body.clone(),
@@ -877,7 +877,7 @@ impl<T: runtime::Transport> Client<T> {
                 )
             }
             _ => {
-                Err(runtime::Error::UnexpectedStatus {
+                Err(runtime::ClientError::UnexpectedStatus {
                     status: head.status,
                     body,
                 })
@@ -888,7 +888,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn update_product(
         &self,
         p: impl runtime::IntoArg<'_, ops::update_product::Params>,
-    ) -> Result<ops::update_product::Response, runtime::Error> {
+    ) -> Result<ops::update_product::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let mut path = String::from("/products/");
         path.push_str(
@@ -988,7 +988,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Request-ID",
                         )
-                        .map_err(|e| runtime::Error::Decode {
+                        .map_err(|e| runtime::ClientError::Decode {
                             status,
                             message: e.to_string(),
                             body: body.clone(),
@@ -1048,7 +1048,7 @@ impl<T: runtime::Transport> Client<T> {
             }
             412 => Ok(ops::update_product::Response::PreconditionFailed),
             _ => {
-                Err(runtime::Error::UnexpectedStatus {
+                Err(runtime::ClientError::UnexpectedStatus {
                     status: head.status,
                     body,
                 })
@@ -1059,7 +1059,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn delete_product(
         &self,
         p: impl runtime::IntoArg<'_, ops::delete_product::Params>,
-    ) -> Result<ops::delete_product::Response, runtime::Error> {
+    ) -> Result<ops::delete_product::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let mut path = String::from("/products/");
         path.push_str(
@@ -1107,7 +1107,7 @@ impl<T: runtime::Transport> Client<T> {
                 )
             }
             _ => {
-                Err(runtime::Error::UnexpectedStatus {
+                Err(runtime::ClientError::UnexpectedStatus {
                     status: head.status,
                     body,
                 })
@@ -1118,7 +1118,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn copy_product(
         &self,
         p: impl runtime::IntoArg<'_, ops::copy_product::Params>,
-    ) -> Result<ops::copy_product::Response, runtime::Error> {
+    ) -> Result<ops::copy_product::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let mut path = String::from("/products/");
         path.push_str(
@@ -1168,7 +1168,7 @@ impl<T: runtime::Transport> Client<T> {
                                 >,
                             >::into_inner,
                         )
-                        .map_err(|e| runtime::Error::Decode {
+                        .map_err(|e| runtime::ClientError::Decode {
                             status,
                             message: e.to_string(),
                             body: body.clone(),
@@ -1202,7 +1202,7 @@ impl<T: runtime::Transport> Client<T> {
                 )
             }
             _ => {
-                Err(runtime::Error::UnexpectedStatus {
+                Err(runtime::ClientError::UnexpectedStatus {
                     status: head.status,
                     body,
                 })
@@ -1213,7 +1213,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn upload_image(
         &self,
         p: impl runtime::IntoArg<'_, ops::upload_image::Params>,
-    ) -> Result<ops::upload_image::Response, runtime::Error> {
+    ) -> Result<ops::upload_image::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let mut path = String::from("/products/");
         path.push_str(
@@ -1276,7 +1276,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Request-ID",
                         )
-                        .map_err(|e| runtime::Error::Decode {
+                        .map_err(|e| runtime::ClientError::Decode {
                             status,
                             message: e.to_string(),
                             body: body.clone(),
@@ -1291,7 +1291,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Cache-Control",
                         )
-                        .map_err(|e| runtime::Error::Decode {
+                        .map_err(|e| runtime::ClientError::Decode {
                             status,
                             message: e.to_string(),
                             body: body.clone(),
@@ -1329,7 +1329,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Request-ID",
                         )
-                        .map_err(|e| runtime::Error::Decode {
+                        .map_err(|e| runtime::ClientError::Decode {
                             status,
                             message: e.to_string(),
                             body: body.clone(),
@@ -1388,7 +1388,7 @@ impl<T: runtime::Transport> Client<T> {
                 )
             }
             _ => {
-                Err(runtime::Error::UnexpectedStatus {
+                Err(runtime::ClientError::UnexpectedStatus {
                     status: head.status,
                     body,
                 })
@@ -1399,7 +1399,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn stream_product_events(
         &self,
         p: impl runtime::IntoArg<'_, ops::stream_product_events::Params>,
-    ) -> Result<ops::stream_product_events::Response, runtime::Error> {
+    ) -> Result<ops::stream_product_events::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/products/events");
         let query = Vec::new();
@@ -1466,7 +1466,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Request-ID",
                         )
-                        .map_err(|e| runtime::Error::Decode {
+                        .map_err(|e| runtime::ClientError::Decode {
                             status,
                             message: e.to_string(),
                             body: body.clone(),
@@ -1475,7 +1475,7 @@ impl<T: runtime::Transport> Client<T> {
                 })
             }
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -1490,7 +1490,7 @@ impl<T: runtime::Transport> Client<T> {
             runtime::ItemStream<types::ProductEvent>,
             ops::stream_product_events::Response,
         >,
-        runtime::Error,
+        runtime::ClientError,
     >
     where
         T: Clone + 'static,
@@ -1556,10 +1556,10 @@ impl<T: runtime::Transport> Client<T> {
             head,
             runtime::Body::new(body.collect().await?),
         );
-        let other: Result<ops::stream_product_events::Response, runtime::Error> = async move {
+        let other: Result<ops::stream_product_events::Response, runtime::ClientError> = async move {
             let (head, body) = resp.into_parts();
             let (body, _) = body.into_parts();
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -1571,7 +1571,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn upload_photos(
         &self,
         p: impl runtime::IntoArg<'_, ops::upload_photos::Params>,
-    ) -> Result<ops::upload_photos::Response, runtime::Error> {
+    ) -> Result<ops::upload_photos::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let mut path = String::from("/products/");
         path.push_str(
@@ -1617,7 +1617,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Request-ID",
                         )
-                        .map_err(|e| runtime::Error::Decode {
+                        .map_err(|e| runtime::ClientError::Decode {
                             status,
                             message: e.to_string(),
                             body: body.clone(),
@@ -1655,7 +1655,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Request-ID",
                         )
-                        .map_err(|e| runtime::Error::Decode {
+                        .map_err(|e| runtime::ClientError::Decode {
                             status,
                             message: e.to_string(),
                             body: body.clone(),
@@ -1689,7 +1689,7 @@ impl<T: runtime::Transport> Client<T> {
                 )
             }
             _ => {
-                Err(runtime::Error::UnexpectedStatus {
+                Err(runtime::ClientError::UnexpectedStatus {
                     status: head.status,
                     body,
                 })
@@ -1700,7 +1700,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn create_item(
         &self,
         p: impl runtime::IntoArg<'_, ops::create_item::Params>,
-    ) -> Result<ops::create_item::Response, runtime::Error> {
+    ) -> Result<ops::create_item::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/items");
         let query = Vec::new();
@@ -1729,7 +1729,7 @@ impl<T: runtime::Transport> Client<T> {
                     .map(ops::create_item::Response::Created)
             }
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -1739,7 +1739,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn create_user(
         &self,
         p: impl runtime::IntoArg<'_, ops::create_user::Params>,
-    ) -> Result<ops::create_user::Response, runtime::Error> {
+    ) -> Result<ops::create_user::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/user/signup");
         let query = Vec::new();
@@ -1804,7 +1804,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Request-ID",
                         )
-                        .map_err(|e| runtime::Error::Decode {
+                        .map_err(|e| runtime::ClientError::Decode {
                             status,
                             message: e.to_string(),
                             body: body.clone(),
@@ -1827,7 +1827,7 @@ impl<T: runtime::Transport> Client<T> {
                                 >,
                             >::into_inner,
                         )
-                        .map_err(|e| runtime::Error::Decode {
+                        .map_err(|e| runtime::ClientError::Decode {
                             status,
                             message: e.to_string(),
                             body: body.clone(),
@@ -1842,7 +1842,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Processing-Time",
                         )
-                        .map_err(|e| runtime::Error::Decode {
+                        .map_err(|e| runtime::ClientError::Decode {
                             status,
                             message: e.to_string(),
                             body: body.clone(),
@@ -1880,7 +1880,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Request-ID",
                         )
-                        .map_err(|e| runtime::Error::Decode {
+                        .map_err(|e| runtime::ClientError::Decode {
                             status,
                             message: e.to_string(),
                             body: body.clone(),
@@ -1989,7 +1989,7 @@ impl<T: runtime::Transport> Client<T> {
                 )
             }
             _ => {
-                Err(runtime::Error::UnexpectedStatus {
+                Err(runtime::ClientError::UnexpectedStatus {
                     status: head.status,
                     body,
                 })
@@ -2000,7 +2000,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn get_token(
         &self,
         p: impl runtime::IntoArg<'_, ops::get_token::Params>,
-    ) -> Result<ops::get_token::Response, runtime::Error> {
+    ) -> Result<ops::get_token::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/auth/token");
         let query = Vec::new();
@@ -2063,7 +2063,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Request-ID",
                         )
-                        .map_err(|e| runtime::Error::Decode {
+                        .map_err(|e| runtime::ClientError::Decode {
                             status,
                             message: e.to_string(),
                             body: body.clone(),
@@ -2078,7 +2078,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-RateLimit-Limit",
                         )
-                        .map_err(|e| runtime::Error::Decode {
+                        .map_err(|e| runtime::ClientError::Decode {
                             status,
                             message: e.to_string(),
                             body: body.clone(),
@@ -2096,7 +2096,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-RateLimit-Remaining",
                         )
-                        .map_err(|e| runtime::Error::Decode {
+                        .map_err(|e| runtime::ClientError::Decode {
                             status,
                             message: e.to_string(),
                             body: body.clone(),
@@ -2111,7 +2111,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-RateLimit-Reset",
                         )
-                        .map_err(|e| runtime::Error::Decode {
+                        .map_err(|e| runtime::ClientError::Decode {
                             status,
                             message: e.to_string(),
                             body: body.clone(),
@@ -2149,7 +2149,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Request-ID",
                         )
-                        .map_err(|e| runtime::Error::Decode {
+                        .map_err(|e| runtime::ClientError::Decode {
                             status,
                             message: e.to_string(),
                             body: body.clone(),
@@ -2237,7 +2237,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Request-ID",
                         )
-                        .map_err(|e| runtime::Error::Decode {
+                        .map_err(|e| runtime::ClientError::Decode {
                             status,
                             message: e.to_string(),
                             body: body.clone(),
@@ -2252,7 +2252,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-RateLimit-Limit",
                         )
-                        .map_err(|e| runtime::Error::Decode {
+                        .map_err(|e| runtime::ClientError::Decode {
                             status,
                             message: e.to_string(),
                             body: body.clone(),
@@ -2270,7 +2270,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-RateLimit-Remaining",
                         )
-                        .map_err(|e| runtime::Error::Decode {
+                        .map_err(|e| runtime::ClientError::Decode {
                             status,
                             message: e.to_string(),
                             body: body.clone(),
@@ -2285,7 +2285,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-RateLimit-Reset",
                         )
-                        .map_err(|e| runtime::Error::Decode {
+                        .map_err(|e| runtime::ClientError::Decode {
                             status,
                             message: e.to_string(),
                             body: body.clone(),
@@ -2300,7 +2300,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/Retry-After",
                         )
-                        .map_err(|e| runtime::Error::Decode {
+                        .map_err(|e| runtime::ClientError::Decode {
                             status,
                             message: e.to_string(),
                             body: body.clone(),
@@ -2309,7 +2309,7 @@ impl<T: runtime::Transport> Client<T> {
                 })
             }
             _ => {
-                Err(runtime::Error::UnexpectedStatus {
+                Err(runtime::ClientError::UnexpectedStatus {
                     status: head.status,
                     body,
                 })
@@ -2320,7 +2320,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn get_me(
         &self,
         p: impl runtime::IntoArg<'_, ops::get_me::Params>,
-    ) -> Result<ops::get_me::Response, runtime::Error> {
+    ) -> Result<ops::get_me::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/me");
         let query = Vec::new();
@@ -2365,7 +2365,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Request-ID",
                         )
-                        .map_err(|e| runtime::Error::Decode {
+                        .map_err(|e| runtime::ClientError::Decode {
                             status,
                             message: e.to_string(),
                             body: body.clone(),
@@ -2379,7 +2379,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/ETag",
                         )
-                        .map_err(|e| runtime::Error::Decode {
+                        .map_err(|e| runtime::ClientError::Decode {
                             status,
                             message: e.to_string(),
                             body: body.clone(),
@@ -2394,7 +2394,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/Last-Modified",
                         )
-                        .map_err(|e| runtime::Error::Decode {
+                        .map_err(|e| runtime::ClientError::Decode {
                             status,
                             message: e.to_string(),
                             body: body.clone(),
@@ -2409,7 +2409,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Cache-Control",
                         )
-                        .map_err(|e| runtime::Error::Decode {
+                        .map_err(|e| runtime::ClientError::Decode {
                             status,
                             message: e.to_string(),
                             body: body.clone(),
@@ -2468,7 +2468,7 @@ impl<T: runtime::Transport> Client<T> {
                 )
             }
             _ => {
-                Err(runtime::Error::UnexpectedStatus {
+                Err(runtime::ClientError::UnexpectedStatus {
                     status: head.status,
                     body,
                 })
@@ -2537,7 +2537,7 @@ impl<T: runtime::Transport> WebhookClient<T> {
         &self,
         url: &str,
         p: impl runtime::IntoArg<'_, ops::new_product_post::Params>,
-    ) -> Result<ops::new_product_post::Response, runtime::Error> {
+    ) -> Result<ops::new_product_post::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = url.to_owned();
         let query = Vec::new();
@@ -2558,7 +2558,7 @@ impl<T: runtime::Transport> WebhookClient<T> {
         if status == 200 {
             Ok(ops::new_product_post::Response::Ok)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -2568,7 +2568,10 @@ impl<T: runtime::Transport> WebhookClient<T> {
         &self,
         url: &str,
         p: impl runtime::IntoArg<'_, ops::create_product_product_created_post::Params>,
-    ) -> Result<ops::create_product_product_created_post::Response, runtime::Error> {
+    ) -> Result<
+        ops::create_product_product_created_post::Response,
+        runtime::ClientError,
+    > {
         let p = runtime::IntoArg::into_arg(p);
         let path = url.to_owned();
         let query = Vec::new();
@@ -2590,7 +2593,7 @@ impl<T: runtime::Transport> WebhookClient<T> {
             200 => Ok(ops::create_product_product_created_post::Response::Ok),
             204 => Ok(ops::create_product_product_created_post::Response::NoContent),
             _ => {
-                Err(runtime::Error::UnexpectedStatus {
+                Err(runtime::ClientError::UnexpectedStatus {
                     status: head.status,
                     body,
                 })
@@ -2606,7 +2609,7 @@ impl<T: runtime::Transport> WebhookClient<T> {
         >,
     ) -> Result<
         ops::create_product_product_creation_failed_post::Response,
-        runtime::Error,
+        runtime::ClientError,
     > {
         let p = runtime::IntoArg::into_arg(p);
         let path = url.to_owned();
@@ -2628,7 +2631,7 @@ impl<T: runtime::Transport> WebhookClient<T> {
         if status == 200 {
             Ok(ops::create_product_product_creation_failed_post::Response::Ok)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -2643,7 +2646,7 @@ impl<T: runtime::Transport> WebhookClient<T> {
         >,
     ) -> Result<
         ops::create_product_product_discontinued_post::Response,
-        runtime::Error,
+        runtime::ClientError,
     > {
         let p = runtime::IntoArg::into_arg(p);
         let path = url.to_owned();
@@ -2665,7 +2668,7 @@ impl<T: runtime::Transport> WebhookClient<T> {
         if status == 200 {
             Ok(ops::create_product_product_discontinued_post::Response::Ok)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })

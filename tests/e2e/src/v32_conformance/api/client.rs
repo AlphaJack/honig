@@ -55,7 +55,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn open(
         &self,
         _p: impl runtime::IntoArg<'_, ops::open::Params>,
-    ) -> Result<ops::open::Response, runtime::Error> {
+    ) -> Result<ops::open::Response, runtime::ClientError> {
         let path = String::from("/public");
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
@@ -68,7 +68,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::open::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -77,7 +77,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn inherits(
         &self,
         _p: impl runtime::IntoArg<'_, ops::inherits::Params>,
-    ) -> Result<ops::inherits::Response, runtime::Error> {
+    ) -> Result<ops::inherits::Response, runtime::ClientError> {
         let path = String::from("/inherits");
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
@@ -90,7 +90,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::inherits::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -99,7 +99,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn get_item(
         &self,
         p: impl runtime::IntoArg<'_, ops::get_item::Params>,
-    ) -> Result<ops::get_item::Response, runtime::Error> {
+    ) -> Result<ops::get_item::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let mut path = String::from("/items/");
         path.push_str(&runtime::encode_path("id", &p.id, runtime::Enc::SIMPLE)?);
@@ -144,7 +144,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn post_closed(
         &self,
         p: impl runtime::IntoArg<'_, ops::post_closed::Params>,
-    ) -> Result<ops::post_closed::Response, runtime::Error> {
+    ) -> Result<ops::post_closed::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/closed");
         let query = Vec::new();
@@ -163,7 +163,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::post_closed::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -172,7 +172,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn optional_body(
         &self,
         p: impl runtime::IntoArg<'_, ops::optional_body::Params>,
-    ) -> Result<ops::optional_body::Response, runtime::Error> {
+    ) -> Result<ops::optional_body::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/optional-body");
         let query = Vec::new();
@@ -193,7 +193,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::optional_body::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -202,7 +202,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn post_product(
         &self,
         p: impl runtime::IntoArg<'_, ops::post_product::Params>,
-    ) -> Result<ops::post_product::Response, runtime::Error> {
+    ) -> Result<ops::post_product::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/products");
         let query = Vec::new();
@@ -221,7 +221,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::post_product::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -230,7 +230,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn upload(
         &self,
         p: impl runtime::IntoArg<'_, ops::upload::Params>,
-    ) -> Result<ops::upload::Response, runtime::Error> {
+    ) -> Result<ops::upload::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/upload");
         let query = Vec::new();
@@ -246,7 +246,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::upload::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -255,7 +255,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn cookies(
         &self,
         _p: impl runtime::IntoArg<'_, ops::cookies::Params>,
-    ) -> Result<ops::cookies::Response, runtime::Error> {
+    ) -> Result<ops::cookies::Response, runtime::ClientError> {
         let path = String::from("/cookies");
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
@@ -272,7 +272,7 @@ impl<T: runtime::Transport> Client<T> {
                             runtime::header_lines(&head.headers, "Set-Cookie", true),
                             "/header/Set-Cookie",
                         )
-                        .map_err(|e| runtime::Error::Decode {
+                        .map_err(|e| runtime::ClientError::Decode {
                             status,
                             message: e.to_string(),
                             body: body.clone(),
@@ -281,7 +281,7 @@ impl<T: runtime::Transport> Client<T> {
                 })
             }
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -290,7 +290,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn filter(
         &self,
         p: impl runtime::IntoArg<'_, ops::filter::Params>,
-    ) -> Result<ops::filter::Response, runtime::Error> {
+    ) -> Result<ops::filter::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/filter");
         let mut query: Vec<String> = Vec::new();
@@ -306,7 +306,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::filter::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })

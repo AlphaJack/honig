@@ -24,7 +24,7 @@ tower-http:
   operation that decodes it agree on one number.
 
 A layer outside can only lower the limit. It refuses a request early when its `Content-Length` is too large.
-Its answer then has its own body: map it through `Errors::response`. A body without `Content-Length` fails
+Its answer then has its own body: map it through `ErrorResponses::response`. A body without `Content-Length` fails
 while the server reads it. The server sees a broken body and answers `400`, not `413`.
 
 ### `error_response`

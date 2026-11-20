@@ -6,7 +6,7 @@ use std::borrow::Cow;
 use std::future::Future;
 use std::sync::Arc;
 
-use super::operation::{ErrorSchemas, Op, Operation};
+use super::operation::{Op, Operation, ProblemSchemas};
 use crate::{
     ApiError, BODY_LIMIT, Body, Context, Message, Query, Reason, Rejection, Request, RequestEvent, Requirement,
     Response, SatisfiedSecurity, Scheme,
@@ -56,7 +56,7 @@ impl<Id: Operation> Config<Id> {
     /// Returns the response to `reason` through the error renderer.
     pub(crate) fn reject(
         &self,
-        errors: ErrorSchemas,
+        errors: ProblemSchemas,
         operation: Option<Id>,
         reason: Reason,
         headers: http::HeaderMap,
@@ -67,7 +67,7 @@ impl<Id: Operation> Config<Id> {
 
     /// Returns the response to a request that no operation takes (404 or 405) with its own wide event. An `OPTIONS` of
     /// a path that declares no `options` gets `204` with the methods of the path in `Allow` (RFC 9110 section 9.3.7).
-    pub(crate) fn unrouted(&self, errors: ErrorSchemas, head: &http::request::Parts, reason: Reason) -> Response {
+    pub(crate) fn unrouted(&self, errors: ProblemSchemas, head: &http::request::Parts, reason: Reason) -> Response {
         let started = std::time::Instant::now();
         let method = known_method(head.method.as_str());
         let event = RequestEvent::new(None, method);
@@ -214,7 +214,7 @@ pub struct Steps<'a, A, C, P, R, Id> {
     /// Runs your handler.
     pub call: for<'r> fn(&'r A, P, &'r Context<'r, C, Id>) -> HandlerFuture<'r, R>,
     /// Writes its response in the media type that `Accept` chose (an index in [`Op::produces`]).
-    pub encode: fn(R, usize) -> Result<Response, crate::Error>,
+    pub encode: fn(R, usize) -> Result<Response, crate::ClientError>,
 }
 
 impl<A, C, P, R, Id> std::fmt::Debug for Steps<'_, A, C, P, R, Id> {

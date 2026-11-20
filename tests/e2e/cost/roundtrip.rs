@@ -178,7 +178,7 @@ fn book(id: i64, title: String, authors: impl Iterator<Item = (String, Option<i6
 
 /// One roundtrip of the generated client.
 pub async fn head(c: &Head, trip: &str) -> Result<Seen, String> {
-    let failed = |e: honig::Error| e.to_string();
+    let failed = |e: honig::ClientError| e.to_string();
     Ok(match trip {
         "upload" => match c.up.put_file(&c.put_file).await.map_err(failed)? {
             up::api::operations::put_file::Response::Ok(ok) => Seen::Counted(ok.bytes, ok.chunks),

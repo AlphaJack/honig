@@ -45,7 +45,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn subscribe(
         &self,
         p: impl runtime::IntoArg<'_, ops::subscribe::Params>,
-    ) -> Result<ops::subscribe::Response, runtime::Error> {
+    ) -> Result<ops::subscribe::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/subscriptions");
         let query = Vec::new();
@@ -64,7 +64,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 201 {
             Ok(ops::subscribe::Response::Created)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -89,7 +89,7 @@ impl<T: runtime::Transport> WebhookClient<T> {
         &self,
         url: &str,
         p: impl runtime::IntoArg<'_, ops::new_product::Params>,
-    ) -> Result<ops::new_product::Response, runtime::Error> {
+    ) -> Result<ops::new_product::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = url.to_owned();
         let query = Vec::new();
@@ -109,7 +109,7 @@ impl<T: runtime::Transport> WebhookClient<T> {
             200 => Ok(ops::new_product::Response::Ok),
             410 => Ok(ops::new_product::Response::Gone),
             _ => {
-                Err(runtime::Error::UnexpectedStatus {
+                Err(runtime::ClientError::UnexpectedStatus {
                     status: head.status,
                     body,
                 })
@@ -120,7 +120,7 @@ impl<T: runtime::Transport> WebhookClient<T> {
         &self,
         url: &str,
         p: impl runtime::IntoArg<'_, ops::subscribe_on_event_post::Params>,
-    ) -> Result<ops::subscribe_on_event_post::Response, runtime::Error> {
+    ) -> Result<ops::subscribe_on_event_post::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = url.to_owned();
         let query = Vec::new();
@@ -139,7 +139,7 @@ impl<T: runtime::Transport> WebhookClient<T> {
         if status == 204 {
             Ok(ops::subscribe_on_event_post::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
