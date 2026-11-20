@@ -1422,3 +1422,14 @@ fn a_bound_generic_keeps_the_properties_of_its_site() {
     let types = common::file(&generated.files, "types.rs");
     assert!(types.contains("pub foo:") && types.contains("pub bar:"), "{types}");
 }
+
+/// A `const` of an object is a unit struct that decodes only that object: no check compares a decoded value as JSON.
+#[test]
+fn an_object_const_is_a_unit_struct() {
+    let origin = json!({"const": {"x": 0, "y": 0}});
+    let holder = json!({"type": "object", "properties": {"origin": {"$ref": "#/components/schemas/Origin"}}});
+    let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Origin": origin, "Holder": holder}}));
+    let types =
+        common::file(&common::generate("object-const", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
+    assert!(types.contains("pub struct Origin;") && !types.contains("content_equal"), "{types}");
+}
