@@ -20,21 +20,17 @@
     reason = "which of them the examples need depends on the description"
 )]
 use super::{runtime, types};
-fn value<T: serde::de::DeserializeOwned>(
-    bad: &mut Vec<String>,
-    at: &str,
-    v: serde_json::Value,
-) {
-    if let Err(e) = serde_json::from_value::<T>(v) {
+fn value<T: serde::de::DeserializeOwned>(bad: &mut Vec<String>, at: &str, text: &str) {
+    if let Err(e) = serde_json::from_str::<T>(text) {
         bad.push(format!("{at}: {e}"));
     }
 }
 fn param<T: serde::de::DeserializeOwned>(
     bad: &mut Vec<String>,
     at: &'static str,
-    v: serde_json::Value,
+    text: &str,
 ) {
-    if let Err(e) = runtime::from_param::<T>(Some(v), at) {
+    if let Err(e) = runtime::from_param::<T>(serde_json::from_str(text).ok(), at) {
         bad.push(e.to_string());
     }
 }
@@ -58,173 +54,100 @@ fn documented_examples_decode() {
     >(
         &mut bad,
         "/paths/~1users~1{username}/get/parameters/0/examples/Tokens",
-        serde_json::Value::Array(
-            vec![
-                serde_json::Value::from(12_345_678i64),
-                serde_json::Value::from(90_099i64)
-            ],
-        ),
+        "[12345678,90099]",
     );
     param::<
         types::ParameterExamplesCookie,
     >(
         &mut bad,
         "/paths/~1users~1{username}/get/parameters/1/examples/Object",
-        serde_json::Value::Object(
-            serde_json::Map::from_iter([
-                (
-                    "greeting".to_owned(),
-                    serde_json::Value::String("Hello%2C%20world!".to_owned()),
-                ),
-                ("code".to_owned(), serde_json::Value::from(42i64)),
-            ]),
-        ),
+        "{\"greeting\":\"Hello%2C%20world!\",\"code\":42}",
     );
     param::<
         String,
     >(
         &mut bad,
         "/paths/~1users~1{username}/get/parameters/2/examples/Greeting",
-        serde_json::Value::String("Hello, world!".to_owned()),
+        "\"Hello, world!\"",
     );
     param::<
         String,
     >(
         &mut bad,
         "/paths/~1users~1{username}/get/parameters/3/examples/Edsger Dijkstra",
-        serde_json::Value::String("edijkstra".to_owned()),
+        "\"edijkstra\"",
     );
     param::<
         String,
     >(
         &mut bad,
         "/paths/~1users~1{username}/get/parameters/3/examples/Diṅnāga",
-        serde_json::Value::String("diṅnāga".to_owned()),
+        "\"diṅnāga\"",
     );
     param::<
         String,
     >(
         &mut bad,
         "/paths/~1users~1{username}/get/parameters/3/examples/Al-Khwarizmi",
-        serde_json::Value::String("الخوارزمي\u{651}".to_owned()),
+        "\"الخوارزمي\u{651}\"",
     );
     param::<
         Vec<String>,
     >(
         &mut bad,
         "/paths/~1users~1{username}/get/parameters/4/examples/ObjectList",
-        serde_json::Value::Array(
-            vec![
-                serde_json::Value::String("one thing".to_owned()),
-                serde_json::Value::String("another thing".to_owned())
-            ],
-        ),
+        "[\"one thing\",\"another thing\"]",
     );
     param::<
         std::collections::BTreeMap<String, i64>,
     >(
         &mut bad,
         "/paths/~1users~1{username}/get/parameters/5/examples/Pagination",
-        serde_json::Value::Object(
-            serde_json::Map::from_iter([
-                ("page".to_owned(), serde_json::Value::from(4i64)),
-                ("pageSize".to_owned(), serde_json::Value::from(50i64)),
-            ]),
-        ),
+        "{\"page\":4,\"pageSize\":50}",
     );
     value::<
         types::ParameterExamplesCoordinates,
     >(
         &mut bad,
         "/paths/~1users~1{username}/get/parameters/6/examples/New York",
-        serde_json::Value::Object(
-            serde_json::Map::from_iter([
-                ("lat".to_owned(), serde_json::Value::from(40.6f64)),
-                ("long".to_owned(), serde_json::Value::from(-73.9f64)),
-            ]),
-        ),
+        "{\"lat\":40.6,\"long\":-73.9}",
     );
     value::<
         types::QuerystringFormMetadata,
     >(
         &mut bad,
         "/paths/~1querystring~1form/get/parameters/0/examples/spacesAndPluses",
-        serde_json::Value::Object(
-            serde_json::Map::from_iter([
-                ("foo".to_owned(), serde_json::Value::String("a + b".to_owned())),
-                ("bar".to_owned(), serde_json::Value::Bool(true)),
-            ]),
-        ),
+        "{\"foo\":\"a + b\",\"bar\":true}",
     );
     value::<
         types::QuerystringJsonJson,
     >(
         &mut bad,
         "/paths/~1querystring~1json/get/parameters/0/examples/TwoNoFlag",
-        serde_json::Value::Object(
-            serde_json::Map::from_iter([
-                (
-                    "numbers".to_owned(),
-                    serde_json::Value::Array(
-                        vec![
-                            serde_json::Value::from(1i64), serde_json::Value::from(2i64)
-                        ],
-                    ),
-                ),
-                ("flag".to_owned(), serde_json::Value::Null),
-            ]),
-        ),
+        "{\"numbers\":[1,2],\"flag\":null}",
     );
     value::<
         String,
     >(
         &mut bad,
         "/paths/~1querystring~1jsonpath/get/parameters/0/examples/Selector",
-        serde_json::Value::String("$.a.b[1:1]".to_owned()),
+        "\"$.a.b[1:1]\"",
     );
     value::<
         types::Product,
     >(
         &mut bad,
         "/paths/~1products/get/responses/200/content/application~1json/examples/gadget",
-        serde_json::Value::Object(
-            serde_json::Map::from_iter([
-                ("name".to_owned(), serde_json::Value::String("Kettle".to_owned())),
-                (
-                    "productType".to_owned(),
-                    serde_json::Value::String("Gadget".to_owned()),
-                ),
-                ("color".to_owned(), serde_json::Value::String("White".to_owned())),
-                ("material".to_owned(), serde_json::Value::String("metal".to_owned())),
-                ("brand".to_owned(), serde_json::Value::String("Lumen".to_owned())),
-            ]),
-        ),
+        "{\"name\":\"Kettle\",\"productType\":\"Gadget\",\"color\":\"White\",\"material\":\"metal\",\"brand\":\"Lumen\"}",
     );
     value::<
         types::Product,
     >(
         &mut bad,
         "/paths/~1products/get/responses/200/content/application~1json/examples/book",
-        serde_json::Value::Object(
-            serde_json::Map::from_iter([
-                ("name".to_owned(), serde_json::Value::String("Novel".to_owned())),
-                ("productType".to_owned(), serde_json::Value::String("Book".to_owned())),
-                ("color".to_owned(), serde_json::Value::String("Black".to_owned())),
-                ("material".to_owned(), serde_json::Value::String("paper".to_owned())),
-                ("brand".to_owned(), serde_json::Value::String("Folio".to_owned())),
-            ]),
-        ),
+        "{\"name\":\"Novel\",\"productType\":\"Book\",\"color\":\"Black\",\"material\":\"paper\",\"brand\":\"Folio\"}",
     );
-    let got = serde_json::from_value::<
-        Vec<i64>,
-    >(
-            serde_json::Value::Array(
-                vec![
-                    serde_json::Value::from(12_345_678i64),
-                    serde_json::Value::from(90_099i64)
-                ],
-            ),
-        )
+    let got = serde_json::from_str::<Vec<i64>>("[12345678,90099]")
         .map_err(|e| runtime::Error::Encode(e.to_string()))
         .map(|v| {
             runtime::encode_header(&v, false)
@@ -237,19 +160,9 @@ fn documented_examples_decode() {
         got,
         "12345678,90099",
     );
-    let got = serde_json::from_value::<
+    let got = serde_json::from_str::<
         types::ParameterExamplesCookie,
-    >(
-            serde_json::Value::Object(
-                serde_json::Map::from_iter([
-                    (
-                        "greeting".to_owned(),
-                        serde_json::Value::String("Hello%2C%20world!".to_owned()),
-                    ),
-                    ("code".to_owned(), serde_json::Value::from(42i64)),
-                ]),
-            ),
-        )
+    >("{\"greeting\":\"Hello%2C%20world!\",\"code\":42}")
         .map_err(|e| runtime::Error::Encode(e.to_string()))
         .map(|v| {
             let mut c = Vec::new();
@@ -272,9 +185,7 @@ fn documented_examples_decode() {
         got,
         "greeting=Hello%2C%20world!; code=42",
     );
-    let got = serde_json::from_value::<
-        String,
-    >(serde_json::Value::String("Hello, world!".to_owned()))
+    let got = serde_json::from_str::<String>("\"Hello, world!\"")
         .map_err(|e| runtime::Error::Encode(e.to_string()))
         .map(|v| {
             let mut c = Vec::new();
@@ -288,9 +199,7 @@ fn documented_examples_decode() {
         got,
         "greeting=Hello%2C%20world%21",
     );
-    let got = serde_json::from_value::<
-        String,
-    >(serde_json::Value::String("edijkstra".to_owned()))
+    let got = serde_json::from_str::<String>("\"edijkstra\"")
         .map_err(|e| runtime::Error::Encode(e.to_string()))
         .map(|v| {
             runtime::encode_path("username", &v, runtime::Enc::SIMPLE)
@@ -302,9 +211,7 @@ fn documented_examples_decode() {
         got,
         "edijkstra",
     );
-    let got = serde_json::from_value::<
-        String,
-    >(serde_json::Value::String("diṅnāga".to_owned()))
+    let got = serde_json::from_str::<String>("\"diṅnāga\"")
         .map_err(|e| runtime::Error::Encode(e.to_string()))
         .map(|v| {
             runtime::encode_path("username", &v, runtime::Enc::SIMPLE)
@@ -316,9 +223,7 @@ fn documented_examples_decode() {
         got,
         "di%E1%B9%85n%C4%81ga",
     );
-    let got = serde_json::from_value::<
-        String,
-    >(serde_json::Value::String("الخوارزمي\u{651}".to_owned()))
+    let got = serde_json::from_str::<String>("\"الخوارزمي\u{651}\"")
         .map_err(|e| runtime::Error::Encode(e.to_string()))
         .map(|v| {
             runtime::encode_path("username", &v, runtime::Enc::SIMPLE)
@@ -330,16 +235,7 @@ fn documented_examples_decode() {
         got,
         "%D8%A7%D9%84%D8%AE%D9%88%D8%A7%D8%B1%D8%B2%D9%85%D9%8A%D9%91",
     );
-    let got = serde_json::from_value::<
-        Vec<String>,
-    >(
-            serde_json::Value::Array(
-                vec![
-                    serde_json::Value::String("one thing".to_owned()),
-                    serde_json::Value::String("another thing".to_owned())
-                ],
-            ),
-        )
+    let got = serde_json::from_str::<Vec<String>>("[\"one thing\",\"another thing\"]")
         .map_err(|e| runtime::Error::Encode(e.to_string()))
         .map(|v| {
             let mut q = Vec::new();
@@ -353,16 +249,9 @@ fn documented_examples_decode() {
         got,
         "thing=one%20thing&thing=another%20thing",
     );
-    let got = serde_json::from_value::<
+    let got = serde_json::from_str::<
         std::collections::BTreeMap<String, i64>,
-    >(
-            serde_json::Value::Object(
-                serde_json::Map::from_iter([
-                    ("page".to_owned(), serde_json::Value::from(4i64)),
-                    ("pageSize".to_owned(), serde_json::Value::from(50i64)),
-                ]),
-            ),
-        )
+    >("{\"page\":4,\"pageSize\":50}")
         .map_err(|e| runtime::Error::Encode(e.to_string()))
         .map(|v| {
             let mut q = Vec::new();

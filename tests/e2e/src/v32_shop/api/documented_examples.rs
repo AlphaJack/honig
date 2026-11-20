@@ -21,1185 +21,1005 @@
     reason = "which of them the examples need depends on the description"
 )]
 use super::{runtime, types};
-fn value<T: serde::de::DeserializeOwned>(
-    bad: &mut Vec<String>,
-    at: &str,
-    v: serde_json::Value,
-) {
-    if let Err(e) = serde_json::from_value::<T>(v) {
+fn value<T: serde::de::DeserializeOwned>(bad: &mut Vec<String>, at: &str, text: &str) {
+    if let Err(e) = serde_json::from_str::<T>(text) {
         bad.push(format!("{at}: {e}"));
     }
 }
 fn param<T: serde::de::DeserializeOwned>(
     bad: &mut Vec<String>,
     at: &'static str,
-    v: serde_json::Value,
+    text: &str,
 ) {
-    if let Err(e) = runtime::from_param::<T>(Some(v), at) {
+    if let Err(e) = runtime::from_param::<T>(serde_json::from_str(text).ok(), at) {
         bad.push(e.to_string());
     }
 }
 #[test]
 fn documented_examples_decode() {
     let mut bad = vec![];
-    value::<
-        i64,
-    >(
-        &mut bad,
-        "/components/schemas/User/properties/id/examples/0",
-        serde_json::Value::from(1i64),
-    );
+    value::<i64>(&mut bad, "/components/schemas/User/properties/id/examples/0", "1");
     value::<
         String,
-    >(
-        &mut bad,
-        "/components/schemas/User/properties/name/examples/0",
-        serde_json::Value::String("Marc".to_owned()),
-    );
+    >(&mut bad, "/components/schemas/User/properties/name/examples/0", "\"Marc\"");
     value::<
         String,
-    >(
-        &mut bad,
-        "/components/schemas/User/properties/name/examples/1",
-        serde_json::Value::String("Cam".to_owned()),
-    );
+    >(&mut bad, "/components/schemas/User/properties/name/examples/1", "\"Cam\"");
     value::<
         String,
-    >(
-        &mut bad,
-        "/components/schemas/User/properties/name/examples/2",
-        serde_json::Value::String("Hans".to_owned()),
-    );
+    >(&mut bad, "/components/schemas/User/properties/name/examples/2", "\"Hans\"");
     value::<
         String,
     >(
         &mut bad,
         "/components/schemas/Token/properties/token/examples/0",
-        serde_json::Value::String(
-            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"
-                .to_owned(),
-        ),
+        "\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c\"",
     );
-    value::<
-        i64,
-    >(
-        &mut bad,
-        "/components/schemas/Product/properties/id/examples/0",
-        serde_json::Value::from(1i64),
-    );
+    value::<i64>(&mut bad, "/components/schemas/Product/properties/id/examples/0", "1");
     value::<
         String,
     >(
         &mut bad,
         "/components/schemas/Product/properties/name/examples/0",
-        serde_json::Value::String("Desk lamp".to_owned()),
+        "\"Desk lamp\"",
     );
     value::<
         String,
     >(
         &mut bad,
         "/components/schemas/Product/properties/name/examples/1",
-        serde_json::Value::String("Office chair".to_owned()),
+        "\"Office chair\"",
     );
     value::<
         String,
     >(
         &mut bad,
         "/components/schemas/Product/properties/name/examples/2",
-        serde_json::Value::String("HD 40307g".to_owned()),
+        "\"HD 40307g\"",
     );
     value::<
         Option<String>,
     >(
         &mut bad,
         "/components/schemas/Product/properties/description/examples/0",
-        serde_json::Value::String("The red product".to_owned()),
+        "\"The red product\"",
     );
     value::<
         Option<String>,
     >(
         &mut bad,
         "/components/schemas/Product/properties/description/examples/1",
-        serde_json::Value::String("A chair with lumbar support".to_owned()),
+        "\"A chair with lumbar support\"",
     );
     value::<
         types::ProductType,
     >(
         &mut bad,
         "/components/schemas/Product/properties/type/examples/0",
-        serde_json::Value::String("hardware".to_owned()),
+        "\"hardware\"",
     );
     value::<
         types::ProductRating,
-    >(
-        &mut bad,
-        "/components/schemas/Product/properties/rating/examples/0",
-        serde_json::Value::from(0.68f64),
-    );
+    >(&mut bad, "/components/schemas/Product/properties/rating/examples/0", "0.68");
     value::<
         runtime::DateTimeText,
     >(
         &mut bad,
         "/components/schemas/Product/properties/listedAt/examples/0",
-        serde_json::Value::String("2024-01-07T00:00:00Z".to_owned()),
+        "\"2024-01-07T00:00:00Z\"",
     );
     value::<
         Option<String>,
     >(
         &mut bad,
         "/components/schemas/Product/properties/image/examples/0",
-        serde_json::Value::String("https://cdn.example.com/photos/lamp.jpg".to_owned()),
+        "\"https://cdn.example.com/photos/lamp.jpg\"",
     );
     value::<
         Vec<String>,
     >(
         &mut bad,
         "/components/schemas/Product/properties/tags/examples/0",
-        serde_json::Value::Array(
-            vec![
-                serde_json::Value::String("office".to_owned()),
-                serde_json::Value::String("lighting".to_owned()),
-                serde_json::Value::String("in-stock".to_owned())
-            ],
-        ),
+        "[\"office\",\"lighting\",\"in-stock\"]",
     );
     value::<
         runtime::DateTimeText,
     >(
         &mut bad,
         "/components/schemas/Product/properties/lastUpdated/examples/0",
-        serde_json::Value::String("2024-01-15T14:30:00Z".to_owned()),
+        "\"2024-01-15T14:30:00Z\"",
     );
     value::<
         url::Url,
     >(
         &mut bad,
         "/components/schemas/Product/properties/successCallbackUrl/examples/0",
-        serde_json::Value::String("https://example.com/webhook".to_owned()),
+        "\"https://example.com/webhook\"",
     );
     value::<
         url::Url,
     >(
         &mut bad,
         "/components/schemas/Product/properties/failureCallbackUrl/examples/0",
-        serde_json::Value::String("https://example.com/webhook".to_owned()),
+        "\"https://example.com/webhook\"",
     );
-    value::<
-        i64,
-    >(
-        &mut bad,
-        "/components/schemas/Variant/properties/id/examples/0",
-        serde_json::Value::from(1i64),
-    );
+    value::<i64>(&mut bad, "/components/schemas/Variant/properties/id/examples/0", "1");
     value::<
         String,
-    >(
-        &mut bad,
-        "/components/schemas/Variant/properties/name/examples/0",
-        serde_json::Value::String("Large".to_owned()),
-    );
+    >(&mut bad, "/components/schemas/Variant/properties/name/examples/0", "\"Large\"");
     value::<
         Option<String>,
     >(
         &mut bad,
         "/components/schemas/Variant/properties/description/examples/0",
-        serde_json::Value::String(
-            "The large size, for desks wider than 120 cm.".to_owned(),
-        ),
+        "\"The large size, for desks wider than 120 cm.\"",
     );
     value::<
         f32,
-    >(
-        &mut bad,
-        "/components/schemas/Variant/properties/length/examples/0",
-        serde_json::Value::from(22.2f64),
-    );
+    >(&mut bad, "/components/schemas/Variant/properties/length/examples/0", "22.2");
     value::<
         types::VariantType,
-    >(
-        &mut bad,
-        "/components/schemas/Variant/properties/type/examples/0",
-        serde_json::Value::String("size".to_owned()),
-    );
+    >(&mut bad, "/components/schemas/Variant/properties/type/examples/0", "\"size\"");
     value::<
         String,
     >(
         &mut bad,
         "/components/schemas/ProductQuery/properties/name/examples/0",
-        serde_json::Value::String("Desk lamp".to_owned()),
+        "\"Desk lamp\"",
     );
     value::<
         Vec<types::ProductQueryTypeItem>,
     >(
         &mut bad,
         "/components/schemas/ProductQuery/properties/type/examples/0",
-        serde_json::Value::Array(
-            vec![
-                serde_json::Value::String("hardware".to_owned()),
-                serde_json::Value::String("subscription".to_owned())
-            ],
-        ),
+        "[\"hardware\",\"subscription\"]",
     );
     value::<
         types::ProductQueryMinRating,
     >(
         &mut bad,
         "/components/schemas/ProductQuery/properties/minRating/examples/0",
-        serde_json::Value::from(0.5f64),
+        "0.5",
     );
     value::<
         types::ProductQuerySort,
     >(
         &mut bad,
         "/components/schemas/ProductQuery/properties/sort/examples/0",
-        serde_json::Value::String("-rating".to_owned()),
+        "\"-rating\"",
     );
     value::<
         runtime::UuidText,
     >(
         &mut bad,
         "/components/schemas/ProductEvent/properties/id/examples/0",
-        serde_json::Value::String("123e4567-e89b-12d3-a456-426614174000".to_owned()),
+        "\"123e4567-e89b-12d3-a456-426614174000\"",
     );
     value::<
         types::ProductEventEvent,
     >(
         &mut bad,
         "/components/schemas/ProductEvent/properties/event/examples/0",
-        serde_json::Value::String("created".to_owned()),
+        "\"created\"",
     );
     value::<
         runtime::DateTimeText,
     >(
         &mut bad,
         "/components/schemas/ProductEvent/properties/occurredAt/examples/0",
-        serde_json::Value::String("2024-01-15T14:30:00Z".to_owned()),
+        "\"2024-01-15T14:30:00Z\"",
     );
     value::<
         String,
-    >(
-        &mut bad,
-        "/components/schemas/ShopMessage/properties/lang/examples/0",
-        serde_json::Value::String("en".to_owned()),
-    );
+    >(&mut bad, "/components/schemas/ShopMessage/properties/lang/examples/0", "\"en\"");
     value::<
         String,
     >(
         &mut bad,
         "/components/schemas/ShopMessage/properties/value/examples/0",
-        serde_json::Value::String("A new product has appeared".to_owned()),
+        "\"A new product has appeared\"",
     );
     value::<
         String,
     >(
         &mut bad,
         "/components/schemas/PhotoBatchMeta/properties/photographer/examples/0",
-        serde_json::Value::String("Studio North".to_owned()),
+        "\"Studio North\"",
     );
     value::<
         runtime::DateTimeText,
     >(
         &mut bad,
         "/components/schemas/PhotoBatchMeta/properties/takenAt/examples/0",
-        serde_json::Value::String("2024-01-15T14:30:00Z".to_owned()),
+        "\"2024-01-15T14:30:00Z\"",
     );
     value::<
         i64,
-    >(
-        &mut bad,
-        "/components/schemas/PhotoBatchMeta/properties/count/examples/0",
-        serde_json::Value::from(12i64),
-    );
+    >(&mut bad, "/components/schemas/PhotoBatchMeta/properties/count/examples/0", "12");
     value::<
         String,
     >(
         &mut bad,
         "/components/schemas/ImageUploadedMessage/properties/message/examples/0",
-        serde_json::Value::String("Image uploaded successfully".to_owned()),
+        "\"Image uploaded successfully\"",
     );
     value::<
         String,
     >(
         &mut bad,
         "/components/schemas/ImageUploadedMessage/properties/imageUrl/examples/0",
-        serde_json::Value::String(
-            "https://cdn.example.com/images/8f47c132-9d1f-4f83-b5a4-91db5ee757ab.jpg"
-                .to_owned(),
-        ),
+        "\"https://cdn.example.com/images/8f47c132-9d1f-4f83-b5a4-91db5ee757ab.jpg\"",
     );
     value::<
         runtime::DateTimeText,
     >(
         &mut bad,
         "/components/schemas/ImageUploadedMessage/properties/uploadedAt/examples/0",
-        serde_json::Value::String("2024-01-15T14:30:00Z".to_owned()),
+        "\"2024-01-15T14:30:00Z\"",
     );
     value::<
         i64,
     >(
         &mut bad,
         "/components/schemas/ImageUploadedMessage/properties/fileSize/examples/0",
-        serde_json::Value::from(1_048_576i64),
+        "1048576",
     );
     value::<
         String,
     >(
         &mut bad,
         "/components/schemas/ImageUploadedMessage/properties/mimeType/examples/0",
-        serde_json::Value::String("image/jpeg".to_owned()),
+        "\"image/jpeg\"",
     );
     value::<
         String,
     >(
         &mut bad,
         "/components/schemas/ImageUploadedMessage/properties/mimeType/examples/1",
-        serde_json::Value::String("image/png".to_owned()),
+        "\"image/png\"",
     );
     value::<
         String,
     >(
         &mut bad,
         "/components/schemas/BadRequestError/properties/type/examples/0",
-        serde_json::Value::String("https://example.com/errors/bad-request".to_owned()),
+        "\"https://example.com/errors/bad-request\"",
     );
     value::<
         String,
     >(
         &mut bad,
         "/components/schemas/BadRequestError/properties/title/examples/0",
-        serde_json::Value::String("Bad Request".to_owned()),
+        "\"Bad Request\"",
     );
     value::<
         i64,
     >(
         &mut bad,
         "/components/schemas/BadRequestError/properties/status/examples/0",
-        serde_json::Value::from(400i64),
+        "400",
     );
     value::<
         String,
     >(
         &mut bad,
         "/components/schemas/BadRequestError/properties/detail/examples/0",
-        serde_json::Value::String("The request was invalid.".to_owned()),
+        "\"The request was invalid.\"",
     );
     value::<
         String,
     >(
         &mut bad,
         "/components/schemas/ForbiddenError/properties/type/examples/0",
-        serde_json::Value::String("https://example.com/errors/forbidden".to_owned()),
+        "\"https://example.com/errors/forbidden\"",
     );
     value::<
         String,
     >(
         &mut bad,
         "/components/schemas/ForbiddenError/properties/title/examples/0",
-        serde_json::Value::String("Forbidden".to_owned()),
+        "\"Forbidden\"",
     );
     value::<
         i64,
     >(
         &mut bad,
         "/components/schemas/ForbiddenError/properties/status/examples/0",
-        serde_json::Value::from(403i64),
+        "403",
     );
     value::<
         String,
     >(
         &mut bad,
         "/components/schemas/ForbiddenError/properties/detail/examples/0",
-        serde_json::Value::String(
-            "You are not authorized to access this resource.".to_owned(),
-        ),
+        "\"You are not authorized to access this resource.\"",
     );
     value::<
         String,
     >(
         &mut bad,
         "/components/schemas/NotFoundError/properties/type/examples/0",
-        serde_json::Value::String("https://example.com/errors/not-found".to_owned()),
+        "\"https://example.com/errors/not-found\"",
     );
     value::<
         String,
     >(
         &mut bad,
         "/components/schemas/NotFoundError/properties/title/examples/0",
-        serde_json::Value::String("Not Found".to_owned()),
+        "\"Not Found\"",
     );
     value::<
         i64,
-    >(
-        &mut bad,
-        "/components/schemas/NotFoundError/properties/status/examples/0",
-        serde_json::Value::from(404i64),
-    );
+    >(&mut bad, "/components/schemas/NotFoundError/properties/status/examples/0", "404");
     value::<
         String,
     >(
         &mut bad,
         "/components/schemas/NotFoundError/properties/detail/examples/0",
-        serde_json::Value::String(
-            "The resource you are trying to access does not exist.".to_owned(),
-        ),
+        "\"The resource you are trying to access does not exist.\"",
     );
     value::<
         String,
     >(
         &mut bad,
         "/components/schemas/UnauthorizedError/properties/type/examples/0",
-        serde_json::Value::String("https://example.com/errors/not-found".to_owned()),
+        "\"https://example.com/errors/not-found\"",
     );
     value::<
         String,
     >(
         &mut bad,
         "/components/schemas/UnauthorizedError/properties/title/examples/0",
-        serde_json::Value::String("Unauthorized".to_owned()),
+        "\"Unauthorized\"",
     );
     value::<
         i64,
     >(
         &mut bad,
         "/components/schemas/UnauthorizedError/properties/status/examples/0",
-        serde_json::Value::from(401i64),
+        "401",
     );
     value::<
         String,
     >(
         &mut bad,
         "/components/schemas/UnauthorizedError/properties/detail/examples/0",
-        serde_json::Value::String(
-            "You are not authorized to access this resource.".to_owned(),
-        ),
+        "\"You are not authorized to access this resource.\"",
     );
     value::<
         String,
     >(
         &mut bad,
         "/components/schemas/Conflict/properties/type/examples/0",
-        serde_json::Value::String("https://example.com/errors/conflict".to_owned()),
+        "\"https://example.com/errors/conflict\"",
     );
     value::<
         String,
     >(
         &mut bad,
         "/components/schemas/Conflict/properties/title/examples/0",
-        serde_json::Value::String("Conflict".to_owned()),
+        "\"Conflict\"",
     );
     value::<
         i64,
-    >(
-        &mut bad,
-        "/components/schemas/Conflict/properties/status/examples/0",
-        serde_json::Value::from(409i64),
-    );
+    >(&mut bad, "/components/schemas/Conflict/properties/status/examples/0", "409");
     value::<
         String,
     >(
         &mut bad,
         "/components/schemas/Conflict/properties/detail/examples/0",
-        serde_json::Value::String(
-            "The resource you are trying to access is in conflict.".to_owned(),
-        ),
+        "\"The resource you are trying to access is in conflict.\"",
     );
     value::<
         String,
     >(
         &mut bad,
         "/components/schemas/UnprocessableEntity/properties/type/examples/0",
-        serde_json::Value::String(
-            "https://example.com/errors/unprocessable-entity".to_owned(),
-        ),
+        "\"https://example.com/errors/unprocessable-entity\"",
     );
     value::<
         String,
     >(
         &mut bad,
         "/components/schemas/UnprocessableEntity/properties/title/examples/0",
-        serde_json::Value::String("Unprocessable Entity".to_owned()),
+        "\"Unprocessable Entity\"",
     );
     value::<
         i64,
     >(
         &mut bad,
         "/components/schemas/UnprocessableEntity/properties/status/examples/0",
-        serde_json::Value::from(422i64),
+        "422",
     );
     value::<
         String,
     >(
         &mut bad,
         "/components/schemas/UnprocessableEntity/properties/detail/examples/0",
-        serde_json::Value::String("The request was invalid.".to_owned()),
+        "\"The request was invalid.\"",
     );
     value::<
         String,
     >(
         &mut bad,
         "/components/schemas/TooManyRequestsError/properties/type/examples/0",
-        serde_json::Value::String(
-            "https://example.com/errors/too-many-requests".to_owned(),
-        ),
+        "\"https://example.com/errors/too-many-requests\"",
     );
     value::<
         String,
     >(
         &mut bad,
         "/components/schemas/TooManyRequestsError/properties/title/examples/0",
-        serde_json::Value::String("Too Many Requests".to_owned()),
+        "\"Too Many Requests\"",
     );
     value::<
         i64,
     >(
         &mut bad,
         "/components/schemas/TooManyRequestsError/properties/status/examples/0",
-        serde_json::Value::from(429i64),
+        "429",
     );
     value::<
         String,
     >(
         &mut bad,
         "/components/schemas/TooManyRequestsError/properties/detail/examples/0",
-        serde_json::Value::String(
-            "Rate limit exceeded. Please try again later.".to_owned(),
-        ),
+        "\"Rate limit exceeded. Please try again later.\"",
     );
     value::<
         types::ProductDimensionsWeight,
     >(
         &mut bad,
         "/components/schemas/Product/properties/dimensions/properties/weight/examples/0",
-        serde_json::Value::from(3.5f64),
+        "3.5",
     );
     value::<
         types::ProductDimensionsWidth,
     >(
         &mut bad,
         "/components/schemas/Product/properties/dimensions/properties/width/examples/0",
-        serde_json::Value::from(40i64),
+        "40",
     );
     value::<
         f32,
     >(
         &mut bad,
         "/components/schemas/Product/properties/dimensions/properties/height/examples/0",
-        serde_json::Value::from(55i64),
+        "55",
     );
     value::<
         f32,
     >(
         &mut bad,
         "/components/schemas/Product/properties/dimensions/properties/price/properties/min/examples/0",
-        serde_json::Value::from(130i64),
+        "130",
     );
     value::<
         f32,
     >(
         &mut bad,
         "/components/schemas/Product/properties/dimensions/properties/price/properties/max/examples/0",
-        serde_json::Value::from(308i64),
+        "308",
     );
     value::<
         f32,
     >(
         &mut bad,
         "/components/schemas/Product/properties/dimensions/properties/price/properties/average/examples/0",
-        serde_json::Value::from(210i64),
+        "210",
     );
     value::<
         String,
     >(
         &mut bad,
         "/components/schemas/Product/properties/materials/items/properties/material/examples/0",
-        serde_json::Value::String("steel".to_owned()),
+        "\"steel\"",
     );
     value::<
         String,
     >(
         &mut bad,
         "/components/schemas/Product/properties/materials/items/properties/material/examples/1",
-        serde_json::Value::String("oak".to_owned()),
+        "\"oak\"",
     );
     value::<
         types::ProductMaterialsItemPercentage,
     >(
         &mut bad,
         "/components/schemas/Product/properties/materials/items/properties/percentage/examples/0",
-        serde_json::Value::from(95.3f64),
+        "95.3",
     );
     value::<
         f32,
     >(
         &mut bad,
         "/components/schemas/Variant/properties/shipping/properties/deliveryDays/examples/0",
-        serde_json::Value::from(0.319f64),
+        "0.319",
     );
     value::<
         f32,
     >(
         &mut bad,
         "/components/schemas/Variant/properties/shipping/properties/distance/examples/0",
-        serde_json::Value::from(9376i64),
+        "9376",
     );
     value::<
         i64,
     >(
         &mut bad,
         "/components/schemas/PaginatedResource/properties/meta/properties/limit/examples/0",
-        serde_json::Value::from(10i64),
+        "10",
     );
     value::<
         i64,
     >(
         &mut bad,
         "/components/schemas/PaginatedResource/properties/meta/properties/offset/examples/0",
-        serde_json::Value::from(0i64),
+        "0",
     );
     value::<
         i64,
     >(
         &mut bad,
         "/components/schemas/PaginatedResource/properties/meta/properties/total/examples/0",
-        serde_json::Value::from(100i64),
+        "100",
     );
     value::<
         Option<String>,
     >(
         &mut bad,
         "/components/schemas/PaginatedResource/properties/meta/properties/next/examples/0",
-        serde_json::Value::String("/products?limit=10&offset=10".to_owned()),
+        "\"/products?limit=10&offset=10\"",
     );
     value::<
         i64,
     >(
         &mut bad,
         "/paths/~1products/get/responses/200/content/application~1json/schema/properties/meta/properties/limit/examples/0",
-        serde_json::Value::from(10i64),
+        "10",
     );
     value::<
         i64,
     >(
         &mut bad,
         "/paths/~1products/get/responses/200/content/application~1json/schema/properties/meta/properties/offset/examples/0",
-        serde_json::Value::from(0i64),
+        "0",
     );
     value::<
         i64,
     >(
         &mut bad,
         "/paths/~1products/get/responses/200/content/application~1json/schema/properties/meta/properties/total/examples/0",
-        serde_json::Value::from(100i64),
+        "100",
     );
     value::<
         Option<String>,
     >(
         &mut bad,
         "/paths/~1products/get/responses/200/content/application~1json/schema/properties/meta/properties/next/examples/0",
-        serde_json::Value::String("/products?limit=10&offset=10".to_owned()),
+        "\"/products?limit=10&offset=10\"",
     );
     value::<
         i64,
     >(
         &mut bad,
         "/paths/~1products/get/responses/200/content/application~1xml/schema/properties/meta/properties/limit/examples/0",
-        serde_json::Value::from(10i64),
+        "10",
     );
     value::<
         i64,
     >(
         &mut bad,
         "/paths/~1products/get/responses/200/content/application~1xml/schema/properties/meta/properties/offset/examples/0",
-        serde_json::Value::from(0i64),
+        "0",
     );
     value::<
         i64,
     >(
         &mut bad,
         "/paths/~1products/get/responses/200/content/application~1xml/schema/properties/meta/properties/total/examples/0",
-        serde_json::Value::from(100i64),
+        "100",
     );
     value::<
         Option<String>,
     >(
         &mut bad,
         "/paths/~1products/get/responses/200/content/application~1xml/schema/properties/meta/properties/next/examples/0",
-        serde_json::Value::String("/products?limit=10&offset=10".to_owned()),
+        "\"/products?limit=10&offset=10\"",
     );
     value::<
         i64,
     >(
         &mut bad,
         "/paths/~1products/query/responses/200/content/application~1json/schema/properties/meta/properties/limit/examples/0",
-        serde_json::Value::from(10i64),
+        "10",
     );
     value::<
         i64,
     >(
         &mut bad,
         "/paths/~1products/query/responses/200/content/application~1json/schema/properties/meta/properties/offset/examples/0",
-        serde_json::Value::from(0i64),
+        "0",
     );
     value::<
         i64,
     >(
         &mut bad,
         "/paths/~1products/query/responses/200/content/application~1json/schema/properties/meta/properties/total/examples/0",
-        serde_json::Value::from(100i64),
+        "100",
     );
     value::<
         Option<String>,
     >(
         &mut bad,
         "/paths/~1products/query/responses/200/content/application~1json/schema/properties/meta/properties/next/examples/0",
-        serde_json::Value::String("/products?limit=10&offset=10".to_owned()),
+        "\"/products?limit=10&offset=10\"",
     );
     value::<
         i64,
     >(
         &mut bad,
         "/paths/~1products~1search/get/responses/200/content/application~1json/schema/properties/meta/properties/limit/examples/0",
-        serde_json::Value::from(10i64),
+        "10",
     );
     value::<
         i64,
     >(
         &mut bad,
         "/paths/~1products~1search/get/responses/200/content/application~1json/schema/properties/meta/properties/offset/examples/0",
-        serde_json::Value::from(0i64),
+        "0",
     );
     value::<
         i64,
     >(
         &mut bad,
         "/paths/~1products~1search/get/responses/200/content/application~1json/schema/properties/meta/properties/total/examples/0",
-        serde_json::Value::from(100i64),
+        "100",
     );
     value::<
         Option<String>,
     >(
         &mut bad,
         "/paths/~1products~1search/get/responses/200/content/application~1json/schema/properties/meta/properties/next/examples/0",
-        serde_json::Value::String("/products?limit=10&offset=10".to_owned()),
+        "\"/products?limit=10&offset=10\"",
     );
     value::<
         i64,
     >(
         &mut bad,
         "/paths/~1products~1{productId}~1photos/post/responses/202/content/application~1json/schema/properties/accepted/examples/0",
-        serde_json::Value::from(12i64),
+        "12",
     );
     value::<
         runtime::UuidText,
     >(
         &mut bad,
         "/paths/~1products~1{productId}~1photos/post/responses/202/content/application~1json/schema/properties/batchId/examples/0",
-        serde_json::Value::String("8f47c132-9d1f-4f83-b5a4-91db5ee757ab".to_owned()),
+        "\"8f47c132-9d1f-4f83-b5a4-91db5ee757ab\"",
     );
     value::<
         i64,
     >(
         &mut bad,
         "/paths/~1user~1signup/post/requestBody/content/application~1json/schema/properties/id/examples/0",
-        serde_json::Value::from(1i64),
+        "1",
     );
     value::<
         String,
     >(
         &mut bad,
         "/paths/~1user~1signup/post/requestBody/content/application~1json/schema/properties/name/examples/0",
-        serde_json::Value::String("Marc".to_owned()),
+        "\"Marc\"",
     );
     value::<
         String,
     >(
         &mut bad,
         "/paths/~1user~1signup/post/requestBody/content/application~1json/schema/properties/name/examples/1",
-        serde_json::Value::String("Cam".to_owned()),
+        "\"Cam\"",
     );
     value::<
         String,
     >(
         &mut bad,
         "/paths/~1user~1signup/post/requestBody/content/application~1json/schema/properties/name/examples/2",
-        serde_json::Value::String("Hans".to_owned()),
+        "\"Hans\"",
     );
     value::<
         i64,
     >(
         &mut bad,
         "/paths/~1user~1signup/post/requestBody/content/application~1xml/schema/properties/id/examples/0",
-        serde_json::Value::from(1i64),
+        "1",
     );
     value::<
         String,
     >(
         &mut bad,
         "/paths/~1user~1signup/post/requestBody/content/application~1xml/schema/properties/name/examples/0",
-        serde_json::Value::String("Marc".to_owned()),
+        "\"Marc\"",
     );
     value::<
         String,
     >(
         &mut bad,
         "/paths/~1user~1signup/post/requestBody/content/application~1xml/schema/properties/name/examples/1",
-        serde_json::Value::String("Cam".to_owned()),
+        "\"Cam\"",
     );
     value::<
         String,
     >(
         &mut bad,
         "/paths/~1user~1signup/post/requestBody/content/application~1xml/schema/properties/name/examples/2",
-        serde_json::Value::String("Hans".to_owned()),
+        "\"Hans\"",
     );
     value::<
         String,
-    >(
-        &mut bad,
-        "/components/schemas/User/properties/name/examples/0",
-        serde_json::Value::String("Marc".to_owned()),
-    );
+    >(&mut bad, "/components/schemas/User/properties/name/examples/0", "\"Marc\"");
     value::<
         String,
-    >(
-        &mut bad,
-        "/components/schemas/User/properties/name/examples/1",
-        serde_json::Value::String("Cam".to_owned()),
-    );
+    >(&mut bad, "/components/schemas/User/properties/name/examples/1", "\"Cam\"");
     value::<
         String,
-    >(
-        &mut bad,
-        "/components/schemas/User/properties/name/examples/2",
-        serde_json::Value::String("Hans".to_owned()),
-    );
+    >(&mut bad, "/components/schemas/User/properties/name/examples/2", "\"Hans\"");
     value::<
         String,
     >(
         &mut bad,
         "/components/schemas/Credentials/properties/password/examples/0",
-        serde_json::Value::String("correct-horse".to_owned()),
+        "\"correct-horse\"",
     );
     value::<
         String,
     >(
         &mut bad,
         "/components/schemas/Credentials/properties/password/examples/1",
-        serde_json::Value::String("correct-horse".to_owned()),
+        "\"correct-horse\"",
     );
     value::<
         String,
     >(
         &mut bad,
         "/components/schemas/Credentials/properties/password/examples/2",
-        serde_json::Value::String("qwerty123".to_owned()),
+        "\"qwerty123\"",
     );
     value::<
         String,
     >(
         &mut bad,
         "/components/schemas/Product/properties/name/examples/0",
-        serde_json::Value::String("Desk lamp".to_owned()),
+        "\"Desk lamp\"",
     );
     value::<
         String,
     >(
         &mut bad,
         "/components/schemas/Product/properties/name/examples/1",
-        serde_json::Value::String("Office chair".to_owned()),
+        "\"Office chair\"",
     );
     value::<
         String,
     >(
         &mut bad,
         "/components/schemas/Product/properties/name/examples/2",
-        serde_json::Value::String("HD 40307g".to_owned()),
+        "\"HD 40307g\"",
     );
     value::<
         Option<String>,
     >(
         &mut bad,
         "/components/schemas/Product/properties/description/examples/0",
-        serde_json::Value::String("The red product".to_owned()),
+        "\"The red product\"",
     );
     value::<
         Option<String>,
     >(
         &mut bad,
         "/components/schemas/Product/properties/description/examples/1",
-        serde_json::Value::String("A chair with lumbar support".to_owned()),
+        "\"A chair with lumbar support\"",
     );
     value::<
         types::ProductType,
     >(
         &mut bad,
         "/components/schemas/Product/properties/type/examples/0",
-        serde_json::Value::String("hardware".to_owned()),
+        "\"hardware\"",
     );
     value::<
         types::ProductRating,
-    >(
-        &mut bad,
-        "/components/schemas/Product/properties/rating/examples/0",
-        serde_json::Value::from(0.68f64),
-    );
+    >(&mut bad, "/components/schemas/Product/properties/rating/examples/0", "0.68");
     value::<
         runtime::DateTimeText,
     >(
         &mut bad,
         "/components/schemas/Product/properties/listedAt/examples/0",
-        serde_json::Value::String("2024-01-07T00:00:00Z".to_owned()),
+        "\"2024-01-07T00:00:00Z\"",
     );
     value::<
         Option<String>,
     >(
         &mut bad,
         "/components/schemas/Product/properties/image/examples/0",
-        serde_json::Value::String("https://cdn.example.com/photos/lamp.jpg".to_owned()),
+        "\"https://cdn.example.com/photos/lamp.jpg\"",
     );
     value::<
         Vec<String>,
     >(
         &mut bad,
         "/components/schemas/Product/properties/tags/examples/0",
-        serde_json::Value::Array(
-            vec![
-                serde_json::Value::String("office".to_owned()),
-                serde_json::Value::String("lighting".to_owned()),
-                serde_json::Value::String("in-stock".to_owned())
-            ],
-        ),
+        "[\"office\",\"lighting\",\"in-stock\"]",
     );
     value::<
         url::Url,
     >(
         &mut bad,
         "/components/schemas/Product/properties/successCallbackUrl/examples/0",
-        serde_json::Value::String("https://example.com/webhook".to_owned()),
+        "\"https://example.com/webhook\"",
     );
     value::<
         url::Url,
     >(
         &mut bad,
         "/components/schemas/Product/properties/failureCallbackUrl/examples/0",
-        serde_json::Value::String("https://example.com/webhook".to_owned()),
+        "\"https://example.com/webhook\"",
     );
     value::<
         String,
-    >(
-        &mut bad,
-        "/components/schemas/Variant/properties/name/examples/0",
-        serde_json::Value::String("Large".to_owned()),
-    );
+    >(&mut bad, "/components/schemas/Variant/properties/name/examples/0", "\"Large\"");
     value::<
         Option<String>,
     >(
         &mut bad,
         "/components/schemas/Variant/properties/description/examples/0",
-        serde_json::Value::String(
-            "The large size, for desks wider than 120 cm.".to_owned(),
-        ),
+        "\"The large size, for desks wider than 120 cm.\"",
     );
     value::<
         f32,
-    >(
-        &mut bad,
-        "/components/schemas/Variant/properties/length/examples/0",
-        serde_json::Value::from(22.2f64),
-    );
+    >(&mut bad, "/components/schemas/Variant/properties/length/examples/0", "22.2");
     value::<
         types::VariantType,
-    >(
-        &mut bad,
-        "/components/schemas/Variant/properties/type/examples/0",
-        serde_json::Value::String("size".to_owned()),
-    );
+    >(&mut bad, "/components/schemas/Variant/properties/type/examples/0", "\"size\"");
     value::<
         runtime::UuidText,
     >(
         &mut bad,
         "/components/schemas/ProductEvent/properties/id/examples/0",
-        serde_json::Value::String("123e4567-e89b-12d3-a456-426614174000".to_owned()),
+        "\"123e4567-e89b-12d3-a456-426614174000\"",
     );
     value::<
         types::ProductEventEvent,
     >(
         &mut bad,
         "/components/schemas/ProductEvent/properties/event/examples/0",
-        serde_json::Value::String("created".to_owned()),
+        "\"created\"",
     );
     value::<
         runtime::DateTimeText,
     >(
         &mut bad,
         "/components/schemas/ProductEvent/properties/occurredAt/examples/0",
-        serde_json::Value::String("2024-01-15T14:30:00Z".to_owned()),
+        "\"2024-01-15T14:30:00Z\"",
     );
     value::<
         f32,
     >(
         &mut bad,
         "/components/schemas/Variant/properties/shipping/properties/deliveryDays/examples/0",
-        serde_json::Value::from(0.319f64),
+        "0.319",
     );
     value::<
         f32,
     >(
         &mut bad,
         "/components/schemas/Variant/properties/shipping/properties/distance/examples/0",
-        serde_json::Value::from(9376i64),
+        "9376",
     );
     value::<
         String,
     >(
         &mut bad,
         "/paths/~1user~1signup/post/requestBody/content/application~1json/schema/properties/name/examples/0",
-        serde_json::Value::String("Marc".to_owned()),
+        "\"Marc\"",
     );
     value::<
         String,
     >(
         &mut bad,
         "/paths/~1user~1signup/post/requestBody/content/application~1json/schema/properties/name/examples/1",
-        serde_json::Value::String("Cam".to_owned()),
+        "\"Cam\"",
     );
     value::<
         String,
     >(
         &mut bad,
         "/paths/~1user~1signup/post/requestBody/content/application~1json/schema/properties/name/examples/2",
-        serde_json::Value::String("Hans".to_owned()),
+        "\"Hans\"",
     );
     value::<
         String,
     >(
         &mut bad,
         "/paths/~1user~1signup/post/requestBody/content/application~1json/schema/properties/password/examples/0",
-        serde_json::Value::String("correct-horse".to_owned()),
+        "\"correct-horse\"",
     );
     value::<
         String,
     >(
         &mut bad,
         "/paths/~1user~1signup/post/requestBody/content/application~1json/schema/properties/password/examples/1",
-        serde_json::Value::String("correct-horse".to_owned()),
+        "\"correct-horse\"",
     );
     value::<
         String,
     >(
         &mut bad,
         "/paths/~1user~1signup/post/requestBody/content/application~1json/schema/properties/password/examples/2",
-        serde_json::Value::String("qwerty123".to_owned()),
+        "\"qwerty123\"",
     );
     value::<
         String,
     >(
         &mut bad,
         "/paths/~1user~1signup/post/requestBody/content/application~1xml/schema/properties/name/examples/0",
-        serde_json::Value::String("Marc".to_owned()),
+        "\"Marc\"",
     );
     value::<
         String,
     >(
         &mut bad,
         "/paths/~1user~1signup/post/requestBody/content/application~1xml/schema/properties/name/examples/1",
-        serde_json::Value::String("Cam".to_owned()),
+        "\"Cam\"",
     );
     value::<
         String,
     >(
         &mut bad,
         "/paths/~1user~1signup/post/requestBody/content/application~1xml/schema/properties/name/examples/2",
-        serde_json::Value::String("Hans".to_owned()),
+        "\"Hans\"",
     );
     value::<
         String,
     >(
         &mut bad,
         "/paths/~1user~1signup/post/requestBody/content/application~1xml/schema/properties/password/examples/0",
-        serde_json::Value::String("correct-horse".to_owned()),
+        "\"correct-horse\"",
     );
     value::<
         String,
     >(
         &mut bad,
         "/paths/~1user~1signup/post/requestBody/content/application~1xml/schema/properties/password/examples/1",
-        serde_json::Value::String("correct-horse".to_owned()),
+        "\"correct-horse\"",
     );
     value::<
         String,
     >(
         &mut bad,
         "/paths/~1user~1signup/post/requestBody/content/application~1xml/schema/properties/password/examples/2",
-        serde_json::Value::String("qwerty123".to_owned()),
+        "\"qwerty123\"",
     );
-    param::<
-        i64,
-    >(
-        &mut bad,
-        "/components/parameters/limit/schema/default",
-        serde_json::Value::from(10i64),
-    );
-    param::<
-        i64,
-    >(
-        &mut bad,
-        "/components/parameters/offset/schema/default",
-        serde_json::Value::from(0i64),
-    );
+    param::<i64>(&mut bad, "/components/parameters/limit/schema/default", "10");
+    param::<i64>(&mut bad, "/components/parameters/offset/schema/default", "0");
     value::<
         types::CreateUserBodyRequest,
     >(
         &mut bad,
         "/paths/~1user~1signup/post/requestBody/content/application~1json/examples/Marc",
-        serde_json::Value::Object(
-            serde_json::Map::from_iter([
-                ("name".to_owned(), serde_json::Value::String("Marc".to_owned())),
-                (
-                    "email".to_owned(),
-                    serde_json::Value::String("marc@example.com".to_owned()),
-                ),
-                (
-                    "password".to_owned(),
-                    serde_json::Value::String("correct-horse".to_owned()),
-                ),
-            ]),
-        ),
+        "{\"name\":\"Marc\",\"email\":\"marc@example.com\",\"password\":\"correct-horse\"}",
     );
     value::<
         types::CreateUserBodyRequest,
     >(
         &mut bad,
         "/paths/~1user~1signup/post/requestBody/content/application~1json/examples/Cam",
-        serde_json::Value::Object(
-            serde_json::Map::from_iter([
-                ("name".to_owned(), serde_json::Value::String("Cam".to_owned())),
-                (
-                    "email".to_owned(),
-                    serde_json::Value::String("cam@example.com".to_owned()),
-                ),
-                (
-                    "password".to_owned(),
-                    serde_json::Value::String("battery-staple".to_owned()),
-                ),
-            ]),
-        ),
+        "{\"name\":\"Cam\",\"email\":\"cam@example.com\",\"password\":\"battery-staple\"}",
     );
     value::<
         types::CreateUserBodyRequest,
     >(
         &mut bad,
         "/paths/~1user~1signup/post/requestBody/content/application~1json/examples/Hans",
-        serde_json::Value::Object(
-            serde_json::Map::from_iter([
-                ("name".to_owned(), serde_json::Value::String("Hans".to_owned())),
-                (
-                    "email".to_owned(),
-                    serde_json::Value::String("hans@example.com".to_owned()),
-                ),
-                ("password".to_owned(), serde_json::Value::String("s3cr3t".to_owned())),
-            ]),
-        ),
+        "{\"name\":\"Hans\",\"email\":\"hans@example.com\",\"password\":\"s3cr3t\"}",
     );
     assert!(
         bad.is_empty(), "examples that do not fit their schema:\n{}", bad.join("\n")

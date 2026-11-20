@@ -21,21 +21,17 @@
     reason = "which of them the examples need depends on the description"
 )]
 use super::{runtime, types};
-fn value<T: serde::de::DeserializeOwned>(
-    bad: &mut Vec<String>,
-    at: &str,
-    v: serde_json::Value,
-) {
-    if let Err(e) = serde_json::from_value::<T>(v) {
+fn value<T: serde::de::DeserializeOwned>(bad: &mut Vec<String>, at: &str, text: &str) {
+    if let Err(e) = serde_json::from_str::<T>(text) {
         bad.push(format!("{at}: {e}"));
     }
 }
 fn param<T: serde::de::DeserializeOwned>(
     bad: &mut Vec<String>,
     at: &'static str,
-    v: serde_json::Value,
+    text: &str,
 ) {
-    if let Err(e) = runtime::from_param::<T>(Some(v), at) {
+    if let Err(e) = runtime::from_param::<T>(serde_json::from_str(text).ok(), at) {
         bad.push(e.to_string());
     }
 }
@@ -56,114 +52,53 @@ fn documented_examples_decode() {
     let mut bad = vec![];
     value::<
         types::ProductName,
-    >(
-        &mut bad,
-        "/components/schemas/Product/properties/name/examples/0",
-        serde_json::Value::String("Lamp".to_owned()),
-    );
+    >(&mut bad, "/components/schemas/Product/properties/name/examples/0", "\"Lamp\"");
     value::<
         types::BookName,
-    >(
-        &mut bad,
-        "/components/schemas/Book/properties/name/examples/0",
-        serde_json::Value::String("Lamp".to_owned()),
-    );
+    >(&mut bad, "/components/schemas/Book/properties/name/examples/0", "\"Lamp\"");
     value::<
         types::Gadget2Name,
     >(
         &mut bad,
         "/components/schemas/Gadget/oneOf/0/properties/name/examples/0",
-        serde_json::Value::String("Lamp".to_owned()),
+        "\"Lamp\"",
     );
     value::<
         types::ProductName,
-    >(
-        &mut bad,
-        "/components/schemas/Product/properties/name/examples/0",
-        serde_json::Value::String("Lamp".to_owned()),
-    );
+    >(&mut bad, "/components/schemas/Product/properties/name/examples/0", "\"Lamp\"");
     value::<
         types::BookName,
-    >(
-        &mut bad,
-        "/components/schemas/Book/properties/name/examples/0",
-        serde_json::Value::String("Lamp".to_owned()),
-    );
+    >(&mut bad, "/components/schemas/Book/properties/name/examples/0", "\"Lamp\"");
     value::<
         types::Gadget2Name,
     >(
         &mut bad,
         "/components/schemas/Gadget/oneOf/0/properties/name/examples/0",
-        serde_json::Value::String("Lamp".to_owned()),
+        "\"Lamp\"",
     );
     param::<
         types::ListProductsLimit,
-    >(
-        &mut bad,
-        "/paths/~1products/get/parameters/0/example",
-        serde_json::Value::from(10i64),
-    );
+    >(&mut bad, "/paths/~1products/get/parameters/0/example", "10");
     param::<
         Vec<String>,
-    >(
-        &mut bad,
-        "/paths/~1products/get/parameters/1/examples/two",
-        serde_json::Value::Array(
-            vec![
-                serde_json::Value::String("a".to_owned()), serde_json::Value::String("b"
-                .to_owned())
-            ],
-        ),
-    );
+    >(&mut bad, "/paths/~1products/get/parameters/1/examples/two", "[\"a\",\"b\"]");
     param::<
         std::collections::BTreeMap<String, String>,
     >(
         &mut bad,
         "/paths/~1products/get/parameters/2/examples/color",
-        serde_json::Value::Object(
-            serde_json::Map::from_iter([
-                ("color".to_owned(), serde_json::Value::String("red".to_owned())),
-            ]),
-        ),
+        "{\"color\":\"red\"}",
     );
-    param::<
-        i64,
-    >(
-        &mut bad,
-        "/paths/~1products/get/parameters/4/examples/small",
-        serde_json::Value::from(1i64),
-    );
-    param::<
-        i64,
-    >(
-        &mut bad,
-        "/paths/~1products/get/parameters/4/examples/wire",
-        serde_json::Value::from(3i64),
-    );
+    param::<i64>(&mut bad, "/paths/~1products/get/parameters/4/examples/small", "1");
+    param::<i64>(&mut bad, "/paths/~1products/get/parameters/4/examples/wire", "3");
     value::<
         Vec<types::Product>,
     >(
         &mut bad,
         "/paths/~1products/get/responses/200/content/application~1json/examples/one",
-        serde_json::Value::Array(
-            vec![
-                serde_json::Value::Object(serde_json::Map::from_iter([("id".to_owned(),
-                serde_json::Value::from(1i64)), ("name".to_owned(),
-                serde_json::Value::String("Lamp".to_owned())), ("kind".to_owned(),
-                serde_json::Value::String("book".to_owned()))]))
-            ],
-        ),
+        "[{\"id\":1,\"name\":\"Lamp\",\"kind\":\"book\"}]",
     );
-    let got = serde_json::from_value::<
-        Vec<String>,
-    >(
-            serde_json::Value::Array(
-                vec![
-                    serde_json::Value::String("a".to_owned()),
-                    serde_json::Value::String("b".to_owned())
-                ],
-            ),
-        )
+    let got = serde_json::from_str::<Vec<String>>("[\"a\",\"b\"]")
         .map_err(|e| runtime::Error::Encode(e.to_string()))
         .map(|v| {
             let mut q = Vec::new();
@@ -186,15 +121,9 @@ fn documented_examples_decode() {
         got,
         "tags=a|b",
     );
-    let got = serde_json::from_value::<
+    let got = serde_json::from_str::<
         std::collections::BTreeMap<String, String>,
-    >(
-            serde_json::Value::Object(
-                serde_json::Map::from_iter([
-                    ("color".to_owned(), serde_json::Value::String("red".to_owned())),
-                ]),
-            ),
-        )
+    >("{\"color\":\"red\"}")
         .map_err(|e| runtime::Error::Encode(e.to_string()))
         .map(|v| {
             let mut q = Vec::new();
@@ -217,7 +146,7 @@ fn documented_examples_decode() {
         got,
         "filter[color]=red",
     );
-    let got = serde_json::from_value::<i64>(serde_json::Value::from(3i64))
+    let got = serde_json::from_str::<i64>("3")
         .map_err(|e| runtime::Error::Encode(e.to_string()))
         .map(|v| {
             runtime::encode_header(&v, false)

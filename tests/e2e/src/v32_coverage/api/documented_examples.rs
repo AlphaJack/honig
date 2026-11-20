@@ -21,21 +21,17 @@
     reason = "which of them the examples need depends on the description"
 )]
 use super::{runtime, types};
-fn value<T: serde::de::DeserializeOwned>(
-    bad: &mut Vec<String>,
-    at: &str,
-    v: serde_json::Value,
-) {
-    if let Err(e) = serde_json::from_value::<T>(v) {
+fn value<T: serde::de::DeserializeOwned>(bad: &mut Vec<String>, at: &str, text: &str) {
+    if let Err(e) = serde_json::from_str::<T>(text) {
         bad.push(format!("{at}: {e}"));
     }
 }
 fn param<T: serde::de::DeserializeOwned>(
     bad: &mut Vec<String>,
     at: &'static str,
-    v: serde_json::Value,
+    text: &str,
 ) {
-    if let Err(e) = runtime::from_param::<T>(Some(v), at) {
+    if let Err(e) = runtime::from_param::<T>(serde_json::from_str(text).ok(), at) {
         bad.push(e.to_string());
     }
 }
@@ -44,91 +40,52 @@ fn documented_examples_decode() {
     let mut bad = vec![];
     value::<
         types::Pixels,
-    >(
-        &mut bad,
-        "/components/schemas/ImageNote/properties/width/default",
-        serde_json::Value::from(64i64),
-    );
+    >(&mut bad, "/components/schemas/ImageNote/properties/width/default", "64");
     value::<
         types::Pixels,
-    >(
-        &mut bad,
-        "/components/schemas/Note/oneOf/1/properties/width/default",
-        serde_json::Value::from(64i64),
-    );
+    >(&mut bad, "/components/schemas/Note/oneOf/1/properties/width/default", "64");
     value::<
         String,
     >(
         &mut bad,
         "/components/schemas/Note/oneOf/1/properties/text/examples/0",
-        serde_json::Value::String("hello".to_owned()),
+        "\"hello\"",
     );
-    value::<
-        String,
-    >(
-        &mut bad,
-        "#/x-honig-not/5/properties/text/examples/0",
-        serde_json::Value::String("hello".to_owned()),
-    );
+    value::<String>(&mut bad, "#/x-honig-not/5/properties/text/examples/0", "\"hello\"");
     param::<
         types::AddNoteCreatedXTags,
     >(
         &mut bad,
         "/paths/~1notes/post/responses/201/headers/X-Tags/example",
-        serde_json::Value::Object(
-            serde_json::Map::from_iter([
-                ("a".to_owned(), serde_json::Value::String("x".to_owned())),
-                ("b".to_owned(), serde_json::Value::String("y".to_owned())),
-            ]),
-        ),
+        "{\"a\":\"x\",\"b\":\"y\"}",
     );
     param::<
         types::AddNoteCreatedXTags,
     >(
         &mut bad,
         "/paths/~1notes/post/responses/201/headers/X-Tags/examples/two",
-        serde_json::Value::Object(
-            serde_json::Map::from_iter([
-                ("a".to_owned(), serde_json::Value::String("x".to_owned())),
-                ("b".to_owned(), serde_json::Value::String("z".to_owned())),
-            ]),
-        ),
+        "{\"a\":\"x\",\"b\":\"z\"}",
     );
     value::<
         types::Note,
     >(
         &mut bad,
         "/paths/~1notes/post/responses/201/content/application~1json/example",
-        serde_json::Value::Object(
-            serde_json::Map::from_iter([
-                ("kind".to_owned(), serde_json::Value::String("text".to_owned())),
-                ("text".to_owned(), serde_json::Value::String("hi".to_owned())),
-            ]),
-        ),
+        "{\"kind\":\"text\",\"text\":\"hi\"}",
     );
     value::<
         types::Note,
     >(
         &mut bad,
         "/paths/~1notes/post/responses/201/content/application~1json/examples/ref",
-        serde_json::Value::Object(
-            serde_json::Map::from_iter([
-                ("kind".to_owned(), serde_json::Value::String("text".to_owned())),
-                ("text".to_owned(), serde_json::Value::String("hi".to_owned())),
-            ]),
-        ),
+        "{\"kind\":\"text\",\"text\":\"hi\"}",
     );
     value::<
         types::Note,
     >(
         &mut bad,
         "/paths/~1notes/post/responses/201/content/application~1json/examples/file/externalValue",
-        serde_json::Value::Object(
-            serde_json::Map::from_iter([
-                ("kind".to_owned(), serde_json::Value::String("text".to_owned())),
-                ("text".to_owned(), serde_json::Value::String("file".to_owned())),
-            ]),
-        ),
+        "{\"kind\":\"text\",\"text\":\"file\"}",
     );
     assert!(
         bad.is_empty(), "examples that do not fit their schema:\n{}", bad.join("\n")
