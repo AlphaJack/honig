@@ -774,3 +774,16 @@ fn a_map_component_checks_a_value_built_in_code() {
     assert!(types::Labels::try_from(labels("red")).is_ok());
     assert!(types::Labels::try_from(labels("Red")).is_err(), "a name outside `^[a-z]+$`");
 }
+
+/// A builder checks the rules across fields too, not only each field: `build` refuses a value that breaks
+/// `dependentRequired` or `not`, although every field converts.
+#[test]
+fn a_builder_checks_the_rules_across_fields() {
+    let parcels =
+        || -> types::ShipmentInternationalParcels { serde_json::from_value(json!([{"fragile": true}])).unwrap() };
+    types::ShipmentInternational::builder("cn22", parcels()).build().expect("every rule holds");
+    let insured_alone = types::ShipmentInternational::builder("cn22", parcels()).insured(true).build();
+    assert!(insured_alone.is_err(), "dependentRequired: insured needs insurer");
+    let both = types::ShipmentInternational::builder("none", parcels()).insurer("acme").build();
+    assert!(both.is_err(), "not: customs `none` together with an insurer");
+}
