@@ -108,16 +108,29 @@ fn specialize_site(doc: &Doc, o: &Map<String, Value>, ptr: &str) -> Option<Map<S
     }
     let mut chain = vec![(target_ptr, ptr.to_owned())];
     let Value::Object(body) = bind(doc, target, &bindings, &mut chain) else { return None };
-    let mut out = body;
+    let mut body = body;
     // The generic's own `$id` would make the copy a second resource of that name. The site's own `$id` stays: the
     // site is still its resource, and its `$dynamicAnchor`s scope there.
-    out.remove("$id");
-    for (k, x) in o {
-        if k != "$ref" {
-            out.insert(k.clone(), x.clone());
-        }
+    body.remove("$id");
+    let own = o.iter().filter(|(k, _)| *k != "$ref");
+    // Both apply. A keyword that both hold (`properties`) keeps each: the generic's becomes a member of `allOf`.
+    // `$defs` and annotations apply to no value: the site's stand.
+    let applies = |k: &str| {
+        !matches!(k, "$defs" | "definitions" | "$dynamicAnchor" | "$anchor" | "$comment" | "$schema" | "description")
+            && !matches!(k, "title" | "examples" | "example" | "deprecated")
+            && !k.starts_with("x-")
+    };
+    if own.clone().any(|(k, x)| applies(k) && body.get(k).is_some_and(|b| b != x)) {
+        let mut out: Map<String, Value> = own.map(|(k, x)| (k.clone(), x.clone())).collect();
+        let mut members = vec![Value::Object(body)];
+        members.extend(out.remove("allOf").and_then(|a| a.as_array().cloned()).into_iter().flatten());
+        out.insert("allOf".into(), Value::Array(members));
+        return Some(out);
     }
-    Some(out)
+    for (k, x) in own {
+        body.insert(k.clone(), x.clone());
+    }
+    Some(body)
 }
 
 /// Returns the anchor that `$dynamicRef` `r` names: `#item`, or the `$dynamicAnchor` of the schema at the pointer that

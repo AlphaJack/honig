@@ -1402,3 +1402,23 @@ fn a_rust_tuple_is_checked_once() {
         common::file(&common::generate("tuple-once", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
     assert!(types.contains("pub start: Point,") && types.contains("pub stops: Vec<Point>,"), "{types}");
 }
+
+/// A resource that `$ref`s a generic beside its own `properties` keeps both: the generic's become a member of `allOf`.
+/// The generic's original in `$defs`, reached by nothing once bound, is no `$dynamicRef` that varies.
+#[test]
+fn a_bound_generic_keeps_the_properties_of_its_site() {
+    let v = json!({"$id": "https://t.test/root", "$dynamicAnchor": "meta", "type": "object",
+        "properties": {"foo": {"const": "pass"}}, "$ref": "extended",
+        "$defs": {"extended": {"$id": "extended", "$dynamicAnchor": "meta", "type": "object",
+            "properties": {"bar": {"$ref": "bar"}}},
+            "bar": {"$id": "bar", "type": "object", "properties": {"baz": {"$dynamicRef": "extended#meta"}}}}});
+    let doc =
+        common::spec("3.2.0", &json!({}), &json!({"schemas": {"Case": {"type": "object", "properties": {"v": v}}}}));
+    let spec = common::write("bound-generic-site", &doc, &[]);
+    let generated =
+        crate::generate::generate(&spec, &crate::emit::Options::default()).unwrap_or_else(|d| panic!("{d:?}"));
+    let errors: Vec<_> = generated.diagnostics.0.iter().filter(|d| d.level == crate::diag::Level::Error).collect();
+    assert!(errors.is_empty(), "{errors:?}");
+    let types = common::file(&generated.files, "types.rs");
+    assert!(types.contains("pub foo:") && types.contains("pub bar:"), "{types}");
+}
