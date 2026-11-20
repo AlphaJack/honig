@@ -79,7 +79,7 @@ pub fn credentials(request: &impl runtime::Secured) -> Vec<Credential<'_>> {
 const fn error_schema(
     _operation: Option<&str>,
     _status: u16,
-) -> Option<&'static runtime::ErrorSchema> {
+) -> Option<&'static runtime::ProblemSchema> {
     None
 }
 static METHODS: &[&[(&str, (Op, Operation))]] = &[
@@ -147,7 +147,7 @@ impl<A: Api> runtime::Operations for Routes<A> {
                 runtime::allowed_methods(methods),
             ))
     }
-    fn errors(&self) -> runtime::ErrorSchemas {
+    fn errors(&self) -> runtime::ProblemSchemas {
         error_schema
     }
     fn call<'r>(
@@ -255,7 +255,7 @@ fn list_products_params(
 }
 fn list_products_encode(
     resp: ops::list_products::Response,
-) -> Result<runtime::Response, runtime::Error> {
+) -> Result<runtime::Response, runtime::ClientError> {
     Ok(
         match resp {
             ops::list_products::Response::Ok { body, x_next } => {
@@ -315,7 +315,7 @@ fn create_product_params(
 }
 fn create_product_encode(
     resp: ops::create_product::Response,
-) -> Result<runtime::Response, runtime::Error> {
+) -> Result<runtime::Response, runtime::ClientError> {
     Ok(
         match resp {
             ops::create_product::Response::Created(body) => {
@@ -374,7 +374,7 @@ fn get_product_params(
 }
 fn get_product_encode(
     resp: ops::get_product::Response,
-) -> Result<runtime::Response, runtime::Error> {
+) -> Result<runtime::Response, runtime::ClientError> {
     Ok(
         match resp {
             ops::get_product::Response::Ok(body) => {

@@ -579,7 +579,7 @@ fn a_required_const_of_an_error_schema_gets_its_value() {
     let fields = server.split_once("fields:&[").and_then(|(_, rest)| rest.split_once(']')).expect("fields").0;
     assert_eq!(
         fields,
-        r#"("detail",runtime::ErrorField::Detail),("object",runtime::ErrorField::Const("\"error\"")),("type",runtime::ErrorField::Const("\"https://shop.example.com/errors/refused\""))"#,
+        r#"("detail",runtime::ProblemMember::Detail),("object",runtime::ProblemMember::Const("\"error\"")),("type",runtime::ProblemMember::Const("\"https://shop.example.com/errors/refused\""))"#,
     );
 }
 

@@ -6,7 +6,7 @@ use std::rc::Rc;
 use wasm_bindgen::JsCast as _;
 
 use crate::transport::Pending;
-use crate::{Body, ByteStream, Error, Request, Response};
+use crate::{Body, ByteStream, ClientError, Request, Response};
 
 /// Changes each request before it is sent.
 type Prepare = Rc<dyn Fn(gloo_net::http::RequestBuilder) -> gloo_net::http::RequestBuilder>;
@@ -47,9 +47,10 @@ impl GlooTransport {
         self
     }
 
-    fn build(&self, req: &http::request::Parts, body: bytes::Bytes) -> Result<gloo_net::http::Request, Error> {
+    fn build(&self, req: &http::request::Parts, body: bytes::Bytes) -> Result<gloo_net::http::Request, ClientError> {
         let url = crate::target(&self.base_url, &req.uri);
-        let method = gloo_net::http::Method::from_bytes(req.method.as_str().as_bytes()).map_err(Error::transport)?;
+        let method =
+            gloo_net::http::Method::from_bytes(req.method.as_str().as_bytes()).map_err(ClientError::transport)?;
         // `append` keeps repeated headers; the builder's `header` would replace them.
         let headers = gloo_net::http::Headers::new();
         for (k, v) in &req.headers {
@@ -63,7 +64,7 @@ impl GlooTransport {
         }
         // `fetch` rejects a body on GET and HEAD. It also rejects an empty one.
         let built = if body.is_empty() { b.build() } else { b.body(Vec::from(body)) };
-        built.map_err(Error::transport)
+        built.map_err(ClientError::transport)
     }
 }
 
@@ -75,13 +76,13 @@ fn forbidden(name: &str) -> bool {
 
 impl GlooTransport {
     /// Sends `req` and returns once the head of the response has arrived. Its body is still to read.
-    async fn start(&self, req: Request) -> Result<(Response, gloo_net::http::Response), Error> {
+    async fn start(&self, req: Request) -> Result<(Response, gloo_net::http::Response), ClientError> {
         // `fetch` takes no streamed request body: its pieces are read first.
         let (head, body) = req.into_parts();
         let body = body.collect().await?;
         let built = self.build(&head, body);
         // Network and CORS failures surface as one opaque `TypeError`.
-        let resp = built?.send().await.map_err(Error::transport)?;
+        let resp = built?.send().await.map_err(ClientError::transport)?;
         let mut out = crate::new_response(resp.status());
         for (k, v) in resp.headers().entries() {
             if let (Ok(k), Ok(v)) = (http::HeaderName::try_from(k), http::HeaderValue::try_from(v)) {
@@ -94,10 +95,10 @@ impl GlooTransport {
 
 impl tower_service::Service<Request> for GlooTransport {
     type Response = Response;
-    type Error = Error;
-    type Future = Pending<'static, Result<Response, Error>>;
+    type Error = ClientError;
+    type Future = Pending<'static, Result<Response, ClientError>>;
 
-    fn poll_ready(&mut self, _: &mut std::task::Context<'_>) -> std::task::Poll<Result<(), Error>> {
+    fn poll_ready(&mut self, _: &mut std::task::Context<'_>) -> std::task::Poll<Result<(), ClientError>> {
         std::task::Poll::Ready(Ok(()))
     }
 
@@ -118,11 +119,11 @@ impl tower_service::Service<Request> for GlooTransport {
 /// `read()` as the browser gives it.
 async fn read(
     reader: Option<web_sys::ReadableStreamDefaultReader>,
-) -> Option<(Result<bytes::Bytes, Error>, Option<web_sys::ReadableStreamDefaultReader>)> {
+) -> Option<(Result<bytes::Bytes, ClientError>, Option<web_sys::ReadableStreamDefaultReader>)> {
     let reader = reader?;
     let read = match wasm_bindgen_futures::JsFuture::from(reader.read()).await {
         Ok(read) => read.unchecked_into::<web_sys::ReadableStreamReadResult>(),
-        Err(e) => return Some((Err(Error::transport(format!("reading the response body: {e:?}"))), None)),
+        Err(e) => return Some((Err(ClientError::transport(format!("reading the response body: {e:?}"))), None)),
     };
     if read.get_done().unwrap_or(true) {
         return None;

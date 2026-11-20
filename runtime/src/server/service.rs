@@ -24,7 +24,7 @@ use tower_service::Service;
 
 use crate::server::adapter::unread;
 use crate::server::conditional::Conditions;
-use crate::server::operation::{ErrorSchemas, Op};
+use crate::server::operation::{Op, ProblemSchemas};
 use crate::server::range::Ranges;
 use crate::server::serve::{Call, Config, challenge, for_method};
 use crate::trace_context::Remote;
@@ -55,7 +55,7 @@ pub trait Operations: Send + Sync + 'static {
     fn route(&self, method: &str, target: &str) -> Result<Self::Operation, Reason>;
 
     /// Returns the error schemas that the description declares for a request that no operation takes.
-    fn errors(&self) -> ErrorSchemas;
+    fn errors(&self) -> ProblemSchemas;
 
     /// Returns how the API answers a request that the server refuses: the `error_response` of the generated `Api`.
     fn error_response(&self) -> fn(Rejection<Self::Operation>) -> Response;
@@ -314,7 +314,7 @@ impl<O: Operations, L, A> Server<O, L, A> {
     ///   operation that decodes it agree on one number.
     ///
     /// A layer outside can only lower the limit. It refuses a request early when its `Content-Length` is too large.
-    /// Its answer then has its own body: map it through [`Errors::response`]. A body without `Content-Length` fails
+    /// Its answer then has its own body: map it through [`ErrorResponses::response`]. A body without `Content-Length` fails
     /// while the server reads it. The server sees a broken body and answers `400`, not `413`.
     #[must_use]
     pub fn max_body_bytes(mut self, limit: usize) -> Self {
@@ -345,8 +345,8 @@ impl<O: Operations, L, A> Server<O, L, A> {
     /// Returns the error responses of the description for a layer outside the server. Such a layer is a timeout, a body
     /// limit or an IP flood guard. It then answers in the same error schema as the operations.
     #[must_use]
-    pub fn errors(&self) -> Errors<O::Operation> {
-        Errors { config: self.config.clone(), schemas: self.ops.errors() }
+    pub fn errors(&self) -> ErrorResponses<O::Operation> {
+        ErrorResponses { config: self.config.clone(), schemas: self.ops.errors() }
     }
 
     /// Returns the server as a tower `Service` over `http` requests. hyper serves it through
@@ -439,15 +439,15 @@ where
 /// [`Server::errors`] returns this.
 ///
 /// A layer outside the server answers with a status and its own body. Examples are `TimeoutLayer` and
-/// `RequestBodyLimitLayer` of tower-http and `tower_governor`. Map such a response through [`Errors::response`].
+/// `RequestBodyLimitLayer` of tower-http and `tower_governor`. Map such a response through [`ErrorResponses::response`].
 /// Clients then decode it as their typed error.
 #[derive(Clone, Debug)]
-pub struct Errors<Id> {
+pub struct ErrorResponses<Id> {
     config: Config<Id>,
-    schemas: ErrorSchemas,
+    schemas: ProblemSchemas,
 }
 
-impl<Id: crate::Operation> Errors<Id> {
+impl<Id: crate::Operation> ErrorResponses<Id> {
     /// Returns the response for `status` in the error schema of the description for a request that no operation took.
     /// That is its `default` or `4XX` response. Otherwise it is RFC 9457 `problem+json`. It goes through your
     /// `error_response` option.

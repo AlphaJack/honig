@@ -265,7 +265,7 @@ pub(crate) fn client_op(space: &Space<'_>, api: &Api, sec: &Securities, op: &Ope
     quote! {
         #doc
         #deprecated
-        pub async fn #name(&self, #url_arg #p: impl runtime::IntoArg<'_, #params_ty>) -> Result<#response_ty, runtime::Error> {
+        pub async fn #name(&self, #url_arg #p: impl runtime::IntoArg<'_, #params_ty>) -> Result<#response_ty, runtime::ClientError> {
             #prelude
             let resp = runtime::send(&self.transport, req).await?;
             #response
@@ -434,7 +434,7 @@ pub(crate) fn stream_method(
     Some(quote! {
         #doc
         #deprecated
-        pub async fn #f(&self, #p: impl runtime::IntoArg<'_, #m::Params>) -> Result<runtime::Streamed<runtime::ItemStream<#item>, #m::Response>, runtime::Error> #owned {
+        pub async fn #f(&self, #p: impl runtime::IntoArg<'_, #m::Params>) -> Result<runtime::Streamed<runtime::ItemStream<#item>, #m::Response>, runtime::ClientError> #owned {
             #prelude
             #again
             let resp = runtime::send_streaming(&self.transport, req).await?;
@@ -458,7 +458,7 @@ fn other_statuses(m: &TokenStream, response: &TokenStream) -> TokenStream {
     quote! {
         let (head, body) = resp.into_parts();
         let resp = runtime::Response::from_parts(head, runtime::Body::new(body.collect().await?));
-        let other: Result<#m::Response, runtime::Error> = async move { #response }.await;
+        let other: Result<#m::Response, runtime::ClientError> = async move { #response }.await;
         Ok(runtime::Streamed::Whole(other?))
     }
 }
@@ -504,7 +504,7 @@ pub(crate) fn blob_stream_method(
     Some(quote! {
         #doc
         #deprecated
-        pub async fn #f(&self, #p: impl runtime::IntoArg<'_, #m::Params>) -> Result<runtime::Streamed<runtime::Response, #m::Response>, runtime::Error> {
+        pub async fn #f(&self, #p: impl runtime::IntoArg<'_, #m::Params>) -> Result<runtime::Streamed<runtime::Response, #m::Response>, runtime::ClientError> {
             #prelude
             let resp = runtime::send_streaming(&self.transport, req).await?;
             #(#branches)*
@@ -621,7 +621,7 @@ pub(crate) fn client_response(
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
     };
-    let unexpected = quote!(Err(runtime::Error::UnexpectedStatus { status: head.status, body }));
+    let unexpected = quote!(Err(runtime::ClientError::UnexpectedStatus { status: head.status, body }));
     if kept.is_empty() {
         return quote! { #parts #guard #unexpected };
     }
@@ -724,7 +724,7 @@ fn response_arm(
                 let checked = crate::emit::rust::http::codec::validated_map(space, &h.ty);
                 quote! {
                     #n: runtime::from_param(#raw, #at) #checked
-                        .map_err(|e| runtime::Error::Decode { status, message: e.to_string(), body: body.clone(), pointer: String::new() })?,
+                        .map_err(|e| runtime::ClientError::Decode { status, message: e.to_string(), body: body.clone(), pointer: String::new() })?,
                 }
             });
             (pat, quote!({ #check Ok(#op_mod::Response::#variant { #status #body #(#headers)* }) }))
@@ -745,7 +745,7 @@ fn not_modified_guard(op: &Operation) -> Option<TokenStream> {
     });
     (conditional && !declared).then(|| {
         quote!(if head.status == 304 {
-            return Err(runtime::Error::NotModified { headers: head.headers });
+            return Err(runtime::ClientError::NotModified { headers: head.headers });
         })
     })
 }

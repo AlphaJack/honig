@@ -45,7 +45,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn get_export(
         &self,
         p: impl runtime::IntoArg<'_, ops::get_export::Params>,
-    ) -> Result<ops::get_export::Response, runtime::Error> {
+    ) -> Result<ops::get_export::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let mut path = String::from("/exports/");
         path.push_str(&runtime::encode_path("id", &p.id, runtime::Enc::SIMPLE)?);
@@ -70,7 +70,7 @@ impl<T: runtime::Transport> Client<T> {
             }
             404 => Ok(ops::get_export::Response::NotFound),
             _ => {
-                Err(runtime::Error::UnexpectedStatus {
+                Err(runtime::ClientError::UnexpectedStatus {
                     status: head.status,
                     body,
                 })
@@ -82,7 +82,7 @@ impl<T: runtime::Transport> Client<T> {
         p: impl runtime::IntoArg<'_, ops::get_export::Params>,
     ) -> Result<
         runtime::Streamed<runtime::Response, ops::get_export::Response>,
-        runtime::Error,
+        runtime::ClientError,
     > {
         let p = runtime::IntoArg::into_arg(p);
         let mut path = String::from("/exports/");
@@ -107,14 +107,14 @@ impl<T: runtime::Transport> Client<T> {
             head,
             runtime::Body::new(body.collect().await?),
         );
-        let other: Result<ops::get_export::Response, runtime::Error> = async move {
+        let other: Result<ops::get_export::Response, runtime::ClientError> = async move {
             let (head, body) = resp.into_parts();
             let (body, _) = body.into_parts();
             let status = head.status.as_u16();
             if status == 404 {
                 Ok(ops::get_export::Response::NotFound)
             } else {
-                Err(runtime::Error::UnexpectedStatus {
+                Err(runtime::ClientError::UnexpectedStatus {
                     status: head.status,
                     body,
                 })
@@ -126,7 +126,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn get_thumbnail(
         &self,
         p: impl runtime::IntoArg<'_, ops::get_thumbnail::Params>,
-    ) -> Result<ops::get_thumbnail::Response, runtime::Error> {
+    ) -> Result<ops::get_thumbnail::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let mut path = String::from("/exports/");
         path.push_str(&runtime::encode_path("id", &p.id, runtime::Enc::SIMPLE)?);
@@ -156,7 +156,7 @@ impl<T: runtime::Transport> Client<T> {
                 )
             }
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -167,7 +167,7 @@ impl<T: runtime::Transport> Client<T> {
         p: impl runtime::IntoArg<'_, ops::get_thumbnail::Params>,
     ) -> Result<
         runtime::Streamed<runtime::Response, ops::get_thumbnail::Response>,
-        runtime::Error,
+        runtime::ClientError,
     > {
         let p = runtime::IntoArg::into_arg(p);
         let mut path = String::from("/exports/");
@@ -193,10 +193,10 @@ impl<T: runtime::Transport> Client<T> {
             head,
             runtime::Body::new(body.collect().await?),
         );
-        let other: Result<ops::get_thumbnail::Response, runtime::Error> = async move {
+        let other: Result<ops::get_thumbnail::Response, runtime::ClientError> = async move {
             let (head, body) = resp.into_parts();
             let (body, _) = body.into_parts();
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -207,7 +207,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn get_manifest(
         &self,
         p: impl runtime::IntoArg<'_, ops::get_manifest::Params>,
-    ) -> Result<ops::get_manifest::Response, runtime::Error> {
+    ) -> Result<ops::get_manifest::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let mut path = String::from("/exports/");
         path.push_str(&runtime::encode_path("id", &p.id, runtime::Enc::SIMPLE)?);
@@ -239,7 +239,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/ETag",
                         )
-                        .map_err(|e| runtime::Error::Decode {
+                        .map_err(|e| runtime::ClientError::Decode {
                             status,
                             message: e.to_string(),
                             body: body.clone(),
@@ -254,7 +254,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/Last-Modified",
                         )
-                        .map_err(|e| runtime::Error::Decode {
+                        .map_err(|e| runtime::ClientError::Decode {
                             status,
                             message: e.to_string(),
                             body: body.clone(),
@@ -264,7 +264,7 @@ impl<T: runtime::Transport> Client<T> {
             }
             404 => Ok(ops::get_manifest::Response::NotFound),
             _ => {
-                Err(runtime::Error::UnexpectedStatus {
+                Err(runtime::ClientError::UnexpectedStatus {
                     status: head.status,
                     body,
                 })
@@ -274,7 +274,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn replace_manifest(
         &self,
         p: impl runtime::IntoArg<'_, ops::replace_manifest::Params>,
-    ) -> Result<ops::replace_manifest::Response, runtime::Error> {
+    ) -> Result<ops::replace_manifest::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let mut path = String::from("/exports/");
         path.push_str(&runtime::encode_path("id", &p.id, runtime::Enc::SIMPLE)?);
@@ -299,7 +299,7 @@ impl<T: runtime::Transport> Client<T> {
             204 => Ok(ops::replace_manifest::Response::NoContent),
             412 => Ok(ops::replace_manifest::Response::PreconditionFailed),
             _ => {
-                Err(runtime::Error::UnexpectedStatus {
+                Err(runtime::ClientError::UnexpectedStatus {
                     status: head.status,
                     body,
                 })

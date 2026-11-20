@@ -102,7 +102,7 @@ fn xml_text_fields_and_empty_elements_keep_their_text() {
     assert_eq!(xml_decode::<Note>(0, b"<note><body></body></note>").unwrap(), Note { body: String::new() });
 }
 
-fn xml(text: &str) -> Result<Any, honig::Error> {
+fn xml(text: &str) -> Result<Any, honig::ClientError> {
     xml_decode::<Any>(0, text.as_bytes())
 }
 
@@ -466,13 +466,13 @@ fn a_one_value_query_parameter_sent_twice_is_refused() {
 #[test]
 fn a_response_of_an_undeclared_media_type_is_refused() {
     use honig::__private::check_response_media;
-    use honig::Error;
+    use honig::ClientError;
     let json = ["application/json"];
     assert!(check_response_media(200, "application/json; charset=utf-8", Some(b"{}"), &json).is_ok());
     // The 404 of Ollama. That is the text of a Go `http.NotFound` under an operation that declares JSON.
     let refused = check_response_media(404, "text/plain", Some(b"404 page not found"), &json).unwrap_err();
     assert!(
-        matches!(&refused, Error::UnexpectedMedia { status: 404, content_type, declared, body }
+        matches!(&refused, ClientError::UnexpectedMedia { status: 404, content_type, declared, body }
             if content_type == "text/plain" && declared == "application/json" && body == b"404 page not found".as_slice()),
         "{refused:?}"
     );
@@ -562,8 +562,8 @@ fn a_form_field_that_does_not_decode_is_named() {
         #[expect(dead_code, reason = "decoded only to fail on `age`")]
         age: u8,
     }
-    let pointer = |e: honig::Error| {
-        let honig::Error::Decode { pointer, .. } = e else { panic!("not a decode error: {e}") };
+    let pointer = |e: honig::ClientError| {
+        let honig::ClientError::Decode { pointer, .. } = e else { panic!("not a decode error: {e}") };
         pointer
     };
     let err = form_decode::<Member>(0, b"name=Ann&age=300").expect_err("300 is past u8");

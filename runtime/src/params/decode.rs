@@ -10,7 +10,7 @@ use serde_json::{Map, Value};
 use super::cookie_pairs;
 use super::{Query, Shape, Style, parse_query, pct_decode};
 use crate::json::push_multi;
-use crate::{Coerce, CoerceError, Error, Reason, to_value};
+use crate::{ClientError, Coerce, CoerceError, Reason, to_value};
 
 fn split_value(raw: &str, shape: Shape, explode: bool, sep: char) -> Value {
     match shape {
@@ -460,7 +460,7 @@ pub fn from_param<T: DeserializeOwned>(v: Option<Value>, at: &str) -> Result<T, 
 }
 
 /// Returns a parameter declared with JSON `content`: the value travels as JSON text.
-pub fn json_param<T: Serialize>(v: &T) -> Result<Value, Error> {
+pub fn json_param<T: Serialize>(v: &T) -> Result<Value, ClientError> {
     let j = to_value(v)?;
     Ok(if j.is_null() { Value::Null } else { Value::String(j.to_string()) })
 }

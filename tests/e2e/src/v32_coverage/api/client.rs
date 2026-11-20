@@ -46,7 +46,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn ping(
         &self,
         _p: impl runtime::IntoArg<'_, ops::ping::Params>,
-    ) -> Result<ops::ping::Response, runtime::Error> {
+    ) -> Result<ops::ping::Response, runtime::ClientError> {
         let path = String::from("/ping");
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
@@ -63,7 +63,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn archive(
         &self,
         _p: impl runtime::IntoArg<'_, ops::archive::Params>,
-    ) -> Result<ops::archive::Response, runtime::Error> {
+    ) -> Result<ops::archive::Response, runtime::ClientError> {
         let path = String::from("/archive");
         let query = Vec::new();
         let mut req = runtime::new_request("POST", path, query)?;
@@ -86,7 +86,7 @@ impl<T: runtime::Transport> Client<T> {
                 runtime::json_decode(status, &body).map(ops::archive::Response::Conflict)
             }
             _ => {
-                Err(runtime::Error::UnexpectedStatus {
+                Err(runtime::ClientError::UnexpectedStatus {
                     status: head.status,
                     body,
                 })
@@ -96,7 +96,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn unarchive(
         &self,
         _p: impl runtime::IntoArg<'_, ops::unarchive::Params>,
-    ) -> Result<ops::unarchive::Response, runtime::Error> {
+    ) -> Result<ops::unarchive::Response, runtime::ClientError> {
         let path = String::from("/archive");
         let query = Vec::new();
         let mut req = runtime::new_request("DELETE", path, query)?;
@@ -120,7 +120,7 @@ impl<T: runtime::Transport> Client<T> {
                     .map(ops::unarchive::Response::Conflict)
             }
             _ => {
-                Err(runtime::Error::UnexpectedStatus {
+                Err(runtime::ClientError::UnexpectedStatus {
                     status: head.status,
                     body,
                 })
@@ -131,7 +131,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn add_note(
         &self,
         p: impl runtime::IntoArg<'_, ops::add_note::Params>,
-    ) -> Result<ops::add_note::Response, runtime::Error> {
+    ) -> Result<ops::add_note::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/notes");
         let query = Vec::new();
@@ -166,7 +166,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Tags",
                         )
-                        .map_err(|e| runtime::Error::Decode {
+                        .map_err(|e| runtime::ClientError::Decode {
                             status,
                             message: e.to_string(),
                             body: body.clone(),
@@ -175,7 +175,7 @@ impl<T: runtime::Transport> Client<T> {
                 })
             }
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -184,7 +184,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn find_box(
         &self,
         p: impl runtime::IntoArg<'_, ops::find_box::Params>,
-    ) -> Result<ops::find_box::Response, runtime::Error> {
+    ) -> Result<ops::find_box::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/boxes");
         let mut query: Vec<String> = Vec::new();
@@ -215,7 +215,7 @@ impl<T: runtime::Transport> Client<T> {
                 runtime::json_decode(status, &body).map(ops::find_box::Response::Ok)
             }
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })

@@ -234,7 +234,7 @@ pub type RequestEvent = runtime::RequestEvent<Operation>;
 const fn error_schema(
     _operation: Option<&str>,
     _status: u16,
-) -> Option<&'static runtime::ErrorSchema> {
+) -> Option<&'static runtime::ProblemSchema> {
     None
 }
 static METHODS: &[&[(&str, (Op, Operation))]] = &[
@@ -383,7 +383,7 @@ impl<A: Api> runtime::Operations for Routes<A> {
                 runtime::allowed_methods(methods),
             ))
     }
-    fn errors(&self) -> runtime::ErrorSchemas {
+    fn errors(&self) -> runtime::ProblemSchemas {
         error_schema
     }
     fn call<'r>(
@@ -1048,7 +1048,7 @@ async fn streaming_multipart<A: Api>(
 }
 fn streaming_multipart_encode(
     resp: ops::streaming_multipart::Response,
-) -> Result<runtime::Response, runtime::Error> {
+) -> Result<runtime::Response, runtime::ClientError> {
     let ops::streaming_multipart::Response::Ok(body) = resp;
     Ok({
         let mut r = runtime::new_response(200);
@@ -1088,7 +1088,7 @@ async fn streaming_byte_ranges<A: Api>(
 }
 fn streaming_byte_ranges_encode(
     resp: ops::streaming_byte_ranges::Response,
-) -> Result<runtime::Response, runtime::Error> {
+) -> Result<runtime::Response, runtime::ClientError> {
     let ops::streaming_byte_ranges::Response::PartialContent(body) = resp;
     Ok({
         let mut r = runtime::new_response(206);
@@ -1169,7 +1169,7 @@ async fn collection_with_links<A: Api>(
 }
 fn collection_with_links_encode(
     resp: ops::collection_with_links::Response,
-) -> Result<runtime::Response, runtime::Error> {
+) -> Result<runtime::Response, runtime::ClientError> {
     let ops::collection_with_links::Response::Ok { body, link } = resp;
     Ok({
         let mut r = runtime::new_response(200);
@@ -1211,7 +1211,7 @@ async fn standalone_json_linkset<A: Api>(
 }
 fn standalone_json_linkset_encode(
     resp: ops::standalone_json_linkset::Response,
-) -> Result<runtime::Response, runtime::Error> {
+) -> Result<runtime::Response, runtime::ClientError> {
     let ops::standalone_json_linkset::Response::Ok(body) = resp;
     Ok(
         runtime::body_response(
@@ -1247,7 +1247,7 @@ async fn linkset_body<A: Api>(
 }
 fn linkset_body_encode(
     resp: ops::linkset_body::Response,
-) -> Result<runtime::Response, runtime::Error> {
+) -> Result<runtime::Response, runtime::ClientError> {
     let ops::linkset_body::Response::Ok(body) = resp;
     Ok(
         runtime::body_response(
@@ -1283,7 +1283,7 @@ async fn media_type_json<A: Api>(
 }
 fn media_type_json_encode(
     resp: ops::media_type_json::Response,
-) -> Result<runtime::Response, runtime::Error> {
+) -> Result<runtime::Response, runtime::ClientError> {
     let ops::media_type_json::Response::Ok(body) = resp;
     Ok(runtime::body_response(200, "application/json", runtime::json_encode(&body)?))
 }
@@ -1319,7 +1319,7 @@ const fn log_stream_params(incoming: &runtime::Incoming<'_>) -> ops::log_stream:
 }
 fn log_stream_encode(
     resp: ops::log_stream::Response,
-) -> Result<runtime::Response, runtime::Error> {
+) -> Result<runtime::Response, runtime::ClientError> {
     let ops::log_stream::Response::Ok(body) = resp;
     Ok({
         let mut r = runtime::new_response(200);
@@ -1386,7 +1386,7 @@ const fn log_excerpt_params(
 }
 fn log_excerpt_encode(
     resp: ops::log_excerpt::Response,
-) -> Result<runtime::Response, runtime::Error> {
+) -> Result<runtime::Response, runtime::ClientError> {
     let ops::log_excerpt::Response::Ok(body) = resp;
     Ok({
         let mut r = runtime::new_response(200);

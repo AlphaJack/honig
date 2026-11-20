@@ -270,7 +270,7 @@ pub fn scopes_held(
 const fn error_schema(
     _operation: Option<&str>,
     _status: u16,
-) -> Option<&'static runtime::ErrorSchema> {
+) -> Option<&'static runtime::ProblemSchema> {
     None
 }
 pub trait Webhooks: Send + Sync + 'static {
@@ -392,7 +392,7 @@ impl<A: Webhooks> runtime::Operations for WebhookRoutes<A> {
             }
         }
     }
-    fn errors(&self) -> runtime::ErrorSchemas {
+    fn errors(&self) -> runtime::ProblemSchemas {
         error_schema
     }
     fn call<'r>(
@@ -524,7 +524,7 @@ impl<A: Api> runtime::Operations for Routes<A> {
                 runtime::allowed_methods(methods),
             ))
     }
-    fn errors(&self) -> runtime::ErrorSchemas {
+    fn errors(&self) -> runtime::ProblemSchemas {
         error_schema
     }
     fn call<'r>(
@@ -657,7 +657,7 @@ fn get_all_data_params(
 }
 fn get_all_data_encode(
     resp: ops::get_all_data::Response,
-) -> Result<runtime::Response, runtime::Error> {
+) -> Result<runtime::Response, runtime::ClientError> {
     let ops::get_all_data::Response::Ok {
         body,
         x_request_id,
@@ -762,7 +762,7 @@ fn create_product_params(
 fn create_product_encode(
     resp: ops::create_product::Response,
     media: usize,
-) -> Result<runtime::Response, runtime::Error> {
+) -> Result<runtime::Response, runtime::ClientError> {
     Ok(
         match resp {
             ops::create_product::Response::Created {
@@ -880,7 +880,7 @@ fn query_products_params(
 }
 fn query_products_encode(
     resp: ops::query_products::Response,
-) -> Result<runtime::Response, runtime::Error> {
+) -> Result<runtime::Response, runtime::ClientError> {
     Ok(
         match resp {
             ops::query_products::Response::Ok { body, x_request_id } => {
@@ -958,7 +958,7 @@ fn search_products_params(
 }
 fn search_products_encode(
     resp: ops::search_products::Response,
-) -> Result<runtime::Response, runtime::Error> {
+) -> Result<runtime::Response, runtime::ClientError> {
     let ops::search_products::Response::Ok { body, x_request_id } = resp;
     Ok({
         let mut r = runtime::new_response(200);
@@ -1019,7 +1019,7 @@ fn get_product_params(
 fn get_product_encode(
     resp: ops::get_product::Response,
     media: usize,
-) -> Result<runtime::Response, runtime::Error> {
+) -> Result<runtime::Response, runtime::ClientError> {
     Ok(
         match resp {
             ops::get_product::Response::Ok {
@@ -1154,7 +1154,7 @@ fn update_product_params(
 fn update_product_encode(
     resp: ops::update_product::Response,
     media: usize,
-) -> Result<runtime::Response, runtime::Error> {
+) -> Result<runtime::Response, runtime::ClientError> {
     Ok(
         match resp {
             ops::update_product::Response::Ok(body) => {
@@ -1285,7 +1285,7 @@ fn delete_product_params(
 }
 fn delete_product_encode(
     resp: ops::delete_product::Response,
-) -> Result<runtime::Response, runtime::Error> {
+) -> Result<runtime::Response, runtime::ClientError> {
     Ok(
         match resp {
             ops::delete_product::Response::NoContent => runtime::new_response(204),
@@ -1356,7 +1356,7 @@ fn copy_product_params(
 }
 fn copy_product_encode(
     resp: ops::copy_product::Response,
-) -> Result<runtime::Response, runtime::Error> {
+) -> Result<runtime::Response, runtime::ClientError> {
     Ok(
         match resp {
             ops::copy_product::Response::Created { body, location } => {
@@ -1444,7 +1444,7 @@ fn upload_image_params(
 }
 fn upload_image_encode(
     resp: ops::upload_image::Response,
-) -> Result<runtime::Response, runtime::Error> {
+) -> Result<runtime::Response, runtime::ClientError> {
     Ok(
         match resp {
             ops::upload_image::Response::Ok { body, x_request_id, x_cache_control } => {
@@ -1578,7 +1578,7 @@ fn stream_product_events_params(
 }
 fn stream_product_events_encode(
     resp: ops::stream_product_events::Response,
-) -> Result<runtime::Response, runtime::Error> {
+) -> Result<runtime::Response, runtime::ClientError> {
     let ops::stream_product_events::Response::Ok { body, x_request_id } = resp;
     Ok({
         let mut r = runtime::new_response(200);
@@ -1660,7 +1660,7 @@ fn upload_photos_params(
 }
 fn upload_photos_encode(
     resp: ops::upload_photos::Response,
-) -> Result<runtime::Response, runtime::Error> {
+) -> Result<runtime::Response, runtime::ClientError> {
     Ok(
         match resp {
             ops::upload_photos::Response::Accepted { body, x_request_id } => {
@@ -1756,7 +1756,7 @@ fn create_item_params(
 }
 fn create_item_encode(
     resp: ops::create_item::Response,
-) -> Result<runtime::Response, runtime::Error> {
+) -> Result<runtime::Response, runtime::ClientError> {
     let ops::create_item::Response::Created(body) = resp;
     Ok(runtime::body_response(201, "application/json", runtime::json_encode(&body)?))
 }
@@ -1820,7 +1820,7 @@ fn create_user_params(
 fn create_user_encode(
     resp: ops::create_user::Response,
     media: usize,
-) -> Result<runtime::Response, runtime::Error> {
+) -> Result<runtime::Response, runtime::ClientError> {
     Ok(
         match resp {
             ops::create_user::Response::Created {
@@ -2023,7 +2023,7 @@ fn get_token_params(
 fn get_token_encode(
     resp: ops::get_token::Response,
     media: usize,
-) -> Result<runtime::Response, runtime::Error> {
+) -> Result<runtime::Response, runtime::ClientError> {
     Ok(
         match resp {
             ops::get_token::Response::Created {
@@ -2211,7 +2211,7 @@ const fn get_me_params(incoming: &runtime::Incoming<'_>) -> ops::get_me::Params 
 fn get_me_encode(
     resp: ops::get_me::Response,
     media: usize,
-) -> Result<runtime::Response, runtime::Error> {
+) -> Result<runtime::Response, runtime::ClientError> {
     Ok(
         match resp {
             ops::get_me::Response::Ok {

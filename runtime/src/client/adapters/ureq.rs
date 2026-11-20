@@ -4,7 +4,7 @@ use std::io::Read;
 
 use ureq::{RequestExt, http};
 
-use crate::{Body, BodySource, ByteStream, Error, Request, Response};
+use crate::{Body, BodySource, ByteStream, ClientError, Request, Response};
 
 /// The most that a read of a streamed response takes at once. A read returns what has arrived up to this.
 const CHUNK: usize = 16 << 10;
@@ -37,8 +37,8 @@ impl UreqTransport {
     }
 
     /// Sends `req` and returns once the head of the response has arrived. Its body is still to read.
-    fn start(&self, req: Request) -> Result<http::Response<ureq::Body>, Error> {
-        let target = http::Uri::try_from(crate::target(&self.base_url, req.uri())).map_err(Error::transport)?;
+    fn start(&self, req: Request) -> Result<http::Response<ureq::Body>, ClientError> {
+        let target = http::Uri::try_from(crate::target(&self.base_url, req.uri())).map_err(ClientError::transport)?;
         let (mut head, body) = req.into_parts();
         head.uri = target;
         let (bytes, stream) = body.into_parts();
@@ -54,16 +54,16 @@ impl UreqTransport {
                 self.run(http::Request::from_parts(head, ureq::SendBody::from_reader(&mut pieces)))
             }
         }
-        .map_err(Error::transport)
+        .map_err(ClientError::transport)
     }
 }
 
 impl tower_service::Service<Request> for UreqTransport {
     type Response = Response;
-    type Error = Error;
-    type Future = std::future::Ready<Result<Response, Error>>;
+    type Error = ClientError;
+    type Future = std::future::Ready<Result<Response, ClientError>>;
 
-    fn poll_ready(&mut self, _: &mut std::task::Context<'_>) -> std::task::Poll<Result<(), Error>> {
+    fn poll_ready(&mut self, _: &mut std::task::Context<'_>) -> std::task::Poll<Result<(), ClientError>> {
         std::task::Poll::Ready(Ok(()))
     }
 
@@ -83,7 +83,7 @@ impl tower_service::Service<Request> for UreqTransport {
 struct Incoming(ureq::BodyReader<'static>);
 
 impl Iterator for Incoming {
-    type Item = Result<bytes::Bytes, Error>;
+    type Item = Result<bytes::Bytes, ClientError>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let mut buf = vec![0; CHUNK];
@@ -99,7 +99,7 @@ impl Iterator for Incoming {
                 buf.truncate(n);
                 Some(Ok(bytes::Bytes::from(buf)))
             }
-            Err(e) => Some(Err(Error::transport(e))),
+            Err(e) => Some(Err(ClientError::transport(e))),
         }
     }
 }

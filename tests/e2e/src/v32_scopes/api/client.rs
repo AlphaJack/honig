@@ -51,7 +51,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn list_issues(
         &self,
         _p: impl runtime::IntoArg<'_, ops::list_issues::Params>,
-    ) -> Result<ops::list_issues::Response, runtime::Error> {
+    ) -> Result<ops::list_issues::Response, runtime::ClientError> {
         let path = String::from("/issues");
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
@@ -64,7 +64,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::list_issues::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -73,7 +73,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn create_issue(
         &self,
         _p: impl runtime::IntoArg<'_, ops::create_issue::Params>,
-    ) -> Result<ops::create_issue::Response, runtime::Error> {
+    ) -> Result<ops::create_issue::Response, runtime::ClientError> {
         let path = String::from("/issues");
         let query = Vec::new();
         let mut req = runtime::new_request("POST", path, query)?;
@@ -86,7 +86,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::create_issue::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -95,7 +95,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn open(
         &self,
         _p: impl runtime::IntoArg<'_, ops::open::Params>,
-    ) -> Result<ops::open::Response, runtime::Error> {
+    ) -> Result<ops::open::Response, runtime::ClientError> {
         let path = String::from("/public");
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
@@ -108,7 +108,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::open::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })

@@ -6,7 +6,7 @@ use crate::base64::base64url;
 // `Pkce::new`: wasm32 has no OS randomness without configuration. A browser passes its own verifier.
 #[cfg(all(feature = "pkce", not(target_arch = "wasm32")))]
 mod random;
-use crate::{Error, Message, Request, Response, Transport, base64, json_decode, pct};
+use crate::{ClientError, Message, Request, Response, Transport, base64, json_decode, pct};
 
 /// An `OAuth2` access token from a token endpoint.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
@@ -35,7 +35,7 @@ async fn token_call<T: Transport>(
     mut fields: Vec<String>,
     client_id: &str,
     client_secret: Option<&str>,
-) -> Result<Token, Error> {
+) -> Result<Token, ClientError> {
     if client_secret.is_none() {
         fields.push(format!("client_id={}", pct(client_id, false)));
     }
@@ -64,7 +64,7 @@ pub async fn password_grant<T: Transport>(
     client_id: &str,
     client_secret: Option<&str>,
     scopes: &[&str],
-) -> Result<Token, Error> {
+) -> Result<Token, ClientError> {
     let mut fields = vec![
         "grant_type=password".to_owned(),
         format!("username={}", pct(username, false)),
@@ -82,7 +82,7 @@ pub async fn refresh_token<T: Transport>(
     refresh: &str,
     client_id: &str,
     client_secret: Option<&str>,
-) -> Result<Token, Error> {
+) -> Result<Token, ClientError> {
     let fields = vec!["grant_type=refresh_token".to_owned(), format!("refresh_token={}", pct(refresh, false))];
     token_call(transport, token_url, fields, client_id, client_secret).await
 }
@@ -172,7 +172,7 @@ pub async fn exchange_code<T: Transport>(
     client_id: &str,
     client_secret: Option<&str>,
     pkce: &Pkce,
-) -> Result<Token, Error> {
+) -> Result<Token, ClientError> {
     let fields = vec![
         "grant_type=authorization_code".to_owned(),
         format!("code={}", pct(code, false)),
@@ -207,7 +207,7 @@ pub struct AuthMetadata {
 
 /// Fetches authorization server metadata from `url` (an `openIdConnectUrl` or `oauth2MetadataUrl`).
 /// Errors: a transport failure or a non-2xx or undecodable response.
-pub async fn discover<T: Transport>(transport: &T, url: &str) -> Result<AuthMetadata, Error> {
+pub async fn discover<T: Transport>(transport: &T, url: &str) -> Result<AuthMetadata, ClientError> {
     let mut req = crate::new_request("GET", url.to_owned(), vec![])?;
     req.set_header("Accept", "application/json")?;
     let resp = crate::send(transport, req).await?;
@@ -229,7 +229,7 @@ pub async fn client_credentials<T: Transport>(
     client_id: &str,
     client_secret: &str,
     scopes: &[&str],
-) -> Result<Token, Error> {
+) -> Result<Token, ClientError> {
     let mut form = vec!["grant_type=client_credentials".to_owned()];
     if !scopes.is_empty() {
         form.push(format!("scope={}", pct(&scopes.join(" "), false)));
@@ -288,7 +288,7 @@ pub async fn device_authorization<T: Transport>(
     device_url: &str,
     client_id: &str,
     scopes: &[&str],
-) -> Result<DeviceCode, Error> {
+) -> Result<DeviceCode, ClientError> {
     let mut form = vec![format!("client_id={}", pct(client_id, false))];
     if !scopes.is_empty() {
         form.push(format!("scope={}", pct(&scopes.join(" "), false)));
@@ -310,7 +310,7 @@ pub async fn device_token<T: Transport>(
     token_url: &str,
     client_id: &str,
     device_code: &str,
-) -> Result<DevicePoll, Error> {
+) -> Result<DevicePoll, ClientError> {
     let form = [
         format!("grant_type={}", pct("urn:ietf:params:oauth:grant-type:device_code", false)),
         format!("device_code={}", pct(device_code, false)),
@@ -325,7 +325,7 @@ pub async fn device_token<T: Transport>(
     match serde_json::from_slice::<OAuthError>(body.bytes()).map(|e| e.error).as_deref() {
         Ok("authorization_pending") => Ok(DevicePoll::Pending),
         Ok("slow_down") => Ok(DevicePoll::SlowDown),
-        _ => Err(Error::UnexpectedStatus {
+        _ => Err(ClientError::UnexpectedStatus {
             status: http::StatusCode::from_u16(status).unwrap_or_default(),
             body: body.into_parts().0,
         }),
@@ -333,7 +333,7 @@ pub async fn device_token<T: Transport>(
 }
 
 /// Returns a form POST to a token endpoint that accepts JSON back.
-fn token_request(url: &str, form: &[String]) -> Result<Request, Error> {
+fn token_request(url: &str, form: &[String]) -> Result<Request, ClientError> {
     let mut req = crate::new_request("POST", url.to_owned(), vec![])?;
     req.set_header("Accept", "application/json")?;
     req.set_body("application/x-www-form-urlencoded", form.join("&"));
@@ -341,10 +341,10 @@ fn token_request(url: &str, form: &[String]) -> Result<Request, Error> {
 }
 
 /// Returns the JSON of a `2xx` answer of an authorization server.
-fn answer<R: serde::de::DeserializeOwned>(resp: Response) -> Result<R, Error> {
+fn answer<R: serde::de::DeserializeOwned>(resp: Response) -> Result<R, ClientError> {
     let status = resp.status();
     if !status.is_success() {
-        return Err(Error::UnexpectedStatus { status, body: resp.into_body().into_parts().0 });
+        return Err(ClientError::UnexpectedStatus { status, body: resp.into_body().into_parts().0 });
     }
     json_decode(status.as_u16(), resp.body().bytes())
 }
@@ -417,7 +417,7 @@ mod tests {
         let missing = crate::block_on(discover(&metadata(404, "{}"), url));
         assert_matches!(
             missing,
-            Err(Error::UnexpectedStatus { status: http::StatusCode::NOT_FOUND, .. }),
+            Err(ClientError::UnexpectedStatus { status: http::StatusCode::NOT_FOUND, .. }),
             "{missing:?}"
         );
     }

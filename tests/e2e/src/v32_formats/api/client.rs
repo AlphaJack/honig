@@ -45,7 +45,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn get_event(
         &self,
         p: impl runtime::IntoArg<'_, ops::get_event::Params>,
-    ) -> Result<ops::get_event::Response, runtime::Error> {
+    ) -> Result<ops::get_event::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let mut path = String::from("/events/");
         path.push_str(&runtime::encode_path("id", &p.id, runtime::Enc::SIMPLE)?);
@@ -71,7 +71,7 @@ impl<T: runtime::Transport> Client<T> {
                 runtime::json_decode(status, &body).map(ops::get_event::Response::Ok)
             }
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })

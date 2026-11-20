@@ -6,7 +6,7 @@ use std::fmt;
 #[derive(Debug)]
 #[non_exhaustive]
 /// Client-side error of a generated operation call.
-pub enum Error {
+pub enum ClientError {
     /// The request could not be sent or the connection broke off (connection or TLS for example).
     Transport(String),
     /// A parameter or the body could not be serialized.
@@ -50,7 +50,7 @@ pub enum Error {
     TooLarge(usize),
 }
 
-impl Error {
+impl ClientError {
     /// Returns a transport failure from the error of the HTTP client or from a message. The message holds the error and
     /// each of its causes (`error sending request: connection closed before message completed`). The own message of an
     /// HTTP client often says only which step failed.
@@ -71,7 +71,7 @@ impl Error {
     }
 }
 
-impl fmt::Display for Error {
+impl fmt::Display for ClientError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Transport(m) => write!(f, "transport error: {m}"),
@@ -93,9 +93,9 @@ impl fmt::Display for Error {
     }
 }
 
-impl std::error::Error for Error {}
+impl std::error::Error for ClientError {}
 
-/// Error returned by a server implementation. Becomes a response through the server's `error_response`.
+/// An error returned by a server implementation. Becomes a response through the server's `error_response`.
 ///
 /// With a [body](ApiError::with_body) it is sent as it is. Without one the default fills the error schema that the
 /// description declares for the operation and status. Otherwise it uses RFC 9457 problem details. The generated
@@ -160,7 +160,7 @@ impl From<Box<dyn std::error::Error + Send + Sync>> for ApiError {
 }
 
 /// A value that a handler built and that its schema refuses. A handler's inputs are checked already, so the value
-/// came from the server's own data: `500 Internal Server Error`.
+/// came from the server's own data: `500 Internal Server ClientError`.
 impl From<crate::BuildError> for ApiError {
     fn from(e: crate::BuildError) -> Self {
         Self::new(http::StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
@@ -169,7 +169,7 @@ impl From<crate::BuildError> for ApiError {
 
 #[cfg(test)]
 mod tests {
-    use super::{ApiError, Error};
+    use super::{ApiError, ClientError};
 
     /// `?` on a value that a handler built turns its schema's refusal into a `500`.
     #[test]
@@ -194,20 +194,20 @@ mod tests {
         }
     }
 
-    fn message(e: Error) -> String {
-        let Error::Transport(m) = e else { panic!("not a transport error: {e}") };
+    fn message(e: ClientError) -> String {
+        let ClientError::Transport(m) = e else { panic!("not a transport error: {e}") };
         m
     }
 
     #[test]
     fn a_transport_error_names_each_cause() {
         let e = Wrapped(std::io::Error::new(std::io::ErrorKind::ConnectionReset, "connection reset by peer"));
-        assert_eq!(message(Error::transport(e)), "error sending request: connection reset by peer");
+        assert_eq!(message(ClientError::transport(e)), "error sending request: connection reset by peer");
     }
 
     #[test]
     fn an_unexpected_status_shows_its_body_as_text_in_debug() {
-        let e = Error::UnexpectedStatus {
+        let e = ClientError::UnexpectedStatus {
             status: http::StatusCode::NOT_FOUND,
             body: bytes::Bytes::from_static(b"{\"a\":1}"),
         };
@@ -216,8 +216,8 @@ mod tests {
 
     #[test]
     fn a_transport_error_takes_a_message() {
-        assert_eq!(message(Error::transport("no route")), "no route");
-        assert_eq!(message(Error::transport(String::from("no route"))), "no route");
+        assert_eq!(message(ClientError::transport("no route")), "no route");
+        assert_eq!(message(ClientError::transport(String::from("no route"))), "no route");
     }
 
     #[test]

@@ -16,7 +16,7 @@ use serde_json::{Map, Value};
 
 use super::write::{self, Tag};
 use super::{XmlField, XmlNode};
-use crate::Error;
+use crate::ClientError;
 
 /// The name under which `serde_json` serializes a raw value. Only its own serializer writes one as written.
 const RAW_VALUE: &str = "$serde_json::private::RawValue";
@@ -26,7 +26,7 @@ const CHAR_BYTES: usize = 4;
 /// Why writing stopped. `None`: this way of writing cannot write the value, another way can. `Some`: the value does
 /// not serialize.
 #[derive(Debug)]
-pub(super) struct Stop(Option<Error>);
+pub(super) struct Stop(Option<ClientError>);
 
 impl fmt::Display for Stop {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -61,7 +61,7 @@ enum Mode {
 }
 
 /// Returns `v` as an XML document with `node` at its root.
-pub(super) fn body<T: Serialize + ?Sized>(v: &T, node: &'static XmlNode) -> std::result::Result<String, Error> {
+pub(super) fn body<T: Serialize + ?Sized>(v: &T, node: &'static XmlNode) -> std::result::Result<String, ClientError> {
     let ns = write::namespace(node);
     let mut out = String::from(write::DECLARATION);
     element(&mut out, v, write::root(node), Some(node), ns.as_deref().unwrap_or(""))?;
@@ -100,7 +100,7 @@ fn element<T: Serialize + ?Sized>(
     tag: Tag<'_>,
     node: Option<&'static XmlNode>,
     extra: &str,
-) -> std::result::Result<(), Error> {
+) -> std::result::Result<(), ClientError> {
     let mark = out.len();
     for mode in [Mode::Stream, Mode::Ordered] {
         match v.serialize(Element { out, tag, node, extra, mode }) {
@@ -122,8 +122,8 @@ fn value_element(out: &mut String, v: &Value, tag: Tag<'_>) {
 }
 
 /// Returns the error of a `Value` that did not write. Every `Value` writes, so it is never `None`.
-fn written(stop: Stop) -> Error {
-    stop.0.unwrap_or_else(|| Error::Encode("a value XML does not hold".to_owned()))
+fn written(stop: Stop) -> ClientError {
+    stop.0.unwrap_or_else(|| ClientError::Encode("a value XML does not hold".to_owned()))
 }
 
 /// Returns the `Value` of `v` for a part that is not written as it serializes.

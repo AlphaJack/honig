@@ -60,7 +60,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn list_orders(
         &self,
         p: impl runtime::IntoArg<'_, ops::list_orders::Params>,
-    ) -> Result<ops::list_orders::Response, runtime::Error> {
+    ) -> Result<ops::list_orders::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/orders");
         let mut query: Vec<String> = Vec::new();
@@ -126,7 +126,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Next-Cursor",
                         )
-                        .map_err(|e| runtime::Error::Decode {
+                        .map_err(|e| runtime::ClientError::Decode {
                             status,
                             message: e.to_string(),
                             body: body.clone(),
@@ -147,7 +147,7 @@ impl<T: runtime::Transport> Client<T> {
                 })
             }
             _ => {
-                Err(runtime::Error::UnexpectedStatus {
+                Err(runtime::ClientError::UnexpectedStatus {
                     status: head.status,
                     body,
                 })
@@ -157,7 +157,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn create_order(
         &self,
         p: impl runtime::IntoArg<'_, ops::create_order::Params>,
-    ) -> Result<ops::create_order::Response, runtime::Error> {
+    ) -> Result<ops::create_order::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/orders");
         let query = Vec::new();
@@ -219,7 +219,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn get_order(
         &self,
         p: impl runtime::IntoArg<'_, ops::get_order::Params>,
-    ) -> Result<ops::get_order::Response, runtime::Error> {
+    ) -> Result<ops::get_order::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let mut path = String::from("/orders/");
         path.push_str(
@@ -257,7 +257,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Request-Id",
                         )
-                        .map_err(|e| runtime::Error::Decode {
+                        .map_err(|e| runtime::ClientError::Decode {
                             status,
                             message: e.to_string(),
                             body: body.clone(),
@@ -292,7 +292,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn upload_document(
         &self,
         p: impl runtime::IntoArg<'_, ops::upload_document::Params>,
-    ) -> Result<ops::upload_document::Response, runtime::Error> {
+    ) -> Result<ops::upload_document::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let mut path = String::from("/orders/");
         path.push_str(
@@ -312,7 +312,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::upload_document::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })

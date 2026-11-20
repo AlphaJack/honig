@@ -5,7 +5,7 @@ use std::future::Future;
 
 use tower_service::Service;
 
-use crate::{Body, Error, Request, Response};
+use crate::{Body, ClientError, Request, Response};
 use crate::{MaybeSend, MaybeSync};
 
 /// The error of a tower service.
@@ -37,9 +37,9 @@ impl<S> Transport for S where
 }
 
 /// Returns the failure of a service as the client reports it.
-pub(crate) fn failed(e: impl Into<BoxError>) -> Error {
+pub(crate) fn failed(e: impl Into<BoxError>) -> ClientError {
     let e: Box<dyn std::error::Error> = e.into();
-    Error::transport(e)
+    ClientError::transport(e)
 }
 
 /// Sends `req` through a clone of `transport` and returns once the head of the response is in. Its body may still be
@@ -47,7 +47,7 @@ pub(crate) fn failed(e: impl Into<BoxError>) -> Error {
 pub fn send_streaming<T: Transport>(
     transport: &T,
     req: Request,
-) -> impl Future<Output = Result<Response, Error>> + MaybeSend + use<T> {
+) -> impl Future<Output = Result<Response, ClientError>> + MaybeSend + use<T> {
     let mut service = transport.clone();
     async move {
         std::future::poll_fn(|cx| service.poll_ready(cx)).await.map_err(failed)?;
@@ -59,7 +59,7 @@ pub fn send_streaming<T: Transport>(
 pub fn send<T: Transport>(
     transport: &T,
     req: Request,
-) -> impl Future<Output = Result<Response, Error>> + MaybeSend + use<T> {
+) -> impl Future<Output = Result<Response, ClientError>> + MaybeSend + use<T> {
     let sent = send_streaming(transport, req);
     async move {
         let (head, body) = sent.await?.into_parts();

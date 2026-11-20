@@ -332,7 +332,7 @@ fn a_text_error_body_is_filled() {
         .expect("generates");
     let server = common::file(&g.files, "server.rs");
     let compact: String = server.split_whitespace().collect();
-    assert!(compact.contains(r#"runtime::ErrorSchema{media:"text/plain",fields:&[],open:false,}"#), "{server}");
+    assert!(compact.contains(r#"runtime::ProblemSchema{media:"text/plain",fields:&[],open:false,}"#), "{server}");
     assert!(!g.diagnostics.iter().any(|d| d.message.contains("cannot fill")), "{:?}", g.diagnostics);
 }
 

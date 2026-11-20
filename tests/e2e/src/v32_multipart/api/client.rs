@@ -45,7 +45,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn upload(
         &self,
         p: impl runtime::IntoArg<'_, ops::upload::Params>,
-    ) -> Result<ops::upload::Response, runtime::Error> {
+    ) -> Result<ops::upload::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/photos");
         let query = Vec::new();
@@ -81,7 +81,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 201 {
             Ok(ops::upload::Response::Created)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -90,7 +90,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn put_icon(
         &self,
         p: impl runtime::IntoArg<'_, ops::put_icon::Params>,
-    ) -> Result<ops::put_icon::Response, runtime::Error> {
+    ) -> Result<ops::put_icon::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/icons");
         let query = Vec::new();
@@ -109,7 +109,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::put_icon::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -118,7 +118,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn upload_scan(
         &self,
         p: impl runtime::IntoArg<'_, ops::upload_scan::Params>,
-    ) -> Result<ops::upload_scan::Response, runtime::Error> {
+    ) -> Result<ops::upload_scan::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/scans");
         let query = Vec::new();
@@ -138,7 +138,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::upload_scan::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -147,7 +147,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn deploy(
         &self,
         p: impl runtime::IntoArg<'_, ops::deploy::Params>,
-    ) -> Result<ops::deploy::Response, runtime::Error> {
+    ) -> Result<ops::deploy::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/deploy");
         let query = Vec::new();
@@ -165,7 +165,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::deploy::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })

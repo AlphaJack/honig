@@ -38,7 +38,7 @@ fn param<T: serde::de::DeserializeOwned>(
 fn wire(
     bad: &mut Vec<String>,
     at: &str,
-    got: Result<String, runtime::Error>,
+    got: Result<String, runtime::ClientError>,
     want: &str,
 ) {
     match got {
@@ -99,7 +99,7 @@ fn documented_examples_decode() {
         "[{\"id\":1,\"name\":\"Lamp\",\"kind\":\"book\"}]",
     );
     let got = serde_json::from_str::<Vec<String>>("[\"a\",\"b\"]")
-        .map_err(|e| runtime::Error::Encode(e.to_string()))
+        .map_err(|e| runtime::ClientError::Encode(e.to_string()))
         .map(|v| {
             let mut q = Vec::new();
             runtime::encode_query(
@@ -124,7 +124,7 @@ fn documented_examples_decode() {
     let got = serde_json::from_str::<
         std::collections::BTreeMap<String, String>,
     >("{\"color\":\"red\"}")
-        .map_err(|e| runtime::Error::Encode(e.to_string()))
+        .map_err(|e| runtime::ClientError::Encode(e.to_string()))
         .map(|v| {
             let mut q = Vec::new();
             runtime::encode_query(
@@ -147,7 +147,7 @@ fn documented_examples_decode() {
         "filter[color]=red",
     );
     let got = serde_json::from_str::<i64>("3")
-        .map_err(|e| runtime::Error::Encode(e.to_string()))
+        .map_err(|e| runtime::ClientError::Encode(e.to_string()))
         .map(|v| {
             runtime::encode_header(&v, false)
                 .unwrap_or_else(|e| panic!("{e}"))

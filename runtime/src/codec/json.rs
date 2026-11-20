@@ -7,16 +7,16 @@ use serde::Serialize;
 use serde::de::{self, DeserializeOwned, Deserializer};
 use serde_json::Value;
 
-use crate::Error;
+use crate::ClientError;
 
 /// Encodes a JSON body.
-pub fn json_encode<T: Serialize>(v: &T) -> Result<Vec<u8>, Error> {
+pub fn json_encode<T: Serialize>(v: &T) -> Result<Vec<u8>, ClientError> {
     // Serialize into the reusable buffer of this thread and then copy out exactly.
     // That is one allocation per body and not one per doubling of a growing `Vec`.
     JSON_BUF.with(|buf| match buf.try_borrow_mut() {
         Ok(mut b) => {
             b.clear();
-            crate::json::to_writer(&mut b, v).map_err(Error::Encode)?;
+            crate::json::to_writer(&mut b, v).map_err(ClientError::Encode)?;
             // A large body leaves with the buffer itself (no copy); a small one
             // is copied out so the warm buffer stays for the next response.
             if b.len() > KEEP_BUFFER {
@@ -25,7 +25,7 @@ pub fn json_encode<T: Serialize>(v: &T) -> Result<Vec<u8>, Error> {
             Ok(b.to_vec())
         }
         // Re-entered (a `Serialize` impl encoding JSON itself): no buffer to share.
-        Err(_) => serde_json::to_vec(&crate::finite::Finite(v)).map_err(|e| Error::Encode(e.to_string())),
+        Err(_) => serde_json::to_vec(&crate::finite::Finite(v)).map_err(|e| ClientError::Encode(e.to_string())),
     })
 }
 
@@ -37,7 +37,7 @@ thread_local! {
 const KEEP_BUFFER: usize = 1 << 16;
 
 /// Decodes a JSON body of a response with this status.
-pub fn json_decode<T: DeserializeOwned>(status: u16, body: &[u8]) -> Result<T, Error> {
+pub fn json_decode<T: DeserializeOwned>(status: u16, body: &[u8]) -> Result<T, ClientError> {
     // An empty body decodes as `null` (valid for Option and unit types).
     let body = if body.iter().all(u8::is_ascii_whitespace) { b"null".as_slice() } else { body };
     // Tracking the pointer allocates per key. That doubles the cost of a large body. So only a body that fails
@@ -48,7 +48,7 @@ pub fn json_decode<T: DeserializeOwned>(status: u16, body: &[u8]) -> Result<T, E
     let mut de = serde_json::Deserializer::from_slice(body);
     let value = crate::path::deserialize(crate::integral::Ints(&mut de))
         .and_then(|v| de.end().map(|()| v).map_err(|e| (String::new(), e)));
-    value.map_err(|(pointer, e)| Error::Decode {
+    value.map_err(|(pointer, e)| ClientError::Decode {
         status,
         message: e.to_string(),
         body: bytes::Bytes::copy_from_slice(body),

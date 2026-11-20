@@ -7,13 +7,13 @@ use std::task::{Context, Poll, ready};
 
 use futures_core::Stream;
 
-use crate::{Error, MaybeSend};
+use crate::{ClientError, MaybeSend};
 
 /// A body produced piece by piece. It is polled in place as an `http_body::Body` is: a piece costs no allocation of
 /// its own.
 pub trait BodySource: MaybeSend + 'static {
     /// Returns the next piece, or `Ready(None)` at the end of the body. Nothing follows an error.
-    fn poll_piece(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Result<bytes::Bytes, Error>>>;
+    fn poll_piece(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Result<bytes::Bytes, ClientError>>>;
 
     /// Returns the whole body when the source already holds it in one shared buffer. A transport sends that buffer as
     /// it is with its length. It does not copy it out piece by piece. `None` for every other source.
@@ -46,13 +46,13 @@ pub trait BodySource: MaybeSend + 'static {
             let mut out: Vec<u8> = vec![];
             while let Some(piece) = std::future::poll_fn(|cx| self.as_mut().poll_piece(cx)).await {
                 let piece = piece.map_err(|e| match e {
-                    Error::TooLarge(_) => BodyError::TooLarge,
-                    other @ (Error::Transport(_)
-                    | Error::Encode(_)
-                    | Error::Decode { .. }
-                    | Error::UnexpectedMedia { .. }
-                    | Error::NotModified { .. }
-                    | Error::UnexpectedStatus { .. }) => BodyError::Unreadable(other.to_string()),
+                    ClientError::TooLarge(_) => BodyError::TooLarge,
+                    other @ (ClientError::Transport(_)
+                    | ClientError::Encode(_)
+                    | ClientError::Decode { .. }
+                    | ClientError::UnexpectedMedia { .. }
+                    | ClientError::NotModified { .. }
+                    | ClientError::UnexpectedStatus { .. }) => BodyError::Unreadable(other.to_string()),
                 })?;
                 if out.len() + piece.len() > limit {
                     return Err(BodyError::TooLarge);
@@ -70,7 +70,7 @@ pub trait BodySource: MaybeSend + 'static {
 
 /// Returns the next piece of `source`, or `None` at its end.
 #[doc(hidden)]
-pub async fn next_piece(source: &mut Pin<Box<dyn BodySource>>) -> Option<Result<bytes::Bytes, Error>> {
+pub async fn next_piece(source: &mut Pin<Box<dyn BodySource>>) -> Option<Result<bytes::Bytes, ClientError>> {
     std::future::poll_fn(|cx| source.as_mut().poll_piece(cx)).await
 }
 
@@ -140,7 +140,7 @@ impl ByteStream {
     #[doc(hidden)]
     pub fn chunks<S>(chunks: S, len: Option<u64>) -> Self
     where
-        S: Stream<Item = Result<bytes::Bytes, Error>> + MaybeSend + 'static,
+        S: Stream<Item = Result<bytes::Bytes, ClientError>> + MaybeSend + 'static,
     {
         Self::new(Chunks { chunks, left: len })
     }
@@ -182,7 +182,7 @@ impl ByteStream {
     ///
     /// # Errors
     /// A chunk that failed: the connection broke off or the body went past the `max_body_bytes` of the server.
-    pub async fn collect(mut self) -> Result<Vec<u8>, Error> {
+    pub async fn collect(mut self) -> Result<Vec<u8>, ClientError> {
         let mut out = vec![];
         while let Some(chunk) = futures_util::StreamExt::next(&mut self).await {
             out.extend_from_slice(&chunk?);
@@ -194,7 +194,7 @@ impl ByteStream {
 /// The source in the slot is polled where it is. A chunk costs no allocation of its own. At the end or after an
 /// error the slot is emptied.
 impl Stream for ByteStream {
-    type Item = Result<bytes::Bytes, Error>;
+    type Item = Result<bytes::Bytes, ClientError>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let Some(slot) = self.get_mut().0.as_mut() else { return Poll::Ready(None) };
@@ -341,7 +341,7 @@ impl Blob {
     ///
     /// # Errors
     /// As [`ByteStream::collect`].
-    pub async fn collect(self) -> Result<Vec<u8>, Error> {
+    pub async fn collect(self) -> Result<Vec<u8>, ClientError> {
         match self.body {
             BlobBody::Bytes(b) => Ok(Vec::from(b)),
             BlobBody::Stream(s) => s.collect().await,
@@ -369,7 +369,7 @@ impl Blob {
 
 /// The bytes at once or each chunk as it comes. Nothing follows an error.
 impl Stream for Blob {
-    type Item = Result<bytes::Bytes, Error>;
+    type Item = Result<bytes::Bytes, ClientError>;
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         match &mut self.get_mut().body {
@@ -421,9 +421,9 @@ pin_project_lite::pin_project! {
 
 impl<S> BodySource for Chunks<S>
 where
-    S: Stream<Item = Result<bytes::Bytes, Error>> + MaybeSend + 'static,
+    S: Stream<Item = Result<bytes::Bytes, ClientError>> + MaybeSend + 'static,
 {
-    fn poll_piece(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Result<bytes::Bytes, Error>>> {
+    fn poll_piece(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Result<bytes::Bytes, ClientError>>> {
         let this = self.project();
         let chunk = ready!(this.chunks.poll_next(cx));
         if let (Some(left), Some(Ok(chunk))) = (this.left.as_mut(), &chunk) {
@@ -438,7 +438,7 @@ where
 }
 
 /// What [`Blob::ranged`] calls with the first and the last byte to send.
-type Open = Box<dyn FnOnce(u64, u64) -> Feed<Result<bytes::Bytes, Error>> + Send>;
+type Open = Box<dyn FnOnce(u64, u64) -> Feed<Result<bytes::Bytes, ClientError>> + Send>;
 
 /// A body that is opened at the bytes it sends. See [`Blob::ranged`].
 struct Ranged {
@@ -449,11 +449,11 @@ struct Ranged {
     left: u64,
     /// Until the first piece.
     open: Option<Open>,
-    chunks: Option<Feed<Result<bytes::Bytes, Error>>>,
+    chunks: Option<Feed<Result<bytes::Bytes, ClientError>>>,
 }
 
 impl BodySource for Ranged {
-    fn poll_piece(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Result<bytes::Bytes, Error>>> {
+    fn poll_piece(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Result<bytes::Bytes, ClientError>>> {
         let this = self.get_mut();
         if let Some(open) = this.open.take()
             && this.left > 0
@@ -489,7 +489,7 @@ impl BodySource for Ranged {
 pub(crate) struct Shared(pub(crate) Option<bytes::Bytes>);
 
 impl BodySource for Shared {
-    fn poll_piece(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Option<Result<bytes::Bytes, Error>>> {
+    fn poll_piece(self: Pin<&mut Self>, _: &mut Context<'_>) -> Poll<Option<Result<bytes::Bytes, ClientError>>> {
         Poll::Ready(self.get_mut().0.take().filter(|b| !b.is_empty()).map(Ok))
     }
 
@@ -502,7 +502,7 @@ impl BodySource for Shared {
 pub(crate) struct Leftover(pub(crate) Option<bytes::Bytes>, pub(crate) Option<Pin<Box<dyn BodySource>>>);
 
 impl BodySource for Leftover {
-    fn poll_piece(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Result<bytes::Bytes, Error>>> {
+    fn poll_piece(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Result<bytes::Bytes, ClientError>>> {
         let Self(read, rest) = self.get_mut();
         if let Some(read) = read.take().filter(|b| !b.is_empty()) {
             return Poll::Ready(Some(Ok(read)));
@@ -575,7 +575,7 @@ impl Body {
     ///
     /// # Errors
     /// A chunk still to come failed.
-    pub async fn collect(self) -> Result<bytes::Bytes, Error> {
+    pub async fn collect(self) -> Result<bytes::Bytes, ClientError> {
         if !self.stream.is_some() {
             return Ok(self.bytes);
         }
@@ -623,7 +623,7 @@ impl From<ByteStream> for Body {
 
 impl http_body::Body for Body {
     type Data = bytes::Bytes;
-    type Error = Error;
+    type Error = ClientError;
 
     fn poll_frame(
         self: Pin<&mut Self>,
@@ -685,7 +685,7 @@ mod tests {
     use super::{Blob, Body, BodyError, ByteStream};
 
     fn pieces(pieces: &[&'static str]) -> ByteStream {
-        let pieces: Vec<Result<bytes::Bytes, crate::Error>> =
+        let pieces: Vec<Result<bytes::Bytes, crate::ClientError>> =
             pieces.iter().map(|p| Ok(bytes::Bytes::from_static(p.as_bytes()))).collect();
         ByteStream::chunks(futures_util::stream::iter(pieces), None)
     }

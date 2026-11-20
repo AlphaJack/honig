@@ -116,7 +116,7 @@ impl<T: runtime::Transport> Client<T> {
         client_id: &str,
         client_secret: &str,
         scopes: &[&str],
-    ) -> Result<Self, runtime::Error> {
+    ) -> Result<Self, runtime::ClientError> {
         let token = runtime::client_credentials(
                 &self.transport,
                 "https://example.com/token",
@@ -133,7 +133,7 @@ impl<T: runtime::Transport> Client<T> {
         &self,
         client_id: &str,
         scopes: &[&str],
-    ) -> Result<runtime::DeviceCode, runtime::Error> {
+    ) -> Result<runtime::DeviceCode, runtime::ClientError> {
         runtime::device_authorization(
                 &self.transport,
                 "https://example.com/device",
@@ -147,7 +147,7 @@ impl<T: runtime::Transport> Client<T> {
         &mut self,
         client_id: &str,
         code: &runtime::DeviceCode,
-    ) -> Result<runtime::DevicePoll, runtime::Error> {
+    ) -> Result<runtime::DevicePoll, runtime::ClientError> {
         let poll = runtime::device_token(
                 &self.transport,
                 "https://example.com/token",
@@ -160,7 +160,9 @@ impl<T: runtime::Transport> Client<T> {
         }
         Ok(poll)
     }
-    pub async fn discover_oidc(&self) -> Result<runtime::AuthMetadata, runtime::Error> {
+    pub async fn discover_oidc(
+        &self,
+    ) -> Result<runtime::AuthMetadata, runtime::ClientError> {
         runtime::discover(
                 &self.transport,
                 "https://example.com/.well-known/openid-configuration",
@@ -175,7 +177,7 @@ impl<T: runtime::Transport> Client<T> {
         client_id: &str,
         client_secret: Option<&str>,
         scopes: &[&str],
-    ) -> Result<runtime::Token, runtime::Error> {
+    ) -> Result<runtime::Token, runtime::ClientError> {
         let token = runtime::password_grant(
                 &self.transport,
                 "https://example.com/token",
@@ -197,7 +199,7 @@ impl<T: runtime::Transport> Client<T> {
         client_id: &str,
         client_secret: Option<&str>,
         pkce: &runtime::Pkce,
-    ) -> Result<runtime::Token, runtime::Error> {
+    ) -> Result<runtime::Token, runtime::ClientError> {
         let token = runtime::exchange_code(
                 &self.transport,
                 "https://example.com/token",
@@ -217,7 +219,7 @@ impl<T: runtime::Transport> Client<T> {
         refresh_token: &str,
         client_id: &str,
         client_secret: Option<&str>,
-    ) -> Result<runtime::Token, runtime::Error> {
+    ) -> Result<runtime::Token, runtime::ClientError> {
         let token = runtime::refresh_token(
                 &self.transport,
                 "https://example.com/refresh",
@@ -230,7 +232,9 @@ impl<T: runtime::Transport> Client<T> {
         Ok(token)
     }
     #[deprecated = "the security scheme is deprecated"]
-    pub async fn discover_oauth(&self) -> Result<runtime::AuthMetadata, runtime::Error> {
+    pub async fn discover_oauth(
+        &self,
+    ) -> Result<runtime::AuthMetadata, runtime::ClientError> {
         runtime::discover(
                 &self.transport,
                 "https://example.com/.well-known/oauth-authorization-server",
@@ -240,7 +244,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn submit_form(
         &self,
         p: impl runtime::IntoArg<'_, ops::submit_form::Params>,
-    ) -> Result<ops::submit_form::Response, runtime::Error> {
+    ) -> Result<ops::submit_form::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/forms");
         let path = runtime::operation_path(
@@ -292,7 +296,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::submit_form::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -301,7 +305,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn put_blob(
         &self,
         p: impl runtime::IntoArg<'_, ops::put_blob::Params>,
-    ) -> Result<ops::put_blob::Response, runtime::Error> {
+    ) -> Result<ops::put_blob::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p).into_owned();
         let mut path = String::from("/blobs/");
         path.push_str(&runtime::encode_path("id", &p.id, runtime::Enc::SIMPLE)?);
@@ -339,7 +343,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Size",
                         )
-                        .map_err(|e| runtime::Error::Decode {
+                        .map_err(|e| runtime::ClientError::Decode {
                             status,
                             message: e.to_string(),
                             body: body.clone(),
@@ -351,7 +355,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Quota",
                         )
-                        .map_err(|e| runtime::Error::Decode {
+                        .map_err(|e| runtime::ClientError::Decode {
                             status,
                             message: e.to_string(),
                             body: body.clone(),
@@ -360,7 +364,7 @@ impl<T: runtime::Transport> Client<T> {
                 })
             }
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -371,7 +375,7 @@ impl<T: runtime::Transport> Client<T> {
         p: impl runtime::IntoArg<'_, ops::put_blob::Params>,
     ) -> Result<
         runtime::Streamed<runtime::Response, ops::put_blob::Response>,
-        runtime::Error,
+        runtime::ClientError,
     > {
         let p = runtime::IntoArg::into_arg(p).into_owned();
         let mut path = String::from("/blobs/");
@@ -403,10 +407,10 @@ impl<T: runtime::Transport> Client<T> {
             head,
             runtime::Body::new(body.collect().await?),
         );
-        let other: Result<ops::put_blob::Response, runtime::Error> = async move {
+        let other: Result<ops::put_blob::Response, runtime::ClientError> = async move {
             let (head, body) = resp.into_parts();
             let (body, _) = body.into_parts();
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -418,7 +422,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn list_products(
         &self,
         p: impl runtime::IntoArg<'_, ops::list_products::Params>,
-    ) -> Result<ops::list_products::Response, runtime::Error> {
+    ) -> Result<ops::list_products::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/products");
         let path = runtime::operation_path(
@@ -527,7 +531,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Next",
                         )
-                        .map_err(|e| runtime::Error::Decode {
+                        .map_err(|e| runtime::ClientError::Decode {
                             status,
                             message: e.to_string(),
                             body: body.clone(),
@@ -541,7 +545,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Total",
                         )
-                        .map_err(|e| runtime::Error::Decode {
+                        .map_err(|e| runtime::ClientError::Decode {
                             status,
                             message: e.to_string(),
                             body: body.clone(),
@@ -577,7 +581,7 @@ impl<T: runtime::Transport> Client<T> {
             runtime::ItemStream<types::Product>,
             ops::list_products::Response,
         >,
-        runtime::Error,
+        runtime::ClientError,
     > {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/products");
@@ -672,7 +676,7 @@ impl<T: runtime::Transport> Client<T> {
             head,
             runtime::Body::new(body.collect().await?),
         );
-        let other: Result<ops::list_products::Response, runtime::Error> = async move {
+        let other: Result<ops::list_products::Response, runtime::ClientError> = async move {
             let (head, body) = resp.into_parts();
             let (body, _) = body.into_parts();
             let status = head.status.as_u16();
@@ -708,7 +712,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn create_product(
         &self,
         p: impl runtime::IntoArg<'_, ops::create_product::Params>,
-    ) -> Result<ops::create_product::Response, runtime::Error> {
+    ) -> Result<ops::create_product::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/products");
         let path = runtime::operation_path(
@@ -769,7 +773,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 201 {
             Ok(ops::create_product::Response::Created)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -781,7 +785,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn search_products(
         &self,
         p: impl runtime::IntoArg<'_, ops::search_products::Params>,
-    ) -> Result<ops::search_products::Response, runtime::Error> {
+    ) -> Result<ops::search_products::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/products");
         let path = runtime::operation_path(
@@ -820,7 +824,7 @@ impl<T: runtime::Transport> Client<T> {
                     .map(ops::search_products::Response::Ok)
             }
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -832,7 +836,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn copy_products(
         &self,
         p: impl runtime::IntoArg<'_, ops::copy_products::Params>,
-    ) -> Result<ops::copy_products::Response, runtime::Error> {
+    ) -> Result<ops::copy_products::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/products");
         let path = runtime::operation_path(
@@ -854,7 +858,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::copy_products::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -863,7 +867,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn get_product(
         &self,
         p: impl runtime::IntoArg<'_, ops::get_product::Params>,
-    ) -> Result<ops::get_product::Response, runtime::Error> {
+    ) -> Result<ops::get_product::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let mut path = String::from("/products/");
         path.push_str(
@@ -889,7 +893,7 @@ impl<T: runtime::Transport> Client<T> {
                 runtime::json_decode(status, &body).map(ops::get_product::Response::Ok)
             }
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -898,7 +902,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn put_product(
         &self,
         p: impl runtime::IntoArg<'_, ops::put_product::Params>,
-    ) -> Result<ops::put_product::Response, runtime::Error> {
+    ) -> Result<ops::put_product::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let mut path = String::from("/products/");
         path.push_str(
@@ -915,7 +919,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 200 {
             Ok(ops::put_product::Response::Ok)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -924,7 +928,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn delete_product(
         &self,
         p: impl runtime::IntoArg<'_, ops::delete_product::Params>,
-    ) -> Result<ops::delete_product::Response, runtime::Error> {
+    ) -> Result<ops::delete_product::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let mut path = String::from("/products/");
         path.push_str(
@@ -941,7 +945,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::delete_product::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -950,7 +954,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn options_product(
         &self,
         p: impl runtime::IntoArg<'_, ops::options_product::Params>,
-    ) -> Result<ops::options_product::Response, runtime::Error> {
+    ) -> Result<ops::options_product::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let mut path = String::from("/products/");
         path.push_str(
@@ -967,7 +971,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 200 {
             Ok(ops::options_product::Response::Ok)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -976,7 +980,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn head_product(
         &self,
         p: impl runtime::IntoArg<'_, ops::head_product::Params>,
-    ) -> Result<ops::head_product::Response, runtime::Error> {
+    ) -> Result<ops::head_product::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let mut path = String::from("/products/");
         path.push_str(
@@ -993,7 +997,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 200 {
             Ok(ops::head_product::Response::Ok)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -1002,7 +1006,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn patch_product(
         &self,
         p: impl runtime::IntoArg<'_, ops::patch_product::Params>,
-    ) -> Result<ops::patch_product::Response, runtime::Error> {
+    ) -> Result<ops::patch_product::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let mut path = String::from("/products/");
         path.push_str(
@@ -1019,7 +1023,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 200 {
             Ok(ops::patch_product::Response::Ok)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -1028,7 +1032,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn trace_product(
         &self,
         p: impl runtime::IntoArg<'_, ops::trace_product::Params>,
-    ) -> Result<ops::trace_product::Response, runtime::Error> {
+    ) -> Result<ops::trace_product::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let mut path = String::from("/products/");
         path.push_str(
@@ -1045,7 +1049,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 200 {
             Ok(ops::trace_product::Response::Ok)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -1054,7 +1058,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn search(
         &self,
         p: impl runtime::IntoArg<'_, ops::search::Params>,
-    ) -> Result<ops::search::Response, runtime::Error> {
+    ) -> Result<ops::search::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/search");
         let mut query: Vec<String> = Vec::new();
@@ -1080,7 +1084,7 @@ impl<T: runtime::Transport> Client<T> {
                     .map(ops::search::Response::Ok)
             }
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -1094,7 +1098,7 @@ impl<T: runtime::Transport> Client<T> {
             runtime::ItemStream<types::SearchOkItem>,
             ops::search::Response,
         >,
-        runtime::Error,
+        runtime::ClientError,
     >
     where
         T: Clone + 'static,
@@ -1130,10 +1134,10 @@ impl<T: runtime::Transport> Client<T> {
             head,
             runtime::Body::new(body.collect().await?),
         );
-        let other: Result<ops::search::Response, runtime::Error> = async move {
+        let other: Result<ops::search::Response, runtime::ClientError> = async move {
             let (head, body) = resp.into_parts();
             let (body, _) = body.into_parts();
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -1187,7 +1191,7 @@ impl<T: runtime::Transport> WebhookClient<T> {
         &self,
         url: &str,
         p: impl runtime::IntoArg<'_, ops::new_product_post::Params>,
-    ) -> Result<ops::new_product_post::Response, runtime::Error> {
+    ) -> Result<ops::new_product_post::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = url.to_owned();
         let query = Vec::new();
@@ -1208,7 +1212,7 @@ impl<T: runtime::Transport> WebhookClient<T> {
         if status == 200 {
             Ok(ops::new_product_post::Response::Ok)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -1218,7 +1222,7 @@ impl<T: runtime::Transport> WebhookClient<T> {
         &self,
         url: &str,
         p: impl runtime::IntoArg<'_, ops::create_product_on_adopt_post::Params>,
-    ) -> Result<ops::create_product_on_adopt_post::Response, runtime::Error> {
+    ) -> Result<ops::create_product_on_adopt_post::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = url.to_owned();
         let query = Vec::new();
@@ -1239,7 +1243,7 @@ impl<T: runtime::Transport> WebhookClient<T> {
         if status == 200 {
             Ok(ops::create_product_on_adopt_post::Response::Ok)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -1249,7 +1253,7 @@ impl<T: runtime::Transport> WebhookClient<T> {
         &self,
         url: &str,
         _p: impl runtime::IntoArg<'_, ops::create_product_shared_post::Params>,
-    ) -> Result<ops::create_product_shared_post::Response, runtime::Error> {
+    ) -> Result<ops::create_product_shared_post::Response, runtime::ClientError> {
         let path = url.to_owned();
         let query = Vec::new();
         let mut req = runtime::new_request("POST", path, query)?;
@@ -1262,7 +1266,7 @@ impl<T: runtime::Transport> WebhookClient<T> {
         if status == 200 {
             Ok(ops::create_product_shared_post::Response::Ok)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })

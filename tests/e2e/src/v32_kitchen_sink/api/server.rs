@@ -243,16 +243,16 @@ pub fn scopes_held(
 ) -> bool {
     runtime::Secured::scopes_held(request, |s| Scope::from_name(s).is_some_and(&held))
 }
-const ERROR_SCHEMA_0: runtime::ErrorSchema = runtime::ErrorSchema {
+const ERROR_SCHEMA_0: runtime::ProblemSchema = runtime::ProblemSchema {
     media: "application/problem+json",
     fields: &[],
     open: true,
 };
-const ERROR_SCHEMA: Option<&runtime::ErrorSchema> = Some(&ERROR_SCHEMA_0);
+const ERROR_SCHEMA: Option<&runtime::ProblemSchema> = Some(&ERROR_SCHEMA_0);
 const fn error_schema(
     _operation: Option<&str>,
     _status: u16,
-) -> Option<&'static runtime::ErrorSchema> {
+) -> Option<&'static runtime::ProblemSchema> {
     ERROR_SCHEMA
 }
 pub trait Webhooks: Send + Sync + 'static {
@@ -345,7 +345,7 @@ impl<A: Webhooks> runtime::Operations for WebhookRoutes<A> {
             }
         }
     }
-    fn errors(&self) -> runtime::ErrorSchemas {
+    fn errors(&self) -> runtime::ProblemSchemas {
         error_schema
     }
     fn call<'r>(
@@ -474,7 +474,7 @@ impl<A: Api> runtime::Operations for Routes<A> {
                 runtime::allowed_methods(methods),
             ))
     }
-    fn errors(&self) -> runtime::ErrorSchemas {
+    fn errors(&self) -> runtime::ProblemSchemas {
         error_schema
     }
     fn call<'r>(
@@ -647,7 +647,7 @@ fn put_blob_params(
 }
 fn put_blob_encode(
     resp: ops::put_blob::Response,
-) -> Result<runtime::Response, runtime::Error> {
+) -> Result<runtime::Response, runtime::ClientError> {
     let ops::put_blob::Response::Ok { body, x_size, x_quota } = resp;
     Ok({
         let mut r = runtime::new_response(200);
@@ -752,7 +752,7 @@ fn list_products_params(
 }
 fn list_products_encode(
     resp: ops::list_products::Response,
-) -> Result<runtime::Response, runtime::Error> {
+) -> Result<runtime::Response, runtime::ClientError> {
     Ok(
         match resp {
             ops::list_products::Response::Ok { body, x_next, x_total } => {
@@ -926,7 +926,7 @@ fn search_products_params(
 }
 fn search_products_encode(
     resp: ops::search_products::Response,
-) -> Result<runtime::Response, runtime::Error> {
+) -> Result<runtime::Response, runtime::ClientError> {
     let ops::search_products::Response::Ok(body) = resp;
     Ok(runtime::body_response(200, "application/json", runtime::json_encode(&body)?))
 }
@@ -1009,7 +1009,7 @@ fn get_product_params(
 }
 fn get_product_encode(
     resp: ops::get_product::Response,
-) -> Result<runtime::Response, runtime::Error> {
+) -> Result<runtime::Response, runtime::ClientError> {
     let ops::get_product::Response::Ok(body) = resp;
     Ok(runtime::body_response(200, "application/json", runtime::json_encode(&body)?))
 }
@@ -1293,7 +1293,7 @@ fn search_params(
 }
 fn search_encode(
     resp: ops::search::Response,
-) -> Result<runtime::Response, runtime::Error> {
+) -> Result<runtime::Response, runtime::ClientError> {
     let ops::search::Response::Ok(body) = resp;
     Ok({
         let mut r = runtime::new_response(200);

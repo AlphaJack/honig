@@ -37,7 +37,7 @@ fn param<T: serde::de::DeserializeOwned>(
 fn wire(
     bad: &mut Vec<String>,
     at: &str,
-    got: Result<String, runtime::Error>,
+    got: Result<String, runtime::ClientError>,
     want: &str,
 ) {
     match got {
@@ -148,7 +148,7 @@ fn documented_examples_decode() {
         "{\"name\":\"Novel\",\"productType\":\"Book\",\"color\":\"Black\",\"material\":\"paper\",\"brand\":\"Folio\"}",
     );
     let got = serde_json::from_str::<Vec<i64>>("[12345678,90099]")
-        .map_err(|e| runtime::Error::Encode(e.to_string()))
+        .map_err(|e| runtime::ClientError::Encode(e.to_string()))
         .map(|v| {
             runtime::encode_header(&v, false)
                 .unwrap_or_else(|e| panic!("{e}"))
@@ -163,7 +163,7 @@ fn documented_examples_decode() {
     let got = serde_json::from_str::<
         types::ParameterExamplesCookie,
     >("{\"greeting\":\"Hello%2C%20world!\",\"code\":42}")
-        .map_err(|e| runtime::Error::Encode(e.to_string()))
+        .map_err(|e| runtime::ClientError::Encode(e.to_string()))
         .map(|v| {
             let mut c = Vec::new();
             runtime::encode_cookie(
@@ -186,7 +186,7 @@ fn documented_examples_decode() {
         "greeting=Hello%2C%20world!; code=42",
     );
     let got = serde_json::from_str::<String>("\"Hello, world!\"")
-        .map_err(|e| runtime::Error::Encode(e.to_string()))
+        .map_err(|e| runtime::ClientError::Encode(e.to_string()))
         .map(|v| {
             let mut c = Vec::new();
             runtime::encode_cookie(&mut c, "greeting", &v, runtime::Enc::FORM)
@@ -200,7 +200,7 @@ fn documented_examples_decode() {
         "greeting=Hello%2C%20world%21",
     );
     let got = serde_json::from_str::<String>("\"edijkstra\"")
-        .map_err(|e| runtime::Error::Encode(e.to_string()))
+        .map_err(|e| runtime::ClientError::Encode(e.to_string()))
         .map(|v| {
             runtime::encode_path("username", &v, runtime::Enc::SIMPLE)
                 .unwrap_or_else(|e| panic!("{e}"))
@@ -212,7 +212,7 @@ fn documented_examples_decode() {
         "edijkstra",
     );
     let got = serde_json::from_str::<String>("\"diṅnāga\"")
-        .map_err(|e| runtime::Error::Encode(e.to_string()))
+        .map_err(|e| runtime::ClientError::Encode(e.to_string()))
         .map(|v| {
             runtime::encode_path("username", &v, runtime::Enc::SIMPLE)
                 .unwrap_or_else(|e| panic!("{e}"))
@@ -224,7 +224,7 @@ fn documented_examples_decode() {
         "di%E1%B9%85n%C4%81ga",
     );
     let got = serde_json::from_str::<String>("\"الخوارزمي\u{651}\"")
-        .map_err(|e| runtime::Error::Encode(e.to_string()))
+        .map_err(|e| runtime::ClientError::Encode(e.to_string()))
         .map(|v| {
             runtime::encode_path("username", &v, runtime::Enc::SIMPLE)
                 .unwrap_or_else(|e| panic!("{e}"))
@@ -236,7 +236,7 @@ fn documented_examples_decode() {
         "%D8%A7%D9%84%D8%AE%D9%88%D8%A7%D8%B1%D8%B2%D9%85%D9%8A%D9%91",
     );
     let got = serde_json::from_str::<Vec<String>>("[\"one thing\",\"another thing\"]")
-        .map_err(|e| runtime::Error::Encode(e.to_string()))
+        .map_err(|e| runtime::ClientError::Encode(e.to_string()))
         .map(|v| {
             let mut q = Vec::new();
             runtime::encode_query(&mut q, "thing", &v, runtime::Enc::FORM)
@@ -252,7 +252,7 @@ fn documented_examples_decode() {
     let got = serde_json::from_str::<
         std::collections::BTreeMap<String, i64>,
     >("{\"page\":4,\"pageSize\":50}")
-        .map_err(|e| runtime::Error::Encode(e.to_string()))
+        .map_err(|e| runtime::ClientError::Encode(e.to_string()))
         .map(|v| {
             let mut q = Vec::new();
             runtime::encode_query(&mut q, "freeForm", &v, runtime::Enc::FORM)

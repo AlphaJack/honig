@@ -45,7 +45,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn list_items(
         &self,
         p: impl runtime::IntoArg<'_, ops::list_items::Params>,
-    ) -> Result<ops::list_items::Response, runtime::Error> {
+    ) -> Result<ops::list_items::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let mut path = String::from("/items/");
         path.push_str(&runtime::encode_path("ids", &p.ids, runtime::Enc::SIMPLE)?);
@@ -115,7 +115,7 @@ impl<T: runtime::Transport> Client<T> {
                 runtime::json_decode(status, &body).map(ops::list_items::Response::Ok)
             }
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -124,7 +124,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn upload(
         &self,
         p: impl runtime::IntoArg<'_, ops::upload::Params>,
-    ) -> Result<ops::upload::Response, runtime::Error> {
+    ) -> Result<ops::upload::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/upload");
         let query = Vec::new();
@@ -140,7 +140,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::upload::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -149,7 +149,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn list_keys(
         &self,
         _p: impl runtime::IntoArg<'_, ops::list_keys::Params>,
-    ) -> Result<ops::list_keys::Response, runtime::Error> {
+    ) -> Result<ops::list_keys::Response, runtime::ClientError> {
         let path = String::from("/keys");
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
@@ -171,7 +171,7 @@ impl<T: runtime::Transport> Client<T> {
                 runtime::json_decode(status, &body).map(ops::list_keys::Response::Ok)
             }
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })

@@ -12,7 +12,7 @@ use crate::json::to_value;
 use crate::media::is_xml_media;
 use crate::params::{key_order, ordered};
 use crate::text::{decode_err, push_all};
-use crate::{Coerce, Error, base64, unbase64_mime};
+use crate::{ClientError, Coerce, base64, unbase64_mime};
 
 pub(super) const BOUNDARY: &str = concat!(env!("CARGO_PKG_NAME"), "-boundary-7MA4YWxkTrZu0gW");
 
@@ -52,9 +52,9 @@ impl PartTypes {
     /// Returns one media type per part. That is the chosen one or else the first of the comma-separated list in
     /// `declared`. Errors: a chosen type that the part does not list or a part that the body does not declare. Ranges
     /// such as `image/*` allow any of their types.
-    pub fn choose<'a>(&'a self, declared: &[(&'a str, &'a str)]) -> Result<Vec<(&'a str, &'a str)>, Error> {
+    pub fn choose<'a>(&'a self, declared: &[(&'a str, &'a str)]) -> Result<Vec<(&'a str, &'a str)>, ClientError> {
         if let Some((part, _)) = self.0.iter().find(|(p, _)| !declared.iter().any(|(d, _)| d == p)) {
-            return Err(Error::Encode(format!("part `{part}` has no `encoding` with a list of media types")));
+            return Err(ClientError::Encode(format!("part `{part}` has no `encoding` with a list of media types")));
         }
         declared
             .iter()
@@ -64,7 +64,9 @@ impl PartTypes {
                 match self.0.iter().rev().find(|(p, _)| p == part) {
                     None => Ok((part, first)),
                     Some((_, m)) if listed.any(|d| crate::media::media_matches(m, d)) => Ok((part, m.as_str())),
-                    Some((_, m)) => Err(Error::Encode(format!("part `{part}` cannot be `{m}`: it lists `{list}`"))),
+                    Some((_, m)) => {
+                        Err(ClientError::Encode(format!("part `{part}` cannot be `{m}`: it lists `{list}`")))
+                    }
                 }
             })
             .collect()
@@ -73,7 +75,7 @@ impl PartTypes {
 
 /// Returns `multipart/form-data`: one part per property (arrays: one per item).
 /// Strings are sent as text. Everything else is sent as JSON. Returns (content type, body).
-pub fn multipart_encode<T: Serialize>(v: &T, types: &[(&str, &str)]) -> Result<(String, Vec<u8>), Error> {
+pub fn multipart_encode<T: Serialize>(v: &T, types: &[(&str, &str)]) -> Result<(String, Vec<u8>), ClientError> {
     multipart_encode_with(v, types, &[])
 }
 
@@ -83,7 +85,7 @@ pub fn multipart_encode_with<T: Serialize>(
     v: &T,
     types: &[(&str, &str)],
     headers: &[(&str, &str, String)],
-) -> Result<(String, Vec<u8>), Error> {
+) -> Result<(String, Vec<u8>), ClientError> {
     raw_parts(|| multipart_encode_in(v, types, headers))
 }
 
@@ -92,7 +94,7 @@ fn multipart_encode_in<T: Serialize>(
     v: &T,
     types: &[(&str, &str)],
     headers: &[(&str, &str, String)],
-) -> Result<(String, Vec<u8>), Error> {
+) -> Result<(String, Vec<u8>), ClientError> {
     let value = to_value(v)?;
     let mut body = Vec::new();
     if let Value::Object(o) = &value {
@@ -246,12 +248,12 @@ fn part_value(path: &str, x: &Value, types: &[(&str, &str)], depth: usize) -> (S
 }
 
 /// Decodes a `multipart/form-data` body; file parts reach [`Binary`](crate::Binary) fields unchanged.
-pub fn multipart_decode<T: DeserializeOwned>(status: u16, content_type: &str, body: &[u8]) -> Result<T, Error> {
+pub fn multipart_decode<T: DeserializeOwned>(status: u16, content_type: &str, body: &[u8]) -> Result<T, ClientError> {
     raw_parts(|| multipart_decode_in(status, content_type, body))
 }
 
 /// Returns [`multipart_decode`] inside its conversion.
-fn multipart_decode_in<T: DeserializeOwned>(status: u16, content_type: &str, body: &[u8]) -> Result<T, Error> {
+fn multipart_decode_in<T: DeserializeOwned>(status: u16, content_type: &str, body: &[u8]) -> Result<T, ClientError> {
     let boundary =
         boundary_of(content_type).ok_or_else(|| decode_err(status, body, "multipart body without boundary"))?;
     let value = parts_value(body, &boundary, true, 0).map_err(|e| decode_err(status, body, e))?;

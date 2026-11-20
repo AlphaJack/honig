@@ -45,7 +45,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn add_book(
         &self,
         p: impl runtime::IntoArg<'_, ops::add_book::Params>,
-    ) -> Result<ops::add_book::Response, runtime::Error> {
+    ) -> Result<ops::add_book::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/books");
         let query = Vec::new();
@@ -91,7 +91,7 @@ impl<T: runtime::Transport> Client<T> {
                 )
             }
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })

@@ -45,7 +45,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn no_xml_object(
         &self,
         _p: impl runtime::IntoArg<'_, ops::no_xml_object::Params>,
-    ) -> Result<ops::no_xml_object::Response, runtime::Error> {
+    ) -> Result<ops::no_xml_object::Response, runtime::ClientError> {
         let path = String::from("/no-xml-object");
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
@@ -67,7 +67,7 @@ impl<T: runtime::Transport> Client<T> {
                 runtime::xml_decode(status, &body).map(ops::no_xml_object::Response::Ok)
             }
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -76,7 +76,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn no_xml_object_array(
         &self,
         _p: impl runtime::IntoArg<'_, ops::no_xml_object_array::Params>,
-    ) -> Result<ops::no_xml_object_array::Response, runtime::Error> {
+    ) -> Result<ops::no_xml_object_array::Response, runtime::ClientError> {
         let path = String::from("/no-xml-object/array");
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
@@ -99,7 +99,7 @@ impl<T: runtime::Transport> Client<T> {
                     .map(ops::no_xml_object_array::Response::Ok)
             }
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -108,7 +108,10 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn xml_attribute_prefix_and_namespace(
         &self,
         p: impl runtime::IntoArg<'_, ops::xml_attribute_prefix_and_namespace::Params>,
-    ) -> Result<ops::xml_attribute_prefix_and_namespace::Response, runtime::Error> {
+    ) -> Result<
+        ops::xml_attribute_prefix_and_namespace::Response,
+        runtime::ClientError,
+    > {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/people");
         let query = Vec::new();
@@ -129,7 +132,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::xml_attribute_prefix_and_namespace::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -138,7 +141,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn xml_array_item_names(
         &self,
         _p: impl runtime::IntoArg<'_, ops::xml_array_item_names::Params>,
-    ) -> Result<ops::xml_array_item_names::Response, runtime::Error> {
+    ) -> Result<ops::xml_array_item_names::Response, runtime::ClientError> {
         let path = String::from("/arrays/item-names");
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
@@ -161,7 +164,7 @@ impl<T: runtime::Transport> Client<T> {
                     .map(ops::xml_array_item_names::Response::Ok)
             }
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -170,7 +173,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn xml_array_name_without_wrapper(
         &self,
         _p: impl runtime::IntoArg<'_, ops::xml_array_name_without_wrapper::Params>,
-    ) -> Result<ops::xml_array_name_without_wrapper::Response, runtime::Error> {
+    ) -> Result<ops::xml_array_name_without_wrapper::Response, runtime::ClientError> {
         let path = String::from("/arrays/unwrapped-name");
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
@@ -193,7 +196,7 @@ impl<T: runtime::Transport> Client<T> {
                     .map(ops::xml_array_name_without_wrapper::Response::Ok)
             }
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -202,7 +205,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn xml_array_wrapped(
         &self,
         _p: impl runtime::IntoArg<'_, ops::xml_array_wrapped::Params>,
-    ) -> Result<ops::xml_array_wrapped::Response, runtime::Error> {
+    ) -> Result<ops::xml_array_wrapped::Response, runtime::ClientError> {
         let path = String::from("/arrays/wrapped");
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
@@ -225,7 +228,7 @@ impl<T: runtime::Transport> Client<T> {
                     .map(ops::xml_array_wrapped::Response::Ok)
             }
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -234,7 +237,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn xml_array_wrapped_item_names(
         &self,
         _p: impl runtime::IntoArg<'_, ops::xml_array_wrapped_item_names::Params>,
-    ) -> Result<ops::xml_array_wrapped_item_names::Response, runtime::Error> {
+    ) -> Result<ops::xml_array_wrapped_item_names::Response, runtime::ClientError> {
         let path = String::from("/arrays/wrapped-item-names");
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
@@ -257,7 +260,7 @@ impl<T: runtime::Transport> Client<T> {
                     .map(ops::xml_array_wrapped_item_names::Response::Ok)
             }
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -266,7 +269,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn xml_array_wrapped_renamed(
         &self,
         _p: impl runtime::IntoArg<'_, ops::xml_array_wrapped_renamed::Params>,
-    ) -> Result<ops::xml_array_wrapped_renamed::Response, runtime::Error> {
+    ) -> Result<ops::xml_array_wrapped_renamed::Response, runtime::ClientError> {
         let path = String::from("/arrays/wrapped-renamed");
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
@@ -289,7 +292,7 @@ impl<T: runtime::Transport> Client<T> {
                     .map(ops::xml_array_wrapped_renamed::Response::Ok)
             }
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -298,7 +301,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn elements_with_attributes_and_text(
         &self,
         _p: impl runtime::IntoArg<'_, ops::elements_with_attributes_and_text::Params>,
-    ) -> Result<ops::elements_with_attributes_and_text::Response, runtime::Error> {
+    ) -> Result<ops::elements_with_attributes_and_text::Response, runtime::ClientError> {
         let path = String::from("/products");
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
@@ -324,7 +327,7 @@ impl<T: runtime::Transport> Client<T> {
                 )
             }
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -333,7 +336,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn referenced_element_with_cdata(
         &self,
         _p: impl runtime::IntoArg<'_, ops::referenced_element_with_cdata::Params>,
-    ) -> Result<ops::referenced_element_with_cdata::Response, runtime::Error> {
+    ) -> Result<ops::referenced_element_with_cdata::Response, runtime::ClientError> {
         let path = String::from("/docs");
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
@@ -356,7 +359,7 @@ impl<T: runtime::Transport> Client<T> {
                     .map(ops::referenced_element_with_cdata::Response::Ok)
             }
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -365,7 +368,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn ordered_elements(
         &self,
         _p: impl runtime::IntoArg<'_, ops::ordered_elements::Params>,
-    ) -> Result<ops::ordered_elements::Response, runtime::Error> {
+    ) -> Result<ops::ordered_elements::Response, runtime::ClientError> {
         let path = String::from("/one-two-three");
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
@@ -387,7 +390,7 @@ impl<T: runtime::Transport> Client<T> {
                 Ok(ops::ordered_elements::Response::Ok(runtime::text_decode(&body)))
             }
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -396,7 +399,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn ordered_elements_and_text(
         &self,
         _p: impl runtime::IntoArg<'_, ops::ordered_elements_and_text::Params>,
-    ) -> Result<ops::ordered_elements_and_text::Response, runtime::Error> {
+    ) -> Result<ops::ordered_elements_and_text::Response, runtime::ClientError> {
         let path = String::from("/report");
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
@@ -422,7 +425,7 @@ impl<T: runtime::Transport> Client<T> {
                 )
             }
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -431,7 +434,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn xml_with_null_values(
         &self,
         _p: impl runtime::IntoArg<'_, ops::xml_with_null_values::Params>,
-    ) -> Result<ops::xml_with_null_values::Response, runtime::Error> {
+    ) -> Result<ops::xml_with_null_values::Response, runtime::ClientError> {
         let path = String::from("/product");
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
@@ -454,7 +457,7 @@ impl<T: runtime::Transport> Client<T> {
                     .map(ops::xml_with_null_values::Response::Ok)
             }
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })

@@ -10,7 +10,7 @@ use quick_xml::reader::Reader;
 use serde::Serialize;
 use serde_json::{Map, Value};
 
-use crate::Error;
+use crate::ClientError;
 use crate::json::push_multi;
 
 mod encode;
@@ -85,7 +85,7 @@ fn lists(fields: &[XmlField<XmlNode>], key: &str) -> bool {
 
 /// Encodes an XML body. `null` is written as `xsi:nil="true"`.
 /// Errors: the value does not serialize.
-pub fn xml_encode<T: Serialize + XmlShape>(v: &T) -> Result<Vec<u8>, Error> {
+pub fn xml_encode<T: Serialize + XmlShape>(v: &T) -> Result<Vec<u8>, ClientError> {
     Ok(encode::body(v, T::xml())?.into_bytes())
 }
 

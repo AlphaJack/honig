@@ -50,7 +50,7 @@ fn out_dir() -> PathBuf {
 /// - `features.md`: the cargo features of the runtime from the `##` comments of its `Cargo.toml`
 /// - `server-steps.md`, `ranges.md`: the module docs of the server and of its range requests
 /// - `reconnect.md`: the rustdoc of `ItemStream::reconnecting`
-/// - `errors.md`, `error-fields.md`: the variants of the client's `Error` and of `ErrorField` with their rustdoc
+/// - `errors.md`, `error-fields.md`: the variants of the client's `Error` and of `ProblemMember` with their rustdoc
 /// - `error-rendering.md`: the rustdoc of `Rejection::response`
 /// - `settings.md`: every setting of a module from `SETTINGS`
 /// - `formats.md`: the Rust type of each string format as the generator picks it
@@ -98,7 +98,7 @@ fn pages() -> Result<Vec<(&'static str, PathBuf, String)>> {
             plain_links(&item_docs(&read(&reconnect_rs)?, "    pub fn reconnecting")?),
         ),
         ("errors.md", error_rs.clone(), plain_links(&variants_page(&read(&error_rs)?, "pub enum Error")?)),
-        ("error-fields.md", reject_rs.clone(), plain_links(&variants_page(&reject, "pub enum ErrorField")?)),
+        ("error-fields.md", reject_rs.clone(), plain_links(&variants_page(&reject, "pub enum ProblemMember")?)),
         ("error-rendering.md", reject_rs, plain_links(&item_docs(&reject, "    pub fn response")?)),
         ("formats.md", root.join("src").join("emit").join("rust").join("syntax.rs"), formats_page()),
         ("settings.md", root.join("src").join("settings.rs"), settings_page()),

@@ -4,7 +4,7 @@ use std::fmt;
 
 use serde_json::{Map, Value};
 
-use crate::{ApiError, Error, Message, Response, Violation};
+use crate::{ApiError, ClientError, Message, Response, Violation};
 
 /// Request bodies larger than this get `413` from the server adapters
 /// unless the server's `max_body_bytes` says otherwise.
@@ -62,9 +62,9 @@ pub(crate) fn allow_header(allow: &[&str]) -> String {
     methods
 }
 
-/// Returns the reason phrase of a status or else `Error`.
+/// Returns the reason phrase of a status or else `ClientError`.
 fn reason(status: u16) -> &'static str {
-    crate::status::reason(status).unwrap_or("Error")
+    crate::status::reason(status).unwrap_or("ClientError")
 }
 
 impl Reason {
@@ -219,7 +219,7 @@ impl Problem {
 /// What a member of the description's error body receives from a [`Reason`]: a member of RFC 9457 `problem+json`
 /// by its name in the RFC, or a required `const`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ErrorField {
+pub enum ProblemMember {
     /// `status`: the HTTP status.
     Status,
     /// `title`: the reason phrase.
@@ -234,11 +234,11 @@ pub enum ErrorField {
 
 /// The error schema of the description as [`Reason::in_schema`] fills it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct ErrorSchema {
+pub struct ProblemSchema {
     /// Media type of the error response.
     pub media: &'static str,
     /// (property, what it receives). None: a `text/*` string body that holds the detail and nothing else.
-    pub fields: &'static [(&'static str, ErrorField)],
+    pub fields: &'static [(&'static str, ProblemMember)],
     /// The schema takes properties it does not declare: validation details go in `violations` when no field
     /// lists them.
     pub open: bool,
@@ -246,7 +246,7 @@ pub struct ErrorSchema {
 
 impl Reason {
     /// Returns the reason in the description's own error schema.
-    pub fn in_schema(&self, schema: &ErrorSchema) -> Response {
+    pub fn in_schema(&self, schema: &ProblemSchema) -> Response {
         let status = self.status().as_u16();
         let detail = self.detail().unwrap_or_else(|| reason(status).to_owned());
         if schema.fields.is_empty() {
@@ -258,11 +258,11 @@ impl Reason {
         let mut o = Map::new();
         for (name, field) in schema.fields {
             let v = match field {
-                ErrorField::Status => Value::from(status),
-                ErrorField::Title => Value::String(reason(status).into()),
-                ErrorField::Detail => Value::String(detail.clone()),
-                ErrorField::Type => Value::String("about:blank".into()),
-                ErrorField::Const(json) => serde_json::from_str(json).unwrap_or_default(),
+                ProblemMember::Status => Value::from(status),
+                ProblemMember::Title => Value::String(reason(status).into()),
+                ProblemMember::Detail => Value::String(detail.clone()),
+                ProblemMember::Type => Value::String("about:blank".into()),
+                ProblemMember::Const(json) => serde_json::from_str(json).unwrap_or_default(),
             };
             o.insert((*name).to_owned(), v);
         }
@@ -320,26 +320,28 @@ pub fn check_media(actual: &str, declared: &[&str]) -> Result<(), Reason> {
     Err(Reason::UnsupportedMediaType(actual.to_owned(), declared.join(", ")))
 }
 
-impl From<Error> for Reason {
-    fn from(e: Error) -> Self {
+impl From<ClientError> for Reason {
+    fn from(e: ClientError) -> Self {
         match e {
             // A request body that does not decode: the server decodes requests with status 0.
-            Error::Decode { status: 0, pointer, message, .. } => Self::Invalid(decode_violation(&pointer, &message)),
-            Error::Transport(why) => Self::Unreadable(why),
-            Error::TooLarge(limit) => Self::PayloadTooLarge(limit),
-            other @ (Error::Encode(_)
-            | Error::Decode { .. }
-            | Error::UnexpectedMedia { .. }
-            | Error::UnexpectedStatus { .. }
-            | Error::NotModified { .. }) => Self::Body(other.to_string()),
+            ClientError::Decode { status: 0, pointer, message, .. } => {
+                Self::Invalid(decode_violation(&pointer, &message))
+            }
+            ClientError::Transport(why) => Self::Unreadable(why),
+            ClientError::TooLarge(limit) => Self::PayloadTooLarge(limit),
+            other @ (ClientError::Encode(_)
+            | ClientError::Decode { .. }
+            | ClientError::UnexpectedMedia { .. }
+            | ClientError::UnexpectedStatus { .. }
+            | ClientError::NotModified { .. }) => Self::Body(other.to_string()),
         }
     }
 }
 
 /// A body or an item still arriving that failed, with the status of its [`Reason`]. So `?` on a chunk or an item that
 /// a handler reads works.
-impl From<Error> for ApiError {
-    fn from(e: Error) -> Self {
+impl From<ClientError> for ApiError {
+    fn from(e: ClientError) -> Self {
         Reason::from(e).into()
     }
 }
@@ -394,7 +396,7 @@ pub struct Rejection<Id = ()> {
     /// The operation the request reached; `None` when no route matched.
     pub operation: Option<Id>,
     /// The error schema that the description declares for this operation and status when the generator can fill it.
-    pub schema: Option<&'static ErrorSchema>,
+    pub schema: Option<&'static ProblemSchema>,
     /// The headers of the request. An error response may then follow its `Accept`. A request that one of your layers
     /// refused has moved on with its headers. Only its `Accept` is here.
     pub headers: http::HeaderMap,
@@ -430,12 +432,12 @@ mod tests {
 
     #[test]
     fn a_const_field_gets_its_value() {
-        let schema = ErrorSchema {
+        let schema = ProblemSchema {
             media: "application/json",
             fields: &[
-                ("detail", ErrorField::Detail),
-                ("object", ErrorField::Const("\"error\"")),
-                ("version", ErrorField::Const("2")),
+                ("detail", ProblemMember::Detail),
+                ("object", ProblemMember::Const("\"error\"")),
+                ("version", ProblemMember::Const("2")),
             ],
             open: false,
         };
@@ -446,7 +448,7 @@ mod tests {
 
     #[test]
     fn a_text_error_body_is_the_detail() {
-        let schema = ErrorSchema { media: "text/plain", fields: &[], open: false };
+        let schema = ProblemSchema { media: "text/plain", fields: &[], open: false };
         let r = Reason::invalid("/query/limit", "is required").in_schema(&schema);
         assert_eq!(r.body().bytes(), b"/query/limit: is required");
         assert_eq!(r.headers().get("content-type").map(|v| v.to_str().unwrap()), Some("text/plain"));
@@ -454,7 +456,7 @@ mod tests {
 
     /// A request body that the server fails to decode, as `json_decode(0, body)` reports it.
     fn undecoded(pointer: &str, message: &str) -> Reason {
-        Reason::from(Error::Decode {
+        Reason::from(ClientError::Decode {
             status: 0,
             message: message.to_owned(),
             body: bytes::Bytes::new(),
@@ -477,9 +479,9 @@ mod tests {
     fn a_missing_field_is_required_at_its_own_path() {
         let r = undecoded("", "missing field `name` at line 1 column 18");
         assert_eq!(r.to_string(), "/body/name: is required");
-        let schema = ErrorSchema {
+        let schema = ProblemSchema {
             media: "application/json",
-            fields: &[("status", ErrorField::Status), ("detail", ErrorField::Detail)],
+            fields: &[("status", ProblemMember::Status), ("detail", ProblemMember::Detail)],
             open: true,
         };
         let body: Value = serde_json::from_slice(r.in_schema(&schema).body().bytes()).unwrap();

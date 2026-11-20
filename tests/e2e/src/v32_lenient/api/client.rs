@@ -45,7 +45,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn get_order(
         &self,
         p: impl runtime::IntoArg<'_, ops::get_order::Params>,
-    ) -> Result<ops::get_order::Response, runtime::Error> {
+    ) -> Result<ops::get_order::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let mut path = String::from("/orders/");
         path.push_str(&runtime::encode_path("id", &p.id, runtime::Enc::SIMPLE)?);
@@ -69,7 +69,7 @@ impl<T: runtime::Transport> Client<T> {
                 runtime::json_decode(status, &body).map(ops::get_order::Response::Ok)
             }
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -78,7 +78,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn put_order(
         &self,
         p: impl runtime::IntoArg<'_, ops::put_order::Params>,
-    ) -> Result<ops::put_order::Response, runtime::Error> {
+    ) -> Result<ops::put_order::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/orders");
         let query = Vec::new();
@@ -97,7 +97,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::put_order::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })

@@ -62,7 +62,7 @@ pub type RequestEvent = runtime::RequestEvent<Operation>;
 const fn error_schema(
     _operation: Option<&str>,
     _status: u16,
-) -> Option<&'static runtime::ErrorSchema> {
+) -> Option<&'static runtime::ProblemSchema> {
     None
 }
 static METHODS: &[&[(&str, (Op, Operation))]] = &[
@@ -119,7 +119,7 @@ impl<A: Api> runtime::Operations for Routes<A> {
                 runtime::allowed_methods(methods),
             ))
     }
-    fn errors(&self) -> runtime::ErrorSchemas {
+    fn errors(&self) -> runtime::ProblemSchemas {
         error_schema
     }
     fn call<'r>(
@@ -196,7 +196,7 @@ async fn list_products<A: Api>(
 }
 fn list_products_encode(
     resp: ops::list_products::Response,
-) -> Result<runtime::Response, runtime::Error> {
+) -> Result<runtime::Response, runtime::ClientError> {
     let ops::list_products::Response::Ok(body) = resp;
     Ok(runtime::body_response(200, "application/json", runtime::json_encode(&body)?))
 }
@@ -226,7 +226,7 @@ async fn tag_tree<A: Api>(
 }
 fn tag_tree_encode(
     resp: ops::tag_tree::Response,
-) -> Result<runtime::Response, runtime::Error> {
+) -> Result<runtime::Response, runtime::ClientError> {
     let ops::tag_tree::Response::Ok(body) = resp;
     Ok(runtime::body_response(200, "application/json", runtime::json_encode(&body)?))
 }
@@ -256,7 +256,7 @@ async fn any_page<A: Api>(
 }
 fn any_page_encode(
     resp: ops::any_page::Response,
-) -> Result<runtime::Response, runtime::Error> {
+) -> Result<runtime::Response, runtime::ClientError> {
     let ops::any_page::Response::Ok(body) = resp;
     Ok(runtime::body_response(200, "application/json", runtime::json_encode(&body)?))
 }

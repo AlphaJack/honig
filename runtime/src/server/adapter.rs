@@ -3,7 +3,7 @@
 use std::pin::Pin;
 use std::task::{Context, Poll, ready};
 
-use crate::{BodyError, BodySource, Error, ReadAll};
+use crate::{BodyError, BodySource, ClientError, ReadAll};
 
 /// Returns the `Content-Length` that a request declares. It sizes the buffer of its body.
 pub(crate) fn content_length(headers: &http::HeaderMap) -> Option<usize> {
@@ -33,12 +33,12 @@ where
     B: http_body::Body<Data = bytes::Bytes> + Send + Unpin + 'static,
     B::Error: std::fmt::Display,
 {
-    fn poll_piece(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Result<bytes::Bytes, Error>>> {
+    fn poll_piece(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Result<bytes::Bytes, ClientError>>> {
         let this = self.get_mut();
         loop {
             let Some(frame) = ready!(Pin::new(&mut this.body).poll_frame(cx)) else { return Poll::Ready(None) };
             let data = match frame {
-                Err(e) => return Poll::Ready(Some(Err(Error::Transport(e.to_string())))),
+                Err(e) => return Poll::Ready(Some(Err(ClientError::Transport(e.to_string())))),
                 Ok(frame) => match frame.into_data() {
                     Ok(data) if !data.is_empty() => data,
                     Ok(_) | Err(_) => continue,
@@ -46,7 +46,7 @@ where
             };
             this.seen += data.len();
             if this.seen > this.limit {
-                return Poll::Ready(Some(Err(Error::TooLarge(this.limit))));
+                return Poll::Ready(Some(Err(ClientError::TooLarge(this.limit))));
             }
             return Poll::Ready(Some(Ok(data)));
         }

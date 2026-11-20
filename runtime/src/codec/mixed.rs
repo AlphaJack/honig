@@ -9,22 +9,26 @@ use crate::binary::{raw_mark, raw_part, raw_parts};
 use crate::json::to_value;
 use crate::media::json_type;
 use crate::text::{decode_err, utf8};
-use crate::{Coerce, Error};
+use crate::{ClientError, Coerce};
 
 /// Encodes positional multipart: one part per array item.
 ///
 /// `types` maps a position or `"*"` to a content
 /// type. `("prefix", n)` marks a trailing list. Returns (content type, body).
 /// Errors: the value is not an array or does not serialize.
-pub fn mixed_encode<T: Serialize>(v: &T, media: &str, types: &[(&str, &str)]) -> Result<(String, Vec<u8>), Error> {
+pub fn mixed_encode<T: Serialize>(
+    v: &T,
+    media: &str,
+    types: &[(&str, &str)],
+) -> Result<(String, Vec<u8>), ClientError> {
     raw_parts(|| mixed_encode_in(v, media, types))
 }
 
 /// Returns [`mixed_encode`] inside its conversion.
-fn mixed_encode_in<T: Serialize>(v: &T, media: &str, types: &[(&str, &str)]) -> Result<(String, Vec<u8>), Error> {
+fn mixed_encode_in<T: Serialize>(v: &T, media: &str, types: &[(&str, &str)]) -> Result<(String, Vec<u8>), ClientError> {
     let value = to_value(v)?;
     let Value::Array(mut items) = value else {
-        return Err(Error::Encode(format!("{media} body must be an array")));
+        return Err(ClientError::Encode(format!("{media} body must be an array")));
     };
     let prefix = types.iter().find(|(k, _)| *k == "prefix").and_then(|(_, n)| n.parse::<usize>().ok());
     if let Some(n) = prefix
@@ -71,7 +75,7 @@ pub fn mixed_decode<T: DeserializeOwned>(
     content_type: &str,
     body: &[u8],
     prefix: Option<usize>,
-) -> Result<T, Error> {
+) -> Result<T, ClientError> {
     raw_parts(|| mixed_decode_in(status, content_type, body, prefix))
 }
 
@@ -81,7 +85,7 @@ fn mixed_decode_in<T: DeserializeOwned>(
     content_type: &str,
     body: &[u8],
     prefix: Option<usize>,
-) -> Result<T, Error> {
+) -> Result<T, ClientError> {
     let boundary =
         boundary_of(content_type).ok_or_else(|| decode_err(status, body, "multipart body without boundary"))?;
     let mut items = vec![];

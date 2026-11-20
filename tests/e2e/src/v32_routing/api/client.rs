@@ -51,7 +51,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn search_orders(
         &self,
         _p: impl runtime::IntoArg<'_, ops::search_orders::Params>,
-    ) -> Result<ops::search_orders::Response, runtime::Error> {
+    ) -> Result<ops::search_orders::Response, runtime::ClientError> {
         let path = String::from("/orders/search");
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
@@ -64,7 +64,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::search_orders::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -73,7 +73,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn update_order(
         &self,
         p: impl runtime::IntoArg<'_, ops::update_order::Params>,
-    ) -> Result<ops::update_order::Response, runtime::Error> {
+    ) -> Result<ops::update_order::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let mut path = String::from("/orders/");
         path.push_str(&runtime::encode_path("id", &p.id, runtime::Enc::SIMPLE)?);
@@ -88,7 +88,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::update_order::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -97,7 +97,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn status_at(
         &self,
         _p: impl runtime::IntoArg<'_, ops::status_at::Params>,
-    ) -> Result<ops::status_at::Response, runtime::Error> {
+    ) -> Result<ops::status_at::Response, runtime::ClientError> {
         let path = String::from("/status/@");
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
@@ -110,7 +110,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::status_at::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -119,7 +119,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn status_by_key(
         &self,
         p: impl runtime::IntoArg<'_, ops::status_by_key::Params>,
-    ) -> Result<ops::status_by_key::Response, runtime::Error> {
+    ) -> Result<ops::status_by_key::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let mut path = String::from("/status/");
         path.push_str(&runtime::encode_path("key", &p.key, runtime::Enc::SIMPLE)?);
@@ -143,7 +143,7 @@ impl<T: runtime::Transport> Client<T> {
                 runtime::json_decode(status, &body).map(ops::status_by_key::Response::Ok)
             }
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -152,7 +152,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn latest_meta(
         &self,
         _p: impl runtime::IntoArg<'_, ops::latest_meta::Params>,
-    ) -> Result<ops::latest_meta::Response, runtime::Error> {
+    ) -> Result<ops::latest_meta::Response, runtime::ClientError> {
         let path = String::from("/files/latest/meta");
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
@@ -165,7 +165,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::latest_meta::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -174,7 +174,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn file_raw(
         &self,
         p: impl runtime::IntoArg<'_, ops::file_raw::Params>,
-    ) -> Result<ops::file_raw::Response, runtime::Error> {
+    ) -> Result<ops::file_raw::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let mut path = String::from("/files/");
         path.push_str(&runtime::encode_path("dir", &p.dir, runtime::Enc::SIMPLE)?);
@@ -199,7 +199,7 @@ impl<T: runtime::Transport> Client<T> {
                 runtime::json_decode(status, &body).map(ops::file_raw::Response::Ok)
             }
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -208,7 +208,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn file_ext(
         &self,
         p: impl runtime::IntoArg<'_, ops::file_ext::Params>,
-    ) -> Result<ops::file_ext::Response, runtime::Error> {
+    ) -> Result<ops::file_ext::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let mut path = String::from("/files/");
         path.push_str(&runtime::encode_path("name", &p.name, runtime::Enc::SIMPLE)?);
@@ -234,7 +234,7 @@ impl<T: runtime::Transport> Client<T> {
                 runtime::json_decode(status, &body).map(ops::file_ext::Response::Ok)
             }
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -243,7 +243,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn mix_literal_tail(
         &self,
         p: impl runtime::IntoArg<'_, ops::mix_literal_tail::Params>,
-    ) -> Result<ops::mix_literal_tail::Response, runtime::Error> {
+    ) -> Result<ops::mix_literal_tail::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let mut path = String::from("/m/");
         path.push_str(&runtime::encode_path("a", &p.a, runtime::Enc::SIMPLE)?);
@@ -259,7 +259,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::mix_literal_tail::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -268,7 +268,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn mix_mixed_tail(
         &self,
         p: impl runtime::IntoArg<'_, ops::mix_mixed_tail::Params>,
-    ) -> Result<ops::mix_mixed_tail::Response, runtime::Error> {
+    ) -> Result<ops::mix_mixed_tail::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let mut path = String::from("/m/");
         path.push_str(&runtime::encode_path("a", &p.a, runtime::Enc::SIMPLE)?);
@@ -297,7 +297,7 @@ impl<T: runtime::Transport> Client<T> {
                     .map(ops::mix_mixed_tail::Response::Ok)
             }
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -306,7 +306,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn mix_var_tail(
         &self,
         p: impl runtime::IntoArg<'_, ops::mix_var_tail::Params>,
-    ) -> Result<ops::mix_var_tail::Response, runtime::Error> {
+    ) -> Result<ops::mix_var_tail::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let mut path = String::from("/m/");
         path.push_str(&runtime::encode_path("a", &p.a, runtime::Enc::SIMPLE)?);
@@ -323,7 +323,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 202 {
             Ok(ops::mix_var_tail::Response::Accepted)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })

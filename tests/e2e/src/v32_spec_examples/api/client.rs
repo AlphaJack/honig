@@ -46,7 +46,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn form_with_xml(
         &self,
         p: impl runtime::IntoArg<'_, ops::form_with_xml::Params>,
-    ) -> Result<ops::form_with_xml::Response, runtime::Error> {
+    ) -> Result<ops::form_with_xml::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/form-with-xml");
         let query = Vec::new();
@@ -67,7 +67,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::form_with_xml::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -76,7 +76,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn parameter_examples(
         &self,
         p: impl runtime::IntoArg<'_, ops::parameter_examples::Params>,
-    ) -> Result<ops::parameter_examples::Response, runtime::Error> {
+    ) -> Result<ops::parameter_examples::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let mut path = String::from("/users/");
         path.push_str(
@@ -122,7 +122,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::parameter_examples::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -131,7 +131,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn querystring_form(
         &self,
         p: impl runtime::IntoArg<'_, ops::querystring_form::Params>,
-    ) -> Result<ops::querystring_form::Response, runtime::Error> {
+    ) -> Result<ops::querystring_form::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/querystring/form");
         let mut query: Vec<String> = Vec::new();
@@ -146,7 +146,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::querystring_form::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -155,7 +155,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn querystring_json(
         &self,
         p: impl runtime::IntoArg<'_, ops::querystring_json::Params>,
-    ) -> Result<ops::querystring_json::Response, runtime::Error> {
+    ) -> Result<ops::querystring_json::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/querystring/json");
         let mut query: Vec<String> = Vec::new();
@@ -170,7 +170,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::querystring_json::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -179,7 +179,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn basic_multipart_form(
         &self,
         p: impl runtime::IntoArg<'_, ops::basic_multipart_form::Params>,
-    ) -> Result<ops::basic_multipart_form::Response, runtime::Error> {
+    ) -> Result<ops::basic_multipart_form::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/multipart/basic");
         let query = Vec::new();
@@ -197,7 +197,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::basic_multipart_form::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -206,7 +206,10 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn multipart_form_with_encoding_objects(
         &self,
         p: impl runtime::IntoArg<'_, ops::multipart_form_with_encoding_objects::Params>,
-    ) -> Result<ops::multipart_form_with_encoding_objects::Response, runtime::Error> {
+    ) -> Result<
+        ops::multipart_form_with_encoding_objects::Response,
+        runtime::ClientError,
+    > {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/multipart/encoding");
         let query = Vec::new();
@@ -243,7 +246,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::multipart_form_with_encoding_objects::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -252,7 +255,10 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn multipart_form_with_multiple_files(
         &self,
         p: impl runtime::IntoArg<'_, ops::multipart_form_with_multiple_files::Params>,
-    ) -> Result<ops::multipart_form_with_multiple_files::Response, runtime::Error> {
+    ) -> Result<
+        ops::multipart_form_with_multiple_files::Response,
+        runtime::ClientError,
+    > {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/multipart/files");
         let query = Vec::new();
@@ -270,7 +276,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::multipart_form_with_multiple_files::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -279,7 +285,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn ordered_unnamed_multipart(
         &self,
         p: impl runtime::IntoArg<'_, ops::ordered_unnamed_multipart::Params>,
-    ) -> Result<ops::ordered_unnamed_multipart::Response, runtime::Error> {
+    ) -> Result<ops::ordered_unnamed_multipart::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/multipart/ordered");
         let query = Vec::new();
@@ -301,7 +307,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::ordered_unnamed_multipart::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -310,7 +316,10 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn ordered_multipart_with_required_header(
         &self,
         p: impl runtime::IntoArg<'_, ops::ordered_multipart_with_required_header::Params>,
-    ) -> Result<ops::ordered_multipart_with_required_header::Response, runtime::Error> {
+    ) -> Result<
+        ops::ordered_multipart_with_required_header::Response,
+        runtime::ClientError,
+    > {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/multipart/related");
         let query = Vec::new();
@@ -340,7 +349,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::ordered_multipart_with_required_header::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -349,7 +358,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn nested_multipart_mixed(
         &self,
         p: impl runtime::IntoArg<'_, ops::nested_multipart_mixed::Params>,
-    ) -> Result<ops::nested_multipart_mixed::Response, runtime::Error> {
+    ) -> Result<ops::nested_multipart_mixed::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/multipart/nested");
         let query = Vec::new();
@@ -371,7 +380,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::nested_multipart_mixed::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -380,7 +389,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn streaming_multipart(
         &self,
         _p: impl runtime::IntoArg<'_, ops::streaming_multipart::Params>,
-    ) -> Result<ops::streaming_multipart::Response, runtime::Error> {
+    ) -> Result<ops::streaming_multipart::Response, runtime::ClientError> {
         let path = String::from("/multipart/streaming");
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
@@ -404,7 +413,7 @@ impl<T: runtime::Transport> Client<T> {
                     .map(ops::streaming_multipart::Response::Ok)
             }
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -418,7 +427,7 @@ impl<T: runtime::Transport> Client<T> {
             runtime::ItemStream<runtime::Binary>,
             ops::streaming_multipart::Response,
         >,
-        runtime::Error,
+        runtime::ClientError,
     > {
         let path = String::from("/multipart/streaming");
         let query = Vec::new();
@@ -448,10 +457,10 @@ impl<T: runtime::Transport> Client<T> {
             head,
             runtime::Body::new(body.collect().await?),
         );
-        let other: Result<ops::streaming_multipart::Response, runtime::Error> = async move {
+        let other: Result<ops::streaming_multipart::Response, runtime::ClientError> = async move {
             let (head, body) = resp.into_parts();
             let (body, _) = body.into_parts();
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -462,7 +471,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn streaming_byte_ranges(
         &self,
         _p: impl runtime::IntoArg<'_, ops::streaming_byte_ranges::Params>,
-    ) -> Result<ops::streaming_byte_ranges::Response, runtime::Error> {
+    ) -> Result<ops::streaming_byte_ranges::Response, runtime::ClientError> {
         let path = String::from("/multipart/byteranges");
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
@@ -486,7 +495,7 @@ impl<T: runtime::Transport> Client<T> {
                     .map(ops::streaming_byte_ranges::Response::PartialContent)
             }
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -500,7 +509,7 @@ impl<T: runtime::Transport> Client<T> {
             runtime::ItemStream<runtime::Binary>,
             ops::streaming_byte_ranges::Response,
         >,
-        runtime::Error,
+        runtime::ClientError,
     > {
         let path = String::from("/multipart/byteranges");
         let query = Vec::new();
@@ -530,10 +539,10 @@ impl<T: runtime::Transport> Client<T> {
             head,
             runtime::Body::new(body.collect().await?),
         );
-        let other: Result<ops::streaming_byte_ranges::Response, runtime::Error> = async move {
+        let other: Result<ops::streaming_byte_ranges::Response, runtime::ClientError> = async move {
             let (head, body) = resp.into_parts();
             let (body, _) = body.into_parts();
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -544,7 +553,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn querystring_jsonpath(
         &self,
         p: impl runtime::IntoArg<'_, ops::querystring_jsonpath::Params>,
-    ) -> Result<ops::querystring_jsonpath::Response, runtime::Error> {
+    ) -> Result<ops::querystring_jsonpath::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/querystring/jsonpath");
         let mut query: Vec<String> = Vec::new();
@@ -559,7 +568,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::querystring_jsonpath::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -568,7 +577,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn collection_with_links(
         &self,
         _p: impl runtime::IntoArg<'_, ops::collection_with_links::Params>,
-    ) -> Result<ops::collection_with_links::Response, runtime::Error> {
+    ) -> Result<ops::collection_with_links::Response, runtime::ClientError> {
         let path = String::from("/collection");
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
@@ -595,7 +604,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/Link",
                         )
-                        .map_err(|e| runtime::Error::Decode {
+                        .map_err(|e| runtime::ClientError::Decode {
                             status,
                             message: e.to_string(),
                             body: body.clone(),
@@ -604,7 +613,7 @@ impl<T: runtime::Transport> Client<T> {
                 })
             }
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -613,7 +622,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn standalone_json_linkset(
         &self,
         _p: impl runtime::IntoArg<'_, ops::standalone_json_linkset::Params>,
-    ) -> Result<ops::standalone_json_linkset::Response, runtime::Error> {
+    ) -> Result<ops::standalone_json_linkset::Response, runtime::ClientError> {
         let path = String::from("/collection/linkset-json");
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
@@ -636,7 +645,7 @@ impl<T: runtime::Transport> Client<T> {
                     .map(ops::standalone_json_linkset::Response::Ok)
             }
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -645,7 +654,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn linkset_body(
         &self,
         _p: impl runtime::IntoArg<'_, ops::linkset_body::Params>,
-    ) -> Result<ops::linkset_body::Response, runtime::Error> {
+    ) -> Result<ops::linkset_body::Response, runtime::ClientError> {
         let path = String::from("/collection/linkset");
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
@@ -668,7 +677,7 @@ impl<T: runtime::Transport> Client<T> {
                     .map(ops::linkset_body::Response::Ok)
             }
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -677,7 +686,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn media_type_json(
         &self,
         _p: impl runtime::IntoArg<'_, ops::media_type_json::Params>,
-    ) -> Result<ops::media_type_json::Response, runtime::Error> {
+    ) -> Result<ops::media_type_json::Response, runtime::ClientError> {
         let path = String::from("/products");
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
@@ -700,7 +709,7 @@ impl<T: runtime::Transport> Client<T> {
                     .map(ops::media_type_json::Response::Ok)
             }
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -709,7 +718,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn log_stream(
         &self,
         p: impl runtime::IntoArg<'_, ops::log_stream::Params>,
-    ) -> Result<ops::log_stream::Response, runtime::Error> {
+    ) -> Result<ops::log_stream::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/logs/stream");
         let query = Vec::new();
@@ -775,7 +784,7 @@ impl<T: runtime::Transport> Client<T> {
                 )
             }
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -789,7 +798,7 @@ impl<T: runtime::Transport> Client<T> {
             runtime::ItemStream<types::LogEntry>,
             ops::log_stream::Response,
         >,
-        runtime::Error,
+        runtime::ClientError,
     > {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/logs/stream");
@@ -846,10 +855,10 @@ impl<T: runtime::Transport> Client<T> {
             head,
             runtime::Body::new(body.collect().await?),
         );
-        let other: Result<ops::log_stream::Response, runtime::Error> = async move {
+        let other: Result<ops::log_stream::Response, runtime::ClientError> = async move {
             let (head, body) = resp.into_parts();
             let (body, _) = body.into_parts();
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -860,7 +869,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn log_excerpt(
         &self,
         p: impl runtime::IntoArg<'_, ops::log_excerpt::Params>,
-    ) -> Result<ops::log_excerpt::Response, runtime::Error> {
+    ) -> Result<ops::log_excerpt::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/logs/excerpt");
         let query = Vec::new();
@@ -962,7 +971,7 @@ impl<T: runtime::Transport> Client<T> {
                 )
             }
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -973,7 +982,7 @@ impl<T: runtime::Transport> Client<T> {
         p: impl runtime::IntoArg<'_, ops::log_excerpt::Params>,
     ) -> Result<
         runtime::Streamed<runtime::ItemStream<types::Log>, ops::log_excerpt::Response>,
-        runtime::Error,
+        runtime::ClientError,
     > {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/logs/excerpt");
@@ -1035,10 +1044,10 @@ impl<T: runtime::Transport> Client<T> {
             head,
             runtime::Body::new(body.collect().await?),
         );
-        let other: Result<ops::log_excerpt::Response, runtime::Error> = async move {
+        let other: Result<ops::log_excerpt::Response, runtime::ClientError> = async move {
             let (head, body) = resp.into_parts();
             let (body, _) = body.into_parts();
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -1049,7 +1058,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn server_sent_event_streams(
         &self,
         p: impl runtime::IntoArg<'_, ops::server_sent_event_streams::Params>,
-    ) -> Result<ops::server_sent_event_streams::Response, runtime::Error> {
+    ) -> Result<ops::server_sent_event_streams::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p).into_owned();
         let path = String::from("/events");
         let query = Vec::new();
@@ -1069,7 +1078,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::server_sent_event_streams::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })

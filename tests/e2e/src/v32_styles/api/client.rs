@@ -45,7 +45,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn matrix_fs(
         &self,
         p: impl runtime::IntoArg<'_, ops::matrix_fs::Params>,
-    ) -> Result<ops::matrix_fs::Response, runtime::Error> {
+    ) -> Result<ops::matrix_fs::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let mut path = String::from("/matrix-f-s/");
         path.push_str(
@@ -70,7 +70,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::matrix_fs::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -79,7 +79,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn matrix_fa(
         &self,
         p: impl runtime::IntoArg<'_, ops::matrix_fa::Params>,
-    ) -> Result<ops::matrix_fa::Response, runtime::Error> {
+    ) -> Result<ops::matrix_fa::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let mut path = String::from("/matrix-f-a/");
         path.push_str(
@@ -104,7 +104,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::matrix_fa::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -113,7 +113,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn matrix_fo(
         &self,
         p: impl runtime::IntoArg<'_, ops::matrix_fo::Params>,
-    ) -> Result<ops::matrix_fo::Response, runtime::Error> {
+    ) -> Result<ops::matrix_fo::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let mut path = String::from("/matrix-f-o/");
         path.push_str(
@@ -138,7 +138,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::matrix_fo::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -147,7 +147,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn matrix_ta(
         &self,
         p: impl runtime::IntoArg<'_, ops::matrix_ta::Params>,
-    ) -> Result<ops::matrix_ta::Response, runtime::Error> {
+    ) -> Result<ops::matrix_ta::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let mut path = String::from("/matrix-t-a/");
         path.push_str(
@@ -172,7 +172,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::matrix_ta::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -181,7 +181,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn matrix_to(
         &self,
         p: impl runtime::IntoArg<'_, ops::matrix_to::Params>,
-    ) -> Result<ops::matrix_to::Response, runtime::Error> {
+    ) -> Result<ops::matrix_to::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let mut path = String::from("/matrix-t-o/");
         path.push_str(
@@ -206,7 +206,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::matrix_to::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -215,7 +215,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn label_fs(
         &self,
         p: impl runtime::IntoArg<'_, ops::label_fs::Params>,
-    ) -> Result<ops::label_fs::Response, runtime::Error> {
+    ) -> Result<ops::label_fs::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let mut path = String::from("/label-f-s/");
         path.push_str(
@@ -240,7 +240,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::label_fs::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -249,7 +249,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn label_fa(
         &self,
         p: impl runtime::IntoArg<'_, ops::label_fa::Params>,
-    ) -> Result<ops::label_fa::Response, runtime::Error> {
+    ) -> Result<ops::label_fa::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let mut path = String::from("/label-f-a/");
         path.push_str(
@@ -274,7 +274,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::label_fa::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -283,7 +283,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn label_fo(
         &self,
         p: impl runtime::IntoArg<'_, ops::label_fo::Params>,
-    ) -> Result<ops::label_fo::Response, runtime::Error> {
+    ) -> Result<ops::label_fo::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let mut path = String::from("/label-f-o/");
         path.push_str(
@@ -308,7 +308,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::label_fo::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -317,7 +317,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn label_ta(
         &self,
         p: impl runtime::IntoArg<'_, ops::label_ta::Params>,
-    ) -> Result<ops::label_ta::Response, runtime::Error> {
+    ) -> Result<ops::label_ta::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let mut path = String::from("/label-t-a/");
         path.push_str(
@@ -342,7 +342,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::label_ta::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -351,7 +351,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn label_to(
         &self,
         p: impl runtime::IntoArg<'_, ops::label_to::Params>,
-    ) -> Result<ops::label_to::Response, runtime::Error> {
+    ) -> Result<ops::label_to::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let mut path = String::from("/label-t-o/");
         path.push_str(
@@ -376,7 +376,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::label_to::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -385,7 +385,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn simple_fa(
         &self,
         p: impl runtime::IntoArg<'_, ops::simple_fa::Params>,
-    ) -> Result<ops::simple_fa::Response, runtime::Error> {
+    ) -> Result<ops::simple_fa::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let mut path = String::from("/simple-f-a/");
         path.push_str(&runtime::encode_path("color", &p.color, runtime::Enc::SIMPLE)?);
@@ -400,7 +400,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::simple_fa::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -409,7 +409,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn simple_fo(
         &self,
         p: impl runtime::IntoArg<'_, ops::simple_fo::Params>,
-    ) -> Result<ops::simple_fo::Response, runtime::Error> {
+    ) -> Result<ops::simple_fo::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let mut path = String::from("/simple-f-o/");
         path.push_str(&runtime::encode_path("color", &p.color, runtime::Enc::SIMPLE)?);
@@ -424,7 +424,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::simple_fo::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -433,7 +433,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn simple_ta(
         &self,
         p: impl runtime::IntoArg<'_, ops::simple_ta::Params>,
-    ) -> Result<ops::simple_ta::Response, runtime::Error> {
+    ) -> Result<ops::simple_ta::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let mut path = String::from("/simple-t-a/");
         path.push_str(
@@ -458,7 +458,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::simple_ta::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -467,7 +467,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn simple_to(
         &self,
         p: impl runtime::IntoArg<'_, ops::simple_to::Params>,
-    ) -> Result<ops::simple_to::Response, runtime::Error> {
+    ) -> Result<ops::simple_to::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let mut path = String::from("/simple-t-o/");
         path.push_str(
@@ -492,7 +492,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::simple_to::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -501,7 +501,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn form_fa(
         &self,
         p: impl runtime::IntoArg<'_, ops::form_fa::Params>,
-    ) -> Result<ops::form_fa::Response, runtime::Error> {
+    ) -> Result<ops::form_fa::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/form-f-a");
         let mut query: Vec<String> = Vec::new();
@@ -525,7 +525,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::form_fa::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -534,7 +534,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn form_fo(
         &self,
         p: impl runtime::IntoArg<'_, ops::form_fo::Params>,
-    ) -> Result<ops::form_fo::Response, runtime::Error> {
+    ) -> Result<ops::form_fo::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/form-f-o");
         let mut query: Vec<String> = Vec::new();
@@ -558,7 +558,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::form_fo::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -567,7 +567,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn form_ta(
         &self,
         p: impl runtime::IntoArg<'_, ops::form_ta::Params>,
-    ) -> Result<ops::form_ta::Response, runtime::Error> {
+    ) -> Result<ops::form_ta::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/form-t-a");
         let mut query: Vec<String> = Vec::new();
@@ -582,7 +582,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::form_ta::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -591,7 +591,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn form_to(
         &self,
         p: impl runtime::IntoArg<'_, ops::form_to::Params>,
-    ) -> Result<ops::form_to::Response, runtime::Error> {
+    ) -> Result<ops::form_to::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/form-t-o");
         let mut query: Vec<String> = Vec::new();
@@ -606,7 +606,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::form_to::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -615,7 +615,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn space_fa(
         &self,
         p: impl runtime::IntoArg<'_, ops::space_fa::Params>,
-    ) -> Result<ops::space_fa::Response, runtime::Error> {
+    ) -> Result<ops::space_fa::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/space-f-a");
         let mut query: Vec<String> = Vec::new();
@@ -639,7 +639,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::space_fa::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -648,7 +648,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn space_fo(
         &self,
         p: impl runtime::IntoArg<'_, ops::space_fo::Params>,
-    ) -> Result<ops::space_fo::Response, runtime::Error> {
+    ) -> Result<ops::space_fo::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/space-f-o");
         let mut query: Vec<String> = Vec::new();
@@ -672,7 +672,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::space_fo::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -681,7 +681,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn pipe_fa(
         &self,
         p: impl runtime::IntoArg<'_, ops::pipe_fa::Params>,
-    ) -> Result<ops::pipe_fa::Response, runtime::Error> {
+    ) -> Result<ops::pipe_fa::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/pipe-f-a");
         let mut query: Vec<String> = Vec::new();
@@ -705,7 +705,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::pipe_fa::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -714,7 +714,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn pipe_fo(
         &self,
         p: impl runtime::IntoArg<'_, ops::pipe_fo::Params>,
-    ) -> Result<ops::pipe_fo::Response, runtime::Error> {
+    ) -> Result<ops::pipe_fo::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/pipe-f-o");
         let mut query: Vec<String> = Vec::new();
@@ -738,7 +738,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::pipe_fo::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -747,7 +747,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn deep_o(
         &self,
         p: impl runtime::IntoArg<'_, ops::deep_o::Params>,
-    ) -> Result<ops::deep_o::Response, runtime::Error> {
+    ) -> Result<ops::deep_o::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/deep-o");
         let mut query: Vec<String> = Vec::new();
@@ -771,7 +771,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::deep_o::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -780,7 +780,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn header_fa(
         &self,
         p: impl runtime::IntoArg<'_, ops::header_fa::Params>,
-    ) -> Result<ops::header_fa::Response, runtime::Error> {
+    ) -> Result<ops::header_fa::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/header-f-a");
         let query = Vec::new();
@@ -797,7 +797,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::header_fa::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -806,7 +806,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn header_fo(
         &self,
         p: impl runtime::IntoArg<'_, ops::header_fo::Params>,
-    ) -> Result<ops::header_fo::Response, runtime::Error> {
+    ) -> Result<ops::header_fo::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/header-f-o");
         let query = Vec::new();
@@ -823,7 +823,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::header_fo::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -832,7 +832,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn header_ta(
         &self,
         p: impl runtime::IntoArg<'_, ops::header_ta::Params>,
-    ) -> Result<ops::header_ta::Response, runtime::Error> {
+    ) -> Result<ops::header_ta::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/header-t-a");
         let query = Vec::new();
@@ -849,7 +849,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::header_ta::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -858,7 +858,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn header_to(
         &self,
         p: impl runtime::IntoArg<'_, ops::header_to::Params>,
-    ) -> Result<ops::header_to::Response, runtime::Error> {
+    ) -> Result<ops::header_to::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/header-t-o");
         let query = Vec::new();
@@ -875,7 +875,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::header_to::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -884,7 +884,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn cookie_form_fa(
         &self,
         p: impl runtime::IntoArg<'_, ops::cookie_form_fa::Params>,
-    ) -> Result<ops::cookie_form_fa::Response, runtime::Error> {
+    ) -> Result<ops::cookie_form_fa::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/cookie-form-f-a");
         let query = Vec::new();
@@ -910,7 +910,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::cookie_form_fa::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -919,7 +919,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn cookie_form_fo(
         &self,
         p: impl runtime::IntoArg<'_, ops::cookie_form_fo::Params>,
-    ) -> Result<ops::cookie_form_fo::Response, runtime::Error> {
+    ) -> Result<ops::cookie_form_fo::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/cookie-form-f-o");
         let query = Vec::new();
@@ -945,7 +945,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::cookie_form_fo::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -954,7 +954,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn cookie_fa(
         &self,
         p: impl runtime::IntoArg<'_, ops::cookie_fa::Params>,
-    ) -> Result<ops::cookie_fa::Response, runtime::Error> {
+    ) -> Result<ops::cookie_fa::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/cookie-f-a");
         let query = Vec::new();
@@ -980,7 +980,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::cookie_fa::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -989,7 +989,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn cookie_fo(
         &self,
         p: impl runtime::IntoArg<'_, ops::cookie_fo::Params>,
-    ) -> Result<ops::cookie_fo::Response, runtime::Error> {
+    ) -> Result<ops::cookie_fo::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/cookie-f-o");
         let query = Vec::new();
@@ -1015,7 +1015,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::cookie_fo::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -1024,7 +1024,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn cookie_ta(
         &self,
         p: impl runtime::IntoArg<'_, ops::cookie_ta::Params>,
-    ) -> Result<ops::cookie_ta::Response, runtime::Error> {
+    ) -> Result<ops::cookie_ta::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/cookie-t-a");
         let query = Vec::new();
@@ -1050,7 +1050,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::cookie_ta::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })
@@ -1059,7 +1059,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn cookie_to(
         &self,
         p: impl runtime::IntoArg<'_, ops::cookie_to::Params>,
-    ) -> Result<ops::cookie_to::Response, runtime::Error> {
+    ) -> Result<ops::cookie_to::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/cookie-t-o");
         let query = Vec::new();
@@ -1085,7 +1085,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 204 {
             Ok(ops::cookie_to::Response::NoContent)
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })

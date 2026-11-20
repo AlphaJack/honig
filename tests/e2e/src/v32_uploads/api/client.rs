@@ -45,7 +45,7 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn put_file(
         &self,
         p: impl runtime::IntoArg<'_, ops::put_file::Params>,
-    ) -> Result<ops::put_file::Response, runtime::Error> {
+    ) -> Result<ops::put_file::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p).into_owned();
         let mut path = String::from("/files/");
         path.push_str(&runtime::encode_path("name", &p.name, runtime::Enc::SIMPLE)?);
@@ -70,7 +70,7 @@ impl<T: runtime::Transport> Client<T> {
                 runtime::json_decode(status, &body).map(ops::put_file::Response::Ok)
             }
         } else {
-            Err(runtime::Error::UnexpectedStatus {
+            Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,
                 body,
             })

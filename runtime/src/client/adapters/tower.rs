@@ -9,7 +9,7 @@ use http_body::Body as HttpBody;
 use tower_service::Service;
 
 use crate::transport::Pending;
-use crate::{Body, ByteStream, Error, MaybeSend, MaybeSync, Request, Response};
+use crate::{Body, ByteStream, ClientError, MaybeSend, MaybeSync, Request, Response};
 
 /// The error of a tower service or of an `http` body.
 type BoxError = Box<dyn std::error::Error + Send + Sync>;
@@ -42,11 +42,11 @@ where
     B::Error: Into<BoxError>,
 {
     /// Sends `req` and returns the response once its head is in. The body is still to read.
-    fn start(&self, mut req: Request) -> impl Future<Output = Result<Response, Error>> + MaybeSend + use<S, B> {
+    fn start(&self, mut req: Request) -> impl Future<Output = Result<Response, ClientError>> + MaybeSend + use<S, B> {
         let mut service = self.service.clone();
         let target = http::Uri::try_from(crate::target(&self.base_url, req.uri()));
         async move {
-            *req.uri_mut() = target.map_err(Error::transport)?;
+            *req.uri_mut() = target.map_err(ClientError::transport)?;
             std::future::poll_fn(|cx| service.poll_ready(cx)).await.map_err(failed)?;
             let resp = service.call(req).await.map_err(failed)?;
             Ok(resp.map(|body| Body::stream(ByteStream::chunks(Frames(Box::pin(body)), None))))
@@ -63,10 +63,10 @@ where
     B::Error: Into<BoxError>,
 {
     type Response = Response;
-    type Error = Error;
-    type Future = Pending<'static, Result<Response, Error>>;
+    type Error = ClientError;
+    type Future = Pending<'static, Result<Response, ClientError>>;
 
-    fn poll_ready(&mut self, _: &mut Context<'_>) -> Poll<Result<(), Error>> {
+    fn poll_ready(&mut self, _: &mut Context<'_>) -> Poll<Result<(), ClientError>> {
         Poll::Ready(Ok(()))
     }
 
@@ -84,7 +84,7 @@ where
     B: HttpBody<Data = bytes::Bytes>,
     B::Error: Into<BoxError>,
 {
-    type Item = Result<bytes::Bytes, Error>;
+    type Item = Result<bytes::Bytes, ClientError>;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         loop {
