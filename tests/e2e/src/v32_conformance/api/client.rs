@@ -235,7 +235,7 @@ impl<T: runtime::Transport> Client<T> {
         let path = String::from("/upload");
         let query = Vec::new();
         let mut req = runtime::new_request("POST", path, query)?;
-        let (ct, bytes) = runtime::multipart_encode(&p.body, &[])?;
+        let (ct, bytes) = runtime::multipart_encode(&p.body, &[("file", "image/png")])?;
         runtime::Message::set_body(&mut req, ct, bytes);
         runtime::apply_auth(&mut req, &self.credentials, ops::SECURITY_0)?;
         runtime::propagate_trace(&mut req);

@@ -1477,3 +1477,18 @@ fn a_long_chain_of_generics_binds_each() {
     let last = types.split("pub struct SiteG19 {").nth(1).unwrap_or_else(|| panic!("{types}"));
     assert!(last.split('}').next().is_some_and(|body| body.contains("pub me: Option<bool>,")), "{types}");
 }
+
+/// A multipart part whose schema names a `contentMediaType` is sent as that type when `encoding` names none: a guess
+/// from the value would send a string as `text/plain`.
+#[test]
+fn a_part_takes_the_media_type_of_its_schema() {
+    let paths = json!({"/upload": {"post": {
+        "requestBody": {"content": {"multipart/form-data": {"schema": {"type": "object", "properties": {
+            "icon": {"type": "string", "contentMediaType": "image/png"}}}}}},
+        "responses": {"204": {"description": "ok"}}
+    }}});
+    let doc = common::spec("3.2.0", &paths, &json!({}));
+    let files = common::generate("part-media", &doc, &crate::emit::Options::default());
+    let client = common::file(&files, "client.rs");
+    assert!(client.contains(r#"("icon", "image/png")"#), "{client}");
+}
