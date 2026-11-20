@@ -44,9 +44,6 @@ struct V<'a> {
     version: Version,
 }
 
-/// `$ref`s followed to find a schema's `type`: a longer chain is a cycle or not worth the walk.
-const MAX_REF_HOPS: usize = 8;
-
 fn is_token(s: &str) -> bool {
     !s.is_empty() && s.chars().all(|c| c.is_ascii_alphanumeric() || "!#$%&'*+-.^_`|~".contains(c))
 }
@@ -464,8 +461,10 @@ impl V<'_> {
     /// Returns whether the `type` of a schema allows an array or an object. Local `$ref`s are followed.
     fn is_composite(&self, s: &Schema) -> bool {
         let Ok(mut v) = serde_json::to_value(s) else { return false };
-        for _ in 0..MAX_REF_HOPS {
-            match v.get("$ref").and_then(Value::as_str).and_then(|r| self.resolved.get(r)) {
+        // Every link of the chain once: a `$ref` met again is a cycle, which has no `type` to find.
+        let mut seen = BTreeSet::new();
+        while let Some(r) = v.get("$ref").and_then(Value::as_str).map(str::to_owned) {
+            match self.resolved.get(&r).filter(|_| seen.insert(r.clone())) {
                 Some(target) => v = target.clone(),
                 None => break,
             }
