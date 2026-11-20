@@ -74,17 +74,26 @@ mod tests {
         assert_eq!(server_url(URL, VARS, &[("zone", "a")]), Err("server variable `zone` is not declared".to_owned()));
     }
 
+    const fn server(template: &'static str, variables: &'static [ServerVar]) -> ServerUrl {
+        ServerUrl { template, name: None, variables }
+    }
+
     #[test]
     fn an_operation_path_goes_under_the_first_server() {
         assert_eq!(
-            operation_path(&[URL, "https://other.example"], &[VARS, &[]], "/orders".to_owned()),
+            operation_path(&[server(URL, VARS), server("https://other.example", &[])], "/orders".to_owned()),
             "https://eu.api.example:443/v1/orders"
         );
         assert_eq!(
-            operation_path(&["https://api.example/"], &[&[]], "/orders".to_owned()),
+            operation_path(&[server("https://api.example/", &[])], "/orders".to_owned()),
             "https://api.example/orders",
             "one `/` between"
         );
-        assert_eq!(operation_path(&[], &[], "/orders".to_owned()), "/orders", "no server: the path alone");
+        assert_eq!(operation_path(&[], "/orders".to_owned()), "/orders", "no server: the path alone");
+    }
+
+    #[test]
+    fn a_server_resolves_its_own_variables() {
+        assert_eq!(server(URL, VARS).resolve(&[("region", "us")]).as_deref(), Ok("https://us.api.example:443/v1"));
     }
 }
