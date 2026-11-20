@@ -1114,6 +1114,8 @@ mod tests {
             (s[0].client, s[0].client_operations.clone(), s[0].server, s[0].allow_unimplemented),
             (true, Some(vec!["getOrder".to_owned()]), true, true)
         );
+        let s = one("server = { operations = [\"listOrders\"] }\n").unwrap();
+        assert_eq!(s[0].server_operations, Some(vec!["listOrders".to_owned()]));
         let s = one("client = false\n").unwrap();
         assert_eq!(
             (s[0].client, s[0].client_operations.clone(), s[0].server, s[0].allow_unimplemented),
@@ -1121,7 +1123,7 @@ mod tests {
         );
         assert_eq!(
             one("server = { strict = false }\n").unwrap_err().to_string(),
-            "[package.metadata.honig.api.server] has no setting `strict`. The settings are adapters, allow_unimplemented"
+            "[package.metadata.honig.api.server] has no setting `strict`. The settings are adapters, allow_unimplemented, operations"
         );
         assert_eq!(
             one("client = \"yes\"\n").unwrap_err().to_string(),

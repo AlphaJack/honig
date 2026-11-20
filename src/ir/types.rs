@@ -869,16 +869,6 @@ impl TypeSpace {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn an_element_node_type_wraps_an_array_reached_through_a_reference() {
-        // An upgraded `wrapped: true` beside `allOf: [{$ref: Buckets}]` (S3): no `items` of its own.
-        let hint = super::XmlHint::of(&serde_json::json!({"allOf": [{"$ref": "#/x"}], "xml": {"nodeType": "element"}}));
-        assert!(hint.wrapped);
-    }
-}
-
 /// Returns the schema that the values left unevaluated take, an index into [`TypeSpace::subschemas`].
 fn leftover_schema<E>(leftover: Option<&(E, Leftover)>) -> Option<usize> {
     match leftover {
@@ -918,5 +908,15 @@ impl Constraints {
             out.extend(inner.subschemas());
         }
         out
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn an_element_node_type_wraps_an_array_reached_through_a_reference() {
+        // An upgraded `wrapped: true` beside `allOf: [{$ref: Buckets}]` (S3): no `items` of its own.
+        let hint = super::XmlHint::of(&serde_json::json!({"allOf": [{"$ref": "#/x"}], "xml": {"nodeType": "element"}}));
+        assert!(hint.wrapped);
     }
 }
