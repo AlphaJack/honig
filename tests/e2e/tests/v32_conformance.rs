@@ -19,6 +19,13 @@ impl api::Api for Server {
     }
     type Principal = ();
 
+    async fn verify_bearer(&self, _: &str, _: &api::Request) -> Result<Option<()>, api::ApiError> {
+        Ok(Some(()))
+    }
+    async fn verify_cookie_key(&self, _: &str, _: &api::Request) -> Result<Option<()>, api::ApiError> {
+        Ok(Some(()))
+    }
+
     fn open(
         &self,
         _: ops::open::Params,
@@ -101,12 +108,7 @@ fn send(method: &'static str, path: &str, headers: &[(&str, &str)], body: Option
             .insert(honig::http::header::CONTENT_TYPE, honig::http::HeaderValue::from_static("application/json"));
         *r.body_mut() = honig::Body::from(b.as_bytes().to_vec());
     }
-    api::block_on(
-        api::Server::new(Server)
-            .authenticate(|_: &api::Request| std::future::ready(Ok(Some(()))))
-            .into_service()
-            .handle(r),
-    )
+    api::block_on(api::Server::new(Server).into_service().handle(r))
 }
 
 /// JSON Schema 2020-12 section 10.3.2.3: with `additionalProperties: false` an
@@ -157,29 +159,9 @@ fn a_status_range_answers_with_its_actual_status() {
 #[test]
 fn an_empty_security_list_overrides_the_top_level_one() {
     let mut r = api::runtime::new_request("GET", "/public".to_owned(), vec![]).unwrap();
-    assert_eq!(
-        api::block_on(
-            api::Server::new(Server)
-                .authenticate(|_: &api::Request| std::future::ready(Ok(Some(()))))
-                .into_service()
-                .handle(r)
-        )
-        .status()
-        .as_u16(),
-        204
-    );
+    assert_eq!(api::block_on(api::Server::new(Server).into_service().handle(r)).status().as_u16(), 204);
     r = api::runtime::new_request("GET", "/inherits".to_owned(), vec![]).unwrap();
-    assert_eq!(
-        api::block_on(
-            api::Server::new(Server)
-                .authenticate(|_: &api::Request| std::future::ready(Ok(Some(()))))
-                .into_service()
-                .handle(r)
-        )
-        .status()
-        .as_u16(),
-        401
-    );
+    assert_eq!(api::block_on(api::Server::new(Server).into_service().handle(r)).status().as_u16(), 401);
 }
 
 /// 3.2 Header Object, "Representing the `Set-Cookie` Header": one value per
@@ -189,13 +171,8 @@ fn set_cookie_values_go_on_separate_lines_and_come_back_whole() {
     let r = send("GET", "/cookies", &[("Cookie", "SID=s")], None);
     let lines: Vec<&str> = r.headers().get_all("set-cookie").iter().map(|v| v.to_str().unwrap()).collect();
     assert_eq!(lines, ["a=1; Expires=Wed, 21 Oct 2015 07:28:00 GMT", "b=2"]);
-    let client = Client::new(support::loopback(|req| {
-        api::Server::new(Server)
-            .authenticate(|_: &api::Request| std::future::ready(Ok(Some(()))))
-            .into_service()
-            .handle(req)
-    }))
-    .with_cookie_key("s");
+    let client =
+        Client::new(support::loopback(|req| api::Server::new(Server).into_service().handle(req))).with_cookie_key("s");
     let resp = api::block_on(client.cookies(ops::cookies::Params::default())).expect("204");
     let ops::cookies::Response::NoContent { set_cookie } = resp;
     assert_eq!(set_cookie.expect("cookies").len(), 2, "the comma inside `Expires` does not split a cookie");
@@ -208,17 +185,7 @@ fn a_header_sent_on_two_lines_reads_as_one_list() {
     // anything else either: the request still authenticates.
     let mut r = api::runtime::new_request("GET", "/items/1".to_owned(), vec![]).unwrap();
     r.headers_mut().append("authorization", honig::http::HeaderValue::try_from("Bearer t".to_owned()).unwrap());
-    assert_eq!(
-        api::block_on(
-            api::Server::new(Server)
-                .authenticate(|_: &api::Request| std::future::ready(Ok(Some(()))))
-                .into_service()
-                .handle(r)
-        )
-        .status()
-        .as_u16(),
-        201
-    );
+    assert_eq!(api::block_on(api::Server::new(Server).into_service().handle(r)).status().as_u16(), 201);
     let mut headers = api::http::HeaderMap::new();
     for (k, v) in [("X", "a"), ("x", "b"), ("Y", "c")] {
         headers.append(api::http::HeaderName::try_from(k).unwrap(), api::http::HeaderValue::from_static(v));
@@ -235,10 +202,7 @@ fn multipart_parts_get_the_default_content_types_in_schema_order() {
     static BODY: Mutex<String> = Mutex::new(String::new());
     let client = Client::new(support::loopback(|req: api::Request| {
         *BODY.lock().unwrap() = String::from_utf8_lossy(req.body().bytes()).into_owned();
-        api::Server::new(Server)
-            .authenticate(|_: &api::Request| std::future::ready(Ok(Some(()))))
-            .into_service()
-            .handle(req)
+        api::Server::new(Server).into_service().handle(req)
     }))
     .with_bearer("t");
     let body = serde_json::from_value(serde_json::json!({"name": "n", "count": 3, "meta": {"x": 1}})).expect("body");
@@ -260,8 +224,7 @@ fn multipart_parts_get_the_default_content_types_in_schema_order() {
 /// statuses to `default`.
 #[test]
 fn the_client_reads_a_status_range_with_its_actual_status() {
-    let service =
-        api::Server::new(Server).authenticate(|_: &api::Request| std::future::ready(Ok(Some(())))).into_service();
+    let service = api::Server::new(Server).into_service();
     let client = Client::new(service).with_bearer("t");
     let got = api::block_on(client.get_item(ops::get_item::Params::new("1".to_owned())));
     assert_eq!(

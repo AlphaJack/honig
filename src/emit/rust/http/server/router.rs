@@ -285,18 +285,7 @@ fn route_and_call(locate: impl Fn(TokenStream) -> TokenStream) -> (TokenStream, 
     )
 }
 
-/// Returns `runtime::DeclaredSecurity` when one of `ops` declares a security scheme (not only `{}`), and
-/// `runtime::NoSecurity` otherwise: the `Security` of their `runtime::Operations`.
-pub(crate) fn declared_security<'a>(mut ops: impl Iterator<Item = &'a Operation>) -> TokenStream {
-    if ops.any(|op| op.security.iter().any(|alternative| !alternative.is_empty())) {
-        quote!(runtime::DeclaredSecurity)
-    } else {
-        quote!(runtime::NoSecurity)
-    }
-}
-
 pub(crate) fn router(api: &Api) -> TokenStream {
-    let security = declared_security(api.http.operations.iter().filter(|o| is_path(o)));
     let bases = served_bases(api);
     let strip_base = (!bases.is_empty()).then(|| {
         quote! {
@@ -340,6 +329,7 @@ pub(crate) fn router(api: &Api) -> TokenStream {
     };
     let (route, call) = route_and_call(locate);
     let dispatch = dispatch_fns(&path_ops, &variants);
+    let verify = super::verify_fn(api, &path_ops, &quote!(&*self.0), &quote!(A::Principal));
     quote! {
         static METHODS: &[&[(&str, (Op, Operation))]] = &[#(#groups),*];
 
@@ -370,7 +360,6 @@ pub(crate) fn router(api: &Api) -> TokenStream {
         impl<A: Api> runtime::Operations for Routes<A> {
             type Principal = A::Principal;
             type Operation = Operation;
-            type Security = #security;
 
             fn error_response(&self) -> fn(runtime::Rejection<Operation>) -> runtime::Response {
                 |rejection| A::error_response(rejection)
@@ -387,6 +376,8 @@ pub(crate) fn router(api: &Api) -> TokenStream {
             fn errors(&self) -> runtime::ProblemSchemas {
                 error_schema
             }
+
+            #verify
 
             fn call<'r>(&'r self, req: runtime::Request, call: runtime::Call<'r, Option<A::Principal>, Operation>) -> runtime::BoxFuture<'r, runtime::Response> {
                 #call

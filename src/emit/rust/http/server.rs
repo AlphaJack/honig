@@ -143,13 +143,14 @@ pub(crate) fn server(api: &Api, space: &Space<'_>, allow_unimplemented: bool) ->
     let filled = all_filled(api, space);
     let router = router(api);
     let credential = credential_enum(api);
-    let scope = scope_enum(api);
+    let scope = scope_enums(api);
     let error_schemas = error_schema_fn(api, space);
     let sec = Securities::new(api);
     let ops = api.http.operations.iter().map(|op| server_op(space, api, &sec, op));
     let principal = caller_type();
     let webhooks = webhooks(api, allow_unimplemented, filled);
     let path_ops: Vec<&Operation> = api.http.operations.iter().filter(|o| is_path(o)).collect();
+    let verify = verify_methods(api, &path_ops, allow_unimplemented);
     let operations = (!path_ops.is_empty()).then(|| {
         operation_enum(
             "Operation",
@@ -167,6 +168,7 @@ pub(crate) fn server(api: &Api, space: &Space<'_>, allow_unimplemented: bool) ->
         pub trait Api: Send + Sync + 'static {
             #principal
             #error_response
+            #verify
             #(#methods)*
         }
 
@@ -188,7 +190,8 @@ fn webhooks(api: &Api, allow_unimplemented: bool, filled: bool) -> Option<TokenS
     (!hooks.is_empty()).then(|| {
     let methods = hooks.iter().map(|op| api_method(op, allow_unimplemented));
     let error_response = error_response_method(&quote!(WebhookOperation), filled);
-    let security = declared_security(hooks.iter().copied());
+    let verify = verify_methods(api, &hooks, allow_unimplemented);
+    let dispatch = verify_fn(api, &hooks, &quote!(&*self.api), &quote!(A::Principal));
     let found = hooks.iter().map(|op| {
         let (key, method, v) = (lit(&hook_name(op)), lit(&op.method), operation_variant(op));
         quote!((#key, #method) => Ok(WebhookOperation::#v),)
@@ -206,6 +209,7 @@ fn webhooks(api: &Api, allow_unimplemented: bool, filled: bool) -> Option<TokenS
         pub trait Webhooks: Send + Sync + 'static {
             #principal
             #error_response
+            #verify
             #(#methods)*
         }
 
@@ -224,7 +228,6 @@ fn webhooks(api: &Api, allow_unimplemented: bool, filled: bool) -> Option<TokenS
         impl<A: Webhooks> runtime::Operations for WebhookRoutes<A> {
             type Principal = A::Principal;
             type Operation = WebhookOperation;
-            type Security = #security;
 
             fn error_response(&self) -> fn(runtime::Rejection<WebhookOperation>) -> runtime::Response {
                 |rejection| A::error_response(rejection)
@@ -247,6 +250,8 @@ fn webhooks(api: &Api, allow_unimplemented: bool, filled: bool) -> Option<TokenS
             fn errors(&self) -> runtime::ProblemSchemas {
                 error_schema
             }
+
+            #dispatch
 
             fn call<'r>(&'r self, req: runtime::Request, call: runtime::Call<'r, Option<A::Principal>, WebhookOperation>) -> runtime::BoxFuture<'r, runtime::Response> {
                 Box::pin(async move {

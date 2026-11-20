@@ -1,14 +1,17 @@
-<!-- Generated from runtime/src/server/service.rs by src/tests/docs_pages.rs. Edit the source, not this file. -->
+<!-- Generated from runtime/src/server/auth.rs by src/tests/docs_pages.rs. Edit the source, not this file. -->
 
-Whether the server finds who is calling: `Anonymous` until `Server::authenticate`, then `Authenticated`.
+Who is calling and the scopes that their credential grants: what a `verify_` method of the `Api` found.
 
-An `Api` whose `Principal` is `()` and whose description declares no `security` builds into a service as it is.
-Any other needs `Server::authenticate`: without it `into_service` does not compile. The server checks that a
-request presents the credentials that its operation declares; `authenticate` checks that they are valid. Each
+The `Api` has one `verify_` method per security scheme that its operations use, and does not compile without it.
+The server checks that a request presents the credentials that its operation declares. It calls the method of each
+scheme of an alternative, at most once per request, and checks the scopes that the credentials grant. Each
 operation then takes what its `security` asks for:
 
-| The operation's `security` | `ctx.principal` | When `authenticate` found nobody |
+| The operation's `security` | `ctx.principal` | When no alternative passes |
 |---|---|---|
 | none (`security: []`) | `()` | the handler runs |
-| an empty alternative (`[{}, {apiKey: []}]`) | `Option<Principal>` | the handler runs with `None` |
-| credentials required | `Principal` | 401 in the error schema |
+| an empty alternative (`[{}, {apiKey: []}]`) | `Option<Principal>` | `None`; 401 when a method refused a credential |
+| credentials required | `Principal` | 401; 403 when only a scope is missing |
+
+The principal is the one of the first scheme of the alternative that passes. Layers read it from the request's
+extensions.

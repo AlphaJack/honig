@@ -46,7 +46,7 @@ A single-page app and its API share one port. Unknown paths under the API's base
 
 ## Claims from an auth layer you already run
 
-A JWT or session layer that you already run puts its claims in the request's extensions. [`authenticate`](authentication.md) maps them to the principal of your `Api`:
+A JWT or session layer that you already run puts its claims in the request's extensions. The [`verify_` method](authentication.md) of the scheme maps them to the principal of your `Api`:
 
 ```rust
 {{#include ../../../tests/e2e/tests/v32_catalog/recipes.rs:claims}}
@@ -62,7 +62,7 @@ A layer outside the server answers in its own format. Its answers go out in the 
 
 ## Middlewares
 
-Layers outside the server, `authenticate` and layers inside it, in the order that a request passes them:
+Layers outside the server and layers inside it, in the order that a request passes them:
 
 ```rust
 {{#include ../../../tests/e2e/tests/v32_catalog/recipes.rs:stack}}

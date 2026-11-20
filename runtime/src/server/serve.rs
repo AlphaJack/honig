@@ -153,14 +153,13 @@ pub struct Call<'r, C, Id> {
     pub(crate) satisfied: SatisfiedSecurity,
     pub(crate) principal: C,
     pub(crate) event: &'r RequestEvent<Id>,
-    pub(crate) mutual_tls_verified: bool,
 }
 
 impl<'r, C, Id> Call<'r, Option<C>, Id> {
     /// Drops the principal for an operation without `security`: its handler sees none.
     pub fn public(self) -> Call<'r, (), Id> {
-        let Self { config, operation, satisfied, principal: _, event, mutual_tls_verified } = self;
-        Call { config, operation, satisfied, principal: (), event, mutual_tls_verified }
+        let Self { config, operation, satisfied, principal: _, event } = self;
+        Call { config, operation, satisfied, principal: (), event }
     }
 }
 
@@ -245,20 +244,13 @@ pub async fn serve<C, Id: Operation>(
     steps: &dyn OpSteps<C, Id>,
 ) -> Response {
     let Routed { request, caps, raw_query, query } = routed;
-    let Call { config, operation, satisfied, principal, event, mutual_tls_verified } = call;
+    let Call { config, operation, satisfied, principal, event } = call;
     let op = operation.op();
     // The headers of the request go along for the error renderer. They are taken at the failure and not up front.
     let fail = |headers: http::HeaderMap, reason: Reason| {
         event.fail(&reason);
         config.reject(op.errors, Some(operation), reason, headers)
     };
-    if satisfied.mutual_tls && !mutual_tls_verified {
-        let unverified = ApiError::new(
-            http::StatusCode::UNAUTHORIZED,
-            "client certificate not verified: a layer that checks it adds `ClientCertificateVerified` to the extensions",
-        );
-        return fail(request.headers().clone(), Reason::Denied(unverified));
-    }
     // 406 before the body is read: no answer the client takes is worth reading it for.
     let media = if op.produces.is_empty() {
         0
@@ -305,13 +297,13 @@ pub async fn serve_signed_in<C, Id: Operation>(
     call: Call<'_, Option<C>, Id>,
     steps: &dyn OpSteps<C, Id>,
 ) -> Response {
-    let Call { config, operation, satisfied, principal, event, mutual_tls_verified } = call;
+    let Call { config, operation, satisfied, principal, event } = call;
     let Some(principal) = principal else {
         event.fail(&Reason::Unauthorized);
         let errors = operation.op().errors;
         return config.reject(errors, Some(operation), Reason::Unauthorized, routed.request.headers().clone());
     };
-    serve(routed, Call { config, operation, satisfied, principal, event, mutual_tls_verified }, steps).await
+    serve(routed, Call { config, operation, satisfied, principal, event }, steps).await
 }
 
 /// Adds the `WWW-Authenticate` challenge of a 401 (RFC 9110 section 11.6.1). There is one per HTTP scheme that

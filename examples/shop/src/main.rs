@@ -91,7 +91,6 @@ async fn serve(addr: &str) -> std::io::Result<()> {
     let listener = tokio::net::TcpListener::bind(addr).await?;
     println!("serving the catalog on http://{addr}/v1");
     let app = api::Server::new(Catalog::default())
-        .authenticate(shop::check_key)
         // One JSON line per request: the operation, the status, the duration, the body sizes and more.
         .on_event(|event: &api::RequestEvent| println!("{}", event.to_json()))
         .into_axum();

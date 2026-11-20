@@ -1,7 +1,6 @@
 <!-- Generated from runtime/src/server/service.rs by src/tests/docs_pages.rs. Edit the source, not this file. -->
 
-A server for the operations `O` with the tower layers `L` between routing and each operation. `A` is whether it
-finds who is calling (`Authentication`).
+A server for the operations `O` with the tower layers `L` between routing and each operation.
 
 The generated `api::Server::new(api)` starts one. Layers run in the order that they are added. The first one is the
 outermost as with the `ServiceBuilder` of tower. Each one is a tower `Service` of `http::Request<Body>`. It

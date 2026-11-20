@@ -68,7 +68,6 @@ pub type WebhookContext<'a, C = ()> = runtime::Context<'a, C, WebhookOperation>;
 impl<A: Webhooks> runtime::Operations for WebhookRoutes<A> {
     type Principal = A::Principal;
     type Operation = WebhookOperation;
-    type Security = runtime::NoSecurity;
     fn error_response(
         &self,
     ) -> fn(runtime::Rejection<WebhookOperation>) -> runtime::Response {
@@ -98,6 +97,17 @@ impl<A: Webhooks> runtime::Operations for WebhookRoutes<A> {
     }
     fn errors(&self) -> runtime::ProblemSchemas {
         error_schema
+    }
+    fn verify<'r>(
+        &'r self,
+        _: &'static str,
+        _: &'r str,
+        _: &'r runtime::Request,
+    ) -> runtime::BoxFuture<
+        'r,
+        Result<Option<runtime::Verified<A::Principal>>, runtime::ApiError>,
+    > {
+        Box::pin(std::future::ready(Ok(None)))
     }
     fn call<'r>(
         &'r self,

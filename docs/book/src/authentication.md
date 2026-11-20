@@ -1,12 +1,18 @@
 # Authentication
 
-`Api::Principal` is who is calling. `authenticate` finds the principal from the credentials that the request presented:
+`Api::Principal` is who is calling. Your `Api` has one `verify_` method per security scheme that its operations use. It gets the credential that the request presented for that scheme and answers who is calling, or `None` for a credential that is not valid:
 
 ```rust
 {{#include ../../../tests/e2e/tests/v32_catalog/auth.rs:credentials}}
 ```
 
-`find` answers `None` for nobody. A server without `authenticate` does not compile when your `Api` declares a `Principal` or an operation of the description declares `security`. The server only sees that credentials are present. `authenticate` checks that they are valid. Layers added after `authenticate` read the principal from the request's extensions:
+An `Api` without the method does not compile, so no credential reaches an operation unchecked. A method takes the credential as its scheme carries it:
+
+| Scheme | Argument |
+|---|---|
+| `apiKey`, `http bearer`, `oauth2`, `openIdConnect`, another `http` scheme | the key or token as `&str` |
+| `http basic` | `api::Basic { user, password }` |
+| `mutualTLS` | none: read what your TLS terminator vouched for from the request |
 
 {{#include generated/principals.md}}
 
@@ -16,7 +22,7 @@ Every `401` of an operation carries `WWW-Authenticate` with a challenge for its 
 
 ## Request context
 
-Values that outer tower layers attach also reach `authenticate`. So does the address of the client:
+Values that outer tower layers attach also reach the `verify_` methods. So does the address of the client:
 
 ```rust
 {{#include ../../../tests/e2e/tests/v32_catalog/auth.rs:request-context}}
@@ -40,7 +46,7 @@ A layer that does not call `read_body` runs before the body is read. So a refuse
 
 ## Scopes and roles
 
-Scopes and roles are typed. There is one `server::Scope` variant per name in the description. Match them exhaustively. A permission added to the description is then a compile error until you map it:
+A scheme with scopes or roles has an enum of its own: `server::PatScope` for a scheme `pat`. Its `verify_` method returns `api::Granted { principal, scopes }`, the scopes that the credential grants. The server checks them against the operation's requirement and answers `403` with `WWW-Authenticate: Bearer error="insufficient_scope"` when one is missing. One enum per scheme keeps a token of one scheme from granting a scope of another:
 
 ```rust
 {{#include ../../../tests/e2e/tests/v32_scopes.rs:scopes}}
@@ -48,4 +54,4 @@ Scopes and roles are typed. There is one `server::Scope` variant per name in the
 
 ## Client certificates
 
-A `mutualTLS` alternative is never satisfied on its own. A layer that trusts the certificate your TLS terminator verified adds `api::ClientCertificateVerified` to the request's extensions.
+A `mutualTLS` scheme is satisfied only when its `verify_` method answers `Some`. It reads what your TLS terminator vouched for, such as a header that it sets or an extension that a layer outside the server adds.

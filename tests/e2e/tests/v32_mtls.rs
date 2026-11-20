@@ -1,10 +1,9 @@
-//! A `mutualTLS` requirement is never satisfied by default. Nothing in the
-//! request proves a client certificate. So a layer must check it.
+//! A `mutualTLS` requirement is satisfied only when `verify_cert` says so. Nothing in the request proves a client
+//! certificate. So the `Api` reads what the TLS terminator vouched for.
 
 mod support;
 
 use std::future::Future;
-
 use std::sync::{Arc, Mutex};
 
 use e2e::v32_mtls::api::{self, Client, operations as ops};
@@ -16,10 +15,25 @@ where
     std::future::ready(Ok(r))
 }
 
+/// Trusts a certificate that its TLS terminator vouched for (`x-client-verify: SUCCESS`) and every other credential.
 struct Server;
 
 impl api::Api for Server {
     type Principal = ();
+
+    async fn verify_cert(&self, request: &api::Request) -> Result<Option<()>, api::ApiError> {
+        let vouched = request.headers().get("x-client-verify").and_then(|v| v.to_str().ok()) == Some("SUCCESS");
+        Ok(vouched.then_some(()))
+    }
+    async fn verify_bearer(&self, _: &str, _: &api::Request) -> Result<Option<()>, api::ApiError> {
+        Ok(Some(()))
+    }
+    async fn verify_api_key(&self, _: &str, _: &api::Request) -> Result<Option<()>, api::ApiError> {
+        Ok(Some(()))
+    }
+    async fn verify_basic_auth(&self, _: api::Basic<'_>, _: &api::Request) -> Result<Option<()>, api::ApiError> {
+        Ok(Some(()))
+    }
 
     fn keyed(
         &self,
@@ -44,41 +58,7 @@ impl api::Api for Server {
     }
 }
 
-/// Trusts a certificate its TLS terminator vouched for (`x-client-verify: SUCCESS`).
-#[derive(Clone)]
-struct VerifyCertificateLayer;
-
-impl<S> tower::Layer<S> for VerifyCertificateLayer {
-    type Service = VerifyCertificate<S>;
-
-    fn layer(&self, inner: S) -> VerifyCertificate<S> {
-        VerifyCertificate(inner)
-    }
-}
-
-#[derive(Clone)]
-struct VerifyCertificate<S>(S);
-
-impl<S: tower::Service<api::Request>> tower::Service<api::Request> for VerifyCertificate<S> {
-    type Response = S::Response;
-    type Error = S::Error;
-    type Future = S::Future;
-
-    fn poll_ready(&mut self, cx: &mut std::task::Context<'_>) -> std::task::Poll<Result<(), S::Error>> {
-        self.0.poll_ready(cx)
-    }
-
-    fn call(&mut self, mut req: api::Request) -> S::Future {
-        if api::Secured::relies_on_mutual_tls(&req)
-            && req.headers().get("x-client-verify").and_then(|v| v.to_str().ok()) == Some("SUCCESS")
-        {
-            req.extensions_mut().insert(api::ClientCertificateVerified);
-        }
-        self.0.call(req)
-    }
-}
-
-fn get(verify: bool, path: &str, headers: &[(&str, &str)]) -> u16 {
+fn get(path: &str, headers: &[(&str, &str)]) -> u16 {
     let mut req = api::runtime::new_request("GET", path.to_owned(), vec![]).unwrap();
     for (k, v) in headers {
         req.headers_mut().append(
@@ -86,29 +66,85 @@ fn get(verify: bool, path: &str, headers: &[(&str, &str)]) -> u16 {
             honig::http::HeaderValue::try_from((*v).to_owned()).unwrap(),
         );
     }
-    let server = api::Server::new(Server).authenticate(|_: &api::Request| std::future::ready(Ok(Some(()))));
-    let resp = if verify {
-        api::block_on(server.operation_layer(VerifyCertificateLayer).into_service().handle(req))
-    } else {
-        api::block_on(server.into_service().handle(req))
-    };
-    resp.status().as_u16()
+    api::block_on(api::Server::new(Server).into_service().handle(req)).status().as_u16()
 }
 
 #[test]
 fn unverified_mutual_tls_is_refused() {
-    assert_eq!(get(false, "/private", &[]), 401);
+    assert_eq!(get("/private", &[]), 401);
 }
 
 #[test]
 fn other_schemes_need_no_certificate() {
-    assert_eq!(get(false, "/token", &[("authorization", "Bearer t")]), 204);
+    assert_eq!(get("/token", &[("authorization", "Bearer t")]), 204);
 }
 
 #[test]
-fn a_layer_that_checks_the_certificate_decides() {
-    assert_eq!(get(true, "/private", &[]), 401);
-    assert_eq!(get(true, "/private", &[("x-client-verify", "SUCCESS")]), 204);
+fn the_verify_method_of_the_scheme_decides() {
+    assert_eq!(get("/private", &[("x-client-verify", "FAILED")]), 401);
+    assert_eq!(get("/private", &[("x-client-verify", "SUCCESS")]), 204);
+}
+
+/// Takes the key `k1` and the login `ann:pw`, and nothing else.
+struct Strict;
+
+impl api::Api for Strict {
+    type Principal = &'static str;
+
+    async fn verify_cert(&self, _: &api::Request) -> Result<Option<&'static str>, api::ApiError> {
+        Ok(None)
+    }
+    async fn verify_bearer(&self, _: &str, _: &api::Request) -> Result<Option<&'static str>, api::ApiError> {
+        Ok(None)
+    }
+    async fn verify_api_key(&self, key: &str, _: &api::Request) -> Result<Option<&'static str>, api::ApiError> {
+        Ok((key == "k1").then_some("key holder"))
+    }
+    async fn verify_basic_auth(
+        &self,
+        login: api::Basic<'_>,
+        _: &api::Request,
+    ) -> Result<Option<&'static str>, api::ApiError> {
+        Ok((login == api::Basic { user: "ann", password: "pw" }).then_some("ann"))
+    }
+
+    async fn keyed(
+        &self,
+        _: ops::keyed::Params,
+        ctx: &api::Context<'_, &'static str>,
+    ) -> Result<ops::keyed::Response, api::ApiError> {
+        assert_eq!(ctx.principal, "key holder", "the principal of the first scheme of the alternative");
+        Ok(ops::keyed::Response::NoContent)
+    }
+    async fn private(
+        &self,
+        _: ops::private::Params,
+        _: &api::Context<'_, &'static str>,
+    ) -> Result<ops::private::Response, api::ApiError> {
+        Ok(ops::private::Response::NoContent)
+    }
+    async fn token(
+        &self,
+        _: ops::token::Params,
+        _: &api::Context<'_, &'static str>,
+    ) -> Result<ops::token::Response, api::ApiError> {
+        Ok(ops::token::Response::NoContent)
+    }
+}
+
+/// `[{api_key, basic-auth}]`: both credentials must be valid. A present but forged one fails the whole alternative.
+#[test]
+fn an_and_requirement_needs_every_credential_valid() {
+    let keyed = |key: &str, login: &str| {
+        let path = format!("/keyed?key={key}");
+        let mut req = api::runtime::new_request("GET", path, vec![]).unwrap();
+        let basic = format!("Basic {}", api::runtime::base64(login.as_bytes()));
+        req.headers_mut().append("authorization", honig::http::HeaderValue::try_from(basic).unwrap());
+        api::block_on(api::Server::new(Strict).into_service().handle(req)).status().as_u16()
+    };
+    assert_eq!(keyed("k1", "ann:pw"), 204);
+    assert_eq!(keyed("forged", "ann:pw"), 401, "a forged key with a valid login");
+    assert_eq!(keyed("k1", "ann:guess"), 401, "a valid key with a wrong password");
 }
 
 /// RFC 7636, Appendix B: the PKCE challenge is the own SHA-256 of the runtime.
@@ -187,6 +223,6 @@ proptest::proptest! {
 
     #[test]
     fn malformed_requests_get_a_client_error(case in malformed::case(&FIXTURE)) {
-        malformed::check(api::Server::new(Server).authenticate(|_: &api::Request| std::future::ready(Ok(Some(())))).into_service(), &case)?;
+        malformed::check(api::Server::new(Server).into_service(), &case)?;
     }
 }

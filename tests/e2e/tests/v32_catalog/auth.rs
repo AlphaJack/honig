@@ -1,4 +1,4 @@
-//! Who is calling. `authenticate` finds the principal from credentials or from what outer layers attached.
+//! Who is calling. `verify_api_key` finds the principal from the key or from what outer layers attached.
 
 use std::net::SocketAddr;
 
@@ -9,18 +9,15 @@ use tower::ServiceExt;
 #[derive(Clone)]
 struct Principal(&'static str);
 
-pub(super) struct Server;
+/// Finds the caller with its function: from the key, or from what a layer in front of the router attached.
+pub(super) struct Server(pub(super) fn(&str, &api::Request) -> Option<String>);
 
 // ANCHOR: request-context
 /// Who is calling: the layer in front of the router and the client's address.
-fn find_caller(req: &api::Request) -> Result<Option<String>, api::ApiError> {
-    let principal = req
-        .extensions()
-        .get::<Principal>()
-        .ok_or_else(|| api::ApiError::new(api::http::StatusCode::UNAUTHORIZED, "no principal"))?;
-    let peer = api::peer(req.extensions())
-        .ok_or_else(|| api::ApiError::new(api::http::StatusCode::UNAUTHORIZED, "no peer"))?;
-    Ok(Some(format!("{} from {peer}", principal.0)))
+fn find_caller(_: &str, req: &api::Request) -> Option<String> {
+    let principal = req.extensions().get::<Principal>()?;
+    let peer = api::peer(req.extensions())?;
+    Some(format!("{} from {peer}", principal.0))
 }
 // ANCHOR_END: request-context
 
@@ -29,6 +26,11 @@ impl api::Api for Server {
         super::error_body(rejection)
     }
     type Principal = String;
+
+    /// Who is calling, as the function of the server finds it. 401 for nobody.
+    async fn verify_api_key(&self, key: &str, req: &api::Request) -> Result<Option<String>, api::ApiError> {
+        Ok((self.0)(key, req))
+    }
 
     async fn list_products(
         &self,
@@ -54,7 +56,7 @@ impl api::Api for Server {
 }
 
 fn serve() -> axum::Router {
-    api::Server::new(Server).authenticate(|req: &api::Request| std::future::ready(find_caller(req))).into_axum()
+    api::Server::new(Server(find_caller)).into_axum()
 }
 
 fn list(router: axum::Router) -> axum::http::Response<axum::body::Body> {
@@ -81,18 +83,13 @@ fn without_the_layer_authentication_refuses() {
 }
 
 // ANCHOR: credentials
-/// The principal that an API key names. Nobody without a key. 401 for a key that nobody holds.
-fn caller_of_key(req: &api::Request) -> Result<Option<String>, api::ApiError> {
-    let key = api::server::credentials(req).into_iter().map(|api::server::Credential::ApiKey(key)| key).next();
-    match key {
-        Some("secret") => Ok(Some("ann".to_owned())),
-        Some(_) => Err(api::ApiError::new(api::http::StatusCode::UNAUTHORIZED, "unknown key")),
-        None => Ok(None),
-    }
+/// The principal that an API key belongs to. Nobody for a key that nobody holds.
+fn holder(key: &str, _: &api::Request) -> Option<String> {
+    (key == "secret").then(|| "ann".to_owned())
 }
 
 fn authenticated() -> axum::Router {
-    api::Server::new(Server).authenticate(|req: &api::Request| std::future::ready(caller_of_key(req))).into_axum()
+    api::Server::new(Server(holder)).into_axum()
 }
 // ANCHOR_END: credentials
 

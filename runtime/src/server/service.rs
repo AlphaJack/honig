@@ -4,15 +4,14 @@
 //! 1. **Routing**: an undeclared path is 404. An undeclared method is 405. A `HEAD` takes the `GET` of its path and
 //!    gets its headers without the body.
 //! 2. **Credentials**: the `security` of the operation. If none of its requirements are present then the answer is
-//!    401.
+//!    401. Otherwise the `verify_` method of the `Api` for each scheme checks its credential, and the server checks
+//!    the scopes that it grants (403). The principal goes in the extensions.
 //! 3. **Your layers** as an `http::Request<Body>` in the order that you add them. The first one is the outermost.
-//!    Its extensions hold the generated `Operation`, the `RequestEvent` and the credentials ([`Secured`]). The body
-//!    is not read yet. So a refused request costs no body read. [`read_body`] reads it for a layer that needs it.
+//!    Its extensions hold the generated `Operation`, the `RequestEvent`, the credentials ([`Secured`]) and the
+//!    principal. The body is not read yet. So a refused request costs no body read. [`read_body`] reads it for a
+//!    layer that needs it.
 //! 4. **The body**: read whole up to `max_body_bytes` (413). An operation that streams its body skips this step.
 //! 5. **Decoding and validation** (400 and 415). Then your handler runs and its response is encoded.
-//!
-//! [`Server::authenticate`] finds who is calling and puts the principal in the extensions. When your `Api` declares a
-//! `Principal` the server builds into a service only once it does.
 
 use std::convert::Infallible;
 use std::future::Future;
@@ -28,7 +27,10 @@ use crate::server::operation::{Op, ProblemSchemas};
 use crate::server::range::Ranges;
 use crate::server::serve::{Call, Config, challenge, for_method};
 use crate::trace_context::Remote;
-use crate::{ApiError, Body, Reason, Rejection, Request, RequestEvent, Response, SatisfiedSecurity};
+use crate::{
+    ApiError, Body, Reason, Rejection, Request, RequestEvent, Requirement, Response, SatisfiedSecurity, Scheme,
+    Verified,
+};
 
 /// A boxed future the server's services return. It is the one `futures_util` names.
 pub use futures_util::future::BoxFuture;
@@ -40,10 +42,6 @@ pub trait Operations: Send + Sync + 'static {
 
     /// The generated `Operation`: one variant per operation.
     type Operation: crate::Operation;
-
-    /// Whether an operation declares `security`: [`DeclaredSecurity`], or [`NoSecurity`]. A credential is then only
-    /// present until a step checks it, so the server needs [`Server::authenticate`].
-    type Security: Send + Sync + 'static;
 
     /// Returns the path templates for a framework that routes first (axum). Each one alone and under each base path.
     fn paths(&self) -> &'static [&'static str];
@@ -60,8 +58,17 @@ pub trait Operations: Send + Sync + 'static {
     /// Returns how the API answers a request that the server refuses: the `error_response` of the generated `Api`.
     fn error_response(&self) -> fn(Rejection<Self::Operation>) -> Response;
 
-    /// Serves a request that [`Operations::route`] found an operation for. `call` holds the principal that
-    /// [`Server::authenticate`] found if there is one. Each operation takes what its `security` asks for.
+    /// Checks the credential that a request presented for `scheme` with the `verify_` method of the `Api` for it.
+    /// `None`: the credential is not valid.
+    fn verify<'r>(
+        &'r self,
+        scheme: &'static str,
+        credential: &'r str,
+        request: &'r Request,
+    ) -> BoxFuture<'r, Result<Option<Verified<Self::Principal>>, ApiError>>;
+
+    /// Serves a request that [`Operations::route`] found an operation for. `call` holds the principal that the
+    /// `verify_` methods found if there is one. Each operation takes what its `security` asks for.
     fn call<'r>(
         &'r self,
         request: Request,
@@ -69,77 +76,15 @@ pub trait Operations: Send + Sync + 'static {
     ) -> BoxFuture<'r, Response>;
 }
 
-/// Whether the server finds who is calling: [`Anonymous`] until [`Server::authenticate`], then [`Authenticated`].
-///
-/// An `Api` whose `Principal` is `()` and whose description declares no `security` builds into a service as it is.
-/// Any other needs [`Server::authenticate`]: without it `into_service` does not compile. The server checks that a
-/// request presents the credentials that its operation declares; `authenticate` checks that they are valid. Each
-/// operation then takes what its `security` asks for:
-///
-/// | The operation's `security` | `ctx.principal` | When `authenticate` found nobody |
-/// |---|---|---|
-/// | none (`security: []`) | `()` | the handler runs |
-/// | an empty alternative (`[{}, {apiKey: []}]`) | `Option<Principal>` | the handler runs with `None` |
-/// | credentials required | `Principal` | 401 in the error schema |
-#[diagnostic::on_unimplemented(
-    message = "the description declares `security`, or the `Api` a `Principal`, that no step checks",
-    label = "call `.authenticate(..)` on the server before this",
-    note = "`authenticate` checks the credentials of a request and gives the principal to the operations"
-)]
-pub trait Authentication<P, S>: Send + Sync + 'static {
-    /// Returns the principal of a request that no step authenticated: `()` when the `Api` declares none.
-    #[doc(hidden)]
-    fn anonymous() -> Option<P>;
-}
-
-/// A server that has not been told how to find who is calling.
-#[derive(Debug, Clone, Copy, Default)]
-pub struct Anonymous;
-
-/// A server whose [`Server::authenticate`] finds who is calling.
-#[derive(Debug, Clone, Copy, Default)]
-pub struct Authenticated;
-
-/// No operation of the description declares `security`.
-#[derive(Debug, Clone, Copy, Default)]
-pub struct NoSecurity;
-
-/// An operation of the description declares `security`: its credentials need [`Server::authenticate`] to be checked.
-#[derive(Debug, Clone, Copy, Default)]
-pub struct DeclaredSecurity;
-
-impl Authentication<(), NoSecurity> for Anonymous {
-    fn anonymous() -> Option<()> {
-        Some(())
-    }
-}
-
-impl<P, S> Authentication<P, S> for Authenticated {
-    fn anonymous() -> Option<P> {
-        None
-    }
-}
-
-/// The credentials a request presented and the scopes its operation requires.
+/// The credentials a request presented.
 ///
 /// A request in your layers and a handler's [`Context`](crate::Context) both hold them. The generated
-/// `server::credentials` and `server::scopes_held` read them typed.
+/// `server::credentials` reads them typed.
 pub trait Secured {
     /// Returns credentials of every satisfied security requirement with their scheme. The generated
     /// `server::credentials` reads them typed.
     #[doc(hidden)]
-    fn credentials(&self) -> &[(crate::Scheme, String)];
-
-    /// Returns scopes of every satisfied requirement (OR of ANDs) in document order. The generated
-    /// `server::scopes_held` and `server::scope_alternatives` read them typed.
-    #[doc(hidden)]
-    fn requirements(&self) -> &[Vec<&'static str>];
-
-    /// Does a satisfied security requirement rely on `mutualTLS`? A layer that sees so checks the client certificate
-    /// and then adds [`ClientCertificateVerified`] to the extensions.
-    fn relies_on_mutual_tls(&self) -> bool {
-        false
-    }
+    fn credentials(&self) -> &[(Scheme, String)];
 
     /// Returns the credentials the request presented by the kind of their scheme, for a layer meant for any API. A
     /// layer for one API matches the generated `server::credentials` instead: one variant per scheme of the
@@ -147,46 +92,19 @@ pub trait Secured {
     fn presented(&self) -> Vec<crate::Presented<'_>> {
         self.credentials().iter().map(|(scheme, value)| crate::Presented::of(*scheme, value)).collect()
     }
-
-    /// Does the credential hold the scopes that the operation requires? `held` answers for one scope (from your token
-    /// introspection or JWT claims). True when every scope of at least one satisfied requirement is held. Also true
-    /// when the operation requires none.
-    fn scopes_held(&self, held: impl Fn(&str) -> bool) -> bool {
-        let requirements = self.requirements();
-        requirements.is_empty() || requirements.iter().any(|alt| alt.iter().all(|s| held(s)))
-    }
 }
 
 impl<C, Id> Secured for crate::Context<'_, C, Id> {
-    fn credentials(&self) -> &[(crate::Scheme, String)] {
+    fn credentials(&self) -> &[(Scheme, String)] {
         &self.auth
-    }
-
-    fn requirements(&self) -> &[Vec<&'static str>] {
-        &self.requirements
     }
 }
 
 impl Secured for Request {
-    fn credentials(&self) -> &[(crate::Scheme, String)] {
+    fn credentials(&self) -> &[(Scheme, String)] {
         self.extensions().get::<MatchedOperation>().map_or(&[], |r| &r.satisfied.auth)
     }
-
-    fn requirements(&self) -> &[Vec<&'static str>] {
-        self.extensions().get::<MatchedOperation>().map_or(&[], |r| &r.satisfied.requirements)
-    }
-
-    fn relies_on_mutual_tls(&self) -> bool {
-        self.extensions().get::<MatchedOperation>().is_some_and(|r| r.satisfied.mutual_tls)
-    }
 }
-
-/// The mark of a client certificate that a layer checked.
-///
-/// A `mutualTLS` security requirement is satisfied only once a layer has checked the client certificate that your
-/// TLS terminator verified and put this in the request's extensions. Until then the operation answers 401.
-#[derive(Debug, Clone, Copy, Default)]
-pub struct ClientCertificateVerified;
 
 /// What the server found out about a request before your layers, in its extensions.
 ///
@@ -231,26 +149,22 @@ pub async fn read_body(req: &mut Request) -> Result<&[u8], ApiError> {
 struct Shared<O: Operations> {
     ops: O,
     config: Config<O::Operation>,
-    /// The principal of a request that no step authenticated. See [`Authentication::anonymous`].
-    anonymous: fn() -> Option<O::Principal>,
 }
 
-/// A server for the operations `O` with the tower layers `L` between routing and each operation. `A` is whether it
-/// finds who is calling ([`Authentication`]).
+/// A server for the operations `O` with the tower layers `L` between routing and each operation.
 ///
 /// The generated `api::Server::new(api)` starts one. Layers run in the order that they are added. The first one is the
 /// outermost as with the `ServiceBuilder` of tower. Each one is a tower `Service` of `http::Request<Body>`. It
 /// answers with a [`Response`] or with an error that converts into an [`ApiError`]. That error goes out in the error
 /// schema that the description declares. Generic tower layers (`Timeout`, `LoadShed` and `ConcurrencyLimit`) fit
 /// too. Their `BoxError` becomes a `503`.
-pub struct Server<O: Operations, L = Identity, A = Anonymous> {
+pub struct Server<O: Operations, L = Identity> {
     ops: O,
     layer: L,
     config: Config<O::Operation>,
-    authentication: std::marker::PhantomData<A>,
 }
 
-impl<O: Operations, L, A> std::fmt::Debug for Server<O, L, A> {
+impl<O: Operations, L> std::fmt::Debug for Server<O, L> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Server").field("config", &self.config).finish_non_exhaustive()
     }
@@ -262,29 +176,11 @@ impl<O: Operations> Server<O> {
     pub fn new(ops: impl Into<O>) -> Self {
         let ops = ops.into();
         let config = Config { errors: Arc::new(ops.error_response()), ..Config::default() };
-        Self { ops, layer: Identity::new(), config, authentication: std::marker::PhantomData }
+        Self { ops, layer: Identity::new(), config }
     }
 }
 
-impl<O: Operations, L> Server<O, L, Anonymous> {
-    /// Finds who is calling, between the layers added before and those added after. `find` reads the request
-    /// (credentials, headers and extensions) and answers with `Some(principal)`, with `None` for nobody, or with an
-    /// [`ApiError`] (401, 403 or 429) that goes out in the error schema of the description. The principal goes in the
-    /// request's extensions, so the layers after this one read it there, and then to the handlers (`ctx.principal`).
-    ///
-    /// `find` returns a future that owns what it needs: take the token out of the request before any `.await`.
-    pub fn authenticate<F, Fut>(self, find: F) -> Server<O, Stack<AuthenticateLayer<F>, L>, Authenticated>
-    where
-        F: Fn(&Request) -> Fut + Clone + Send + Sync + 'static,
-        Fut: Future<Output = Result<Option<O::Principal>, ApiError>> + Send + 'static,
-    {
-        let Self { ops, layer: outer, config, authentication: _ } = self;
-        let layer = Stack::new(AuthenticateLayer(find), outer);
-        Server { ops, layer, config, authentication: std::marker::PhantomData }
-    }
-}
-
-impl<O: Operations, L, A> Server<O, L, A> {
+impl<O: Operations, L> Server<O, L> {
     /// Adds a tower layer between routing and the operations. It goes inside the layers added before. The first one
     /// added is the outermost as with the `ServiceBuilder` of tower. Pass one `ServiceBuilder` to read the order top
     /// to bottom.
@@ -292,13 +188,13 @@ impl<O: Operations, L, A> Server<O, L, A> {
     /// A layer here and one on the axum `Router` that `into_axum` returns differ:
     ///
     /// - An `operation_layer` runs once routing found the operation and its credentials passed. Its extensions hold
-    ///   the operation, the credentials and, after `authenticate`, the principal. Its errors go out in the error
+    ///   the operation, the credentials and the principal. Its errors go out in the error
     ///   schema of the description. It fits per-principal limits, permissions, signatures and timeouts.
     /// - An axum `Router::layer` runs on every request, also to unknown paths. It knows no operation yet, and its
     ///   errors go out with the body that it writes. It fits CORS, compression and request IDs.
-    pub fn operation_layer<T>(self, layer: T) -> Server<O, Stack<T, L>, A> {
-        let Self { ops, layer: outer, config, authentication } = self;
-        Server { ops, layer: Stack::new(layer, outer), config, authentication }
+    pub fn operation_layer<T>(self, layer: T) -> Server<O, Stack<T, L>> {
+        let Self { ops, layer: outer, config } = self;
+        Server { ops, layer: Stack::new(layer, outer), config }
     }
 
     /// Sets the largest request body in bytes that the server reads. Larger ones get `413`. Default: 16 MiB.
@@ -353,13 +249,12 @@ impl<O: Operations, L, A> Server<O, L, A> {
     /// `hyper_util::service::TowerToHyperService`.
     pub fn into_service(self) -> ApiService<O, L::Service>
     where
-        A: Authentication<O::Principal, O::Security>,
         L: Layer<Endpoint<O>>,
         L::Service: Service<Request, Response = Response> + Clone + Send + 'static,
         <L::Service as Service<Request>>::Error: Into<ApiError>,
         <L::Service as Service<Request>>::Future: Send + 'static,
     {
-        let shared = Arc::new(Shared { ops: self.ops, config: self.config, anonymous: A::anonymous });
+        let shared = Arc::new(Shared { ops: self.ops, config: self.config });
         let stack = self.layer.layer(Endpoint { shared: Arc::clone(&shared) });
         ApiService { shared, stack }
     }
@@ -369,7 +264,6 @@ impl<O: Operations, L, A> Server<O, L, A> {
     #[cfg(feature = "axum")]
     pub fn into_axum(self) -> axum::Router
     where
-        A: Authentication<O::Principal, O::Security>,
         L: Layer<Endpoint<O>>,
         L::Service: Service<Request, Response = Response> + Clone + Send + Sync + 'static,
         <L::Service as Service<Request>>::Error: Into<ApiError>,
@@ -382,56 +276,6 @@ impl<O: Operations, L, A> Server<O, L, A> {
             .paths()
             .iter()
             .fold(axum::Router::new(), |router, path| router.route_service(path, service.clone()))
-    }
-}
-
-/// The layer that [`Server::authenticate`] adds.
-#[derive(Clone, Debug)]
-pub struct AuthenticateLayer<F>(F);
-
-impl<F: Clone, S> Layer<S> for AuthenticateLayer<F> {
-    type Service = Authenticate<F, S>;
-
-    fn layer(&self, inner: S) -> Self::Service {
-        Authenticate { find: self.0.clone(), inner }
-    }
-}
-
-/// The service that [`AuthenticateLayer`] wraps around the next layer.
-#[derive(Clone, Debug)]
-pub struct Authenticate<F, S> {
-    find: F,
-    inner: S,
-}
-
-impl<F, Fut, P, S> Service<Request> for Authenticate<F, S>
-where
-    F: Fn(&Request) -> Fut,
-    Fut: Future<Output = Result<Option<P>, ApiError>> + Send + 'static,
-    P: Clone + Send + Sync + 'static,
-    S: Service<Request, Response = Response> + Clone + Send + 'static,
-    S::Error: Into<ApiError>,
-    S::Future: Send + 'static,
-{
-    type Response = Response;
-    type Error = ApiError;
-    type Future = BoxFuture<'static, Result<Response, ApiError>>;
-
-    fn poll_ready(&mut self, cx: &mut std::task::Context<'_>) -> Poll<Result<(), ApiError>> {
-        self.inner.poll_ready(cx).map_err(Into::into)
-    }
-
-    fn call(&mut self, mut req: Request) -> Self::Future {
-        let found = (self.find)(&req);
-        // The clone that was polled ready goes with the request; the fresh one stays for the next.
-        let fresh = self.inner.clone();
-        let mut inner = std::mem::replace(&mut self.inner, fresh);
-        Box::pin(async move {
-            if let Some(principal) = found.await? {
-                req.extensions_mut().insert(principal);
-            }
-            inner.call(req).await.map_err(Into::into)
-        })
     }
 }
 
@@ -459,8 +303,8 @@ impl<Id: crate::Operation> ErrorResponses<Id> {
 
 /// The operation at the end of your layers.
 ///
-/// It reads the body, decodes, validates, runs your handler and encodes its response. It takes the principal that
-/// [`Server::authenticate`] put in the request's extensions.
+/// It reads the body, decodes, validates, runs your handler and encodes its response. It takes the principal that the
+/// server put in the request's extensions.
 pub struct Endpoint<O: Operations> {
     shared: Arc<Shared<O>>,
 }
@@ -493,8 +337,7 @@ impl<O: Operations> Service<Request> for Endpoint<O> {
             extensions.get::<O::Operation>().copied().zip(extensions.get::<RequestEvent<O::Operation>>().cloned());
         let satisfied =
             extensions.remove::<MatchedOperation>().map_or_else(SatisfiedSecurity::default, |r| r.satisfied);
-        let principal = extensions.remove::<O::Principal>().or_else(shared.anonymous);
-        let mutual_tls_verified = extensions.remove::<ClientCertificateVerified>().is_some();
+        let principal = extensions.remove::<O::Principal>();
         Box::pin(async move {
             let Some((operation, event)) = routed else {
                 return Err(ApiError::new(
@@ -502,8 +345,7 @@ impl<O: Operations> Service<Request> for Endpoint<O> {
                     "a request that the server did not route",
                 ));
             };
-            let call =
-                Call { config: &shared.config, operation, satisfied, principal, event: &event, mutual_tls_verified };
+            let call = Call { config: &shared.config, operation, satisfied, principal, event: &event };
             Ok(shared.ops.call(req, call).await)
         })
     }
@@ -595,27 +437,25 @@ where
         let satisfied = crate::check_auth(&head.headers, &crate::parse_query(raw_query), op.security);
         match satisfied {
             Some(satisfied) => (operation, op, satisfied, method),
-            None => {
-                let event = RequestEvent::new(Some(operation), method);
-                event.fail(&Reason::Unauthorized);
-                let mut resp = config.reject(op.errors, Some(operation), Reason::Unauthorized, head.headers.clone());
-                challenge(&mut resp, op.security);
-                let resp = for_method(method, resp);
-                event.finish(&resp, started);
-                (config.on_event)(&event);
-                return resp;
-            }
+            None => return refused(config, operation, method, Reason::Unauthorized, head.headers.clone(), started),
         }
     };
-    let event = RequestEvent::new(Some(operation), method);
-    event.security(&satisfied);
     // The head moves into the layers. A refusal renders by `Accept` alone (a shared buffer and not a copy).
     let accept = head.headers.get(http::header::ACCEPT).cloned();
     let conditions = Conditions::of(&head);
     let ranges = Ranges::of(&head, op.ranges);
     let remote = Remote::of(&head.headers);
     let mut req = Request::from_parts(head, body);
+    let principal = match authorize(&shared.ops, &req, op.security, &satisfied.auth).await {
+        Ok(principal) => principal,
+        Err(reason) => return refused(config, operation, method, reason, req.headers().clone(), started),
+    };
+    let event = RequestEvent::new(Some(operation), method);
+    event.security(&satisfied);
     let extensions = req.extensions_mut();
+    if let Some(principal) = principal {
+        extensions.insert(principal);
+    }
     extensions.insert(operation);
     extensions.insert(event.clone());
     extensions.insert(MatchedOperation { name: op.name, satisfied, body_limit: config.max_body_bytes });
@@ -641,6 +481,92 @@ where
     event.finish(&resp, started);
     (config.on_event)(&event);
     resp
+}
+
+/// Returns the answer to a request that its credentials did not let through, and gives its event to `on_event`.
+fn refused<Id: crate::Operation>(
+    config: &Config<Id>,
+    operation: Id,
+    method: &str,
+    reason: Reason,
+    headers: http::HeaderMap,
+    started: std::time::Instant,
+) -> Response {
+    let op = operation.op();
+    let event = RequestEvent::new(Some(operation), op.method);
+    event.fail(&reason);
+    let mut resp = config.reject(op.errors, Some(operation), reason, headers);
+    challenge(&mut resp, op.security);
+    let resp = for_method(method, resp);
+    event.finish(&resp, started);
+    (config.on_event)(&event);
+    resp
+}
+
+/// Returns who is calling: the principal of the first alternative of `requirements` whose every scheme the `Api`
+/// accepts and whose scopes its credentials grant. The principal is the one of its first scheme. `None` when no
+/// alternative passes but an empty one (`{}`) lets an anonymous request in. A credential that the `Api` refuses never
+/// falls back to anonymous.
+///
+/// # Errors
+/// - 401 when no alternative passes.
+/// - 403 when one would pass but its credentials lack a scope.
+/// - The `Err` of a `verify_` method as it is.
+async fn authorize<O: Operations>(
+    ops: &O,
+    req: &Request,
+    requirements: &[&[Requirement]],
+    presented: &[(Scheme, String)],
+) -> Result<Option<O::Principal>, Reason> {
+    if requirements.is_empty() {
+        return Ok(None);
+    }
+    let mut verified: Vec<(&'static str, Option<Verified<O::Principal>>)> = Vec::new();
+    let (mut refused, mut lacking) = (false, false);
+    'alternative: for alt in requirements.iter().filter(|alt| !alt.is_empty()) {
+        let mut principal = None;
+        for (scheme, required) in *alt {
+            let name = scheme.name();
+            let Some((_, credential)) = presented.iter().find(|(s, _)| s.name() == name) else {
+                continue 'alternative;
+            };
+            let at = match verified.iter().position(|(n, _)| *n == name) {
+                Some(at) => at,
+                None => {
+                    let verdict = ops.verify(name, credential, req).await.map_err(Reason::Denied)?;
+                    verified.push((name, verdict));
+                    verified.len() - 1
+                }
+            };
+            match &verified[at].1 {
+                None => {
+                    refused = true;
+                    continue 'alternative;
+                }
+                Some(v) if !required.iter().all(|s| v.scopes.contains(s)) => {
+                    lacking = true;
+                    continue 'alternative;
+                }
+                Some(v) => {
+                    principal.get_or_insert_with(|| v.principal.clone());
+                }
+            }
+        }
+        return Ok(principal);
+    }
+    if lacking {
+        let insufficient =
+            ApiError::new(http::StatusCode::FORBIDDEN, "the credentials lack a scope that the operation requires")
+                .with_header(
+                    http::header::WWW_AUTHENTICATE,
+                    http::HeaderValue::from_static("Bearer error=\"insufficient_scope\""),
+                );
+        return Err(Reason::Denied(insufficient));
+    }
+    if !refused && requirements.iter().any(|alt| alt.is_empty()) {
+        return Ok(None);
+    }
+    Err(Reason::Unauthorized)
 }
 
 /// Returns one span per request. Its name and attributes follow the HTTP server conventions of OpenTelemetry.

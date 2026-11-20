@@ -512,11 +512,11 @@ fn the_client_reads_only_what_the_format_allows() {
 }
 "#;
 
-/// An API whose operations declare `security` builds a server only with `authenticate`, which checks the credentials:
-/// a present key alone proves nothing. Without it, `into_service` does not compile, and the error says what to call.
+/// An API whose operations declare `security` has one `verify_` method per scheme in its `Api`: a present key alone
+/// proves nothing. An `Api` without it does not compile, and the error says which one is missing.
 #[test]
 #[ignore = "compiles generated crates"]
-fn declared_security_needs_authenticate() {
+fn declared_security_needs_a_verify_method() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
     let out = root.join("target").join("gen-tests").join("declared-security");
     // A missing directory is fine: there is nothing to clean up.
@@ -530,13 +530,15 @@ fn declared_security_needs_authenticate() {
     );
     let spec = out.join("openapi.json");
     std::fs::write(&spec, serde_json::to_vec_pretty(&doc).unwrap()).unwrap();
-    let opts = crate::emit::Options { allow_unimplemented: true, ..crate::emit::Options::default() };
-    super::common::new_crate(&spec, &out, "declared-security", &opts);
+    super::common::new_crate(&spec, &out, "declared-security", &crate::emit::Options::default());
     super::common::use_local_runtime(&out.join("Cargo.toml"));
-    let build = |server: &str| {
+    let build = |verify: &str| {
         let lib = format!(
-            "pub mod api;\npub use api::*;\nstruct Shop;\nimpl api::Api for Shop {{\n    type Principal = ();\n}}\n\
-             pub fn service() -> impl Sized {{\n    {server}.into_service()\n}}\n"
+            "pub mod api;\npub use api::*;\nstruct Shop;\nimpl api::Api for Shop {{\n    type Principal = ();\n{verify}\n\
+             async fn list_items(&self, _: api::operations::list_items::Params, _: &api::Context<'_>) \
+             -> Result<api::operations::list_items::Response, api::ApiError> {{\n\
+             Ok(api::operations::list_items::Response::NoContent)\n}}\n}}\n\
+             pub fn service() -> impl Sized {{\n    api::Server::new(Shop).into_service()\n}}\n"
         );
         std::fs::write(out.join("src").join("lib.rs"), lib).unwrap();
         Command::new(env!("CARGO"))
@@ -546,10 +548,13 @@ fn declared_security_needs_authenticate() {
             .output()
             .expect("cargo runs")
     };
-    let unchecked = build("api::Server::new(Shop)");
+    let unchecked = build("");
     let stderr = String::from_utf8_lossy(&unchecked.stderr);
-    assert!(!unchecked.status.success(), "a server that checks no credential builds");
-    assert!(stderr.contains("call `.authenticate(..)` on the server before this"), "{stderr}");
-    let checked = build("api::Server::new(Shop).authenticate(|_: &api::Request| std::future::ready(Ok(Some(()))))");
+    assert!(!unchecked.status.success(), "an `Api` that checks no credential builds");
+    assert!(stderr.contains("missing: `verify_key`"), "{stderr}");
+    let checked = build(
+        "async fn verify_key(&self, key: &str, _: &api::Request) -> Result<Option<()>, api::ApiError> { \
+         Ok((key == \"secret\").then_some(())) }",
+    );
     assert!(checked.status.success(), "{}", String::from_utf8_lossy(&checked.stderr));
 }

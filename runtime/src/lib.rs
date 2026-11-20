@@ -96,6 +96,8 @@ pub use message::{Request, Response};
 pub use nullable::Nullable;
 pub use reject::{Problem, ProblemError, ProblemMember, ProblemSchema, Reason, Rejection};
 #[cfg(feature = "server")]
+pub use server::auth::{Basic, Granted, Verified};
+#[cfg(feature = "server")]
 pub use server::conditional::CacheValidators;
 #[cfg(feature = "server")]
 pub use server::event::peer;
@@ -104,10 +106,7 @@ pub use server::event::{Context, EventKey, RequestEvent, RequestEventFields};
 #[cfg(feature = "server")]
 pub use server::operation::Operation;
 #[cfg(feature = "server")]
-pub use server::service::{
-    Anonymous, ApiService, Authenticate, AuthenticateLayer, Authenticated, Authentication, ClientCertificateVerified,
-    DeclaredSecurity, Endpoint, ErrorResponses, MatchedOperation, NoSecurity, Secured, Server, read_body,
-};
+pub use server::service::{ApiService, Endpoint, ErrorResponses, MatchedOperation, Secured, Server, read_body};
 pub use source::{Blob, Body, ByteStream, Sse};
 pub use stream::{Framing, ItemStream, Items, Streamed};
 #[cfg(any(feature = "client", feature = "server"))]

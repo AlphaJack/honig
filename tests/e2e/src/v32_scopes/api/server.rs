@@ -23,6 +23,17 @@ pub trait Api: Send + Sync + 'static {
     fn error_response(rejection: runtime::Rejection<Operation>) -> runtime::Response {
         rejection.response()
     }
+    /// Checks a credential of `pat`: who is calling, or `None` when it is not valid (401).
+    fn verify_pat(
+        &self,
+        credential: &str,
+        request: &runtime::Request,
+    ) -> impl Future<
+        Output = Result<
+            Option<runtime::Granted<Self::Principal, PatScope>>,
+            runtime::ApiError,
+        >,
+    > + Send;
     fn list_issues(
         &self,
         params: ops::list_issues::Params,
@@ -77,12 +88,13 @@ pub fn credentials(request: &impl runtime::Secured) -> Vec<Credential<'_>> {
         })
         .collect()
 }
+/// A scope or role of `pat`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub enum Scope {
+pub enum PatScope {
     IssuesRead,
     IssuesWrite,
 }
-impl Scope {
+impl PatScope {
     #[must_use]
     pub const fn as_str(self) -> &'static str {
         match self {
@@ -98,20 +110,6 @@ impl Scope {
             _ => None,
         }
     }
-}
-#[must_use]
-pub fn scope_alternatives(request: &impl runtime::Secured) -> Vec<Vec<Scope>> {
-    request
-        .requirements()
-        .iter()
-        .map(|alt| alt.iter().filter_map(|s| Scope::from_name(s)).collect())
-        .collect()
-}
-pub fn scopes_held(
-    request: &impl runtime::Secured,
-    held: impl Fn(Scope) -> bool,
-) -> bool {
-    runtime::Secured::scopes_held(request, |s| Scope::from_name(s).is_some_and(&held))
 }
 const fn error_schema(
     _operation: Option<&str>,
@@ -154,7 +152,6 @@ impl<A: Api> From<A> for Routes<A> {
 impl<A: Api> runtime::Operations for Routes<A> {
     type Principal = A::Principal;
     type Operation = Operation;
-    type Security = runtime::DeclaredSecurity;
     fn error_response(&self) -> fn(runtime::Rejection<Operation>) -> runtime::Response {
         |rejection| A::error_response(rejection)
     }
@@ -176,6 +173,33 @@ impl<A: Api> runtime::Operations for Routes<A> {
     }
     fn errors(&self) -> runtime::ProblemSchemas {
         error_schema
+    }
+    fn verify<'r>(
+        &'r self,
+        scheme: &'static str,
+        credential: &'r str,
+        request: &'r runtime::Request,
+    ) -> runtime::BoxFuture<
+        'r,
+        Result<Option<runtime::Verified<A::Principal>>, runtime::ApiError>,
+    > {
+        let api = &*self.0;
+        Box::pin(async move {
+            match scheme {
+                "pat" => {
+                    Ok(
+                        api
+                            .verify_pat(credential, request)
+                            .await?
+                            .map(|g| runtime::Verified {
+                                principal: g.principal,
+                                scopes: g.scopes.into_iter().map(PatScope::as_str).collect(),
+                            }),
+                    )
+                }
+                _ => Ok(None),
+            }
+        })
     }
     fn call<'r>(
         &'r self,

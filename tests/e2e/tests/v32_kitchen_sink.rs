@@ -205,6 +205,23 @@ type Answer<R> = Result<R, api::ApiError>;
 impl api::Api for Products {
     type Principal = ();
 
+    async fn verify_bearer(&self, _: &str, _: &api::Request) -> Answer<Option<()>> {
+        Ok(Some(()))
+    }
+    async fn verify_api_key(&self, _: &str, _: &api::Request) -> Answer<Option<()>> {
+        Ok(Some(()))
+    }
+    async fn verify_oauth(
+        &self,
+        _: &str,
+        _: &api::Request,
+    ) -> Answer<Option<api::Granted<(), api::server::OauthScope>>> {
+        Ok(Some(api::Granted {
+            principal: (),
+            scopes: vec![api::server::OauthScope::Read, api::server::OauthScope::Write],
+        }))
+    }
+
     async fn submit_form(&self, p: ops::submit_form::Params, _: &Ctx<'_>) -> Answer<ops::submit_form::Response> {
         self.keep(&p);
         Ok(ops::submit_form::Response::NoContent)
@@ -302,9 +319,7 @@ impl api::Api for Products {
 /// A client whose requests reach `products` through the kitchen-sink server.
 #[allow(deprecated, reason = "`oauth` is deprecated in the description on purpose")]
 fn served(products: &std::sync::Arc<Products>) -> Client<impl api::Transport> {
-    let service = api::Server::new(std::sync::Arc::clone(products))
-        .authenticate(|_: &api::Request| std::future::ready(Ok(Some(()))))
-        .into_service();
+    let service = api::Server::new(std::sync::Arc::clone(products)).into_service();
     Client::new(service).with_oauth("t")
 }
 
@@ -377,7 +392,6 @@ fn the_event_names_an_additional_method() {
     let events = std::sync::Arc::new(Mutex::new(vec![]));
     let sink = std::sync::Arc::clone(&events);
     let service = api::Server::new(Products::default())
-        .authenticate(|_: &api::Request| std::future::ready(Ok(Some(()))))
         .on_event(move |event| sink.lock().unwrap().push(event.fields()))
         .into_service();
     let client = Client::new(service).with_oauth("t");
@@ -502,7 +516,7 @@ proptest::proptest! {
 
     #[test]
     fn malformed_requests_get_a_client_error(case in malformed::case(&FIXTURE)) {
-        malformed::check(api::Server::new(Products::default()).authenticate(|_: &api::Request| std::future::ready(Ok(Some(())))).into_service(), &case)?;
+        malformed::check(api::Server::new(Products::default()).into_service(), &case)?;
     }
 }
 
