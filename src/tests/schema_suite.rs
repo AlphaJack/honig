@@ -78,7 +78,6 @@ fn cases() -> Vec<Case> {
                 .as_array()
                 .unwrap()
                 .iter()
-                .filter(|t| !annotation_only(t))
                 .map(|t| {
                     let key = unique(&mut seen, format!("{name}: {}", t["description"].as_str().unwrap_or_default()));
                     (key, t["data"].clone(), t["valid"].as_bool().unwrap())
@@ -89,13 +88,6 @@ fn cases() -> Vec<Case> {
         }
     }
     out
-}
-
-/// Does test `t` expect `format` to be an annotation only? JSON Schema 2020-12 says so by default (section 7.2.1).
-/// honig asserts every format it knows instead, as an `OpenAPI` description that lists one expects, so it refuses such
-/// a value by design.
-fn annotation_only(t: &Value) -> bool {
-    t["description"].as_str().is_some_and(|d| d.ends_with("is only an annotation by default"))
 }
 
 /// Returns `key`, or `key (n)` for its n-th repeat. A few descriptions repeat within a file.

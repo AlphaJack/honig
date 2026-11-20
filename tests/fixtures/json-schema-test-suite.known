@@ -1,1 +1,20 @@
+format-date-time: date-time annotation: invalid date-time string is only an annotation by default	refuses a valid instance: is not a valid date-time at line 1 column 37
+format-date: date format annotation: invalid date string is only an annotation by default	refuses a valid instance: is not a valid date at line 1 column 18
+format-duration: duration format annotation: invalid duration string is only an annotation by default	refuses a valid instance: is not a valid duration at line 1 column 12
+format-email: email format annotation: invalid email string is only an annotation by default	refuses a valid instance: is not a valid email at line 1 column 12
+format-hostname: hostname format annotation: invalid hostname string is only an annotation by default	refuses a valid instance: is not a valid hostname at line 1 column 39
+format-idn-email: idn-email format: invalid idn-email string is only an annotation by default	refuses a valid instance: is not a valid idn-email at line 1 column 12
+format-idn-hostname: idn-hostname format annotation: invalid idn-hostname string is only an annotation by default	refuses a valid instance: is not a valid idn-hostname at line 1 column 27
+format-ipv4: ipv4 format annotation: invalid ipv4 string is only an annotation by default	refuses a valid instance: is not a valid ipv4 at line 1 column 19
+format-ipv6: ipv6 format: invalid ipv6 string is only an annotation by default	refuses a valid instance: is not a valid ipv6 at line 1 column 15
+format-iri-reference: iri-reference format annotation: invalid iri-reference string is only an annotation by default	refuses a valid instance: is not a valid iri-reference at line 1 column 33
+format-iri: iri format: invalid iri string is only an annotation by default	refuses a valid instance: is not a valid iri at line 1 column 54
+format-json-pointer: json-pointer format: invalid json-pointer string is only an annotation by default	refuses a valid instance: is not a valid json-pointer at line 1 column 17
+format-regex: regex format: invalid regex string is only an annotation by default	refuses a valid instance: is not a valid regex at line 1 column 14
+format-relative-json-pointer: relative-json-pointer format: invalid relative-json-pointer string is only an annotation by default	refuses a valid instance: is not a valid relative-json-pointer at line 1 column 16
+format-time: time format: invalid time string is only an annotation by default	refuses a valid instance: is not a valid time at line 1 column 20
+format-uri-reference: uri-reference format annotation: invalid uri-reference string is only an annotation by default	refuses a valid instance: is not a valid uri-reference at line 1 column 30
+format-uri-template: uri-template format annotation: invalid uri-template string is only an annotation by default	refuses a valid instance: is not a valid uri-template at line 1 column 52
+format-uri: uri format annotation: invalid uri string is only an annotation by default	refuses a valid instance: is not a valid uri at line 1 column 31
+format-uuid: uuid format annotation: invalid uuid string is only an annotation by default	refuses a valid instance: is not a valid uuid at line 1 column 43
 vocabulary: schema that uses custom metaschema with no validation vocabulary: no validation: invalid number, but it still validates	refuses a valid instance: 1 is less than the minimum 10 at line 1 column 26
