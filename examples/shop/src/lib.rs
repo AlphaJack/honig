@@ -9,6 +9,18 @@ use std::sync::{Mutex, MutexGuard};
 
 use api::{operations as ops, types};
 
+/// The API key that the shop takes. A real one reads it from its configuration.
+pub const API_KEY: &str = "secret";
+
+// ANCHOR: authenticate
+/// Finds who is calling: a request whose `X-API-Key` is the shop's key. Any other key is nobody, and an operation
+/// that requires the key answers it `401`.
+pub fn check_key(req: &api::Request) -> std::future::Ready<Result<Option<()>, api::ApiError>> {
+    let known = req.headers().get("x-api-key").is_some_and(|key| key == API_KEY);
+    std::future::ready(Ok(known.then_some(())))
+}
+// ANCHOR_END: authenticate
+
 // ANCHOR: catalog
 /// The catalog in memory. The ID of a product is its index.
 #[derive(Default)]

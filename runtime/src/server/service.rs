@@ -41,6 +41,10 @@ pub trait Operations: Send + Sync + 'static {
     /// The generated `Operation`: one variant per operation.
     type Operation: crate::Operation;
 
+    /// Whether an operation declares `security`: [`DeclaredSecurity`], or [`NoSecurity`]. A credential is then only
+    /// present until a step checks it, so the server needs [`Server::authenticate`].
+    type Security: Send + Sync + 'static;
+
     /// Returns the path templates for a framework that routes first (axum). Each one alone and under each base path.
     fn paths(&self) -> &'static [&'static str];
 
@@ -67,9 +71,10 @@ pub trait Operations: Send + Sync + 'static {
 
 /// Whether the server finds who is calling: [`Anonymous`] until [`Server::authenticate`], then [`Authenticated`].
 ///
-/// An `Api` whose `Principal` is `()` builds into a service as it is. Any other `Principal` needs
-/// [`Server::authenticate`]: without it `into_service` does not compile. Each operation then takes what its
-/// `security` asks for:
+/// An `Api` whose `Principal` is `()` and whose description declares no `security` builds into a service as it is.
+/// Any other needs [`Server::authenticate`]: without it `into_service` does not compile. The server checks that a
+/// request presents the credentials that its operation declares; `authenticate` checks that they are valid. Each
+/// operation then takes what its `security` asks for:
 ///
 /// | The operation's `security` | `ctx.principal` | When `authenticate` found nobody |
 /// |---|---|---|
@@ -77,11 +82,11 @@ pub trait Operations: Send + Sync + 'static {
 /// | an empty alternative (`[{}, {apiKey: []}]`) | `Option<Principal>` | the handler runs with `None` |
 /// | credentials required | `Principal` | 401 in the error schema |
 #[diagnostic::on_unimplemented(
-    message = "the `Api` declares a `Principal` that no step finds",
+    message = "the description declares `security`, or the `Api` a `Principal`, that no step checks",
     label = "call `.authenticate(..)` on the server before this",
-    note = "`authenticate` finds who is calling and gives the principal to the operations"
+    note = "`authenticate` checks the credentials of a request and gives the principal to the operations"
 )]
-pub trait Authentication<P>: Send + Sync + 'static {
+pub trait Authentication<P, S>: Send + Sync + 'static {
     /// Returns the principal of a request that no step authenticated: `()` when the `Api` declares none.
     #[doc(hidden)]
     fn anonymous() -> Option<P>;
@@ -95,13 +100,21 @@ pub struct Anonymous;
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Authenticated;
 
-impl Authentication<()> for Anonymous {
+/// No operation of the description declares `security`.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct NoSecurity;
+
+/// An operation of the description declares `security`: its credentials need [`Server::authenticate`] to be checked.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct DeclaredSecurity;
+
+impl Authentication<(), NoSecurity> for Anonymous {
     fn anonymous() -> Option<()> {
         Some(())
     }
 }
 
-impl<P> Authentication<P> for Authenticated {
+impl<P, S> Authentication<P, S> for Authenticated {
     fn anonymous() -> Option<P> {
         None
     }
@@ -340,7 +353,7 @@ impl<O: Operations, L, A> Server<O, L, A> {
     /// `hyper_util::service::TowerToHyperService`.
     pub fn into_service(self) -> ApiService<O, L::Service>
     where
-        A: Authentication<O::Principal>,
+        A: Authentication<O::Principal, O::Security>,
         L: Layer<Endpoint<O>>,
         L::Service: Service<Request, Response = Response> + Clone + Send + 'static,
         <L::Service as Service<Request>>::Error: Into<ApiError>,
@@ -356,7 +369,7 @@ impl<O: Operations, L, A> Server<O, L, A> {
     #[cfg(feature = "axum")]
     pub fn into_axum(self) -> axum::Router
     where
-        A: Authentication<O::Principal>,
+        A: Authentication<O::Principal, O::Security>,
         L: Layer<Endpoint<O>>,
         L::Service: Service<Request, Response = Response> + Clone + Send + Sync + 'static,
         <L::Service as Service<Request>>::Error: Into<ApiError>,

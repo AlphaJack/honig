@@ -6,7 +6,7 @@
 {{#include ../../../tests/e2e/tests/v32_catalog/auth.rs:credentials}}
 ```
 
-`find` answers `None` for nobody. When your `Api` declares a `Principal`, a server without `authenticate` does not compile. Layers added after `authenticate` read the principal from the request's extensions:
+`find` answers `None` for nobody. A server without `authenticate` does not compile when your `Api` declares a `Principal` or an operation of the description declares `security`. The server only sees that credentials are present. `authenticate` checks that they are valid. Layers added after `authenticate` read the principal from the request's extensions:
 
 {{#include generated/principals.md}}
 

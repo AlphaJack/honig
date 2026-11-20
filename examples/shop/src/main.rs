@@ -54,7 +54,7 @@ enum Command {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cli = Cli::parse();
     let client =
-        || api::Client::new(api::ReqwestTransport::new(format!("http://{}/v1", cli.addr))).with_api_key("secret");
+        || api::Client::new(api::ReqwestTransport::new(format!("http://{}/v1", cli.addr))).with_api_key(shop::API_KEY);
     match cli.command {
         Command::Serve => serve(&cli.addr).await?,
         Command::List { limit } => {
@@ -91,6 +91,7 @@ async fn serve(addr: &str) -> std::io::Result<()> {
     let listener = tokio::net::TcpListener::bind(addr).await?;
     println!("serving the catalog on http://{addr}/v1");
     let app = api::Server::new(Catalog::default())
+        .authenticate(shop::check_key)
         // One JSON line per request: the operation, the status, the duration, the body sizes and more.
         .on_event(|event: &api::RequestEvent| println!("{}", event.to_json()))
         .into_axum();

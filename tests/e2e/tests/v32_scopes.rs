@@ -69,6 +69,7 @@ fn send(method: &'static str, path: &str, token: Option<&str>) -> u16 {
     }
     api::block_on(
         api::Server::new(Server)
+            .authenticate(|_: &api::Request| std::future::ready(Ok(Some(()))))
             .operation_layer(tower::filter::AsyncFilterLayer::new(|req: api::Request| {
                 std::future::ready(permitted(&req).map(|()| req))
             }))
@@ -222,7 +223,12 @@ fn every_401_carries_a_challenge() {
             req.headers_mut()
                 .append("Authorization", honig::http::HeaderValue::try_from(format!("Bearer {t}")).unwrap());
         }
-        let resp = api::block_on(api::Server::new(Revoked).into_service().handle(req));
+        let resp = api::block_on(
+            api::Server::new(Revoked)
+                .authenticate(|_: &api::Request| std::future::ready(Ok(Some(()))))
+                .into_service()
+                .handle(req),
+        );
         (
             resp.status().as_u16(),
             resp.headers().get("www-authenticate").and_then(|v| v.to_str().ok()).map(str::to_owned),

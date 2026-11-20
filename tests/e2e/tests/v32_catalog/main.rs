@@ -37,6 +37,11 @@ pub fn error_body(rejection: api::Rejection) -> api::Response {
 }
 // ANCHOR_END: error_response
 
+/// Finds who is calling: a request whose `X-API-Key` is the catalog's key, `secret`. Any other key is nobody.
+pub fn check_key(req: &api::Request) -> std::future::Ready<Result<Option<()>, api::ApiError>> {
+    std::future::ready(Ok(req.headers().get("x-api-key").is_some_and(|key| key == "secret").then_some(())))
+}
+
 /// The catalog in memory. The ID of a product is its index.
 #[derive(Default)]
 pub struct Catalog(Mutex<Vec<types::Product>>);

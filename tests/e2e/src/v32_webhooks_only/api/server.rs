@@ -68,6 +68,7 @@ pub type WebhookContext<'a, C = ()> = runtime::Context<'a, C, WebhookOperation>;
 impl<A: Webhooks> runtime::Operations for WebhookRoutes<A> {
     type Principal = A::Principal;
     type Operation = WebhookOperation;
+    type Security = runtime::NoSecurity;
     fn error_response(
         &self,
     ) -> fn(runtime::Rejection<WebhookOperation>) -> runtime::Response {
