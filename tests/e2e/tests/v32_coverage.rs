@@ -47,3 +47,12 @@ fn nested_one_of_variants_are_pascal_case() {
     let types::CropVariants::Variant2(types::CropVariant2::Variant2(inner)) = &*point else { panic!("{point:?}") };
     assert_eq!((inner.x, inner.y), (Some(1), Some(2)));
 }
+
+/// A value that does not write out as JSON (a `NaN`) cannot be checked: building it fails, and the checks never run on
+/// `null` in its place.
+#[test]
+fn a_value_that_does_not_write_out_does_not_build() {
+    let fields = types::TextNoteFields { point: Some([f64::NAN, 0.0]), ..types::TextNoteFields::new("hi".to_owned()) };
+    let err = types::TextNote::try_from(fields).expect_err("NaN is no JSON number");
+    assert!(err.to_string().contains("NaN") || err.to_string().contains("finite"), "{err}");
+}

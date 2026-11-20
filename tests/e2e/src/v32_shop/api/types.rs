@@ -412,7 +412,8 @@ impl<'de> serde::Deserialize<'de> for Item {
 impl TryFrom<ItemVariants> for Item {
     type Error = runtime::BuildError;
     fn try_from(value: ItemVariants) -> Result<Self, runtime::BuildError> {
-        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = runtime::to_value(&value)
+            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
         Self::checked(value, &runtime::Content::of(&json))
     }
 }
@@ -4313,7 +4314,8 @@ impl<'de> serde::Deserialize<'de> for ItemRequest {
 impl TryFrom<ItemRequestVariants> for ItemRequest {
     type Error = runtime::BuildError;
     fn try_from(value: ItemRequestVariants) -> Result<Self, runtime::BuildError> {
-        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = runtime::to_value(&value)
+            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
         Self::checked(value, &runtime::Content::of(&json))
     }
 }

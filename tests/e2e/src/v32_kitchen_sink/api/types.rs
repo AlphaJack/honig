@@ -347,7 +347,8 @@ impl<'de> serde::Deserialize<'de> for Product {
 impl TryFrom<ProductFields> for Product {
     type Error = runtime::BuildError;
     fn try_from(value: ProductFields) -> Result<Self, runtime::BuildError> {
-        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = runtime::to_value(&value)
+            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
         Self::checked(value, &runtime::Content::of(&json))
     }
 }
@@ -397,7 +398,8 @@ impl<'de> serde::Deserialize<'de> for Book {
 impl TryFrom<BookFields> for Book {
     type Error = runtime::BuildError;
     fn try_from(value: BookFields) -> Result<Self, runtime::BuildError> {
-        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = runtime::to_value(&value)
+            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
         Self::checked(value, &runtime::Content::of(&json))
     }
 }
@@ -447,7 +449,8 @@ impl<'de> serde::Deserialize<'de> for Gadget {
 impl TryFrom<Gadget2> for Gadget {
     type Error = runtime::BuildError;
     fn try_from(value: Gadget2) -> Result<Self, runtime::BuildError> {
-        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = runtime::to_value(&value)
+            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
         Self::checked(value, &runtime::Content::of(&json))
     }
 }
@@ -512,7 +515,8 @@ impl<'de> serde::Deserialize<'de> for Owner {
 impl TryFrom<OwnerFields> for Owner {
     type Error = runtime::BuildError;
     fn try_from(value: OwnerFields) -> Result<Self, runtime::BuildError> {
-        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = runtime::to_value(&value)
+            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
         Self::checked(value, &runtime::Content::of(&json))
     }
 }
@@ -560,7 +564,8 @@ impl<'de> serde::Deserialize<'de> for Shape {
 impl TryFrom<ShapeVariants> for Shape {
     type Error = runtime::BuildError;
     fn try_from(value: ShapeVariants) -> Result<Self, runtime::BuildError> {
-        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = runtime::to_value(&value)
+            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
         Self::checked(value, &runtime::Content::of(&json))
     }
 }
@@ -731,7 +736,8 @@ impl<'de> serde::Deserialize<'de> for ProductAttrs {
 impl TryFrom<AttrsFields> for ProductAttrs {
     type Error = runtime::BuildError;
     fn try_from(value: AttrsFields) -> Result<Self, runtime::BuildError> {
-        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = runtime::to_value(&value)
+            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
         Self::checked(value, &runtime::Content::of(&json))
     }
 }
@@ -857,7 +863,8 @@ impl<'de> serde::Deserialize<'de> for BookAttrs {
 impl TryFrom<BookAttrsFields> for BookAttrs {
     type Error = runtime::BuildError;
     fn try_from(value: BookAttrsFields) -> Result<Self, runtime::BuildError> {
-        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = runtime::to_value(&value)
+            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
         Self::checked(value, &runtime::Content::of(&json))
     }
 }
@@ -958,7 +965,8 @@ impl<'de> serde::Deserialize<'de> for Gadget2 {
 impl TryFrom<Gadget2Fields> for Gadget2 {
     type Error = runtime::BuildError;
     fn try_from(value: Gadget2Fields) -> Result<Self, runtime::BuildError> {
-        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = runtime::to_value(&value)
+            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
         Self::checked(value, &runtime::Content::of(&json))
     }
 }
@@ -1027,7 +1035,8 @@ impl<'de> serde::Deserialize<'de> for Gadget2Attrs {
 impl TryFrom<Gadget2AttrsFields> for Gadget2Attrs {
     type Error = runtime::BuildError;
     fn try_from(value: Gadget2AttrsFields) -> Result<Self, runtime::BuildError> {
-        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = runtime::to_value(&value)
+            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
         Self::checked(value, &runtime::Content::of(&json))
     }
 }
@@ -1438,7 +1447,8 @@ impl<'de> serde::Deserialize<'de> for ProductRequest {
 impl TryFrom<ProductRequestFields> for ProductRequest {
     type Error = runtime::BuildError;
     fn try_from(value: ProductRequestFields) -> Result<Self, runtime::BuildError> {
-        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = runtime::to_value(&value)
+            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
         Self::checked(value, &runtime::Content::of(&json))
     }
 }
@@ -1488,7 +1498,8 @@ impl<'de> serde::Deserialize<'de> for BookRequest {
 impl TryFrom<BookRequestFields> for BookRequest {
     type Error = runtime::BuildError;
     fn try_from(value: BookRequestFields) -> Result<Self, runtime::BuildError> {
-        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = runtime::to_value(&value)
+            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
         Self::checked(value, &runtime::Content::of(&json))
     }
 }
@@ -1538,7 +1549,8 @@ impl<'de> serde::Deserialize<'de> for GadgetRequest {
 impl TryFrom<Gadget2Request> for GadgetRequest {
     type Error = runtime::BuildError;
     fn try_from(value: Gadget2Request) -> Result<Self, runtime::BuildError> {
-        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = runtime::to_value(&value)
+            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
         Self::checked(value, &runtime::Content::of(&json))
     }
 }
@@ -1603,7 +1615,8 @@ impl<'de> serde::Deserialize<'de> for ShapeRequest {
 impl TryFrom<ShapeRequestVariants> for ShapeRequest {
     type Error = runtime::BuildError;
     fn try_from(value: ShapeRequestVariants) -> Result<Self, runtime::BuildError> {
-        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = runtime::to_value(&value)
+            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
         Self::checked(value, &runtime::Content::of(&json))
     }
 }
@@ -1662,7 +1675,8 @@ impl<'de> serde::Deserialize<'de> for Gadget2Request {
 impl TryFrom<Gadget2RequestFields> for Gadget2Request {
     type Error = runtime::BuildError;
     fn try_from(value: Gadget2RequestFields) -> Result<Self, runtime::BuildError> {
-        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = runtime::to_value(&value)
+            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
         Self::checked(value, &runtime::Content::of(&json))
     }
 }
@@ -2329,7 +2343,8 @@ impl<'de> serde::Deserialize<'de> for ProductTags {
 impl TryFrom<Vec<String>> for ProductTags {
     type Error = runtime::BuildError;
     fn try_from(value: Vec<String>) -> Result<Self, runtime::BuildError> {
-        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = runtime::to_value(&value)
+            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
         Self::checked(value, &runtime::Content::of(&json))
     }
 }
@@ -2388,7 +2403,8 @@ impl<'de> serde::Deserialize<'de> for ProductPoint {
 impl TryFrom<Vec<serde_json::Value>> for ProductPoint {
     type Error = runtime::BuildError;
     fn try_from(value: Vec<serde_json::Value>) -> Result<Self, runtime::BuildError> {
-        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = runtime::to_value(&value)
+            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
         Self::checked(value, &runtime::Content::of(&json))
     }
 }

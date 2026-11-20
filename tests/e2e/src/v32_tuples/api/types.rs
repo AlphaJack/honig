@@ -65,7 +65,8 @@ impl<'de> serde::Deserialize<'de> for Open {
 impl TryFrom<Vec<serde_json::Value>> for Open {
     type Error = runtime::BuildError;
     fn try_from(value: Vec<serde_json::Value>) -> Result<Self, runtime::BuildError> {
-        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = runtime::to_value(&value)
+            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
         Self::checked(value, &runtime::Content::of(&json))
     }
 }
