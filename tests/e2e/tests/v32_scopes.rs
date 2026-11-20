@@ -237,3 +237,28 @@ fn every_401_carries_a_challenge() {
     assert_eq!(challenge(None), (401, Some("Bearer".to_owned())), "no token");
     assert_eq!(challenge(Some("read")), (401, Some("Bearer".to_owned())), "a token the handler refuses");
 }
+
+// ANCHOR: problem-instance
+/// The default RFC 9457 body, with the request ID of the client as `instance`.
+fn with_request_id(rejection: api::Rejection) -> api::Response {
+    let mut problem = rejection.problem();
+    problem.instance =
+        rejection.headers.get("x-request-id").and_then(|id| id.to_str().ok()).map(|id| format!("urn:request:{id}"));
+    problem.into_response()
+}
+// ANCHOR_END: problem-instance
+
+#[test]
+fn a_problem_carries_the_request_id_as_instance() {
+    let service = api::Server::new(Server)
+        .authenticate(|_: &api::Request| std::future::ready(Ok(None)))
+        .error_response(with_request_id)
+        .into_service();
+    let mut req = api::runtime::new_request("GET", "/issues".to_owned(), vec![]).unwrap();
+    req.headers_mut().append("x-request-id", honig::http::HeaderValue::from_static("7f3a"));
+    let resp = api::block_on(service.handle(req));
+    assert_eq!(resp.status().as_u16(), 401);
+    let body: serde_json::Value = serde_json::from_slice(resp.body().bytes()).unwrap();
+    assert_eq!(body["instance"], "urn:request:7f3a");
+    assert_eq!(body["status"], 401);
+}

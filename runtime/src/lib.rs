@@ -93,7 +93,7 @@ pub use links::Exchange;
 pub use message::Message;
 pub use message::{Request, Response};
 pub use nullable::Nullable;
-pub use reject::{ErrorField, ErrorSchema, Reason, Rejection};
+pub use reject::{ErrorField, ErrorSchema, Problem, ProblemError, Reason, Rejection};
 #[cfg(feature = "server")]
 pub use server::conditional::CacheValidators;
 #[cfg(feature = "server")]
