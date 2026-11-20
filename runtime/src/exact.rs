@@ -66,6 +66,11 @@ impl<'s> Parts<'s> {
         self.head.len() + self.tail.len()
     }
 
+    /// Returns the significant digits as one number. `None` past `u64`.
+    fn coefficient(&self) -> Option<u64> {
+        self.digits().try_fold(0_u64, |c, d| c.checked_mul(u64::from(DIGIT_BASE))?.checked_add(u64::from(d)))
+    }
+
     /// Returns the power of ten of the first significant digit: the order of magnitude.
     fn magnitude(&self) -> i64 {
         self.exponent.saturating_add(signed(self.len()) - 1)
@@ -112,16 +117,80 @@ pub(crate) fn is_multiple(value: &str, of: &str) -> Option<bool> {
         return Some(true);
     }
     let Some(shift) = v.exponent.checked_sub(m.exponent).filter(|s| *s >= 0) else { return Some(false) };
-    let Some(b) = m
-        .digits()
-        .try_fold(0_u64, |b, d| b.checked_mul(u64::from(DIGIT_BASE))?.checked_add(u64::from(d)))
-        .map(u128::from)
-    else {
+    let Some(b) = m.coefficient().map(u128::from) else {
         return Some(divides_long(v.digits(), shift.unsigned_abs(), &m.digits().collect::<Vec<_>>()));
     };
     // `a mod b`, a digit at a time: `r < b < 2^64` keeps `10*r + 9` inside a `u128`.
     let a = v.digits().fold(0, |r, d| (r * DECIMAL_BASE + u128::from(d)) % b);
     Some((a * power_of_ten_mod(shift.unsigned_abs(), b)).is_multiple_of(b))
+}
+
+/// How many powers of ten an `f64` holds exactly: `10^0` to `10^22`.
+const EXACT_POWERS: usize = 23;
+/// `10^0` to `10^22`, each exact.
+const POWERS: [f64; EXACT_POWERS] = {
+    let mut powers = [1.0; EXACT_POWERS];
+    let mut i = 1;
+    while i < EXACT_POWERS {
+        powers[i] = powers[i - 1] * 10.0;
+        i += 1;
+    }
+    powers
+};
+/// `2^52`: below it, the gap between two `f64`s near `n*10^-k` is less than `10^-k`. So at most one multiple of
+/// `10^-k` reads as a given `f64`, and the shortest text of that `f64` is it.
+const UNIQUE: f64 = 4_503_599_627_370_496.0;
+
+/// Returns `of` as `c*10^e`: its significant digits as a `u64` and its exponent. `None` when `of` is not a positive
+/// decimal or has more than 19 significant digits.
+fn coefficient(of: &str) -> Option<(u64, i64)> {
+    let m = Parts::of(of)?;
+    if m.negative || m.len() == 0 {
+        return None;
+    }
+    Some((m.coefficient()?, m.exponent))
+}
+
+/// Is the shortest text of `value` a multiple of `of`, as [`is_multiple`] reads them? Decided without that text when
+/// `value` is `n*10^-k` for a whole `n` below [`UNIQUE`], where `10^-k` is the unit of the last digit of `of`. `None`
+/// otherwise: the text decides those.
+///
+/// `n / 10^k` divides two exact `f64`s, so it rounds once, as reading the text `n*10^-k` does. When it gives `value`
+/// back, that text reads as `value`, and below [`UNIQUE`] no other multiple of `10^-k` does.
+#[must_use]
+#[expect(
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    reason = "`n` is a whole number below 2^52 by the check before the cast"
+)]
+#[expect(clippy::float_cmp, reason = "the same `f64` exactly, as reading the text gives it")]
+pub(crate) fn f64_is_multiple(value: f64, of: &str) -> Option<bool> {
+    let (c, e) = coefficient(of)?;
+    let k = usize::try_from(e.min(0).unsigned_abs()).ok()?;
+    let scale = *POWERS.get(k)?;
+    let n = (value * scale).round();
+    if n.abs() >= UNIQUE || n / scale != value {
+        return None;
+    }
+    let n = n.abs() as u64;
+    if e > 0 {
+        let unit = u64::from(DIGIT_BASE).checked_pow(u32::try_from(e).ok()?)?;
+        return Some(n.is_multiple_of(c.checked_mul(unit)?));
+    }
+    Some(n.is_multiple_of(c))
+}
+
+/// Is the whole number `value` a multiple of `of`? `None` when the numbers do not fit a `u128`: the text decides those.
+#[must_use]
+pub(crate) fn int_is_multiple(value: i128, of: &str) -> Option<bool> {
+    let (c, e) = coefficient(of)?;
+    let power = u128::from(DIGIT_BASE).checked_pow(u32::try_from(e.unsigned_abs()).ok()?)?;
+    let v = value.unsigned_abs();
+    if e >= 0 {
+        Some(v.is_multiple_of(u128::from(c).checked_mul(power)?))
+    } else {
+        Some(v.checked_mul(power)?.is_multiple_of(u128::from(c)))
+    }
 }
 
 /// Does `b` divide `a*10^shift`? `a` and `b` are digits without leading zeros, `b` of any length. It is long
@@ -223,5 +292,85 @@ mod tests {
         // Factors of ten past what `of` holds of 2 and 5 change nothing: the check ends however large the exponent.
         assert_eq!(is_multiple("7e9000000000000000000", "1024000000000000000000001"), Some(false));
         assert_eq!(is_multiple("1e9000000000000000000", "2048000000000000000000000"), Some(true));
+    }
+
+    /// The values the equivalence tests read: random bit patterns, decimals `m/10^k` with `m` up to `2^53`, the
+    /// neighbours of `2^52/10^k` where the fast path stops, cents, ties and the edges of `f64`.
+    #[expect(clippy::cast_precision_loss, reason = "53 bits fit an `f64` exactly")]
+    fn values() -> Vec<f64> {
+        let mut state = 0x9E37_79B9_7F4A_7C15_u64;
+        let mut next = move || {
+            state ^= state << 13;
+            state ^= state >> 7;
+            state ^= state << 17;
+            state
+        };
+        let mut values = vec![0.0, -0.0, 5e-324, f64::MIN_POSITIVE, f64::MAX, 0.1 + 0.2, 19.995, 1e22, 1e23];
+        for _ in 0..40_000 {
+            values.push(f64::from_bits(next()));
+            let k = usize::try_from(next() % 24).unwrap_or(0);
+            let m = (next() >> 11) as f64;
+            values.push(m / 10_f64.powi(i32::try_from(k).unwrap_or(0)));
+        }
+        for power in POWERS {
+            let edge = UNIQUE / power;
+            let mut v = edge;
+            for _ in 0..50 {
+                values.extend([v, -v]);
+                v = v.next_down();
+            }
+            v = edge;
+            for _ in 0..50 {
+                values.push(v);
+                v = v.next_up();
+            }
+        }
+        for cents in -20_000..20_000 {
+            values.extend([f64::from(cents) / 100.0, f64::from(cents) / 1000.0, f64::from(cents) + 0.5]);
+        }
+        values.retain(|v| v.is_finite());
+        values
+    }
+
+    const OFS: [&str; 14] =
+        ["0.01", "0.1", "0.5", "0.25", "1", "5", "100", "0.001", "3", "0.03", "1e-22", "1e-23", "7e5", "0.0000001"];
+
+    /// Where the fast path answers, it answers as the text does.
+    #[test]
+    fn a_float_multiple_is_what_its_text_says() {
+        let mut decided = 0;
+        for v in values() {
+            for of in OFS {
+                if let Some(fast) = f64_is_multiple(v, of) {
+                    decided += 1;
+                    assert_eq!(Some(fast), is_multiple(&format!("{v:e}"), of), "{v:e} of {of}");
+                }
+            }
+        }
+        assert!(decided > 200_000, "the fast path decided {decided}");
+    }
+
+    #[test]
+    fn a_whole_multiple_is_what_its_text_says() {
+        let edges = [i128::from(i64::MIN), i128::from(i64::MAX), i128::from(u64::MAX), 0, -1, 1];
+        for v in (-5000..5000).chain(edges) {
+            for of in OFS {
+                if let Some(fast) = int_is_multiple(v, of) {
+                    assert_eq!(Some(fast), is_multiple(&v.to_string(), of), "{v} of {of}");
+                }
+            }
+        }
+    }
+
+    /// The values that an API sends most, prices and counts, take the fast path.
+    #[test]
+    fn a_price_is_decided_without_its_text() {
+        assert_eq!(f64_is_multiple(19.99, "0.01"), Some(true));
+        assert_eq!(f64_is_multiple(2.5, "0.5"), Some(true));
+        assert_eq!(f64_is_multiple(0.3, "0.1"), Some(true));
+        assert_eq!(f64_is_multiple(15.0, "5"), Some(true));
+        assert_eq!(f64_is_multiple(16.0, "5"), Some(false));
+        assert_eq!(f64_is_multiple(19.995, "0.01"), None, "the text decides a value with more digits than `of`");
+        assert_eq!(int_is_multiple(30, "0.5"), Some(true));
     }
 }
