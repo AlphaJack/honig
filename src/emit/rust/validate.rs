@@ -150,12 +150,7 @@ pub(super) fn subschema_checks(
     let required =
         (!c.json_dependents.is_empty()).then(|| object_dependent_checks(&c.json_dependents, &quote!(json), path));
     // The checked type binds `json` to its whole value. A value further in reads its own.
-    let own = (value.to_string() != "& value").then(|| {
-        quote! {
-            let json = runtime::to_value(#value).unwrap_or_default();
-            let json = &runtime::Content::of(&json);
-        }
-    });
+    let own = own_buffer(value);
     quote! {
         {
             #own
@@ -176,21 +171,28 @@ pub(super) fn subschema_checks(
     }
 }
 
-/// Returns `contains` of `c` on the items of `value` (a `&` of a list) at `path`: it counts the items that decode as the
-/// type of the schema, and holds the count to `minContains` and `maxContains`.
+/// Returns the binding of `json` to `value` (an expression of type `&T`) as a buffer, or `None` when `value` is the
+/// whole value of the checked type, which binds it already.
+fn own_buffer(value: &TokenStream) -> Option<TokenStream> {
+    (value.to_string() != "& value").then(|| {
+        quote! {
+            let json = runtime::to_value(#value).unwrap_or_default();
+            let json = &runtime::Content::of(&json);
+        }
+    })
+}
+
+/// Returns `contains` of `c` on the items of `value` (a `&` of a list) at `path`: it counts the items of its buffer that
+/// decode as the type of the schema, and holds the count to `minContains` and `maxContains`.
 fn contains_checks(space: &Space<'_>, c: &Constraints, value: &TokenStream, path: &TokenStream) -> TokenStream {
     let Some((n, min, max)) = c.contains else { return TokenStream::new() };
     let ty = super::syntax::ty(space, &space.types.subschemas[n].0, false);
-    let r = receiver(value);
-    let bounds = contains_bounds(min, max, path);
+    let (own, bounds) = (own_buffer(value), contains_bounds(min, max, path));
     quote! {
         {
-            let hits = #r
-                .iter()
-                .filter(|item| {
-                    runtime::to_value(item).is_ok_and(|v| serde_json::from_value::<#ty>(v).is_ok())
-                })
-                .count();
+            #own
+            let items = json.as_array().unwrap_or_default();
+            let hits = items.iter().filter(|item| item.decode_ref::<#ty>().is_ok()).count();
             #bounds
         }
     }

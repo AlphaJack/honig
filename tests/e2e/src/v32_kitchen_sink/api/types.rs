@@ -1696,6 +1696,8 @@ impl<'de> serde::Deserialize<'de> for ProductTags {
 impl TryFrom<Vec<String>> for ProductTags {
     type Error = runtime::BuildError;
     fn try_from(value: Vec<String>) -> Result<Self, runtime::BuildError> {
+        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = &runtime::Content::of(&json);
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -1709,12 +1711,10 @@ impl TryFrom<Vec<String>> for ProductTags {
             );
             runtime::check_unique(out, &runtime::InstancePath::Root, &value);
             {
-                let hits = value
+                let items = json.as_array().unwrap_or_default();
+                let hits = items
                     .iter()
-                    .filter(|item| {
-                        runtime::to_value(item)
-                            .is_ok_and(|v| serde_json::from_value::<Not>(v).is_ok())
-                    })
+                    .filter(|item| item.decode_ref::<Not>().is_ok())
                     .count();
                 if hits > 1 {
                     runtime::violation(

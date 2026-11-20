@@ -4993,16 +4993,16 @@ impl<'de> serde::Deserialize<'de> for BadgeHolders {
 impl TryFrom<Vec<String>> for BadgeHolders {
     type Error = runtime::BuildError;
     fn try_from(value: Vec<String>) -> Result<Self, runtime::BuildError> {
+        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = &runtime::Content::of(&json);
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
             {
-                let hits = value
+                let items = json.as_array().unwrap_or_default();
+                let hits = items
                     .iter()
-                    .filter(|item| {
-                        runtime::to_value(item)
-                            .is_ok_and(|v| serde_json::from_value::<Not4>(v).is_ok())
-                    })
+                    .filter(|item| item.decode_ref::<Not4>().is_ok())
                     .count();
                 if hits < 1 {
                     runtime::violation(
@@ -5280,16 +5280,16 @@ impl<'de> serde::Deserialize<'de> for ShipmentInternationalParcels {
 impl TryFrom<Vec<ParcelsItem>> for ShipmentInternationalParcels {
     type Error = runtime::BuildError;
     fn try_from(value: Vec<ParcelsItem>) -> Result<Self, runtime::BuildError> {
+        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = &runtime::Content::of(&json);
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
             {
-                let hits = value
+                let items = json.as_array().unwrap_or_default();
+                let hits = items
                     .iter()
-                    .filter(|item| {
-                        runtime::to_value(item)
-                            .is_ok_and(|v| serde_json::from_value::<Not5>(v).is_ok())
-                    })
+                    .filter(|item| item.decode_ref::<Not5>().is_ok())
                     .count();
                 if hits < 1 {
                     runtime::violation(
@@ -5466,16 +5466,16 @@ impl TryFrom<Vec<ShipmentOtherwiseParcelsItem>> for ShipmentOtherwiseParcels {
     fn try_from(
         value: Vec<ShipmentOtherwiseParcelsItem>,
     ) -> Result<Self, runtime::BuildError> {
+        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = &runtime::Content::of(&json);
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
             {
-                let hits = value
+                let items = json.as_array().unwrap_or_default();
+                let hits = items
                     .iter()
-                    .filter(|item| {
-                        runtime::to_value(item)
-                            .is_ok_and(|v| serde_json::from_value::<Not5>(v).is_ok())
-                    })
+                    .filter(|item| item.decode_ref::<Not5>().is_ok())
                     .count();
                 if hits < 1 {
                     runtime::violation(
