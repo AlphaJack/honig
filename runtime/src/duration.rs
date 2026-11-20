@@ -9,12 +9,11 @@ const TIME_UNITS: [u8; 3] = *b"HMS";
 /// part after `T`. Each part has at least one element. Its units follow each other without a gap (`P1Y2M`, not
 /// `P1Y2D`). Numbers are whole and the letters may be either case, as ABNF strings are.
 pub(crate) fn is_duration(text: &str) -> bool {
-    let upper = text.to_ascii_uppercase();
-    let Some(rest) = upper.strip_prefix('P') else { return false };
-    if let Some(weeks) = rest.strip_suffix('W') {
+    let Some(rest) = text.strip_prefix(['P', 'p']) else { return false };
+    if let Some(weeks) = rest.strip_suffix(['W', 'w']) {
         return whole(weeks);
     }
-    let (date, time) = match rest.split_once('T') {
+    let (date, time) = match rest.split_once(['T', 't']) {
         Some((date, time)) => (date, Some(time)),
         None => (rest, None),
     };
@@ -34,7 +33,7 @@ fn run(text: &str, units: &[u8]) -> Option<usize> {
     while !rest.is_empty() {
         let end = rest.find(|c: char| !c.is_ascii_digit())?;
         let (number, tail) = rest.split_at(end);
-        let unit = tail.bytes().next()?;
+        let unit = tail.bytes().next()?.to_ascii_uppercase();
         let at = units.iter().position(|u| *u == unit)?;
         if number.is_empty() || last.is_some_and(|l| at != l + 1) {
             return None;
