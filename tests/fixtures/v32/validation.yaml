@@ -288,6 +288,15 @@ components:
       type: object
       additionalProperties: {type: string}
       propertyNames: {pattern: '^[a-z]+$', maxLength: 8}
+    # `minProperties` and `maxProperties` on a struct count the declared properties sent and the names it keeps.
+    Pair:
+      type: object
+      properties:
+        a: {type: string}
+        b: {type: string}
+      additionalProperties: {type: string}
+      minProperties: 1
+      maxProperties: 2
     # Patterns beside properties: each undeclared name decodes into the map of the first pattern that matches it, as
     # every pattern that matches it. `additionalProperties: false` refuses a name that none matches.
     Settings:

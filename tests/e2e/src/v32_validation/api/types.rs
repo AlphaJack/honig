@@ -1681,6 +1681,37 @@ impl runtime::XmlShape for Labelled {
     }
 }
 pub type Labels = std::collections::BTreeMap<String, String>;
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
+pub struct Pair(pub(super) PairFields);
+impl<'de> serde::Deserialize<'de> for Pair {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <PairFields as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
+    }
+}
+impl TryFrom<PairFields> for Pair {
+    type Error = runtime::BuildError;
+    fn try_from(value: PairFields) -> Result<Self, runtime::BuildError> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            runtime::check_len(
+                out,
+                &runtime::InstancePath::Root,
+                usize::from(value.a.is_some()) + usize::from(value.b.is_some())
+                    + value.additional_properties.len(),
+                Some(1),
+                Some(2),
+                "properties",
+            );
+        }
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
+    }
+}
+checked_impls!(Pair, PairFields);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Settings {
@@ -4322,6 +4353,80 @@ impl runtime::XmlShape for PaymentFields {
 }
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
+pub struct PairFields {
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub a: Option<String>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub b: Option<String>,
+    #[serde(flatten)]
+    pub additional_properties: std::collections::BTreeMap<String, String>,
+}
+deserialize_impl_2!(PairFields);
+serialize_impl_4!(PairFields);
+impl PairFields {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self {
+            a: None,
+            b: None,
+            additional_properties: std::collections::BTreeMap::new(),
+        }
+    }
+}
+impl runtime::XmlShape for PairFields {
+    fn xml() -> &'static runtime::XmlNode {
+        static NODE: runtime::XmlNode = runtime::XmlNode {
+            name: "PairFields",
+            namespace: "",
+            prefix: "",
+            fields: &[
+                runtime::XmlField {
+                    wire: "a",
+                    name: "a",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "a",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "b",
+                    name: "b",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "b",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+            ],
+        };
+        &NODE
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
 pub struct ProfileFields {
     #[serde(
         default,
@@ -5907,6 +6012,26 @@ pub mod builders {
         /// Returns the value.
         pub fn build(self) -> Result<super::Labelled, runtime::BuildError> {
             self.0.build()
+        }
+    }
+    impl super::Pair {
+        /// Starts a builder from the required properties.
+        pub fn builder() -> Pair {
+            Pair(runtime::Builder::start(|| Ok(super::PairFields::new())))
+        }
+    }
+    #[must_use = "a builder does nothing until `build`"]
+    pub struct Pair(runtime::Builder<super::PairFields>);
+    impl Pair {
+        pub fn a(self, value: impl TryInto<String, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("a", value, |s, v| s.a = Some(v)))
+        }
+        pub fn b(self, value: impl TryInto<String, Error: std::fmt::Display>) -> Self {
+            Self(self.0.set("b", value, |s, v| s.b = Some(v)))
+        }
+        /// Returns the value once its whole schema holds.
+        pub fn build(self) -> Result<super::Pair, runtime::BuildError> {
+            self.0.build().and_then(super::Pair::try_from)
         }
     }
     impl super::Profile {

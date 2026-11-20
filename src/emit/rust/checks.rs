@@ -532,10 +532,16 @@ pub(super) fn checks(
         Ty::Named(id) => match &space.types.get(*id).kind {
             Kind::Alias(x) => checks(space, x, c, value, path),
             // The fields of a struct hold `dependentRequired` together: the checked type of its shape runs it.
-            Kind::Struct(s) if !c.dependent_required.is_empty() || c.property_names.is_some() => {
+            Kind::Struct(s)
+                if !c.dependent_required.is_empty()
+                    || c.property_names.is_some()
+                    || c.min_properties.is_some()
+                    || c.max_properties.is_some() =>
+            {
                 let names = c.property_names.as_deref().map(|n| struct_name_checks(space, s, n, value, path));
                 let dependents = dependent_checks(space, s, c, value, path);
-                quote!(#names #dependents)
+                let count = struct_count_checks(space, s, c, value, path);
+                quote!(#names #dependents #count)
             }
             // The union of an implied shape (`Object` or `Array`, and `Other`): keywords of one kind beside the shape and
             // the names of an object, on the value by its kind.
@@ -629,6 +635,49 @@ fn struct_name_checks(
         name_checks(names, &quote!(#r.#field.keys()), path)
     });
     quote!(#(#declared)* #extra #(#patterns)*)
+}
+
+/// Returns `minProperties` and `maxProperties` on a value of `shape` (`value` is a `&` of it): its declared properties
+/// that are present, and the names that it does not declare.
+fn struct_count_checks(
+    space: &Space<'_>,
+    shape: &crate::ir::types::Struct,
+    c: &Constraints,
+    value: &TokenStream,
+    path: &TokenStream,
+) -> Option<TokenStream> {
+    if c.min_properties.is_none() && c.max_properties.is_none() {
+        return None;
+    }
+    let r = receiver(value);
+    // The required ones are always present: one number for all of them.
+    let required = shape.fields.iter().filter(|f| f.required).count();
+    let optional = shape.fields.iter().filter(|f| !f.required).map(|f| {
+        let n = super::syntax::snake_ident(&f.name);
+        if space.types.nullable(&f.ty).is_some() {
+            quote!(usize::from(!#r.#n.is_absent()))
+        } else {
+            quote!(usize::from(#r.#n.is_some()))
+        }
+    });
+    let maps =
+        (shape.additional.is_some().then(|| super::syntax::ident(&super::syntax::extra_field(shape))).into_iter())
+            .chain((0..shape.patterns.len()).map(|i| super::syntax::pattern_field(shape, i)))
+            .map(|field| quote!(#r.#field.len()));
+    let terms: Vec<TokenStream> = (required > 0)
+        .then(|| {
+            let n = Literal::usize_unsuffixed(required);
+            quote!(#n)
+        })
+        .into_iter()
+        .chain(optional)
+        .chain(maps)
+        .collect();
+    let count = if terms.is_empty() { quote!(0) } else { quote!(#(#terms)+*) };
+    let (min, max) = (opt_u64(c.min_properties), opt_u64(c.max_properties));
+    Some(quote! {
+        runtime::check_len(out, #path, #count, #min, #max, "properties");
+    })
 }
 
 /// Returns `dependentRequired` on the fields of `shape` (`value` is a `&` of it): when a property is present, so are the

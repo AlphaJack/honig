@@ -111,6 +111,8 @@ fn split_own_checks(types: &mut TypeSpace, taken: &mut BTreeSet<String>) -> BTre
         let constraints = Constraints {
             dependent_required: own.dependent_required.clone(),
             property_names: own.property_names.clone(),
+            min_properties: own.min_properties,
+            max_properties: own.max_properties,
             not: own.not.clone(),
             dependent_schemas: own.dependent_schemas.clone(),
             conditions: own.conditions.clone(),
