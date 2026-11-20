@@ -27,7 +27,7 @@ async fn app(uri: axum::http::Uri) -> axum::response::Response {
 }
 
 fn web_app() -> axum::Router {
-    let api = api::Server::new(Catalog::default()).authenticate(super::check_key).into_service();
+    let api = api::Server::new(Catalog::default()).into_service();
     axum::Router::new().nest_service("/v1", api).fallback(app)
 }
 // ANCHOR_END: spa
@@ -49,15 +49,14 @@ fn claims_layer(mut req: axum::extract::Request) -> axum::extract::Request {
     req
 }
 
-/// `authenticate` maps the claims to the principal of the `Api`. A request without claims is anonymous.
+/// The `verify_` method of the scheme maps the claims to the principal of the `Api`. A request without claims is
+/// nobody.
+fn subject(_: &str, req: &api::Request) -> Option<String> {
+    req.extensions().get::<Claims>().map(|claims| claims.sub.clone())
+}
+
 fn with_claims() -> axum::Router {
-    api::Server::new(super::auth::Server)
-        .authenticate(|req: &api::Request| {
-            let who = req.extensions().get::<Claims>().map(|claims| claims.sub.clone());
-            std::future::ready(Ok(who))
-        })
-        .into_axum()
-        .layer(tower::util::MapRequestLayer::new(claims_layer))
+    api::Server::new(super::auth::Server(subject)).into_axum().layer(tower::util::MapRequestLayer::new(claims_layer))
 }
 // ANCHOR_END: claims
 
@@ -66,7 +65,7 @@ fn with_claims() -> axum::Router {
 /// into a response with `HandleErrorLayer`. `errors()` renders it in the error schema of the description, so a
 /// client decodes it as its typed error.
 fn guarded(max_in_flight: usize) -> axum::Router {
-    let server = api::Server::new(Catalog::default()).authenticate(super::check_key);
+    let server = api::Server::new(Catalog::default());
     let errors = server.errors();
     server.into_axum().layer(
         tower::ServiceBuilder::new()
@@ -88,14 +87,11 @@ fn guarded(max_in_flight: usize) -> axum::Router {
 // ANCHOR: stack
 /// Every kind of layer in one server. A request passes them top to bottom.
 fn full_stack() -> axum::Router {
-    api::Server::new(super::auth::Server)
+    api::Server::new(super::auth::Server(subject))
         // Inside the server, after routing and the check of the credentials that the description asks for. Their
         // errors go out in the error schema.
         .operation_layer(tower::timeout::TimeoutLayer::new(Duration::from_secs(10)))
-        .authenticate(|req: &api::Request| {
-            std::future::ready(Ok(req.extensions().get::<Claims>().map(|claims| claims.sub.clone())))
-        })
-        // After `authenticate`: this layer sees the principal.
+        // The principal is in the extensions already: this layer sees it.
         .operation_layer(tower::filter::AsyncFilterLayer::new(|req: api::Request| {
             let blocked = req.extensions().get::<String>().is_some_and(|who| who == "mallory");
             let refusal = api::ApiError::new(api::http::StatusCode::FORBIDDEN, "blocked");
@@ -160,6 +156,6 @@ async fn the_full_stack_runs_in_order() {
     assert_eq!(ann.headers()["access-control-allow-origin"], "*");
     assert_eq!(ann.headers()["x-next"], "ann");
     let mallory = get(full_stack(), "/v1/products", Some("mallory")).await;
-    assert_eq!(mallory.status(), 403, "the filter after `authenticate` sees the principal");
+    assert_eq!(mallory.status(), 403, "the filter sees the principal");
     assert!(text(mallory).await.contains("\"code\":403"));
 }

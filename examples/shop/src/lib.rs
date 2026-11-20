@@ -12,15 +12,6 @@ use api::{operations as ops, types};
 /// The API key that the shop takes. A real one reads it from its configuration.
 pub const API_KEY: &str = "secret";
 
-// ANCHOR: authenticate
-/// Finds who is calling: a request whose `X-API-Key` is the shop's key. Any other key is nobody, and an operation
-/// that requires the key answers it `401`.
-pub fn check_key(req: &api::Request) -> std::future::Ready<Result<Option<()>, api::ApiError>> {
-    let known = req.headers().get("x-api-key").is_some_and(|key| key == API_KEY);
-    std::future::ready(Ok(known.then_some(())))
-}
-// ANCHOR_END: authenticate
-
 // ANCHOR: catalog
 /// The catalog in memory. The ID of a product is its index.
 #[derive(Default)]
@@ -36,6 +27,11 @@ impl Catalog {
 
 impl api::Api for Catalog {
     type Principal = ();
+
+    /// Checks the `X-API-Key` of a request: the shop's key is someone, any other key is nobody (401).
+    async fn verify_api_key(&self, key: &str, _: &api::Request) -> Result<Option<()>, api::ApiError> {
+        Ok((key == API_KEY).then_some(()))
+    }
 
     // ANCHOR: error_response
     /// A request that the server refuses itself (no route, bad input, a handler `Err`) in the shop's `Error`: the

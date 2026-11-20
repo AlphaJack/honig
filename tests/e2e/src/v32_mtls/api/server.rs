@@ -23,6 +23,29 @@ pub trait Api: Send + Sync + 'static {
     fn error_response(rejection: runtime::Rejection<Operation>) -> runtime::Response {
         rejection.response()
     }
+    /// Checks a credential of `cert`: who is calling, or `None` when it is not valid (401).
+    fn verify_cert(
+        &self,
+        request: &runtime::Request,
+    ) -> impl Future<Output = Result<Option<Self::Principal>, runtime::ApiError>> + Send;
+    /// Checks a credential of `bearer`: who is calling, or `None` when it is not valid (401).
+    fn verify_bearer(
+        &self,
+        credential: &str,
+        request: &runtime::Request,
+    ) -> impl Future<Output = Result<Option<Self::Principal>, runtime::ApiError>> + Send;
+    /// Checks a credential of `api_key`: who is calling, or `None` when it is not valid (401).
+    fn verify_api_key(
+        &self,
+        credential: &str,
+        request: &runtime::Request,
+    ) -> impl Future<Output = Result<Option<Self::Principal>, runtime::ApiError>> + Send;
+    /// Checks a credential of `basic-auth`: who is calling, or `None` when it is not valid (401).
+    fn verify_basic_auth(
+        &self,
+        login: runtime::Basic<'_>,
+        request: &runtime::Request,
+    ) -> impl Future<Output = Result<Option<Self::Principal>, runtime::ApiError>> + Send;
     fn private(
         &self,
         params: ops::private::Params,
@@ -126,7 +149,6 @@ impl<A: Api> From<A> for Routes<A> {
 impl<A: Api> runtime::Operations for Routes<A> {
     type Principal = A::Principal;
     type Operation = Operation;
-    type Security = runtime::DeclaredSecurity;
     fn error_response(&self) -> fn(runtime::Rejection<Operation>) -> runtime::Response {
         |rejection| A::error_response(rejection)
     }
@@ -148,6 +170,47 @@ impl<A: Api> runtime::Operations for Routes<A> {
     }
     fn errors(&self) -> runtime::ProblemSchemas {
         error_schema
+    }
+    fn verify<'r>(
+        &'r self,
+        scheme: &'static str,
+        credential: &'r str,
+        request: &'r runtime::Request,
+    ) -> runtime::BoxFuture<
+        'r,
+        Result<Option<runtime::Verified<A::Principal>>, runtime::ApiError>,
+    > {
+        let api = &*self.0;
+        Box::pin(async move {
+            match scheme {
+                "cert" => Ok(api.verify_cert(request).await?.map(runtime::Verified::new)),
+                "bearer" => {
+                    Ok(
+                        api
+                            .verify_bearer(credential, request)
+                            .await?
+                            .map(runtime::Verified::new),
+                    )
+                }
+                "api_key" => {
+                    Ok(
+                        api
+                            .verify_api_key(credential, request)
+                            .await?
+                            .map(runtime::Verified::new),
+                    )
+                }
+                "basic-auth" => {
+                    Ok(
+                        api
+                            .verify_basic_auth(runtime::Basic::of(credential), request)
+                            .await?
+                            .map(runtime::Verified::new),
+                    )
+                }
+                _ => Ok(None),
+            }
+        })
     }
     fn call<'r>(
         &'r self,

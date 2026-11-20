@@ -23,6 +23,24 @@ pub trait Api: Send + Sync + 'static {
     fn error_response(rejection: runtime::Rejection<Operation>) -> runtime::Response {
         rejection.response()
     }
+    /// Checks a credential of `bearer`: who is calling, or `None` when it is not valid (401).
+    fn verify_bearer(
+        &self,
+        credential: &str,
+        request: &runtime::Request,
+    ) -> impl Future<Output = Result<Option<Self::Principal>, runtime::ApiError>> + Send;
+    /// Checks a credential of `apiKey`: who is calling, or `None` when it is not valid (401).
+    fn verify_api_key(
+        &self,
+        credential: &str,
+        request: &runtime::Request,
+    ) -> impl Future<Output = Result<Option<Self::Principal>, runtime::ApiError>> + Send;
+    /// Checks a credential of `tenant`: who is calling, or `None` when it is not valid (401).
+    fn verify_tenant(
+        &self,
+        credential: &str,
+        request: &runtime::Request,
+    ) -> impl Future<Output = Result<Option<Self::Principal>, runtime::ApiError>> + Send;
     fn list_orders(
         &self,
         params: ops::list_orders::Params,
@@ -140,7 +158,6 @@ impl<A: Api> From<A> for Routes<A> {
 impl<A: Api> runtime::Operations for Routes<A> {
     type Principal = A::Principal;
     type Operation = Operation;
-    type Security = runtime::DeclaredSecurity;
     fn error_response(&self) -> fn(runtime::Rejection<Operation>) -> runtime::Response {
         |rejection| A::error_response(rejection)
     }
@@ -162,6 +179,46 @@ impl<A: Api> runtime::Operations for Routes<A> {
     }
     fn errors(&self) -> runtime::ProblemSchemas {
         error_schema
+    }
+    fn verify<'r>(
+        &'r self,
+        scheme: &'static str,
+        credential: &'r str,
+        request: &'r runtime::Request,
+    ) -> runtime::BoxFuture<
+        'r,
+        Result<Option<runtime::Verified<A::Principal>>, runtime::ApiError>,
+    > {
+        let api = &*self.0;
+        Box::pin(async move {
+            match scheme {
+                "bearer" => {
+                    Ok(
+                        api
+                            .verify_bearer(credential, request)
+                            .await?
+                            .map(runtime::Verified::new),
+                    )
+                }
+                "apiKey" => {
+                    Ok(
+                        api
+                            .verify_api_key(credential, request)
+                            .await?
+                            .map(runtime::Verified::new),
+                    )
+                }
+                "tenant" => {
+                    Ok(
+                        api
+                            .verify_tenant(credential, request)
+                            .await?
+                            .map(runtime::Verified::new),
+                    )
+                }
+                _ => Ok(None),
+            }
+        })
     }
     fn call<'r>(
         &'r self,

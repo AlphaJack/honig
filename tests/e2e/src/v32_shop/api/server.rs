@@ -22,6 +22,53 @@ pub trait Api: Send + Sync + 'static {
     type Principal: Clone + Send + Sync + 'static;
     /// Answers a request that the server refuses itself (no route, bad input, missing credentials, a handler `Err`) in the error body of the description. No standard defines its fields, so this maps them: `rejection.reason` holds the status and the detail.
     fn error_response(rejection: runtime::Rejection<Operation>) -> runtime::Response;
+    /// Checks a credential of `bearerAuth`: who is calling, or `None` when it is not valid (401).
+    fn verify_bearer_auth(
+        &self,
+        credential: &str,
+        request: &runtime::Request,
+    ) -> impl Future<Output = Result<Option<Self::Principal>, runtime::ApiError>> + Send;
+    /// Checks a credential of `basicAuth`: who is calling, or `None` when it is not valid (401).
+    fn verify_basic_auth(
+        &self,
+        login: runtime::Basic<'_>,
+        request: &runtime::Request,
+    ) -> impl Future<Output = Result<Option<Self::Principal>, runtime::ApiError>> + Send;
+    /// Checks a credential of `apiKeyHeader`: who is calling, or `None` when it is not valid (401).
+    fn verify_api_key_header(
+        &self,
+        credential: &str,
+        request: &runtime::Request,
+    ) -> impl Future<Output = Result<Option<Self::Principal>, runtime::ApiError>> + Send;
+    /// Checks a credential of `apiKeyQuery`: who is calling, or `None` when it is not valid (401).
+    fn verify_api_key_query(
+        &self,
+        credential: &str,
+        request: &runtime::Request,
+    ) -> impl Future<Output = Result<Option<Self::Principal>, runtime::ApiError>> + Send;
+    /// Checks a credential of `apiKeyCookie`: who is calling, or `None` when it is not valid (401).
+    fn verify_api_key_cookie(
+        &self,
+        credential: &str,
+        request: &runtime::Request,
+    ) -> impl Future<Output = Result<Option<Self::Principal>, runtime::ApiError>> + Send;
+    /// Checks a credential of `oAuth2`: who is calling, or `None` when it is not valid (401).
+    fn verify_o_auth2(
+        &self,
+        credential: &str,
+        request: &runtime::Request,
+    ) -> impl Future<
+        Output = Result<
+            Option<runtime::Granted<Self::Principal, OAuth2Scope>>,
+            runtime::ApiError,
+        >,
+    > + Send;
+    /// Checks a credential of `openIdConnect`: who is calling, or `None` when it is not valid (401).
+    fn verify_open_id_connect(
+        &self,
+        credential: &str,
+        request: &runtime::Request,
+    ) -> impl Future<Output = Result<Option<Self::Principal>, runtime::ApiError>> + Send;
     /// Retrieve every product in the catalog, a page at a time.
     fn get_all_data(
         &self,
@@ -225,8 +272,9 @@ pub fn credentials(request: &impl runtime::Secured) -> Vec<Credential<'_>> {
         })
         .collect()
 }
+/// A scope or role of `oAuth2`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub enum Scope {
+pub enum OAuth2Scope {
     /// read your account information
     ReadAccount,
     /// read your products
@@ -234,7 +282,7 @@ pub enum Scope {
     /// modify products in your account
     WriteProducts,
 }
-impl Scope {
+impl OAuth2Scope {
     #[must_use]
     pub const fn as_str(self) -> &'static str {
         match self {
@@ -252,20 +300,6 @@ impl Scope {
             _ => None,
         }
     }
-}
-#[must_use]
-pub fn scope_alternatives(request: &impl runtime::Secured) -> Vec<Vec<Scope>> {
-    request
-        .requirements()
-        .iter()
-        .map(|alt| alt.iter().filter_map(|s| Scope::from_name(s)).collect())
-        .collect()
-}
-pub fn scopes_held(
-    request: &impl runtime::Secured,
-    held: impl Fn(Scope) -> bool,
-) -> bool {
-    runtime::Secured::scopes_held(request, |s| Scope::from_name(s).is_some_and(&held))
 }
 const fn error_schema(
     _operation: Option<&str>,
@@ -355,7 +389,6 @@ pub type WebhookContext<'a, C = ()> = runtime::Context<'a, C, WebhookOperation>;
 impl<A: Webhooks> runtime::Operations for WebhookRoutes<A> {
     type Principal = A::Principal;
     type Operation = WebhookOperation;
-    type Security = runtime::NoSecurity;
     fn error_response(
         &self,
     ) -> fn(runtime::Rejection<WebhookOperation>) -> runtime::Response {
@@ -394,6 +427,17 @@ impl<A: Webhooks> runtime::Operations for WebhookRoutes<A> {
     }
     fn errors(&self) -> runtime::ProblemSchemas {
         error_schema
+    }
+    fn verify<'r>(
+        &'r self,
+        _: &'static str,
+        _: &'r str,
+        _: &'r runtime::Request,
+    ) -> runtime::BoxFuture<
+        'r,
+        Result<Option<runtime::Verified<A::Principal>>, runtime::ApiError>,
+    > {
+        Box::pin(std::future::ready(Ok(None)))
     }
     fn call<'r>(
         &'r self,
@@ -504,7 +548,6 @@ impl<A: Api> From<A> for Routes<A> {
 impl<A: Api> runtime::Operations for Routes<A> {
     type Principal = A::Principal;
     type Operation = Operation;
-    type Security = runtime::DeclaredSecurity;
     fn error_response(&self) -> fn(runtime::Rejection<Operation>) -> runtime::Response {
         |rejection| A::error_response(rejection)
     }
@@ -526,6 +569,85 @@ impl<A: Api> runtime::Operations for Routes<A> {
     }
     fn errors(&self) -> runtime::ProblemSchemas {
         error_schema
+    }
+    fn verify<'r>(
+        &'r self,
+        scheme: &'static str,
+        credential: &'r str,
+        request: &'r runtime::Request,
+    ) -> runtime::BoxFuture<
+        'r,
+        Result<Option<runtime::Verified<A::Principal>>, runtime::ApiError>,
+    > {
+        let api = &*self.0;
+        Box::pin(async move {
+            match scheme {
+                "bearerAuth" => {
+                    Ok(
+                        api
+                            .verify_bearer_auth(credential, request)
+                            .await?
+                            .map(runtime::Verified::new),
+                    )
+                }
+                "basicAuth" => {
+                    Ok(
+                        api
+                            .verify_basic_auth(runtime::Basic::of(credential), request)
+                            .await?
+                            .map(runtime::Verified::new),
+                    )
+                }
+                "apiKeyHeader" => {
+                    Ok(
+                        api
+                            .verify_api_key_header(credential, request)
+                            .await?
+                            .map(runtime::Verified::new),
+                    )
+                }
+                "apiKeyQuery" => {
+                    Ok(
+                        api
+                            .verify_api_key_query(credential, request)
+                            .await?
+                            .map(runtime::Verified::new),
+                    )
+                }
+                "apiKeyCookie" => {
+                    Ok(
+                        api
+                            .verify_api_key_cookie(credential, request)
+                            .await?
+                            .map(runtime::Verified::new),
+                    )
+                }
+                "oAuth2" => {
+                    Ok(
+                        api
+                            .verify_o_auth2(credential, request)
+                            .await?
+                            .map(|g| runtime::Verified {
+                                principal: g.principal,
+                                scopes: g
+                                    .scopes
+                                    .into_iter()
+                                    .map(OAuth2Scope::as_str)
+                                    .collect(),
+                            }),
+                    )
+                }
+                "openIdConnect" => {
+                    Ok(
+                        api
+                            .verify_open_id_connect(credential, request)
+                            .await?
+                            .map(runtime::Verified::new),
+                    )
+                }
+                _ => Ok(None),
+            }
+        })
     }
     fn call<'r>(
         &'r self,

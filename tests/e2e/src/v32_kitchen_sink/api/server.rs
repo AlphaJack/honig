@@ -24,6 +24,29 @@ pub trait Api: Send + Sync + 'static {
     fn error_response(rejection: runtime::Rejection<Operation>) -> runtime::Response {
         rejection.response()
     }
+    /// Checks a credential of `bearer`: who is calling, or `None` when it is not valid (401).
+    fn verify_bearer(
+        &self,
+        credential: &str,
+        request: &runtime::Request,
+    ) -> impl Future<Output = Result<Option<Self::Principal>, runtime::ApiError>> + Send;
+    /// Checks a credential of `apiKey`: who is calling, or `None` when it is not valid (401).
+    fn verify_api_key(
+        &self,
+        credential: &str,
+        request: &runtime::Request,
+    ) -> impl Future<Output = Result<Option<Self::Principal>, runtime::ApiError>> + Send;
+    /// Checks a credential of `oauth`: who is calling, or `None` when it is not valid (401).
+    fn verify_oauth(
+        &self,
+        credential: &str,
+        request: &runtime::Request,
+    ) -> impl Future<
+        Output = Result<
+            Option<runtime::Granted<Self::Principal, OauthScope>>,
+            runtime::ApiError,
+        >,
+    > + Send;
     fn submit_form(
         &self,
         params: ops::submit_form::Params,
@@ -205,14 +228,15 @@ pub fn credentials(request: &impl runtime::Secured) -> Vec<Credential<'_>> {
         })
         .collect()
 }
+/// A scope or role of `oauth`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub enum Scope {
+pub enum OauthScope {
     /// Read
     Read,
     /// Write
     Write,
 }
-impl Scope {
+impl OauthScope {
     #[must_use]
     pub const fn as_str(self) -> &'static str {
         match self {
@@ -228,20 +252,6 @@ impl Scope {
             _ => None,
         }
     }
-}
-#[must_use]
-pub fn scope_alternatives(request: &impl runtime::Secured) -> Vec<Vec<Scope>> {
-    request
-        .requirements()
-        .iter()
-        .map(|alt| alt.iter().filter_map(|s| Scope::from_name(s)).collect())
-        .collect()
-}
-pub fn scopes_held(
-    request: &impl runtime::Secured,
-    held: impl Fn(Scope) -> bool,
-) -> bool {
-    runtime::Secured::scopes_held(request, |s| Scope::from_name(s).is_some_and(&held))
 }
 const ERROR_SCHEMA_0: runtime::ProblemSchema = runtime::ProblemSchema {
     media: "application/problem+json",
@@ -263,6 +273,29 @@ pub trait Webhooks: Send + Sync + 'static {
     ) -> runtime::Response {
         rejection.response()
     }
+    /// Checks a credential of `bearer`: who is calling, or `None` when it is not valid (401).
+    fn verify_bearer(
+        &self,
+        credential: &str,
+        request: &runtime::Request,
+    ) -> impl Future<Output = Result<Option<Self::Principal>, runtime::ApiError>> + Send;
+    /// Checks a credential of `apiKey`: who is calling, or `None` when it is not valid (401).
+    fn verify_api_key(
+        &self,
+        credential: &str,
+        request: &runtime::Request,
+    ) -> impl Future<Output = Result<Option<Self::Principal>, runtime::ApiError>> + Send;
+    /// Checks a credential of `oauth`: who is calling, or `None` when it is not valid (401).
+    fn verify_oauth(
+        &self,
+        credential: &str,
+        request: &runtime::Request,
+    ) -> impl Future<
+        Output = Result<
+            Option<runtime::Granted<Self::Principal, OauthScope>>,
+            runtime::ApiError,
+        >,
+    > + Send;
     fn new_product_post(
         &self,
         params: ops::new_product_post::Params,
@@ -315,7 +348,6 @@ pub type WebhookContext<'a, C = ()> = runtime::Context<'a, C, WebhookOperation>;
 impl<A: Webhooks> runtime::Operations for WebhookRoutes<A> {
     type Principal = A::Principal;
     type Operation = WebhookOperation;
-    type Security = runtime::DeclaredSecurity;
     fn error_response(
         &self,
     ) -> fn(runtime::Rejection<WebhookOperation>) -> runtime::Response {
@@ -347,6 +379,53 @@ impl<A: Webhooks> runtime::Operations for WebhookRoutes<A> {
     }
     fn errors(&self) -> runtime::ProblemSchemas {
         error_schema
+    }
+    fn verify<'r>(
+        &'r self,
+        scheme: &'static str,
+        credential: &'r str,
+        request: &'r runtime::Request,
+    ) -> runtime::BoxFuture<
+        'r,
+        Result<Option<runtime::Verified<A::Principal>>, runtime::ApiError>,
+    > {
+        let api = &*self.api;
+        Box::pin(async move {
+            match scheme {
+                "bearer" => {
+                    Ok(
+                        api
+                            .verify_bearer(credential, request)
+                            .await?
+                            .map(runtime::Verified::new),
+                    )
+                }
+                "apiKey" => {
+                    Ok(
+                        api
+                            .verify_api_key(credential, request)
+                            .await?
+                            .map(runtime::Verified::new),
+                    )
+                }
+                "oauth" => {
+                    Ok(
+                        api
+                            .verify_oauth(credential, request)
+                            .await?
+                            .map(|g| runtime::Verified {
+                                principal: g.principal,
+                                scopes: g
+                                    .scopes
+                                    .into_iter()
+                                    .map(OauthScope::as_str)
+                                    .collect(),
+                            }),
+                    )
+                }
+                _ => Ok(None),
+            }
+        })
     }
     fn call<'r>(
         &'r self,
@@ -445,7 +524,6 @@ impl<A: Api> From<A> for Routes<A> {
 impl<A: Api> runtime::Operations for Routes<A> {
     type Principal = A::Principal;
     type Operation = Operation;
-    type Security = runtime::DeclaredSecurity;
     fn error_response(&self) -> fn(runtime::Rejection<Operation>) -> runtime::Response {
         |rejection| A::error_response(rejection)
     }
@@ -476,6 +554,53 @@ impl<A: Api> runtime::Operations for Routes<A> {
     }
     fn errors(&self) -> runtime::ProblemSchemas {
         error_schema
+    }
+    fn verify<'r>(
+        &'r self,
+        scheme: &'static str,
+        credential: &'r str,
+        request: &'r runtime::Request,
+    ) -> runtime::BoxFuture<
+        'r,
+        Result<Option<runtime::Verified<A::Principal>>, runtime::ApiError>,
+    > {
+        let api = &*self.0;
+        Box::pin(async move {
+            match scheme {
+                "bearer" => {
+                    Ok(
+                        api
+                            .verify_bearer(credential, request)
+                            .await?
+                            .map(runtime::Verified::new),
+                    )
+                }
+                "apiKey" => {
+                    Ok(
+                        api
+                            .verify_api_key(credential, request)
+                            .await?
+                            .map(runtime::Verified::new),
+                    )
+                }
+                "oauth" => {
+                    Ok(
+                        api
+                            .verify_oauth(credential, request)
+                            .await?
+                            .map(|g| runtime::Verified {
+                                principal: g.principal,
+                                scopes: g
+                                    .scopes
+                                    .into_iter()
+                                    .map(OauthScope::as_str)
+                                    .collect(),
+                            }),
+                    )
+                }
+                _ => Ok(None),
+            }
+        })
     }
     fn call<'r>(
         &'r self,

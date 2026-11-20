@@ -515,21 +515,35 @@ fn fine_grained() -> Value {
     )
 }
 
+/// Returns the variants of the enum `name` in the squashed server.
+fn variants_of<'a>(server: &'a str, name: &str) -> Vec<&'a str> {
+    let Some((decl, _)) = server.split(&format!("pubenum{name}{{")).nth(1).and_then(|r| r.split_once('}')) else {
+        panic!("no {name}");
+    };
+    decl.split(',').filter(|v| !v.is_empty()).map(|v| v.rsplit("*/").next().unwrap_or(v)).collect()
+}
+
+/// Each scheme has its own scope enum: a token of one scheme cannot grant a scope of another.
 #[test]
-fn every_scope_and_role_is_a_typed_variant() {
+fn every_scope_and_role_is_a_variant_of_its_schemes_enum() {
     let server = squash(&server_of("scope-enum", &fine_grained()));
-    let decl =
-        server.split("pubenumScope{").nth(1).and_then(|r| r.split_once('}')).map(|(d, _)| d).expect("Scope enum");
-    let variants: Vec<&str> = decl.split(',').map(|v| v.rsplit(char::is_whitespace).next().unwrap_or(v)).collect();
-    for v in ["IssuesRead", "IssuesWrite", "Repo", "ReadOrg"] {
-        assert!(variants.iter().any(|d| d.ends_with(v)), "missing {v} in {decl}");
-    }
-    assert!(decl.contains("///Fullcontrolofrepositories"), "OAuth2 descriptions become docs: {decl}");
+    let pat = variants_of(&server, "PatScope");
+    let oauth = variants_of(&server, "OauthScope");
+    assert!(pat.iter().any(|v| v.ends_with("IssuesRead")) && pat.iter().any(|v| v.ends_with("IssuesWrite")), "{pat:?}");
+    assert!(!pat.iter().any(|v| v.ends_with("Repo")), "no scope of `oauth` in `PatScope`: {pat:?}");
+    assert!(oauth.iter().any(|v| v.ends_with("Repo")) && oauth.iter().any(|v| v.ends_with("ReadOrg")), "{oauth:?}");
+    assert!(!oauth.iter().any(|v| v.ends_with("IssuesRead")), "{oauth:?}");
+    assert!(server.contains("///Fullcontrolofrepositories"), "OAuth2 descriptions become docs");
     for (name, v) in [("issues:read", "IssuesRead"), ("issues:write", "IssuesWrite"), ("read:org", "ReadOrg")] {
         assert!(server.contains(&format!("Self::{v}=>\"{name}\"")), "{v} as_str");
         assert!(server.contains(&format!("\"{name}\"=>Some(Self::{v})")), "{v} from_name");
     }
-    assert!(server.contains("pubfnscopes_held(request:&implruntime::Secured,held:implFn(Scope)->bool)->bool"));
+    assert!(!server.contains("pubenumScope{"), "no enum that merges the schemes");
+    assert!(server.contains("Option<runtime::Granted<Self::Principal,PatScope>>"), "verify_pat grants `PatScope`");
+    assert!(
+        server.contains("Option<runtime::Granted<Self::Principal,OauthScope>>"),
+        "verify_oauth grants `OauthScope`"
+    );
 }
 
 #[test]
@@ -547,7 +561,8 @@ fn or_of_roles_on_one_scheme_keeps_both_alternatives() {
 #[test]
 fn no_scopes_means_no_scope_enum() {
     let server = squash(&server_of("scope-none", &doc(&secured_op(&json!([{"local": []}])), &bearer())));
-    assert!(!server.contains("pubenumScope"), "an empty enum would be uninhabited noise");
+    assert!(!server.contains("pubenumLocalScope"), "an empty enum would be uninhabited noise");
+    assert!(server.contains("Option<Self::Principal>"), "a scheme without scopes returns the principal alone");
 }
 
 /// JSON Schema 2020-12 section 6.1.3: a `const` property is valid only at its value. The error body that the server

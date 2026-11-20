@@ -209,16 +209,11 @@ pub struct Context<'a, C = (), Id = ()> {
     /// Credentials of the satisfied security requirements with their scheme: read them with the generated
     /// `server::credentials` or with [`Secured::presented`](crate::Secured::presented).
     pub(crate) auth: Vec<(crate::Scheme, String)>,
-    /// Scopes of every satisfied requirement (OR of ANDs) in document order: check them with the generated
-    /// `server::scopes_held`.
-    pub(crate) requirements: Vec<Vec<&'static str>>,
-    /// A satisfied security requirement relies on `mutualTLS`. Only your TLS layer can verify it.
-    pub mutual_tls: bool,
     /// The operation being served: one variant of the generated `Operation`.
     pub operation: Id,
     /// The request's wide event: add fields with [`RequestEvent::set`].
     pub event: &'a RequestEvent<Id>,
-    /// Who is calling: what [`Server::authenticate`](crate::Server::authenticate) found.
+    /// Who is calling: what the `verify_` method of the `Api` for the scheme found.
     pub principal: C,
 }
 
@@ -226,22 +221,14 @@ impl<'a, Id> Context<'a, (), Id> {
     /// Creates context of a request for `operation` with the credentials that satisfied
     /// its security requirement. It records into `event`.
     pub fn new(req: &'a Request, operation: Id, satisfied: SatisfiedSecurity, event: &'a RequestEvent<Id>) -> Self {
-        Self {
-            request: req,
-            auth: satisfied.auth,
-            requirements: satisfied.requirements,
-            mutual_tls: satisfied.mutual_tls,
-            operation,
-            event,
-            principal: (),
-        }
+        Self { request: req, auth: satisfied.auth, operation, event, principal: () }
     }
 
     /// Returns the context with who is calling.
     #[must_use]
     pub fn with_principal<C>(self, principal: C) -> Context<'a, C, Id> {
-        let Self { request, auth, requirements, mutual_tls, operation, event, principal: () } = self;
-        Context { request, auth, requirements, mutual_tls, operation, event, principal }
+        let Self { request, auth, operation, event, principal: () } = self;
+        Context { request, auth, operation, event, principal }
     }
 }
 

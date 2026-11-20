@@ -14,7 +14,7 @@ Layers inside the server answer in the error schema. Timeouts, load shedding and
 
 ## Rate limits
 
-OpenAPI cannot express a rate limit. Enforce one with tower's `AsyncFilterLayer`. It runs before the body is read. The request's extensions hold the operation and, after `authenticate`, the principal. An `ApiError` it returns goes out in the error schema:
+OpenAPI cannot express a rate limit. Enforce one with tower's `AsyncFilterLayer`. It runs before the body is read. The request's extensions hold the operation and the principal. An `ApiError` it returns goes out in the error schema:
 
 ```rust
 {{#include ../../../tests/e2e/tests/v32_catalog/layers.rs:rate-limit}}
@@ -42,4 +42,4 @@ tower-http layers go outside the server. A layer outside that answers on its own
 {{#include ../../../tests/e2e/tests/v32_catalog/layers.rs:outside}}
 ```
 
-[Recipes](recipes.md#a-full-stack) puts layers outside and inside the server and `authenticate` in one stack. It also maps the errors of outside layers that fail with a timeout or a full queue.
+[Recipes](recipes.md#a-full-stack) puts layers outside and inside the server in one stack. It also maps the errors of outside layers that fail with a timeout or a full queue.

@@ -1,4 +1,4 @@
-//! The scope and credential enums a server authorizes with.
+//! The scope and credential enums and the credential checks of a server.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -9,20 +9,23 @@ use crate::emit::rust::names::pascal;
 use crate::emit::rust::syntax::pascal_ident;
 use crate::emit::rust::syntax::{doc_opt, ident, lit};
 use crate::ir::Api;
+use crate::ir::http::Operation;
 use crate::ir::names::Name;
-use crate::ir::security::SchemeKind;
+use crate::ir::security::{Requirement, SchemeKind, SecurityScheme as Scheme};
 
-/// Returns every scope or role that the description names in name order. That is `OAuth2` scopes declared on a
-/// scheme (with their description) and the roles that security requirements list
-/// (3.1+: any scheme type).
-pub(crate) fn scope_names(api: &Api) -> Vec<(String, Option<String>)> {
+/// Returns the scopes or roles of the scheme `scheme` in name order: the `OAuth2` scopes that it declares (with their
+/// description) and the roles that security requirements list for it (3.1+: any scheme type).
+/// Returns every requirement that `ops` declare.
+fn requirements<'a>(ops: impl Iterator<Item = &'a Operation>) -> impl Iterator<Item = &'a Requirement> {
+    ops.flat_map(|o| o.security.iter().flatten())
+}
+
+fn scheme_scopes(api: &Api, scheme: &Scheme) -> Vec<(String, Option<String>)> {
     let mut out: BTreeMap<String, Option<String>> = BTreeMap::new();
-    for s in &api.schemes {
-        for (name, d) in &s.scopes {
-            out.entry(name.clone()).or_insert_with(|| (!d.trim().is_empty()).then(|| d.clone()));
-        }
+    for (name, d) in &scheme.scopes {
+        out.entry(name.clone()).or_insert_with(|| (!d.trim().is_empty()).then(|| d.clone()));
     }
-    for req in api.http.operations.iter().flat_map(|o| o.security.iter().flatten()) {
+    for req in requirements(api.http.operations.iter()).filter(|r| r.scheme == scheme.name) {
         for name in &req.scopes {
             out.entry(name.clone()).or_insert(None);
         }
@@ -30,61 +33,165 @@ pub(crate) fn scope_names(api: &Api) -> Vec<(String, Option<String>)> {
     out.into_iter().collect()
 }
 
-/// Returns `Scope`: one variant per scope or role with `scope_alternatives` and
-/// `scopes_held`. So an authentication layer can match exhaustively. A scope added to the
-/// description is a compile error there. A misspelt one cannot be written.
-pub(crate) fn scope_enum(api: &Api) -> Option<TokenStream> {
-    let names = scope_names(api);
-    if names.is_empty() {
-        return None;
+/// Returns the name of the scope enum of the scheme whose `Credential` variant is `variant`: `PatScope`.
+fn scope_enum_name(variant: &str) -> proc_macro2::Ident {
+    ident(&format!("{variant}Scope"))
+}
+
+/// Returns one scope enum per scheme with scopes or roles: one variant per scope with `as_str` and `from_name`. A
+/// validator returns the scopes of a credential in it, so it cannot grant a scope of another scheme or one that the
+/// description does not list.
+pub(crate) fn scope_enums(api: &Api) -> TokenStream {
+    let enums = api.schemes.iter().zip(credential_variants(api)).filter_map(|(scheme, variant)| {
+        let names = scheme_scopes(api, scheme);
+        if names.is_empty() {
+            return None;
+        }
+        let name = scope_enum_name(&variant);
+        let mut taken = BTreeSet::new();
+        let variants: Vec<proc_macro2::Ident> =
+            names.iter().map(|(n, _)| pascal_ident(&crate::ir::names::unique(Name::new(n), &mut taken))).collect();
+        let decls = names.iter().zip(&variants).map(|((_, d), v)| {
+            let doc = doc_opt(d.as_deref());
+            quote!(#doc #v,)
+        });
+        let to_str = names.iter().zip(&variants).map(|((n, _), v)| {
+            let n = lit(n);
+            quote!(Self::#v => #n,)
+        });
+        let by_name = names.iter().zip(&variants).map(|((n, _), v)| {
+            let n = lit(n);
+            quote!(#n => Some(Self::#v),)
+        });
+        let doc = lit(&format!(" A scope or role of `{}`.", scheme.name));
+        Some(quote! {
+            #[doc = #doc]
+            #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+            pub enum #name {
+                #(#decls)*
+            }
+
+            impl #name {
+                #[must_use]
+                pub const fn as_str(self) -> &'static str {
+                    match self {
+                        #(#to_str)*
+                    }
+                }
+
+                #[must_use]
+                pub fn from_name(name: &str) -> Option<Self> {
+                    match name {
+                        #(#by_name)*
+                        _ => None,
+                    }
+                }
+            }
+        })
+    });
+    quote!(#(#enums)*)
+}
+
+/// Returns the schemes that the requirements of `ops` list, each once in the order of the description, with their
+/// `Credential` variant.
+fn used_schemes<'a>(api: &'a Api, ops: &[&Operation]) -> Vec<(&'a Scheme, String)> {
+    let used: BTreeSet<&str> = requirements(ops.iter().copied()).map(|r| r.scheme.as_str()).collect();
+    api.schemes.iter().zip(credential_variants(api)).filter(|(s, _)| used.contains(s.name.as_str())).collect()
+}
+
+/// Returns the name of the method that checks a credential of the scheme whose `Credential` variant is `variant`:
+/// `verify_pat`.
+fn verify_name(variant: &str) -> proc_macro2::Ident {
+    ident(&format!("verify_{}", crate::emit::rust::names::snake(&Name::new(variant))))
+}
+
+/// Returns one method per scheme that `ops` use: it checks the credential and returns who is calling, or `None` for a
+/// credential that is not valid. A scheme with scopes or roles returns the scopes that the credential grants too.
+/// With `allow_unimplemented` each has a default that refuses every credential.
+pub(crate) fn verify_methods(api: &Api, ops: &[&Operation], allow_unimplemented: bool) -> TokenStream {
+    let methods = used_schemes(api, ops).into_iter().map(|(scheme, variant)| {
+        let name = verify_name(&variant);
+        let found = if scheme_scopes(api, scheme).is_empty() {
+            quote!(Self::Principal)
+        } else {
+            let scope = scope_enum_name(&variant);
+            quote!(runtime::Granted<Self::Principal, #scope>)
+        };
+        let (arg, unused) = match scheme.kind {
+            SchemeKind::Basic => (quote!(login: runtime::Basic<'_>,), quote!(login)),
+            SchemeKind::MutualTls => (quote!(), quote!(())),
+            SchemeKind::ApiKey { .. } | SchemeKind::Bearer | SchemeKind::OtherHttp(_) => {
+                (quote!(credential: &str,), quote!(credential))
+            }
+        };
+        let doc = lit(&format!(
+            " Checks a credential of `{}`: who is calling, or `None` when it is not valid (401).",
+            scheme.name
+        ));
+        let body = if allow_unimplemented {
+            quote!({
+                let _ = (#unused, request);
+                std::future::ready(Ok(None))
+            })
+        } else {
+            quote!(;)
+        };
+        quote! {
+            #[doc = #doc]
+            fn #name(&self, #arg request: &runtime::Request)
+                -> impl Future<Output = Result<Option<#found>, runtime::ApiError>> + Send #body
+        }
+    });
+    quote!(#(#methods)*)
+}
+
+/// Returns `runtime::Operations::verify` of the server of `ops`: the `verify_` method of the scheme of the credential,
+/// on the `Api` that `api` reaches (`&*self.0`).
+pub(crate) fn verify_fn(api: &Api, ops: &[&Operation], reach: &TokenStream, principal: &TokenStream) -> TokenStream {
+    let signature = |names: TokenStream| {
+        quote! {
+            fn verify<'r>(&'r self, #names) -> runtime::BoxFuture<'r, Result<Option<runtime::Verified<#principal>>, runtime::ApiError>>
+        }
+    };
+    let used = used_schemes(api, ops);
+    if used.is_empty() {
+        let signature = signature(quote!(_: &'static str, _: &'r str, _: &'r runtime::Request));
+        return quote!(#signature { Box::pin(std::future::ready(Ok(None))) });
     }
-    let mut taken = BTreeSet::new();
-    let variants: Vec<proc_macro2::Ident> =
-        names.iter().map(|(n, _)| pascal_ident(&crate::ir::names::unique(Name::new(n), &mut taken))).collect();
-    let decls = names.iter().zip(&variants).map(|((_, d), v)| {
-        let doc = doc_opt(d.as_deref());
-        quote!(#doc #v,)
-    });
-    let to_str = names.iter().zip(&variants).map(|((n, _), v)| {
-        let n = lit(n);
-        quote!(Self::#v => #n,)
-    });
-    let by_name = names.iter().zip(&variants).map(|((n, _), v)| {
-        let n = lit(n);
-        quote!(#n => Some(Self::#v),)
-    });
-    Some(quote! {
-        #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-        pub enum Scope {
-            #(#decls)*
-        }
-
-        impl Scope {
-            #[must_use]
-            pub const fn as_str(self) -> &'static str {
-                match self {
-                    #(#to_str)*
-                }
+    let credential =
+        if used.iter().all(|(s, _)| matches!(s.kind, SchemeKind::MutualTls)) { quote!(_) } else { quote!(credential) };
+    let signature = signature(quote!(scheme: &'static str, #credential: &'r str, request: &'r runtime::Request));
+    let arms = used.into_iter().map(|(scheme, variant)| {
+        let (key, name) = (lit(&scheme.name), verify_name(&variant));
+        let call = match scheme.kind {
+            SchemeKind::Basic => quote!(api.#name(runtime::Basic::of(credential), request).await?),
+            SchemeKind::MutualTls => quote!(api.#name(request).await?),
+            SchemeKind::ApiKey { .. } | SchemeKind::Bearer | SchemeKind::OtherHttp(_) => {
+                quote!(api.#name(credential, request).await?)
             }
-
-            #[must_use]
-            pub fn from_name(name: &str) -> Option<Self> {
-                match name {
-                    #(#by_name)*
-                    _ => None,
+        };
+        let verified = if scheme_scopes(api, scheme).is_empty() {
+            quote!(#call.map(runtime::Verified::new))
+        } else {
+            let scope = scope_enum_name(&variant);
+            quote!(#call.map(|g| runtime::Verified {
+                principal: g.principal,
+                scopes: g.scopes.into_iter().map(#scope::as_str).collect(),
+            }))
+        };
+        quote!(#key => Ok(#verified),)
+    });
+    quote! {
+        #signature {
+            let api = #reach;
+            Box::pin(async move {
+                match scheme {
+                    #(#arms)*
+                    _ => Ok(None),
                 }
-            }
+            })
         }
-
-        #[must_use]
-        pub fn scope_alternatives(request: &impl runtime::Secured) -> Vec<Vec<Scope>> {
-            request.requirements().iter().map(|alt| alt.iter().filter_map(|s| Scope::from_name(s)).collect()).collect()
-        }
-
-        pub fn scopes_held(request: &impl runtime::Secured, held: impl Fn(Scope) -> bool) -> bool {
-            runtime::Secured::scopes_held(request, |s| Scope::from_name(s).is_some_and(&held))
-        }
-    })
+    }
 }
 
 /// Returns the unique variant name of each security scheme in `Credential`.

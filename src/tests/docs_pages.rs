@@ -56,7 +56,7 @@ fn out_dir() -> PathBuf {
 /// - `formats.md`: the Rust type of each string format as the generator picks it
 /// - `checked-text.md`: the runtime's text types that only a valid value of their format can be
 /// - `module-files.md`: the files of a generated module from `emit::rust::FILES`
-/// - `principals.md`, `operation-layer.md`: the rustdoc of `Authentication` and of `Server::operation_layer`
+/// - `principals.md`, `operation-layer.md`: the rustdoc of `Verified` and of `Server::operation_layer`
 /// - `upgrade-v20.md`, `upgrade-v30.md`, `upgrade-v31.md`, `upgrade-any.md`: the module docs of the upgrade passes
 fn pages() -> Result<Vec<(&'static str, PathBuf, String)>> {
     let root = super::root();
@@ -67,6 +67,7 @@ fn pages() -> Result<Vec<(&'static str, PathBuf, String)>> {
         src.join("client").join("reconnect.rs"),
     );
     let (error_rs, reject_rs) = (src.join("error.rs"), src.join("reject.rs"));
+    let auth_rs = src.join("server").join("auth.rs");
     let (formats_rs, formatted_rs) = (src.join("formats.rs"), src.join("formatted.rs"));
     let runtime_toml = root.join("runtime").join("Cargo.toml");
     let upgrade = root.join("src").join("upgrade");
@@ -83,7 +84,7 @@ fn pages() -> Result<Vec<(&'static str, PathBuf, String)>> {
     let server = methods_page(
         &service,
         "pub struct Server",
-        "impl<O: Operations, L, A> Server<O, L, A> {",
+        "impl<O: Operations, L> Server<O, L> {",
         &["operation_layer", "into_service", "into_axum"],
     )?;
     Ok(vec![
@@ -107,7 +108,7 @@ fn pages() -> Result<Vec<(&'static str, PathBuf, String)>> {
             formats_rs.clone(),
             plain_links(&checked_text_page(&read(&formats_rs)?, &read(&formatted_rs)?)),
         ),
-        ("principals.md", service_rs.clone(), plain_links(&item_docs(&service, "pub trait Authentication")?)),
+        ("principals.md", auth_rs.clone(), plain_links(&item_docs(&read(&auth_rs)?, "pub struct Verified")?)),
         ("operation-layer.md", service_rs, plain_links(&item_docs(&service, "    pub fn operation_layer")?)),
         ("upgrade-v20.md", v20.clone(), module_docs(&read(&v20)?)),
         ("upgrade-v30.md", v30.clone(), module_docs(&read(&v30)?)),

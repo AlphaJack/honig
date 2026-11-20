@@ -15,7 +15,6 @@ use super::Catalog;
 /// Limits that answer in the description's error schema: a `503` once a request takes too long or too many run.
 fn limited() -> axum::Router {
     api::Server::new(Catalog::default())
-        .authenticate(super::check_key)
         .operation_layer(tower::timeout::TimeoutLayer::new(Duration::from_secs(10)))
         .operation_layer(tower::load_shed::LoadShedLayer::new())
         .operation_layer(tower::limit::ConcurrencyLimitLayer::new(64))
@@ -29,7 +28,6 @@ fn limited() -> axum::Router {
 fn rate_limited(limit: u32) -> axum::Router {
     let used = Arc::new(AtomicU32::new(0));
     api::Server::new(Catalog::default())
-        .authenticate(super::check_key)
         .operation_layer(tower::filter::AsyncFilterLayer::new(move |req: api::Request| {
             let over = used.fetch_add(1, Ordering::Relaxed) >= limit;
             let refusal = api::ApiError::new(api::http::StatusCode::TOO_MANY_REQUESTS, "rate limit exceeded")
@@ -46,7 +44,6 @@ fn rate_limited(limit: u32) -> axum::Router {
 fn writes_limited(limit: u32) -> axum::Router {
     let used = Arc::new(AtomicU32::new(0));
     api::Server::new(Catalog::default())
-        .authenticate(super::check_key)
         .operation_layer(tower::filter::AsyncFilterLayer::new(move |req: api::Request| {
             let limited = match req.extensions().get::<api::Operation>() {
                 Some(api::Operation::CreateProduct) => true,
@@ -67,7 +64,6 @@ fn writes_limited(limit: u32) -> axum::Router {
 /// Every error that the server raises itself as plain text. The own typed errors of a handler go out as they are.
 fn plain_text_errors() -> axum::Router {
     api::Server::new(Catalog::default())
-        .authenticate(super::check_key)
         .error_response(|rejection: api::Rejection| {
             let reason = &rejection.reason;
             if let Some(own) = reason.own() {
@@ -88,7 +84,7 @@ fn plain_text_errors() -> axum::Router {
 /// tower-http layers outside the router. A layer outside that answers on its own renders the error schema of the
 /// description with `errors()`. Here it answers for a path that the description does not declare.
 fn with_cors() -> axum::Router {
-    let server = api::Server::new(Catalog::default()).authenticate(super::check_key);
+    let server = api::Server::new(Catalog::default());
     let errors = server.errors();
     server
         .into_axum()
@@ -140,7 +136,6 @@ async fn a_rejection_names_its_operation() {
     let seen = Arc::new(std::sync::Mutex::new(vec![]));
     let record = Arc::clone(&seen);
     let router = api::Server::new(Catalog::default())
-        .authenticate(super::check_key)
         .error_response(move |r: api::Rejection| {
             record.lock().unwrap().push(r.operation);
             r.response()
@@ -184,7 +179,6 @@ fn a_guard_checks_a_signature_over_the_body_that_the_operation_then_decodes() {
     let client = |sign: fn(usize) -> String| {
         // ANCHOR: read-body
         let service = api::Server::new(Catalog::default())
-            .authenticate(super::check_key)
             .operation_layer(tower::filter::AsyncFilterLayer::new(verify))
             .into_service();
         // ANCHOR_END: read-body
@@ -249,6 +243,16 @@ struct Issues;
 impl e2e::v32_scopes::api::Api for Issues {
     type Principal = ();
 
+    /// The one token is `read`, and it grants `issues:read`.
+    async fn verify_pat(
+        &self,
+        token: &str,
+        _: &e2e::v32_scopes::api::Request,
+    ) -> Result<Option<api::Granted<(), e2e::v32_scopes::api::server::PatScope>>, api::ApiError> {
+        let scopes = vec![e2e::v32_scopes::api::server::PatScope::IssuesRead];
+        Ok((token == "read").then_some(api::Granted { principal: (), scopes }))
+    }
+
     async fn list_issues(
         &self,
         _: e2e::v32_scopes::api::operations::list_issues::Params,
@@ -276,15 +280,8 @@ impl e2e::v32_scopes::api::Api for Issues {
 #[tokio::test]
 async fn one_tower_layer_serves_any_api() {
     let counts = CountByOperationLayer::default();
-    let catalog =
-        api::Server::new(Catalog::default()).authenticate(super::check_key).operation_layer(counts.clone()).into_axum();
-    let issues = e2e::v32_scopes::api::Server::new(Issues)
-        .authenticate(|req: &e2e::v32_scopes::api::Request| {
-            let read = req.headers().get("authorization").is_some_and(|token| token == "Bearer read");
-            std::future::ready(Ok(read.then_some(())))
-        })
-        .operation_layer(counts.clone())
-        .into_service();
+    let catalog = api::Server::new(Catalog::default()).operation_layer(counts.clone()).into_axum();
+    let issues = e2e::v32_scopes::api::Server::new(Issues).operation_layer(counts.clone()).into_service();
     assert_eq!(get(catalog, "/v1/products").await.status(), 200);
     let mut req = e2e::v32_scopes::api::runtime::new_request("GET", "/issues".to_owned(), vec![]).unwrap();
     req.headers_mut().append("authorization", honig::http::HeaderValue::from_static("Bearer read"));
