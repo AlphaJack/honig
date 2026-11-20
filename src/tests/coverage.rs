@@ -27,6 +27,10 @@ const NOT_EMITTED: &[(&str, &str, &str)] = &[
     ("SecurityScheme", "bearerFormat", "by design: generated docs hold only the description's own prose"),
     ("Tag", "kind", "by design: generated docs hold only the description's own prose"),
     ("Schema", "example", "by design: an annotation next to a `$ref`, which checks nothing"),
+    ("Schema", "$comment", "by design: a note for the authors of the schema"),
+    ("Schema", "$schema", "by design: a schema has the dialect of its OpenAPI version"),
+    ("Schema", "$vocabulary", "by design: generated code checks the vocabularies of JSON Schema 2020-12"),
+    ("Schema", "$anchor", "resolved at load: a `$ref` to it reaches its schema as a pointer does"),
 ];
 
 /// Fields that the model declares by object kind (the `src/spec` struct name).

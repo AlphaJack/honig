@@ -284,8 +284,8 @@ fn typed_property_names(s: &Value) -> Option<Box<Constraints>> {
 }
 
 /// Returns `dependentRequired` of `s` when generated code checks it: on a struct, every name is a property that `s`
-/// declares, and an optional one has no `default`, so that its absence shows. A map or a value without `type` keeps
-/// every name. `None` leaves it to the run-time check of the whole schema.
+/// declares, whose absence shows ([`absence_shows`]). A map or a value without `type` keeps every name. `None` leaves
+/// it to the run-time check of the whole schema.
 fn typed_dependents(s: &Value) -> Option<Vec<(String, Vec<String>)>> {
     let deps = s.get("dependentRequired")?.as_object()?;
     // Without properties the value is a map or a `serde_json::Value`, which keeps every name it was sent.
@@ -307,17 +307,26 @@ fn typed_dependents(s: &Value) -> Option<Vec<(String, Vec<String>)>> {
     Some(out)
 }
 
-/// Returns whether the absence of a property of `s` shows in its struct: it is declared, and required or without a
-/// `default`. `None` when `s` declares no properties.
+/// Returns whether the absence of a property of `s` shows in its struct: it is declared. A name that a dependent
+/// keyword reads fills in no default ([`dependent_names`]). `None` when `s` declares no properties.
 fn absence_shows(s: &Value) -> Option<impl Fn(&str) -> bool + '_> {
     let props = s.get("properties")?.as_object()?;
-    let required: Vec<&str> = required_names(s).collect();
-    Some(move |n: &str| props.get(n).is_some_and(|p| required.contains(&n) || p.get("default").is_none()))
+    // A name that `dependentRequired` or `dependentSchemas` reads keeps its absence: its default is not filled in.
+    Some(move |n: &str| props.contains_key(n))
+}
+
+/// Returns the names that `dependentRequired` or `dependentSchemas` of `o` reads: each that triggers one, and each
+/// that one requires. Their struct fields fill in no default, so that their absence shows.
+fn dependent_names(o: &serde_json::Map<String, Value>) -> BTreeSet<&str> {
+    let required = json::object(o, "dependentRequired").into_iter().flatten();
+    let needs = required.clone().flat_map(|(_, v)| json::strs(v.as_array().map_or(&[][..], Vec::as_slice)));
+    let triggers = required.chain(json::object(o, "dependentSchemas").into_iter().flatten()).map(|(k, _)| k.as_str());
+    triggers.chain(needs).collect()
 }
 
 /// Returns `dependentSchemas` of `s` when generated code checks it: each name is a property whose absence shows
-/// ([`absence_shows`]), or one that `s` does not declare, which its struct keeps. A declared property with a `default`
-/// hides its absence: `None` leaves it to the run-time check of the whole schema.
+/// ([`absence_shows`]), or one that `s` does not declare, which its struct keeps. `None` leaves it to the run-time
+/// check of the whole schema.
 fn typed_dependent_schemas(s: &Value) -> Option<&serde_json::Map<String, Value>> {
     let deps = s.get("dependentSchemas")?.as_object()?;
     let props = s.get("properties").and_then(Value::as_object);
@@ -2038,6 +2047,7 @@ impl<'a> Builder<'a> {
     fn object(&mut self, o: &serde_json::Map<String, Value>, ptr: &str, name: &Name) -> Struct {
         let required: BTreeSet<&str> =
             o.get("required").and_then(Value::as_array).into_iter().flatten().filter_map(Value::as_str).collect();
+        let dependent = dependent_names(o);
         let mut taken = BTreeSet::new();
         let mut fields = vec![];
         if let Some(Value::Object(props)) = o.get("properties") {
@@ -2049,8 +2059,8 @@ impl<'a> Builder<'a> {
                 let read_write = read_only || write_only;
                 // A literal default makes an optional field always present. Whether `ty` can hold it
                 // is known once every component is filled: `finish` drops the ones it cannot.
-                let default =
-                    literal_default(self.doc, prop).filter(|_| !required.contains(wire.as_str()) && !read_write);
+                let default = literal_default(self.doc, prop)
+                    .filter(|_| !required.contains(wire.as_str()) && !read_write && !dependent.contains(wire.as_str()));
                 fields.push(Field {
                     name: unique(Name::new(wire), &mut taken),
                     wire: wire.clone(),

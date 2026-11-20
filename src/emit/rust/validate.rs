@@ -362,14 +362,25 @@ fn unevaluated_item_checks(
             }
         }
     };
-    let body = match evaluated {
+    // Only `prefixItems` evaluated: the items after them are the rest.
+    let (items, evaluated) = if ev.contains.is_empty() && ev.branches.is_empty() && ev.prefix > 0 {
+        let prefix = Literal::usize_unsuffixed(ev.prefix);
+        (quote!(items.iter().enumerate().skip(#prefix)), None)
+    } else {
+        (quote!(items.iter().enumerate()), evaluated)
+    };
+    let body = match &evaluated {
         Some(evaluated) => quote!(if !(#evaluated) { #check }),
         None => check,
     };
+    // The item is bound only where a decode reads it.
+    let uses_item =
+        matches!(leftover, Leftover::Schema(_)) || evaluated.is_some_and(|e| e.to_string().contains("item"));
+    let binding = if uses_item { quote!((i, item)) } else { quote!((i, _)) };
     quote! {
         if let serde_json::Value::Array(items) = &json {
             #(#flags)*
-            for (i, item) in items.iter().enumerate() {
+            for #binding in #items {
                 #body
             }
         }
