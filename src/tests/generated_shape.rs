@@ -1436,3 +1436,19 @@ fn an_object_const_is_a_unit_struct() {
         common::file(&common::generate("object-const", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
     assert!(types.contains("pub struct Origin;") && !types.contains("content_equal"), "{types}");
 }
+
+/// A schema nested deeper than one pass types is a named type filled later: the innermost keyword is still checked.
+#[test]
+fn a_deeply_nested_schema_is_typed() {
+    let mut schema = json!({"type": "string", "maxLength": 2});
+    for _ in 0..60 {
+        schema = json!({"type": "object", "properties": {"a": schema}});
+    }
+    let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Deep": schema}}));
+    let spec = common::write("deep", &doc, &[]);
+    let generated =
+        crate::generate::generate(&spec, &crate::emit::Options::default()).unwrap_or_else(|d| panic!("{d:?}"));
+    assert!(generated.diagnostics.0.is_empty(), "{:?}", generated.diagnostics);
+    let types = common::file(&generated.files, "types.rs");
+    assert!(types.contains("Some(2)") && !types.contains("serde_json::Value"), "{types}");
+}

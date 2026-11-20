@@ -24,7 +24,8 @@ const MAX_ALIAS_HOPS: usize = 16;
 /// Subschemas read for constraints or inlined for run-time checks before the rest is left unchecked.
 const MAX_SCHEMA_DEPTH: usize = 8;
 
-/// Nested schemas typed before the rest becomes `serde_json::Value`.
+/// Nested schemas typed in one go: a deeper one becomes a named type filled later from no depth, so the stack stays
+/// bounded and nothing goes untyped.
 const MAX_TYPE_DEPTH: usize = 48;
 /// The most `prefixItems` a tuple takes: std implements the traits up to 12.
 const MAX_TUPLE: usize = 12;
@@ -915,6 +916,9 @@ pub(crate) struct Builder<'a> {
     kinds: RefCell<Vec<Option<JsonKind>>>,
     /// Schemas that no generated check holds, by pointer, with what makes them so. `finish` reports each as an error.
     unchecked: RefCell<BTreeMap<String, String>>,
+    /// Schemas nested too deep to type where they are ([`MAX_TYPE_DEPTH`]): each a reserved type, filled from no
+    /// depth by `finish`.
+    deferred: Vec<(TypeId, Value, String)>,
 }
 
 /// Returns `ty` with its aliases in `defs` followed at most 16 deep. An alias chain can loop.
@@ -951,6 +955,7 @@ impl<'a> Builder<'a> {
             subschemas: RefCell::default(),
             subschema_index: RefCell::default(),
             unchecked: RefCell::default(),
+            deferred: vec![],
         }
     }
 
@@ -1650,8 +1655,13 @@ impl<'a> Builder<'a> {
     pub(crate) fn ty(&mut self, s: &Value, ptr: &str, hint: &Name) -> Ty {
         let Some(o) = s.as_object() else { return Ty::Any };
         if self.depth > MAX_TYPE_DEPTH {
-            self.diags.warning(ptr, "schema nesting too deep; using an untyped value");
-            return Ty::Any;
+            // Its type holds `null` too: the reserved type is the whole schema.
+            if let Some(id) = self.by_ptr.get(ptr) {
+                return Ty::Named(*id);
+            }
+            let id = self.reserve(hint, ptr);
+            self.deferred.push((id, s.clone(), ptr.to_owned()));
+            return Ty::Named(id);
         }
         let (_, nullable) = type_set(o);
         self.depth += 1;
@@ -2497,6 +2507,7 @@ impl<'a> Builder<'a> {
     /// Returns finish. Resolve placeholders, drop defaults that the type of their field cannot hold and break cycles
     /// with `Box`.
     pub(crate) fn finish(mut self) -> TypeSpace {
+        self.fill_deferred();
         let subschemas = self.build_subschemas();
         for (at, why) in std::mem::take(self.unchecked.get_mut()) {
             self.diags.error(at, format!("generated code cannot check this schema: {why}"));
@@ -2528,6 +2539,16 @@ impl<'a> Builder<'a> {
 
 impl Builder<'_> {
     /// Builds the type of each queued schema, with its constraints. A schema inside one may queue more.
+    /// Fills the types of the schemas that were nested too deep to type where they are, each from no depth. Filling
+    /// one may defer more.
+    fn fill_deferred(&mut self) {
+        let depth = std::mem::take(&mut self.depth);
+        while let Some((id, schema, ptr)) = self.deferred.pop() {
+            self.fill(id, &schema, &ptr);
+        }
+        self.depth = depth;
+    }
+
     fn build_subschemas(&mut self) -> Vec<(Ty, Constraints)> {
         let mut built = vec![];
         // Such a type judges the whole value: its objects keep the names that they do not declare, which its checks may
@@ -2539,6 +2560,7 @@ impl Builder<'_> {
             let Some((schema, at)) = next else { break };
             let ptr = at.clone().unwrap_or_else(|| format!("#/x-honig-not/{}", built.len()));
             let ty = self.ty(&schema, &ptr, &Name::new("Not"));
+            self.fill_deferred();
             let c = match &at {
                 Some(p) => self.constraints_at_ptr(&schema, p),
                 None => self.constraints(&schema),
