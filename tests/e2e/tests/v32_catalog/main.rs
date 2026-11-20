@@ -18,7 +18,7 @@ use std::sync::{Mutex, MutexGuard};
 use e2e::v32_catalog::api::{self, operations as ops, types};
 
 /// Answers a request that the server refuses itself in the catalog's own error body, `Error {code, message}`. No
-/// standard names its fields, so this maps them: the status goes in `code`, the detail in `message`. A body that a
+/// standard defines its fields, so this maps them: the status goes in `code`, the detail in `message`. A body that a
 /// handler or layer set itself goes out as it is.
 // ANCHOR: error_response
 pub fn error_body(rejection: api::Rejection) -> api::Response {

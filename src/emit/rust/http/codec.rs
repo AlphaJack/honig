@@ -374,7 +374,7 @@ pub(crate) fn media_rank(media: &str) -> Generality {
 
 /// Returns the expression that decodes `contents` and chooses by content type.
 ///
-/// `enum_path` names the enum of one variant per media type; `None` when every one decodes into the same type.
+/// `enum_path` is the path of the enum of one variant per media type; `None` when every one decodes into the same type.
 pub(crate) fn decode_contents(
     space: &Space<'_>,
     contents: &[Content],

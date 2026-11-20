@@ -16,7 +16,7 @@ use super::types::{Checked, Constraints, Kind, Ty, TypeDef, TypeId, TypeSpace, X
 pub(crate) fn wrap(types: &mut TypeSpace, http: &mut Http) {
     checked_aliases(types);
     let mut taken = types.name_keys();
-    // The shape of a split type names its fields' wrappers after the type itself: `ProductAttrs`, not
+    // The shape of a split type takes the names of its fields' wrappers from the type itself: `ProductAttrs`, not
     // `ProductFieldsAttrs`.
     let public = split_own_checks(types, &mut taken);
     let mut space = Wrapper { types, taken: &mut taken };
@@ -87,7 +87,7 @@ pub(crate) fn wrap(types: &mut TypeSpace, http: &mut Http) {
     }
 }
 
-/// Makes each component that names a type with keywords that the type does not hold (`Tags: {type: array, maxItems:
+/// Makes each component that refers to a type with keywords that the type does not hold (`Tags: {type: array, maxItems:
 /// 3}`) a checked type of it: a value of the component meets them however it is made, not only where a field uses it.
 fn checked_aliases(types: &mut TypeSpace) {
     for i in 0..types.defs.len() {

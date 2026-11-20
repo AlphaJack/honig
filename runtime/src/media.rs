@@ -2,7 +2,7 @@
 
 use crate::Error;
 
-/// Is the `Content-Type` of a body one that the operation declares? A body that names none passes. Many clients
+/// Is the `Content-Type` of a body one that the operation declares? A body that states none passes. Many clients
 /// leave it out. The body then decodes or not on its own.
 pub(crate) fn declared_media(actual: &str, declared: &[&str]) -> bool {
     // Bodies are read as UTF-8: one that says it is not would be read wrong (JSON is UTF-8 by RFC 8259).
@@ -18,7 +18,7 @@ pub(crate) fn declared_media(actual: &str, declared: &[&str]) -> bool {
 
 /// Is a response's `Content-Type` one the description declares for its status?
 ///
-/// A response should name its type when it has a body. A request need not. The client decodes by what was declared.
+/// A response should state its type when it has a body. A request need not. The client decodes by what was declared.
 /// A body of another type would be read as the wrong one. A body without a type is read as the one type declared
 /// for its status (RFC 9110 section 8.3 lets a recipient assume one). Small text answers often omit it: `OK` from a
 /// health check or `Not Found`. With several declared there is nothing to tell them apart. `body` is `None` for a

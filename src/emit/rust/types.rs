@@ -24,7 +24,7 @@ pub(super) fn emit(
 ) -> TokenStream {
     let mut items = vec![];
     let mut builders = vec![];
-    // Whether a builder names a generated type: then the module imports `types`.
+    // Whether a builder refers to a generated type: then the module imports `types`.
     let mut builders_name_types = false;
     for (i, def) in space.types.defs.iter().enumerate() {
         let id = TypeId(i);
@@ -35,7 +35,7 @@ pub(super) fn emit(
         let name = pascal_ident(&def.name);
         if let Some(&first) = aliases.get(&i) {
             let (doc, first) = (doc_opt(def.doc.as_deref()), pascal_ident(&space.types.defs[first].name));
-            // A unit struct is a value too: `use` names both, where `type` names only the type.
+            // A unit struct is a value too: `use` brings in both, where `type` brings in only the type.
             if matches!(def.kind, Kind::Const(_)) {
                 items.push(quote! { #doc pub use #first as #name; });
             } else {
@@ -1239,12 +1239,12 @@ fn holds_checked(space: &Space<'_>, t: &Ty) -> bool {
     }
 }
 
-/// Does a field of `s` name a generated type? Then its builder names it through `types::`.
+/// Does a field of `s` refer to a generated type? Then its builder refers to it through `types::`.
 fn names_types(s: &Struct) -> bool {
     s.fields.iter().any(|f| super::syntax::mentions(&f.ty).0)
 }
 
-/// Returns the builder of a checked type whose base is a struct, and whether it names a generated type. A struct whose
+/// Returns the builder of a checked type whose base is a struct, and whether it refers to a generated type. A struct whose
 /// schema checks the whole value builds through its fields.
 fn checked_builder(space: &Space<'_>, name: &proc_macro2::Ident, c: &Checked) -> Option<(TokenStream, bool)> {
     let Ty::Named(shape) = &c.base else { return None };
@@ -1743,7 +1743,7 @@ const fn has_other(u: &Union) -> bool {
 }
 
 /// Does `Other` hold a member that the server added? Only the response type of a lenient client's tagged union does:
-/// its tag names no variant. A union with a default variant reads an unknown tag as that variant already.
+/// its tag matches no variant. A union with a default variant reads an unknown tag as that variant already.
 const fn reads_added(def: &TypeDef, u: &Union) -> bool {
     def.lenient && matches!(u.mode, UnionMode::Tagged { default: None, .. })
 }
@@ -1949,7 +1949,7 @@ fn union_deserialize(space: &Space<'_>, def: &TypeDef, u: &Union) -> TokenStream
                 None => no_variant(u),
             };
             let none = proc_macro2::Literal::usize_unsuffixed(tagged.len());
-            // A lenient client reads a tag that names no variant as `Other`: the server added the member. A value
+            // A lenient client reads a tag that matches no variant as `Other`: the server added the member. A value
             // without a tag still fails.
             let (added_pick, added_arm) = if reads_added(def, u) {
                 let added = proc_macro2::Literal::usize_unsuffixed(tagged.len() + 1);
@@ -2217,7 +2217,7 @@ fn by_kind(space: &Space<'_>, u: &Union) -> TokenStream {
     }
 }
 
-/// The JSON kinds of `runtime::Kind` as the emitter names them.
+/// The JSON kinds of `runtime::Kind` as the emitter spells them.
 mod rtkind {
     use proc_macro2::TokenStream;
     use quote::quote;

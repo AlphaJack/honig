@@ -73,7 +73,7 @@ pub(crate) fn init_features() -> Vec<&'static str> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 /// The settings of one module.
 pub(crate) struct Settings {
-    /// The table as the manifest names it, for messages: `package.metadata.honig.<module>`.
+    /// The table as the manifest spells it, for messages: `package.metadata.honig.<module>`.
     pub table: String,
     /// Directory holding Cargo.toml; other paths are relative to it.
     pub root: PathBuf,
@@ -157,7 +157,7 @@ impl Settings {
 
 /// A crate's `Cargo.toml` as cargo resolves it (`cargo metadata`): its name, its dependencies with the features that
 /// `workspace = true` inherits, its targets and its workspace. Its `[package.metadata.honig.*]` tables are read as
-/// written, so a message can name the table and the key.
+/// written, so a message can point to the table and the key.
 #[derive(Debug, Clone, Default)]
 pub(crate) struct Manifest {
     doc: DocumentMut,
@@ -309,7 +309,7 @@ impl Manifest {
         self.deps.iter().find(|d| d.name == name)
     }
 
-    /// Returns the names of every dependency, as written and as its `package`: `x-rust-type` names a crate by package.
+    /// Returns the names of every dependency, as written and as its `package`: `x-rust-type` refers to a crate by package.
     pub(crate) fn dependency_names(&self) -> Vec<String> {
         let mut out = vec![];
         for d in &self.deps {
@@ -361,7 +361,7 @@ impl<'a> Module<'a> {
         self.table?.get(key)
     }
 
-    /// Returns the table as the manifest names it, for messages.
+    /// Returns the table as the manifest spells it, for messages.
     pub(crate) fn path(&self) -> String {
         format!("{ROOT}.{}", self.name)
     }
@@ -419,10 +419,10 @@ pub(crate) fn modules<'a>(manifest: &'a Manifest, path: &Path) -> Result<Vec<Mod
     Ok(out)
 }
 
-/// Fails unless `only` names one of `modules`. `None` selects every module.
+/// Fails unless `only` is one of `modules`. `None` selects every module.
 ///
 /// # Errors
-/// `only` names no module.
+/// `only` is no module.
 pub(crate) fn ensure_module(modules: &[Module<'_>], only: Option<&str>) -> Result<(), Error> {
     let Some(only) = only else { return Ok(()) };
     if modules.iter().any(|m| m.name == only) {
@@ -788,7 +788,7 @@ pub(crate) const JIFF: &str = "jiff";
 /// types of fields, so the table is required. The error prints the line that keeps what the dependencies give today.
 ///
 /// # Errors
-/// There is no table, it holds a value of the wrong kind or it names a library that the crate does not depend on with
+/// There is no table, it holds a value of the wrong kind or it refers to a library that the crate does not depend on with
 /// `serde`.
 pub(crate) fn format_libs<'a>(module: impl Into<Module<'a>>) -> Result<FormatLibs, Error> {
     let module = module.into();
@@ -973,7 +973,7 @@ mod tests {
         assert_eq!((named(&ids, Format::Uuid).as_deref(), ids.uuid), (Some("crate::ids::OrderId"), false));
         assert_eq!(formats_line(&ids), "formats = { uuid = \"crate::ids::OrderId\" }");
         let error = |formats: &str| libs(formats).unwrap_err().to_string();
-        assert!(error("formats = { uuid = \"not a type(\" }").contains("`uuid`"), "the error names the key");
+        assert!(error("formats = { uuid = \"not a type(\" }").contains("`uuid`"), "the error points to the key");
         assert!(error("formats = { date = 1 }").contains("the path of a type"));
         assert!(error("formats = { date = \"chrono::DateTime<chrono::Utc>\" }").contains("the path of a type"));
         // `time` reads only valid values: no check to keep, so no type to name.

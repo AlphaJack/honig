@@ -73,7 +73,7 @@ pub(crate) fn client(api: &Api, space: &Space<'_>, only: Option<&[String]>, bina
     } else {
         (TokenStream::new(), TokenStream::new())
     };
-    // `<op>_stream` methods name their item type.
+    // `<op>_stream` methods spell out their item type.
     let uses_types =
         api.http.operations.iter().filter(called).filter_map(stream_target).any(|(_, item, _)| mentions(item).0);
     let types_import = uses_types.then(|| {
@@ -282,7 +282,7 @@ fn query_param(space: &Space<'_>, p: &Param) -> TokenStream {
     crate::emit::rust::http::shared::spec_default(space, p).map_or_else(
         || encode.clone(),
         |d| {
-            // An enum default names its type, `types::Kind::User`. The client module does not import `types`.
+            // An enum default spells out its type, `types::Kind::User`. The client module does not import `types`.
             let d =
                 if matches!(space.types.unalias(&p.ty), Ty::Named(_)) { quote!({ use super::types; #d }) } else { d };
             quote! {

@@ -111,7 +111,7 @@ The table is required. Without it, a dependency added for another reason would c
 
 {{#include generated/formats.md}}
 
-A format with a check can also name a type of your own, or of a library that honig has no shorthand for:
+A format with a check can also refer to a type of your own, or of a library that honig has no shorthand for:
 
 ```toml
 formats = { dates = "chrono", date-time = "time::OffsetDateTime", uuid = "crate::ids::OrderId" }
@@ -173,7 +173,7 @@ A struct with a checked field has a builder. A builder converts every field and 
 {{#include ../../../tests/e2e/tests/v32_validation.rs:builder}}
 ```
 
-The error names the field as the description spells it: `` `age`: 150 must be less than 150 ``. The builder of `User` is `types::builders::User`. A struct without a checked field has none: `new` and struct update build it with no `?`.
+The error points to the field as the description spells it: `` `age`: 150 must be less than 150 ``. The builder of `User` is `types::builders::User`. A struct without a checked field has none: `new` and struct update build it with no `?`.
 
 `try_from`, `parse` and `build` all fail with `api::BuildError`, so a function that mixes them needs no `Box<dyn Error>`. In a handler, `?` turns it into a `500`: the handler's inputs are checked already, so a value that its schema refuses came from the server's own data.
 

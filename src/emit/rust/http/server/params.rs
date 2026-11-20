@@ -64,7 +64,7 @@ pub(crate) fn spread_object(space: &Space<'_>, op: &Operation, p: &Param, raw: T
     quote!(runtime::without_keys(#raw, &[#(#others),*]))
 }
 
-/// Returns where parameter `p` is in the request as a JSON pointer: `/query/limit`. Validation names it the same way.
+/// Returns where parameter `p` is in the request as a JSON pointer: `/query/limit`. Validation points to it the same way.
 pub(crate) fn param_pointer(p: &Param) -> String {
     let loc = match p.location {
         Location::Path => "path",

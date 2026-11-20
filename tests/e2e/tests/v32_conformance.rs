@@ -133,7 +133,7 @@ fn a_required_body_is_required_and_an_optional_one_is_not() {
     assert_eq!(send("POST", "/optional-body", &[], None).status().as_u16(), 204);
 }
 
-/// 3.2 Discriminator Object: the value names a schema (implicit mapping). An
+/// 3.2 Discriminator Object: the value refers to a schema (implicit mapping). An
 /// unknown one without `defaultMapping` matches nothing.
 #[test]
 fn a_discriminator_value_selects_a_schema_by_name() {

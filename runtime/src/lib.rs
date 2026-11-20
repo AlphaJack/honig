@@ -113,7 +113,7 @@ pub use stream::{Framing, ItemStream, Items, Streamed};
 pub use tower_service::Service;
 pub use transport::block_on;
 
-// The hidden items that the modules use to name each other from the root.
+// The hidden items that the modules use to refer to each other from the root.
 #[cfg_attr(not(test), expect(clippy::wildcard_imports, reason = "which items each feature set uses differs"))]
 use __private::*;
 

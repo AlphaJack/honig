@@ -130,7 +130,7 @@ async fn only_the_operation_that_the_guard_names_is_limited() {
     assert_eq!(router.oneshot(post).await.unwrap().status(), 429, "a write");
 }
 
-/// A refusal names its operation as the generated enum, and a request that no operation takes names none.
+/// A refusal carries its operation as the generated enum, and a request that no operation takes carries none.
 #[tokio::test]
 async fn a_rejection_names_its_operation() {
     let seen = Arc::new(std::sync::Mutex::new(vec![]));

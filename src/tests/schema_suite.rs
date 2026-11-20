@@ -92,7 +92,7 @@ fn cases() -> Vec<Case> {
 }
 
 /// Does test `t` expect `format` to be an annotation only? JSON Schema 2020-12 says so by default (section 7.2.1).
-/// honig asserts every format it knows instead, as an `OpenAPI` description that names one expects, so it refuses such
+/// honig asserts every format it knows instead, as an `OpenAPI` description that lists one expects, so it refuses such
 /// a value by design.
 fn annotation_only(t: &Value) -> bool {
     t["description"].as_str().is_some_and(|d| d.ends_with("is only an annotation by default"))

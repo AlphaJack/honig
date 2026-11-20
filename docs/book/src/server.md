@@ -80,7 +80,7 @@ Pass `None` for a resource that does not exist yet. `If-None-Match: *` then lets
 ## Errors
 
 A request that the server refuses itself (no route, bad input, missing credentials, a layer's or a handler's `Err`)
-goes through `error_response` of your `Api`. honig fills an error body only where a standard names its members:
+goes through `error_response` of your `Api`. honig fills an error body only where a standard defines its members:
 
 - RFC 9457 `application/problem+json`: `type`, `title`, `status` and `detail` by their names in the RFC, and a required
   `const` at its value. Any other required member has no value that the server knows.

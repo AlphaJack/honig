@@ -22,8 +22,8 @@ pub fn status_of(code: impl TryInto<u16>) -> http::StatusCode {
         .unwrap_or(http::StatusCode::INTERNAL_SERVER_ERROR)
 }
 
-/// Returns the reason phrase of a registered status as the `http` crate names it. The generator names response variants
-/// after it (`404` is `NotFound`).
+/// Returns the reason phrase of a registered status as the `http` crate spells it. The generator takes the names of response variants
+/// from it (`404` is `NotFound`).
 #[must_use]
 pub fn reason(code: u16) -> Option<&'static str> {
     http::StatusCode::from_u16(code).ok()?.canonical_reason()

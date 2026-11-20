@@ -158,7 +158,7 @@ fn security_scheme_uris(
                     .map(crate::json::unescape_token)
                     .filter(|n| known(root, n))
             } else if base.is_external(&key) {
-                // A document that names a scheme in another document that it does not
+                // A document that refers to a scheme in another document that it does not
                 // ship is still valid (OAI 3.2 suite). It is a warning here and a
                 // refusal when generating a server.
                 let mut fetch_diags = Diagnostics::default();
@@ -199,7 +199,7 @@ fn security_scheme_uris(
     }
 }
 
-/// Returns the Security Requirement keys that name no `components.securitySchemes` entry
+/// Returns the Security Requirement keys that match no `components.securitySchemes` entry
 /// (after bundling) as (pointer of the requirement object, key).
 pub(crate) fn unresolved_security(root: &Value) -> Vec<(String, String)> {
     let mut keys = vec![];
@@ -382,7 +382,7 @@ fn load(path: &Path, cache: &mut BTreeMap<PathBuf, Value>, diags: &mut Diagnosti
 fn rebase(v: &mut Value, file: &str, parent: &str) {
     match v {
         Value::Object(o) => {
-            // `$dynamicRef` too: in a fetched document it names that document as `$ref` does.
+            // `$dynamicRef` too: in a fetched document it refers to that document as `$ref` does.
             for key in ["$ref", "$dynamicRef"] {
                 if let Some(Value::String(r)) = o.get_mut(key) {
                     if let Some(frag) = r.strip_prefix('#') {
@@ -417,7 +417,7 @@ fn fetch(
     let (file, frag) = r.split_once('#').unwrap_or((r, ""));
     let path = base.path(file);
     let doc = load(&path, cache, diags, at)?;
-    // A fragment that is no pointer names an `$anchor` of the document.
+    // A fragment that is no pointer refers to an `$anchor` of the document.
     let anchored =
         (!frag.is_empty() && !frag.starts_with('/')).then(|| crate::schema_ids::anchor(&doc, frag)).flatten();
     let Some(target) = pointer(&doc, anchored.as_deref().unwrap_or(frag)) else {
@@ -493,7 +493,7 @@ impl Visit for Bundler<'_> {
 }
 
 /// Returns the identity of an external target: canonical file path plus fragment. So
-/// `../schemas/A.yml` and `./A.yml` that name the same file are one schema.
+/// `../schemas/A.yml` and `./A.yml` that refer to the same file are one schema.
 fn canonical_key(r: &str, base: Base<'_>) -> String {
     let (file, frag) = r.split_once('#').unwrap_or((r, ""));
     let path = base.path(file);

@@ -368,7 +368,7 @@ fn each_method_reaches_its_operation() {
     assert_eq!(products.last(), Some(copy));
 }
 
-/// The wide event of a method that the description adds (`COPY`) names that method and not `OTHER`.
+/// The wide event of a method that the description adds (`COPY`) records that method and not `OTHER`.
 #[test]
 #[allow(deprecated, reason = "`oauth` is deprecated in the description on purpose")]
 fn the_event_names_an_additional_method() {

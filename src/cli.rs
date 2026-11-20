@@ -195,7 +195,7 @@ fn dispatch(command: Command, args: &Args) -> Result<ExitCode, Failure> {
     }
 }
 
-/// Validates the description file `target`. When `target` names a module, or is absent, it validates the spec files
+/// Validates the description file `target`. When `target` is a module, or is absent, it validates the spec files
 /// of that module, or of every module.
 fn validate(target: Option<&str>, args: &Args) -> Result<ExitCode, Failure> {
     let names_module = |name: &str| {

@@ -241,7 +241,7 @@ pub(crate) struct Link {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-/// How a link names its operation.
+/// How a link refers to its operation.
 pub(crate) enum LinkTarget {
     /// `operationId`.
     Id(String),
@@ -603,7 +603,7 @@ fn params(b: &mut Builder<'_>, site: &Site<'_>, prefix: &Name) -> Vec<Param> {
         {
             continue;
         }
-        // A parameter of `components/parameters` names its type as a component schema does: after its key and not
+        // A parameter of `components/parameters` takes its type name as a component schema does: after its key and not
         // after the first operation that uses it.
         let hint = match pptr.strip_prefix("/components/parameters/") {
             Some(key) if !key.contains('/') => Name::new(&json::unescape_token(key)),
@@ -987,7 +987,7 @@ fn part_types(
 }
 
 /// Returns [`property_encoding`] of a `multipart/form-data` media type, with the type that a property's schema gives
-/// where `encoding` names none: its `contentMediaType` (3.2 section 4.14.4.1).
+/// where `encoding` gives none: its `contentMediaType` (3.2 section 4.14.4.1).
 fn schema_part_types(b: &Builder<'_>, media_obj: &Value, schema: Option<&Value>, mptr: &str) -> Vec<(String, String)> {
     let mut out = property_encoding(media_obj);
     let props = schema.and_then(|sc| resolve_value(b, sc, mptr)).and_then(|(sc, _)| sc.get("properties").cloned());

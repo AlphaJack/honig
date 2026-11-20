@@ -178,7 +178,7 @@ fn a_pattern_regress_cannot_compile_is_reported() {
     assert!(!w.iter().any(|m| m.contains("Good")), "a Unicode property escape is valid ECMA-262: {w:#?}");
 }
 
-/// A type whose `pattern` does not compile would take every value: generation refuses the document and names it.
+/// A type whose `pattern` does not compile would take every value: generation refuses the document and points to it.
 #[test]
 fn a_pattern_that_does_not_compile_fails_generation() {
     let doc = |pattern: &str| {

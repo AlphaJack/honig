@@ -28,7 +28,7 @@ OpenAPI cannot express a rate limit. Enforce one with tower's `AsyncFilterLayer`
 
 ## A layer for any API
 
-A plain tower `Layer` fits any honig server. Its service takes `honig::Request` and names the operation with the `MatchedOperation` in the extensions:
+A plain tower `Layer` fits any honig server. Its service takes `honig::Request` and identifies the operation by the `MatchedOperation` in the extensions:
 
 ```rust
 {{#include ../../../tests/e2e/tests/v32_catalog/layers.rs:any-api}}

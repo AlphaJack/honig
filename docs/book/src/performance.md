@@ -8,9 +8,9 @@ Add `mimalloc = "0.1"` to `[dependencies]`. Then declare it in `main.rs`: `#[glo
 
 ## SIMD
 
-The `simd` feature speeds up large bodies. Small ones see no difference. Its row in the [feature table](adapters.md) names the library of each path and says when it is on.
+The `simd` feature speeds up large bodies. Small ones see no difference. Its row in the [feature table](adapters.md) lists the library of each path and says when it is on.
 
-A body that fails to decode is read again by `serde_json`. Errors still name the field that is wrong.
+A body that fails to decode is read again by `serde_json`. Errors still point to the field that is wrong.
 
 Leaving `simd` out of the features trades runtime performance for a lighter build. JSON goes through `serde_json` and base64 through the scalar engine of the `base64` crate. `memchr` stays.
 
