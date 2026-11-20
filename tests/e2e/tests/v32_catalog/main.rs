@@ -17,6 +17,26 @@ use std::sync::{Mutex, MutexGuard};
 
 use e2e::v32_catalog::api::{self, operations as ops, types};
 
+/// Answers a request that the server refuses itself in the catalog's own error body, `Error {code, message}`. No
+/// standard names its fields, so this maps them: the status goes in `code`, the detail in `message`. A body that a
+/// handler or layer set itself goes out as it is.
+// ANCHOR: error_response
+pub fn error_body(rejection: api::Rejection) -> api::Response {
+    use api::Message as _;
+    if let Some(own) = rejection.reason.own() {
+        return own;
+    }
+    let status = rejection.status();
+    let body = types::Error {
+        code: i32::from(status.as_u16()),
+        message: rejection.reason.detail().unwrap_or_else(|| status.to_string()),
+    };
+    let mut response = rejection.reason.head();
+    response.set_body("application/json", serde_json::to_vec(&body).unwrap_or_default());
+    response
+}
+// ANCHOR_END: error_response
+
 /// The catalog in memory. The ID of a product is its index.
 #[derive(Default)]
 pub struct Catalog(Mutex<Vec<types::Product>>);
@@ -30,6 +50,9 @@ impl Catalog {
 }
 
 impl api::Api for Catalog {
+    fn error_response(rejection: api::Rejection) -> api::Response {
+        error_body(rejection)
+    }
     type Principal = ();
 
     async fn list_products(

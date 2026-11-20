@@ -242,6 +242,9 @@ fn not_here<T>() -> std::future::Ready<Result<T, val::api::ApiError>> {
 struct Members;
 
 impl val::api::Api for Members {
+    fn error_response(rejection: val::api::Rejection) -> val::api::Response {
+        rejection.response()
+    }
     type Principal = ();
 
     fn create_user(

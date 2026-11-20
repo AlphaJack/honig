@@ -360,6 +360,10 @@ pub(crate) fn router(api: &Api) -> TokenStream {
             type Principal = A::Principal;
             type Operation = Operation;
 
+            fn error_response(&self) -> fn(runtime::Rejection<Operation>) -> runtime::Response {
+                |rejection| A::error_response(rejection)
+            }
+
             fn paths(&self) -> &'static [&'static str] {
                 PATHS
             }

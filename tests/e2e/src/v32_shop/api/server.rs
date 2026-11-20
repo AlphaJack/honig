@@ -20,6 +20,8 @@ use super::{operations as ops, runtime};
 use std::future::Future;
 pub trait Api: Send + Sync + 'static {
     type Principal: Clone + Send + Sync + 'static;
+    /// Answers a request that the server refuses itself (no route, bad input, missing credentials, a handler `Err`) in the error body of the description. No standard names its fields, so this maps them: `rejection.reason` holds the status and the detail.
+    fn error_response(rejection: runtime::Rejection<Operation>) -> runtime::Response;
     /// Retrieve every product in the catalog, a page at a time.
     fn get_all_data(
         &self,
@@ -265,25 +267,18 @@ pub fn scopes_held(
 ) -> bool {
     runtime::Secured::scopes_held(request, |s| Scope::from_name(s).is_some_and(&held))
 }
-const ERROR_SCHEMA_0: runtime::ErrorSchema = runtime::ErrorSchema {
-    media: "application/json",
-    fields: &[
-        ("type", runtime::ErrorField::Type),
-        ("title", runtime::ErrorField::Title),
-        ("status", runtime::ErrorField::Status),
-        ("detail", runtime::ErrorField::Detail),
-    ],
-    open: true,
-};
-const ERROR_SCHEMA: Option<&runtime::ErrorSchema> = Some(&ERROR_SCHEMA_0);
 const fn error_schema(
     _operation: Option<&str>,
     _status: u16,
 ) -> Option<&'static runtime::ErrorSchema> {
-    ERROR_SCHEMA
+    None
 }
 pub trait Webhooks: Send + Sync + 'static {
     type Principal: Clone + Send + Sync + 'static;
+    /// Answers a request that the server refuses itself (no route, bad input, missing credentials, a handler `Err`) in the error body of the description. No standard names its fields, so this maps them: `rejection.reason` holds the status and the detail.
+    fn error_response(
+        rejection: runtime::Rejection<WebhookOperation>,
+    ) -> runtime::Response;
     fn new_product_post(
         &self,
         params: ops::new_product_post::Params,
@@ -360,6 +355,11 @@ pub type WebhookContext<'a, C = ()> = runtime::Context<'a, C, WebhookOperation>;
 impl<A: Webhooks> runtime::Operations for WebhookRoutes<A> {
     type Principal = A::Principal;
     type Operation = WebhookOperation;
+    fn error_response(
+        &self,
+    ) -> fn(runtime::Rejection<WebhookOperation>) -> runtime::Response {
+        |rejection| A::error_response(rejection)
+    }
     fn paths(&self) -> &'static [&'static str] {
         &[]
     }
@@ -503,6 +503,9 @@ impl<A: Api> From<A> for Routes<A> {
 impl<A: Api> runtime::Operations for Routes<A> {
     type Principal = A::Principal;
     type Operation = Operation;
+    fn error_response(&self) -> fn(runtime::Rejection<Operation>) -> runtime::Response {
+        |rejection| A::error_response(rejection)
+    }
     fn paths(&self) -> &'static [&'static str] {
         PATHS
     }

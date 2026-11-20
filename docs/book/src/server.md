@@ -17,8 +17,13 @@ The server keeps your `Api` in an `Arc` and shares it across requests without cl
 Requests are checked against every constraint of their schemas while they decode: each value is a [checked type](types.md#checked-types) or a type that holds its keywords. The first value that breaks one stops decoding. The request gets `400` with that violation and its JSON pointer. Your handler only gets valid parameters:
 
 ```json
-{"violations": [{"path": "/body/name", "message": "at least 2 characters required, found 1"}]}
+{"title": "Bad Request", "status": 400, "detail": "/body/name: at least 2 characters required, found 1",
+ "errors": [{"detail": "at least 2 characters required, found 1", "pointer": "#/name"}]}
 ```
+
+That is RFC 9457 `problem+json`. `errors` is the extension of the RFC's own validation example: each entry has a
+`detail` and a JSON `pointer`, into the request content for a value of the body and into the request otherwise
+(`#/query/limit`).
 
 A body whose `Content-Type` the operation does not declare gets `415`.
 
@@ -74,7 +79,24 @@ Pass `None` for a resource that does not exist yet. `If-None-Match: *` then lets
 
 ## Errors
 
-The error of a handler can be the error schema of the description. honig generates `From<types::Problem> for api::ApiError` for it. Errors that the server raises itself go through `error_response`:
+A request that the server refuses itself (no route, bad input, missing credentials, a layer's or a handler's `Err`)
+goes through `error_response` of your `Api`. honig fills an error body only where a standard names its members:
+
+- RFC 9457 `application/problem+json`: `type`, `title`, `status` and `detail` by their names in the RFC, and a required
+  `const` at its value. Any other required member has no value that the server knows.
+- A text body: the detail and nothing else.
+
+Where every error body of the description is one of these, or there is none, `error_response` has a default and you
+write nothing: refusals go out as RFC 9457 `problem+json`. Any other error body, such as `{code, message}`, names
+fields that only your API defines. Your `Api` writes `error_response` to fill them, and the crate does not compile
+without it:
+
+```rust
+{{#include ../../../examples/shop/src/lib.rs:error_response}}
+```
+
+A handler that answers in such a body sets it on its `ApiError` with `with_body`, with the status said once. One
+server can still replace `error_response` with its own, for example to record each refusal:
 
 ```rust
 {{#include ../../../tests/e2e/tests/v32_catalog/layers.rs:error-response}}
@@ -82,7 +104,7 @@ The error of a handler can be the error schema of the description. honig generat
 
 {{#include generated/error-rendering.md}}
 
-The fields of an error schema that the server fills:
+The members of an error body that the server fills:
 
 {{#include generated/error-fields.md}}
 

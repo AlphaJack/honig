@@ -187,7 +187,7 @@ pub fn form_decode<T: DeserializeOwned>(status: u16, body: &[u8]) -> Result<T, E
     })
 }
 
-/// Returns the fields of a form by name, as the object that they used to be collected into had them. The sort is
+/// Returns the fields of a form sorted by name, so a repeated field's values are next to each other. The sort is
 /// stable. So a repeated field keeps its values in order.
 fn sorted_pairs(text: &str) -> Vec<(Cow<'_, str>, Cow<'_, str>)> {
     let mut pairs = parse_query(text);

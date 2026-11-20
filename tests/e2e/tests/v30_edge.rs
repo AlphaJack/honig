@@ -180,5 +180,5 @@ fn rejections_use_the_described_error_schema() {
     let p: types::Problem = serde_json::from_slice(r.body().bytes()).expect("a Problem");
     assert_eq!((p.status, p.title.as_str()), (400, "Bad Request"));
     let v: serde_json::Value = serde_json::from_slice(r.body().bytes()).unwrap();
-    assert_eq!(v["violations"][0]["path"], "/body/status", "{v}");
+    assert_eq!(v["errors"][0]["pointer"], "#/status", "{v}");
 }

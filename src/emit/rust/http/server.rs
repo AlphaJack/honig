@@ -12,8 +12,6 @@ pub(crate) use errors::*;
 pub(crate) use params::*;
 pub(crate) use router::*;
 
-use std::collections::BTreeMap;
-
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
@@ -114,6 +112,25 @@ fn operation_enum(name: &str, ops: &[&Operation], aliases: &[(&str, &str)]) -> T
     }
 }
 
+/// Returns `error_response` of `Api` or `Webhooks`: how the API answers a request that the server refuses itself.
+/// Where every error body of the description is one that the server fills by name (RFC 9457 `problem+json`, a text
+/// message), it has a default. Otherwise your impl writes it.
+fn error_response_method(operation: &TokenStream, filled: bool) -> TokenStream {
+    let body = if filled { quote!({ rejection.response() }) } else { quote!(;) };
+    let doc = if filled {
+        " Answers a request that the server refuses itself (no route, bad input, missing credentials, a handler `Err`). \
+         Default: RFC 9457 `problem+json`, or the error body of the description that it fills by name."
+    } else {
+        " Answers a request that the server refuses itself (no route, bad input, missing credentials, a handler `Err`) \
+         in the error body of the description. No standard names its fields, so this maps them: `rejection.reason` \
+         holds the status and the detail."
+    };
+    quote! {
+        #[doc = #doc]
+        fn error_response(rejection: runtime::Rejection<#operation>) -> runtime::Response #body
+    }
+}
+
 /// Returns the `Principal` associated type of `Api` and `Webhooks`.
 fn caller_type() -> TokenStream {
     quote! {
@@ -121,22 +138,17 @@ fn caller_type() -> TokenStream {
     }
 }
 
-pub(crate) fn server(
-    api: &Api,
-    space: &Space<'_>,
-    allow_unimplemented: bool,
-    aliases: &BTreeMap<usize, usize>,
-) -> TokenStream {
+pub(crate) fn server(api: &Api, space: &Space<'_>, allow_unimplemented: bool) -> TokenStream {
     let methods = api.http.operations.iter().filter(|o| is_path(o)).map(|op| api_method(op, allow_unimplemented));
+    let filled = all_filled(api, space);
     let router = router(api);
     let credential = credential_enum(api);
     let scope = scope_enum(api);
     let error_schemas = error_schema_fn(api, space);
-    let conversions = error_conversions(api, space, aliases);
     let sec = Securities::new(api);
     let ops = api.http.operations.iter().map(|op| server_op(space, api, &sec, op));
     let principal = caller_type();
-    let webhooks = webhooks(api, allow_unimplemented);
+    let webhooks = webhooks(api, allow_unimplemented, filled);
     let path_ops: Vec<&Operation> = api.http.operations.iter().filter(|o| is_path(o)).collect();
     let operations = (!path_ops.is_empty()).then(|| {
         operation_enum(
@@ -145,6 +157,7 @@ pub(crate) fn server(
             &[("Context", "Context"), ("Rejection", "Rejection"), ("RequestEvent", "RequestEvent")],
         )
     });
+    let error_response = (!path_ops.is_empty()).then(|| error_response_method(&quote!(Operation), filled));
     let header = crate::emit::rust::syntax::file_allow(crate::emit::rust::syntax::has_deprecated(api));
     quote! {
         #header
@@ -153,6 +166,7 @@ pub(crate) fn server(
 
         pub trait Api: Send + Sync + 'static {
             #principal
+            #error_response
             #(#methods)*
         }
 
@@ -160,7 +174,6 @@ pub(crate) fn server(
         #credential
         #scope
         #error_schemas
-        #conversions
 
         #webhooks
         #router
@@ -169,11 +182,12 @@ pub(crate) fn server(
 }
 
 /// Returns the `Webhooks` trait and the server of each webhook or callback when the description declares any.
-fn webhooks(api: &Api, allow_unimplemented: bool) -> Option<TokenStream> {
+fn webhooks(api: &Api, allow_unimplemented: bool, filled: bool) -> Option<TokenStream> {
     let principal = caller_type();
     let hooks: Vec<&Operation> = api.http.operations.iter().filter(|o| !is_path(o)).collect();
     (!hooks.is_empty()).then(|| {
     let methods = hooks.iter().map(|op| api_method(op, allow_unimplemented));
+    let error_response = error_response_method(&quote!(WebhookOperation), filled);
     let found = hooks.iter().map(|op| {
         let (key, method, v) = (lit(&hook_name(op)), lit(&op.method), operation_variant(op));
         quote!((#key, #method) => Ok(WebhookOperation::#v),)
@@ -190,6 +204,7 @@ fn webhooks(api: &Api, allow_unimplemented: bool) -> Option<TokenStream> {
     quote! {
         pub trait Webhooks: Send + Sync + 'static {
             #principal
+            #error_response
             #(#methods)*
         }
 
@@ -208,6 +223,10 @@ fn webhooks(api: &Api, allow_unimplemented: bool) -> Option<TokenStream> {
         impl<A: Webhooks> runtime::Operations for WebhookRoutes<A> {
             type Principal = A::Principal;
             type Operation = WebhookOperation;
+
+            fn error_response(&self) -> fn(runtime::Rejection<WebhookOperation>) -> runtime::Response {
+                |rejection| A::error_response(rejection)
+            }
 
             fn paths(&self) -> &'static [&'static str] {
                 &[]

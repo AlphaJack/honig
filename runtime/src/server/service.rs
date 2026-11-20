@@ -53,6 +53,9 @@ pub trait Operations: Send + Sync + 'static {
     /// Returns the error schemas that the description declares for a request that no operation takes.
     fn errors(&self) -> ErrorSchemas;
 
+    /// Returns how the API answers a request that the server refuses: the `error_response` of the generated `Api`.
+    fn error_response(&self) -> fn(Rejection<Self::Operation>) -> Response;
+
     /// Serves a request that [`Operations::route`] found an operation for. `call` holds the principal that
     /// [`Server::authenticate`] found if there is one. Each operation takes what its `security` asks for.
     fn call<'r>(
@@ -244,12 +247,9 @@ impl<O: Operations> Server<O> {
     /// Creates a server for `ops` without layers: requests reach each operation as they are routed. The generated
     /// `api::Server::new` takes your `Arc<impl Api>` here.
     pub fn new(ops: impl Into<O>) -> Self {
-        Self {
-            ops: ops.into(),
-            layer: Identity::new(),
-            config: Config::default(),
-            authentication: std::marker::PhantomData,
-        }
+        let ops = ops.into();
+        let config = Config { errors: Arc::new(ops.error_response()), ..Config::default() };
+        Self { ops, layer: Identity::new(), config, authentication: std::marker::PhantomData }
     }
 }
 
@@ -311,7 +311,7 @@ impl<O: Operations, L, A> Server<O, L, A> {
 
     /// Sets the response for a request that the server answers without the response of your handler. The cause is no
     /// route, bad input, missing credentials, the `Err` of a layer, validation, a handler `Err` or an encoding failure.
-    /// Default: [`Rejection::response`].
+    /// Default: the `error_response` of the generated `Api`. This one replaces it for this server alone.
     #[must_use]
     pub fn error_response(
         mut self,

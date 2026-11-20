@@ -241,7 +241,7 @@ fn part_value(path: &str, x: &Value, types: &[(&str, &str)], depth: usize) -> (S
             ("application/json".to_owned(), other.to_string().into_bytes(), PartKind::Field)
         }
     };
-    // `encoding.<property>.contentType` wins over the type guessed from the value.
+    // `encoding.<property>.contentType` wins over the default of the value's kind.
     (declared.map_or(ct, str::to_owned), data, file)
 }
 

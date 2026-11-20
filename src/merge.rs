@@ -7,7 +7,7 @@
 //! keys and the root server keeps the host. So the client's base URL serves every operation. Root `servers` that
 //! differ otherwise move onto the file's path items (3.2 section 4.9: a path item's `servers` override the root's). Root `security` that
 //! differs moves onto the file's operations that have none of their own. The same path and method in two files and
-//! two different components under one name are errors: guessing which one wins would change the API.
+//! two different components under one name are errors: the API holds one of each, and the description decides which.
 
 use std::path::{Path, PathBuf};
 

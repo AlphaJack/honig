@@ -1169,15 +1169,15 @@ impl runtime::XmlShape for Line {
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Refusal {
-    pub message: String,
+    pub detail: String,
     pub object: RefusalObject,
 }
 deserialize_impl_2!(Refusal);
 serialize_impl_2!(Refusal);
 impl Refusal {
     #[must_use]
-    pub const fn new(message: String, object: RefusalObject) -> Self {
-        Self { message, object }
+    pub const fn new(detail: String, object: RefusalObject) -> Self {
+        Self { detail, object }
     }
 }
 impl runtime::XmlShape for Refusal {
@@ -1188,15 +1188,15 @@ impl runtime::XmlShape for Refusal {
             prefix: "",
             fields: &[
                 runtime::XmlField {
-                    wire: "message",
-                    name: "message",
+                    wire: "detail",
+                    name: "detail",
                     prefix: "",
                     attribute: false,
                     text: false,
                     list: false,
                     wrapped: false,
                     required: true,
-                    item: "message",
+                    item: "detail",
                     child: None,
                     cdata: false,
                     inline: false,

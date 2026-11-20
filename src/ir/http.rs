@@ -987,8 +987,7 @@ fn part_types(
 }
 
 /// Returns [`property_encoding`] of a `multipart/form-data` media type, with the type that a property's schema gives
-/// where `encoding` names none: its `contentMediaType` (3.2 section 4.14.4.1). A guess from the value would call such a
-/// string `text/plain`.
+/// where `encoding` names none: its `contentMediaType` (3.2 section 4.14.4.1).
 fn schema_part_types(b: &Builder<'_>, media_obj: &Value, schema: Option<&Value>, mptr: &str) -> Vec<(String, String)> {
     let mut out = property_encoding(media_obj);
     let props = schema.and_then(|sc| resolve_value(b, sc, mptr)).and_then(|(sc, _)| sc.get("properties").cloned());

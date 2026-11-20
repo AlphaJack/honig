@@ -265,7 +265,7 @@ fn discriminator_maybe_optional(s: &Obj, prop: &str) -> bool {
             }
         }
     }
-    // A pure oneOf/anyOf of refs: variants may all require it. Don't guess.
+    // A pure oneOf/anyOf of refs: what it requires is up to its variants, which may all require it.
     let has_ref_variants = ["oneOf", "anyOf"]
         .iter()
         .filter_map(|k| s.get(*k).and_then(Value::as_array))

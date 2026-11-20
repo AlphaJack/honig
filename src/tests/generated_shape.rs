@@ -1480,8 +1480,7 @@ fn a_long_chain_of_generics_binds_each() {
     assert!(last.split('}').next().is_some_and(|body| body.contains("pub me: Option<bool>,")), "{types}");
 }
 
-/// A multipart part whose schema names a `contentMediaType` is sent as that type when `encoding` names none: a guess
-/// from the value would send a string as `text/plain`.
+/// A multipart part whose schema names a `contentMediaType` is sent as that type when `encoding` names none.
 #[test]
 fn a_part_takes_the_media_type_of_its_schema() {
     let paths = json!({"/upload": {"post": {

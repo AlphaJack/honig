@@ -14,6 +14,9 @@ fn ok<T: Send>(r: T) -> impl Future<Output = Result<T, api::ApiError>> + Send {
 }
 
 impl api::Api for Server {
+    fn error_response(rejection: api::Rejection) -> api::Response {
+        rejection.response()
+    }
     type Principal = ();
 
     fn open(
@@ -110,8 +113,8 @@ fn additional_properties_false_rejects_an_undeclared_property() {
     assert_eq!(r.status().as_u16(), 400, "{}", String::from_utf8_lossy(r.body().bytes()));
     let body: serde_json::Value = serde_json::from_slice(r.body().bytes()).unwrap();
     assert_eq!(
-        body["violations"],
-        serde_json::json!([{"path": "/body/b", "message": "is not allowed (additionalProperties)"}])
+        body["errors"],
+        serde_json::json!([{"detail": "is not allowed (additionalProperties)", "pointer": "#/b"}])
     );
 }
 

@@ -25,6 +25,9 @@ fn find_caller(req: &api::Request) -> Result<Option<String>, api::ApiError> {
 // ANCHOR_END: request-context
 
 impl api::Api for Server {
+    fn error_response(rejection: api::Rejection) -> api::Response {
+        super::error_body(rejection)
+    }
     type Principal = String;
 
     async fn list_products(
