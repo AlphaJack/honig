@@ -959,6 +959,42 @@ fn range_name(n: u16) -> Name {
     Name::new(&runtime::__private::class(n).map_or_else(|| format!("Status{n}XX"), str::to_owned))
 }
 
+/// Returns the media type of each part of a content of `kind`: by position for `multipart/mixed`, by property
+/// otherwise.
+fn part_types(
+    b: &Builder<'_>,
+    kind: MediaKind,
+    media_obj: &Value,
+    schema: Option<&Value>,
+    mptr: &str,
+    open_prefix: Option<usize>,
+) -> Vec<(String, String)> {
+    if kind == MediaKind::MultipartMixed {
+        positional_encoding(media_obj, open_prefix)
+    } else if kind == MediaKind::Multipart {
+        schema_part_types(b, media_obj, schema, mptr)
+    } else {
+        property_encoding(media_obj)
+    }
+}
+
+/// Returns [`property_encoding`] of a `multipart/form-data` media type, with the type that a property's schema gives
+/// where `encoding` names none: its `contentMediaType` (3.2 section 4.14.4.1). A guess from the value would call such a
+/// string `text/plain`.
+fn schema_part_types(b: &Builder<'_>, media_obj: &Value, schema: Option<&Value>, mptr: &str) -> Vec<(String, String)> {
+    let mut out = property_encoding(media_obj);
+    let props = schema.and_then(|sc| resolve_value(b, sc, mptr)).and_then(|(sc, _)| sc.get("properties").cloned());
+    for (prop, ps) in props.as_ref().and_then(Value::as_object).into_iter().flatten() {
+        let Some((ps, _)) = resolve_value(b, ps, mptr) else { continue };
+        if let Some(media) = ps.get("contentMediaType").and_then(Value::as_str)
+            && !out.iter().any(|(p, _)| p == prop)
+        {
+            out.push((prop.clone(), media.to_owned()));
+        }
+    }
+    out
+}
+
 /// Returns `encoding.<property>.contentType` of a form or multipart media type. Inside a
 /// `multipart/*` part also its own `encoding` (`meta/inner`),
 /// `prefixEncoding` (`files/0`) and `itemEncoding` (`files/*`).
@@ -1053,11 +1089,7 @@ fn contents(b: &mut Builder<'_>, holder: &Value, ptr: &str, hint: &Name) -> Vec<
             }
         };
         let variant = unique(Name::new(&media_variant(media)), &mut taken);
-        let encoding = if kind == MediaKind::MultipartMixed {
-            positional_encoding(&media_obj, open_prefix)
-        } else {
-            property_encoding(&media_obj)
-        };
+        let encoding = part_types(b, kind, &media_obj, schema, &mptr, open_prefix);
         let examples = examples_of(b, &media_obj, &mptr, kind == MediaKind::Json);
         let form_styles = if kind == MediaKind::Form { form_styles(b, &media_obj, schema, &mptr) } else { vec![] };
         out.push(Content {
