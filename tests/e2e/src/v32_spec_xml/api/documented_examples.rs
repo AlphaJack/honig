@@ -20,12 +20,12 @@
     reason = "which of them the examples need depends on the description"
 )]
 use super::{runtime, types};
-fn xml<T>(bad: &mut Vec<String>, at: &str, data: serde_json::Value, text: &str)
+fn xml<T>(bad: &mut Vec<String>, at: &str, data: &str, text: &str)
 where
     T: serde::de::DeserializeOwned + serde::Serialize + runtime::XmlShape + PartialEq
         + std::fmt::Debug,
 {
-    let want: T = match serde_json::from_value(data) {
+    let want: T = match serde_json::from_str(data) {
         Ok(v) => v,
         Err(e) => {
             bad.push(format!("{at}: the dataValue does not fit: {e}"));
@@ -49,14 +49,7 @@ fn documented_examples_decode() {
     >(
         &mut bad,
         "/paths/~1no-xml-object/get/responses/200/content/application~1xml/examples/products/serializedValue",
-        serde_json::Value::Object(
-            serde_json::Map::from_iter([
-                (
-                    "products".to_owned(),
-                    serde_json::Value::String("book, gadget, pen".to_owned()),
-                ),
-            ]),
-        ),
+        "{\"products\":\"book, gadget, pen\"}",
         "<document>\n  <products>book, gadget, pen</products>\n</document>\n",
     );
     xml::<
@@ -64,20 +57,7 @@ fn documented_examples_decode() {
     >(
         &mut bad,
         "/paths/~1no-xml-object~1array/get/responses/200/content/application~1xml/examples/products/serializedValue",
-        serde_json::Value::Object(
-            serde_json::Map::from_iter([
-                (
-                    "products".to_owned(),
-                    serde_json::Value::Array(
-                        vec![
-                            serde_json::Value::String("book".to_owned()),
-                            serde_json::Value::String("gadget".to_owned()),
-                            serde_json::Value::String("pen".to_owned())
-                        ],
-                    ),
-                ),
-            ]),
-        ),
+        "{\"products\":[\"book\",\"gadget\",\"pen\"]}",
         "<document>\n  <products>book</products>\n  <products>gadget</products>\n  <products>pen</products>\n</document>\n",
     );
     xml::<
@@ -85,12 +65,7 @@ fn documented_examples_decode() {
     >(
         &mut bad,
         "/components/requestBodies/Person/content/application~1xml/examples/Person/serializedValue",
-        serde_json::Value::Object(
-            serde_json::Map::from_iter([
-                ("id".to_owned(), serde_json::Value::from(123i64)),
-                ("name".to_owned(), serde_json::Value::String("example".to_owned())),
-            ]),
-        ),
+        "{\"id\":123,\"name\":\"example\"}",
         "<Person id=\"123\">\n  <sample:name xmlns:sample=\"https://example.com/schema/sample\">example</sample:name>\n</Person>\n",
     );
     xml::<
@@ -98,20 +73,7 @@ fn documented_examples_decode() {
     >(
         &mut bad,
         "/paths/~1arrays~1item-names/get/responses/200/content/application~1xml/examples/products/serializedValue",
-        serde_json::Value::Object(
-            serde_json::Map::from_iter([
-                (
-                    "products".to_owned(),
-                    serde_json::Value::Array(
-                        vec![
-                            serde_json::Value::String("book".to_owned()),
-                            serde_json::Value::String("gadget".to_owned()),
-                            serde_json::Value::String("pen".to_owned())
-                        ],
-                    ),
-                ),
-            ]),
-        ),
+        "{\"products\":[\"book\",\"gadget\",\"pen\"]}",
         "<document>\n  <product>book</product>\n  <product>gadget</product>\n  <product>pen</product>\n</document>\n",
     );
     xml::<
@@ -119,20 +81,7 @@ fn documented_examples_decode() {
     >(
         &mut bad,
         "/paths/~1arrays~1unwrapped-name/get/responses/200/content/application~1xml/examples/products/serializedValue",
-        serde_json::Value::Object(
-            serde_json::Map::from_iter([
-                (
-                    "products".to_owned(),
-                    serde_json::Value::Array(
-                        vec![
-                            serde_json::Value::String("book".to_owned()),
-                            serde_json::Value::String("gadget".to_owned()),
-                            serde_json::Value::String("pen".to_owned())
-                        ],
-                    ),
-                ),
-            ]),
-        ),
+        "{\"products\":[\"book\",\"gadget\",\"pen\"]}",
         "<document>\n  <product>book</product>\n  <product>gadget</product>\n  <product>pen</product>\n</document>\n",
     );
     xml::<
@@ -140,20 +89,7 @@ fn documented_examples_decode() {
     >(
         &mut bad,
         "/paths/~1arrays~1wrapped/get/responses/200/content/application~1xml/examples/products/serializedValue",
-        serde_json::Value::Object(
-            serde_json::Map::from_iter([
-                (
-                    "products".to_owned(),
-                    serde_json::Value::Array(
-                        vec![
-                            serde_json::Value::String("book".to_owned()),
-                            serde_json::Value::String("gadget".to_owned()),
-                            serde_json::Value::String("pen".to_owned())
-                        ],
-                    ),
-                ),
-            ]),
-        ),
+        "{\"products\":[\"book\",\"gadget\",\"pen\"]}",
         "<document>\n  <products>\n    <products>book</products>\n    <products>gadget</products>\n    <products>pen</products>\n  </products>\n</document>\n",
     );
     xml::<
@@ -161,20 +97,7 @@ fn documented_examples_decode() {
     >(
         &mut bad,
         "/paths/~1arrays~1wrapped-item-names/get/responses/200/content/application~1xml/examples/products/serializedValue",
-        serde_json::Value::Object(
-            serde_json::Map::from_iter([
-                (
-                    "products".to_owned(),
-                    serde_json::Value::Array(
-                        vec![
-                            serde_json::Value::String("book".to_owned()),
-                            serde_json::Value::String("gadget".to_owned()),
-                            serde_json::Value::String("pen".to_owned())
-                        ],
-                    ),
-                ),
-            ]),
-        ),
+        "{\"products\":[\"book\",\"gadget\",\"pen\"]}",
         "<document>\n  <products>\n    <product>book</product>\n    <product>gadget</product>\n    <product>pen</product>\n  </products>\n</document>\n",
     );
     xml::<
@@ -182,20 +105,7 @@ fn documented_examples_decode() {
     >(
         &mut bad,
         "/paths/~1arrays~1wrapped-renamed/get/responses/200/content/application~1xml/examples/products/serializedValue",
-        serde_json::Value::Object(
-            serde_json::Map::from_iter([
-                (
-                    "products".to_owned(),
-                    serde_json::Value::Array(
-                        vec![
-                            serde_json::Value::String("book".to_owned()),
-                            serde_json::Value::String("gadget".to_owned()),
-                            serde_json::Value::String("pen".to_owned())
-                        ],
-                    ),
-                ),
-            ]),
-        ),
+        "{\"products\":[\"book\",\"gadget\",\"pen\"]}",
         "<document>\n  <aliens>\n    <product>book</product>\n    <product>gadget</product>\n    <product>pen</product>\n  </aliens>\n</document>\n",
     );
     xml::<
@@ -203,17 +113,7 @@ fn documented_examples_decode() {
     >(
         &mut bad,
         "/components/responses/AwesomeDocs/content/application~1xml/examples/docs/serializedValue",
-        serde_json::Value::Object(
-            serde_json::Map::from_iter([
-                (
-                    "content".to_owned(),
-                    serde_json::Value::String(
-                        "<html><head><title>Awesome Docs</title></head><body></body><html>"
-                            .to_owned(),
-                    ),
-                ),
-            ]),
-        ),
+        "{\"content\":\"<html><head><title>Awesome Docs</title></head><body></body><html>\"}",
         "<Documentation>\n  <![CDATA[<html><head><title>Awesome Docs</title></head><body></body><html>]]>\n</Documentation>\n",
     );
     xml::<
@@ -221,16 +121,7 @@ fn documented_examples_decode() {
     >(
         &mut bad,
         "/paths/~1product/get/responses/200/content/application~1xml/examples/productWithNulls/serializedValue",
-        serde_json::Value::Object(
-            serde_json::Map::from_iter([
-                ("count".to_owned(), serde_json::Value::Null),
-                (
-                    "description".to_owned(),
-                    serde_json::Value::String("Thing".to_owned()),
-                ),
-                ("related".to_owned(), serde_json::Value::Null),
-            ]),
-        ),
+        "{\"count\":null,\"description\":\"Thing\",\"related\":null}",
         "<product>\n  <description>Thing</description>\n  <related xsi:nil=\"true\" />\n</product>\n",
     );
     xml::<
@@ -238,16 +129,7 @@ fn documented_examples_decode() {
     >(
         &mut bad,
         "/paths/~1product/get/responses/200/content/application~1xml/examples/productNoNulls/serializedValue",
-        serde_json::Value::Object(
-            serde_json::Map::from_iter([
-                ("count".to_owned(), serde_json::Value::from(42i64)),
-                (
-                    "description".to_owned(),
-                    serde_json::Value::String("Thing".to_owned()),
-                ),
-                ("related".to_owned(), serde_json::Value::Object(serde_json::Map::new())),
-            ]),
-        ),
+        "{\"count\":42,\"description\":\"Thing\",\"related\":{}}",
         "<product count=\"42\">\n  <description>Thing</description>\n  <related></related>\n</product>\n",
     );
     assert!(

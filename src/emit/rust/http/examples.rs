@@ -7,7 +7,7 @@ use quote::quote;
 use super::shared::param_enc;
 use crate::emit::rust::space::Space;
 use crate::emit::rust::syntax::pascal_ident;
-use crate::emit::rust::syntax::{json_tokens, lit, mentions, ty};
+use crate::emit::rust::syntax::{lit, mentions, ty};
 use crate::ir::Api;
 use crate::ir::http::{Location, Operation, Param};
 use crate::ir::media::MediaKind;
@@ -20,11 +20,7 @@ pub(crate) fn wire_checks(api: &Api, space: &Space<'_>) -> Vec<TokenStream> {
         let inner = if let Ty::Option(t) = &p.ty { t.as_ref() } else { &p.ty };
         let t = ty(space, inner, true);
         for (at, v, want) in &p.serialized {
-            if out.len() < MAX_EXAMPLES
-                && let Some(check) = wire_check(p, &t, at, v, want)
-            {
-                out.push(check);
-            }
+            out.extend(wire_check(p, &t, at, v, want));
         }
     }
     out
@@ -73,18 +69,14 @@ pub(crate) fn wire_check(
             c.join("; ")
         }),
     };
-    let (at, json, want) = (lit(at), json_tokens(v), lit(want));
+    let (at, text, want) = (lit(at), lit(&v.to_string()), lit(want));
     Some(quote! {
-        let got = serde_json::from_value::<#t>(#json)
+        let got = serde_json::from_str::<#t>(#text)
             .map_err(|e| runtime::Error::Encode(e.to_string()))
             .map(|v| #encode);
         wire(&mut bad, #at, got, #want);
     })
 }
-
-/// Most documented examples checked and the largest one emitted (bytes of JSON).
-pub(crate) const MAX_EXAMPLES: usize = 200;
-pub(crate) const MAX_EXAMPLE_BYTES: usize = 2048;
 
 /// Returns every documented example with the type that it must decode into as (JSON
 /// pointer, type, value, decoded like a parameter).
@@ -143,11 +135,11 @@ pub(crate) fn documented_examples<'a>(
 /// to it.
 fn xml_check_fn() -> TokenStream {
     quote! {
-        fn xml<T>(bad: &mut Vec<String>, at: &str, data: serde_json::Value, text: &str)
+        fn xml<T>(bad: &mut Vec<String>, at: &str, data: &str, text: &str)
         where
             T: serde::de::DeserializeOwned + serde::Serialize + runtime::XmlShape + PartialEq + std::fmt::Debug,
         {
-            let want: T = match serde_json::from_value(data) {
+            let want: T = match serde_json::from_str(data) {
                 Ok(v) => v,
                 Err(e) => {
                     bad.push(format!("{at}: the dataValue does not fit: {e}"));
@@ -173,9 +165,8 @@ fn xml_checks(api: &Api, space: &Space<'_>) -> Vec<TokenStream> {
         .iter()
         .flat_map(Operation::contents)
         .flat_map(|c| c.serialized.iter().map(move |s| (c, s)))
-        .take(MAX_EXAMPLES)
         .map(|(c, (at, data, text))| {
-            let (t, at, data, text) = (ty(space, &c.ty, true), lit(at), json_tokens(data), lit(text));
+            let (t, at, data, text) = (ty(space, &c.ty, true), lit(at), lit(&data.to_string()), lit(text));
             quote!(xml::<#t>(&mut bad, #at, #data, #text);)
         })
         .collect()
@@ -189,13 +180,13 @@ pub(crate) fn tests(api: &Api, space: &Space<'_>) -> Option<TokenStream> {
     let (mut uses_value, mut uses_param) = (false, false);
     let mut push = |at: &str, t: TokenStream, v: &serde_json::Value, param: bool| {
         // `null` is a placeholder in many descriptions and not a sample of the type.
-        if !v.is_null() && checks.len() < MAX_EXAMPLES && v.to_string().len() <= MAX_EXAMPLE_BYTES {
+        if !v.is_null() {
             if param {
                 uses_param = true;
             } else {
                 uses_value = true;
             }
-            let (at, json) = (lit(at), json_tokens(v));
+            let (at, json) = (lit(at), lit(&v.to_string()));
             let f = if param { quote!(param) } else { quote!(value) };
             checks.push(quote!(#f::<#t>(&mut bad, #at, #json);));
         }
@@ -212,8 +203,8 @@ pub(crate) fn tests(api: &Api, space: &Space<'_>) -> Option<TokenStream> {
     let xml_fn = (!xmls.is_empty()).then(xml_check_fn);
     let value_fn = uses_value.then(|| {
         quote! {
-            fn value<T: serde::de::DeserializeOwned>(bad: &mut Vec<String>, at: &str, v: serde_json::Value) {
-                if let Err(e) = serde_json::from_value::<T>(v) {
+            fn value<T: serde::de::DeserializeOwned>(bad: &mut Vec<String>, at: &str, text: &str) {
+                if let Err(e) = serde_json::from_str::<T>(text) {
                     bad.push(format!("{at}: {e}"));
                 }
             }
@@ -221,9 +212,10 @@ pub(crate) fn tests(api: &Api, space: &Space<'_>) -> Option<TokenStream> {
     });
     let param_fn = uses_param.then(|| {
         quote! {
-            fn param<T: serde::de::DeserializeOwned>(bad: &mut Vec<String>, at: &'static str, v: serde_json::Value) {
-                // The error names `at`.
-                if let Err(e) = runtime::from_param::<T>(Some(v), at) {
+            fn param<T: serde::de::DeserializeOwned>(bad: &mut Vec<String>, at: &'static str, text: &str) {
+                // A parameter is read as its style coerces it: the documented value is parsed once for that. The error
+                // names `at`.
+                if let Err(e) = runtime::from_param::<T>(serde_json::from_str(text).ok(), at) {
                     bad.push(e.to_string());
                 }
             }

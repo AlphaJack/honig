@@ -1542,3 +1542,20 @@ fn a_default_is_checked_by_the_test_of_the_examples() {
     let examples = common::file(&files, "documented_examples.rs");
     assert!(examples.contains("/properties/label/default"), "{examples}");
 }
+
+/// The generated test checks every documented example, however many, each decoded from its JSON text straight into its
+/// type: no untyped JSON value on the way.
+#[test]
+fn every_example_is_decoded_from_its_text() {
+    let mut properties = serde_json::Map::new();
+    for i in 0..250 {
+        properties.insert(format!("p{i}"), json!({"type": "integer", "example": i}));
+    }
+    let doc =
+        common::spec("3.2.0", &json!({}), &json!({"schemas": {"Many": {"type": "object", "properties": properties}}}));
+    let opts = crate::emit::Options { tests: true, ..crate::emit::Options::default() };
+    let files = common::generate("many-examples", &doc, &opts);
+    let examples = common::file(&files, "documented_examples.rs");
+    assert_eq!(examples.matches("/example\"").count(), 250, "{examples}");
+    assert!(examples.contains("serde_json::from_str") && !examples.contains("serde_json::Value"), "{examples}");
+}

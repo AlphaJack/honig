@@ -20,21 +20,17 @@
     reason = "which of them the examples need depends on the description"
 )]
 use super::{runtime, types};
-fn value<T: serde::de::DeserializeOwned>(
-    bad: &mut Vec<String>,
-    at: &str,
-    v: serde_json::Value,
-) {
-    if let Err(e) = serde_json::from_value::<T>(v) {
+fn value<T: serde::de::DeserializeOwned>(bad: &mut Vec<String>, at: &str, text: &str) {
+    if let Err(e) = serde_json::from_str::<T>(text) {
         bad.push(format!("{at}: {e}"));
     }
 }
 fn param<T: serde::de::DeserializeOwned>(
     bad: &mut Vec<String>,
     at: &'static str,
-    v: serde_json::Value,
+    text: &str,
 ) {
-    if let Err(e) = runtime::from_param::<T>(Some(v), at) {
+    if let Err(e) = runtime::from_param::<T>(serde_json::from_str(text).ok(), at) {
         bad.push(e.to_string());
     }
 }
@@ -46,22 +42,14 @@ fn documented_examples_decode() {
     >(
         &mut bad,
         "/components/schemas/Problem/properties/type/default",
-        serde_json::Value::String("about:blank".to_owned()),
+        "\"about:blank\"",
     );
     param::<
         types::ListOrdersLimit,
-    >(
-        &mut bad,
-        "/paths/~1orders/get/parameters/2/schema/default",
-        serde_json::Value::from(20i64),
-    );
+    >(&mut bad, "/paths/~1orders/get/parameters/2/schema/default", "20");
     param::<
         types::ListOrdersSort,
-    >(
-        &mut bad,
-        "/paths/~1orders/get/parameters/3/schema/default",
-        serde_json::Value::String("newest".to_owned()),
-    );
+    >(&mut bad, "/paths/~1orders/get/parameters/3/schema/default", "\"newest\"");
     assert!(
         bad.is_empty(), "examples that do not fit their schema:\n{}", bad.join("\n")
     );

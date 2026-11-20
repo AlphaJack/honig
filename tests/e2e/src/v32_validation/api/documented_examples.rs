@@ -20,12 +20,8 @@
     reason = "which of them the examples need depends on the description"
 )]
 use super::{runtime, types};
-fn value<T: serde::de::DeserializeOwned>(
-    bad: &mut Vec<String>,
-    at: &str,
-    v: serde_json::Value,
-) {
-    if let Err(e) = serde_json::from_value::<T>(v) {
+fn value<T: serde::de::DeserializeOwned>(bad: &mut Vec<String>, at: &str, text: &str) {
+    if let Err(e) = serde_json::from_str::<T>(text) {
         bad.push(format!("{at}: {e}"));
     }
 }
@@ -37,14 +33,14 @@ fn documented_examples_decode() {
     >(
         &mut bad,
         "/components/schemas/Shipment/oneOf/0/properties/label/default",
-        serde_json::Value::String("none".to_owned()),
+        "\"none\"",
     );
     value::<
         types::ShipmentOtherwiseLabel,
     >(
         &mut bad,
         "/components/schemas/Shipment/oneOf/1/properties/label/default",
-        serde_json::Value::String("none".to_owned()),
+        "\"none\"",
     );
     assert!(
         bad.is_empty(), "examples that do not fit their schema:\n{}", bad.join("\n")
