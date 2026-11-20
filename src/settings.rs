@@ -28,12 +28,14 @@ pub(crate) const SETTINGS: [(&str, Option<&str>, &str); 10] = [
     (
         "client",
         Some("true"),
-        "generate the client; a table sets its adapters = [\"reqwest\"] and operations = [\"getOrder\"]",
+        "generate the client; a table sets its adapters = [\"reqwest\"] and operations = [\"getOrder\"]. With a list of \
+         operations on either side, the module holds those of both and only the types that they reach",
     ),
     (
         "server",
         Some("true"),
-        "generate the server; a table sets its adapters = [\"axum\"] and allow_unimplemented = true",
+        "generate the server; a table sets its adapters = [\"axum\"], allow_unimplemented = true and operations = \
+         [\"getOrder\"]",
     ),
     ("tests", Some("false"), "generate a test that the description's examples decode"),
     ("unknown_fields", Some("\"drop\""), "\"keep\": objects without additionalProperties keep unknown keys"),
@@ -106,6 +108,8 @@ pub(crate) struct Settings {
     /// `client = { operations = [...] }`: the only operations that the client calls by `operationId`. `None` for every
     /// one.
     pub client_operations: Option<Vec<String>>,
+    /// `server = { operations = [...] }`: the only operations that the server serves. `None` for every one.
+    pub server_operations: Option<Vec<String>>,
     /// `overlays`: Overlay files applied in order to the spec. They are relative to `root`.
     pub overlays: Vec<PathBuf>,
 }
@@ -487,7 +491,7 @@ pub(crate) fn settings<'a>(module: impl Into<Module<'a>>, path: &Path) -> Result
         None => manifest.linted_mod_rs().unwrap_or(true),
         Some(item) => item.as_bool().ok_or_else(|| setting(&name, "mod_rs", "true or false", shown(item)))?,
     };
-    let Halves { client, server, client_operations, allow_unimplemented, adapters, strict_client } =
+    let Halves { client, server, client_operations, server_operations, allow_unimplemented, adapters, strict_client } =
         halves(manifest, table, &name)?;
     Ok(Settings {
         table: name.clone(),
@@ -503,6 +507,7 @@ pub(crate) fn settings<'a>(module: impl Into<Module<'a>>, path: &Path) -> Result
         derives: derives(table, &name)?,
         binary,
         client_operations,
+        server_operations,
         strict_client,
         overlays: match table.get("overlays") {
             None => vec![],
@@ -527,6 +532,7 @@ struct Halves {
     client: bool,
     server: bool,
     client_operations: Option<Vec<String>>,
+    server_operations: Option<Vec<String>>,
     allow_unimplemented: bool,
     adapters: Vec<&'static str>,
     strict_client: bool,
@@ -535,20 +541,25 @@ struct Halves {
 /// Returns `client` and `server` of the module table `name`.
 fn halves(manifest: &Manifest, table: &dyn TableLike, name: &str) -> Result<Halves, Error> {
     let (client, client_table) = half(table, name, "client", &["adapters", "operations", "strict"])?;
-    let (server, server_table) = half(table, name, "server", &["adapters", "allow_unimplemented"])?;
+    let (server, server_table) = half(table, name, "server", &["adapters", "allow_unimplemented", "operations"])?;
     let mut adapters = half_adapters(manifest, client_table, &format!("{name}.client"), Side::Client)?;
     for adapter in half_adapters(manifest, server_table, &format!("{name}.server"), Side::Server)? {
         if !adapters.contains(&adapter) {
             adapters.push(adapter);
         }
     }
-    let client_operations = client_table
-        .and_then(|t| t.get("operations"))
-        .map(|item| {
-            string_array(Some(item))
-                .ok_or_else(|| setting(&format!("{name}.client"), "operations", "a list of operationIds", shown(item)))
-        })
-        .transpose()?;
+    let operations = |half_table: Option<&dyn TableLike>, side: &str| {
+        half_table
+            .and_then(|t| t.get("operations"))
+            .map(|item| {
+                string_array(Some(item)).ok_or_else(|| {
+                    setting(&format!("{name}.{side}"), "operations", "a list of operationIds", shown(item))
+                })
+            })
+            .transpose()
+    };
+    let client_operations = operations(client_table, "client")?;
+    let server_operations = operations(server_table, "server")?;
     let allow_unimplemented = match server_table.and_then(|t| t.get("allow_unimplemented")) {
         None => false,
         Some(item) => item
@@ -561,7 +572,7 @@ fn halves(manifest: &Manifest, table: &dyn TableLike, name: &str) -> Result<Halv
             item.as_bool().ok_or_else(|| setting(&format!("{name}.client"), "strict", "true or false", shown(item)))?
         }
     };
-    Ok(Halves { client, server, client_operations, allow_unimplemented, adapters, strict_client })
+    Ok(Halves { client, server, client_operations, server_operations, allow_unimplemented, adapters, strict_client })
 }
 
 /// Returns the half `key` (`client` or `server`): whether it is generated and its table of settings. It is `true`,

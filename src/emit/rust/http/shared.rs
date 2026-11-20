@@ -401,3 +401,9 @@ pub(crate) fn deprecated_scheme(deprecated: bool) -> Option<TokenStream> {
 pub(crate) fn some_ref(name: impl quote::ToTokens) -> TokenStream {
     quote!(Some(&#name))
 }
+
+/// Is `op` one of `names`: its `operationId`, or its generated name in snake case?
+pub(crate) fn listed(names: &[String], op: &Operation) -> bool {
+    let name = snake(&op.name);
+    names.iter().any(|n| op.operation_id.as_deref() == Some(n.as_str()) || *n == name || snake(&Name::new(n)) == name)
+}

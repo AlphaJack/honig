@@ -558,3 +558,67 @@ fn declared_security_needs_a_verify_method() {
     );
     assert!(checked.status.success(), "{}", String::from_utf8_lossy(&checked.stderr));
 }
+
+/// A description for a server of one operation: its body checks reach types only through `not`, `if`/`then` and
+/// `contains`. Another operation, which the server does not serve, is the only one that refers to `Unused`.
+fn served_subset() -> serde_json::Value {
+    super::common::spec(
+        "3.2.0",
+        &serde_json::json!({
+            "/orders": {"post": {"operationId": "createOrder",
+                "requestBody": {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Order"}}}},
+                "responses": {"204": {"description": "Created"}}}},
+            "/reports": {"get": {"operationId": "getReport",
+                "responses": {"200": {"description": "A report", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Unused"}}}}}}}
+        }),
+        &serde_json::json!({"schemas": {
+            "Order": {
+                "type": "object",
+                "required": ["lines"],
+                "properties": {
+                    "lines": {"type": "array", "items": {"type": "integer"}, "contains": {"$ref": "#/components/schemas/Positive"}},
+                    "code": {"type": "string", "not": {"$ref": "#/components/schemas/Reserved"}}
+                },
+                "if": {"$ref": "#/components/schemas/Rush"},
+                "then": {"$ref": "#/components/schemas/Express"}
+            },
+            "Positive": {"type": "integer", "minimum": 1},
+            "Reserved": {"type": "string", "enum": ["admin", "root"]},
+            "Rush": {"type": "object", "required": ["rush"], "properties": {"rush": {"const": true}}},
+            "Express": {"type": "object", "required": ["courier"], "properties": {"courier": {"type": "string"}}},
+            "Unused": {"type": "object", "properties": {"title": {"type": "string"}}}
+        }}),
+    )
+}
+
+/// A server for a subset of the operations holds only the types that they reach, also those that only its checks reach.
+/// It builds, and a type that no served operation reaches is left out.
+#[test]
+#[ignore = "compiles generated crates"]
+fn a_server_for_some_operations_holds_the_types_they_reach() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let out = root.join("target").join("gen-tests").join("served-subset");
+    // A missing directory is fine: there is nothing to clean up.
+    std::fs::remove_dir_all(&out).ok();
+    std::fs::create_dir_all(&out).unwrap();
+    let spec = out.join("openapi.json");
+    std::fs::write(&spec, serde_json::to_vec_pretty(&served_subset()).unwrap()).unwrap();
+    let opts = crate::emit::Options {
+        client: false,
+        allow_unimplemented: true,
+        server_operations: Some(vec!["createOrder".to_owned()]),
+        ..crate::emit::Options::default()
+    };
+    super::common::new_crate(&spec, &out, "served-subset", &opts);
+    super::common::use_local_runtime(&out.join("Cargo.toml"));
+    let types = std::fs::read_to_string(out.join("src").join("api").join("types.rs")).unwrap();
+    assert!(types.contains("pub struct Order"), "the served operation's body");
+    assert!(!types.contains("Unused"), "only the operation that the server does not serve reaches `Unused`");
+    let built = Command::new(env!("CARGO"))
+        .args(["build", "--quiet"])
+        .current_dir(&out)
+        .env("CARGO_TARGET_DIR", root.join("target").join("gen-tests").join("target"))
+        .output()
+        .expect("cargo runs");
+    assert!(built.status.success(), "{}", String::from_utf8_lossy(&built.stderr));
+}

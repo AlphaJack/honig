@@ -18,4 +18,4 @@ pub(super) use client::client;
 pub(super) use examples::tests;
 pub(super) use operations::operations;
 pub(super) use server::{server, unset_error_headers};
-pub(super) use shared::{has_hooks, has_xml, is_path};
+pub(super) use shared::{has_hooks, has_xml, is_path, listed};

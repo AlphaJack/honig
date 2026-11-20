@@ -311,7 +311,7 @@ pub(crate) enum OpKind {
     },
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 /// The API's HTTP side.
 pub(crate) struct Http {
     /// Every operation in document order.

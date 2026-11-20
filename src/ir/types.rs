@@ -878,3 +878,45 @@ mod tests {
         assert!(hint.wrapped);
     }
 }
+
+/// Returns the schema that the values left unevaluated take, an index into [`TypeSpace::subschemas`].
+fn leftover_schema<E>(leftover: Option<&(E, Leftover)>) -> Option<usize> {
+    match leftover {
+        Some((_, Leftover::Schema(i))) => Some(*i),
+        Some((_, Leftover::Refused)) | None => None,
+    }
+}
+
+impl Constraints {
+    /// Returns the indices into [`TypeSpace::subschemas`] that these checks decode a value as, also those of `items`
+    /// and `propertyNames`.
+    pub(crate) fn subschemas(&self) -> Vec<usize> {
+        let mut out: Vec<usize> = self.not.clone();
+        out.extend(self.dependent_schemas.iter().map(|(_, i)| *i));
+        out.extend(self.names_schema);
+        for (cond, then, otherwise) in &self.conditions {
+            out.push(*cond);
+            out.extend(*then);
+            out.extend(*otherwise);
+        }
+        out.extend(self.contains.map(|(i, ..)| i));
+        out.extend(self.json_contains.map(|(i, ..)| i));
+        out.extend(&self.one_of);
+        out.extend(&self.any_of);
+        out.extend(self.pattern_properties.iter().map(|(_, i)| *i));
+        out.extend(self.closed_to.as_ref().and_then(|(_, i)| *i));
+        if let Some((items, rest)) = &self.tuple {
+            out.extend(items);
+            if let Rest::Schema(i) = rest {
+                out.push(*i);
+            }
+        }
+        out.extend(&self.also);
+        out.extend(leftover_schema(self.unevaluated.as_ref()));
+        out.extend(leftover_schema(self.unevaluated_items.as_ref()));
+        for inner in self.items.iter().chain(self.property_names.iter()) {
+            out.extend(inner.subschemas());
+        }
+        out
+    }
+}

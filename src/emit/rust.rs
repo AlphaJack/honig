@@ -75,7 +75,90 @@ pub(crate) struct Trees {
 
 /// Returns every file of a generated module as a syntax tree, as (path relative to the module dir, tree). Each is
 /// printed by `prettyplease` ([`print()`]); the `runtime.rs` is a short hand-written template over the runtime crate.
+/// Returns `api` with only the operations that the client calls or the server serves, and every type that none of them
+/// reaches left out. `None` when neither side lists its operations: then every one stays.
+fn kept(api: &Api, opts: &super::Options) -> Option<Api> {
+    use crate::ir::http::OpKind;
+    use crate::ir::types::{Constraints, Kind, TypeId};
+    if opts.client_operations.is_none() && opts.server_operations.is_none() {
+        return None;
+    }
+    let side = |on: bool, names: Option<&[String]>, op: &crate::ir::http::Operation| {
+        on && names.is_none_or(|names| http::listed(names, op))
+    };
+    let keeps = |op: &crate::ir::http::Operation| {
+        side(opts.client, opts.client_operations.as_deref(), op)
+            || side(opts.server, opts.server_operations.as_deref(), op)
+    };
+    let mut api = api.clone();
+    let parents: std::collections::BTreeSet<String> = api
+        .http
+        .operations
+        .iter()
+        .filter(|op| matches!(op.kind, OpKind::Path) && keeps(op))
+        .map(|op| op.name.key())
+        .collect();
+    api.http.operations.retain(|op| match &op.kind {
+        OpKind::Callback { parent, .. } => parents.contains(&parent.key()),
+        OpKind::Path | OpKind::Webhook { .. } => keeps(op),
+    });
+    let mut stack: Vec<TypeId> = Vec::new();
+    let mut subschemas: Vec<usize> = Vec::new();
+    for op in &api.http.operations {
+        let contents = op.body.iter().flat_map(|b| &b.contents).chain(op.responses.iter().flat_map(|r| &r.contents));
+        let headers = op.responses.iter().flat_map(|r| &r.headers).map(|h| &h.ty);
+        for t in op.params.iter().map(|p| &p.ty).chain(contents.map(|c| &c.ty)).chain(headers) {
+            crate::ir::types::all_refs(t, &mut stack);
+        }
+        subschemas.extend(op.params.iter().flat_map(|p| p.constraints.subschemas()));
+        if let Some(b) = &op.body {
+            subschemas.extend(b.constraints.subschemas());
+            subschemas.extend(b.variant_constraints.iter().flat_map(Constraints::subschemas));
+        }
+    }
+    let mut reached = vec![false; api.types.defs.len()];
+    let mut seen = vec![false; api.types.subschemas.len()];
+    loop {
+        if let Some(i) = subschemas.pop() {
+            if !std::mem::replace(&mut seen[i], true) {
+                let (t, c) = &api.types.subschemas[i];
+                crate::ir::types::all_refs(t, &mut stack);
+                subschemas.extend(c.subschemas());
+            }
+            continue;
+        }
+        let Some(id) = stack.pop() else { break };
+        if std::mem::replace(&mut reached[id.0], true) {
+            continue;
+        }
+        let kind = &api.types.defs[id.0].kind;
+        for t in crate::ir::types::def_types(kind) {
+            crate::ir::types::all_refs(t, &mut stack);
+        }
+        match kind {
+            Kind::Checked(c) => subschemas.extend(c.constraints.subschemas()),
+            Kind::Struct(s) => subschemas.extend(s.fields.iter().flat_map(|f| f.constraints.subschemas())),
+            Kind::Union(u) => subschemas.extend(u.variants.iter().flat_map(|v| v.constraints.subschemas())),
+            Kind::Alias(_)
+            | Kind::Newtype(_)
+            | Kind::StrEnum(_)
+            | Kind::IntEnum(_)
+            | Kind::Const(_)
+            | Kind::Pending => {}
+        }
+    }
+    for (def, reached) in api.types.defs.iter_mut().zip(reached) {
+        if !reached {
+            def.kind = Kind::Pending;
+            def.rust_type = None;
+        }
+    }
+    Some(api)
+}
+
 pub(crate) fn trees(api: &Api, opts: &super::Options) -> Trees {
+    let kept = kept(api, opts);
+    let api = kept.as_ref().unwrap_or(api);
     // A type that its twins alias takes the name they share. The names change before anything is emitted, so every
     // file reads the same one.
     let renamed = {
@@ -111,7 +194,13 @@ pub(crate) fn trees(api: &Api, opts: &super::Options) -> Trees {
         trees.push(("client.rs", http::client(api, space, opts.client_operations.as_deref(), opts.rust.binary)));
     }
     if opts.server {
-        trees.push(("server.rs", http::server(api, space, opts.allow_unimplemented)));
+        // The server serves its own operations: the module also holds those that only the client calls.
+        let served = opts.server_operations.as_deref().map(|names| {
+            let mut served = api.clone();
+            served.http.operations.retain(|op| !http::is_path(op) || http::listed(names, op));
+            served
+        });
+        trees.push(("server.rs", http::server(served.as_ref().unwrap_or(api), space, opts.allow_unimplemented)));
     }
     if let Some(examples) = examples {
         trees.push(("documented_examples.rs", examples));

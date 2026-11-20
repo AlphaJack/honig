@@ -23,7 +23,6 @@ use crate::emit::rust::syntax::{pascal_ident, snake_ident};
 use crate::ir::Api;
 use crate::ir::http::{Location, Operation, Param, Resp, Status};
 use crate::ir::media::MediaKind;
-use crate::ir::names::Name;
 use crate::ir::types::{JsonKind, Ty};
 
 /// Returns the descriptions of the servers as a numbered list. The number is the index into `SERVERS`.
@@ -40,12 +39,7 @@ fn servers_doc(api: &Api) -> TokenStream {
 /// Returns `only`: the operations to call (`operationId` or generated name). `None` for every one.
 /// `binary`: a crate without a library that calls part of the client.
 pub(crate) fn client(api: &Api, space: &Space<'_>, only: Option<&[String]>, binary: bool) -> TokenStream {
-    let called = |op: &&Operation| {
-        is_path(op)
-            && only.is_none_or(|names| {
-                names.iter().any(|n| snake(&Name::new(n)) == snake(&op.name) || *n == snake(&op.name))
-            })
-    };
+    let called = |op: &&Operation| is_path(op) && only.is_none_or(|names| super::shared::listed(names, op));
     let servers = api.servers.iter().map(server_url);
     let sec = Securities::new(api);
     let ops = api.http.operations.iter().filter(called).map(|op| client_op(space, api, &sec, op, false));

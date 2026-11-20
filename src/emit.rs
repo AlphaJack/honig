@@ -21,6 +21,9 @@ pub struct Options {
     pub allow_unimplemented: bool,
     /// The only operations that the client calls by `operationId` (or their generated name). `None` means every one.
     pub client_operations: Option<Vec<String>>,
+    /// The only operations that the server serves by `operationId` (or their generated name). `None` means every one.
+    /// The module holds the operations that the client calls or the server serves, and only the types that they reach.
+    pub server_operations: Option<Vec<String>>,
     /// Overlay files applied in order to the description before it is read.
     pub overlays: Vec<std::path::PathBuf>,
     /// What only Rust output needs: set from the crate's `Cargo.toml` by the command line.
@@ -37,6 +40,7 @@ impl Default for Options {
             strict_client: true,
             allow_unimplemented: false,
             client_operations: None,
+            server_operations: None,
             overlays: vec![],
             rust: rust::Options::default(),
         }
