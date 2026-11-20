@@ -82,5 +82,5 @@ impl api::Api for Catalog {
 
 /// A desk lamp: the product every recipe creates.
 fn lamp() -> types::Product {
-    types::Product::Physical(types::Physical::new(types::PhysicalKind, "Desk lamp".to_owned()))
+    types::Product::Physical(types::Physical::new("Desk lamp".to_owned()))
 }

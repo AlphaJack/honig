@@ -1191,8 +1191,11 @@ deserialize_impl_2!(Refusal);
 serialize_impl_2!(Refusal);
 impl Refusal {
     #[must_use]
-    pub const fn new(detail: String, object: RefusalObject) -> Self {
-        Self { detail, object }
+    pub const fn new(detail: String) -> Self {
+        Self {
+            detail,
+            object: RefusalObject {},
+        }
     }
 }
 impl runtime::XmlShape for Refusal {
@@ -2405,9 +2408,9 @@ deserialize_impl_2!(TaggedLabel);
 serialize_impl_4!(TaggedLabel);
 impl TaggedLabel {
     #[must_use]
-    pub const fn new(label: TaggedLabelLabel) -> Self {
+    pub const fn new() -> Self {
         Self {
-            label,
+            label: TaggedLabelLabel {},
             size: None,
             additional_properties: std::collections::BTreeMap::new(),
         }
@@ -2487,9 +2490,9 @@ deserialize_impl_2!(TaggedColour);
 serialize_impl_4!(TaggedColour);
 impl TaggedColour {
     #[must_use]
-    pub const fn new(colour: TaggedColourColour) -> Self {
+    pub const fn new() -> Self {
         Self {
-            colour,
+            colour: TaggedColourColour {},
             size: None,
             additional_properties: std::collections::BTreeMap::new(),
         }
@@ -3751,9 +3754,9 @@ deserialize_impl_2!(Not2Object);
 serialize_impl_4!(Not2Object);
 impl Not2Object {
     #[must_use]
-    pub const fn new(label: Not2ObjectLabel) -> Self {
+    pub const fn new() -> Self {
         Self {
-            label,
+            label: Not2ObjectLabel {},
             additional_properties: std::collections::BTreeMap::new(),
         }
     }
@@ -3831,9 +3834,9 @@ deserialize_impl_2!(Not3Object);
 serialize_impl_4!(Not3Object);
 impl Not3Object {
     #[must_use]
-    pub const fn new(colour: Not3ObjectColour) -> Self {
+    pub const fn new() -> Self {
         Self {
-            colour,
+            colour: Not3ObjectColour {},
             additional_properties: std::collections::BTreeMap::new(),
         }
     }
@@ -3923,9 +3926,9 @@ deserialize_impl_2!(Not5Object);
 serialize_impl_4!(Not5Object);
 impl Not5Object {
     #[must_use]
-    pub const fn new(fragile: Not5ObjectFragile) -> Self {
+    pub const fn new() -> Self {
         Self {
-            fragile,
+            fragile: Not5ObjectFragile {},
             additional_properties: std::collections::BTreeMap::new(),
         }
     }
@@ -4009,9 +4012,9 @@ deserialize_impl_2!(Not6Object);
 serialize_impl_4!(Not6Object);
 impl Not6Object {
     #[must_use]
-    pub const fn new(customs: ObjectCustoms) -> Self {
+    pub const fn new() -> Self {
         Self {
-            customs,
+            customs: ObjectCustoms {},
             additional_properties: std::collections::BTreeMap::new(),
         }
     }
@@ -4834,13 +4837,9 @@ deserialize_impl_2!(ShipmentInternationalFields);
 serialize_impl_2!(ShipmentInternationalFields);
 impl ShipmentInternationalFields {
     #[must_use]
-    pub fn new(
-        kind: ShipmentInternationalKind,
-        customs: String,
-        parcels: ShipmentInternationalParcels,
-    ) -> Self {
+    pub fn new(customs: String, parcels: ShipmentInternationalParcels) -> Self {
         Self {
-            kind,
+            kind: ShipmentInternationalKind {},
             customs,
             insured: None,
             insurer: None,
@@ -6370,10 +6369,6 @@ pub mod builders {
     impl super::ShipmentInternational {
         /// Starts a builder from the required properties.
         pub fn builder(
-            kind: impl TryInto<
-                types::ShipmentInternationalKind,
-                Error: std::fmt::Display,
-            >,
             customs: impl TryInto<String, Error: std::fmt::Display>,
             parcels: impl TryInto<
                 types::ShipmentInternationalParcels,
@@ -6383,7 +6378,6 @@ pub mod builders {
             ShipmentInternational(
                 runtime::Builder::start(|| Ok(
                     super::ShipmentInternationalFields::new(
-                        runtime::field("kind", kind)?,
                         runtime::field("customs", customs)?,
                         runtime::field("parcels", parcels)?,
                     ),
@@ -6713,10 +6707,6 @@ pub mod builders {
     impl super::ShipmentInternationalFields {
         /// Starts a builder from the required properties.
         pub fn builder(
-            kind: impl TryInto<
-                types::ShipmentInternationalKind,
-                Error: std::fmt::Display,
-            >,
             customs: impl TryInto<String, Error: std::fmt::Display>,
             parcels: impl TryInto<
                 types::ShipmentInternationalParcels,
@@ -6726,7 +6716,6 @@ pub mod builders {
             ShipmentInternationalFields(
                 runtime::Builder::start(|| Ok(
                     Self::new(
-                        runtime::field("kind", kind)?,
                         runtime::field("customs", customs)?,
                         runtime::field("parcels", parcels)?,
                     ),

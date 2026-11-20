@@ -66,16 +66,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         Command::AddPhysical { name, sku, fragile } => {
             let sku = sku.map(types::PhysicalSku::try_from).transpose()?;
-            let product = types::Physical {
-                sku,
-                fragile: fragile.then_some(true),
-                ..types::Physical::new(types::PhysicalKind, name)
-            };
+            let product = types::Physical { sku, fragile: fragile.then_some(true), ..types::Physical::new(name) };
             add(&client(), types::Product::Physical(product)).await?;
         }
         Command::AddDigital { name, downloads } => {
-            let product =
-                types::Digital { downloads: downloads.into(), ..types::Digital::new(types::DigitalKind, name) };
+            let product = types::Digital { downloads: downloads.into(), ..types::Digital::new(name) };
             add(&client(), types::Product::Digital(product)).await?;
         }
         Command::Get { id } => match client().get_product(ops::get_product::Params::new(id)).await? {

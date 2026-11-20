@@ -245,9 +245,9 @@ deserialize_impl!(Physical);
 serialize_impl!(Physical);
 impl Physical {
     #[must_use]
-    pub const fn new(kind: PhysicalKind, name: String) -> Self {
+    pub const fn new(name: String) -> Self {
         Self {
-            kind,
+            kind: PhysicalKind {},
             name,
             fragile: None,
             sku: None,
@@ -266,9 +266,9 @@ deserialize_impl!(Digital);
 serialize_impl!(Digital);
 impl Digital {
     #[must_use]
-    pub const fn new(kind: DigitalKind, name: String) -> Self {
+    pub const fn new(name: String) -> Self {
         Self {
-            kind,
+            kind: DigitalKind {},
             name,
             downloads: runtime::Nullable::Absent,
         }
@@ -375,16 +375,10 @@ pub mod builders {
     impl super::Physical {
         /// Starts a builder from the required properties.
         pub fn builder(
-            kind: impl TryInto<types::PhysicalKind, Error: std::fmt::Display>,
             name: impl TryInto<String, Error: std::fmt::Display>,
         ) -> Physical {
             Physical(
-                runtime::Builder::start(|| Ok(
-                    Self::new(
-                        runtime::field("kind", kind)?,
-                        runtime::field("name", name)?,
-                    ),
-                )),
+                runtime::Builder::start(|| Ok(Self::new(runtime::field("name", name)?))),
             )
         }
     }
