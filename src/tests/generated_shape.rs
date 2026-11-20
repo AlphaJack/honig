@@ -1375,3 +1375,15 @@ fn subschema_checks_read_one_buffer() {
     assert_eq!(types.matches("runtime::to_value(").count(), 1, "{types}");
     assert!(types.contains("runtime::Content::of(") && !types.contains(".clone())"), "{types}");
 }
+
+/// `contains` on a typed list counts the items of the buffer of the list: no item is written out as JSON again.
+#[test]
+fn typed_contains_reads_the_buffer() {
+    let holder = json!({"type": "object", "properties": {"parcels": {"type": "array",
+        "items": {"type": "object", "properties": {"fragile": {"type": "boolean"}}},
+        "contains": {"properties": {"fragile": {"const": true}}, "required": ["fragile"]}}}});
+    let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Holder": holder}}));
+    let types = common::file(&common::generate("typed-contains", &doc, &crate::emit::Options::default()), "types.rs")
+        .to_owned();
+    assert!(types.contains("item.decode_ref::<") && !types.contains("runtime::to_value(item)"), "{types}");
+}
