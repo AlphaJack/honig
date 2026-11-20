@@ -783,7 +783,7 @@ fn not_is_a_check_against_the_type_of_its_schema() {
     let code = json!({"type": "object", "properties": {"code": {"type": "string", "not": {"type": "string", "pattern": "^x"}}}});
     let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Coded": code}}));
     let types = common::file(&common::generate("not", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
-    assert!(types.contains(".decode_ref::<") && !types.contains("check_schema"), "{types}");
+    assert!(types.contains(".matches::<") && !types.contains("check_schema"), "{types}");
 }
 
 /// `dependentSchemas` over properties that the struct declares is a check that the value decodes as the type of the
@@ -1033,7 +1033,7 @@ fn a_nested_branch_counts_only_inside_its_own() {
         common::file(&common::generate("nested-branch", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
     let flat: String = types.split_whitespace().collect();
     assert!(flat.contains("is not allowed (unevaluatedItems)".replace(' ', "").as_str()), "{types}");
-    assert!(flat.contains("&&(item.decode_ref"), "{types}");
+    assert!(flat.contains("&&(item.matches"), "{types}");
 }
 
 /// A `$dynamicRef` to an anchor that one resource declares always lands on it, as its type does: no schema is checked
@@ -1390,7 +1390,7 @@ fn typed_contains_reads_the_buffer() {
     let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Holder": holder}}));
     let types = common::file(&common::generate("typed-contains", &doc, &crate::emit::Options::default()), "types.rs")
         .to_owned();
-    assert!(types.contains("item.decode_ref::<") && !types.contains("runtime::to_value(item)"), "{types}");
+    assert!(types.contains("item.matches::<") && !types.contains("runtime::to_value(item)"), "{types}");
 }
 
 /// A closed `prefixItems` tuple is a Rust tuple, which holds its items by their types: a field of it, or of a list of

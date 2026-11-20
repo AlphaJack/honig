@@ -208,7 +208,7 @@ impl TryFrom<TextNoteFields> for TextNote {
         {
             let out = &mut violations;
             {
-                if json.decode_ref::<NotChecked>().is_ok() {
+                if json.matches::<NotChecked>() {
                     if let Err(e) = json.decode_ref::<Not>() {
                         runtime::violation(
                             out,
@@ -294,10 +294,7 @@ impl TryFrom<CropVariants> for Crop {
         {
             let out = &mut violations;
             {
-                let hits = [
-                    json.decode_ref::<String>().is_ok(),
-                    json.decode_ref::<CropVariant2>().is_ok(),
-                ]
+                let hits = [json.matches::<String>(), json.matches::<CropVariant2>()]
                     .into_iter()
                     .filter(|hit| *hit)
                     .count();
@@ -335,7 +332,7 @@ impl TryFrom<NoteTextNoteFields> for NoteTextNote {
         {
             let out = &mut violations;
             {
-                if json.decode_ref::<NotChecked>().is_ok() {
+                if json.matches::<NotChecked>() {
                     if let Err(e) = json.decode_ref::<Not>() {
                         runtime::violation(
                             out,

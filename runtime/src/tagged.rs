@@ -2,6 +2,7 @@
 
 use std::borrow::Cow;
 use std::fmt;
+use std::marker::PhantomData;
 
 use serde::Deserialize;
 use serde::de::{self, DeserializeSeed, Deserializer, IgnoredAny, MapAccess, SeqAccess, Visitor};
@@ -423,10 +424,10 @@ pub trait TaggedUnion<'de>: Sized {
 /// variant. Otherwise the object is buffered in [`Content`].
 /// Errors: the value is not an object or fits no variant.
 pub fn tagged<'de, D: Deserializer<'de>, U: TaggedUnion<'de>>(d: D) -> Result<U, D::Error> {
-    d.deserialize_any(TagVisitor(std::marker::PhantomData))
+    d.deserialize_any(TagVisitor(PhantomData))
 }
 
-struct TagVisitor<U>(std::marker::PhantomData<U>);
+struct TagVisitor<U>(PhantomData<U>);
 
 impl<'de, U: TaggedUnion<'de>> Visitor<'de> for TagVisitor<U> {
     type Value = U;
@@ -515,7 +516,7 @@ impl<'de, A: MapAccess<'de>> MapAccess<'de> for Replay<'de, A> {
 
     fn next_value_seed<V: DeserializeSeed<'de>>(&mut self, seed: V) -> Result<V::Value, A::Error> {
         match self.first.take() {
-            Some((_, v)) => seed.deserialize(TagValue::<A::Error>(v, std::marker::PhantomData)),
+            Some((_, v)) => seed.deserialize(TagValue::<A::Error>(v, PhantomData)),
             None => self.map.next_value_seed(seed),
         }
     }
@@ -523,7 +524,7 @@ impl<'de, A: MapAccess<'de>> MapAccess<'de> for Replay<'de, A> {
 
 /// The replayed tag value: a string that also fills an `Option` field (a
 /// variant whose tag property is not required).
-struct TagValue<'de, E>(Cow<'de, str>, std::marker::PhantomData<E>);
+struct TagValue<'de, E>(Cow<'de, str>, PhantomData<E>);
 
 impl<'de, E: de::Error> Deserializer<'de> for TagValue<'de, E> {
     type Error = E;
@@ -677,7 +678,7 @@ impl<'de> Deserializer<'de> for &Content<'de> {
             Content::U64(n) => v.visit_u64(*n),
             Content::I64(n) => v.visit_i64(*n),
             Content::F64(n) => v.visit_f64(*n),
-            Content::Str(s) => KeyRef(s).deserialize_any(v),
+            Content::Str(s) => KeyRef::<serde_json::Error>(s, PhantomData).deserialize_any(v),
             Content::Raw(text) => serde_json::Deserializer::from_str(text).deserialize_any(v),
             Content::Seq(a) => {
                 let mut seq = de::value::SeqDeserializer::new(a.iter());
@@ -686,7 +687,9 @@ impl<'de> Deserializer<'de> for &Content<'de> {
                 Ok(out)
             }
             Content::Map(m) => {
-                let mut map = de::value::MapDeserializer::new(m.iter().map(|(k, val)| (KeyRef(k), val)));
+                let mut map = de::value::MapDeserializer::new(
+                    m.iter().map(|(k, val)| (KeyRef::<serde_json::Error>(k, PhantomData), val)),
+                );
                 let out = v.visit_map(&mut map)?;
                 map.end()?;
                 Ok(out)
@@ -739,14 +742,134 @@ impl<'de> de::IntoDeserializer<'de, serde_json::Error> for &Content<'de> {
     }
 }
 
-/// A buffered string. It is borrowed from the input when it was. Otherwise it is copied.
+/// The failure of [`Content::matches`]: it says no more, so a decode that fails costs no message.
+#[derive(Debug)]
+pub struct NoMatch;
+
+impl fmt::Display for NoMatch {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("does not match")
+    }
+}
+
+impl std::error::Error for NoMatch {}
+
+/// A decode that failed for a reason of its own: no match.
+impl From<serde_json::Error> for NoMatch {
+    fn from(_: serde_json::Error) -> Self {
+        Self
+    }
+}
+
+impl de::Error for NoMatch {
+    fn custom<T: fmt::Display>(_: T) -> Self {
+        Self
+    }
+}
+
+impl<'de> Content<'de> {
+    /// Does the value decode as `T`? As [`Content::decode_ref`], but a failure builds no error message: a check that
+    /// counts or excludes matches only asks yes or no.
+    #[must_use]
+    pub fn matches<T: Deserialize<'de>>(&self) -> bool {
+        match self {
+            // Integral floats are integers here as in a whole body.
+            Self::Raw(text) => {
+                let mut d = serde_json::Deserializer::from_str(text);
+                T::deserialize(crate::integral::Ints(&mut d)).is_ok() && d.end().is_ok()
+            }
+            Self::Null
+            | Self::Bool(_)
+            | Self::U64(_)
+            | Self::I64(_)
+            | Self::F64(_)
+            | Self::Str(_)
+            | Self::Seq(_)
+            | Self::Map(_) => T::deserialize(Probe(self)).is_ok(),
+        }
+    }
+}
+
+/// A borrowed buffer read with [`NoMatch`] errors ([`Content::matches`]).
 #[derive(Clone, Copy)]
-struct KeyRef<'a, 'de>(&'a Cow<'de, str>);
+struct Probe<'a, 'de>(&'a Content<'de>);
 
-impl<'de> Deserializer<'de> for KeyRef<'_, 'de> {
-    type Error = serde_json::Error;
+impl<'de> Deserializer<'de> for Probe<'_, 'de> {
+    type Error = NoMatch;
 
-    fn deserialize_any<V: Visitor<'de>>(self, v: V) -> Result<V::Value, serde_json::Error> {
+    fn deserialize_any<V: Visitor<'de>>(self, v: V) -> Result<V::Value, NoMatch> {
+        match self.0 {
+            Content::Null => v.visit_unit(),
+            Content::Bool(b) => v.visit_bool(*b),
+            Content::U64(n) => v.visit_u64(*n),
+            Content::I64(n) => v.visit_i64(*n),
+            Content::F64(n) => v.visit_f64(*n),
+            Content::Str(s) => KeyRef::<NoMatch>(s, PhantomData).deserialize_any(v),
+            Content::Raw(text) => serde_json::Deserializer::from_str(text).deserialize_any(v).map_err(NoMatch::from),
+            Content::Seq(a) => {
+                let mut seq = de::value::SeqDeserializer::new(a.iter().map(Probe));
+                let out = v.visit_seq(&mut seq)?;
+                seq.end()?;
+                Ok(out)
+            }
+            Content::Map(m) => {
+                let entries = m.iter().map(|(k, val)| (KeyRef::<NoMatch>(k, PhantomData), Probe(val)));
+                let mut map = de::value::MapDeserializer::new(entries);
+                let out = v.visit_map(&mut map)?;
+                map.end()?;
+                Ok(out)
+            }
+        }
+    }
+
+    fn deserialize_option<V: Visitor<'de>>(self, v: V) -> Result<V::Value, NoMatch> {
+        if matches!(self.0, Content::Null) { v.visit_none() } else { v.visit_some(self) }
+    }
+
+    fn deserialize_newtype_struct<V: Visitor<'de>>(self, _name: &'static str, v: V) -> Result<V::Value, NoMatch> {
+        v.visit_newtype_struct(self)
+    }
+
+    fn deserialize_enum<V: Visitor<'de>>(
+        self,
+        name: &'static str,
+        variants: &'static [&'static str],
+        v: V,
+    ) -> Result<V::Value, NoMatch> {
+        match self.0 {
+            Content::Str(s) => v.visit_enum(de::value::StrDeserializer::new(s)),
+            other @ (Content::Raw(_)
+            | Content::Null
+            | Content::Bool(_)
+            | Content::U64(_)
+            | Content::I64(_)
+            | Content::F64(_)
+            | Content::Seq(_)
+            | Content::Map(_)) => other.deserialize_enum(name, variants, v).map_err(NoMatch::from),
+        }
+    }
+
+    serde::forward_to_deserialize_any! {
+        bool i8 i16 i32 i64 i128 u8 u16 u32 u64 u128 f32 f64 char str string
+        bytes byte_buf unit unit_struct seq tuple tuple_struct map struct identifier ignored_any
+    }
+}
+
+impl<'de> de::IntoDeserializer<'de, NoMatch> for Probe<'_, 'de> {
+    type Deserializer = Self;
+
+    fn into_deserializer(self) -> Self {
+        self
+    }
+}
+
+/// A buffered string, read with errors of type `E`. It is borrowed from the input when it was. Otherwise it is copied.
+struct KeyRef<'a, 'de, E>(&'a Cow<'de, str>, PhantomData<E>);
+
+impl<'de, E: de::Error> Deserializer<'de> for KeyRef<'_, 'de, E> {
+    type Error = E;
+
+    fn deserialize_any<V: Visitor<'de>>(self, v: V) -> Result<V::Value, E> {
         match self.0 {
             Cow::Borrowed(s) => v.visit_borrowed_str(s),
             Cow::Owned(s) => v.visit_str(s),
@@ -759,7 +882,7 @@ impl<'de> Deserializer<'de> for KeyRef<'_, 'de> {
     }
 }
 
-impl<'de> de::IntoDeserializer<'de, serde_json::Error> for KeyRef<'_, 'de> {
+impl<'de, E: de::Error> de::IntoDeserializer<'de, E> for KeyRef<'_, 'de, E> {
     type Deserializer = Self;
 
     fn into_deserializer(self) -> Self {
@@ -779,6 +902,23 @@ mod tests {
     }
 
     const BODY: &str = r#"{"amount": 12345678901234567.89}"#;
+
+    #[derive(Debug, Deserialize)]
+    struct Fragile {
+        #[expect(dead_code, reason = "decoded only to test whether a value matches")]
+        fragile: bool,
+    }
+
+    /// `matches` says whether a value decodes as a type, from a buffer or from raw text, with no error to keep.
+    #[test]
+    fn matches_tells_whether_a_value_decodes() {
+        let tree = Content::deserialize(&mut serde_json::Deserializer::from_str(r#"{"fragile": true}"#)).unwrap();
+        assert!(tree.matches::<Fragile>());
+        assert!(!tree.matches::<Vec<u8>>());
+        let raw = Content::exact(&mut serde_json::Deserializer::from_str(r#"{"fragile": "no"}"#)).unwrap();
+        assert!(!raw.matches::<Fragile>());
+        assert!(Content::Str("x".into()).matches::<String>());
+    }
 
     #[test]
     fn exact_keeps_a_decimal_from_json_text_and_buffers_any_other_input() {

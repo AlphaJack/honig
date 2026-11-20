@@ -113,7 +113,7 @@ pub(super) fn subschema_checks(
     let nots = c.not.iter().map(|&n| {
         let not = ty(n);
         quote! {
-            if json.decode_ref::<#not>().is_ok() {
+            if json.matches::<#not>() {
                 runtime::violation(out, #path, "matches `not`");
             }
         }
@@ -192,7 +192,7 @@ fn contains_checks(space: &Space<'_>, c: &Constraints, value: &TokenStream, path
         {
             #own
             let items = json.as_array().unwrap_or_default();
-            let hits = items.iter().filter(|item| item.decode_ref::<#ty>().is_ok()).count();
+            let hits = items.iter().filter(|item| item.matches::<#ty>()).count();
             #bounds
         }
     }
@@ -204,7 +204,7 @@ fn json_contains_checks(c: &Constraints, ty: &dyn Fn(usize) -> TokenStream, path
     let (t, bounds) = (ty(n), contains_bounds(min, max, path));
     quote! {
         if let Some(items) = json.as_array() {
-            let hits = items.iter().filter(|item| item.decode_ref::<#t>().is_ok()).count();
+            let hits = items.iter().filter(|item| item.matches::<#t>()).count();
             #bounds
         }
     }
@@ -411,13 +411,13 @@ fn evaluated_item_expr(
     }
     for n in &ev.contains {
         let t = ty(*n);
-        parts.push(quote!(item.decode_ref::<#t>().is_ok()));
+        parts.push(quote!(item.matches::<#t>()));
     }
     for (n, decodes, branch) in &ev.branches {
         let Some(inner) = evaluated_item_expr(branch, ty, flags) else { continue };
         let flag = quote::format_ident!("matched_{}", flags.len());
         let t = ty(*n);
-        flags.push(quote!(let #flag = json.decode_ref::<#t>().is_ok();));
+        flags.push(quote!(let #flag = json.matches::<#t>();));
         let flag = if *decodes { quote!(#flag) } else { quote!(!#flag) };
         parts.push(if branch.all { flag } else { quote!((#flag && (#inner))) });
     }
@@ -454,7 +454,7 @@ fn evaluated_expr(
         let Some(inner) = evaluated_expr(branch, ty, flags) else { continue };
         let flag = quote::format_ident!("matched_{}", flags.len());
         let t = ty(*n);
-        flags.push(quote!(let #flag = json.decode_ref::<#t>().is_ok();));
+        flags.push(quote!(let #flag = json.matches::<#t>();));
         let flag = if *decodes { quote!(#flag) } else { quote!(!#flag) };
         parts.push(if branch.all { flag } else { quote!((#flag && (#inner))) });
     }
@@ -1142,7 +1142,7 @@ fn condition_checks(c: &Constraints, ty: &dyn Fn(usize) -> TokenStream, path: &T
             )
         };
         let cond = ty(cond);
-        let matched = quote!(json.decode_ref::<#cond>().is_ok());
+        let matched = quote!(json.matches::<#cond>());
         match (then.map(|b| branch(b, "then")), otherwise.map(|b| branch(b, "else"))) {
             (Some((then, v)), Some((otherwise, w))) => quote! {
                 if #matched {
@@ -1167,7 +1167,7 @@ fn names_schema_checks(c: &Constraints, ty: &dyn Fn(usize) -> TokenStream, path:
     quote! {
         if let Some(object) = json.as_object() {
             for (name, _) in object {
-                if runtime::Content::Str(name.into()).decode_ref::<#t>().is_err() {
+                if !runtime::Content::Str(name.into()).matches::<#t>() {
                     runtime::violation(out, &runtime::InstancePath::Key(#path, name), "is not an allowed property name");
                 }
             }
@@ -1181,7 +1181,7 @@ fn branch_count_checks(c: &Constraints, ty: &dyn Fn(usize) -> TokenStream, path:
     let one_of = (!c.one_of.is_empty()).then(|| {
         let branches = c.one_of.iter().map(|&n| ty(n));
         quote! {
-            let hits = [#(json.decode_ref::<#branches>().is_ok()),*]
+            let hits = [#(json.matches::<#branches>()),*]
                 .into_iter()
                 .filter(|hit| *hit)
                 .count();
@@ -1196,7 +1196,7 @@ fn branch_count_checks(c: &Constraints, ty: &dyn Fn(usize) -> TokenStream, path:
         [n] => {
             let t = ty(*n);
             Some(quote! {
-                if json.decode_ref::<#t>().is_err() {
+                if !json.matches::<#t>() {
                     runtime::violation(out, #path, "matches none of `anyOf`");
                 }
             })
@@ -1204,7 +1204,7 @@ fn branch_count_checks(c: &Constraints, ty: &dyn Fn(usize) -> TokenStream, path:
         branches => {
             let branches = branches.iter().map(|&n| ty(n));
             Some(quote! {
-                if !(#(json.decode_ref::<#branches>().is_ok())||*) {
+                if !(#(json.matches::<#branches>())||*) {
                     runtime::violation(out, #path, "matches none of `anyOf`");
                 }
             })

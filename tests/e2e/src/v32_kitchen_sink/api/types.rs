@@ -424,7 +424,7 @@ impl TryFrom<Gadget2> for Gadget {
                         format!("{}{e}", "`secret` is present: "),
                     );
                 }
-                if json.decode_ref::<Not2>().is_ok() {
+                if json.matches::<Not2>() {
                     if let Err(e) = json.decode_ref::<NotChecked3>() {
                         runtime::violation(
                             out,
@@ -465,7 +465,7 @@ impl TryFrom<OwnerFields> for Owner {
         {
             let out = &mut violations;
             {
-                if json.decode_ref::<NotChecked>().is_ok() {
+                if json.matches::<NotChecked>() {
                     runtime::violation(
                         out,
                         &runtime::InstancePath::Root,
@@ -498,10 +498,7 @@ impl TryFrom<ShapeVariants> for Shape {
         {
             let out = &mut violations;
             {
-                let hits = [
-                    json.decode_ref::<Book>().is_ok(),
-                    json.decode_ref::<Gadget>().is_ok(),
-                ]
+                let hits = [json.matches::<Book>(), json.matches::<Gadget>()]
                     .into_iter()
                     .filter(|hit| *hit)
                     .count();
@@ -512,7 +509,7 @@ impl TryFrom<ShapeVariants> for Shape {
                         format!("matches {hits} of `oneOf`, not exactly one"),
                     );
                 }
-                if json.decode_ref::<serde_json::Value>().is_err() {
+                if !json.matches::<serde_json::Value>() {
                     runtime::violation(
                         out,
                         &runtime::InstancePath::Root,
@@ -1383,7 +1380,7 @@ impl TryFrom<Gadget2Request> for GadgetRequest {
                         format!("{}{e}", "`secret` is present: "),
                     );
                 }
-                if json.decode_ref::<Not2>().is_ok() {
+                if json.matches::<Not2>() {
                     if let Err(e) = json.decode_ref::<NotChecked3>() {
                         runtime::violation(
                             out,
@@ -1424,10 +1421,7 @@ impl TryFrom<ShapeRequestVariants> for ShapeRequest {
         {
             let out = &mut violations;
             {
-                let hits = [
-                    json.decode_ref::<Book>().is_ok(),
-                    json.decode_ref::<Gadget>().is_ok(),
-                ]
+                let hits = [json.matches::<Book>(), json.matches::<Gadget>()]
                     .into_iter()
                     .filter(|hit| *hit)
                     .count();
@@ -1438,7 +1432,7 @@ impl TryFrom<ShapeRequestVariants> for ShapeRequest {
                         format!("matches {hits} of `oneOf`, not exactly one"),
                     );
                 }
-                if json.decode_ref::<serde_json::Value>().is_err() {
+                if !json.matches::<serde_json::Value>() {
                     runtime::violation(
                         out,
                         &runtime::InstancePath::Root,
@@ -2133,10 +2127,7 @@ impl TryFrom<Vec<String>> for ProductTags {
             runtime::check_unique(out, &runtime::InstancePath::Root, &value);
             {
                 let items = json.as_array().unwrap_or_default();
-                let hits = items
-                    .iter()
-                    .filter(|item| item.decode_ref::<Not>().is_ok())
-                    .count();
+                let hits = items.iter().filter(|item| item.matches::<Not>()).count();
                 if hits > 1 {
                     runtime::violation(
                         out,

@@ -67,10 +67,37 @@ pub fn expect_const<'de, D: Deserializer<'de>>(d: D, want: &Value) -> Result<(),
         }
         _ => false,
     };
-    if crate::checks::json_equal(&got, want) || spelt {
-        Ok(())
-    } else {
-        Err(de::Error::custom(format!("expected {want}, found {got}")))
+    if same_value(&got, want) || spelt { Ok(()) } else { Err(de::Error::custom(Mismatch { want, got: &got })) }
+}
+
+/// Is `got` the value `want` as JSON Schema compares them? Scalars compare as they are; only lists and objects take
+/// the canonical text of [`crate::checks::json_equal`].
+fn same_value(got: &Value, want: &Value) -> bool {
+    match (got, want) {
+        (Value::Null, Value::Null) => true,
+        (Value::Bool(a), Value::Bool(b)) => a == b,
+        (Value::String(a), Value::String(b)) => a == b,
+        // `-2` is `-2.0`: numbers compare by value, integers exactly.
+        (Value::Number(a), Value::Number(b)) => match (a.as_i64(), b.as_i64(), a.as_u64(), b.as_u64()) {
+            (Some(x), Some(y), _, _) => x == y,
+            (_, _, Some(x), Some(y)) => x == y,
+            _ => crate::checks::json_equal(got, want),
+        },
+        (Value::Array(_) | Value::Object(_), _) => crate::checks::json_equal(got, want),
+        _ => false,
+    }
+}
+
+/// The message of a value that is not its `const`, written only when it is read: a check that asks whether a value
+/// matches drops it unread.
+struct Mismatch<'a> {
+    want: &'a Value,
+    got: &'a Value,
+}
+
+impl std::fmt::Display for Mismatch<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "expected {}, found {}", self.want, self.got)
     }
 }
 
@@ -90,5 +117,14 @@ mod tests {
         assert!(super::expect_const(Value::from("5"), &json!(5)).is_ok());
         assert!(super::expect_const(Value::from("6"), &json!(5)).is_err());
         assert!(super::expect_const(Value::from(" 5"), &json!(5)).is_err());
+    }
+
+    /// A `const` compares numbers by value, `-2` with `-2.0`, and objects whatever the order of their members.
+    #[test]
+    fn a_const_compares_as_json_schema_does() {
+        assert!(super::expect_const(json!(-2.0), &json!(-2)).is_ok());
+        assert!(super::expect_const(json!(3), &json!(3.5)).is_err());
+        assert!(super::expect_const(json!({"b": 1, "a": 2}), &json!({"a": 2, "b": 1})).is_ok());
+        assert!(super::expect_const(json!("a"), &json!(["a"])).is_err());
     }
 }
