@@ -1,0 +1,74 @@
+openapi: 3.2.0
+info: {title: Security, version: "1"}
+# The shapes of security that real descriptions use, each on its own operation. The top-level requirement is the
+# default of every operation that declares none.
+security: [{bearer: []}]
+paths:
+  /public:
+    get:
+      operationId: public
+      security: []
+      responses:
+        "204": {description: Done.}
+  /me:
+    get:
+      operationId: me
+      responses:
+        "204": {description: Done.}
+  /optional:
+    get:
+      operationId: optional
+      security: [{}, {bearer: []}]
+      responses:
+        "204": {description: Done.}
+  /read:
+    get:
+      operationId: read
+      security: [{oauth: [read]}, {key: []}]
+      responses:
+        "204": {description: Done.}
+  /write:
+    post:
+      operationId: write
+      security: [{oauth: [read, write]}]
+      responses:
+        "204": {description: Done.}
+  /both:
+    get:
+      operationId: both
+      security: [{key: [], session: []}]
+      responses:
+        "204": {description: Done.}
+  /login:
+    get:
+      operationId: login
+      security: [{login: []}, {query_key: []}]
+      responses:
+        "204": {description: Done.}
+  /cert:
+    get:
+      operationId: cert
+      security: [{cert: []}]
+      responses:
+        "204": {description: Done.}
+  /oidc:
+    get:
+      operationId: oidc
+      security: [{oidc: [profile]}]
+      responses:
+        "204": {description: Done.}
+components:
+  securitySchemes:
+    bearer: {type: http, scheme: bearer}
+    oauth:
+      type: oauth2
+      flows:
+        clientCredentials:
+          tokenUrl: https://auth.example.com/token
+          scopes: {read: Read, write: Write}
+    oidc: {type: openIdConnect, openIdConnectUrl: https://auth.example.com/.well-known/openid-configuration}
+    key: {type: apiKey, in: header, name: X-Key}
+    query_key: {type: apiKey, in: query, name: key}
+    session: {type: apiKey, in: cookie, name: session}
+    login: {type: http, scheme: basic}
+    cert: {type: mutualTLS}
