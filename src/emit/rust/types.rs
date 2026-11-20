@@ -841,9 +841,15 @@ fn struct_default(space: &Space<'_>, s: &Struct, seen: &mut Vec<TypeId>) -> bool
     s.fields.iter().filter(|f| is_arg(space, f)).all(|f| ty_default(space, &f.ty, seen))
 }
 
-/// Is `f` required with no spec default? Then `new` takes it as an argument.
+/// Is `f` required with no spec default and more than one value? Then `new` takes it as an argument.
 fn is_arg(space: &Space<'_>, f: &Field) -> bool {
-    f.required && field_default(space, f).is_none()
+    f.required && field_default(space, f).is_none() && !is_unit(space, f)
+}
+
+/// Is `f` a required `const`: a unit struct whose one value `new` and `Default` fill in?
+fn is_unit(space: &Space<'_>, f: &Field) -> bool {
+    f.required
+        && matches!(space.types.unalias(&f.ty), Ty::Named(c) if matches!(space.types.get(*c).kind, Kind::Const(_)))
 }
 
 /// Returns `impl Default`. Spec defaults go through their functions. A required unit struct is its value, `Unit {}`. The
@@ -851,12 +857,10 @@ fn is_arg(space: &Space<'_>, f: &Field) -> bool {
 fn default_impl(space: &Space<'_>, name: &proc_macro2::Ident, s: &Struct, extra: &proc_macro2::Ident) -> TokenStream {
     let inits = s.fields.iter().map(|f| {
         let (n, t) = (snake_ident(&f.name), field_ty(space, f));
-        let unit =
-            matches!(space.types.unalias(&f.ty), Ty::Named(c) if matches!(space.types.get(*c).kind, Kind::Const(_)));
         if field_default(space, f).is_some() {
             let fun = format_ident!("default_{}", snake(&f.name));
             quote!(#n: Self::#fun(),)
-        } else if f.required && unit {
+        } else if is_unit(space, f) {
             // Braces: the field's type may be an alias of the unit struct, which is no value by its name.
             quote!(#n: #t {},)
         } else {
@@ -1149,6 +1153,10 @@ fn struct_new(space: &Space<'_>, name: &proc_macro2::Ident, s: &Struct, extra: &
         let n = snake_ident(&f.name);
         if arg(f) {
             quote!(#n,)
+        } else if is_unit(space, f) {
+            // Braces: the field's type may be an alias of the unit struct, which is no value by its name.
+            let t = field_ty(space, f);
+            quote!(#n: #t {},)
         } else if field_default(space, f).is_some() {
             let fun = format_ident!("default_{}", snake(&f.name));
             quote!(#n: Self::#fun(),)
@@ -1272,7 +1280,7 @@ fn builder(space: &Space<'_>, name: &proc_macro2::Ident, shape: &proc_macro2::Id
     });
     let many = many_arguments(args.len());
     // A setter named like `build` would hide it: its name takes a `_`.
-    let setters = s.fields.iter().filter(|f| !is_arg(space, f)).map(|f| {
+    let setters = s.fields.iter().filter(|f| !is_arg(space, f) && !is_unit(space, f)).map(|f| {
         let n = snake_ident(&f.name);
         let mut setter = snake(&f.name);
         if setter == "build" {

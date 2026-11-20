@@ -6,7 +6,7 @@ use serde_json::json;
 #[test]
 fn const_properties_are_unit_types() {
     // `kind: {const: image}` is required. It is a unit struct and not a `String`.
-    let note = types::ImageNote::new(types::ImageNoteKind, "https://x".to_owned());
+    let note = types::ImageNote::new("https://x".to_owned());
     assert_eq!(serde_json::to_value(&note).unwrap(), json!({"kind": "image", "url": "https://x", "width": 64}));
     assert_eq!(types::ImageNoteKind::VALUE, "image");
     let wrong = json!({"kind": "text", "url": "https://x"});

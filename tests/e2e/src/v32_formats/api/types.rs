@@ -386,8 +386,11 @@ deserialize_impl!(Card);
 serialize_impl!(Card);
 impl Card {
     #[must_use]
-    pub const fn new(method: CardMethod, amount: CardAmount) -> Self {
-        Self { method, amount }
+    pub const fn new(amount: CardAmount) -> Self {
+        Self {
+            method: CardMethod {},
+            amount,
+        }
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -400,8 +403,11 @@ deserialize_impl!(Transfer);
 serialize_impl!(Transfer);
 impl Transfer {
     #[must_use]
-    pub const fn new(method: TransferMethod, amount: TransferAmount) -> Self {
-        Self { method, amount }
+    pub const fn new(amount: TransferAmount) -> Self {
+        Self {
+            method: TransferMethod {},
+            amount,
+        }
     }
 }
 #[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
@@ -862,15 +868,11 @@ pub mod builders {
     impl super::Card {
         /// Starts a builder from the required properties.
         pub fn builder(
-            method: impl TryInto<types::CardMethod, Error: std::fmt::Display>,
             amount: impl TryInto<types::CardAmount, Error: std::fmt::Display>,
         ) -> Card {
             Card(
                 runtime::Builder::start(|| Ok(
-                    Self::new(
-                        runtime::field("method", method)?,
-                        runtime::field("amount", amount)?,
-                    ),
+                    Self::new(runtime::field("amount", amount)?),
                 )),
             )
         }
@@ -886,15 +888,11 @@ pub mod builders {
     impl super::Transfer {
         /// Starts a builder from the required properties.
         pub fn builder(
-            method: impl TryInto<types::TransferMethod, Error: std::fmt::Display>,
             amount: impl TryInto<types::TransferAmount, Error: std::fmt::Display>,
         ) -> Transfer {
             Transfer(
                 runtime::Builder::start(|| Ok(
-                    Self::new(
-                        runtime::field("method", method)?,
-                        runtime::field("amount", amount)?,
-                    ),
+                    Self::new(runtime::field("amount", amount)?),
                 )),
             )
         }

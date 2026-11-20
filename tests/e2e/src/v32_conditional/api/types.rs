@@ -111,8 +111,8 @@ deserialize_impl!(EmailRequest);
 serialize_impl!(EmailRequest);
 impl EmailRequest {
     #[must_use]
-    pub const fn new(type_: EmailType, email: runtime::EmailText) -> Self {
-        Self { type_, email }
+    pub const fn new(email: runtime::EmailText) -> Self {
+        Self { type_: EmailType {}, email }
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
@@ -126,8 +126,8 @@ deserialize_impl!(SmsRequest);
 serialize_impl!(SmsRequest);
 impl SmsRequest {
     #[must_use]
-    pub const fn new(type_: SmsType, phone: String) -> Self {
-        Self { type_, phone }
+    pub const fn new(phone: String) -> Self {
+        Self { type_: SmsType {}, phone }
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -586,8 +586,11 @@ deserialize_impl!(IfThenEmail);
 serialize_impl!(IfThenEmail);
 impl IfThenEmail {
     #[must_use]
-    pub const fn new(type_: IfThenEmailType, email: runtime::EmailText) -> Self {
-        Self { type_, email }
+    pub const fn new(email: runtime::EmailText) -> Self {
+        Self {
+            type_: IfThenEmailType {},
+            email,
+        }
     }
 }
 pub use EmailType as IfThenEmailType;
@@ -602,8 +605,11 @@ deserialize_impl!(IfThenSms);
 serialize_impl!(IfThenSms);
 impl IfThenSms {
     #[must_use]
-    pub const fn new(type_: IfThenSmsType, phone: String) -> Self {
-        Self { type_, phone }
+    pub const fn new(phone: String) -> Self {
+        Self {
+            type_: IfThenSmsType {},
+            phone,
+        }
     }
 }
 pub use SmsType as IfThenSmsType;
@@ -637,8 +643,11 @@ deserialize_impl!(ConstOneOfEmail);
 serialize_impl!(ConstOneOfEmail);
 impl ConstOneOfEmail {
     #[must_use]
-    pub const fn new(type_: ConstOneOfEmailType, email: String) -> Self {
-        Self { type_, email }
+    pub const fn new(email: String) -> Self {
+        Self {
+            type_: ConstOneOfEmailType {},
+            email,
+        }
     }
 }
 pub use EmailType as ConstOneOfEmailType;
@@ -705,9 +714,9 @@ deserialize_impl!(ShippingUs);
 serialize_impl!(ShippingUs);
 impl ShippingUs {
     #[must_use]
-    pub const fn new(country: ShippingUsCountry, zip: String) -> Self {
+    pub const fn new(zip: String) -> Self {
         Self {
-            country,
+            country: ShippingUsCountry {},
             zip,
             postcode: None,
         }
@@ -809,8 +818,11 @@ deserialize_impl!(ContactSms);
 serialize_impl!(ContactSms);
 impl ContactSms {
     #[must_use]
-    pub const fn new(via: ContactSmsVia, phone: String) -> Self {
-        Self { via, phone }
+    pub const fn new(phone: String) -> Self {
+        Self {
+            via: ContactSmsVia {},
+            phone,
+        }
     }
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
@@ -846,15 +858,11 @@ pub mod builders {
     impl super::EmailRequest {
         /// Starts a builder from the required properties.
         pub fn builder(
-            type_: impl TryInto<types::EmailType, Error: std::fmt::Display>,
             email: impl TryInto<runtime::EmailText, Error: std::fmt::Display>,
         ) -> EmailRequest {
             EmailRequest(
                 runtime::Builder::start(|| Ok(
-                    Self::new(
-                        runtime::field("type", type_)?,
-                        runtime::field("email", email)?,
-                    ),
+                    Self::new(runtime::field("email", email)?),
                 )),
             )
         }
@@ -870,15 +878,11 @@ pub mod builders {
     impl super::IfThenEmail {
         /// Starts a builder from the required properties.
         pub fn builder(
-            type_: impl TryInto<types::IfThenEmailType, Error: std::fmt::Display>,
             email: impl TryInto<runtime::EmailText, Error: std::fmt::Display>,
         ) -> IfThenEmail {
             IfThenEmail(
                 runtime::Builder::start(|| Ok(
-                    Self::new(
-                        runtime::field("type", type_)?,
-                        runtime::field("email", email)?,
-                    ),
+                    Self::new(runtime::field("email", email)?),
                 )),
             )
         }

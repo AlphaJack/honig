@@ -279,9 +279,9 @@ deserialize_impl!(ImageNote);
 serialize_impl!(ImageNote);
 impl ImageNote {
     #[must_use]
-    pub const fn new(kind: ImageNoteKind, url: String) -> Self {
+    pub const fn new(url: String) -> Self {
         Self {
-            kind,
+            kind: ImageNoteKind {},
             url,
             width: Self::default_width(),
             crop: None,
@@ -458,9 +458,9 @@ deserialize_impl!(NoteImageNote);
 serialize_impl!(NoteImageNote);
 impl NoteImageNote {
     #[must_use]
-    pub const fn new(kind: NoteImageNoteKind, url: String) -> Self {
+    pub const fn new(url: String) -> Self {
         Self {
-            kind,
+            kind: NoteImageNoteKind {},
             url,
             width: Self::default_width(),
             crop: None,
@@ -1042,13 +1042,10 @@ pub mod builders {
     impl super::ImageNote {
         /// Starts a builder from the required properties.
         pub fn builder(
-            kind: impl TryInto<types::ImageNoteKind, Error: std::fmt::Display>,
             url: impl TryInto<String, Error: std::fmt::Display>,
         ) -> ImageNote {
             ImageNote(
-                runtime::Builder::start(|| Ok(
-                    Self::new(runtime::field("kind", kind)?, runtime::field("url", url)?),
-                )),
+                runtime::Builder::start(|| Ok(Self::new(runtime::field("url", url)?))),
             )
         }
     }
@@ -1116,13 +1113,10 @@ pub mod builders {
     impl super::NoteImageNote {
         /// Starts a builder from the required properties.
         pub fn builder(
-            kind: impl TryInto<types::NoteImageNoteKind, Error: std::fmt::Display>,
             url: impl TryInto<String, Error: std::fmt::Display>,
         ) -> NoteImageNote {
             NoteImageNote(
-                runtime::Builder::start(|| Ok(
-                    Self::new(runtime::field("kind", kind)?, runtime::field("url", url)?),
-                )),
+                runtime::Builder::start(|| Ok(Self::new(runtime::field("url", url)?))),
             )
         }
     }

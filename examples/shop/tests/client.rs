@@ -20,7 +20,7 @@ async fn the_client_creates_and_reads_a_product_from_the_server() {
     let base_url = format!("http://{}/v1", listener.local_addr().unwrap());
     let app = api::Server::new(Catalog::default()).into_axum();
     tokio::spawn(async move { axum::serve(listener, app).await });
-    let lamp = types::Product::Physical(types::Physical::new(types::PhysicalKind, "Desk lamp".to_owned()));
+    let lamp = types::Product::Physical(types::Physical::new("Desk lamp".to_owned()));
     assert_eq!(create_and_read(&base_url, lamp.clone()).await.unwrap(), lamp);
 }
 

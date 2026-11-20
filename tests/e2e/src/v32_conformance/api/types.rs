@@ -147,8 +147,11 @@ deserialize_impl!(Gadget);
 serialize_impl!(Gadget);
 impl Gadget {
     #[must_use]
-    pub const fn new(kind: GadgetKind) -> Self {
-        Self { kind, purrs: None }
+    pub const fn new() -> Self {
+        Self {
+            kind: GadgetKind {},
+            purrs: None,
+        }
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
@@ -166,8 +169,11 @@ deserialize_impl!(Book);
 serialize_impl!(Book);
 impl Book {
     #[must_use]
-    pub const fn new(kind: BookKind) -> Self {
-        Self { kind, barks: None }
+    pub const fn new() -> Self {
+        Self {
+            kind: BookKind {},
+            barks: None,
+        }
     }
 }
 /// Gadget
@@ -186,8 +192,11 @@ deserialize_impl!(ProductGadget);
 serialize_impl!(ProductGadget);
 impl ProductGadget {
     #[must_use]
-    pub const fn new(kind: ProductGadgetKind) -> Self {
-        Self { kind, purrs: None }
+    pub const fn new() -> Self {
+        Self {
+            kind: ProductGadgetKind {},
+            purrs: None,
+        }
     }
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
@@ -218,8 +227,11 @@ deserialize_impl!(ProductBook);
 serialize_impl!(ProductBook);
 impl ProductBook {
     #[must_use]
-    pub const fn new(kind: ProductBookKind) -> Self {
-        Self { kind, barks: None }
+    pub const fn new() -> Self {
+        Self {
+            kind: ProductBookKind {},
+            barks: None,
+        }
     }
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
