@@ -69,6 +69,41 @@ impl<'de> Content<'de> {
         }
     }
 
+    /// Returns the items of an array.
+    #[must_use]
+    pub fn as_array(&self) -> Option<&[Self]> {
+        if let Self::Seq(items) = self { Some(items) } else { None }
+    }
+
+    /// Returns the members of an object, each name with its value, in input order.
+    #[must_use]
+    pub fn as_object(&self) -> Option<impl Iterator<Item = (&str, &Self)> + Clone> {
+        if let Self::Map(m) = self { Some(m.iter().map(|(k, v)| (&**k, v))) } else { None }
+    }
+
+    /// Whether this is an object with the member `key`.
+    #[must_use]
+    pub fn contains_key(&self, key: &str) -> bool {
+        self.get(key).is_some()
+    }
+
+    /// Returns `value` as a buffer whose strings borrow from it.
+    #[must_use]
+    pub fn of(value: &'de Value) -> Self {
+        match value {
+            Value::Null => Self::Null,
+            Value::Bool(b) => Self::Bool(*b),
+            Value::Number(n) => match (n.as_u64(), n.as_i64()) {
+                (Some(u), _) => Self::U64(u),
+                (None, Some(i)) => Self::I64(i),
+                (None, None) => Self::F64(n.as_f64().unwrap_or_default()),
+            },
+            Value::String(s) => Self::Str(Cow::Borrowed(s)),
+            Value::Array(a) => Self::Seq(a.iter().map(Self::of).collect()),
+            Value::Object(o) => Self::Map(o.iter().map(|(k, v)| (Cow::Borrowed(k.as_str()), Self::of(v))).collect()),
+        }
+    }
+
     /// Returns the string if this is one.
     #[must_use]
     pub fn as_str(&self) -> Option<&str> {

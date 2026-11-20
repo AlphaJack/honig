@@ -309,13 +309,14 @@ impl<'de> serde::Deserialize<'de> for Product {
 impl TryFrom<ProductFields> for Product {
     type Error = runtime::BuildError;
     fn try_from(value: ProductFields) -> Result<Self, runtime::BuildError> {
+        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = &runtime::Content::of(&json);
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
             {
-                let json = runtime::to_value(&value).unwrap_or_default();
                 if json.get("secret").is_some()
-                    && let Err(e) = serde_json::from_value::<NotChecked2>(json.clone())
+                    && let Err(e) = json.decode_ref::<NotChecked2>()
                 {
                     runtime::violation(
                         out,
@@ -343,13 +344,14 @@ impl<'de> serde::Deserialize<'de> for Book {
 impl TryFrom<BookFields> for Book {
     type Error = runtime::BuildError;
     fn try_from(value: BookFields) -> Result<Self, runtime::BuildError> {
+        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = &runtime::Content::of(&json);
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
             {
-                let json = runtime::to_value(&value).unwrap_or_default();
                 if json.get("secret").is_some()
-                    && let Err(e) = serde_json::from_value::<NotChecked2>(json.clone())
+                    && let Err(e) = json.decode_ref::<NotChecked2>()
                 {
                     runtime::violation(
                         out,
@@ -378,12 +380,13 @@ impl<'de> serde::Deserialize<'de> for Owner {
 impl TryFrom<OwnerFields> for Owner {
     type Error = runtime::BuildError;
     fn try_from(value: OwnerFields) -> Result<Self, runtime::BuildError> {
+        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = &runtime::Content::of(&json);
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
             {
-                let json = runtime::to_value(&value).unwrap_or_default();
-                if serde_json::from_value::<NotChecked>(json.clone()).is_ok() {
+                if json.decode_ref::<NotChecked>().is_ok() {
                     runtime::violation(
                         out,
                         &runtime::InstancePath::Root,
@@ -410,14 +413,15 @@ impl<'de> serde::Deserialize<'de> for Shape {
 impl TryFrom<ShapeVariants> for Shape {
     type Error = runtime::BuildError;
     fn try_from(value: ShapeVariants) -> Result<Self, runtime::BuildError> {
+        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = &runtime::Content::of(&json);
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
             {
-                let json = runtime::to_value(&value).unwrap_or_default();
                 let hits = [
-                    serde_json::from_value::<Book>(json.clone()).is_ok(),
-                    serde_json::from_value::<NotChecked5>(json.clone()).is_ok(),
+                    json.decode_ref::<Book>().is_ok(),
+                    json.decode_ref::<NotChecked5>().is_ok(),
                 ]
                     .into_iter()
                     .filter(|hit| *hit)
@@ -429,7 +433,7 @@ impl TryFrom<ShapeVariants> for Shape {
                         format!("matches {hits} of `oneOf`, not exactly one"),
                     );
                 }
-                if serde_json::from_value::<serde_json::Value>(json.clone()).is_err() {
+                if json.decode_ref::<serde_json::Value>().is_err() {
                     runtime::violation(
                         out,
                         &runtime::InstancePath::Root,
@@ -590,13 +594,14 @@ impl<'de> serde::Deserialize<'de> for Gadget2 {
 impl TryFrom<Gadget2Fields> for Gadget2 {
     type Error = runtime::BuildError;
     fn try_from(value: Gadget2Fields) -> Result<Self, runtime::BuildError> {
+        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = &runtime::Content::of(&json);
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
             {
-                let json = runtime::to_value(&value).unwrap_or_default();
                 if json.get("secret").is_some()
-                    && let Err(e) = serde_json::from_value::<NotChecked2>(json.clone())
+                    && let Err(e) = json.decode_ref::<NotChecked2>()
                 {
                     runtime::violation(
                         out,
@@ -958,13 +963,14 @@ impl<'de> serde::Deserialize<'de> for ProductRequest {
 impl TryFrom<ProductRequestFields> for ProductRequest {
     type Error = runtime::BuildError;
     fn try_from(value: ProductRequestFields) -> Result<Self, runtime::BuildError> {
+        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = &runtime::Content::of(&json);
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
             {
-                let json = runtime::to_value(&value).unwrap_or_default();
                 if json.get("secret").is_some()
-                    && let Err(e) = serde_json::from_value::<NotChecked2>(json.clone())
+                    && let Err(e) = json.decode_ref::<NotChecked2>()
                 {
                     runtime::violation(
                         out,
@@ -992,13 +998,14 @@ impl<'de> serde::Deserialize<'de> for BookRequest {
 impl TryFrom<BookRequestFields> for BookRequest {
     type Error = runtime::BuildError;
     fn try_from(value: BookRequestFields) -> Result<Self, runtime::BuildError> {
+        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = &runtime::Content::of(&json);
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
             {
-                let json = runtime::to_value(&value).unwrap_or_default();
                 if json.get("secret").is_some()
-                    && let Err(e) = serde_json::from_value::<NotChecked2>(json.clone())
+                    && let Err(e) = json.decode_ref::<NotChecked2>()
                 {
                     runtime::violation(
                         out,
@@ -1027,14 +1034,15 @@ impl<'de> serde::Deserialize<'de> for ShapeRequest {
 impl TryFrom<ShapeRequestVariants> for ShapeRequest {
     type Error = runtime::BuildError;
     fn try_from(value: ShapeRequestVariants) -> Result<Self, runtime::BuildError> {
+        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = &runtime::Content::of(&json);
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
             {
-                let json = runtime::to_value(&value).unwrap_or_default();
                 let hits = [
-                    serde_json::from_value::<Book>(json.clone()).is_ok(),
-                    serde_json::from_value::<NotChecked5>(json.clone()).is_ok(),
+                    json.decode_ref::<Book>().is_ok(),
+                    json.decode_ref::<NotChecked5>().is_ok(),
                 ]
                     .into_iter()
                     .filter(|hit| *hit)
@@ -1046,7 +1054,7 @@ impl TryFrom<ShapeRequestVariants> for ShapeRequest {
                         format!("matches {hits} of `oneOf`, not exactly one"),
                     );
                 }
-                if serde_json::from_value::<serde_json::Value>(json.clone()).is_err() {
+                if json.decode_ref::<serde_json::Value>().is_err() {
                     runtime::violation(
                         out,
                         &runtime::InstancePath::Root,
@@ -1073,13 +1081,14 @@ impl<'de> serde::Deserialize<'de> for Gadget2Request {
 impl TryFrom<Gadget2RequestFields> for Gadget2Request {
     type Error = runtime::BuildError;
     fn try_from(value: Gadget2RequestFields) -> Result<Self, runtime::BuildError> {
+        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = &runtime::Content::of(&json);
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
             {
-                let json = runtime::to_value(&value).unwrap_or_default();
                 if json.get("secret").is_some()
-                    && let Err(e) = serde_json::from_value::<NotChecked2>(json.clone())
+                    && let Err(e) = json.decode_ref::<NotChecked2>()
                 {
                     runtime::violation(
                         out,
@@ -1704,9 +1713,7 @@ impl TryFrom<Vec<String>> for ProductTags {
                     .iter()
                     .filter(|item| {
                         runtime::to_value(item)
-                            .is_ok_and(|json| {
-                                serde_json::from_value::<Not>(json).is_ok()
-                            })
+                            .is_ok_and(|v| serde_json::from_value::<Not>(v).is_ok())
                     })
                     .count();
                 if hits > 1 {
@@ -1736,14 +1743,15 @@ impl<'de> serde::Deserialize<'de> for ProductPoint {
 impl TryFrom<Vec<serde_json::Value>> for ProductPoint {
     type Error = runtime::BuildError;
     fn try_from(value: Vec<serde_json::Value>) -> Result<Self, runtime::BuildError> {
+        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = &runtime::Content::of(&json);
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
             {
-                let json = runtime::to_value(&value).unwrap_or_default();
-                let items = json.as_array().map_or(&[][..], Vec::as_slice);
+                let items = json.as_array().unwrap_or_default();
                 if let Some(item) = items.first()
-                    && let Err(e) = serde_json::from_value::<f64>(item.clone())
+                    && let Err(e) = item.decode_ref::<f64>()
                 {
                     runtime::violation(
                         out,
@@ -1752,7 +1760,7 @@ impl TryFrom<Vec<serde_json::Value>> for ProductPoint {
                     );
                 }
                 if let Some(item) = items.get(1usize)
-                    && let Err(e) = serde_json::from_value::<f64>(item.clone())
+                    && let Err(e) = item.decode_ref::<f64>()
                 {
                     runtime::violation(
                         out,
@@ -1760,7 +1768,7 @@ impl TryFrom<Vec<serde_json::Value>> for ProductPoint {
                         e.to_string(),
                     );
                 }
-                if let serde_json::Value::Array(items) = &json {
+                if let Some(items) = json.as_array() {
                     for (i, _) in items.iter().enumerate().skip(2) {
                         runtime::violation(
                             out,
@@ -1799,12 +1807,13 @@ impl TryFrom<std::collections::BTreeMap<String, serde_json::Value>> for ProductA
     fn try_from(
         value: std::collections::BTreeMap<String, serde_json::Value>,
     ) -> Result<Self, runtime::BuildError> {
+        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = &runtime::Content::of(&json);
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
             {
-                let json = runtime::to_value(&value).unwrap_or_default();
-                if let serde_json::Value::Object(object) = &json {
+                if let Some(object) = json.as_object() {
                     for (name, item) in object {
                         if runtime::pattern_matches(
                             {
@@ -1813,7 +1822,7 @@ impl TryFrom<std::collections::BTreeMap<String, serde_json::Value>> for ProductA
                             },
                             "^x_",
                             name,
-                        ) && let Err(e) = serde_json::from_value::<String>(item.clone())
+                        ) && let Err(e) = item.decode_ref::<String>()
                         {
                             runtime::violation(
                                 out,
@@ -1826,8 +1835,8 @@ impl TryFrom<std::collections::BTreeMap<String, serde_json::Value>> for ProductA
                         }
                     }
                 }
-                if let serde_json::Value::Object(object) = &json {
-                    for name in object.keys() {
+                if let Some(object) = json.as_object() {
+                    for name in object.map(|(name, _)| name) {
                         if !(runtime::pattern_matches(
                             {
                                 static RE: runtime::Pattern = runtime::Pattern::new();
@@ -2002,13 +2011,14 @@ impl<'de> serde::Deserialize<'de> for NotChecked5 {
 impl TryFrom<Gadget> for NotChecked5 {
     type Error = runtime::BuildError;
     fn try_from(value: Gadget) -> Result<Self, runtime::BuildError> {
+        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = &runtime::Content::of(&json);
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
             {
-                let json = runtime::to_value(&value).unwrap_or_default();
                 if json.get("secret").is_some()
-                    && let Err(e) = serde_json::from_value::<NotChecked2>(json.clone())
+                    && let Err(e) = json.decode_ref::<NotChecked2>()
                 {
                     runtime::violation(
                         out,
@@ -2016,17 +2026,15 @@ impl TryFrom<Gadget> for NotChecked5 {
                         format!("{}{e}", "`secret` is present: "),
                     );
                 }
-                if serde_json::from_value::<Not2>(json.clone()).is_ok() {
-                    if let Err(e) = serde_json::from_value::<NotChecked3>(json.clone()) {
+                if json.decode_ref::<Not2>().is_ok() {
+                    if let Err(e) = json.decode_ref::<NotChecked3>() {
                         runtime::violation(
                             out,
                             &runtime::InstancePath::Root,
                             format!("{}{e}", "`then`: "),
                         );
                     }
-                } else if let Err(e) = serde_json::from_value::<
-                    NotChecked4,
-                >(json.clone()) {
+                } else if let Err(e) = json.decode_ref::<NotChecked4>() {
                     runtime::violation(
                         out,
                         &runtime::InstancePath::Root,

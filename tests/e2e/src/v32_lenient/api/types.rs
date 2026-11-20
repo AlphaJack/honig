@@ -191,15 +191,16 @@ impl<'de> serde::Deserialize<'de> for Delivery {
 impl TryFrom<DeliveryVariants> for Delivery {
     type Error = runtime::BuildError;
     fn try_from(value: DeliveryVariants) -> Result<Self, runtime::BuildError> {
+        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = &runtime::Content::of(&json);
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
             if !matches!(value, DeliveryVariants::Other(_)) {
                 {
-                    let json = runtime::to_value(&value).unwrap_or_default();
                     let hits = [
-                        serde_json::from_value::<Pickup>(json.clone()).is_ok(),
-                        serde_json::from_value::<Courier>(json.clone()).is_ok(),
+                        json.decode_ref::<Pickup>().is_ok(),
+                        json.decode_ref::<Courier>().is_ok(),
                     ]
                         .into_iter()
                         .filter(|hit| *hit)
@@ -354,14 +355,15 @@ impl<'de> serde::Deserialize<'de> for DeliveryRequest {
 impl TryFrom<DeliveryRequestVariants> for DeliveryRequest {
     type Error = runtime::BuildError;
     fn try_from(value: DeliveryRequestVariants) -> Result<Self, runtime::BuildError> {
+        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = &runtime::Content::of(&json);
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
             {
-                let json = runtime::to_value(&value).unwrap_or_default();
                 let hits = [
-                    serde_json::from_value::<Pickup>(json.clone()).is_ok(),
-                    serde_json::from_value::<Courier>(json.clone()).is_ok(),
+                    json.decode_ref::<Pickup>().is_ok(),
+                    json.decode_ref::<Courier>().is_ok(),
                 ]
                     .into_iter()
                     .filter(|hit| *hit)

@@ -100,12 +100,13 @@ impl<'de> serde::Deserialize<'de> for Product {
 impl TryFrom<ProductVariants> for Product {
     type Error = runtime::BuildError;
     fn try_from(value: ProductVariants) -> Result<Self, runtime::BuildError> {
+        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = &runtime::Content::of(&json);
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
             {
-                let json = runtime::to_value(&value).unwrap_or_default();
-                if let Err(e) = serde_json::from_value::<Not>(json.clone()) {
+                if let Err(e) = json.decode_ref::<Not>() {
                     runtime::violation(out, &runtime::InstancePath::Root, e.to_string());
                 }
             }

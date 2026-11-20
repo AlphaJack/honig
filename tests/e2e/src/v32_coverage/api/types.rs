@@ -173,12 +173,13 @@ impl<'de> serde::Deserialize<'de> for Note {
 impl TryFrom<NoteVariants> for Note {
     type Error = runtime::BuildError;
     fn try_from(value: NoteVariants) -> Result<Self, runtime::BuildError> {
+        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = &runtime::Content::of(&json);
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
             {
-                let json = runtime::to_value(&value).unwrap_or_default();
-                if let Err(e) = serde_json::from_value::<Not3>(json.clone()) {
+                if let Err(e) = json.decode_ref::<Not3>() {
                     runtime::violation(out, &runtime::InstancePath::Root, e.to_string());
                 }
             }
@@ -201,20 +202,21 @@ impl<'de> serde::Deserialize<'de> for TextNote {
 impl TryFrom<TextNoteFields> for TextNote {
     type Error = runtime::BuildError;
     fn try_from(value: TextNoteFields) -> Result<Self, runtime::BuildError> {
+        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = &runtime::Content::of(&json);
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
             {
-                let json = runtime::to_value(&value).unwrap_or_default();
-                if serde_json::from_value::<NotChecked>(json.clone()).is_ok() {
-                    if let Err(e) = serde_json::from_value::<Not>(json.clone()) {
+                if json.decode_ref::<NotChecked>().is_ok() {
+                    if let Err(e) = json.decode_ref::<Not>() {
                         runtime::violation(
                             out,
                             &runtime::InstancePath::Root,
                             format!("{}{e}", "`then`: "),
                         );
                     }
-                } else if let Err(e) = serde_json::from_value::<Not2>(json.clone()) {
+                } else if let Err(e) = json.decode_ref::<Not2>() {
                     runtime::violation(
                         out,
                         &runtime::InstancePath::Root,
@@ -286,14 +288,15 @@ impl<'de> serde::Deserialize<'de> for Crop {
 impl TryFrom<CropVariants> for Crop {
     type Error = runtime::BuildError;
     fn try_from(value: CropVariants) -> Result<Self, runtime::BuildError> {
+        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = &runtime::Content::of(&json);
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
             {
-                let json = runtime::to_value(&value).unwrap_or_default();
                 let hits = [
-                    serde_json::from_value::<String>(json.clone()).is_ok(),
-                    serde_json::from_value::<CropVariant2>(json.clone()).is_ok(),
+                    json.decode_ref::<String>().is_ok(),
+                    json.decode_ref::<CropVariant2>().is_ok(),
                 ]
                     .into_iter()
                     .filter(|hit| *hit)
@@ -326,20 +329,21 @@ impl<'de> serde::Deserialize<'de> for NoteTextNote {
 impl TryFrom<NoteTextNoteFields> for NoteTextNote {
     type Error = runtime::BuildError;
     fn try_from(value: NoteTextNoteFields) -> Result<Self, runtime::BuildError> {
+        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = &runtime::Content::of(&json);
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
             {
-                let json = runtime::to_value(&value).unwrap_or_default();
-                if serde_json::from_value::<NotChecked>(json.clone()).is_ok() {
-                    if let Err(e) = serde_json::from_value::<Not>(json.clone()) {
+                if json.decode_ref::<NotChecked>().is_ok() {
+                    if let Err(e) = json.decode_ref::<Not>() {
                         runtime::violation(
                             out,
                             &runtime::InstancePath::Root,
                             format!("{}{e}", "`then`: "),
                         );
                     }
-                } else if let Err(e) = serde_json::from_value::<Not2>(json.clone()) {
+                } else if let Err(e) = json.decode_ref::<Not2>() {
                     runtime::violation(
                         out,
                         &runtime::InstancePath::Root,

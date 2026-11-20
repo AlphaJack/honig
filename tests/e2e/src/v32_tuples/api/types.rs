@@ -86,14 +86,15 @@ impl<'de> serde::Deserialize<'de> for RouteStart {
 impl TryFrom<Point> for RouteStart {
     type Error = runtime::BuildError;
     fn try_from(value: Point) -> Result<Self, runtime::BuildError> {
+        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = &runtime::Content::of(&json);
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
             {
-                let json = runtime::to_value(&value).unwrap_or_default();
-                let items = json.as_array().map_or(&[][..], Vec::as_slice);
+                let items = json.as_array().unwrap_or_default();
                 if let Some(item) = items.first()
-                    && let Err(e) = serde_json::from_value::<f64>(item.clone())
+                    && let Err(e) = item.decode_ref::<f64>()
                 {
                     runtime::violation(
                         out,
@@ -102,7 +103,7 @@ impl TryFrom<Point> for RouteStart {
                     );
                 }
                 if let Some(item) = items.get(1usize)
-                    && let Err(e) = serde_json::from_value::<f64>(item.clone())
+                    && let Err(e) = item.decode_ref::<f64>()
                 {
                     runtime::violation(
                         out,
@@ -111,7 +112,7 @@ impl TryFrom<Point> for RouteStart {
                     );
                 }
                 if let Some(item) = items.get(2usize)
-                    && let Err(e) = serde_json::from_value::<String>(item.clone())
+                    && let Err(e) = item.decode_ref::<String>()
                 {
                     runtime::violation(
                         out,
@@ -154,9 +155,10 @@ impl TryFrom<Vec<Point>> for RouteStops {
                 for (i, v) in value.iter().enumerate() {
                     {
                         let json = runtime::to_value(v).unwrap_or_default();
-                        let items = json.as_array().map_or(&[][..], Vec::as_slice);
+                        let json = &runtime::Content::of(&json);
+                        let items = json.as_array().unwrap_or_default();
                         if let Some(item) = items.first()
-                            && let Err(e) = serde_json::from_value::<f64>(item.clone())
+                            && let Err(e) = item.decode_ref::<f64>()
                         {
                             runtime::violation(
                                 out,
@@ -168,7 +170,7 @@ impl TryFrom<Vec<Point>> for RouteStops {
                             );
                         }
                         if let Some(item) = items.get(1usize)
-                            && let Err(e) = serde_json::from_value::<f64>(item.clone())
+                            && let Err(e) = item.decode_ref::<f64>()
                         {
                             runtime::violation(
                                 out,
@@ -180,9 +182,7 @@ impl TryFrom<Vec<Point>> for RouteStops {
                             );
                         }
                         if let Some(item) = items.get(2usize)
-                            && let Err(e) = serde_json::from_value::<
-                                String,
-                            >(item.clone())
+                            && let Err(e) = item.decode_ref::<String>()
                         {
                             runtime::violation(
                                 out,
@@ -225,14 +225,15 @@ impl<'de> serde::Deserialize<'de> for RouteTags {
 impl TryFrom<Open> for RouteTags {
     type Error = runtime::BuildError;
     fn try_from(value: Open) -> Result<Self, runtime::BuildError> {
+        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = &runtime::Content::of(&json);
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
             {
-                let json = runtime::to_value(&value).unwrap_or_default();
-                let items = json.as_array().map_or(&[][..], Vec::as_slice);
+                let items = json.as_array().unwrap_or_default();
                 if let Some(item) = items.first()
-                    && let Err(e) = serde_json::from_value::<String>(item.clone())
+                    && let Err(e) = item.decode_ref::<String>()
                 {
                     runtime::violation(
                         out,

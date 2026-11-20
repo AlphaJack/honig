@@ -113,7 +113,7 @@ pub(super) fn subschema_checks(
     let nots = c.not.iter().map(|&n| {
         let not = ty(n);
         quote! {
-            if serde_json::from_value::<#not>(json.clone()).is_ok() {
+            if json.decode_ref::<#not>().is_ok() {
                 runtime::violation(out, #path, "matches `not`");
             }
         }
@@ -123,7 +123,7 @@ pub(super) fn subschema_checks(
         let present = lit(&format!("`{name}` is present: "));
         quote! {
             if json.get(#wire).is_some()
-                && let Err(e) = serde_json::from_value::<#dependent>(json.clone())
+                && let Err(e) = json.decode_ref::<#dependent>()
             {
                 runtime::violation(out, #path, format!("{}{e}", #present));
             }
@@ -136,7 +136,7 @@ pub(super) fn subschema_checks(
     let also = c.also.iter().map(|&n| {
         let t = ty(n);
         quote! {
-            if let Err(e) = serde_json::from_value::<#t>(json.clone()) {
+            if let Err(e) = json.decode_ref::<#t>() {
                 runtime::violation(out, #path, e.to_string());
             }
         }
@@ -147,13 +147,18 @@ pub(super) fn subschema_checks(
         c.unevaluated_items.as_ref().map(|(ev, leftover)| unevaluated_item_checks(ev, *leftover, &ty, path));
     let names = names_schema_checks(c, &ty, path);
     let contains = json_contains_checks(c, &ty, path);
-    let required = (!c.json_dependents.is_empty()).then(|| {
-        let checks = object_dependent_checks(&c.json_dependents, &quote!(object), path);
-        quote!(if let serde_json::Value::Object(object) = &json { #checks })
+    let required =
+        (!c.json_dependents.is_empty()).then(|| object_dependent_checks(&c.json_dependents, &quote!(json), path));
+    // The checked type binds `json` to its whole value. A value further in reads its own.
+    let own = (value.to_string() != "& value").then(|| {
+        quote! {
+            let json = runtime::to_value(#value).unwrap_or_default();
+            let json = &runtime::Content::of(&json);
+        }
     });
     quote! {
         {
-            let json = runtime::to_value(#value).unwrap_or_default();
+            #own
             #(#nots)*
             #(#dependents)*
             #conditions
@@ -183,7 +188,7 @@ fn contains_checks(space: &Space<'_>, c: &Constraints, value: &TokenStream, path
             let hits = #r
                 .iter()
                 .filter(|item| {
-                    runtime::to_value(item).is_ok_and(|json| serde_json::from_value::<#ty>(json).is_ok())
+                    runtime::to_value(item).is_ok_and(|v| serde_json::from_value::<#ty>(v).is_ok())
                 })
                 .count();
             #bounds
@@ -196,8 +201,8 @@ fn json_contains_checks(c: &Constraints, ty: &dyn Fn(usize) -> TokenStream, path
     let Some((n, min, max)) = c.json_contains else { return TokenStream::new() };
     let (t, bounds) = (ty(n), contains_bounds(min, max, path));
     quote! {
-        if let serde_json::Value::Array(items) = &json {
-            let hits = items.iter().filter(|item| serde_json::from_value::<#t>((*item).clone()).is_ok()).count();
+        if let Some(items) = json.as_array() {
+            let hits = items.iter().filter(|item| item.decode_ref::<#t>().is_ok()).count();
             #bounds
         }
     }
@@ -240,11 +245,11 @@ fn pattern_checks(c: &Constraints, ty: &dyn Fn(usize) -> TokenStream, path: &Tok
             quote! {
                 if #matches {
                     matched = true;
-                    if let Err(e) = serde_json::from_value::<#schema>(item.clone()) { #refuse }
+                    if let Err(e) = item.decode_ref::<#schema>() { #refuse }
                 }
             }
         } else {
-            quote!(if #matches && let Err(e) = serde_json::from_value::<#schema>(item.clone()) { #refuse })
+            quote!(if #matches && let Err(e) = item.decode_ref::<#schema>() { #refuse })
         }
     });
     let (start, refuse) = match &c.closed_to {
@@ -252,7 +257,7 @@ fn pattern_checks(c: &Constraints, ty: &dyn Fn(usize) -> TokenStream, path: &Tok
             // `&& !declared.contains(name)`, or nothing when no name is declared.
             let undeclared = (!declared.is_empty()).then(|| {
                 let declared = declared.iter().map(|d| lit(d));
-                quote!(&& ![#(#declared),*].contains(&name.as_str()))
+                quote!(&& ![#(#declared),*].contains(&name))
             });
             let other = match extra {
                 None => quote! {
@@ -265,7 +270,7 @@ fn pattern_checks(c: &Constraints, ty: &dyn Fn(usize) -> TokenStream, path: &Tok
                     quote! {
                         if !matched
                             #undeclared
-                            && let Err(e) = serde_json::from_value::<#t>(item.clone())
+                            && let Err(e) = item.decode_ref::<#t>()
                         {
                             runtime::violation(out, &runtime::InstancePath::Key(#path, name), e.to_string());
                         }
@@ -277,7 +282,7 @@ fn pattern_checks(c: &Constraints, ty: &dyn Fn(usize) -> TokenStream, path: &Tok
         None => (None, None),
     };
     quote! {
-        if let serde_json::Value::Object(object) = &json {
+        if let Some(object) = json.as_object() {
             for (name, item) in object {
                 #start
                 #(#patterns)*
@@ -311,7 +316,7 @@ fn unevaluated_checks(
             (
                 quote!((name, item)),
                 quote! {
-                    if let Err(e) = serde_json::from_value::<#t>(item.clone()) {
+                    if let Err(e) = item.decode_ref::<#t>() {
                         runtime::violation(out, &runtime::InstancePath::Key(#path, name), e.to_string());
                     }
                 },
@@ -319,7 +324,7 @@ fn unevaluated_checks(
         }
     };
     let names = match leftover {
-        Leftover::Refused => quote!(object.keys()),
+        Leftover::Refused => quote!(object.map(|(name, _)| name)),
         Leftover::Schema(_) => quote!(object),
     };
     let body = match evaluated {
@@ -327,7 +332,7 @@ fn unevaluated_checks(
         None => check,
     };
     quote! {
-        if let serde_json::Value::Object(object) = &json {
+        if let Some(object) = json.as_object() {
             #(#flags)*
             for #binding in #names {
                 #body
@@ -356,7 +361,7 @@ fn unevaluated_item_checks(
         Leftover::Schema(n) => {
             let t = ty(n);
             quote! {
-                if let Err(e) = serde_json::from_value::<#t>(item.clone()) {
+                if let Err(e) = item.decode_ref::<#t>() {
                     runtime::violation(out, &runtime::InstancePath::Index(#path, i), e.to_string());
                 }
             }
@@ -378,7 +383,7 @@ fn unevaluated_item_checks(
         matches!(leftover, Leftover::Schema(_)) || evaluated.is_some_and(|e| e.to_string().contains("item"));
     let binding = if uses_item { quote!((i, item)) } else { quote!((i, _)) };
     quote! {
-        if let serde_json::Value::Array(items) = &json {
+        if let Some(items) = json.as_array() {
             #(#flags)*
             for #binding in #items {
                 #body
@@ -404,13 +409,13 @@ fn evaluated_item_expr(
     }
     for n in &ev.contains {
         let t = ty(*n);
-        parts.push(quote!(serde_json::from_value::<#t>(item.clone()).is_ok()));
+        parts.push(quote!(item.decode_ref::<#t>().is_ok()));
     }
     for (n, decodes, branch) in &ev.branches {
         let Some(inner) = evaluated_item_expr(branch, ty, flags) else { continue };
         let flag = quote::format_ident!("matched_{}", flags.len());
         let t = ty(*n);
-        flags.push(quote!(let #flag = serde_json::from_value::<#t>(json.clone()).is_ok();));
+        flags.push(quote!(let #flag = json.decode_ref::<#t>().is_ok();));
         let flag = if *decodes { quote!(#flag) } else { quote!(!#flag) };
         parts.push(if branch.all { flag } else { quote!((#flag && (#inner))) });
     }
@@ -435,7 +440,7 @@ fn evaluated_expr(
     let mut parts = vec![];
     if !ev.names.is_empty() {
         let names = ev.names.iter().map(|n| lit(n));
-        parts.push(quote!(matches!(name.as_str(), #(#names)|*)));
+        parts.push(quote!(matches!(name, #(#names)|*)));
     }
     for p in &ev.patterns {
         let p = lit(p);
@@ -447,7 +452,7 @@ fn evaluated_expr(
         let Some(inner) = evaluated_expr(branch, ty, flags) else { continue };
         let flag = quote::format_ident!("matched_{}", flags.len());
         let t = ty(*n);
-        flags.push(quote!(let #flag = serde_json::from_value::<#t>(json.clone()).is_ok();));
+        flags.push(quote!(let #flag = json.decode_ref::<#t>().is_ok();));
         let flag = if *decodes { quote!(#flag) } else { quote!(!#flag) };
         parts.push(if branch.all { flag } else { quote!((#flag && (#inner))) });
     }
@@ -972,7 +977,7 @@ fn tuple_checks(c: &Constraints, ty: &dyn Fn(usize) -> TokenStream, path: &Token
     let decodes = |n: usize, at: &TokenStream| {
         let t = ty(n);
         quote! {
-            if let Err(e) = serde_json::from_value::<#t>(item.clone()) {
+            if let Err(e) = item.decode_ref::<#t>() {
                 runtime::violation(out, &runtime::InstancePath::Index(#path, #at), e.to_string());
             }
         }
@@ -982,7 +987,7 @@ fn tuple_checks(c: &Constraints, ty: &dyn Fn(usize) -> TokenStream, path: &Token
         let (i, t) = (Literal::usize_unsuffixed(i), ty(n));
         quote! {
             if let Some(item) = #item
-                && let Err(e) = serde_json::from_value::<#t>(item.clone())
+                && let Err(e) = item.decode_ref::<#t>()
             {
                 runtime::violation(out, &runtime::InstancePath::Index(#path, #i), e.to_string());
             }
@@ -1003,7 +1008,7 @@ fn tuple_checks(c: &Constraints, ty: &dyn Fn(usize) -> TokenStream, path: &Token
     };
     // A value of another kind has no items to check.
     quote! {
-        let items = json.as_array().map_or(&[][..], Vec::as_slice);
+        let items = json.as_array().unwrap_or_default();
         #(#leading)*
         #rest
     }
@@ -1045,7 +1050,7 @@ fn value_checks(c: &Constraints, path: &TokenStream) -> TokenStream {
         let values = values.iter().map(super::syntax::json_tokens);
         quote! {
             static VALUES: std::sync::OnceLock<Vec<serde_json::Value>> = std::sync::OnceLock::new();
-            if !VALUES.get_or_init(|| vec![#(#values),*]).iter().any(|v| runtime::json_equal(&json, v)) {
+            if !VALUES.get_or_init(|| vec![#(#values),*]).iter().any(|v| runtime::content_equal(json, v)) {
                 runtime::violation(out, #path, "is not one of the allowed values");
             }
         }
@@ -1054,7 +1059,7 @@ fn value_checks(c: &Constraints, path: &TokenStream) -> TokenStream {
         let (message, v) = (lit(&format!("must be {v}")), super::syntax::json_tokens(v));
         quote! {
             static VALUE: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-            if !runtime::json_equal(&json, VALUE.get_or_init(|| #v)) {
+            if !runtime::content_equal(json, VALUE.get_or_init(|| #v)) {
                 runtime::violation(out, #path, #message);
             }
         }
@@ -1070,12 +1075,12 @@ fn condition_checks(c: &Constraints, ty: &dyn Fn(usize) -> TokenStream, path: &T
         let branch = |b: usize, name: &str| {
             let (b, name) = (ty(b), lit(&format!("`{name}`: ")));
             (
-                quote!(let Err(e) = serde_json::from_value::<#b>(json.clone())),
+                quote!(let Err(e) = json.decode_ref::<#b>()),
                 quote!(runtime::violation(out, #path, format!("{}{e}", #name));),
             )
         };
         let cond = ty(cond);
-        let matched = quote!(serde_json::from_value::<#cond>(json.clone()).is_ok());
+        let matched = quote!(json.decode_ref::<#cond>().is_ok());
         match (then.map(|b| branch(b, "then")), otherwise.map(|b| branch(b, "else"))) {
             (Some((then, v)), Some((otherwise, w))) => quote! {
                 if #matched {
@@ -1098,9 +1103,9 @@ fn names_schema_checks(c: &Constraints, ty: &dyn Fn(usize) -> TokenStream, path:
     let Some(n) = c.names_schema else { return TokenStream::new() };
     let t = ty(n);
     quote! {
-        if let serde_json::Value::Object(object) = &json {
-            for name in object.keys() {
-                if serde_json::from_value::<#t>(serde_json::Value::String(name.clone())).is_err() {
+        if let Some(object) = json.as_object() {
+            for (name, _) in object {
+                if runtime::Content::Str(name.into()).decode_ref::<#t>().is_err() {
                     runtime::violation(out, &runtime::InstancePath::Key(#path, name), "is not an allowed property name");
                 }
             }
@@ -1114,7 +1119,7 @@ fn branch_count_checks(c: &Constraints, ty: &dyn Fn(usize) -> TokenStream, path:
     let one_of = (!c.one_of.is_empty()).then(|| {
         let branches = c.one_of.iter().map(|&n| ty(n));
         quote! {
-            let hits = [#(serde_json::from_value::<#branches>(json.clone()).is_ok()),*]
+            let hits = [#(json.decode_ref::<#branches>().is_ok()),*]
                 .into_iter()
                 .filter(|hit| *hit)
                 .count();
@@ -1129,7 +1134,7 @@ fn branch_count_checks(c: &Constraints, ty: &dyn Fn(usize) -> TokenStream, path:
         [n] => {
             let t = ty(*n);
             Some(quote! {
-                if serde_json::from_value::<#t>(json.clone()).is_err() {
+                if json.decode_ref::<#t>().is_err() {
                     runtime::violation(out, #path, "matches none of `anyOf`");
                 }
             })
@@ -1137,7 +1142,7 @@ fn branch_count_checks(c: &Constraints, ty: &dyn Fn(usize) -> TokenStream, path:
         branches => {
             let branches = branches.iter().map(|&n| ty(n));
             Some(quote! {
-                if !(#(serde_json::from_value::<#branches>(json.clone()).is_ok())||*) {
+                if !(#(json.decode_ref::<#branches>().is_ok())||*) {
                     runtime::violation(out, #path, "matches none of `anyOf`");
                 }
             })

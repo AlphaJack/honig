@@ -420,13 +420,14 @@ impl<'de> serde::Deserialize<'de> for Tagged {
 impl TryFrom<TaggedVariants> for Tagged {
     type Error = runtime::BuildError;
     fn try_from(value: TaggedVariants) -> Result<Self, runtime::BuildError> {
+        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = &runtime::Content::of(&json);
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
             {
-                let json = runtime::to_value(&value).unwrap_or_default();
-                if !(serde_json::from_value::<TaggedLabel>(json.clone()).is_ok()
-                    || serde_json::from_value::<TaggedColour>(json.clone()).is_ok())
+                if !(json.decode_ref::<TaggedLabel>().is_ok()
+                    || json.decode_ref::<TaggedColour>().is_ok())
                 {
                     runtime::violation(
                         out,
@@ -434,16 +435,16 @@ impl TryFrom<TaggedVariants> for Tagged {
                         "matches none of `anyOf`",
                     );
                 }
-                if let Err(e) = serde_json::from_value::<Not>(json.clone()) {
+                if let Err(e) = json.decode_ref::<Not>() {
                     runtime::violation(out, &runtime::InstancePath::Root, e.to_string());
                 }
-                if let serde_json::Value::Object(object) = &json {
-                    let matched_0 = serde_json::from_value::<Not2>(json.clone()).is_ok();
-                    let matched_1 = serde_json::from_value::<Not3>(json.clone()).is_ok();
-                    for name in object.keys() {
-                        if !(matches!(name.as_str(), "size")
-                            || (matched_0 && (matches!(name.as_str(), "label")))
-                            || (matched_1 && (matches!(name.as_str(), "colour"))))
+                if let Some(object) = json.as_object() {
+                    let matched_0 = json.decode_ref::<Not2>().is_ok();
+                    let matched_1 = json.decode_ref::<Not3>().is_ok();
+                    for name in object.map(|(name, _)| name) {
+                        if !(matches!(name, "size")
+                            || (matched_0 && (matches!(name, "label")))
+                            || (matched_1 && (matches!(name, "colour"))))
                         {
                             runtime::violation(
                                 out,
@@ -1476,12 +1477,13 @@ impl<'de> serde::Deserialize<'de> for Shipment {
 impl TryFrom<ShipmentVariants> for Shipment {
     type Error = runtime::BuildError;
     fn try_from(value: ShipmentVariants) -> Result<Self, runtime::BuildError> {
+        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = &runtime::Content::of(&json);
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
             {
-                let json = runtime::to_value(&value).unwrap_or_default();
-                if serde_json::from_value::<Not9>(json.clone()).is_ok() {
+                if json.decode_ref::<Not9>().is_ok() {
                     runtime::violation(
                         out,
                         &runtime::InstancePath::Root,
@@ -1554,13 +1556,13 @@ impl<'de> serde::Deserialize<'de> for Voucher {
 impl TryFrom<VoucherFields> for Voucher {
     type Error = runtime::BuildError;
     fn try_from(value: VoucherFields) -> Result<Self, runtime::BuildError> {
+        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = &runtime::Content::of(&json);
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
             {
-                let json = runtime::to_value(&value).unwrap_or_default();
-                if json.get("code").is_some()
-                    && let Err(e) = serde_json::from_value::<Not10>(json.clone())
+                if json.get("code").is_some() && let Err(e) = json.decode_ref::<Not10>()
                 {
                     runtime::violation(
                         out,
@@ -2678,12 +2680,13 @@ impl TryFrom<ShipmentInternationalFields> for ShipmentInternational {
     fn try_from(
         value: ShipmentInternationalFields,
     ) -> Result<Self, runtime::BuildError> {
+        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = &runtime::Content::of(&json);
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
             {
-                let json = runtime::to_value(&value).unwrap_or_default();
-                if serde_json::from_value::<Not7>(json.clone()).is_ok() {
+                if json.decode_ref::<Not7>().is_ok() {
                     runtime::violation(
                         out,
                         &runtime::InstancePath::Root,
@@ -2918,12 +2921,13 @@ impl<'de> serde::Deserialize<'de> for ShipmentOtherwise {
 impl TryFrom<ShipmentOtherwiseFields> for ShipmentOtherwise {
     type Error = runtime::BuildError;
     fn try_from(value: ShipmentOtherwiseFields) -> Result<Self, runtime::BuildError> {
+        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = &runtime::Content::of(&json);
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
             {
-                let json = runtime::to_value(&value).unwrap_or_default();
-                if serde_json::from_value::<Not8>(json.clone()).is_ok() {
+                if json.decode_ref::<Not8>().is_ok() {
                     runtime::violation(
                         out,
                         &runtime::InstancePath::Root,
@@ -4997,9 +5001,7 @@ impl TryFrom<Vec<String>> for BadgeHolders {
                     .iter()
                     .filter(|item| {
                         runtime::to_value(item)
-                            .is_ok_and(|json| {
-                                serde_json::from_value::<Not4>(json).is_ok()
-                            })
+                            .is_ok_and(|v| serde_json::from_value::<Not4>(v).is_ok())
                     })
                     .count();
                 if hits < 1 {
@@ -5286,9 +5288,7 @@ impl TryFrom<Vec<ParcelsItem>> for ShipmentInternationalParcels {
                     .iter()
                     .filter(|item| {
                         runtime::to_value(item)
-                            .is_ok_and(|json| {
-                                serde_json::from_value::<Not5>(json).is_ok()
-                            })
+                            .is_ok_and(|v| serde_json::from_value::<Not5>(v).is_ok())
                     })
                     .count();
                 if hits < 1 {
@@ -5383,12 +5383,13 @@ for ShipmentInternationalLabels {
     fn try_from(
         value: std::collections::BTreeMap<String, serde_json::Value>,
     ) -> Result<Self, runtime::BuildError> {
+        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = &runtime::Content::of(&json);
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
             {
-                let json = runtime::to_value(&value).unwrap_or_default();
-                if let serde_json::Value::Object(object) = &json {
+                if let Some(object) = json.as_object() {
                     for (name, item) in object {
                         let mut matched = false;
                         if runtime::pattern_matches(
@@ -5400,9 +5401,7 @@ for ShipmentInternationalLabels {
                             name,
                         ) {
                             matched = true;
-                            if let Err(e) = serde_json::from_value::<
-                                Not6,
-                            >(item.clone()) {
+                            if let Err(e) = item.decode_ref::<Not6>() {
                                 runtime::violation(
                                     out,
                                     &runtime::InstancePath::Key(
@@ -5413,11 +5412,7 @@ for ShipmentInternationalLabels {
                                 );
                             }
                         }
-                        if !matched
-                            && let Err(e) = serde_json::from_value::<
-                                String,
-                            >(item.clone())
-                        {
+                        if !matched && let Err(e) = item.decode_ref::<String>() {
                             runtime::violation(
                                 out,
                                 &runtime::InstancePath::Key(
@@ -5479,9 +5474,7 @@ impl TryFrom<Vec<ShipmentOtherwiseParcelsItem>> for ShipmentOtherwiseParcels {
                     .iter()
                     .filter(|item| {
                         runtime::to_value(item)
-                            .is_ok_and(|json| {
-                                serde_json::from_value::<Not5>(json).is_ok()
-                            })
+                            .is_ok_and(|v| serde_json::from_value::<Not5>(v).is_ok())
                     })
                     .count();
                 if hits < 1 {

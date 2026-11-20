@@ -48,13 +48,13 @@ macro_rules! try_from_impl {
         impl TryFrom<OrderCustomer> for $t {
             type Error = runtime::BuildError;
             fn try_from(value: OrderCustomer) -> Result<Self, runtime::BuildError> {
+                let json = runtime::to_value(&value).unwrap_or_default();
+                let json = &runtime::Content::of(&json);
                 let mut violations: Vec<runtime::Violation> = Vec::new();
                 {
                     let out = &mut violations;
                     {
-                        let json = runtime::to_value(&value).unwrap_or_default();
-                        if !(serde_json::from_value::<Not>(json.clone()).is_ok()
-                            || serde_json::from_value::<()>(json.clone()).is_ok())
+                        if !(json.decode_ref::<Not>().is_ok() || json.decode_ref::<()>().is_ok())
                         {
                             runtime::violation(
                                 out,
@@ -381,14 +381,15 @@ impl<'de> serde::Deserialize<'de> for Vehicle {
 impl TryFrom<VehicleVariants> for Vehicle {
     type Error = runtime::BuildError;
     fn try_from(value: VehicleVariants) -> Result<Self, runtime::BuildError> {
+        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = &runtime::Content::of(&json);
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
             {
-                let json = runtime::to_value(&value).unwrap_or_default();
                 let hits = [
-                    serde_json::from_value::<Car>(json.clone()).is_ok(),
-                    serde_json::from_value::<Van>(json.clone()).is_ok(),
+                    json.decode_ref::<Car>().is_ok(),
+                    json.decode_ref::<Van>().is_ok(),
                 ]
                     .into_iter()
                     .filter(|hit| *hit)
