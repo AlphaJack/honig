@@ -9,13 +9,13 @@ use futures_core::Stream;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 
+use crate::checks::InstancePath;
 use crate::codec::{sse_boundary, sse_comment_only, sse_item, sse_state};
 use crate::message::Message;
 use crate::source::{Blob, BodySource, ByteStream, Feed, Slot, Sse, put_slot, take_slot};
 #[cfg(feature = "multipart")]
 use crate::text::decode_err;
 use crate::transport::Pending;
-use crate::validate::InstancePath;
 use crate::{Body, Error, Request, json_seq_encode, jsonl_encode, sse_encode};
 
 /// The byte order mark that an SSE stream may start with. It is not part of the first event.
@@ -630,7 +630,7 @@ impl<T: DeserializeOwned> ItemStream<T> {
     where
         T: Serialize,
     {
-        let key: fn(&T) -> Option<String> = crate::validate::unique_key::<T>;
+        let key: fn(&T) -> Option<String> = crate::checks::unique_key::<T>;
         self.decoder(|items| {
             items.counted = Some(Box::new(Counted {
                 limits,
@@ -687,9 +687,9 @@ pub struct Limits {
 #[doc(hidden)]
 pub fn limit_items<T: Serialize>(status: u16, items: Vec<T>, limits: Limits) -> Result<Vec<T>, Error> {
     let mut out = vec![];
-    crate::validate::check_len(&mut out, &InstancePath::Root, items.len(), limits.min, limits.max, "items");
+    crate::checks::check_len(&mut out, &InstancePath::Root, items.len(), limits.min, limits.max, "items");
     if limits.unique {
-        crate::validate::check_unique(&mut out, &InstancePath::Root, &items);
+        crate::checks::check_unique(&mut out, &InstancePath::Root, &items);
     }
     match out.into_iter().next() {
         Some(v) => Err(limit_error(status, v.message)),

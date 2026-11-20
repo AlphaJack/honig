@@ -1,6 +1,6 @@
 //! Formats whose library type reads more than the format allows. `jiff` reads `2024-06-19 08:30Z` as a `date-time`.
 //! `uuid` reads `{...}` and `url` reads a space. Generated code decodes such a value through [`read`]. The text is
-//! validated as [`check_format`](crate::validate::check_format) validates a string, then the library reads it. A
+//! validated as [`check_format`](crate::checks::check_format) validates a string, then the library reads it. A
 //! server decoding a request and a client reading a response decode alike.
 //!
 //! [`Holds`] says where the text sits in the type: the value itself ([`Text`]) or the items of a list, the values of a
@@ -260,7 +260,7 @@ impl<'de, T: Deserialize<'de>, F: Format> Visitor<'de> for TextVisitor<T, F> {
     }
 
     fn visit_str<E: de::Error>(self, v: &str) -> Result<T, E> {
-        if !crate::validate::is_format(v, F::NAME) {
+        if !crate::checks::is_format(v, F::NAME) {
             return Err(E::invalid_value(Unexpected::Str(v), &self));
         }
         T::deserialize(de::value::StrDeserializer::<E>::new(&F::text(v)))

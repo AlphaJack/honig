@@ -6,13 +6,13 @@
 //! Text from the spec only reaches code through `lit()` (string literals) or
 //! sanitized identifiers.
 
+mod checks;
 mod http;
 pub(crate) mod names;
 pub(crate) mod needs;
 mod space;
 pub(crate) mod syntax;
 mod types;
-mod validate;
 
 use proc_macro2::TokenStream;
 use quote::quote;

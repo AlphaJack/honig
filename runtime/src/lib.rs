@@ -8,6 +8,7 @@ mod auth;
 mod base64;
 mod binary;
 mod builder;
+mod checks;
 #[cfg(feature = "client")]
 mod client;
 mod codec;
@@ -53,7 +54,6 @@ mod transport;
 mod unique_keys;
 mod uri;
 mod uri_template;
-mod validate;
 #[cfg(feature = "xml")]
 mod xml;
 #[cfg(feature = "xml")]
@@ -65,6 +65,7 @@ pub use binary::Base64Url;
 pub use binary::Binary;
 pub use builder::BuildError;
 pub use bytes::Bytes;
+pub use checks::{InstancePath, Violation};
 #[cfg(feature = "oauth")]
 pub use client::oauth::{AuthMetadata, DeviceCode, DevicePoll, Token};
 #[cfg(feature = "pkce")]
@@ -111,7 +112,6 @@ pub use stream::{Framing, ItemStream, Items, Streamed};
 #[cfg(any(feature = "client", feature = "server"))]
 pub use tower_service::Service;
 pub use transport::block_on;
-pub use validate::{InstancePath, Violation};
 
 // The hidden items that the modules use to name each other from the root.
 #[cfg_attr(not(test), expect(clippy::wildcard_imports, reason = "which items each feature set uses differs"))]
@@ -130,6 +130,7 @@ pub mod __private {
     pub mod formats {
         pub use crate::formats::*;
     }
+    pub use crate::checks::*;
     #[cfg(feature = "client")]
     pub use crate::client::auth::*;
     #[cfg(feature = "oauth")]
@@ -170,7 +171,6 @@ pub mod __private {
     pub use crate::trace_context::*;
     pub use crate::transport::*;
     pub use crate::unique_keys::UniqueKeys;
-    pub use crate::validate::*;
     #[cfg(feature = "xml")]
     pub use crate::xml::*;
     #[cfg(feature = "xml")]

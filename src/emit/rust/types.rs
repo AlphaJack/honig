@@ -1321,32 +1321,32 @@ fn checked_type(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, def
     let path = quote!(&runtime::InstancePath::Root);
     let base = ty(space, &c.base, false);
     let kind = Base::of(c);
-    // A scalar's own checks leave out `not`: it is checked here. `validate::checks` checks it for any other base.
+    // A scalar's own checks leave out `not`: it is checked here. `checks::checks` checks it for any other base.
     let subschemas = (!matches!(kind, Base::Other))
-        .then(|| super::validate::subschema_checks(space, &c.constraints, &quote!(&value), &path));
+        .then(|| super::checks::subschema_checks(space, &c.constraints, &quote!(&value), &path));
     let (checks, derive, consts) = match kind {
         Base::Str => {
             let pat = c.constraints.pattern.as_deref().map(|p| {
                 let p = lit(p);
                 quote!(impl #n { pub const PATTERN: &'static str = #p; })
             });
-            let checks = super::validate::string_checks(&c.constraints, &quote!(value.as_str()), &path);
+            let checks = super::checks::string_checks(&c.constraints, &quote!(value.as_str()), &path);
             (checks, quote!(Eq, Hash, PartialOrd, Ord,), pat)
         }
         Base::Float => {
-            let checks = super::validate::float_checks(&c.constraints, &quote!(&value), &path);
+            let checks = super::checks::float_checks(&c.constraints, &quote!(&value), &path);
             (checks, quote!(Copy, PartialOrd,), None)
         }
         Base::Decimal => {
-            let checks = super::validate::decimal_checks(&c.constraints, &quote!(&value), &path);
+            let checks = super::checks::decimal_checks(&c.constraints, &quote!(&value), &path);
             (checks, quote!(Eq, Hash,), None)
         }
         Base::Int => {
-            let checks = super::validate::integer_checks(&c.base, &c.constraints, &quote!(&value), &path);
+            let checks = super::checks::integer_checks(&c.base, &c.constraints, &quote!(&value), &path);
             (checks, quote!(Copy, Eq, Hash, PartialOrd, Ord,), None)
         }
         Base::Other => {
-            let checks = super::validate::checks(space, &c.base, &c.constraints, &quote!(&value), &path);
+            let checks = super::checks::checks(space, &c.base, &c.constraints, &quote!(&value), &path);
             // A member that the server added meets no keyword of the description: a lenient client takes it as it is.
             let added = matches!(&c.base, Ty::Named(inner) if {
                 let inner = space.types.get(*inner);
