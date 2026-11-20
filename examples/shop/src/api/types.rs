@@ -43,120 +43,6 @@ macro_rules! serialize_impl_2 {
     };
 }
 use super::runtime;
-macro_rules! checked_str_impls {
-    ($n:ident) => {
-        impl $n {
-            #[must_use]
-            pub fn as_str(&self) -> &str {
-                &self.0
-            }
-            #[must_use]
-            pub fn into_inner(self) -> String {
-                self.0
-            }
-        }
-        impl TryFrom<&str> for $n {
-            type Error = runtime::BuildError;
-            fn try_from(value: &str) -> Result<Self, runtime::BuildError> {
-                Self::try_from(value.to_owned())
-            }
-        }
-        impl std::str::FromStr for $n {
-            type Err = runtime::BuildError;
-            fn from_str(s: &str) -> Result<Self, runtime::BuildError> {
-                Self::try_from(s)
-            }
-        }
-        impl std::ops::Deref for $n {
-            type Target = str;
-            fn deref(&self) -> &str {
-                &self.0
-            }
-        }
-        impl AsRef<str> for $n {
-            fn as_ref(&self) -> &str {
-                &self.0
-            }
-        }
-        impl std::fmt::Display for $n {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                f.write_str(&self.0)
-            }
-        }
-        impl PartialEq<str> for $n {
-            fn eq(&self, other: &str) -> bool {
-                self.0 == other
-            }
-        }
-        impl PartialEq<&str> for $n {
-            fn eq(&self, other: &&str) -> bool {
-                self.0 == *other
-            }
-        }
-        impl From<$n> for String {
-            fn from(value: $n) -> Self {
-                value.0
-            }
-        }
-        impl<'de> serde::Deserialize<'de> for $n {
-            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-                let s = <String as serde::Deserialize>::deserialize(d)?;
-                Self::try_from(s).map_err(serde::de::Error::custom)
-            }
-        }
-    };
-}
-macro_rules! checked_num_impls {
-    ($n:ident, $t:ty) => {
-        impl $n {
-            #[must_use]
-            pub const fn get(self) -> $t {
-                self.0
-            }
-        }
-        impl std::str::FromStr for $n {
-            type Err = runtime::BuildError;
-            fn from_str(s: &str) -> Result<Self, runtime::BuildError> {
-                let v: $t = s
-                    .parse()
-                    .map_err(|e| runtime::BuildError::value(format!("{e}")))?;
-                Self::try_from(v)
-            }
-        }
-        impl std::ops::Deref for $n {
-            type Target = $t;
-            fn deref(&self) -> &$t {
-                &self.0
-            }
-        }
-        impl std::fmt::Display for $n {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                std::fmt::Display::fmt(&self.0, f)
-            }
-        }
-        impl PartialEq<$t> for $n {
-            fn eq(&self, other: &$t) -> bool {
-                self.0 == *other
-            }
-        }
-        impl PartialOrd<$t> for $n {
-            fn partial_cmp(&self, other: &$t) -> Option<std::cmp::Ordering> {
-                self.0.partial_cmp(other)
-            }
-        }
-        impl From<$n> for $t {
-            fn from(value: $n) -> Self {
-                value.0
-            }
-        }
-        impl<'de> serde::Deserialize<'de> for $n {
-            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-                let v = <$t as serde::Deserialize>::deserialize(d)?;
-                Self::try_from(v).map_err(serde::de::Error::custom)
-            }
-        }
-    };
-}
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Product {
     Physical(Physical),
@@ -332,7 +218,7 @@ impl TryFrom<String> for PhysicalSku {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_str_impls!(PhysicalSku);
+runtime::checked_str_impls!(PhysicalSku);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 pub struct DigitalKind;
 impl DigitalKind {
@@ -366,7 +252,7 @@ impl TryFrom<i32> for ListProductsLimit {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_num_impls!(ListProductsLimit, i32);
+runtime::checked_num_impls!(ListProductsLimit, i32);
 /// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
 /// its field. `build` returns the first field that did not convert.
 pub mod builders {

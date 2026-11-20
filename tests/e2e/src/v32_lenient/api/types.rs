@@ -34,78 +34,6 @@ macro_rules! serialize_impl {
     };
 }
 use super::runtime;
-macro_rules! str_enum_impls {
-    ($n:ident) => {
-        impl std::fmt::Display for $n {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                f.write_str(self.as_str())
-            }
-        }
-        impl std::str::FromStr for $n {
-            type Err = runtime::BuildError;
-            fn from_str(s: &str) -> Result<Self, Self::Err> {
-                Self::try_from(s)
-            }
-        }
-        impl serde::Serialize for $n {
-            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-                s.serialize_str(self.as_str())
-            }
-        }
-        impl<'de> serde::Deserialize<'de> for $n {
-            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-                let s = <std::borrow::Cow<'de, str> as serde::Deserialize>::deserialize(d)?;
-                Self::try_from(&*s).map_err(serde::de::Error::custom)
-            }
-        }
-    };
-}
-macro_rules! int_enum_impls {
-    ($n:ident) => {
-        impl std::fmt::Display for $n {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                write!(f, "{}", self.value())
-            }
-        }
-        impl serde::Serialize for $n {
-            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-                s.serialize_i64(self.value())
-            }
-        }
-        impl<'de> serde::Deserialize<'de> for $n {
-            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-                let v = <i64 as serde::Deserialize>::deserialize(d)?;
-                Self::try_from(v).map_err(serde::de::Error::custom)
-            }
-        }
-    };
-}
-macro_rules! checked_impls {
-    ($n:ident, $t:ty) => {
-        impl $n {
-            #[must_use]
-            pub fn into_inner(self) -> $t {
-                self.0
-            }
-        }
-        impl std::ops::Deref for $n {
-            type Target = $t;
-            fn deref(&self) -> &$t {
-                &self.0
-            }
-        }
-        impl AsRef<$t> for $n {
-            fn as_ref(&self) -> &$t {
-                &self.0
-            }
-        }
-        impl From<$n> for $t {
-            fn from(value: $n) -> Self {
-                value.0
-            }
-        }
-    };
-}
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Order {
@@ -233,7 +161,7 @@ impl Delivery {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(Delivery, DeliveryVariants);
+runtime::checked_impls!(Delivery, DeliveryVariants);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Pickup {
@@ -292,7 +220,7 @@ impl TryFrom<i64> for OrderPriority {
         }
     }
 }
-int_enum_impls!(OrderPriority);
+runtime::int_enum_impls!(OrderPriority);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 #[serde(deny_unknown_fields)]
@@ -355,7 +283,7 @@ impl TryFrom<&str> for StatusRequest {
         }
     }
 }
-str_enum_impls!(StatusRequest);
+runtime::str_enum_impls!(StatusRequest);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct DeliveryRequest(pub(super) DeliveryRequestVariants);
@@ -408,7 +336,7 @@ impl DeliveryRequest {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(DeliveryRequest, DeliveryRequestVariants);
+runtime::checked_impls!(DeliveryRequest, DeliveryRequestVariants);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum OrderPriorityRequest {
     N1,
@@ -442,7 +370,7 @@ impl TryFrom<i64> for OrderPriorityRequest {
         }
     }
 }
-int_enum_impls!(OrderPriorityRequest);
+runtime::int_enum_impls!(OrderPriorityRequest);
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DeliveryVariants {
     Pickup(Pickup),

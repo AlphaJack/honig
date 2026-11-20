@@ -93,32 +93,6 @@ macro_rules! deserialize_impl_3 {
     };
 }
 use super::runtime;
-macro_rules! checked_impls {
-    ($n:ident, $t:ty) => {
-        impl $n {
-            #[must_use]
-            pub fn into_inner(self) -> $t {
-                self.0
-            }
-        }
-        impl std::ops::Deref for $n {
-            type Target = $t;
-            fn deref(&self) -> &$t {
-                &self.0
-            }
-        }
-        impl AsRef<$t> for $n {
-            fn as_ref(&self) -> &$t {
-                &self.0
-            }
-        }
-        impl From<$n> for $t {
-            fn from(value: $n) -> Self {
-                value.0
-            }
-        }
-    };
-}
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Box2 {
@@ -205,7 +179,7 @@ impl Note {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(Note, NoteVariants);
+runtime::checked_impls!(Note, NoteVariants);
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
 #[serde(transparent)]
 pub struct TextNote(pub(super) TextNoteFields);
@@ -262,7 +236,7 @@ impl TextNote {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(TextNote, TextNoteFields);
+runtime::checked_impls!(TextNote, TextNoteFields);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct ImageNote {
@@ -360,7 +334,7 @@ impl Crop {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(Crop, CropVariants);
+runtime::checked_impls!(Crop, CropVariants);
 /// `TextNote`
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
 #[serde(transparent)]
@@ -418,7 +392,7 @@ impl NoteTextNote {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(NoteTextNote, NoteTextNoteFields);
+runtime::checked_impls!(NoteTextNote, NoteTextNoteFields);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 pub struct NoteTextNoteKind;
 impl NoteTextNoteKind {
@@ -922,7 +896,7 @@ impl TryFrom<serde_json::Value> for NotObjectSize {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(NotObjectSize, serde_json::Value);
+runtime::checked_impls!(NotObjectSize, serde_json::Value);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct Not2ObjectText(pub(super) serde_json::Value);
@@ -950,7 +924,7 @@ impl TryFrom<serde_json::Value> for Not2ObjectText {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(Not2ObjectText, serde_json::Value);
+runtime::checked_impls!(Not2ObjectText, serde_json::Value);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct TextNoteRgb(pub(super) [u8; 3]);
@@ -973,7 +947,7 @@ impl TryFrom<[u8; 3]> for TextNoteRgb {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(TextNoteRgb, [u8; 3]);
+runtime::checked_impls!(TextNoteRgb, [u8; 3]);
 pub type NoteTextNoteRgb = TextNoteRgb;
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
@@ -999,7 +973,7 @@ impl TryFrom<serde_json::Value> for NotChecked {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(NotChecked, serde_json::Value);
+runtime::checked_impls!(NotChecked, serde_json::Value);
 /// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
 /// its field. `build` returns the first field that did not convert.
 pub mod builders {

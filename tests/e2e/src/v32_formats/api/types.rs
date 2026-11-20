@@ -43,98 +43,6 @@ macro_rules! serialize_impl_2 {
     };
 }
 use super::runtime;
-macro_rules! checked_num_impls {
-    ($n:ident, $t:ty) => {
-        impl $n {
-            #[must_use]
-            pub const fn get(self) -> $t {
-                self.0
-            }
-        }
-        impl std::str::FromStr for $n {
-            type Err = runtime::BuildError;
-            fn from_str(s: &str) -> Result<Self, runtime::BuildError> {
-                let v: $t = s
-                    .parse()
-                    .map_err(|e| runtime::BuildError::value(format!("{e}")))?;
-                Self::try_from(v)
-            }
-        }
-        impl std::ops::Deref for $n {
-            type Target = $t;
-            fn deref(&self) -> &$t {
-                &self.0
-            }
-        }
-        impl std::fmt::Display for $n {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                std::fmt::Display::fmt(&self.0, f)
-            }
-        }
-        impl PartialEq<$t> for $n {
-            fn eq(&self, other: &$t) -> bool {
-                self.0 == *other
-            }
-        }
-        impl PartialOrd<$t> for $n {
-            fn partial_cmp(&self, other: &$t) -> Option<std::cmp::Ordering> {
-                self.0.partial_cmp(other)
-            }
-        }
-        impl From<$n> for $t {
-            fn from(value: $n) -> Self {
-                value.0
-            }
-        }
-        impl<'de> serde::Deserialize<'de> for $n {
-            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-                let v = <$t as serde::Deserialize>::deserialize(d)?;
-                Self::try_from(v).map_err(serde::de::Error::custom)
-            }
-        }
-    };
-}
-macro_rules! checked_decimal_impls {
-    ($n:ident) => {
-        impl $n {
-            #[must_use]
-            pub fn into_inner(self) -> runtime::Decimal {
-                self.0
-            }
-        }
-        impl std::str::FromStr for $n {
-            type Err = runtime::BuildError;
-            fn from_str(s: &str) -> Result<Self, runtime::BuildError> {
-                let v: runtime::Decimal = s
-                    .parse()
-                    .map_err(|e| runtime::BuildError::value(format!("{e}")))?;
-                Self::try_from(v)
-            }
-        }
-        impl std::ops::Deref for $n {
-            type Target = runtime::Decimal;
-            fn deref(&self) -> &runtime::Decimal {
-                &self.0
-            }
-        }
-        impl std::fmt::Display for $n {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                std::fmt::Display::fmt(&self.0, f)
-            }
-        }
-        impl From<$n> for runtime::Decimal {
-            fn from(value: $n) -> Self {
-                value.0
-            }
-        }
-        impl<'de> serde::Deserialize<'de> for $n {
-            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-                let v = <runtime::Decimal as serde::Deserialize>::deserialize(d)?;
-                Self::try_from(v).map_err(serde::de::Error::custom)
-            }
-        }
-    };
-}
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct StoreNetwork {
@@ -431,7 +339,7 @@ impl TryFrom<u16> for EventPort {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_num_impls!(EventPort, u16);
+runtime::checked_num_impls!(EventPort, u16);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize)]
 #[serde(transparent)]
 pub struct EventAmount(pub(super) runtime::Decimal);
@@ -453,7 +361,7 @@ impl TryFrom<runtime::Decimal> for EventAmount {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_decimal_impls!(EventAmount);
+runtime::checked_decimal_impls!(EventAmount);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize)]
 #[serde(transparent)]
 pub struct EventSum(pub(super) runtime::Decimal);
@@ -470,7 +378,7 @@ impl TryFrom<runtime::Decimal> for EventSum {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_decimal_impls!(EventSum);
+runtime::checked_decimal_impls!(EventSum);
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EventCharge {
     Refund(EventChargeRefund),

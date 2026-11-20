@@ -16,32 +16,6 @@
     reason = "a spec default builds its checked type as `Type { 0: value }`, which also works through the alias of a twin"
 )]
 use super::runtime;
-macro_rules! checked_impls {
-    ($n:ident, $t:ty) => {
-        impl $n {
-            #[must_use]
-            pub fn into_inner(self) -> $t {
-                self.0
-            }
-        }
-        impl std::ops::Deref for $n {
-            type Target = $t;
-            fn deref(&self) -> &$t {
-                &self.0
-            }
-        }
-        impl AsRef<$t> for $n {
-            fn as_ref(&self) -> &$t {
-                &self.0
-            }
-        }
-        impl From<$n> for $t {
-            fn from(value: $n) -> Self {
-                value.0
-            }
-        }
-    };
-}
 /// A closed tuple, every position required.
 pub type Point = (f64, f64, String);
 /// Open prefixItems stay a list of JSON values.
@@ -96,7 +70,7 @@ impl Open {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(Open, Vec < serde_json::Value >);
+runtime::checked_impls!(Open, Vec < serde_json::Value >);
 #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Route {

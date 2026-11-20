@@ -34,32 +34,6 @@ macro_rules! serialize_impl {
     };
 }
 use super::runtime;
-macro_rules! str_enum_impls {
-    ($n:ident) => {
-        impl std::fmt::Display for $n {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                f.write_str(self.as_str())
-            }
-        }
-        impl std::str::FromStr for $n {
-            type Err = runtime::BuildError;
-            fn from_str(s: &str) -> Result<Self, Self::Err> {
-                Self::try_from(s)
-            }
-        }
-        impl serde::Serialize for $n {
-            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-                s.serialize_str(self.as_str())
-            }
-        }
-        impl<'de> serde::Deserialize<'de> for $n {
-            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-                let s = <std::borrow::Cow<'de, str> as serde::Deserialize>::deserialize(d)?;
-                Self::try_from(&*s).map_err(serde::de::Error::custom)
-            }
-        }
-    };
-}
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Product {
@@ -123,7 +97,7 @@ impl TryFrom<&str> for EventKind {
         }
     }
 }
-str_enum_impls!(EventKind);
+runtime::str_enum_impls!(EventKind);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct SubscribeBody {

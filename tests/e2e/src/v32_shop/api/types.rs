@@ -130,109 +130,6 @@ macro_rules! deserialize_impl_2 {
     };
 }
 use super::runtime;
-macro_rules! str_enum_impls {
-    ($n:ident) => {
-        impl std::fmt::Display for $n {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                f.write_str(self.as_str())
-            }
-        }
-        impl std::str::FromStr for $n {
-            type Err = runtime::BuildError;
-            fn from_str(s: &str) -> Result<Self, Self::Err> {
-                Self::try_from(s)
-            }
-        }
-        impl serde::Serialize for $n {
-            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-                s.serialize_str(self.as_str())
-            }
-        }
-        impl<'de> serde::Deserialize<'de> for $n {
-            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-                let s = <std::borrow::Cow<'de, str> as serde::Deserialize>::deserialize(d)?;
-                Self::try_from(&*s).map_err(serde::de::Error::custom)
-            }
-        }
-    };
-}
-macro_rules! checked_num_impls {
-    ($n:ident, $t:ty) => {
-        impl $n {
-            #[must_use]
-            pub const fn get(self) -> $t {
-                self.0
-            }
-        }
-        impl std::str::FromStr for $n {
-            type Err = runtime::BuildError;
-            fn from_str(s: &str) -> Result<Self, runtime::BuildError> {
-                let v: $t = s
-                    .parse()
-                    .map_err(|e| runtime::BuildError::value(format!("{e}")))?;
-                Self::try_from(v)
-            }
-        }
-        impl std::ops::Deref for $n {
-            type Target = $t;
-            fn deref(&self) -> &$t {
-                &self.0
-            }
-        }
-        impl std::fmt::Display for $n {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                std::fmt::Display::fmt(&self.0, f)
-            }
-        }
-        impl PartialEq<$t> for $n {
-            fn eq(&self, other: &$t) -> bool {
-                self.0 == *other
-            }
-        }
-        impl PartialOrd<$t> for $n {
-            fn partial_cmp(&self, other: &$t) -> Option<std::cmp::Ordering> {
-                self.0.partial_cmp(other)
-            }
-        }
-        impl From<$n> for $t {
-            fn from(value: $n) -> Self {
-                value.0
-            }
-        }
-        impl<'de> serde::Deserialize<'de> for $n {
-            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-                let v = <$t as serde::Deserialize>::deserialize(d)?;
-                Self::try_from(v).map_err(serde::de::Error::custom)
-            }
-        }
-    };
-}
-macro_rules! checked_impls {
-    ($n:ident, $t:ty) => {
-        impl $n {
-            #[must_use]
-            pub fn into_inner(self) -> $t {
-                self.0
-            }
-        }
-        impl std::ops::Deref for $n {
-            type Target = $t;
-            fn deref(&self) -> &$t {
-                &self.0
-            }
-        }
-        impl AsRef<$t> for $n {
-            fn as_ref(&self) -> &$t {
-                &self.0
-            }
-        }
-        impl From<$n> for $t {
-            fn from(value: $n) -> Self {
-                value.0
-            }
-        }
-    };
-}
 /// A user
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -444,7 +341,7 @@ impl Item {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(Item, ItemVariants);
+runtime::checked_impls!(Item, ItemVariants);
 /// A product in the shop
 #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -2458,7 +2355,7 @@ impl ProductType {
     }
 }
 try_from_impl!(ProductType);
-str_enum_impls!(ProductType);
+runtime::str_enum_impls!(ProductType);
 /// A score from 0 to 1 indicating how customers rate it
 #[derive(Debug, Clone, PartialEq, Copy, PartialOrd, serde::Serialize)]
 #[serde(transparent)]
@@ -2481,7 +2378,7 @@ impl TryFrom<f32> for ProductRating {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_num_impls!(ProductRating, f32);
+runtime::checked_num_impls!(ProductRating, f32);
 #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct ProductDimensions {
@@ -2610,13 +2507,13 @@ impl runtime::XmlShape for ProductDimensions {
 #[serde(transparent)]
 pub struct ProductDimensionsWeight(pub(super) f32);
 try_from_impl_2!(ProductDimensionsWeight);
-checked_num_impls!(ProductDimensionsWeight, f32);
+runtime::checked_num_impls!(ProductDimensionsWeight, f32);
 /// Width in centimetres (must be greater than 0)
 #[derive(Debug, Clone, PartialEq, Copy, PartialOrd, serde::Serialize)]
 #[serde(transparent)]
 pub struct ProductDimensionsWidth(pub(super) f32);
 try_from_impl_2!(ProductDimensionsWidth);
-checked_num_impls!(ProductDimensionsWidth, f32);
+runtime::checked_num_impls!(ProductDimensionsWidth, f32);
 #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct ProductDimensionsPrice {
@@ -2812,7 +2709,7 @@ impl TryFrom<f32> for ProductMaterialsItemPercentage {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_num_impls!(ProductMaterialsItemPercentage, f32);
+runtime::checked_num_impls!(ProductMaterialsItemPercentage, f32);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum VariantType {
     Size,
@@ -2846,7 +2743,7 @@ impl TryFrom<&str> for VariantType {
         }
     }
 }
-str_enum_impls!(VariantType);
+runtime::str_enum_impls!(VariantType);
 #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct VariantShipping {
@@ -2965,7 +2862,7 @@ impl ProductQueryTypeItem {
     }
 }
 try_from_impl!(ProductQueryTypeItem);
-str_enum_impls!(ProductQueryTypeItem);
+runtime::str_enum_impls!(ProductQueryTypeItem);
 /// Only return products at or above this rating
 pub type ProductQueryMinRating = ProductRating;
 /// Sort field; prefix with `-` for descending order
@@ -3007,7 +2904,7 @@ impl TryFrom<&str> for ProductQuerySort {
         }
     }
 }
-str_enum_impls!(ProductQuerySort);
+runtime::str_enum_impls!(ProductQuerySort);
 /// The kind of change that occurred
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum ProductEventEvent {
@@ -3047,7 +2944,7 @@ impl TryFrom<&str> for ProductEventEvent {
         }
     }
 }
-str_enum_impls!(ProductEventEvent);
+runtime::str_enum_impls!(ProductEventEvent);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct PaginatedResourceMeta {
@@ -4346,7 +4243,7 @@ impl ItemRequest {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(ItemRequest, ItemRequestVariants);
+runtime::checked_impls!(ItemRequest, ItemRequestVariants);
 /// A product in the shop
 #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -5593,7 +5490,7 @@ impl TryFrom<Vec<serde_json::Value>> for PaginatedResourceData {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(PaginatedResourceData, Vec < serde_json::Value >);
+runtime::checked_impls!(PaginatedResourceData, Vec < serde_json::Value >);
 /// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
 /// its field. `build` returns the first field that did not convert.
 pub mod builders {
