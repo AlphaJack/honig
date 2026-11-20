@@ -241,21 +241,43 @@ pub fn check_len(
 pub trait JsonNumber {
     /// Is it a JSON number (RFC 8259 section 6)? `NaN` and the infinities are not.
     fn is_json_number(&self) -> bool;
+
+    /// Is it a multiple of the decimal text `of`, decided without its own text? `None` when the text decides.
+    fn multiple_of(&self, of: &str) -> Option<bool>;
 }
 
 macro_rules! json_number {
-    ($($t:ty: $is:expr),* $(,)?) => {$(
+    ($($t:ty: $is:expr, $multiple:expr);* $(;)?) => {$(
         impl JsonNumber for $t {
             fn is_json_number(&self) -> bool {
                 $is(self)
+            }
+
+            fn multiple_of(&self, of: &str) -> Option<bool> {
+                $multiple(*self, of)
             }
         }
     )*};
 }
 
+/// An integer as an `i128`, which holds every one.
+macro_rules! whole {
+    ($t:ty) => {
+        |n: $t, of: &str| crate::exact::int_is_multiple(i128::from(n), of)
+    };
+}
+
 json_number!(
-    i8: |_| true, i16: |_| true, i32: |_| true, i64: |_| true, u8: |_| true, u16: |_| true, u32: |_| true,
-    u64: |_| true, f32: |n: &f32| n.is_finite(), f64: |n: &f64| n.is_finite(),
+    i8: |_| true, whole!(i8);
+    i16: |_| true, whole!(i16);
+    i32: |_| true, whole!(i32);
+    i64: |_| true, whole!(i64);
+    u8: |_| true, whole!(u8);
+    u16: |_| true, whole!(u16);
+    u32: |_| true, whole!(u32);
+    u64: |_| true, whole!(u64);
+    f32: |n: &f32| n.is_finite(), |_, _| None;
+    f64: |n: &f64| n.is_finite(), crate::exact::f64_is_multiple;
 );
 
 /// Checks `minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum`.
@@ -295,12 +317,19 @@ pub fn check_multiple<T: fmt::LowerExp + JsonNumber + Copy>(
     value: T,
     of: &str,
 ) {
-    if value.is_json_number() {
-        let mut text = StackText::default();
-        if fmt::Write::write_fmt(&mut text, format_args!("{value:e}")).is_ok() {
-            check_multiple_text(out, path, text.as_str(), of);
-        } else {
-            check_multiple_text(out, path, &format!("{value:e}"), of);
+    if !value.is_json_number() {
+        return;
+    }
+    match value.multiple_of(of) {
+        Some(true) => {}
+        Some(false) => violation(out, path, format!("is not a multiple of {of}")),
+        None => {
+            let mut text = StackText::default();
+            if fmt::Write::write_fmt(&mut text, format_args!("{value:e}")).is_ok() {
+                check_multiple_text(out, path, text.as_str(), of);
+            } else {
+                check_multiple_text(out, path, &format!("{value:e}"), of);
+            }
         }
     }
 }
