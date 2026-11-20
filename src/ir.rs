@@ -17,7 +17,7 @@ pub(crate) use http::Http;
 pub(crate) use security::SecurityScheme;
 pub(crate) use types::TypeSpace;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 /// Everything that the emitters need. It does not depend on the shape of the spec.
 pub(crate) struct Api {
     /// What the description says about itself.
