@@ -107,6 +107,7 @@ pub use server::event::{Context, EventKey, RequestEvent, RequestEventFields};
 pub use server::operation::Operation;
 #[cfg(feature = "server")]
 pub use server::service::{ApiService, Endpoint, ErrorResponses, MatchedOperation, Secured, Server, read_body};
+pub use servers::ServerUrl;
 pub use source::{Blob, Body, ByteStream, Sse};
 pub use stream::{Framing, ItemStream, Items, Streamed};
 #[cfg(any(feature = "client", feature = "server"))]

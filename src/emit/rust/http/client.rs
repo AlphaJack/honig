@@ -13,7 +13,7 @@ use super::paths::{path_param, template, value_expr};
 use super::security::Securities;
 use super::shared::{Boxing, VariantShape};
 use super::shared::{
-    blob, boxing, code, is_path, is_success, op_path, param_enc, server_variables, shape, status_code, user_types,
+    blob, boxing, code, is_path, is_success, op_path, param_enc, server_url, shape, status_code, user_types,
     variant_shape, wrap,
 };
 use crate::emit::rust::names::{pascal, snake};
@@ -46,9 +46,7 @@ pub(crate) fn client(api: &Api, space: &Space<'_>, only: Option<&[String]>, bina
                 names.iter().any(|n| snake(&Name::new(n)) == snake(&op.name) || *n == snake(&op.name))
             })
     };
-    let servers = api.servers.iter().map(|s| lit(&s.url));
-    let names = api.servers.iter().map(|s| lit(s.name.as_deref().unwrap_or("")));
-    let vars = api.servers.iter().map(server_variables);
+    let servers = api.servers.iter().map(server_url);
     let sec = Securities::new(api);
     let ops = api.http.operations.iter().filter(called).map(|op| client_op(space, api, &sec, op, false));
     let setters = credential_setters(api);
@@ -86,6 +84,9 @@ pub(crate) fn client(api: &Api, space: &Space<'_>, only: Option<&[String]>, bina
         use super::{operations as ops, runtime};
         #types_import
 
+        #servers_doc
+        pub const SERVERS: &[runtime::ServerUrl] = &[#(#servers),*];
+
         #[derive(Debug, Clone)]
         pub struct Client<T> {
             pub transport: T,
@@ -93,18 +94,7 @@ pub(crate) fn client(api: &Api, space: &Space<'_>, only: Option<&[String]>, bina
         }
 
         impl<T> Client<T> {
-            #servers_doc
-            pub const SERVERS: &'static [&'static str] = &[#(#servers),*];
-            pub const SERVER_NAMES: &'static [&'static str] = &[#(#names),*];
             #(#flow_urls)*
-            pub const SERVER_VARIABLES: &'static [&'static [runtime::ServerVar]] = &[#(#vars),*];
-
-            pub fn server_url(index: usize, values: &[(&str, &str)]) -> Result<String, String> {
-                let (Some(url), Some(vars)) = (Self::SERVERS.get(index), Self::SERVER_VARIABLES.get(index)) else {
-                    return Err(format!("no server {index}"));
-                };
-                runtime::server_url(url, vars, values)
-            }
 
             pub const fn new(transport: T) -> Self {
                 Self { transport, #no_credentials }
@@ -196,7 +186,7 @@ pub(crate) fn client_path(op: &Operation, m: &TokenStream, hook: bool) -> (Optio
             if op.servers.is_empty() {
                 quote!(#init #(#path)*)
             } else {
-                quote!(#init #(#path)* let path = runtime::operation_path(#m::SERVERS, #m::SERVER_VARIABLES, path);)
+                quote!(#init #(#path)* let path = runtime::operation_path(#m::SERVERS, path);)
             }
         })
     }

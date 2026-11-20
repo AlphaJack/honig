@@ -271,7 +271,20 @@ pub(crate) fn param_init(space: &Space<'_>, p: &Param, n: &proc_macro2::Ident) -
 }
 
 /// Returns the variables of a server as `runtime::ServerVar`s with (name, default, allowed values).
-pub(crate) fn server_variables(server: &crate::ir::Server) -> TokenStream {
+/// Returns `server` as a `runtime::ServerUrl`.
+pub(crate) fn server_url(server: &crate::ir::Server) -> TokenStream {
+    let (template, vars) = (lit(&server.url), server_variables(server));
+    let name = server.name.as_deref().map_or_else(
+        || quote!(None),
+        |n| {
+            let n = lit(n);
+            quote!(Some(#n))
+        },
+    );
+    quote!(runtime::ServerUrl { template: #template, name: #name, variables: #vars })
+}
+
+fn server_variables(server: &crate::ir::Server) -> TokenStream {
     let v = server.variables.iter().map(|(n, d, allowed)| {
         let (n, d) = (lit(n), lit(d));
         let a = allowed.iter().map(|x| lit(x));

@@ -16,23 +16,12 @@
     reason = "a spec default builds its checked type as `Type { 0: value }`, which also works through the alias of a twin"
 )]
 use super::{operations as ops, runtime};
+pub const SERVERS: &[runtime::ServerUrl] = &[];
 #[derive(Debug, Clone)]
 pub struct Client<T> {
     pub transport: T,
 }
 impl<T> Client<T> {
-    pub const SERVERS: &'static [&'static str] = &[];
-    pub const SERVER_NAMES: &'static [&'static str] = &[];
-    pub const SERVER_VARIABLES: &'static [&'static [runtime::ServerVar]] = &[];
-    pub fn server_url(index: usize, values: &[(&str, &str)]) -> Result<String, String> {
-        let (Some(url), Some(vars)) = (
-            Self::SERVERS.get(index),
-            Self::SERVER_VARIABLES.get(index),
-        ) else {
-            return Err(format!("no server {index}"));
-        };
-        runtime::server_url(url, vars, values)
-    }
     pub const fn new(transport: T) -> Self {
         Self { transport }
     }

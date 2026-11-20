@@ -18,18 +18,25 @@
 )]
 use super::{operations as ops, runtime};
 use super::types;
+/// 1. Responds with your request data
+pub const SERVERS: &[runtime::ServerUrl] = &[
+    runtime::ServerUrl {
+        template: "https://shop.example.com",
+        name: Some("production"),
+        variables: &[],
+    },
+    runtime::ServerUrl {
+        template: "{protocol}://echo.example.com/{path}",
+        name: Some("mirror"),
+        variables: &[("protocol", "https", &["https", "http"]), ("path", "", &[])],
+    },
+];
 #[derive(Debug, Clone)]
 pub struct Client<T> {
     pub transport: T,
     pub(super) credentials: runtime::Credentials,
 }
 impl<T> Client<T> {
-    /// 1. Responds with your request data
-    pub const SERVERS: &'static [&'static str] = &[
-        "https://shop.example.com",
-        "{protocol}://echo.example.com/{path}",
-    ];
-    pub const SERVER_NAMES: &'static [&'static str] = &["production", "mirror"];
     #[must_use]
     pub fn authorization_url_o_auth2(
         client_id: &str,
@@ -61,19 +68,6 @@ impl<T> Client<T> {
             scopes,
             state,
         )
-    }
-    pub const SERVER_VARIABLES: &'static [&'static [runtime::ServerVar]] = &[
-        &[],
-        &[("protocol", "https", &["https", "http"]), ("path", "", &[])],
-    ];
-    pub fn server_url(index: usize, values: &[(&str, &str)]) -> Result<String, String> {
-        let (Some(url), Some(vars)) = (
-            Self::SERVERS.get(index),
-            Self::SERVER_VARIABLES.get(index),
-        ) else {
-            return Err(format!("no server {index}"));
-        };
-        runtime::server_url(url, vars, values)
     }
     pub const fn new(transport: T) -> Self {
         Self {

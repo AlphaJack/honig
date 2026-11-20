@@ -3,11 +3,32 @@
 /// A server variable: (name, default, allowed values). Empty allowed values mean any.
 pub type ServerVar = (&'static str, &'static str, &'static [&'static str]);
 
+/// A server of the description: its URL template, its name and its variables.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ServerUrl {
+    /// The URL, with `{variable}` in place of each variable.
+    pub template: &'static str,
+    /// The name that the description gives the server.
+    pub name: Option<&'static str>,
+    /// The variables of the template.
+    pub variables: &'static [ServerVar],
+}
+
+impl ServerUrl {
+    /// Returns the URL with `values` for its variables and the default of each other one.
+    ///
+    /// # Errors
+    /// A value outside the `enum` of a variable, or a value for a variable that the server does not declare.
+    pub fn resolve(&self, values: &[(&str, &str)]) -> Result<String, String> {
+        server_url(self.template, self.variables, values)
+    }
+}
+
 /// Returns `path` under the operation's first server (variables at their defaults).
 /// An absolute result bypasses the transport's base URL.
-pub fn operation_path(servers: &[&str], vars: &[&[ServerVar]], path: String) -> String {
-    let (Some(url), Some(vars)) = (servers.first(), vars.first()) else { return path };
-    let base = server_url(url, vars, &[]).unwrap_or_else(|_| (*url).to_owned());
+pub fn operation_path(servers: &[ServerUrl], path: String) -> String {
+    let Some(server) = servers.first() else { return path };
+    let base = server.resolve(&[]).unwrap_or_else(|_| server.template.to_owned());
     format!("{}{path}", base.trim_end_matches('/'))
 }
 
@@ -53,17 +74,26 @@ mod tests {
         assert_eq!(server_url(URL, VARS, &[("zone", "a")]), Err("server variable `zone` is not declared".to_owned()));
     }
 
+    const fn server(template: &'static str, variables: &'static [ServerVar]) -> ServerUrl {
+        ServerUrl { template, name: None, variables }
+    }
+
     #[test]
     fn an_operation_path_goes_under_the_first_server() {
         assert_eq!(
-            operation_path(&[URL, "https://other.example"], &[VARS, &[]], "/orders".to_owned()),
+            operation_path(&[server(URL, VARS), server("https://other.example", &[])], "/orders".to_owned()),
             "https://eu.api.example:443/v1/orders"
         );
         assert_eq!(
-            operation_path(&["https://api.example/"], &[&[]], "/orders".to_owned()),
+            operation_path(&[server("https://api.example/", &[])], "/orders".to_owned()),
             "https://api.example/orders",
             "one `/` between"
         );
-        assert_eq!(operation_path(&[], &[], "/orders".to_owned()), "/orders", "no server: the path alone");
+        assert_eq!(operation_path(&[], "/orders".to_owned()), "/orders", "no server: the path alone");
+    }
+
+    #[test]
+    fn a_server_resolves_its_own_variables() {
+        assert_eq!(server(URL, VARS).resolve(&[("region", "us")]).as_deref(), Ok("https://us.api.example:443/v1"));
     }
 }
