@@ -546,6 +546,10 @@ pub(super) fn checks(
             // The union of an implied shape (`Object` or `Array`, and `Other`): keywords of one kind beside the shape and
             // the names of an object, on the value by its kind.
             Kind::Union(u) if u.rest || c.property_names.is_some() => implied_checks(c, value, path),
+            // A checked type holds its own keywords: other ones beside them are checked on its base.
+            Kind::Checked(own) if own.constraints != *c => {
+                checks(space, &own.base, c, &quote!(std::ops::Deref::deref(#value)), path)
+            }
             // Any other named type holds its own keywords: only a valid value decodes or is built.
             Kind::Struct(_)
             | Kind::StrEnum(_)

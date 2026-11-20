@@ -45,47 +45,18 @@ macro_rules! checked_impls {
 /// A closed tuple, every position required.
 pub type Point = (f64, f64, String);
 /// Open prefixItems stay a list of JSON values.
-pub type Open = Vec<serde_json::Value>;
-#[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct Route {
-    pub start: Point,
-    pub stops: Vec<Point>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub tags: Option<RouteTags>,
-}
-impl<'de> serde::Deserialize<'de> for Route {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        Self::deserialize(runtime::NoSeq(d))
-    }
-}
-impl serde::Serialize for Route {
-    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        Self::serialize(self, s)
-    }
-}
-impl Route {
-    #[must_use]
-    pub const fn new(start: Point, stops: Vec<Point>) -> Self {
-        Self { start, stops, tags: None }
-    }
-}
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
-pub struct RouteTags(pub(super) Open);
-impl<'de> serde::Deserialize<'de> for RouteTags {
+pub struct Open(pub(super) Vec<serde_json::Value>);
+impl<'de> serde::Deserialize<'de> for Open {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <Open as serde::Deserialize>::deserialize(d)?;
+        let value = <Vec<serde_json::Value> as serde::Deserialize>::deserialize(d)?;
         Self::try_from(value).map_err(serde::de::Error::custom)
     }
 }
-impl TryFrom<Open> for RouteTags {
+impl TryFrom<Vec<serde_json::Value>> for Open {
     type Error = runtime::BuildError;
-    fn try_from(value: Open) -> Result<Self, runtime::BuildError> {
+    fn try_from(value: Vec<serde_json::Value>) -> Result<Self, runtime::BuildError> {
         let json = runtime::to_value(&value).unwrap_or_default();
         let json = &runtime::Content::of(&json);
         let mut violations: Vec<runtime::Violation> = Vec::new();
@@ -109,7 +80,35 @@ impl TryFrom<Open> for RouteTags {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(RouteTags, Open);
+checked_impls!(Open, Vec < serde_json::Value >);
+#[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct Route {
+    pub start: Point,
+    pub stops: Vec<Point>,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub tags: Option<Open>,
+}
+impl<'de> serde::Deserialize<'de> for Route {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        Self::deserialize(runtime::NoSeq(d))
+    }
+}
+impl serde::Serialize for Route {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        Self::serialize(self, s)
+    }
+}
+impl Route {
+    #[must_use]
+    pub const fn new(start: Point, stops: Vec<Point>) -> Self {
+        Self { start, stops, tags: None }
+    }
+}
 /// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
 /// its field. `build` returns the first field that did not convert.
 pub mod builders {
@@ -136,7 +135,7 @@ pub mod builders {
     impl Route {
         pub fn tags(
             self,
-            value: impl TryInto<types::RouteTags, Error: std::fmt::Display>,
+            value: impl TryInto<types::Open, Error: std::fmt::Display>,
         ) -> Self {
             Self(self.0.set("tags", value, |s, v| s.tags = Some(v)))
         }

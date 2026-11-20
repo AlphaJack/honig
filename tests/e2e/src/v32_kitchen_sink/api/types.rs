@@ -34,7 +34,38 @@ macro_rules! serialize_impl {
         }
     };
 }
+macro_rules! deserialize_impl_2 {
+    ($t:ty) => {
+        impl<'de> serde::Deserialize<'de> for $t {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                let value = <serde_json::Value as serde::Deserialize>::deserialize(d)?;
+                Self::try_from(value).map_err(serde::de::Error::custom)
+            }
+        }
+    };
+}
 macro_rules! try_from_impl {
+    ($t:ty) => {
+        impl TryFrom<serde_json::Value> for $t {
+            type Error = runtime::BuildError;
+            fn try_from(value: serde_json::Value) -> Result<Self, runtime::BuildError> {
+                let mut violations: Vec<runtime::Violation> = Vec::new();
+                {
+                    let out = &mut violations;
+                    runtime::violation(
+                        out,
+                        &runtime::InstancePath::Root,
+                        "no value is allowed here",
+                    );
+                }
+                runtime::first(violations)
+                    .map(|()| Self(value))
+                    .map_err(runtime::BuildError::value)
+            }
+        }
+    };
+}
+macro_rules! try_from_impl_2 {
     ($t:ty) => {
         impl TryFrom<&str> for $t {
             type Error = runtime::BuildError;
@@ -64,7 +95,7 @@ macro_rules! serialize_impl_2 {
         }
     };
 }
-macro_rules! deserialize_impl_2 {
+macro_rules! deserialize_impl_3 {
     ($t:ty) => {
         impl<'de> serde::Deserialize<'de> for $t {
             fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
@@ -100,16 +131,6 @@ macro_rules! serialize_impl_5 {
                     Self::Book(v) => serde::Serialize::serialize(v, s),
                     Self::Gadget(v) => serde::Serialize::serialize(v, s),
                 }
-            }
-        }
-    };
-}
-macro_rules! deserialize_impl_3 {
-    ($t:ty) => {
-        impl<'de> serde::Deserialize<'de> for $t {
-            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-                let value = <serde_json::Value as serde::Deserialize>::deserialize(d)?;
-                Self::try_from(value).map_err(serde::de::Error::custom)
             }
         }
     };
@@ -376,7 +397,56 @@ impl TryFrom<BookFields> for Book {
     }
 }
 checked_impls!(Book, BookFields);
-pub type Gadget = Gadget2;
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+#[serde(transparent)]
+pub struct Gadget(pub(super) Gadget2);
+impl<'de> serde::Deserialize<'de> for Gadget {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <Gadget2 as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
+    }
+}
+impl TryFrom<Gadget2> for Gadget {
+    type Error = runtime::BuildError;
+    fn try_from(value: Gadget2) -> Result<Self, runtime::BuildError> {
+        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = &runtime::Content::of(&json);
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            {
+                if json.get("secret").is_some()
+                    && let Err(e) = json.decode_ref::<NotChecked2>()
+                {
+                    runtime::violation(
+                        out,
+                        &runtime::InstancePath::Root,
+                        format!("{}{e}", "`secret` is present: "),
+                    );
+                }
+                if json.decode_ref::<Not2>().is_ok() {
+                    if let Err(e) = json.decode_ref::<NotChecked3>() {
+                        runtime::violation(
+                            out,
+                            &runtime::InstancePath::Root,
+                            format!("{}{e}", "`then`: "),
+                        );
+                    }
+                } else if let Err(e) = json.decode_ref::<NotChecked4>() {
+                    runtime::violation(
+                        out,
+                        &runtime::InstancePath::Root,
+                        format!("{}{e}", "`else`: "),
+                    );
+                }
+            }
+        }
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
+    }
+}
+checked_impls!(Gadget, Gadget2);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct Owner(pub(super) OwnerFields);
@@ -430,7 +500,7 @@ impl TryFrom<ShapeVariants> for Shape {
             {
                 let hits = [
                     json.decode_ref::<Book>().is_ok(),
-                    json.decode_ref::<NotChecked5>().is_ok(),
+                    json.decode_ref::<Gadget>().is_ok(),
                 ]
                     .into_iter()
                     .filter(|hit| *hit)
@@ -482,7 +552,12 @@ impl Error {
     }
 }
 pub type Anything = serde_json::Value;
-pub type Nothing = serde_json::Value;
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
+pub struct Nothing(pub(super) serde_json::Value);
+deserialize_impl_2!(Nothing);
+try_from_impl!(Nothing);
+checked_impls!(Nothing, serde_json::Value);
 #[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct ProductId(pub(super) i64);
@@ -562,7 +637,7 @@ impl ProductKind {
         }
     }
 }
-try_from_impl!(ProductKind);
+try_from_impl_2!(ProductKind);
 str_enum_impls!(ProductKind);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
@@ -813,7 +888,7 @@ impl Gadget2Kind2 {
         }
     }
 }
-try_from_impl!(Gadget2Kind2);
+try_from_impl_2!(Gadget2Kind2);
 str_enum_impls!(Gadget2Kind2);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
@@ -1131,7 +1206,7 @@ impl SearchOkItem {
 #[derive(Debug, Clone, PartialEq)]
 pub struct SearchOkItemData(pub Product);
 serialize_impl_2!(SearchOkItemData);
-deserialize_impl_2!(SearchOkItemData);
+deserialize_impl_3!(SearchOkItemData);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 pub struct Not;
 impl Not {
@@ -1281,7 +1356,56 @@ impl TryFrom<BookRequestFields> for BookRequest {
     }
 }
 checked_impls!(BookRequest, BookRequestFields);
-pub type GadgetRequest = Gadget2Request;
+#[derive(Debug, Clone, PartialEq, serde::Serialize)]
+#[serde(transparent)]
+pub struct GadgetRequest(pub(super) Gadget2Request);
+impl<'de> serde::Deserialize<'de> for GadgetRequest {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <Gadget2Request as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
+    }
+}
+impl TryFrom<Gadget2Request> for GadgetRequest {
+    type Error = runtime::BuildError;
+    fn try_from(value: Gadget2Request) -> Result<Self, runtime::BuildError> {
+        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = &runtime::Content::of(&json);
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            {
+                if json.get("secret").is_some()
+                    && let Err(e) = json.decode_ref::<NotChecked2>()
+                {
+                    runtime::violation(
+                        out,
+                        &runtime::InstancePath::Root,
+                        format!("{}{e}", "`secret` is present: "),
+                    );
+                }
+                if json.decode_ref::<Not2>().is_ok() {
+                    if let Err(e) = json.decode_ref::<NotChecked3>() {
+                        runtime::violation(
+                            out,
+                            &runtime::InstancePath::Root,
+                            format!("{}{e}", "`then`: "),
+                        );
+                    }
+                } else if let Err(e) = json.decode_ref::<NotChecked4>() {
+                    runtime::violation(
+                        out,
+                        &runtime::InstancePath::Root,
+                        format!("{}{e}", "`else`: "),
+                    );
+                }
+            }
+        }
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
+    }
+}
+checked_impls!(GadgetRequest, Gadget2Request);
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
 #[serde(transparent)]
 pub struct ShapeRequest(pub(super) ShapeRequestVariants);
@@ -1302,7 +1426,7 @@ impl TryFrom<ShapeRequestVariants> for ShapeRequest {
             {
                 let hits = [
                     json.decode_ref::<Book>().is_ok(),
-                    json.decode_ref::<NotChecked5>().is_ok(),
+                    json.decode_ref::<Gadget>().is_ok(),
                 ]
                     .into_iter()
                     .filter(|hit| *hit)
@@ -1427,7 +1551,7 @@ impl SearchOkItemRequest {
 #[derive(Debug, Clone, PartialEq)]
 pub struct SearchOkItemDataRequest(pub ProductRequest);
 serialize_impl_2!(SearchOkItemDataRequest);
-deserialize_impl_2!(SearchOkItemDataRequest);
+deserialize_impl_3!(SearchOkItemDataRequest);
 /// Product
 ///
 /// A product
@@ -2098,7 +2222,7 @@ pub type Gadget2RequestPoint = ProductPoint;
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct NotChecked(pub(super) serde_json::Value);
-deserialize_impl_3!(NotChecked);
+deserialize_impl_2!(NotChecked);
 impl TryFrom<serde_json::Value> for NotChecked {
     type Error = runtime::BuildError;
     fn try_from(value: serde_json::Value) -> Result<Self, runtime::BuildError> {
@@ -2123,7 +2247,7 @@ checked_impls!(NotChecked, serde_json::Value);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct NotChecked2(pub(super) serde_json::Value);
-deserialize_impl_3!(NotChecked2);
+deserialize_impl_2!(NotChecked2);
 impl TryFrom<serde_json::Value> for NotChecked2 {
     type Error = runtime::BuildError;
     fn try_from(value: serde_json::Value) -> Result<Self, runtime::BuildError> {
@@ -2148,7 +2272,7 @@ checked_impls!(NotChecked2, serde_json::Value);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct NotChecked3(pub(super) serde_json::Value);
-deserialize_impl_3!(NotChecked3);
+deserialize_impl_2!(NotChecked3);
 impl TryFrom<serde_json::Value> for NotChecked3 {
     type Error = runtime::BuildError;
     fn try_from(value: serde_json::Value) -> Result<Self, runtime::BuildError> {
@@ -2173,75 +2297,9 @@ checked_impls!(NotChecked3, serde_json::Value);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct NotChecked4(pub(super) serde_json::Value);
-deserialize_impl_3!(NotChecked4);
-impl TryFrom<serde_json::Value> for NotChecked4 {
-    type Error = runtime::BuildError;
-    fn try_from(value: serde_json::Value) -> Result<Self, runtime::BuildError> {
-        let mut violations: Vec<runtime::Violation> = Vec::new();
-        {
-            let out = &mut violations;
-            runtime::violation(
-                out,
-                &runtime::InstancePath::Root,
-                "no value is allowed here",
-            );
-        }
-        runtime::first(violations)
-            .map(|()| Self(value))
-            .map_err(runtime::BuildError::value)
-    }
-}
+deserialize_impl_2!(NotChecked4);
+try_from_impl!(NotChecked4);
 checked_impls!(NotChecked4, serde_json::Value);
-#[derive(Debug, Clone, PartialEq, serde::Serialize)]
-#[serde(transparent)]
-pub struct NotChecked5(pub(super) Gadget);
-impl<'de> serde::Deserialize<'de> for NotChecked5 {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <Gadget as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
-    }
-}
-impl TryFrom<Gadget> for NotChecked5 {
-    type Error = runtime::BuildError;
-    fn try_from(value: Gadget) -> Result<Self, runtime::BuildError> {
-        let json = runtime::to_value(&value).unwrap_or_default();
-        let json = &runtime::Content::of(&json);
-        let mut violations: Vec<runtime::Violation> = Vec::new();
-        {
-            let out = &mut violations;
-            {
-                if json.get("secret").is_some()
-                    && let Err(e) = json.decode_ref::<NotChecked2>()
-                {
-                    runtime::violation(
-                        out,
-                        &runtime::InstancePath::Root,
-                        format!("{}{e}", "`secret` is present: "),
-                    );
-                }
-                if json.decode_ref::<Not2>().is_ok() {
-                    if let Err(e) = json.decode_ref::<NotChecked3>() {
-                        runtime::violation(
-                            out,
-                            &runtime::InstancePath::Root,
-                            format!("{}{e}", "`then`: "),
-                        );
-                    }
-                } else if let Err(e) = json.decode_ref::<NotChecked4>() {
-                    runtime::violation(
-                        out,
-                        &runtime::InstancePath::Root,
-                        format!("{}{e}", "`else`: "),
-                    );
-                }
-            }
-        }
-        runtime::first(violations)
-            .map(|()| Self(value))
-            .map_err(runtime::BuildError::value)
-    }
-}
-checked_impls!(NotChecked5, Gadget);
 /// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
 /// its field. `build` returns the first field that did not convert.
 pub mod builders {
