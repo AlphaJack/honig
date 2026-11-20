@@ -190,6 +190,28 @@ macro_rules! deserialize_impl_3 {
         }
     };
 }
+macro_rules! try_from_impl_4 {
+    ($t:ty) => {
+        impl TryFrom<i64> for $t {
+            type Error = runtime::BuildError;
+            fn try_from(value: i64) -> Result<Self, runtime::BuildError> {
+                let mut violations: Vec<runtime::Violation> = Vec::new();
+                {
+                    let out = &mut violations;
+                    runtime::check_range(
+                        out,
+                        &runtime::InstancePath::Root,
+                        value,
+                        [Some(0), None, None, None],
+                    );
+                }
+                runtime::first(violations)
+                    .map(|()| Self(value))
+                    .map_err(runtime::BuildError::value)
+            }
+        }
+    };
+}
 macro_rules! deserialize_impl_4 {
     ($t:ty) => {
         impl<'de> serde::Deserialize<'de> for $t {
@@ -1659,6 +1681,86 @@ impl runtime::XmlShape for Labelled {
     }
 }
 pub type Labels = std::collections::BTreeMap<String, String>;
+#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct Settings {
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub name: Option<String>,
+    /// The undeclared names that `^x_` matches.
+    #[serde(flatten, deserialize_with = "Settings::read_pattern_1")]
+    pub pattern_1: std::collections::BTreeMap<String, SettingsPattern1>,
+    /// The undeclared names that `_n$` matches.
+    #[serde(flatten, deserialize_with = "Settings::read_pattern_2")]
+    pub pattern_2: std::collections::BTreeMap<String, SettingsPattern2>,
+    /// The undeclared names that no pattern matches.
+    #[serde(flatten, deserialize_with = "Settings::read_additional_properties")]
+    pub additional_properties: runtime::Closed,
+}
+impl Settings {
+    #[doc(hidden)]
+    pub fn read_pattern_1<'de, D: serde::Deserializer<'de>>(
+        d: D,
+    ) -> Result<std::collections::BTreeMap<String, SettingsPattern1>, D::Error> {
+        runtime::pattern_entries(d, &["^x_", "_n$"], 0usize)
+    }
+    #[doc(hidden)]
+    pub fn read_pattern_2<'de, D: serde::Deserializer<'de>>(
+        d: D,
+    ) -> Result<std::collections::BTreeMap<String, SettingsPattern2>, D::Error> {
+        runtime::pattern_entries(d, &["^x_", "_n$"], 1usize)
+    }
+    #[doc(hidden)]
+    pub fn read_additional_properties<'de, D: serde::Deserializer<'de>>(
+        d: D,
+    ) -> Result<runtime::Closed, D::Error> {
+        runtime::no_other_entries(d, &["^x_", "_n$"])
+    }
+}
+deserialize_impl_2!(Settings);
+serialize_impl_4!(Settings);
+impl Settings {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self {
+            name: None,
+            pattern_1: std::collections::BTreeMap::new(),
+            pattern_2: std::collections::BTreeMap::new(),
+            additional_properties: runtime::Closed,
+        }
+    }
+}
+impl runtime::XmlShape for Settings {
+    fn xml() -> &'static runtime::XmlNode {
+        static NODE: runtime::XmlNode = runtime::XmlNode {
+            name: "Settings",
+            namespace: "",
+            prefix: "",
+            fields: &[
+                runtime::XmlField {
+                    wire: "name",
+                    name: "name",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "name",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+            ],
+        };
+        &NODE
+    }
+}
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct Profile(pub(super) ProfileFields);
@@ -2846,24 +2948,7 @@ impl runtime::XmlShape for ParcelsItem {
 #[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct ShipmentInternationalScoresValue(pub(super) i64);
-impl TryFrom<i64> for ShipmentInternationalScoresValue {
-    type Error = runtime::BuildError;
-    fn try_from(value: i64) -> Result<Self, runtime::BuildError> {
-        let mut violations: Vec<runtime::Violation> = Vec::new();
-        {
-            let out = &mut violations;
-            runtime::check_range(
-                out,
-                &runtime::InstancePath::Root,
-                value,
-                [Some(0), None, None, None],
-            );
-        }
-        runtime::first(violations)
-            .map(|()| Self(value))
-            .map_err(runtime::BuildError::value)
-    }
-}
+try_from_impl_4!(ShipmentInternationalScoresValue);
 checked_num_impls!(ShipmentInternationalScoresValue, i64);
 #[derive(Debug, Clone, PartialEq, Copy, PartialOrd, serde::Serialize)]
 #[serde(transparent)]
@@ -2986,6 +3071,16 @@ pub type ShipmentOtherwiseParcelsItem = ParcelsItem;
 pub type ShipmentOtherwiseScoresValue = ShipmentInternationalScoresValue;
 pub type ShipmentOtherwisePriority = ShipmentInternationalPriority;
 pub type ShipmentOtherwiseWeight = ShipmentInternationalWeight;
+#[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
+#[serde(transparent)]
+pub struct SettingsPattern1(pub(super) String);
+try_from_impl_3!(SettingsPattern1);
+checked_str_impls!(SettingsPattern1);
+#[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
+#[serde(transparent)]
+pub struct SettingsPattern2(pub(super) i64);
+try_from_impl_4!(SettingsPattern2);
+checked_num_impls!(SettingsPattern2, i64);
 pub type ScoresValue = ShipmentInternationalScoresValue;
 #[derive(Debug, Clone, PartialEq, Copy, PartialOrd, serde::Serialize)]
 #[serde(transparent)]

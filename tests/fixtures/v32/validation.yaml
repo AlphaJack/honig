@@ -288,6 +288,16 @@ components:
       type: object
       additionalProperties: {type: string}
       propertyNames: {pattern: '^[a-z]+$', maxLength: 8}
+    # Patterns beside properties: each undeclared name decodes into the map of the first pattern that matches it, as
+    # every pattern that matches it. `additionalProperties: false` refuses a name that none matches.
+    Settings:
+      type: object
+      properties:
+        name: {type: string}
+      patternProperties:
+        '^x_': {type: string, maxLength: 3}
+        '_n$': {type: integer, minimum: 0}
+      additionalProperties: false
     # On a struct the names of the declared properties that are present count, and so do the names it does not declare.
     Profile:
       type: object

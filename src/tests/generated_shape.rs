@@ -882,17 +882,20 @@ fn required_unique_and_format_without_a_type_check_their_kind() {
     assert!(types.contains("runtime::check_unique") && !types.contains("check_schema"), "{types}");
 }
 
-/// `patternProperties` with several patterns, or beside declared properties, checks the value of each matched name
-/// against the type of its schema: no schema is checked whole.
+/// `patternProperties` beside declared properties is a map per pattern, of the type of its schema: each undeclared
+/// name decodes into the map of its pattern, and `additionalProperties: false` refuses the rest. No check reads the
+/// names after decoding.
 #[test]
-fn pattern_properties_check_each_matched_value() {
+fn pattern_properties_beside_properties_are_typed_maps() {
     let tags = json!({"type": "object", "properties": {"id": {"type": "string"}},
         "patternProperties": {"^x_": {"type": "string"}, "^n_": {"type": "integer", "minimum": 0}},
         "additionalProperties": false});
     let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Tags": tags}}));
     let types =
         common::file(&common::generate("patterns", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
-    assert!(types.contains("no value is allowed here") && !types.contains("check_schema"), "{types}");
+    assert!(types.contains("pub pattern_1: std::collections::BTreeMap<String, String>,"), "{types}");
+    assert!(types.contains("pub pattern_2: std::collections::BTreeMap<String,"), "{types}");
+    assert!(types.contains("runtime::Closed") && !types.contains("runtime::pattern_matches("), "{types}");
 }
 
 /// `additionalProperties` with a schema beside `patternProperties` holds for the names that no pattern matches and the

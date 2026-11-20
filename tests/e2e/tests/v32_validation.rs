@@ -731,3 +731,19 @@ fn dependent_schemas_hold_when_the_property_is_present() {
     assert!(missing.to_string().contains("`code` is present"), "{missing}");
     assert!(decode(json!({"code": "x", "amount": 500})).is_err(), "an amount over 100");
 }
+
+/// `patternProperties` beside properties: each undeclared name decodes into the map of its pattern, as every pattern
+/// that matches it, and `additionalProperties: false` refuses a name that none matches.
+#[test]
+fn settings_decode_each_name_into_its_pattern() {
+    let decode = |v: serde_json::Value| serde_json::from_value::<types::Settings>(v);
+    let settings = decode(json!({"name": "a", "x_a": "abc", "b_n": 2})).unwrap_or_else(|e| panic!("{e}"));
+    assert_eq!(settings.pattern_1.len(), 1);
+    assert_eq!(settings.pattern_2.len(), 1);
+    assert_eq!(serde_json::to_value(&settings).ok(), Some(json!({"name": "a", "x_a": "abc", "b_n": 2})));
+    assert!(decode(json!({"x_a": "abcd"})).is_err(), "longer than the pattern's maxLength");
+    assert!(decode(json!({"b_n": -1})).is_err(), "under the pattern's minimum");
+    assert!(decode(json!({"other": 1})).is_err(), "a name that no pattern matches");
+    // `x_n` matches both patterns: it is a string of `^x_` and an integer of `_n$`, which no value is.
+    assert!(decode(json!({"x_n": "1"})).is_err(), "a name of both patterns meets both");
+}

@@ -214,6 +214,9 @@ fn canonical_kind(kind: &Kind, canon: &dyn Fn(TypeId) -> TypeId) -> Kind {
             if let Some(a) = &mut s.additional {
                 *a = canonical_ty(a, canon);
             }
+            for (_, t, _) in &mut s.patterns {
+                *t = canonical_ty(t, canon);
+            }
         }
         Kind::Union(u) => {
             for v in &mut u.variants {
@@ -810,7 +813,7 @@ fn default_impl(space: &Space<'_>, name: &proc_macro2::Ident, s: &Struct, extra:
             quote!(#n: <#t>::default(),)
         }
     });
-    let extra_init = s.additional.is_some().then(|| no_extra(extra));
+    let extra_init = extra_inits(s, extra);
     quote! {
         impl Default for #name {
             fn default() -> Self { Self { #(#inits)* #extra_init } }
@@ -946,6 +949,70 @@ fn field_ty_in(space: &Space<'_>, f: &Field, qualify: bool) -> TokenStream {
     }
 }
 
+/// Returns the fields that hold the `patternProperties` of `s` ([`Struct::patterns`]) and the names that no pattern
+/// matches, with the functions that read each from the undeclared names. Empty without patterns.
+fn pattern_fields(
+    space: &Space<'_>,
+    s: &Struct,
+    name: &proc_macro2::Ident,
+    extra: &proc_macro2::Ident,
+) -> (TokenStream, TokenStream) {
+    if s.patterns.is_empty() {
+        return (TokenStream::new(), TokenStream::new());
+    }
+    let patterns: Vec<proc_macro2::Literal> = s.patterns.iter().map(|(p, _, _)| lit(p)).collect();
+    let (mut fields, mut readers) = (vec![], vec![]);
+    for (i, (p, t, _)) in s.patterns.iter().enumerate() {
+        let (field, t) = (super::syntax::pattern_field(s, i), ty(space, t, false));
+        let read = format_ident!("read_{field}");
+        let path = lit(&format!("{name}::{read}"));
+        let doc = lit(&format!(" The undeclared names that `{p}` matches."));
+        fields.push(quote! {
+            #[doc = #doc]
+            #[serde(flatten, deserialize_with = #path)]
+            pub #field: std::collections::BTreeMap<String, #t>,
+        });
+        readers.push(quote! {
+            #[doc(hidden)]
+            pub fn #read<'de, D: serde::Deserializer<'de>>(d: D) -> Result<std::collections::BTreeMap<String, #t>, D::Error> {
+                runtime::pattern_entries(d, &[#(#patterns),*], #i)
+            }
+        });
+    }
+    let read = format_ident!("read_{extra}");
+    let path = lit(&format!("{name}::{read}"));
+    let (t, body) = match &s.additional {
+        Some(t) => {
+            let t = ty(space, t, false);
+            (quote!(std::collections::BTreeMap<String, #t>), quote!(runtime::other_entries(d, &[#(#patterns),*])))
+        }
+        None => (quote!(runtime::Closed), quote!(runtime::no_other_entries(d, &[#(#patterns),*]))),
+    };
+    fields.push(quote! {
+        /// The undeclared names that no pattern matches.
+        #[serde(flatten, deserialize_with = #path)]
+        pub #extra: #t,
+    });
+    readers.push(quote! {
+        #[doc(hidden)]
+        pub fn #read<'de, D: serde::Deserializer<'de>>(d: D) -> Result<#t, D::Error> {
+            #body
+        }
+    });
+    (quote!(#(#fields)*), quote!(impl #name { #(#readers)* }))
+}
+
+/// Returns the empty values of the fields of `s` that hold undeclared names.
+fn extra_inits(s: &Struct, extra: &proc_macro2::Ident) -> Option<TokenStream> {
+    if s.patterns.is_empty() {
+        return s.additional.is_some().then(|| no_extra(extra));
+    }
+    let maps = (0..s.patterns.len()).map(|i| super::syntax::pattern_field(s, i));
+    let other =
+        if s.additional.is_some() { quote!(std::collections::BTreeMap::new()) } else { quote!(runtime::Closed) };
+    Some(quote!(#(#maps: std::collections::BTreeMap::new(),)* #extra: #other,))
+}
+
 fn structure(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, s: &Struct) {
     let def = space.types.get(id);
     let name = pascal_ident(&def.name);
@@ -960,7 +1027,8 @@ fn structure(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, s: &St
     let derive = derives(space, id, can_default && defaults.is_empty());
     let fields = s.fields.iter().map(|f| field(space, f, &pascal(&def.name)));
     let extra = ident(&super::syntax::extra_field(s));
-    let additional = s.additional.as_ref().map(|t| {
+    let (held, readers) = pattern_fields(space, s, &name, &extra);
+    let additional = s.additional.as_ref().filter(|_| s.patterns.is_empty()).map(|t| {
         let read = holds_text(space, t).map(|h| {
             let read = lit(&format!("runtime::formats::read::<_, _, runtime::formats::Values<{h}>>"));
             quote!(, deserialize_with = #read)
@@ -974,11 +1042,13 @@ fn structure(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, s: &St
     // `additionalProperties: false`: an undeclared property is a decode error,
     // so a server answers 400 and a client reports a server off its contract.
     // A lenient client's response type reads a property that the server added. Its request copy refuses it.
-    let closed = (s.closed && s.additional.is_none() && !def.lenient).then(|| quote!(#[serde(deny_unknown_fields)]));
+    let closed = (s.closed && s.additional.is_none() && s.patterns.is_empty() && !def.lenient)
+        .then(|| quote!(#[serde(deny_unknown_fields)]));
     // `remote = "Self"` turns the derives into inherent functions. The trait impls call them, decoding through
     // `NoSeq`: a derived struct would also read a JSON array field by field, and `type: object` allows none.
     // An extra map encodes through `UniqueKeys`: an entry named like a declared field would write the name twice.
-    let encoder = if s.additional.is_some() { quote!(runtime::UniqueKeys(s)) } else { quote!(s) };
+    let encoder =
+        if s.additional.is_some() || !s.patterns.is_empty() { quote!(runtime::UniqueKeys(s)) } else { quote!(s) };
     items.push(quote! {
         #doc
         #derive
@@ -987,7 +1057,9 @@ fn structure(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, s: &St
         pub struct #name {
             #(#fields)*
             #additional
+            #held
         }
+        #readers
         impl<'de> serde::Deserialize<'de> for #name {
             fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
                 Self::deserialize(runtime::NoSeq(d))
@@ -1036,7 +1108,7 @@ fn struct_new(space: &Space<'_>, name: &proc_macro2::Ident, s: &Struct, extra: &
             quote!(#n: None,)
         }
     });
-    let extra_init = s.additional.is_some().then(|| no_extra(extra));
+    let extra_init = extra_inits(s, extra);
     let count = s.fields.iter().filter(|f| arg(f)).count();
     let many = many_arguments(count);
     let constness =
