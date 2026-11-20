@@ -66,6 +66,9 @@ pub mod v32_routing {
 pub mod v32_scopes {
     pub mod api;
 }
+pub mod v32_security {
+    pub mod api;
+}
 pub mod v32_shop {
     pub mod api;
 }
