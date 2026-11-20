@@ -142,22 +142,76 @@ impl Reason {
         }
     }
 
-    /// Returns RFC 9457 problem details: `type`, `title`, `status` and `detail`. Also
-    /// `violations` for [`Reason::Invalid`] and `Allow` for 405.
-    pub fn problem(&self) -> Response {
+    /// Returns RFC 9457 problem details: `type`, `title`, `status` and `detail`. Also `errors` for
+    /// [`Reason::Invalid`]. The headers of the reason (`Allow` for 405) go with it.
+    #[must_use]
+    pub fn problem(&self) -> Problem {
         let status = self.status().as_u16();
-        let mut body = Map::new();
-        body.insert("type".into(), Value::String("about:blank".into()));
-        body.insert("title".into(), Value::String(reason(status).into()));
-        body.insert("status".into(), Value::from(status));
-        if let Some(d) = self.detail() {
-            body.insert("detail".into(), Value::String(d));
+        Problem {
+            r#type: "about:blank".to_owned(),
+            title: reason(status).to_owned(),
+            status,
+            detail: self.detail(),
+            instance: None,
+            errors: self.violations().iter().map(ProblemError::of).collect(),
+            headers: self.head().headers().clone(),
         }
-        if let Self::Invalid(v) = self {
-            body.insert("errors".into(), errors_member(std::slice::from_ref(v)));
-        }
-        let mut r = self.head();
-        r.set_body("application/problem+json", serde_json::to_vec(&Value::Object(body)).unwrap_or_default());
+    }
+}
+
+/// RFC 9457 problem details, the body of `application/problem+json`. [`Rejection::problem`] returns the one the
+/// server would send. Change a member and send it with [`Problem::into_response`].
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+pub struct Problem {
+    /// A URI that identifies the problem type. `about:blank`: the problem is what the status says.
+    pub r#type: String,
+    /// The reason phrase of the status.
+    pub title: String,
+    /// The HTTP status.
+    pub status: u16,
+    /// What went wrong in this occurrence.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub detail: Option<String>,
+    /// A URI that identifies this occurrence, such as a request ID.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub instance: Option<String>,
+    /// An extension member: where and why the request is invalid.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub errors: Vec<ProblemError>,
+    /// The headers of the response, such as `Allow` of a 405. Not part of the body.
+    #[serde(skip)]
+    pub headers: http::HeaderMap,
+}
+
+/// One entry of the `errors` extension member of a [`Problem`]: the shape of the validation example of RFC 9457
+/// (section 3).
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+pub struct ProblemError {
+    /// Why the value is invalid.
+    pub detail: String,
+    /// A JSON Pointer in its URI fragment form: into the request content for a value of the body (`#/sku`), into the
+    /// request otherwise (`#/query/limit`).
+    pub pointer: String,
+}
+
+impl ProblemError {
+    fn of(v: &Violation) -> Self {
+        let pointer = match v.path.strip_prefix("/body") {
+            Some(rest) if rest.is_empty() || rest.starts_with('/') => format!("#{rest}"),
+            _ => format!("#{}", v.path),
+        };
+        Self { detail: v.message.clone(), pointer }
+    }
+}
+
+impl Problem {
+    /// Returns the response: the status, the headers and the problem as `application/problem+json`.
+    #[must_use]
+    pub fn into_response(self) -> Response {
+        let mut r = crate::new_response(self.status);
+        let body = serde_json::to_vec(&self).unwrap_or_default();
+        *r.headers_mut() = self.headers;
+        r.set_body("application/problem+json", body);
         r
     }
 }
@@ -238,17 +292,9 @@ fn decode_violation(pointer: &str, why: &str) -> Violation {
     Violation { path: format!("/body{pointer}"), message: why.to_owned() }
 }
 
-/// Returns the `errors` extension member of a problem: each violation as `{detail, pointer}`, the shape of the
-/// validation example of RFC 9457 (section 3). `pointer` is a JSON Pointer in its URI fragment form: into the request
-/// content for a value of the body (`#/sku`), into the request otherwise (`#/query/limit`).
+/// Returns the `errors` extension member of a problem.
 fn errors_member(violations: &[Violation]) -> Value {
-    let pointer = |path: &str| match path.strip_prefix("/body") {
-        Some(rest) if rest.is_empty() || rest.starts_with('/') => format!("#{rest}"),
-        _ => format!("#{path}"),
-    };
-    Value::Array(
-        violations.iter().map(|v| serde_json::json!({"detail": v.message, "pointer": pointer(&v.path)})).collect(),
-    )
+    serde_json::to_value(violations.iter().map(ProblemError::of).collect::<Vec<_>>()).unwrap_or_default()
 }
 
 impl Reason {
@@ -359,9 +405,16 @@ impl<Id> Rejection<Id> {
     /// body of the description that the server fills by name ([`Rejection::schema`]). Otherwise RFC 9457
     /// `problem+json`. It is the default `error_response` of an `Api` whose error bodies are all filled so.
     pub fn response(&self) -> Response {
-        self.reason
-            .own()
-            .unwrap_or_else(|| self.schema.map_or_else(|| self.reason.problem(), |s| self.reason.in_schema(s)))
+        self.reason.own().unwrap_or_else(|| {
+            self.schema.map_or_else(|| self.reason.problem().into_response(), |s| self.reason.in_schema(s))
+        })
+    }
+
+    /// Returns the reason as RFC 9457 problem details. Set `instance` or another member, then send it with
+    /// [`Problem::into_response`].
+    #[must_use]
+    pub fn problem(&self) -> Problem {
+        self.reason.problem()
     }
 
     /// Returns the HTTP status.
@@ -413,7 +466,7 @@ mod tests {
     fn a_body_that_does_not_decode_lists_one_violation() {
         let r = undecoded("/sku", "`bad` does not match `^[A-Z]{3}$` at line 1 column 42");
         assert_eq!(r.to_string(), "/body/sku: `bad` does not match `^[A-Z]{3}$`");
-        let body: Value = serde_json::from_slice(r.problem().body().bytes()).unwrap();
+        let body: Value = serde_json::from_slice(r.problem().into_response().body().bytes()).unwrap();
         assert_eq!(
             body["errors"],
             serde_json::json!([{"detail": "`bad` does not match `^[A-Z]{3}$`", "pointer": "#/sku"}])
@@ -435,6 +488,26 @@ mod tests {
         assert_eq!(nested.violations()[0].path, "/body/items/0/id");
         let unknown = undecoded("", "unknown field `b`, expected `a` at line 1 column 12");
         assert_eq!(unknown.to_string(), "/body/b: is not allowed (additionalProperties)");
+    }
+
+    #[test]
+    fn a_problem_takes_an_instance_and_keeps_its_headers() {
+        let rejection = Rejection::<()> {
+            reason: Reason::MethodNotAllowed(vec!["GET"]),
+            operation: None,
+            schema: None,
+            headers: http::HeaderMap::new(),
+        };
+        let mut problem = rejection.problem();
+        problem.instance = Some("urn:request:7".to_owned());
+        let r = problem.into_response();
+        assert_eq!(r.headers().get("allow").map(|v| v.to_str().unwrap()), Some("GET, OPTIONS"));
+        assert_eq!(r.headers().get("content-type").map(|v| v.to_str().unwrap()), Some("application/problem+json"));
+        let body: Value = serde_json::from_slice(r.body().bytes()).unwrap();
+        assert_eq!(
+            body,
+            serde_json::json!({"type": "about:blank", "title": "Method Not Allowed", "status": 405, "instance": "urn:request:7"})
+        );
     }
 
     /// A request is refused at its first violation: the reason holds that one, and the body lists it.

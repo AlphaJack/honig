@@ -102,6 +102,13 @@ server can still replace `error_response` with its own, for example to record ea
 {{#include ../../../tests/e2e/tests/v32_catalog/layers.rs:error-response}}
 ```
 
+`rejection.problem()` returns the default body as a typed RFC 9457 `Problem`. Set a member and send it with
+`into_response()`, for example `instance` from the request ID of the client:
+
+```rust
+{{#include ../../../tests/e2e/tests/v32_scopes.rs:problem-instance}}
+```
+
 {{#include generated/error-rendering.md}}
 
 The members of an error body that the server fills:
