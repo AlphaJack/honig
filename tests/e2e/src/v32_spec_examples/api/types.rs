@@ -912,10 +912,19 @@ pub struct ServerSentEventStreamsBodyItem(
 );
 impl<'de> serde::Deserialize<'de> for ServerSentEventStreamsBodyItem {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <ServerSentEventStreamsBodyItemVariants as serde::Deserialize>::deserialize(
-            d,
-        )?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
+        let (value, text) = runtime::read_once::<
+            _,
+            ServerSentEventStreamsBodyItemVariants,
+        >(d)?;
+        match text {
+            Some(text) => {
+                let json = runtime::Content::parse(text)
+                    .map_err(serde::de::Error::custom)?;
+                Self::checked(value, &json)
+            }
+            None => Self::try_from(value),
+        }
+            .map_err(serde::de::Error::custom)
     }
 }
 impl TryFrom<ServerSentEventStreamsBodyItemVariants> for ServerSentEventStreamsBodyItem {
@@ -924,7 +933,14 @@ impl TryFrom<ServerSentEventStreamsBodyItemVariants> for ServerSentEventStreamsB
         value: ServerSentEventStreamsBodyItemVariants,
     ) -> Result<Self, runtime::BuildError> {
         let json = runtime::to_value(&value).unwrap_or_default();
-        let json = &runtime::Content::of(&json);
+        Self::checked(value, &runtime::Content::of(&json))
+    }
+}
+impl ServerSentEventStreamsBodyItem {
+    fn checked(
+        value: ServerSentEventStreamsBodyItemVariants,
+        json: &runtime::Content<'_>,
+    ) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -1422,15 +1438,30 @@ impl<'de> runtime::TaggedUnion<'de> for ServerSentEventStreamsBodyItemVariants {
 pub struct FormDataCodeChecked(pub(super) FormDataCode);
 impl<'de> serde::Deserialize<'de> for FormDataCodeChecked {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <FormDataCode as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
+        let (value, text) = runtime::read_once::<_, FormDataCode>(d)?;
+        match text {
+            Some(text) => {
+                let json = runtime::Content::parse(text)
+                    .map_err(serde::de::Error::custom)?;
+                Self::checked(value, &json)
+            }
+            None => Self::try_from(value),
+        }
+            .map_err(serde::de::Error::custom)
     }
 }
 impl TryFrom<FormDataCode> for FormDataCodeChecked {
     type Error = runtime::BuildError;
     fn try_from(value: FormDataCode) -> Result<Self, runtime::BuildError> {
         let json = runtime::to_value(&value).unwrap_or_default();
-        let json = &runtime::Content::of(&json);
+        Self::checked(value, &runtime::Content::of(&json))
+    }
+}
+impl FormDataCodeChecked {
+    fn checked(
+        value: FormDataCode,
+        json: &runtime::Content<'_>,
+    ) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;

@@ -105,6 +105,14 @@ impl<'de> Content<'de> {
         }
     }
 
+    /// Returns JSON text as a tree to look into, its strings borrowed from it where they need no unescaping. Integral
+    /// floats are integers, as in a whole body. Errors: the text is no JSON value.
+    pub fn parse(text: &'de str) -> Result<Self, serde_json::Error> {
+        let mut d = serde_json::Deserializer::from_str(text);
+        let v = Self::deserialize(crate::integral::Ints(&mut d))?;
+        d.end().map(|()| v)
+    }
+
     /// Returns the string if this is one.
     #[must_use]
     pub fn as_str(&self) -> Option<&str> {
@@ -322,6 +330,108 @@ impl<'de> Visitor<'de> for TagSeed<'_> {
             }
         }
         Ok(tag)
+    }
+}
+
+/// Decodes `T` from `d`, with the JSON text that it was written as when `d` is `serde_json` reading a slice or a string.
+///
+/// A checked type reads its checks from that text, without writing the value out for them. Any other deserializer (a
+/// form field, a multipart part, a `serde_json::Value`) reads `T` with its hints, and gives no text.
+///
+/// # Errors
+/// The value does not decode as `T`.
+pub fn read_once<'de, D: Deserializer<'de>, T: Deserialize<'de>>(d: D) -> Result<(T, Option<&'de str>), D::Error> {
+    d.deserialize_newtype_struct(crate::raw_value::RAW_VALUE, ReadOnce(PhantomData))
+}
+
+/// The visitor of [`read_once`].
+struct ReadOnce<T>(PhantomData<T>);
+
+impl<'de, T: Deserialize<'de>> ReadOnce<T> {
+    /// Returns `T` read from `d` with no text.
+    fn plain<D: Deserializer<'de>, E: de::Error>(d: D) -> Result<(T, Option<&'de str>), E> {
+        T::deserialize(d).map(|t| (t, None)).map_err(E::custom)
+    }
+}
+
+impl<'de, T: Deserialize<'de>> Visitor<'de> for ReadOnce<T> {
+    type Value = (T, Option<&'de str>);
+
+    fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("a JSON value")
+    }
+
+    fn visit_map<A: MapAccess<'de>>(self, mut map: A) -> Result<Self::Value, A::Error> {
+        let Some(Key(first)) = map.next_key()? else {
+            return Self::plain(Content::Map(vec![]));
+        };
+        if first == crate::raw_value::RAW_VALUE {
+            let Key(text) = map.next_value()?;
+            return match text {
+                Cow::Borrowed(text) => match Content::Raw(text).decode_ref::<T>() {
+                    Ok(value) => Ok((value, Some(text))),
+                    // Read again to say where inside the value it failed. The tracker of the whole body adds that.
+                    Err(e) => {
+                        let mut d = serde_json::Deserializer::from_str(text);
+                        if let Err((pointer, _)) = crate::path::deserialize::<_, T>(crate::integral::Ints(&mut d)) {
+                            crate::path::nested_failure(pointer);
+                        }
+                        // The position in the value's own text says nothing: the reader of the body adds its own.
+                        let message = e.to_string();
+                        let at = message.rsplit_once(" at line ").filter(|(_, at)| at.contains(" column "));
+                        Err(de::Error::custom(at.map_or(message.as_str(), |(why, _)| why)))
+                    }
+                },
+                // Text that `serde_json` had to copy (a reader) does not live long enough to read the checks from.
+                Cow::Owned(text) => {
+                    let value: Value = serde_json::from_str(&text).map_err(de::Error::custom)?;
+                    Self::plain(value)
+                }
+            };
+        }
+        let mut out = vec![(first, map.next_value()?)];
+        while let Some(Key(k)) = map.next_key()? {
+            out.push((k, map.next_value()?));
+        }
+        Self::plain(Content::Map(out))
+    }
+
+    fn visit_newtype_struct<D: Deserializer<'de>>(self, d: D) -> Result<Self::Value, D::Error> {
+        T::deserialize(d).map(|t| (t, None))
+    }
+
+    // A deserializer that answers the raw value with its text (a coerced form field) reads `T` from that text as it
+    // reads any value.
+    fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E> {
+        Self::plain(crate::coerce::Coerce(Value::String(v.to_owned())))
+    }
+
+    fn visit_string<E: de::Error>(self, v: String) -> Result<Self::Value, E> {
+        Self::plain(crate::coerce::Coerce(Value::String(v)))
+    }
+
+    fn visit_bool<E: de::Error>(self, v: bool) -> Result<Self::Value, E> {
+        Self::plain(de::value::BoolDeserializer::<E>::new(v))
+    }
+
+    fn visit_i64<E: de::Error>(self, v: i64) -> Result<Self::Value, E> {
+        Self::plain(de::value::I64Deserializer::<E>::new(v))
+    }
+
+    fn visit_u64<E: de::Error>(self, v: u64) -> Result<Self::Value, E> {
+        Self::plain(de::value::U64Deserializer::<E>::new(v))
+    }
+
+    fn visit_f64<E: de::Error>(self, v: f64) -> Result<Self::Value, E> {
+        Self::plain(de::value::F64Deserializer::<E>::new(v))
+    }
+
+    fn visit_unit<E: de::Error>(self) -> Result<Self::Value, E> {
+        Self::plain(de::value::UnitDeserializer::<E>::new())
+    }
+
+    fn visit_seq<A: SeqAccess<'de>>(self, seq: A) -> Result<Self::Value, A::Error> {
+        T::deserialize(de::value::SeqAccessDeserializer::new(seq)).map(|t| (t, None))
     }
 }
 

@@ -448,15 +448,30 @@ macro_rules! checked_impls {
 pub struct Tagged(pub(super) TaggedVariants);
 impl<'de> serde::Deserialize<'de> for Tagged {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <TaggedVariants as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
+        let (value, text) = runtime::read_once::<_, TaggedVariants>(d)?;
+        match text {
+            Some(text) => {
+                let json = runtime::Content::parse(text)
+                    .map_err(serde::de::Error::custom)?;
+                Self::checked(value, &json)
+            }
+            None => Self::try_from(value),
+        }
+            .map_err(serde::de::Error::custom)
     }
 }
 impl TryFrom<TaggedVariants> for Tagged {
     type Error = runtime::BuildError;
     fn try_from(value: TaggedVariants) -> Result<Self, runtime::BuildError> {
         let json = runtime::to_value(&value).unwrap_or_default();
-        let json = &runtime::Content::of(&json);
+        Self::checked(value, &runtime::Content::of(&json))
+    }
+}
+impl Tagged {
+    fn checked(
+        value: TaggedVariants,
+        json: &runtime::Content<'_>,
+    ) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -1503,15 +1518,30 @@ impl runtime::XmlShape for Login {
 pub struct Shipment(pub(super) ShipmentVariants);
 impl<'de> serde::Deserialize<'de> for Shipment {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <ShipmentVariants as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
+        let (value, text) = runtime::read_once::<_, ShipmentVariants>(d)?;
+        match text {
+            Some(text) => {
+                let json = runtime::Content::parse(text)
+                    .map_err(serde::de::Error::custom)?;
+                Self::checked(value, &json)
+            }
+            None => Self::try_from(value),
+        }
+            .map_err(serde::de::Error::custom)
     }
 }
 impl TryFrom<ShipmentVariants> for Shipment {
     type Error = runtime::BuildError;
     fn try_from(value: ShipmentVariants) -> Result<Self, runtime::BuildError> {
         let json = runtime::to_value(&value).unwrap_or_default();
-        let json = &runtime::Content::of(&json);
+        Self::checked(value, &runtime::Content::of(&json))
+    }
+}
+impl Shipment {
+    fn checked(
+        value: ShipmentVariants,
+        json: &runtime::Content<'_>,
+    ) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -1582,15 +1612,30 @@ impl runtime::XmlShape for Loose {
 pub struct Voucher(pub(super) VoucherFields);
 impl<'de> serde::Deserialize<'de> for Voucher {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <VoucherFields as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
+        let (value, text) = runtime::read_once::<_, VoucherFields>(d)?;
+        match text {
+            Some(text) => {
+                let json = runtime::Content::parse(text)
+                    .map_err(serde::de::Error::custom)?;
+                Self::checked(value, &json)
+            }
+            None => Self::try_from(value),
+        }
+            .map_err(serde::de::Error::custom)
     }
 }
 impl TryFrom<VoucherFields> for Voucher {
     type Error = runtime::BuildError;
     fn try_from(value: VoucherFields) -> Result<Self, runtime::BuildError> {
         let json = runtime::to_value(&value).unwrap_or_default();
-        let json = &runtime::Content::of(&json);
+        Self::checked(value, &runtime::Content::of(&json))
+    }
+}
+impl Voucher {
+    fn checked(
+        value: VoucherFields,
+        json: &runtime::Content<'_>,
+    ) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -2899,8 +2944,16 @@ checked_str_impls!(LoginPassword);
 pub struct ShipmentInternational(pub(super) ShipmentInternationalFields);
 impl<'de> serde::Deserialize<'de> for ShipmentInternational {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <ShipmentInternationalFields as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
+        let (value, text) = runtime::read_once::<_, ShipmentInternationalFields>(d)?;
+        match text {
+            Some(text) => {
+                let json = runtime::Content::parse(text)
+                    .map_err(serde::de::Error::custom)?;
+                Self::checked(value, &json)
+            }
+            None => Self::try_from(value),
+        }
+            .map_err(serde::de::Error::custom)
     }
 }
 impl TryFrom<ShipmentInternationalFields> for ShipmentInternational {
@@ -2909,7 +2962,14 @@ impl TryFrom<ShipmentInternationalFields> for ShipmentInternational {
         value: ShipmentInternationalFields,
     ) -> Result<Self, runtime::BuildError> {
         let json = runtime::to_value(&value).unwrap_or_default();
-        let json = &runtime::Content::of(&json);
+        Self::checked(value, &runtime::Content::of(&json))
+    }
+}
+impl ShipmentInternational {
+    fn checked(
+        value: ShipmentInternationalFields,
+        json: &runtime::Content<'_>,
+    ) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -3182,15 +3242,30 @@ checked_str_impls!(LabelsPattern1);
 pub struct ShipmentOtherwise(pub(super) ShipmentOtherwiseFields);
 impl<'de> serde::Deserialize<'de> for ShipmentOtherwise {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <ShipmentOtherwiseFields as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
+        let (value, text) = runtime::read_once::<_, ShipmentOtherwiseFields>(d)?;
+        match text {
+            Some(text) => {
+                let json = runtime::Content::parse(text)
+                    .map_err(serde::de::Error::custom)?;
+                Self::checked(value, &json)
+            }
+            None => Self::try_from(value),
+        }
+            .map_err(serde::de::Error::custom)
     }
 }
 impl TryFrom<ShipmentOtherwiseFields> for ShipmentOtherwise {
     type Error = runtime::BuildError;
     fn try_from(value: ShipmentOtherwiseFields) -> Result<Self, runtime::BuildError> {
         let json = runtime::to_value(&value).unwrap_or_default();
-        let json = &runtime::Content::of(&json);
+        Self::checked(value, &runtime::Content::of(&json))
+    }
+}
+impl ShipmentOtherwise {
+    fn checked(
+        value: ShipmentOtherwiseFields,
+        json: &runtime::Content<'_>,
+    ) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -5440,15 +5515,30 @@ checked_impls!(EntryLinesChecked, EntryLines);
 pub struct BadgeHolders(pub(super) Vec<String>);
 impl<'de> serde::Deserialize<'de> for BadgeHolders {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <Vec<String> as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
+        let (value, text) = runtime::read_once::<_, Vec<String>>(d)?;
+        match text {
+            Some(text) => {
+                let json = runtime::Content::parse(text)
+                    .map_err(serde::de::Error::custom)?;
+                Self::checked(value, &json)
+            }
+            None => Self::try_from(value),
+        }
+            .map_err(serde::de::Error::custom)
     }
 }
 impl TryFrom<Vec<String>> for BadgeHolders {
     type Error = runtime::BuildError;
     fn try_from(value: Vec<String>) -> Result<Self, runtime::BuildError> {
         let json = runtime::to_value(&value).unwrap_or_default();
-        let json = &runtime::Content::of(&json);
+        Self::checked(value, &runtime::Content::of(&json))
+    }
+}
+impl BadgeHolders {
+    fn checked(
+        value: Vec<String>,
+        json: &runtime::Content<'_>,
+    ) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -5631,15 +5721,30 @@ checked_impls!(ShipmentInternationalRating, serde_json::Value);
 pub struct ShipmentInternationalParcels(pub(super) Vec<ParcelsItem>);
 impl<'de> serde::Deserialize<'de> for ShipmentInternationalParcels {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <Vec<ParcelsItem> as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
+        let (value, text) = runtime::read_once::<_, Vec<ParcelsItem>>(d)?;
+        match text {
+            Some(text) => {
+                let json = runtime::Content::parse(text)
+                    .map_err(serde::de::Error::custom)?;
+                Self::checked(value, &json)
+            }
+            None => Self::try_from(value),
+        }
+            .map_err(serde::de::Error::custom)
     }
 }
 impl TryFrom<Vec<ParcelsItem>> for ShipmentInternationalParcels {
     type Error = runtime::BuildError;
     fn try_from(value: Vec<ParcelsItem>) -> Result<Self, runtime::BuildError> {
         let json = runtime::to_value(&value).unwrap_or_default();
-        let json = &runtime::Content::of(&json);
+        Self::checked(value, &runtime::Content::of(&json))
+    }
+}
+impl ShipmentInternationalParcels {
+    fn checked(
+        value: Vec<ParcelsItem>,
+        json: &runtime::Content<'_>,
+    ) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -5724,10 +5829,19 @@ pub type ShipmentOtherwiseRating = ShipmentInternationalRating;
 pub struct ShipmentOtherwiseParcels(pub(super) Vec<ShipmentOtherwiseParcelsItem>);
 impl<'de> serde::Deserialize<'de> for ShipmentOtherwiseParcels {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <Vec<
-            ShipmentOtherwiseParcelsItem,
-        > as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
+        let (value, text) = runtime::read_once::<
+            _,
+            Vec<ShipmentOtherwiseParcelsItem>,
+        >(d)?;
+        match text {
+            Some(text) => {
+                let json = runtime::Content::parse(text)
+                    .map_err(serde::de::Error::custom)?;
+                Self::checked(value, &json)
+            }
+            None => Self::try_from(value),
+        }
+            .map_err(serde::de::Error::custom)
     }
 }
 impl TryFrom<Vec<ShipmentOtherwiseParcelsItem>> for ShipmentOtherwiseParcels {
@@ -5736,7 +5850,14 @@ impl TryFrom<Vec<ShipmentOtherwiseParcelsItem>> for ShipmentOtherwiseParcels {
         value: Vec<ShipmentOtherwiseParcelsItem>,
     ) -> Result<Self, runtime::BuildError> {
         let json = runtime::to_value(&value).unwrap_or_default();
-        let json = &runtime::Content::of(&json);
+        Self::checked(value, &runtime::Content::of(&json))
+    }
+}
+impl ShipmentOtherwiseParcels {
+    fn checked(
+        value: Vec<ShipmentOtherwiseParcelsItem>,
+        json: &runtime::Content<'_>,
+    ) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;

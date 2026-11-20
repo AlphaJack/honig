@@ -166,15 +166,30 @@ impl Box2 {
 pub struct Note(pub(super) NoteVariants);
 impl<'de> serde::Deserialize<'de> for Note {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <NoteVariants as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
+        let (value, text) = runtime::read_once::<_, NoteVariants>(d)?;
+        match text {
+            Some(text) => {
+                let json = runtime::Content::parse(text)
+                    .map_err(serde::de::Error::custom)?;
+                Self::checked(value, &json)
+            }
+            None => Self::try_from(value),
+        }
+            .map_err(serde::de::Error::custom)
     }
 }
 impl TryFrom<NoteVariants> for Note {
     type Error = runtime::BuildError;
     fn try_from(value: NoteVariants) -> Result<Self, runtime::BuildError> {
         let json = runtime::to_value(&value).unwrap_or_default();
-        let json = &runtime::Content::of(&json);
+        Self::checked(value, &runtime::Content::of(&json))
+    }
+}
+impl Note {
+    fn checked(
+        value: NoteVariants,
+        json: &runtime::Content<'_>,
+    ) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -195,15 +210,30 @@ checked_impls!(Note, NoteVariants);
 pub struct TextNote(pub(super) TextNoteFields);
 impl<'de> serde::Deserialize<'de> for TextNote {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <TextNoteFields as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
+        let (value, text) = runtime::read_once::<_, TextNoteFields>(d)?;
+        match text {
+            Some(text) => {
+                let json = runtime::Content::parse(text)
+                    .map_err(serde::de::Error::custom)?;
+                Self::checked(value, &json)
+            }
+            None => Self::try_from(value),
+        }
+            .map_err(serde::de::Error::custom)
     }
 }
 impl TryFrom<TextNoteFields> for TextNote {
     type Error = runtime::BuildError;
     fn try_from(value: TextNoteFields) -> Result<Self, runtime::BuildError> {
         let json = runtime::to_value(&value).unwrap_or_default();
-        let json = &runtime::Content::of(&json);
+        Self::checked(value, &runtime::Content::of(&json))
+    }
+}
+impl TextNote {
+    fn checked(
+        value: TextNoteFields,
+        json: &runtime::Content<'_>,
+    ) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -281,15 +311,30 @@ pub type Pixels = i64;
 pub struct Crop(pub(super) CropVariants);
 impl<'de> serde::Deserialize<'de> for Crop {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <CropVariants as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
+        let (value, text) = runtime::read_once::<_, CropVariants>(d)?;
+        match text {
+            Some(text) => {
+                let json = runtime::Content::parse(text)
+                    .map_err(serde::de::Error::custom)?;
+                Self::checked(value, &json)
+            }
+            None => Self::try_from(value),
+        }
+            .map_err(serde::de::Error::custom)
     }
 }
 impl TryFrom<CropVariants> for Crop {
     type Error = runtime::BuildError;
     fn try_from(value: CropVariants) -> Result<Self, runtime::BuildError> {
         let json = runtime::to_value(&value).unwrap_or_default();
-        let json = &runtime::Content::of(&json);
+        Self::checked(value, &runtime::Content::of(&json))
+    }
+}
+impl Crop {
+    fn checked(
+        value: CropVariants,
+        json: &runtime::Content<'_>,
+    ) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -319,15 +364,30 @@ checked_impls!(Crop, CropVariants);
 pub struct NoteTextNote(pub(super) NoteTextNoteFields);
 impl<'de> serde::Deserialize<'de> for NoteTextNote {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <NoteTextNoteFields as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
+        let (value, text) = runtime::read_once::<_, NoteTextNoteFields>(d)?;
+        match text {
+            Some(text) => {
+                let json = runtime::Content::parse(text)
+                    .map_err(serde::de::Error::custom)?;
+                Self::checked(value, &json)
+            }
+            None => Self::try_from(value),
+        }
+            .map_err(serde::de::Error::custom)
     }
 }
 impl TryFrom<NoteTextNoteFields> for NoteTextNote {
     type Error = runtime::BuildError;
     fn try_from(value: NoteTextNoteFields) -> Result<Self, runtime::BuildError> {
         let json = runtime::to_value(&value).unwrap_or_default();
-        let json = &runtime::Content::of(&json);
+        Self::checked(value, &runtime::Content::of(&json))
+    }
+}
+impl NoteTextNote {
+    fn checked(
+        value: NoteTextNoteFields,
+        json: &runtime::Content<'_>,
+    ) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;

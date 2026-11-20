@@ -1572,3 +1572,15 @@ fn examples_are_judged_by_the_generated_types_only() {
     let examples = common::file(&generated.files, "documented_examples.rs");
     assert!(examples.contains("/properties/n/example"), "{examples}");
 }
+
+/// A checked type whose checks read the value as JSON reads JSON text once: the value decodes from it and the checks
+/// read it, with no value written out again.
+#[test]
+fn a_checked_type_reads_json_text_once() {
+    let item = json!({"type": "object", "properties": {"a": {"type": "string"}}, "not": {"required": ["b"]}});
+    let holder = json!({"type": "object", "properties": {"item": {"$ref": "#/components/schemas/Item"}}});
+    let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Item": item, "Holder": holder}}));
+    let types =
+        common::file(&common::generate("read-once", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
+    assert!(types.contains("runtime::read_once::<") && types.contains("runtime::Content::parse(text)"), "{types}");
+}

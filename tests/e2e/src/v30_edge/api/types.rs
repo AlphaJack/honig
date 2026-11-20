@@ -37,8 +37,16 @@ macro_rules! deserialize_impl_2 {
     ($t:ty) => {
         impl<'de> serde::Deserialize<'de> for $t {
             fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-                let value = <OrderCustomer as serde::Deserialize>::deserialize(d)?;
-                Self::try_from(value).map_err(serde::de::Error::custom)
+                let (value, text) = runtime::read_once::<_, OrderCustomer>(d)?;
+                match text {
+                    Some(text) => {
+                        let json = runtime::Content::parse(text)
+                            .map_err(serde::de::Error::custom)?;
+                        Self::checked(value, &json)
+                    }
+                    None => Self::try_from(value),
+                }
+                    .map_err(serde::de::Error::custom)
             }
         }
     };
@@ -49,23 +57,7 @@ macro_rules! try_from_impl {
             type Error = runtime::BuildError;
             fn try_from(value: OrderCustomer) -> Result<Self, runtime::BuildError> {
                 let json = runtime::to_value(&value).unwrap_or_default();
-                let json = &runtime::Content::of(&json);
-                let mut violations: Vec<runtime::Violation> = Vec::new();
-                {
-                    let out = &mut violations;
-                    {
-                        if !(json.matches::<Not>() || json.matches::<()>()) {
-                            runtime::violation(
-                                out,
-                                &runtime::InstancePath::Root,
-                                "matches none of `anyOf`",
-                            );
-                        }
-                    }
-                }
-                runtime::first(violations)
-                    .map(|()| Self(value))
-                    .map_err(runtime::BuildError::value)
+                Self::checked(value, &runtime::Content::of(&json))
             }
         }
     };
@@ -373,15 +365,30 @@ impl Van {
 pub struct Vehicle(pub(super) VehicleVariants);
 impl<'de> serde::Deserialize<'de> for Vehicle {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <VehicleVariants as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
+        let (value, text) = runtime::read_once::<_, VehicleVariants>(d)?;
+        match text {
+            Some(text) => {
+                let json = runtime::Content::parse(text)
+                    .map_err(serde::de::Error::custom)?;
+                Self::checked(value, &json)
+            }
+            None => Self::try_from(value),
+        }
+            .map_err(serde::de::Error::custom)
     }
 }
 impl TryFrom<VehicleVariants> for Vehicle {
     type Error = runtime::BuildError;
     fn try_from(value: VehicleVariants) -> Result<Self, runtime::BuildError> {
         let json = runtime::to_value(&value).unwrap_or_default();
-        let json = &runtime::Content::of(&json);
+        Self::checked(value, &runtime::Content::of(&json))
+    }
+}
+impl Vehicle {
+    fn checked(
+        value: VehicleVariants,
+        json: &runtime::Content<'_>,
+    ) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
@@ -955,12 +962,58 @@ impl<'de> runtime::TaggedUnion<'de> for VehicleVariants {
 pub struct OrderCustomerChecked(pub(super) OrderCustomer);
 deserialize_impl_2!(OrderCustomerChecked);
 try_from_impl!(OrderCustomerChecked);
+impl OrderCustomerChecked {
+    fn checked(
+        value: OrderCustomer,
+        json: &runtime::Content<'_>,
+    ) -> Result<Self, runtime::BuildError> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            {
+                if !(json.matches::<Not>() || json.matches::<()>()) {
+                    runtime::violation(
+                        out,
+                        &runtime::InstancePath::Root,
+                        "matches none of `anyOf`",
+                    );
+                }
+            }
+        }
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
+    }
+}
 checked_impls!(OrderCustomerChecked, OrderCustomer);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct OrderRequestCustomer(pub(super) OrderCustomer);
 deserialize_impl_2!(OrderRequestCustomer);
 try_from_impl!(OrderRequestCustomer);
+impl OrderRequestCustomer {
+    fn checked(
+        value: OrderCustomer,
+        json: &runtime::Content<'_>,
+    ) -> Result<Self, runtime::BuildError> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            {
+                if !(json.matches::<Not>() || json.matches::<()>()) {
+                    runtime::violation(
+                        out,
+                        &runtime::InstancePath::Root,
+                        "matches none of `anyOf`",
+                    );
+                }
+            }
+        }
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
+    }
+}
 checked_impls!(OrderRequestCustomer, OrderCustomer);
 /// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
 /// its field. `build` returns the first field that did not convert.

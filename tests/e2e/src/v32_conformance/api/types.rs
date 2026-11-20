@@ -93,15 +93,30 @@ impl Closed {
 pub struct Product(pub(super) ProductVariants);
 impl<'de> serde::Deserialize<'de> for Product {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <ProductVariants as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
+        let (value, text) = runtime::read_once::<_, ProductVariants>(d)?;
+        match text {
+            Some(text) => {
+                let json = runtime::Content::parse(text)
+                    .map_err(serde::de::Error::custom)?;
+                Self::checked(value, &json)
+            }
+            None => Self::try_from(value),
+        }
+            .map_err(serde::de::Error::custom)
     }
 }
 impl TryFrom<ProductVariants> for Product {
     type Error = runtime::BuildError;
     fn try_from(value: ProductVariants) -> Result<Self, runtime::BuildError> {
         let json = runtime::to_value(&value).unwrap_or_default();
-        let json = &runtime::Content::of(&json);
+        Self::checked(value, &runtime::Content::of(&json))
+    }
+}
+impl Product {
+    fn checked(
+        value: ProductVariants,
+        json: &runtime::Content<'_>,
+    ) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;

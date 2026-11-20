@@ -502,3 +502,16 @@ proptest::proptest! {
         malformed::check(api::Server::new(Products::default()).into_service(), &case)?;
     }
 }
+
+/// A checked type reads its checks from the JSON text of the body, and an error inside it still says where, through
+/// every nested checked type on the way.
+#[test]
+fn an_error_inside_a_checked_value_keeps_its_pointer() {
+    let pointer = |body: &[u8]| match api::runtime::json_decode::<types::ProductRequest>(200, body) {
+        Err(api::Error::Decode { pointer, .. }) => pointer,
+        other => panic!("{other:?}"),
+    };
+    let nested = br#"{"name": "Lamp", "kind": "book", "owner": {"children": [{"children": 5}]}}"#;
+    assert_eq!(pointer(nested), "/owner/children/0/children");
+    assert_eq!(pointer(br#"{"name": "Lamp", "kind": "book", "tags": "x"}"#), "/tags");
+}
