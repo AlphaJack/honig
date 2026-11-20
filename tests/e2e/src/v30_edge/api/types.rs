@@ -54,8 +54,7 @@ macro_rules! try_from_impl {
                 {
                     let out = &mut violations;
                     {
-                        if !(json.decode_ref::<Not>().is_ok() || json.decode_ref::<()>().is_ok())
-                        {
+                        if !(json.matches::<Not>() || json.matches::<()>()) {
                             runtime::violation(
                                 out,
                                 &runtime::InstancePath::Root,
@@ -387,10 +386,7 @@ impl TryFrom<VehicleVariants> for Vehicle {
         {
             let out = &mut violations;
             {
-                let hits = [
-                    json.decode_ref::<Car>().is_ok(),
-                    json.decode_ref::<Van>().is_ok(),
-                ]
+                let hits = [json.matches::<Car>(), json.matches::<Van>()]
                     .into_iter()
                     .filter(|hit| *hit)
                     .count();

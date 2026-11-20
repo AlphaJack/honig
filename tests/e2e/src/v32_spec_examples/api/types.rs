@@ -930,9 +930,9 @@ impl TryFrom<ServerSentEventStreamsBodyItemVariants> for ServerSentEventStreamsB
             let out = &mut violations;
             {
                 let hits = [
-                    json.decode_ref::<Not4>().is_ok(),
-                    json.decode_ref::<Not5>().is_ok(),
-                    json.decode_ref::<Not6>().is_ok(),
+                    json.matches::<Not4>(),
+                    json.matches::<Not5>(),
+                    json.matches::<Not6>(),
                 ]
                     .into_iter()
                     .filter(|hit| *hit)

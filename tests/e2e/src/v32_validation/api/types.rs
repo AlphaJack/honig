@@ -461,9 +461,7 @@ impl TryFrom<TaggedVariants> for Tagged {
         {
             let out = &mut violations;
             {
-                if !(json.decode_ref::<TaggedLabel>().is_ok()
-                    || json.decode_ref::<TaggedColour>().is_ok())
-                {
+                if !(json.matches::<TaggedLabel>() || json.matches::<TaggedColour>()) {
                     runtime::violation(
                         out,
                         &runtime::InstancePath::Root,
@@ -474,8 +472,8 @@ impl TryFrom<TaggedVariants> for Tagged {
                     runtime::violation(out, &runtime::InstancePath::Root, e.to_string());
                 }
                 if let Some(object) = json.as_object() {
-                    let matched_0 = json.decode_ref::<Not2>().is_ok();
-                    let matched_1 = json.decode_ref::<Not3>().is_ok();
+                    let matched_0 = json.matches::<Not2>();
+                    let matched_1 = json.matches::<Not3>();
                     for name in object.map(|(name, _)| name) {
                         if !(matches!(name, "size")
                             || (matched_0 && (matches!(name, "label")))
@@ -1518,7 +1516,7 @@ impl TryFrom<ShipmentVariants> for Shipment {
         {
             let out = &mut violations;
             {
-                if json.decode_ref::<Not8>().is_ok() {
+                if json.matches::<Not8>() {
                     runtime::violation(
                         out,
                         &runtime::InstancePath::Root,
@@ -2916,7 +2914,7 @@ impl TryFrom<ShipmentInternationalFields> for ShipmentInternational {
         {
             let out = &mut violations;
             {
-                if json.decode_ref::<Not6>().is_ok() {
+                if json.matches::<Not6>() {
                     runtime::violation(
                         out,
                         &runtime::InstancePath::Root,
@@ -3197,7 +3195,7 @@ impl TryFrom<ShipmentOtherwiseFields> for ShipmentOtherwise {
         {
             let out = &mut violations;
             {
-                if json.decode_ref::<Not7>().is_ok() {
+                if json.matches::<Not7>() {
                     runtime::violation(
                         out,
                         &runtime::InstancePath::Root,
@@ -5449,10 +5447,7 @@ impl TryFrom<Vec<String>> for BadgeHolders {
             let out = &mut violations;
             {
                 let items = json.as_array().unwrap_or_default();
-                let hits = items
-                    .iter()
-                    .filter(|item| item.decode_ref::<Not4>().is_ok())
-                    .count();
+                let hits = items.iter().filter(|item| item.matches::<Not4>()).count();
                 if hits < 1 {
                     runtime::violation(
                         out,
@@ -5643,10 +5638,7 @@ impl TryFrom<Vec<ParcelsItem>> for ShipmentInternationalParcels {
             let out = &mut violations;
             {
                 let items = json.as_array().unwrap_or_default();
-                let hits = items
-                    .iter()
-                    .filter(|item| item.decode_ref::<Not5>().is_ok())
-                    .count();
+                let hits = items.iter().filter(|item| item.matches::<Not5>()).count();
                 if hits < 1 {
                     runtime::violation(
                         out,
@@ -5743,10 +5735,7 @@ impl TryFrom<Vec<ShipmentOtherwiseParcelsItem>> for ShipmentOtherwiseParcels {
             let out = &mut violations;
             {
                 let items = json.as_array().unwrap_or_default();
-                let hits = items
-                    .iter()
-                    .filter(|item| item.decode_ref::<Not5>().is_ok())
-                    .count();
+                let hits = items.iter().filter(|item| item.matches::<Not5>()).count();
                 if hits < 1 {
                     runtime::violation(
                         out,

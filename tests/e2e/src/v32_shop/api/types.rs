@@ -410,10 +410,7 @@ impl TryFrom<ItemVariants> for Item {
         {
             let out = &mut violations;
             {
-                let hits = [
-                    json.decode_ref::<Product>().is_ok(),
-                    json.decode_ref::<Variant>().is_ok(),
-                ]
+                let hits = [json.matches::<Product>(), json.matches::<Variant>()]
                     .into_iter()
                     .filter(|hit| *hit)
                     .count();
@@ -4299,10 +4296,7 @@ impl TryFrom<ItemRequestVariants> for ItemRequest {
         {
             let out = &mut violations;
             {
-                let hits = [
-                    json.decode_ref::<Product>().is_ok(),
-                    json.decode_ref::<Variant>().is_ok(),
-                ]
+                let hits = [json.matches::<Product>(), json.matches::<Variant>()]
                     .into_iter()
                     .filter(|hit| *hit)
                     .count();
@@ -5551,7 +5545,7 @@ impl TryFrom<Vec<serde_json::Value>> for PaginatedResourceData {
                     {
                         let json = runtime::to_value(v).unwrap_or_default();
                         let json = &runtime::Content::of(&json);
-                        if json.decode_ref::<serde_json::Value>().is_ok() {
+                        if json.matches::<serde_json::Value>() {
                             runtime::violation(
                                 out,
                                 &runtime::InstancePath::Index(base, i),

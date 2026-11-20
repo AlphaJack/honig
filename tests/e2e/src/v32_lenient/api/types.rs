@@ -198,10 +198,7 @@ impl TryFrom<DeliveryVariants> for Delivery {
             let out = &mut violations;
             if !matches!(value, DeliveryVariants::Other(_)) {
                 {
-                    let hits = [
-                        json.decode_ref::<Pickup>().is_ok(),
-                        json.decode_ref::<Courier>().is_ok(),
-                    ]
+                    let hits = [json.matches::<Pickup>(), json.matches::<Courier>()]
                         .into_iter()
                         .filter(|hit| *hit)
                         .count();
@@ -361,10 +358,7 @@ impl TryFrom<DeliveryRequestVariants> for DeliveryRequest {
         {
             let out = &mut violations;
             {
-                let hits = [
-                    json.decode_ref::<Pickup>().is_ok(),
-                    json.decode_ref::<Courier>().is_ok(),
-                ]
+                let hits = [json.matches::<Pickup>(), json.matches::<Courier>()]
                     .into_iter()
                     .filter(|hit| *hit)
                     .count();
