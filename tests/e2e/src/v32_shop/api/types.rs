@@ -1403,7 +1403,7 @@ impl TryFrom<PaginatedResourceFields> for PaginatedResource {
                     &runtime::InstancePath::Root,
                     &value,
                     schema,
-                    runtime::schema_defs(),
+                    None,
                 );
             }
         }
@@ -3128,7 +3128,7 @@ pub struct GetAllDataOk {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub data: Option<OkData>,
+    pub data: Option<Vec<Product>>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
@@ -3157,11 +3157,11 @@ impl runtime::XmlShape for GetAllDataOk {
                     prefix: "",
                     attribute: false,
                     text: false,
-                    list: false,
+                    list: true,
                     wrapped: false,
                     required: false,
                     item: "product",
-                    child: None,
+                    child: Some(<Product as runtime::XmlShape>::xml),
                     cdata: false,
                     inline: false,
                     nullable: false,
@@ -3310,7 +3310,7 @@ pub struct GetAllDataOk2 {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub data: Option<GetAllDataOk2Data>,
+    pub data: Option<Vec<Product>>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
@@ -3339,11 +3339,11 @@ impl runtime::XmlShape for GetAllDataOk2 {
                     prefix: "",
                     attribute: false,
                     text: false,
-                    list: false,
+                    list: true,
                     wrapped: false,
                     required: false,
                     item: "product",
-                    child: None,
+                    child: Some(<Product as runtime::XmlShape>::xml),
                     cdata: false,
                     inline: false,
                     nullable: false,
@@ -3492,7 +3492,7 @@ pub struct QueryProductsOk {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub data: Option<QueryProductsOkData>,
+    pub data: Option<Vec<Product>>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
@@ -3521,11 +3521,11 @@ impl runtime::XmlShape for QueryProductsOk {
                     prefix: "",
                     attribute: false,
                     text: false,
-                    list: false,
+                    list: true,
                     wrapped: false,
                     required: false,
                     item: "product",
-                    child: None,
+                    child: Some(<Product as runtime::XmlShape>::xml),
                     cdata: false,
                     inline: false,
                     nullable: false,
@@ -3674,7 +3674,7 @@ pub struct SearchProductsOk {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub data: Option<SearchProductsOkData>,
+    pub data: Option<Vec<Product>>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
@@ -3703,11 +3703,11 @@ impl runtime::XmlShape for SearchProductsOk {
                     prefix: "",
                     attribute: false,
                     text: false,
-                    list: false,
+                    list: true,
                     wrapped: false,
                     required: false,
                     item: "product",
-                    child: None,
+                    child: Some(<Product as runtime::XmlShape>::xml),
                     cdata: false,
                     inline: false,
                     nullable: false,
@@ -4985,7 +4985,7 @@ pub struct GetAllDataOkRequest {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub data: Option<OkRequestData>,
+    pub data: Option<Vec<ProductRequest>>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
@@ -5014,11 +5014,11 @@ impl runtime::XmlShape for GetAllDataOkRequest {
                     prefix: "",
                     attribute: false,
                     text: false,
-                    list: false,
+                    list: true,
                     wrapped: false,
                     required: false,
                     item: "product",
-                    child: None,
+                    child: Some(<ProductRequest as runtime::XmlShape>::xml),
                     cdata: false,
                     inline: false,
                     nullable: false,
@@ -5054,7 +5054,7 @@ pub struct GetAllDataOk2Request {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub data: Option<GetAllDataOk2RequestData>,
+    pub data: Option<Vec<ProductRequest>>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
@@ -5083,11 +5083,11 @@ impl runtime::XmlShape for GetAllDataOk2Request {
                     prefix: "",
                     attribute: false,
                     text: false,
-                    list: false,
+                    list: true,
                     wrapped: false,
                     required: false,
                     item: "product",
-                    child: None,
+                    child: Some(<ProductRequest as runtime::XmlShape>::xml),
                     cdata: false,
                     inline: false,
                     nullable: false,
@@ -5123,7 +5123,7 @@ pub struct QueryProductsOkRequest {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub data: Option<QueryProductsOkRequestData>,
+    pub data: Option<Vec<ProductRequest>>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
@@ -5152,11 +5152,11 @@ impl runtime::XmlShape for QueryProductsOkRequest {
                     prefix: "",
                     attribute: false,
                     text: false,
-                    list: false,
+                    list: true,
                     wrapped: false,
                     required: false,
                     item: "product",
-                    child: None,
+                    child: Some(<ProductRequest as runtime::XmlShape>::xml),
                     cdata: false,
                     inline: false,
                     nullable: false,
@@ -5192,7 +5192,7 @@ pub struct SearchProductsOkRequest {
         skip_serializing_if = "Option::is_none",
         deserialize_with = "runtime::not_null"
     )]
-    pub data: Option<SearchProductsOkRequestData>,
+    pub data: Option<Vec<ProductRequest>>,
     #[serde(
         default,
         skip_serializing_if = "Option::is_none",
@@ -5221,11 +5221,11 @@ impl runtime::XmlShape for SearchProductsOkRequest {
                     prefix: "",
                     attribute: false,
                     text: false,
-                    list: false,
+                    list: true,
                     wrapped: false,
                     required: false,
                     item: "product",
-                    child: None,
+                    child: Some(<ProductRequest as runtime::XmlShape>::xml),
                     cdata: false,
                     inline: false,
                     nullable: false,
@@ -5569,102 +5569,6 @@ impl<'de> runtime::TaggedUnion<'de> for ItemRequestVariants {
         }
     }
 }
-#[derive(Debug, Clone, PartialEq, serde::Serialize)]
-#[serde(transparent)]
-pub struct OkData(pub(super) Vec<Product>);
-impl<'de> serde::Deserialize<'de> for OkData {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <Vec<Product> as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
-    }
-}
-impl TryFrom<Vec<Product>> for OkData {
-    type Error = runtime::BuildError;
-    fn try_from(value: Vec<Product>) -> Result<Self, runtime::BuildError> {
-        let mut violations: Vec<runtime::Violation> = Vec::new();
-        {
-            let out = &mut violations;
-            {
-                let base = &runtime::InstancePath::Root;
-                for (i, v) in value.iter().enumerate() {
-                    {
-                        static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                        let value = runtime::to_value(v).unwrap_or_default();
-                        let schema = SCHEMA
-                            .get_or_init(|| {
-                                serde_json::from_str(
-                                        "{\"$dynamicAnchor\":\"itemType\",\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Product\"}]}",
-                                    )
-                                    .unwrap_or_default()
-                            });
-                        runtime::check_schema_in(
-                            out,
-                            &runtime::InstancePath::Index(base, i),
-                            &value,
-                            schema,
-                            runtime::schema_defs(),
-                        );
-                    }
-                }
-            }
-        }
-        runtime::first(violations)
-            .map(|()| Self(value))
-            .map_err(runtime::BuildError::value)
-    }
-}
-checked_impls!(OkData, Vec < Product >);
-pub type GetAllDataOk2Data = OkData;
-pub type QueryProductsOkData = OkData;
-pub type SearchProductsOkData = OkData;
-#[derive(Debug, Clone, PartialEq, serde::Serialize)]
-#[serde(transparent)]
-pub struct OkRequestData(pub(super) Vec<ProductRequest>);
-impl<'de> serde::Deserialize<'de> for OkRequestData {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <Vec<ProductRequest> as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
-    }
-}
-impl TryFrom<Vec<ProductRequest>> for OkRequestData {
-    type Error = runtime::BuildError;
-    fn try_from(value: Vec<ProductRequest>) -> Result<Self, runtime::BuildError> {
-        let mut violations: Vec<runtime::Violation> = Vec::new();
-        {
-            let out = &mut violations;
-            {
-                let base = &runtime::InstancePath::Root;
-                for (i, v) in value.iter().enumerate() {
-                    {
-                        static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                        let value = runtime::to_value(v).unwrap_or_default();
-                        let schema = SCHEMA
-                            .get_or_init(|| {
-                                serde_json::from_str(
-                                        "{\"$dynamicAnchor\":\"itemType\",\"allOf\":[{\"$ref\":\"#/$defs/~1components~1schemas~1Product\"}]}",
-                                    )
-                                    .unwrap_or_default()
-                            });
-                        runtime::check_schema_in(
-                            out,
-                            &runtime::InstancePath::Index(base, i),
-                            &value,
-                            schema,
-                            runtime::schema_defs(),
-                        );
-                    }
-                }
-            }
-        }
-        runtime::first(violations)
-            .map(|()| Self(value))
-            .map_err(runtime::BuildError::value)
-    }
-}
-checked_impls!(OkRequestData, Vec < ProductRequest >);
-pub type GetAllDataOk2RequestData = OkRequestData;
-pub type QueryProductsOkRequestData = OkRequestData;
-pub type SearchProductsOkRequestData = OkRequestData;
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct PaginatedResourceData(pub(super) Vec<serde_json::Value>);
@@ -5695,7 +5599,7 @@ impl TryFrom<Vec<serde_json::Value>> for PaginatedResourceData {
                     &runtime::InstancePath::Root,
                     &value,
                     schema,
-                    runtime::schema_defs(),
+                    None,
                 );
             }
         }
@@ -6123,110 +6027,6 @@ pub mod builders {
             self.0.build()
         }
     }
-    impl super::GetAllDataOk {
-        /// Starts a builder from the required properties.
-        pub fn builder() -> GetAllDataOk {
-            GetAllDataOk(runtime::Builder::start(|| Ok(Self::new())))
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct GetAllDataOk(runtime::Builder<super::GetAllDataOk>);
-    impl GetAllDataOk {
-        pub fn data(
-            self,
-            value: impl TryInto<types::OkData, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("data", value, |s, v| s.data = Some(v)))
-        }
-        pub fn meta(
-            self,
-            value: impl TryInto<types::GetAllDataOkMeta, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("meta", value, |s, v| s.meta = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::GetAllDataOk, runtime::BuildError> {
-            self.0.build()
-        }
-    }
-    impl super::GetAllDataOk2 {
-        /// Starts a builder from the required properties.
-        pub fn builder() -> GetAllDataOk2 {
-            GetAllDataOk2(runtime::Builder::start(|| Ok(Self::new())))
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct GetAllDataOk2(runtime::Builder<super::GetAllDataOk2>);
-    impl GetAllDataOk2 {
-        pub fn data(
-            self,
-            value: impl TryInto<types::GetAllDataOk2Data, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("data", value, |s, v| s.data = Some(v)))
-        }
-        pub fn meta(
-            self,
-            value: impl TryInto<types::GetAllDataOk2Meta, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("meta", value, |s, v| s.meta = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::GetAllDataOk2, runtime::BuildError> {
-            self.0.build()
-        }
-    }
-    impl super::QueryProductsOk {
-        /// Starts a builder from the required properties.
-        pub fn builder() -> QueryProductsOk {
-            QueryProductsOk(runtime::Builder::start(|| Ok(Self::new())))
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct QueryProductsOk(runtime::Builder<super::QueryProductsOk>);
-    impl QueryProductsOk {
-        pub fn data(
-            self,
-            value: impl TryInto<types::QueryProductsOkData, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("data", value, |s, v| s.data = Some(v)))
-        }
-        pub fn meta(
-            self,
-            value: impl TryInto<types::QueryProductsOkMeta, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("meta", value, |s, v| s.meta = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::QueryProductsOk, runtime::BuildError> {
-            self.0.build()
-        }
-    }
-    impl super::SearchProductsOk {
-        /// Starts a builder from the required properties.
-        pub fn builder() -> SearchProductsOk {
-            SearchProductsOk(runtime::Builder::start(|| Ok(Self::new())))
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct SearchProductsOk(runtime::Builder<super::SearchProductsOk>);
-    impl SearchProductsOk {
-        pub fn data(
-            self,
-            value: impl TryInto<types::SearchProductsOkData, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("data", value, |s, v| s.data = Some(v)))
-        }
-        pub fn meta(
-            self,
-            value: impl TryInto<types::SearchProductsOkMeta, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("meta", value, |s, v| s.meta = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::SearchProductsOk, runtime::BuildError> {
-            self.0.build()
-        }
-    }
     impl super::UploadPhotosAccepted {
         /// Starts a builder from the required properties.
         pub fn builder() -> UploadPhotosAccepted {
@@ -6499,123 +6299,6 @@ pub mod builders {
         }
         /// Returns the value.
         pub fn build(self) -> Result<super::ProductEventRequest, runtime::BuildError> {
-            self.0.build()
-        }
-    }
-    impl super::GetAllDataOkRequest {
-        /// Starts a builder from the required properties.
-        pub fn builder() -> GetAllDataOkRequest {
-            GetAllDataOkRequest(runtime::Builder::start(|| Ok(Self::new())))
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct GetAllDataOkRequest(runtime::Builder<super::GetAllDataOkRequest>);
-    impl GetAllDataOkRequest {
-        pub fn data(
-            self,
-            value: impl TryInto<types::OkRequestData, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("data", value, |s, v| s.data = Some(v)))
-        }
-        pub fn meta(
-            self,
-            value: impl TryInto<types::GetAllDataOkMeta, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("meta", value, |s, v| s.meta = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::GetAllDataOkRequest, runtime::BuildError> {
-            self.0.build()
-        }
-    }
-    impl super::GetAllDataOk2Request {
-        /// Starts a builder from the required properties.
-        pub fn builder() -> GetAllDataOk2Request {
-            GetAllDataOk2Request(runtime::Builder::start(|| Ok(Self::new())))
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct GetAllDataOk2Request(runtime::Builder<super::GetAllDataOk2Request>);
-    impl GetAllDataOk2Request {
-        pub fn data(
-            self,
-            value: impl TryInto<
-                types::GetAllDataOk2RequestData,
-                Error: std::fmt::Display,
-            >,
-        ) -> Self {
-            Self(self.0.set("data", value, |s, v| s.data = Some(v)))
-        }
-        pub fn meta(
-            self,
-            value: impl TryInto<types::GetAllDataOk2Meta, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("meta", value, |s, v| s.meta = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::GetAllDataOk2Request, runtime::BuildError> {
-            self.0.build()
-        }
-    }
-    impl super::QueryProductsOkRequest {
-        /// Starts a builder from the required properties.
-        pub fn builder() -> QueryProductsOkRequest {
-            QueryProductsOkRequest(runtime::Builder::start(|| Ok(Self::new())))
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct QueryProductsOkRequest(runtime::Builder<super::QueryProductsOkRequest>);
-    impl QueryProductsOkRequest {
-        pub fn data(
-            self,
-            value: impl TryInto<
-                types::QueryProductsOkRequestData,
-                Error: std::fmt::Display,
-            >,
-        ) -> Self {
-            Self(self.0.set("data", value, |s, v| s.data = Some(v)))
-        }
-        pub fn meta(
-            self,
-            value: impl TryInto<types::QueryProductsOkMeta, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("meta", value, |s, v| s.meta = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(
-            self,
-        ) -> Result<super::QueryProductsOkRequest, runtime::BuildError> {
-            self.0.build()
-        }
-    }
-    impl super::SearchProductsOkRequest {
-        /// Starts a builder from the required properties.
-        pub fn builder() -> SearchProductsOkRequest {
-            SearchProductsOkRequest(runtime::Builder::start(|| Ok(Self::new())))
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct SearchProductsOkRequest(runtime::Builder<super::SearchProductsOkRequest>);
-    impl SearchProductsOkRequest {
-        pub fn data(
-            self,
-            value: impl TryInto<
-                types::SearchProductsOkRequestData,
-                Error: std::fmt::Display,
-            >,
-        ) -> Self {
-            Self(self.0.set("data", value, |s, v| s.data = Some(v)))
-        }
-        pub fn meta(
-            self,
-            value: impl TryInto<types::SearchProductsOkMeta, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("meta", value, |s, v| s.meta = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(
-            self,
-        ) -> Result<super::SearchProductsOkRequest, runtime::BuildError> {
             self.0.build()
         }
     }

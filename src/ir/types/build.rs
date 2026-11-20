@@ -547,39 +547,16 @@ fn kind_scoped(s: &Value) -> bool {
     })
 }
 
-/// Keywords beside an implied shape hold for the `Other` variant too (`{minimum: 30, properties: ...}`). A
-/// `$ref` with keywords beside it joins two schemas that one struct does not hold.
+/// Keywords beside an implied shape hold for the `Other` variant too (`{enum: [...], properties: ...}`). Those of one
+/// kind are checked on the value of the union by its kind (`implied_checks`); any other is not held. A `$ref` with
+/// keywords beside it is the `allOf` of the two, which the merged type and its members hold.
 fn mixed(s: &Value) -> bool {
     s.as_object().is_some_and(|o| {
-        // Keywords that assert nothing about the value: annotations and the XML mapping.
-        let quiet = |k: &str| {
-            matches!(
-                k,
-                "$ref"
-                    | "$id"
-                    | "$schema"
-                    | "$comment"
-                    | "$defs"
-                    | "description"
-                    | "title"
-                    | "xml"
-                    | "example"
-                    | "examples"
-                    | "default"
-                    | "deprecated"
-                    | "readOnly"
-                    | "writeOnly"
-                    | "externalDocs"
-            )
-        };
-        (inferred_kind(o).is_some()
+        inferred_kind(o).is_some()
             && ASSERTIONS.iter().any(|k| {
-                // A keyword of one kind is checked on the value of the union by its kind (`implied_checks`).
                 let by_kind = KIND_SCOPED.contains(k) && !matches!(*k, "enum" | "const");
                 !matches!(*k, "items" | "prefixItems" | "additionalProperties") && !by_kind && o.contains_key(*k)
-            }))
-            // An extension (`x-...`) asserts nothing either.
-            || (o.contains_key("$ref") && o.keys().any(|k| !quiet(k) && !k.starts_with("x-")))
+            })
     })
 }
 
@@ -3221,8 +3198,8 @@ mod tests {
         let doc = Doc::new(json!({"openapi": "3.2.0", "components": {"schemas": schemas}}));
         let mut d = Diagnostics::default();
         let b = Builder::new(&doc, &mut d, Reserved::default());
-        // A keyword beside the `$ref`: the schema is checked whole at run time.
-        let c = b.constraints(&json!({"$ref": "#/components/schemas/L0", "minProperties": 1}));
+        // `dependencies` beside the `$ref` has no Rust type: the schema is checked whole at run time.
+        let c = b.constraints(&json!({"$ref": "#/components/schemas/L0", "dependencies": {}}));
         let schema = whole(&b, c.schema.expect("checked at run time"));
         let text = schema.to_string();
         assert_eq!(text.matches(r#""minLength":7"#).count(), 1, "{text}");
@@ -3253,7 +3230,7 @@ mod tests {
             out.into_iter().map(|v| format!("{} {}", v.path, v.message)).collect::<Vec<_>>()
         };
         // The properties are in the referenced schema, the `required` beside the reference.
-        let beside = json!({"$ref": "#/components/schemas/Base", "required": ["id"], "minProperties": 1});
+        let beside = json!({"$ref": "#/components/schemas/Base", "required": ["id"], "dependencies": {}});
         assert_eq!(check(&beside, &json!({"name": "x"})), Vec::<String>::new());
         // The properties are beside a union, the `required` in a referenced branch. `name` is still required.
         let branch = json!({
