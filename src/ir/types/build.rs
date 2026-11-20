@@ -425,14 +425,14 @@ pub(crate) fn checked_scalar(o: &serde_json::Map<String, Value>) -> bool {
     }
 }
 
-/// Returns a `const` with a type of its own. That is a string, number or bool.
-pub(crate) fn scalar_const(o: &serde_json::Map<String, Value>) -> Option<&Value> {
+/// Returns a `const` with a type of its own: a unit struct that decodes only its value. That is any value but `null`.
+fn typed_const(o: &serde_json::Map<String, Value>) -> Option<&Value> {
     // `enum` with one value says what `const` does: `enum: [true]` is a flag that may only be `true`.
     let one_value = || match o.get("enum")?.as_array()?.as_slice() {
         [v] if !o.contains_key("const") => Some(v),
         _ => None,
     };
-    let c = o.get("const").or_else(one_value).filter(|c| json::is_scalar(c) && !c.is_null())?;
+    let c = o.get("const").or_else(one_value).filter(|c| !c.is_null())?;
     // Composition, conditions and object shapes keep their own typing. A `const` beside an `enum` is both.
     let shaped = ["oneOf", "anyOf", "allOf", "properties", "if", "not"].iter().any(|k| o.contains_key(*k))
         || (o.contains_key("const") && o.contains_key("enum"));
@@ -440,10 +440,10 @@ pub(crate) fn scalar_const(o: &serde_json::Map<String, Value>) -> Option<&Value>
 }
 
 /// Does `o` list values that no Rust type holds: an empty `enum`, one of other than strings or integers, or a `const`
-/// of other than a string? A scalar constant is a unit type that decodes its one value, so it holds its keyword.
+/// of other than a string? A constant is a unit type that decodes its one value, so it holds its keyword.
 fn untyped_values(o: &serde_json::Map<String, Value>) -> bool {
     let untyped = |v: &Value| !v.is_string() && !v.is_null();
-    scalar_const(o).is_none()
+    typed_const(o).is_none()
         && ((o.get("enum").and_then(Value::as_array).is_some_and(|e| e.is_empty() || e.iter().any(untyped))
             && int_enum_values(o).is_none())
             || o.get("const").is_some_and(untyped))
@@ -1527,7 +1527,7 @@ impl<'a> Builder<'a> {
         }
         let (types, _) = type_set(o);
         let non_null: Vec<&str> = types.iter().map(String::as_str).filter(|t| *t != "null").collect();
-        if let Some(c) = scalar_const(o) {
+        if let Some(c) = typed_const(o) {
             return Some(Kind::Const(c.clone()));
         }
         if checked_scalar(o) {
@@ -1694,7 +1694,7 @@ impl<'a> Builder<'a> {
     }
 
     fn needs_item(o: &serde_json::Map<String, Value>) -> bool {
-        if scalar_const(o).is_some() || checked_scalar(o) || inferred_kind(o).is_some() {
+        if typed_const(o).is_some() || checked_scalar(o) || inferred_kind(o).is_some() {
             return true;
         }
         if o.contains_key("oneOf")

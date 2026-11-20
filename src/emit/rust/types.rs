@@ -1459,7 +1459,8 @@ fn constant(items: &mut Vec<TokenStream>, def: &TypeDef, value: &serde_json::Val
             let l = proc_macro2::Literal::f64_suffixed(x.as_f64().unwrap_or_default());
             (quote!(f64), quote!(#l), quote!(s.serialize_f64(Self::VALUE)))
         }
-        serde_json::Value::Null | serde_json::Value::Array(_) | serde_json::Value::Object(_) => return,
+        serde_json::Value::Array(_) | serde_json::Value::Object(_) => return structured_constant(items, def, value),
+        serde_json::Value::Null => return,
     };
     let json = super::syntax::json_tokens(value);
     items.push(quote! {
@@ -1477,6 +1478,37 @@ fn constant(items: &mut Vec<TokenStream>, def: &TypeDef, value: &serde_json::Val
         impl<'de> serde::Deserialize<'de> for #n {
             fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
                 runtime::expect_const(d, &#json).map(|()| Self)
+            }
+        }
+    });
+}
+
+/// Returns a `const` of an object or a list: a unit struct that serializes to the value and decodes only it, as JSON
+/// Schema compares values.
+fn structured_constant(items: &mut Vec<TokenStream>, def: &TypeDef, value: &serde_json::Value) {
+    let n = pascal_ident(&def.name);
+    let doc = doc_opt(def.doc.as_deref());
+    let json = super::syntax::json_tokens(value);
+    items.push(quote! {
+        #doc
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
+        pub struct #n;
+        impl #n {
+            /// The one value of this type.
+            #[must_use]
+            pub fn value() -> &'static serde_json::Value {
+                static VALUE: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
+                VALUE.get_or_init(|| #json)
+            }
+        }
+        impl serde::Serialize for #n {
+            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                serde::Serialize::serialize(Self::value(), s)
+            }
+        }
+        impl<'de> serde::Deserialize<'de> for #n {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                runtime::expect_const(d, Self::value()).map(|()| Self)
             }
         }
     });
