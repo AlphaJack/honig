@@ -37,7 +37,7 @@ impl<F: Format> TryFrom<String> for Formatted<F> {
 
     /// Errors: the text is not of the format.
     fn try_from(value: String) -> Result<Self, BuildError> {
-        if crate::validate::is_format(&value, F::NAME) {
+        if crate::checks::is_format(&value, F::NAME) {
             Ok(Self(value, PhantomData))
         } else {
             Err(BuildError::value(format!("`{value}` is not a valid {}", F::NAME)))

@@ -69,9 +69,5 @@ exclude_re = [
   'runtime/src/scalar\.rs:\d+:\d+: replace <impl Serializer for ScalarText>::serialize_(bytes|newtype_variant) -> .* with Ok\(None\)$',
   'runtime/src/scalar\.rs:\d+:\d+: replace <impl fmt::Display for NotScalar>::fmt ',
   # A leading comma on both sides: the text is still the same for equal values only.
-  'runtime/src/validate\.rs:\d+:\d+: replace > with >= in canonical$',
-  # A plain schema checked whole gives the same answer. The arm only skips a copy of the name.
-  'runtime/src/validate\.rs:\d+:\d+: delete match arm "pattern" \| "minLength" \| "maxLength" in Schema<.*>::valid_name$',
-  # `multipleOf: 0` divides by zero: NaN fails no comparison either way.
-  'runtime/src/validate\.rs:546:\d+: replace > with >= in Schema<.*>::check$',
+  'runtime/src/checks\.rs:\d+:\d+: replace > with >= in canonical$',
 ]

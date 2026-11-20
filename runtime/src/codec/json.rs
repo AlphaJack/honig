@@ -67,7 +67,7 @@ pub fn expect_const<'de, D: Deserializer<'de>>(d: D, want: &Value) -> Result<(),
         }
         _ => false,
     };
-    if crate::validate::json_equal(&got, want) || spelt {
+    if crate::checks::json_equal(&got, want) || spelt {
         Ok(())
     } else {
         Err(de::Error::custom(format!("expected {want}, found {got}")))
