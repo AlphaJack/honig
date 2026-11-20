@@ -1559,3 +1559,17 @@ fn every_example_is_decoded_from_its_text() {
     assert_eq!(examples.matches("/example\"").count(), 250, "{examples}");
     assert!(examples.contains("serde_json::from_str") && !examples.contains("serde_json::Value"), "{examples}");
 }
+
+/// One implementation of JSON Schema: the generated types. `generate` judges no example; the generated test decodes
+/// each through its type, which refuses one that breaks its schema.
+#[test]
+fn examples_are_judged_by_the_generated_types_only() {
+    let s = json!({"type": "object", "properties": {"n": {"type": "integer", "minimum": 5, "example": 1}}});
+    let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"S": s}}));
+    let spec = common::write("examples-judged", &doc, &[]);
+    let opts = crate::emit::Options { tests: true, ..crate::emit::Options::default() };
+    let generated = crate::generate::generate(&spec, &opts).unwrap_or_else(|d| panic!("{d:?}"));
+    assert!(generated.diagnostics.0.is_empty(), "{:?}", generated.diagnostics);
+    let examples = common::file(&generated.files, "documented_examples.rs");
+    assert!(examples.contains("/properties/n/example"), "{examples}");
+}

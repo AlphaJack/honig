@@ -29,8 +29,6 @@ pub(crate) fn validate(doc: &OpenApi, resolved: &Doc, diags: &mut Diagnostics) {
 pub(crate) fn validate_as(doc: &OpenApi, resolved: &Doc, version: Version, diags: &mut Diagnostics) {
     let mut v = V { diags, resolved, op_ids: BTreeMap::new(), links: vec![], version };
     v.root(doc);
-    // A description should not contradict itself: an example or default that its own schema rejects.
-    super::examples::check(resolved, diags);
     super::overlap::check(resolved, diags);
 }
 
