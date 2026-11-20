@@ -277,6 +277,23 @@ fn a_v20_discriminator_outside_required_is_a_warning() {
     assert!(out[0].starts_with("Warning /definitions/Product/discriminator:"), "{out:#?}");
 }
 
+/// A cookie list behind a long chain of `$ref`s is still a list: every link is followed until one repeats.
+#[test]
+fn a_cookie_list_behind_a_long_ref_chain_is_refused() {
+    let mut schemas = serde_json::Map::new();
+    for i in 0..10 {
+        schemas.insert(format!("L{i}"), json!({"$ref": format!("#/components/schemas/L{}", i + 1)}));
+    }
+    schemas.insert("L10".into(), json!({"type": "array", "items": {"type": "integer"}}));
+    let paths = json!({"/d": {"get": {
+        "parameters": [{"name": "ids", "in": "cookie", "explode": false, "schema": {"$ref": "#/components/schemas/L0"}}],
+        "responses": {"204": {"description": "ok"}}
+    }}});
+    let out = check("cookie-ref-chain", &common::spec("3.2.0", &paths, &json!({"schemas": schemas})));
+    assert_eq!(out.len(), 1, "{out:#?}");
+    assert!(out[0].contains("commas"), "{out:#?}");
+}
+
 /// 3.2.1: `explode: false` is invalid with `in: cookie` for arrays and objects
 /// (their items join with commas). A 3.2 document is refused. An earlier one
 /// whose text allowed it gets a warning. A scalar or an exploded list is fine.

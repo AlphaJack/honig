@@ -10,9 +10,6 @@ use crate::diag::Diagnostics;
 use crate::json::{Doc, join};
 use crate::walk::{self, Obj, Visit};
 
-/// `$ref`s and `allOf` members followed to find a branch's tag. A cycle stops here.
-const MAX_DEPTH: usize = 16;
-
 /// Warns about each discriminated `oneOf` with a branch that does not pin its tag.
 pub(crate) fn check(doc: &Doc, diags: &mut Diagnostics) {
     let mut found = Found { doc, out: vec![] };
@@ -28,23 +25,24 @@ struct Found<'a> {
 }
 
 impl Found<'_> {
-    /// Returns whether the branch through `$ref`s and `allOf` members fixes `prop` to one value.
-    fn pins(&self, branch: &Value, prop: &str, depth: usize) -> bool {
-        if depth > MAX_DEPTH {
-            return false;
-        }
+    /// Returns whether the branch through `$ref`s and `allOf` members fixes `prop` to one value. `seen` holds the
+    /// `$ref`s on the way: one met again is a cycle, which fixes nothing more.
+    fn pins(&self, branch: &Value, prop: &str, seen: &mut Vec<String>) -> bool {
         let branch = match branch.get("$ref").and_then(Value::as_str) {
+            Some(r) if seen.iter().any(|s| s == r) => return false,
             Some(r) => match self.doc.get(r) {
-                Some(t) => t,
+                Some(t) => {
+                    seen.push(r.to_owned());
+                    let pinned = self.pins(t, prop, seen);
+                    seen.pop();
+                    return pinned;
+                }
                 None => return false,
             },
             None => branch,
         };
         let own = branch.get("properties").and_then(|p| p.get(prop)).is_some_and(crate::json::fixes_one_value);
-        own || branch
-            .get("allOf")
-            .and_then(Value::as_array)
-            .is_some_and(|m| m.iter().any(|m| self.pins(m, prop, depth + 1)))
+        own || branch.get("allOf").and_then(Value::as_array).is_some_and(|m| m.iter().any(|m| self.pins(m, prop, seen)))
     }
 }
 
@@ -60,7 +58,7 @@ impl Visit for Found<'_> {
         let loose: Vec<String> = branches
             .iter()
             .enumerate()
-            .filter(|(_, b)| !self.pins(b, prop, 0))
+            .filter(|(_, b)| !self.pins(b, prop, &mut vec![]))
             .map(|(i, b)| b.get("$ref").and_then(Value::as_str).map_or_else(|| format!("#{i}"), String::from))
             .collect();
         if !loose.is_empty() {
@@ -105,5 +103,27 @@ mod tests {
             "Cat": pet(json!({"enum": ["cat"]})), "Dog": pet(json!({"const": "dog"}))
         }}});
         assert_eq!(warnings(pinned), Vec::<String>::new());
+    }
+
+    /// A branch that pins its tag through a long chain of `$ref`s and `allOf` members pins it: every link is
+    /// followed until one repeats, and a cycle pins nothing.
+    #[test]
+    fn a_tag_pinned_through_a_long_chain_is_pinned() {
+        let mut schemas = serde_json::Map::new();
+        schemas.insert(
+            "Pet".into(),
+            json!({"oneOf": [{"$ref": "#/components/schemas/D0"}, {"$ref": "#/components/schemas/Cat"}],
+                "discriminator": {"propertyName": "petType"}}),
+        );
+        schemas.insert("Cat".into(), json!({"type": "object", "properties": {"petType": {"const": "cat"}}}));
+        for i in 0..20 {
+            schemas.insert(format!("D{i}"), json!({"allOf": [{"$ref": format!("#/components/schemas/D{}", i + 1)}]}));
+        }
+        schemas.insert("D20".into(), json!({"type": "object", "properties": {"petType": {"const": "dog"}}}));
+        let doc = json!({"openapi": "3.2.0", "components": {"schemas": schemas.clone()}});
+        assert_eq!(warnings(doc), Vec::<String>::new());
+        schemas.insert("D20".into(), json!({"$ref": "#/components/schemas/D0"}));
+        let cycle = json!({"openapi": "3.2.0", "components": {"schemas": schemas}});
+        assert_eq!(warnings(cycle).len(), 1, "a cycle pins nothing");
     }
 }
