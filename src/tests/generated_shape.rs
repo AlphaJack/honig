@@ -1452,3 +1452,28 @@ fn a_deeply_nested_schema_is_typed() {
     let types = common::file(&generated.files, "types.rs");
     assert!(types.contains("Some(2)") && !types.contains("serde_json::Value"), "{types}");
 }
+
+/// A site binds its anchor in every generic that it reaches, however long the chain: the 20th still reads the site's
+/// type, not the generic's own default.
+#[test]
+fn a_long_chain_of_generics_binds_each() {
+    let n = 20;
+    let mut schemas = serde_json::Map::new();
+    for i in 0..n {
+        let next =
+            if i + 1 < n { json!({"$ref": format!("https://t.test/g{}", i + 1)}) } else { json!({"type": "string"}) };
+        let node = json!({"$dynamicAnchor": "node", "type": "integer"});
+        schemas.insert(
+            format!("G{i}"),
+            json!({"$id": format!("https://t.test/g{i}"), "$defs": {"node": node}, "type": "object",
+                "properties": {"me": {"$dynamicRef": "#node"}, "next": next}}),
+        );
+    }
+    let node = json!({"$dynamicAnchor": "node", "type": "boolean"});
+    schemas.insert("Site".into(), json!({"$ref": "#/components/schemas/G0", "$defs": {"node": node}}));
+    let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": schemas}));
+    let types =
+        common::file(&common::generate("generic-chain", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
+    let last = types.split("pub struct SiteG19 {").nth(1).unwrap_or_else(|| panic!("{types}"));
+    assert!(last.split('}').next().is_some_and(|body| body.contains("pub me: Option<bool>,")), "{types}");
+}
