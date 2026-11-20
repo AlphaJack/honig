@@ -30,6 +30,15 @@ fn value<T: serde::de::DeserializeOwned>(
         bad.push(format!("{at}: {e}"));
     }
 }
+fn param<T: serde::de::DeserializeOwned>(
+    bad: &mut Vec<String>,
+    at: &'static str,
+    v: serde_json::Value,
+) {
+    if let Err(e) = runtime::from_param::<T>(Some(v), at) {
+        bad.push(e.to_string());
+    }
+}
 #[test]
 fn documented_examples_decode() {
     let mut bad = vec![];
@@ -1123,6 +1132,20 @@ fn documented_examples_decode() {
         &mut bad,
         "/paths/~1user~1signup/post/requestBody/content/application~1xml/schema/properties/password/examples/2",
         serde_json::Value::String("qwerty123".to_owned()),
+    );
+    param::<
+        i64,
+    >(
+        &mut bad,
+        "/components/parameters/limit/schema/default",
+        serde_json::Value::from(10i64),
+    );
+    param::<
+        i64,
+    >(
+        &mut bad,
+        "/components/parameters/offset/schema/default",
+        serde_json::Value::from(0i64),
     );
     value::<
         types::CreateUserBodyRequest,

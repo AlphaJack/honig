@@ -4735,12 +4735,8 @@ pub struct ShipmentInternationalFields {
         deserialize_with = "runtime::not_null"
     )]
     pub meta: Option<ShipmentInternationalMeta>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub label: Option<ShipmentInternationalLabel>,
+    #[serde(default = "ShipmentInternationalFields::default_label")]
+    pub label: ShipmentInternationalLabel,
     pub parcels: ShipmentInternationalParcels,
     #[serde(
         default,
@@ -4763,7 +4759,7 @@ deserialize_impl_2!(ShipmentInternationalFields);
 serialize_impl_2!(ShipmentInternationalFields);
 impl ShipmentInternationalFields {
     #[must_use]
-    pub const fn new(
+    pub fn new(
         kind: ShipmentInternationalKind,
         customs: String,
         parcels: ShipmentInternationalParcels,
@@ -4776,12 +4772,21 @@ impl ShipmentInternationalFields {
             options: None,
             rating: None,
             meta: None,
-            label: None,
+            label: Self::default_label(),
             parcels,
             scores: None,
             priority: runtime::Nullable::Absent,
             weight: runtime::Nullable::Absent,
             labels: None,
+        }
+    }
+}
+impl ShipmentInternationalFields {
+    #[doc(hidden)]
+    #[must_use]
+    pub fn default_label() -> ShipmentInternationalLabel {
+        ShipmentInternationalLabel {
+            0: "none".to_owned(),
         }
     }
 }
@@ -4912,7 +4917,7 @@ impl runtime::XmlShape for ShipmentInternationalFields {
                     text: false,
                     list: false,
                     wrapped: false,
-                    required: false,
+                    required: true,
                     item: "label",
                     child: None,
                     cdata: false,
@@ -5091,12 +5096,8 @@ pub struct ShipmentOtherwiseFields {
         deserialize_with = "runtime::not_null"
     )]
     pub meta: Option<ShipmentOtherwiseMeta>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub label: Option<ShipmentOtherwiseLabel>,
+    #[serde(default = "ShipmentOtherwiseFields::default_label")]
+    pub label: ShipmentOtherwiseLabel,
     pub parcels: ShipmentOtherwiseParcels,
     #[serde(
         default,
@@ -5119,10 +5120,7 @@ deserialize_impl_2!(ShipmentOtherwiseFields);
 serialize_impl_2!(ShipmentOtherwiseFields);
 impl ShipmentOtherwiseFields {
     #[must_use]
-    pub const fn new(
-        kind: ShipmentOtherwiseKind,
-        parcels: ShipmentOtherwiseParcels,
-    ) -> Self {
+    pub fn new(kind: ShipmentOtherwiseKind, parcels: ShipmentOtherwiseParcels) -> Self {
         Self {
             kind,
             customs: None,
@@ -5131,12 +5129,21 @@ impl ShipmentOtherwiseFields {
             options: None,
             rating: None,
             meta: None,
-            label: None,
+            label: Self::default_label(),
             parcels,
             scores: None,
             priority: runtime::Nullable::Absent,
             weight: runtime::Nullable::Absent,
             labels: None,
+        }
+    }
+}
+impl ShipmentOtherwiseFields {
+    #[doc(hidden)]
+    #[must_use]
+    pub fn default_label() -> ShipmentOtherwiseLabel {
+        ShipmentOtherwiseLabel {
+            0: "none".to_owned(),
         }
     }
 }
@@ -5267,7 +5274,7 @@ impl runtime::XmlShape for ShipmentOtherwiseFields {
                     text: false,
                     list: false,
                     wrapped: false,
-                    required: false,
+                    required: true,
                     item: "label",
                     child: None,
                     cdata: false,
@@ -6311,7 +6318,7 @@ pub mod builders {
                 Error: std::fmt::Display,
             >,
         ) -> Self {
-            Self(self.0.set("label", value, |s, v| s.label = Some(v)))
+            Self(self.0.set("label", value, |s, v| s.label = v))
         }
         pub fn scores(
             self,
@@ -6446,7 +6453,7 @@ pub mod builders {
             self,
             value: impl TryInto<types::ShipmentOtherwiseLabel, Error: std::fmt::Display>,
         ) -> Self {
-            Self(self.0.set("label", value, |s, v| s.label = Some(v)))
+            Self(self.0.set("label", value, |s, v| s.label = v))
         }
         pub fn scores(
             self,
@@ -6654,7 +6661,7 @@ pub mod builders {
                 Error: std::fmt::Display,
             >,
         ) -> Self {
-            Self(self.0.set("label", value, |s, v| s.label = Some(v)))
+            Self(self.0.set("label", value, |s, v| s.label = v))
         }
         pub fn scores(
             self,
@@ -6773,7 +6780,7 @@ pub mod builders {
             self,
             value: impl TryInto<types::ShipmentOtherwiseLabel, Error: std::fmt::Display>,
         ) -> Self {
-            Self(self.0.set("label", value, |s, v| s.label = Some(v)))
+            Self(self.0.set("label", value, |s, v| s.label = v))
         }
         pub fn scores(
             self,

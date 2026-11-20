@@ -16,15 +16,6 @@ const INLINE_BUDGET: usize = 20_000;
 /// Nesting that inlining follows. Deeper references read as `true`, as past the budget.
 const INLINE_DEPTH: usize = 24;
 
-/// Returns whether `value` satisfies `schema`, its `$ref`s followed within the budget.
-pub(crate) fn satisfies(doc: &Doc, schema: &Value, value: &Value) -> bool {
-    let mut budget = INLINE_BUDGET;
-    let schema = inline(doc, schema, &mut budget, 0);
-    let mut out = vec![];
-    crate::validate::interpreter::check_schema(&mut out, &runtime::InstancePath::Root, value, &schema);
-    out.is_empty()
-}
-
 /// Reports every `default`, `example` and `examples` value that its schema rejects.
 pub(crate) fn check(doc: &Doc, diags: &mut Diagnostics) {
     let mut found = Found { doc, pairs: vec![] };

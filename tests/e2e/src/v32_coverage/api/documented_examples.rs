@@ -43,6 +43,20 @@ fn param<T: serde::de::DeserializeOwned>(
 fn documented_examples_decode() {
     let mut bad = vec![];
     value::<
+        types::Pixels,
+    >(
+        &mut bad,
+        "/components/schemas/ImageNote/properties/width/default",
+        serde_json::Value::from(64i64),
+    );
+    value::<
+        types::Pixels,
+    >(
+        &mut bad,
+        "/components/schemas/Note/oneOf/1/properties/width/default",
+        serde_json::Value::from(64i64),
+    );
+    value::<
         String,
     >(
         &mut bad,

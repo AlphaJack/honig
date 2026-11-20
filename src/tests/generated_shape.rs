@@ -1519,3 +1519,26 @@ fn a_list_component_with_keywords_is_a_checked_type() {
     assert!(types.contains("pub struct Tags(pub(super) Vec<String>);"), "{types}");
     assert!(types.contains("pub tags: Option<Tags>,"), "{types}");
 }
+
+/// A `default` of the wrong type does not compile, with the reason: the description is wrong, and the crate says so.
+#[test]
+fn a_default_of_the_wrong_type_does_not_compile() {
+    let holder = json!({"type": "object", "properties": {"n": {"type": "integer", "default": "many"}}});
+    let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Holder": holder}}));
+    let types =
+        common::file(&common::generate("default-type", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
+    assert!(types.contains("compile_error!") && types.contains("no value of this field's type"), "{types}");
+}
+
+/// A `default` that breaks a keyword of its schema is filled in as written, and the test of the documented examples
+/// decodes it through the field's type, which refuses it.
+#[test]
+fn a_default_is_checked_by_the_test_of_the_examples() {
+    let holder =
+        json!({"type": "object", "properties": {"label": {"type": "string", "minLength": 4, "default": "bad"}}});
+    let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Holder": holder}}));
+    let opts = crate::emit::Options { tests: true, ..crate::emit::Options::default() };
+    let files = common::generate("default-checked", &doc, &opts);
+    let examples = common::file(&files, "documented_examples.rs");
+    assert!(examples.contains("/properties/label/default"), "{examples}");
+}

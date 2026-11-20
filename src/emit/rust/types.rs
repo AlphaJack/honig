@@ -694,6 +694,56 @@ fn xml_inner<'a>(space: &Space<'a>, mut t: &'a Ty) -> (&'a Ty, bool) {
 /// Returns the literal `v` as an expression of type `t` (`qualify`: `types::` paths)
 /// if it fits. That is scalars and string/integer enums through aliases.
 pub(super) fn default_expr(space: &Space<'_>, t: &Ty, v: &serde_json::Value, qualify: bool) -> Option<TokenStream> {
+    if let Some(e) = literal_expr(space, t, v, qualify) {
+        return Some(e);
+    }
+    // A default that a literal of the type would write but that is no value of it: the crate does not compile, and the
+    // error says why. A type with no literal (a decimal, a library format) keeps no default instead.
+    literal_type(space, t).then(|| {
+        let why = lit(&format!("the `default` {v} of the description is no value of this field's type"));
+        quote!(compile_error!(#why))
+    })
+}
+
+/// Can a default of type `t` be written as a literal: a scalar, a string or integer enum, or a checked type of one?
+fn literal_type(space: &Space<'_>, t: &Ty) -> bool {
+    match space.types.unalias(t) {
+        Ty::String
+        | Ty::Bool
+        | Ty::I8
+        | Ty::I16
+        | Ty::I32
+        | Ty::I64
+        | Ty::U8
+        | Ty::U16
+        | Ty::U32
+        | Ty::U64
+        | Ty::F32
+        | Ty::F64 => true,
+        Ty::Named(id) => match &space.types.get(*id).kind {
+            Kind::StrEnum(_) | Kind::IntEnum(_) => true,
+            Kind::Checked(c) => literal_type(space, &c.base),
+            Kind::Struct(_) | Kind::Union(_) | Kind::Alias(_) | Kind::Newtype(_) | Kind::Const(_) | Kind::Pending => {
+                false
+            }
+        },
+        Ty::Decimal
+        | Ty::Bytes
+        | Ty::Binary
+        | Ty::Format(_)
+        | Ty::Any
+        | Ty::Unit
+        | Ty::Vec(_)
+        | Ty::Array(..)
+        | Ty::Map(_)
+        | Ty::Option(_)
+        | Ty::Indirect(_)
+        | Ty::Tuple(_) => false,
+    }
+}
+
+/// Returns [`default_expr`] when the default is a literal of `t`.
+fn literal_expr(space: &Space<'_>, t: &Ty, v: &serde_json::Value, qualify: bool) -> Option<TokenStream> {
     use proc_macro2::Literal;
     let t = space.types.unalias(t);
     Some(match (t, v) {
@@ -746,8 +796,8 @@ pub(super) fn default_expr(space: &Space<'_>, t: &Ty, v: &serde_json::Value, qua
         (Ty::Named(id), _) => {
             let kind = &space.types.get(*id).kind;
             if let Kind::Checked(c) = kind {
-                // The builder keeps only a default that meets the keywords: it is built without the checks.
-                let inner = default_expr(space, &c.base, v, qualify)?;
+                // Built without the checks: the test of the documented examples checks the default.
+                let inner = literal_expr(space, &c.base, v, qualify)?;
                 let t = ty(space, t, qualify);
                 // Brace syntax: a twin of the type is declared as an alias of it, and no alias is a tuple constructor.
                 return Some(quote!(#t { 0: #inner }));

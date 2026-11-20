@@ -367,8 +367,9 @@ fn typed_dependent_schemas(s: &Value) -> Option<&serde_json::Map<String, Value>>
 
 /// Returns a property schema's `example` and `examples` (an array in JSON Schema).
 pub(crate) fn property_examples(prop: &Value, ptr: &str) -> Vec<(String, Value)> {
+    // A default is a value of the schema too: the test of the documented examples checks it with them.
     let mut out: Vec<(String, Value)> =
-        prop.get("example").map(|v| (join(ptr, "example"), v.clone())).into_iter().collect();
+        (["example", "default"].iter()).filter_map(|k| prop.get(*k).map(|v| (join(ptr, k), v.clone()))).collect();
     for (i, v) in json::items(prop.get("examples")) {
         out.push((join(&join(ptr, "examples"), &i.to_string()), v.clone()));
     }
@@ -790,16 +791,11 @@ fn inferred_kind(o: &serde_json::Map<String, Value>) -> Option<&'static str> {
     ["items", "prefixItems"].iter().any(|k| o.contains_key(*k)).then_some("array")
 }
 
-/// Returns the `default` of a schema when it is a plain literal (string, number or bool) that the schema accepts. A
-/// default is an annotation: one that breaks its own schema (`validate` warns) is not filled in. Filling it would make
-/// a request that leaves the field out invalid.
-pub(crate) fn literal_default(doc: &Doc, s: &Value) -> Option<Value> {
-    let d = s.get("default").filter(|d| json::is_scalar(d))?;
-    let mut own = s.clone();
-    if let Some(o) = own.as_object_mut() {
-        o.remove("default");
-    }
-    crate::validate::examples::satisfies(doc, &own, d).then(|| d.clone())
+/// Returns the `default` of a schema when it is a plain literal (string, number or bool). It is written into the code
+/// as it is: one of the wrong type does not compile, and one that breaks a keyword of its schema fails the test of the
+/// documented examples, where it is checked as one ([`property_examples`]).
+pub(crate) fn literal_default(s: &Value) -> Option<Value> {
+    s.get("default").filter(|d| json::is_scalar(d)).cloned()
 }
 
 /// Returns a media type whose content is bytes and not text. It is not `text/*`, JSON or XML.
@@ -1734,7 +1730,7 @@ impl<'a> Builder<'a> {
         if let Ty::Named(id) = t {
             return match &self.defs[id.0].kind {
                 Kind::StrEnum(_) | Kind::IntEnum(_) => true,
-                // `literal_default` keeps only a default that meets the keywords.
+                // A default of a checked type is built without its checks: the test of the examples checks it.
                 Kind::Checked(c) => self.literal_type(&c.base),
                 Kind::Struct(_)
                 | Kind::Union(_)
@@ -1980,7 +1976,7 @@ impl<'a> Builder<'a> {
                 // is known once every component is filled: `finish` drops the ones it cannot.
                 // A count of the properties sees the ones sent: a default filled in would count one that was not.
                 let counted = o.contains_key("minProperties") || o.contains_key("maxProperties");
-                let default = literal_default(self.doc, prop).filter(|_| {
+                let default = literal_default(prop).filter(|_| {
                     !required.contains(wire.as_str()) && !read_write && !dependent.contains(wire.as_str()) && !counted
                 });
                 fields.push(Field {

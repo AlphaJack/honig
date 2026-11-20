@@ -617,10 +617,8 @@ fn params(b: &mut Builder<'_>, site: &Site<'_>, prefix: &Name) -> Vec<Param> {
         };
         let explode = p.get("explode").and_then(Value::as_bool).unwrap_or(matches!(style, Style::Form | Style::Cookie));
         let required = location == Location::Path || json::flag(&p, "required");
-        let default = p
-            .get("schema")
-            .and_then(|s| crate::ir::types::literal_default(b.doc, s))
-            .filter(|_| !required && b.literal_type(&ty));
+        let default =
+            p.get("schema").and_then(crate::ir::types::literal_default).filter(|_| !required && b.literal_type(&ty));
         out.push(Param {
             name: unique(Name::new(&wire), &mut taken),
             wire,
@@ -632,7 +630,7 @@ fn params(b: &mut Builder<'_>, site: &Site<'_>, prefix: &Name) -> Vec<Param> {
             content,
             doc: json::string(&p, "description"),
             constraints,
-            examples: examples_of(b, &p, &pptr, false),
+            examples: param_examples(b, &p, &pptr),
             allow_empty: p.get("allowEmptyValue") == Some(&Value::Bool(true)),
             deprecated: p.get("deprecated") == Some(&Value::Bool(true)),
             default,
@@ -690,6 +688,16 @@ fn part_headers(b: &mut Builder<'_>, site: &Site<'_>, prefix: &Name, params: &[P
                 serialized: serialized_of(b, &h, &hptr),
             });
         }
+    }
+    out
+}
+
+/// Returns the documented examples of a parameter, with the `default` of its schema: the test of the examples checks
+/// that too.
+fn param_examples(b: &mut Builder<'_>, p: &Value, ptr: &str) -> Vec<(String, Value)> {
+    let mut out = examples_of(b, p, ptr, false);
+    if let Some(d) = p.get("schema").and_then(|s| s.get("default")) {
+        out.push((join(&join(ptr, "schema"), "default"), d.clone()));
     }
     out
 }
