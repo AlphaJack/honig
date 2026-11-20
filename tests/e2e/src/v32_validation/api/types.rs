@@ -463,7 +463,8 @@ impl<'de> serde::Deserialize<'de> for Tagged {
 impl TryFrom<TaggedVariants> for Tagged {
     type Error = runtime::BuildError;
     fn try_from(value: TaggedVariants) -> Result<Self, runtime::BuildError> {
-        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = runtime::to_value(&value)
+            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
         Self::checked(value, &runtime::Content::of(&json))
     }
 }
@@ -1536,7 +1537,8 @@ impl<'de> serde::Deserialize<'de> for Shipment {
 impl TryFrom<ShipmentVariants> for Shipment {
     type Error = runtime::BuildError;
     fn try_from(value: ShipmentVariants) -> Result<Self, runtime::BuildError> {
-        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = runtime::to_value(&value)
+            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
         Self::checked(value, &runtime::Content::of(&json))
     }
 }
@@ -1630,7 +1632,8 @@ impl<'de> serde::Deserialize<'de> for Voucher {
 impl TryFrom<VoucherFields> for Voucher {
     type Error = runtime::BuildError;
     fn try_from(value: VoucherFields) -> Result<Self, runtime::BuildError> {
-        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = runtime::to_value(&value)
+            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
         Self::checked(value, &runtime::Content::of(&json))
     }
 }
@@ -2964,7 +2967,8 @@ impl TryFrom<ShipmentInternationalFields> for ShipmentInternational {
     fn try_from(
         value: ShipmentInternationalFields,
     ) -> Result<Self, runtime::BuildError> {
-        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = runtime::to_value(&value)
+            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
         Self::checked(value, &runtime::Content::of(&json))
     }
 }
@@ -3260,7 +3264,8 @@ impl<'de> serde::Deserialize<'de> for ShipmentOtherwise {
 impl TryFrom<ShipmentOtherwiseFields> for ShipmentOtherwise {
     type Error = runtime::BuildError;
     fn try_from(value: ShipmentOtherwiseFields) -> Result<Self, runtime::BuildError> {
-        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = runtime::to_value(&value)
+            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
         Self::checked(value, &runtime::Content::of(&json))
     }
 }
@@ -5529,7 +5534,8 @@ impl<'de> serde::Deserialize<'de> for BadgeHolders {
 impl TryFrom<Vec<String>> for BadgeHolders {
     type Error = runtime::BuildError;
     fn try_from(value: Vec<String>) -> Result<Self, runtime::BuildError> {
-        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = runtime::to_value(&value)
+            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
         Self::checked(value, &runtime::Content::of(&json))
     }
 }
@@ -5735,7 +5741,8 @@ impl<'de> serde::Deserialize<'de> for ShipmentInternationalParcels {
 impl TryFrom<Vec<ParcelsItem>> for ShipmentInternationalParcels {
     type Error = runtime::BuildError;
     fn try_from(value: Vec<ParcelsItem>) -> Result<Self, runtime::BuildError> {
-        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = runtime::to_value(&value)
+            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
         Self::checked(value, &runtime::Content::of(&json))
     }
 }
@@ -5848,7 +5855,8 @@ impl TryFrom<Vec<ShipmentOtherwiseParcelsItem>> for ShipmentOtherwiseParcels {
     fn try_from(
         value: Vec<ShipmentOtherwiseParcelsItem>,
     ) -> Result<Self, runtime::BuildError> {
-        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = runtime::to_value(&value)
+            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
         Self::checked(value, &runtime::Content::of(&json))
     }
 }

@@ -181,7 +181,8 @@ impl<'de> serde::Deserialize<'de> for Note {
 impl TryFrom<NoteVariants> for Note {
     type Error = runtime::BuildError;
     fn try_from(value: NoteVariants) -> Result<Self, runtime::BuildError> {
-        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = runtime::to_value(&value)
+            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
         Self::checked(value, &runtime::Content::of(&json))
     }
 }
@@ -225,7 +226,8 @@ impl<'de> serde::Deserialize<'de> for TextNote {
 impl TryFrom<TextNoteFields> for TextNote {
     type Error = runtime::BuildError;
     fn try_from(value: TextNoteFields) -> Result<Self, runtime::BuildError> {
-        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = runtime::to_value(&value)
+            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
         Self::checked(value, &runtime::Content::of(&json))
     }
 }
@@ -326,7 +328,8 @@ impl<'de> serde::Deserialize<'de> for Crop {
 impl TryFrom<CropVariants> for Crop {
     type Error = runtime::BuildError;
     fn try_from(value: CropVariants) -> Result<Self, runtime::BuildError> {
-        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = runtime::to_value(&value)
+            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
         Self::checked(value, &runtime::Content::of(&json))
     }
 }
@@ -379,7 +382,8 @@ impl<'de> serde::Deserialize<'de> for NoteTextNote {
 impl TryFrom<NoteTextNoteFields> for NoteTextNote {
     type Error = runtime::BuildError;
     fn try_from(value: NoteTextNoteFields) -> Result<Self, runtime::BuildError> {
-        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = runtime::to_value(&value)
+            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
         Self::checked(value, &runtime::Content::of(&json))
     }
 }
