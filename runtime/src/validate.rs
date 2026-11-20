@@ -285,16 +285,46 @@ pub fn check_range<T: PartialOrd + fmt::Display + Copy + JsonNumber>(
     }
 }
 
-/// Checks that the number `value` is a multiple of `of`, exactly: both are read as their decimal text. An `f64` is its
-/// shortest text, the one that it decodes from.
-pub fn check_multiple<T: fmt::Display + JsonNumber + Copy>(
+/// Checks that the number `value` is a multiple of `of`, exactly: both are read as their decimal text.
+///
+/// An `f64` is its shortest text, the one that it decodes from. The text is in exponent form, so it fits on the stack:
+/// `1e300` is five bytes and not 301.
+pub fn check_multiple<T: fmt::LowerExp + JsonNumber + Copy>(
     out: &mut Vec<Violation>,
     path: &InstancePath<'_>,
     value: T,
     of: &str,
 ) {
     if value.is_json_number() {
-        check_multiple_text(out, path, &value.to_string(), of);
+        let mut text = StackText::default();
+        if fmt::Write::write_fmt(&mut text, format_args!("{value:e}")).is_ok() {
+            check_multiple_text(out, path, text.as_str(), of);
+        } else {
+            check_multiple_text(out, path, &format!("{value:e}"), of);
+        }
+    }
+}
+
+/// Text on the stack, as long as the longest number in exponent form: `-9.223372036854775808e18` is 24 bytes and an
+/// `f64` at most 24 too. Longer text fails to write.
+#[derive(Default)]
+struct StackText {
+    bytes: [u8; 32],
+    len: usize,
+}
+
+impl StackText {
+    fn as_str(&self) -> &str {
+        std::str::from_utf8(&self.bytes[..self.len]).unwrap_or_default()
+    }
+}
+
+impl fmt::Write for StackText {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        let end = self.len.checked_add(s.len()).filter(|end| *end <= self.bytes.len()).ok_or(fmt::Error)?;
+        self.bytes[self.len..end].copy_from_slice(s.as_bytes());
+        self.len = end;
+        Ok(())
     }
 }
 
