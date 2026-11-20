@@ -439,11 +439,44 @@ fn typed_const(o: &serde_json::Map<String, Value>) -> Option<&Value> {
     (!shaped).then_some(c)
 }
 
+/// Returns an `enum` of objects, lists or values of several kinds as the `anyOf` of one `const` per value: each is a unit
+/// struct that decodes only its value, so the union decodes only a listed value. `null` is `{type: null}`. `None` when
+/// a `type` beside it would refuse a listed value, or another keyword beside it shapes the value.
+fn values_union(o: &serde_json::Map<String, Value>) -> Option<serde_json::Map<String, Value>> {
+    let values = o.get("enum")?.as_array().filter(|v| !v.is_empty())?;
+    let (types, _) = type_set(o);
+    let allowed = |v: &Value| {
+        let kind = match v {
+            Value::Null => "null",
+            Value::Bool(_) => "boolean",
+            Value::Number(n) if n.is_i64() || n.is_u64() => "integer",
+            Value::Number(_) => "number",
+            Value::String(_) => "string",
+            Value::Array(_) => "array",
+            Value::Object(_) => "object",
+        };
+        types.is_empty() || types.iter().any(|t| t == kind || (t == "number" && kind == "integer"))
+    };
+    let annotation = |k: &str| k == "enum" || k == "type" || ANNOTATIONS.contains(&k) || k.starts_with("x-");
+    if !values.iter().all(allowed) || !o.keys().all(|k| annotation(k)) {
+        return None;
+    }
+    let branches = values
+        .iter()
+        .map(|v| if v.is_null() { serde_json::json!({"type": "null"}) } else { serde_json::json!({"const": v}) });
+    let mut u: serde_json::Map<String, Value> =
+        o.iter().filter(|(k, _)| !matches!(k.as_str(), "enum" | "type")).map(|(k, v)| (k.clone(), v.clone())).collect();
+    u.insert("anyOf".into(), Value::Array(branches.collect()));
+    Some(u)
+}
+
 /// Does `o` list values that no Rust type holds: an empty `enum`, one of other than strings or integers, or a `const`
-/// of other than a string? A constant is a unit type that decodes its one value, so it holds its keyword.
+/// of other than a string? A constant is a unit type that decodes its one value, and a union of them a list of values
+/// ([`values_union`]), so each holds its keyword.
 fn untyped_values(o: &serde_json::Map<String, Value>) -> bool {
     let untyped = |v: &Value| !v.is_string() && !v.is_null();
     typed_const(o).is_none()
+        && values_union(o).is_none()
         && ((o.get("enum").and_then(Value::as_array).is_some_and(|e| e.is_empty() || e.iter().any(untyped))
             && int_enum_values(o).is_none())
             || o.get("const").is_some_and(untyped))
@@ -1578,6 +1611,9 @@ impl<'a> Builder<'a> {
             let non_null_values = values.iter().filter(|v| !v.is_null()).count();
             if !strings.is_empty() && strings.len() == non_null_values && non_null.iter().all(|t| *t == "string") {
                 return Some(str_enum(&strings));
+            }
+            if let Some(u) = values_union(o) {
+                return self.union(&u, ptr, name);
             }
             return None;
         }
@@ -2873,7 +2909,8 @@ mod tests {
     }
 
     /// An `enum` without `type` has the type of each of its values. A list or an object among them is one too: the
-    /// `enum` is not typed as its first scalar, which would refuse the list.
+    /// `enum` is not typed as its first scalar, which would refuse the list. Its type is a union of one constant per
+    /// value.
     #[test]
     fn an_untyped_enum_has_the_type_of_each_value() {
         let o = json!({"enum": [6, "foo", [], true, {"foo": 12}, 7, null]});
@@ -2884,7 +2921,11 @@ mod tests {
             &json!({"Mixed": {"type": "object", "properties": {"v": {"enum": [6, "foo", [], true, {"foo": 12}]}}}}),
         );
         let Kind::Struct(mixed) = &by_name(&s, "Mixed").kind else { panic!("a struct") };
-        assert_eq!(mixed.fields[0].ty, Ty::Any, "{:?}", mixed.fields[0].ty);
+        let Ty::Named(field) = &mixed.fields[0].ty else { panic!("{:?}", mixed.fields[0].ty) };
+        let Kind::Union(union) = &s.get(*field).kind else { panic!("a union") };
+        let unit = |t: &Ty| matches!(t, Ty::Named(id) if matches!(s.get(*id).kind, Kind::Const(_)));
+        let consts = union.variants.iter().filter(|variant| unit(&variant.ty));
+        assert_eq!(consts.count(), 5);
     }
 
     #[test]
