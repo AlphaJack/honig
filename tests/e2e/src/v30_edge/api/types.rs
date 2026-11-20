@@ -19,24 +19,6 @@ macro_rules! deserialize_impl {
     ($t:ty) => {
         impl<'de> serde::Deserialize<'de> for $t {
             fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-                Self::deserialize(runtime::NoSeq(d))
-            }
-        }
-    };
-}
-macro_rules! serialize_impl {
-    ($t:ty) => {
-        impl serde::Serialize for $t {
-            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-                Self::serialize(self, s)
-            }
-        }
-    };
-}
-macro_rules! deserialize_impl_2 {
-    ($t:ty) => {
-        impl<'de> serde::Deserialize<'de> for $t {
-            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
                 let (value, text) = runtime::read_once::<_, OrderCustomer>(d)?;
                 match text {
                     Some(text) => {
@@ -100,34 +82,29 @@ impl TryFrom<&str> for Status {
     }
 }
 runtime::str_enum_impls!(Status);
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct Money {
-    #[serde(rename = "amountCents")]
-    pub amount_cents: i64,
-    pub currency: MoneyCurrency,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+    pub struct Money {
+        #[serde(rename = "amountCents")]
+        pub amount_cents: i64,
+        pub currency: MoneyCurrency,
+    }
 }
-deserialize_impl!(Money);
-serialize_impl!(Money);
 impl Money {
     #[must_use]
     pub const fn new(amount_cents: i64, currency: MoneyCurrency) -> Self {
         Self { amount_cents, currency }
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct Customer {
-    pub name: CustomerName,
-    #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
-    pub email: runtime::Nullable<String>,
-    #[serde(flatten)]
-    pub additional_properties: std::collections::BTreeMap<String, serde_json::Value>,
-}
-deserialize_impl!(Customer);
-impl serde::Serialize for Customer {
-    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        Self::serialize(self, runtime::UniqueKeys(s))
+runtime::object! {
+    #[unique_keys]
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+    pub struct Customer {
+        pub name: CustomerName,
+        #[nullable]
+        pub email: String,
+        #[serde(flatten)]
+        pub additional_properties: std::collections::BTreeMap<String, serde_json::Value>,
     }
 }
 impl Customer {
@@ -140,55 +117,51 @@ impl Customer {
         }
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct Card {
-    pub last4: CardLast4,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+    pub struct Card {
+        pub last4: CardLast4,
+    }
 }
-deserialize_impl!(Card);
-serialize_impl!(Card);
 impl Card {
     #[must_use]
     pub const fn new(last4: CardLast4) -> Self {
         Self { last4 }
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct Sepa {
-    pub iban: String,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct Sepa {
+        pub iban: String,
+    }
 }
-deserialize_impl!(Sepa);
-serialize_impl!(Sepa);
 impl Sepa {
     #[must_use]
     pub const fn new(iban: String) -> Self {
         Self { iban }
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct Car {
-    pub kind: String,
-    pub seats: i64,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct Car {
+        pub kind: String,
+        pub seats: i64,
+    }
 }
-deserialize_impl!(Car);
-serialize_impl!(Car);
 impl Car {
     #[must_use]
     pub const fn new(kind: String, seats: i64) -> Self {
         Self { kind, seats }
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct Van {
-    pub kind: String,
-    #[serde(rename = "cargoLitres")]
-    pub cargo_litres: i64,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct Van {
+        pub kind: String,
+        #[serde(rename = "cargoLitres")]
+        pub cargo_litres: i64,
+    }
 }
-deserialize_impl!(Van);
-serialize_impl!(Van);
 impl Van {
     #[must_use]
     pub const fn new(kind: String, cargo_litres: i64) -> Self {
@@ -248,50 +221,29 @@ impl Vehicle {
     }
 }
 runtime::checked_impls!(Vehicle, VehicleVariants);
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct Order {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub id: Option<runtime::UuidText>,
-    pub status: Status,
-    pub total: Money,
-    #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
-    pub customer: runtime::Nullable<OrderCustomerChecked>,
-    #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
-    pub notes: runtime::Nullable<String>,
-    #[serde(
-        rename = "createdAt",
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub created_at: Option<runtime::DateTimeText>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub labels: Option<std::collections::BTreeMap<String, String>>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub payment: Option<OrderPayment>,
-    pub vehicle: Vehicle,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub discount: Option<OrderDiscount>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+    pub struct Order {
+        #[optional]
+        pub id: runtime::UuidText,
+        pub status: Status,
+        pub total: Money,
+        #[nullable]
+        pub customer: OrderCustomerChecked,
+        #[nullable]
+        pub notes: String,
+        #[optional]
+        #[serde(rename = "createdAt")]
+        pub created_at: runtime::DateTimeText,
+        #[optional]
+        pub labels: std::collections::BTreeMap<String, String>,
+        #[optional]
+        pub payment: OrderPayment,
+        pub vehicle: Vehicle,
+        #[optional]
+        pub discount: OrderDiscount,
+    }
 }
-deserialize_impl!(Order);
-serialize_impl!(Order);
 impl Order {
     #[must_use]
     pub const fn new(status: Status, total: Money, vehicle: Vehicle) -> Self {
@@ -309,37 +261,32 @@ impl Order {
         }
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct OrderPage {
-    pub items: Vec<Order>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub total: Option<i64>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct OrderPage {
+        pub items: Vec<Order>,
+        #[optional]
+        pub total: i64,
+    }
 }
-deserialize_impl!(OrderPage);
-serialize_impl!(OrderPage);
 impl OrderPage {
     #[must_use]
     pub const fn new(items: Vec<Order>) -> Self {
         Self { items, total: None }
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct Problem {
-    #[serde(rename = "type", default = "Problem::default_type_")]
-    pub type_: String,
-    pub title: String,
-    pub status: i64,
-    #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
-    pub detail: runtime::Nullable<String>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+    pub struct Problem {
+        #[serde(rename = "type")]
+        #[serde(default = "Problem::default_type_")]
+        pub type_: String,
+        pub title: String,
+        pub status: i64,
+        #[nullable]
+        pub detail: String,
+    }
 }
-deserialize_impl!(Problem);
-serialize_impl!(Problem);
 impl Problem {
     #[must_use]
     pub fn new(title: String, status: i64) -> Self {
@@ -632,14 +579,13 @@ impl TryFrom<String> for ListOrdersCursor {
     }
 }
 runtime::checked_str_impls!(ListOrdersCursor);
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct UploadDocumentBody {
-    pub file: runtime::Binary,
-    pub kind: UploadDocumentBodyKind,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+    pub struct UploadDocumentBody {
+        pub file: runtime::Binary,
+        pub kind: UploadDocumentBodyKind,
+    }
 }
-deserialize_impl!(UploadDocumentBody);
-serialize_impl!(UploadDocumentBody);
 impl UploadDocumentBody {
     #[must_use]
     pub const fn new(file: runtime::Binary, kind: UploadDocumentBodyKind) -> Self {
@@ -678,43 +624,26 @@ impl TryFrom<&str> for UploadDocumentBodyKind {
 }
 runtime::str_enum_impls!(UploadDocumentBodyKind);
 pub type Not = Customer;
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct OrderRequest {
-    pub status: Status,
-    pub total: Money,
-    #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
-    pub customer: runtime::Nullable<OrderRequestCustomer>,
-    #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
-    pub notes: runtime::Nullable<String>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub secret: Option<String>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub labels: Option<std::collections::BTreeMap<String, String>>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub payment: Option<OrderPayment>,
-    pub vehicle: Vehicle,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub discount: Option<OrderDiscount>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+    pub struct OrderRequest {
+        pub status: Status,
+        pub total: Money,
+        #[nullable]
+        pub customer: OrderRequestCustomer,
+        #[nullable]
+        pub notes: String,
+        #[optional]
+        pub secret: String,
+        #[optional]
+        pub labels: std::collections::BTreeMap<String, String>,
+        #[optional]
+        pub payment: OrderPayment,
+        pub vehicle: Vehicle,
+        #[optional]
+        pub discount: OrderDiscount,
+    }
 }
-deserialize_impl!(OrderRequest);
-serialize_impl!(OrderRequest);
 impl OrderRequest {
     #[must_use]
     pub const fn new(status: Status, total: Money, vehicle: Vehicle) -> Self {
@@ -731,19 +660,14 @@ impl OrderRequest {
         }
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct OrderPageRequest {
-    pub items: Vec<OrderRequest>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub total: Option<i64>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct OrderPageRequest {
+        pub items: Vec<OrderRequest>,
+        #[optional]
+        pub total: i64,
+    }
 }
-deserialize_impl!(OrderPageRequest);
-serialize_impl!(OrderPageRequest);
 impl OrderPageRequest {
     #[must_use]
     pub const fn new(items: Vec<OrderRequest>) -> Self {
@@ -796,7 +720,7 @@ impl<'de> runtime::TaggedUnion<'de> for VehicleVariants {
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct OrderCustomerChecked(pub(super) OrderCustomer);
-deserialize_impl_2!(OrderCustomerChecked);
+deserialize_impl!(OrderCustomerChecked);
 try_from_impl!(OrderCustomerChecked);
 impl OrderCustomerChecked {
     fn checked(
@@ -825,7 +749,7 @@ runtime::checked_impls!(OrderCustomerChecked, OrderCustomer);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct OrderRequestCustomer(pub(super) OrderCustomer);
-deserialize_impl_2!(OrderRequestCustomer);
+deserialize_impl!(OrderRequestCustomer);
 try_from_impl!(OrderRequestCustomer);
 impl OrderRequestCustomer {
     fn checked(

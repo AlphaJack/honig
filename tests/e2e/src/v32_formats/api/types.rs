@@ -15,25 +15,7 @@
     clippy::init_numbered_fields,
     reason = "a spec default builds its checked type as `Type { 0: value }`, which also works through the alias of a twin"
 )]
-macro_rules! deserialize_impl {
-    ($t:ty) => {
-        impl<'de> serde::Deserialize<'de> for $t {
-            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-                Self::deserialize(runtime::NoSeq(d))
-            }
-        }
-    };
-}
 macro_rules! serialize_impl {
-    ($t:ty) => {
-        impl serde::Serialize for $t {
-            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-                Self::serialize(self, s)
-            }
-        }
-    };
-}
-macro_rules! serialize_impl_2 {
     ($t:ty) => {
         impl serde::Serialize for $t {
             fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
@@ -43,208 +25,98 @@ macro_rules! serialize_impl_2 {
     };
 }
 use super::runtime;
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct StoreNetwork {
-    pub first: std::net::Ipv4Addr,
-    pub last: std::net::Ipv6Addr,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+    pub struct StoreNetwork {
+        pub first: std::net::Ipv4Addr,
+        pub last: std::net::Ipv6Addr,
+    }
 }
-deserialize_impl!(StoreNetwork);
-serialize_impl!(StoreNetwork);
 impl StoreNetwork {
     #[must_use]
     pub const fn new(first: std::net::Ipv4Addr, last: std::net::Ipv6Addr) -> Self {
         Self { first, last }
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct Event {
-    pub id: runtime::UuidText,
-    pub at: runtime::DateTimeText,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub ip4: Option<std::net::Ipv4Addr>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub ip6: Option<std::net::Ipv6Addr>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub day: Option<runtime::DateText>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub seen: Option<Vec<runtime::DateTimeText>>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub token: Option<runtime::Base64Url>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub level: Option<i8>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub port: Option<EventPort>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub amount: Option<EventAmount>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub sum: Option<EventSum>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub initial: Option<char>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::formats::read::<_, _, runtime::formats::Present<runtime::formats::Text<runtime::formats::format::Uri>>>"
-    )]
-    pub home: Option<url::Url>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::formats::read::<_, _, runtime::formats::Present<runtime::formats::Text<runtime::formats::format::Ipv4Cidr>>>"
-    )]
-    pub net4: Option<ipnet::Ipv4Net>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::formats::read::<_, _, runtime::formats::Present<runtime::formats::Text<runtime::formats::format::Ipv6Cidr>>>"
-    )]
-    pub net6: Option<ipnet::Ipv6Net>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub local: Option<runtime::DateTimeLocalText>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub clock: Option<runtime::TimeLocalText>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub price: Option<runtime::DecimalText>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub total: Option<runtime::Decimal128Text>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub opens: Option<runtime::FullTime>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub expires: Option<runtime::HttpDateText>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub lasts: Option<runtime::DurationText>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub link: Option<runtime::UriReferenceText>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub page: Option<runtime::IriText>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub rel: Option<runtime::IriReferenceText>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub at_path: Option<runtime::JsonPointerText>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub up: Option<runtime::RelativeJsonPointerText>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub filter: Option<runtime::RegexText>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub search: Option<runtime::UriTemplateText>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub charge: Option<EventCharge>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub payment: Option<EventPayment>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub payload: Option<EventPayload>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+    pub struct Event {
+        pub id: runtime::UuidText,
+        pub at: runtime::DateTimeText,
+        #[optional]
+        pub ip4: std::net::Ipv4Addr,
+        #[optional]
+        pub ip6: std::net::Ipv6Addr,
+        #[optional]
+        pub day: runtime::DateText,
+        #[optional]
+        pub seen: Vec<runtime::DateTimeText>,
+        #[optional]
+        pub token: runtime::Base64Url,
+        #[optional]
+        pub level: i8,
+        #[optional]
+        pub port: EventPort,
+        #[optional]
+        pub amount: EventAmount,
+        #[optional]
+        pub sum: EventSum,
+        #[optional]
+        pub initial: char,
+        #[serde(
+            default,
+            skip_serializing_if = "Option::is_none",
+            deserialize_with = "runtime::formats::read::<_, _, runtime::formats::Present<runtime::formats::Text<runtime::formats::format::Uri>>>"
+        )]
+        pub home: Option<url::Url>,
+        #[serde(
+            default,
+            skip_serializing_if = "Option::is_none",
+            deserialize_with = "runtime::formats::read::<_, _, runtime::formats::Present<runtime::formats::Text<runtime::formats::format::Ipv4Cidr>>>"
+        )]
+        pub net4: Option<ipnet::Ipv4Net>,
+        #[serde(
+            default,
+            skip_serializing_if = "Option::is_none",
+            deserialize_with = "runtime::formats::read::<_, _, runtime::formats::Present<runtime::formats::Text<runtime::formats::format::Ipv6Cidr>>>"
+        )]
+        pub net6: Option<ipnet::Ipv6Net>,
+        #[optional]
+        pub local: runtime::DateTimeLocalText,
+        #[optional]
+        pub clock: runtime::TimeLocalText,
+        #[optional]
+        pub price: runtime::DecimalText,
+        #[optional]
+        pub total: runtime::Decimal128Text,
+        #[optional]
+        pub opens: runtime::FullTime,
+        #[optional]
+        pub expires: runtime::HttpDateText,
+        #[optional]
+        pub lasts: runtime::DurationText,
+        #[optional]
+        pub link: runtime::UriReferenceText,
+        #[optional]
+        pub page: runtime::IriText,
+        #[optional]
+        pub rel: runtime::IriReferenceText,
+        #[optional]
+        pub at_path: runtime::JsonPointerText,
+        #[optional]
+        pub up: runtime::RelativeJsonPointerText,
+        #[optional]
+        pub filter: runtime::RegexText,
+        #[optional]
+        pub search: runtime::UriTemplateText,
+        #[optional]
+        pub charge: EventCharge,
+        #[optional]
+        pub payment: EventPayment,
+        #[optional]
+        pub payload: EventPayload,
+    }
 }
-deserialize_impl!(Event);
-serialize_impl!(Event);
 impl Event {
     #[must_use]
     pub const fn new(id: runtime::UuidText, at: runtime::DateTimeText) -> Self {
@@ -284,14 +156,13 @@ impl Event {
         }
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct Card {
-    pub method: CardMethod,
-    pub amount: CardAmount,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+    pub struct Card {
+        pub method: CardMethod,
+        pub amount: CardAmount,
+    }
 }
-deserialize_impl!(Card);
-serialize_impl!(Card);
 impl Card {
     #[must_use]
     pub const fn new(amount: CardAmount) -> Self {
@@ -301,14 +172,13 @@ impl Card {
         }
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct Transfer {
-    pub method: TransferMethod,
-    pub amount: TransferAmount,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+    pub struct Transfer {
+        pub method: TransferMethod,
+        pub amount: TransferAmount,
+    }
 }
-deserialize_impl!(Transfer);
-serialize_impl!(Transfer);
 impl Transfer {
     #[must_use]
     pub const fn new(amount: TransferAmount) -> Self {
@@ -442,26 +312,24 @@ impl<'de> serde::Deserialize<'de> for EventCharge {
         )
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct EventChargeRefund {
-    pub refund: runtime::Decimal,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct EventChargeRefund {
+        pub refund: runtime::Decimal,
+    }
 }
-deserialize_impl!(EventChargeRefund);
-serialize_impl!(EventChargeRefund);
 impl EventChargeRefund {
     #[must_use]
     pub const fn new(refund: runtime::Decimal) -> Self {
         Self { refund }
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct EventChargeFee {
-    pub fee: runtime::Decimal,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct EventChargeFee {
+        pub fee: runtime::Decimal,
+    }
 }
-deserialize_impl!(EventChargeFee);
-serialize_impl!(EventChargeFee);
 impl EventChargeFee {
     #[must_use]
     pub const fn new(fee: runtime::Decimal) -> Self {
@@ -528,13 +396,12 @@ impl<'de> serde::Deserialize<'de> for EventPayload {
         runtime::json_text(&text).map(Self).map_err(serde::de::Error::custom)
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct EventPayloadContent {
-    pub n: i64,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct EventPayloadContent {
+        pub n: i64,
+    }
 }
-deserialize_impl!(EventPayloadContent);
-serialize_impl!(EventPayloadContent);
 impl EventPayloadContent {
     #[must_use]
     pub const fn new(n: i64) -> Self {
@@ -546,7 +413,7 @@ pub struct CardMethod;
 impl CardMethod {
     pub const VALUE: &'static str = "Card";
 }
-serialize_impl_2!(CardMethod);
+serialize_impl!(CardMethod);
 impl<'de> serde::Deserialize<'de> for CardMethod {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         runtime::expect_const(d, &serde_json::Value::String("Card".to_owned()))
@@ -559,7 +426,7 @@ pub struct TransferMethod;
 impl TransferMethod {
     pub const VALUE: &'static str = "Transfer";
 }
-serialize_impl_2!(TransferMethod);
+serialize_impl!(TransferMethod);
 impl<'de> serde::Deserialize<'de> for TransferMethod {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         runtime::expect_const(d, &serde_json::Value::String("Transfer".to_owned()))

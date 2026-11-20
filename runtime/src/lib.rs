@@ -35,6 +35,7 @@ mod media;
 mod message;
 mod no_seq;
 mod nullable;
+mod object;
 mod params;
 mod path;
 #[cfg(feature = "regress")]

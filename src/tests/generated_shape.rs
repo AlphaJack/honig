@@ -1616,3 +1616,24 @@ fn shared_impls_are_runtime_macros_and_not_copies() {
     }
     assert!(types.contains("runtime::checked_num_impls!(Count, i64)"), "{types}");
 }
+
+/// An object type is one `runtime::object!` that prints as a struct: a marker picks the kind of a field, and no serde
+/// attribute that its kind implies is written out.
+#[test]
+fn an_object_is_one_runtime_macro_with_a_field_per_line() {
+    let doc = common::spec(
+        "3.2.0",
+        &json!({}),
+        &json!({"schemas": {"Item": {
+            "type": "object",
+            "required": ["name"],
+            "properties": {"name": {"type": "string"}, "count": {"type": "integer"}, "owner": {"type": ["string", "null"]}}
+        }}}),
+    );
+    let files = common::generate("object-macro", &doc, &crate::emit::Options::default());
+    let types = common::file(&files, "types.rs");
+    assert!(types.contains("runtime::object! {"), "{types}");
+    assert!(!types.contains("remote = \"Self\"") && !types.contains("runtime::not_null"), "{types}");
+    let fields = "        pub name: String,\n        #[optional]\n        pub count: i64,\n        #[nullable]\n        pub owner: String,\n";
+    assert!(types.contains(fields), "one field per line: {types}");
+}

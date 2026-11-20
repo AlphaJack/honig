@@ -16,25 +16,7 @@
     clippy::init_numbered_fields,
     reason = "a spec default builds its checked type as `Type { 0: value }`, which also works through the alias of a twin"
 )]
-macro_rules! deserialize_impl {
-    ($t:ty) => {
-        impl<'de> serde::Deserialize<'de> for $t {
-            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-                Self::deserialize(runtime::NoSeq(d))
-            }
-        }
-    };
-}
 macro_rules! serialize_impl {
-    ($t:ty) => {
-        impl serde::Serialize for $t {
-            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-                Self::serialize(self, s)
-            }
-        }
-    };
-}
-macro_rules! serialize_impl_2 {
     ($t:ty) => {
         impl serde::Serialize for $t {
             fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
@@ -43,7 +25,7 @@ macro_rules! serialize_impl_2 {
         }
     };
 }
-macro_rules! serialize_impl_3 {
+macro_rules! serialize_impl_2 {
     ($t:ty) => {
         impl serde::Serialize for $t {
             fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
@@ -55,7 +37,7 @@ macro_rules! serialize_impl_3 {
         }
     };
 }
-macro_rules! deserialize_impl_2 {
+macro_rules! deserialize_impl {
     ($t:ty) => {
         impl<'de> serde::Deserialize<'de> for $t {
             fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
@@ -73,16 +55,7 @@ macro_rules! deserialize_impl_2 {
         }
     };
 }
-macro_rules! serialize_impl_4 {
-    ($t:ty) => {
-        impl serde::Serialize for $t {
-            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-                Self::serialize(self, runtime::UniqueKeys(s))
-            }
-        }
-    };
-}
-macro_rules! deserialize_impl_3 {
+macro_rules! deserialize_impl_2 {
     ($t:ty) => {
         impl<'de> serde::Deserialize<'de> for $t {
             fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
@@ -93,20 +66,19 @@ macro_rules! deserialize_impl_3 {
     };
 }
 use super::runtime;
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct Box2 {
-    pub width: i64,
-    pub height: i64,
-    pub depth: i64,
-    pub weight: i64,
-    pub color: i64,
-    pub shelf: i64,
-    pub row: i64,
-    pub bin: i64,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct Box2 {
+        pub width: i64,
+        pub height: i64,
+        pub depth: i64,
+        pub weight: i64,
+        pub color: i64,
+        pub shelf: i64,
+        pub row: i64,
+        pub bin: i64,
+    }
 }
-deserialize_impl!(Box2);
-serialize_impl!(Box2);
 impl Box2 {
     #[must_use]
     pub const fn new(
@@ -237,22 +209,17 @@ impl TextNote {
     }
 }
 runtime::checked_impls!(TextNote, TextNoteFields);
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct ImageNote {
-    pub kind: ImageNoteKind,
-    pub url: String,
-    #[serde(default = "ImageNote::default_width")]
-    pub width: Pixels,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub crop: Option<Crop>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+    pub struct ImageNote {
+        pub kind: ImageNoteKind,
+        pub url: String,
+        #[serde(default = "ImageNote::default_width")]
+        pub width: Pixels,
+        #[optional]
+        pub crop: Crop,
+    }
 }
-deserialize_impl!(ImageNote);
-serialize_impl!(ImageNote);
 impl ImageNote {
     #[must_use]
     pub const fn new(url: String) -> Self {
@@ -398,42 +365,29 @@ pub struct NoteTextNoteKind;
 impl NoteTextNoteKind {
     pub const VALUE: &'static str = "text";
 }
-serialize_impl_2!(NoteTextNoteKind);
+serialize_impl!(NoteTextNoteKind);
 impl<'de> serde::Deserialize<'de> for NoteTextNoteKind {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         runtime::expect_const(d, &serde_json::Value::String("text".to_owned()))
             .map(|()| Self)
     }
 }
-/// `ImageNote`
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct NoteImageNote {
-    pub kind: NoteImageNoteKind,
-    pub url: String,
-    #[serde(default = "NoteImageNote::default_width")]
-    pub width: Pixels,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub crop: Option<Crop>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub text: Option<String>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub size: Option<i64>,
+runtime::object! {
+    /// `ImageNote`
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+    pub struct NoteImageNote {
+        pub kind: NoteImageNoteKind,
+        pub url: String,
+        #[serde(default = "NoteImageNote::default_width")]
+        pub width: Pixels,
+        #[optional]
+        pub crop: Crop,
+        #[optional]
+        pub text: String,
+        #[optional]
+        pub size: i64,
+    }
 }
-deserialize_impl!(NoteImageNote);
-serialize_impl!(NoteImageNote);
 impl NoteImageNote {
     #[must_use]
     pub const fn new(url: String) -> Self {
@@ -471,7 +425,7 @@ pub struct NoteImageNoteKind;
 impl NoteImageNoteKind {
     pub const VALUE: &'static str = "image";
 }
-serialize_impl_2!(NoteImageNoteKind);
+serialize_impl!(NoteImageNoteKind);
 impl<'de> serde::Deserialize<'de> for NoteImageNoteKind {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         runtime::expect_const(d, &serde_json::Value::String("image".to_owned()))
@@ -507,38 +461,28 @@ impl<'de> serde::Deserialize<'de> for CropVariant2 {
         }
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct CropVariant2Variant2 {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub x: Option<i64>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub y: Option<i64>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct CropVariant2Variant2 {
+        #[optional]
+        pub x: i64,
+        #[optional]
+        pub y: i64,
+    }
 }
-deserialize_impl!(CropVariant2Variant2);
-serialize_impl!(CropVariant2Variant2);
 impl CropVariant2Variant2 {
     #[must_use]
     pub const fn new() -> Self {
         Self { x: None, y: None }
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct ArchiveConflict {
-    pub code: i64,
-    pub message: String,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct ArchiveConflict {
+        pub code: i64,
+        pub message: String,
+    }
 }
-deserialize_impl!(ArchiveConflict);
-serialize_impl!(ArchiveConflict);
 impl ArchiveConflict {
     #[must_use]
     pub const fn new(code: i64, message: String) -> Self {
@@ -546,24 +490,15 @@ impl ArchiveConflict {
     }
 }
 pub type UnarchiveConflict = ArchiveConflict;
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct AddNoteCreatedXTags {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub a: Option<String>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub b: Option<String>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct AddNoteCreatedXTags {
+        #[optional]
+        pub a: String,
+        #[optional]
+        pub b: String,
+    }
 }
-deserialize_impl!(AddNoteCreatedXTags);
-serialize_impl!(AddNoteCreatedXTags);
 impl AddNoteCreatedXTags {
     #[must_use]
     pub const fn new() -> Self {
@@ -575,22 +510,18 @@ pub enum Not {
     Object(NotObject),
     Other(serde_json::Value),
 }
-serialize_impl_3!(Not);
-deserialize_impl_2!(Not);
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct NotObject {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub size: Option<NotObjectSize>,
-    #[serde(flatten)]
-    pub additional_properties: std::collections::BTreeMap<String, serde_json::Value>,
+serialize_impl_2!(Not);
+deserialize_impl!(Not);
+runtime::object! {
+    #[unique_keys]
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct NotObject {
+        #[optional]
+        pub size: NotObjectSize,
+        #[serde(flatten)]
+        pub additional_properties: std::collections::BTreeMap<String, serde_json::Value>,
+    }
 }
-deserialize_impl!(NotObject);
-serialize_impl_4!(NotObject);
 impl NotObject {
     #[must_use]
     pub const fn new() -> Self {
@@ -605,22 +536,18 @@ pub enum Not2 {
     Object(Not2Object),
     Other(serde_json::Value),
 }
-serialize_impl_3!(Not2);
-deserialize_impl_2!(Not2);
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct Not2Object {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub text: Option<Not2ObjectText>,
-    #[serde(flatten)]
-    pub additional_properties: std::collections::BTreeMap<String, serde_json::Value>,
+serialize_impl_2!(Not2);
+deserialize_impl!(Not2);
+runtime::object! {
+    #[unique_keys]
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct Not2Object {
+        #[optional]
+        pub text: Not2ObjectText,
+        #[serde(flatten)]
+        pub additional_properties: std::collections::BTreeMap<String, serde_json::Value>,
+    }
 }
-deserialize_impl!(Not2Object);
-serialize_impl_4!(Not2Object);
 impl Not2Object {
     #[must_use]
     pub const fn new() -> Self {
@@ -630,32 +557,20 @@ impl Not2Object {
         }
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct Not3 {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub kind: Option<String>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub text: Option<String>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub size: Option<i64>,
-    #[serde(flatten)]
-    pub additional_properties: std::collections::BTreeMap<String, serde_json::Value>,
+runtime::object! {
+    #[unique_keys]
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct Not3 {
+        #[optional]
+        pub kind: String,
+        #[optional]
+        pub text: String,
+        #[optional]
+        pub size: i64,
+        #[serde(flatten)]
+        pub additional_properties: std::collections::BTreeMap<String, serde_json::Value>,
+    }
 }
-deserialize_impl!(Not3);
-serialize_impl_4!(Not3);
 impl Not3 {
     #[must_use]
     pub const fn new() -> Self {
@@ -731,31 +646,18 @@ impl<'de> runtime::TaggedUnion<'de> for NoteVariants {
         }
     }
 }
-#[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct TextNoteFields {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub kind: Option<TextNoteKind>,
-    pub text: String,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub point: Option<[f64; 2]>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub rgb: Option<TextNoteRgb>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct TextNoteFields {
+        #[optional]
+        pub kind: TextNoteKind,
+        pub text: String,
+        #[optional]
+        pub point: [f64; 2],
+        #[optional]
+        pub rgb: TextNoteRgb,
+    }
 }
-deserialize_impl!(TextNoteFields);
-serialize_impl!(TextNoteFields);
 impl TextNoteFields {
     #[must_use]
     pub const fn new(text: String) -> Self {
@@ -827,38 +729,21 @@ impl<'de> serde::Deserialize<'de> for CropVariants {
         )
     }
 }
-/// `TextNote`
-#[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct NoteTextNoteFields {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub kind: Option<NoteTextNoteKind>,
-    pub text: String,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub point: Option<[f64; 2]>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub rgb: Option<NoteTextNoteRgb>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub size: Option<i64>,
+runtime::object! {
+    /// `TextNote`
+    #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct NoteTextNoteFields {
+        #[optional]
+        pub kind: NoteTextNoteKind,
+        pub text: String,
+        #[optional]
+        pub point: [f64; 2],
+        #[optional]
+        pub rgb: NoteTextNoteRgb,
+        #[optional]
+        pub size: i64,
+    }
 }
-deserialize_impl!(NoteTextNoteFields);
-serialize_impl!(NoteTextNoteFields);
 impl NoteTextNoteFields {
     #[must_use]
     pub const fn new(text: String) -> Self {
@@ -874,7 +759,7 @@ impl NoteTextNoteFields {
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct NotObjectSize(pub(super) serde_json::Value);
-deserialize_impl_3!(NotObjectSize);
+deserialize_impl_2!(NotObjectSize);
 impl TryFrom<serde_json::Value> for NotObjectSize {
     type Error = runtime::BuildError;
     fn try_from(value: serde_json::Value) -> Result<Self, runtime::BuildError> {
@@ -900,7 +785,7 @@ runtime::checked_impls!(NotObjectSize, serde_json::Value);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct Not2ObjectText(pub(super) serde_json::Value);
-deserialize_impl_3!(Not2ObjectText);
+deserialize_impl_2!(Not2ObjectText);
 impl TryFrom<serde_json::Value> for Not2ObjectText {
     type Error = runtime::BuildError;
     fn try_from(value: serde_json::Value) -> Result<Self, runtime::BuildError> {
@@ -952,7 +837,7 @@ pub type NoteTextNoteRgb = TextNoteRgb;
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct NotChecked(pub(super) serde_json::Value);
-deserialize_impl_3!(NotChecked);
+deserialize_impl_2!(NotChecked);
 impl TryFrom<serde_json::Value> for NotChecked {
     type Error = runtime::BuildError;
     fn try_from(value: serde_json::Value) -> Result<Self, runtime::BuildError> {

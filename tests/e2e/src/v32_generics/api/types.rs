@@ -15,108 +15,69 @@
     clippy::init_numbered_fields,
     reason = "a spec default builds its checked type as `Type { 0: value }`, which also works through the alias of a twin"
 )]
-macro_rules! deserialize_impl {
-    ($t:ty) => {
-        impl<'de> serde::Deserialize<'de> for $t {
-            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-                Self::deserialize(runtime::NoSeq(d))
-            }
-        }
-    };
-}
-macro_rules! serialize_impl {
-    ($t:ty) => {
-        impl serde::Serialize for $t {
-            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-                Self::serialize(self, s)
-            }
-        }
-    };
-}
 use super::runtime;
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct Product {
-    pub name: String,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct Product {
+        pub name: String,
+    }
 }
-deserialize_impl!(Product);
-serialize_impl!(Product);
 impl Product {
     #[must_use]
     pub const fn new(name: String) -> Self {
         Self { name }
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct Page {
-    pub items: Vec<serde_json::Value>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub next: Option<String>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct Page {
+        pub items: Vec<serde_json::Value>,
+        #[optional]
+        pub next: String,
+    }
 }
-deserialize_impl!(Page);
-serialize_impl!(Page);
 impl Page {
     #[must_use]
     pub const fn new(items: Vec<serde_json::Value>) -> Self {
         Self { items, next: None }
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct ProductPage {
-    pub items: Vec<Product>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub next: Option<String>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct ProductPage {
+        pub items: Vec<Product>,
+        #[optional]
+        pub next: String,
+    }
 }
-deserialize_impl!(ProductPage);
-serialize_impl!(ProductPage);
 impl ProductPage {
     #[must_use]
     pub const fn new(items: Vec<Product>) -> Self {
         Self { items, next: None }
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct Tree {
-    pub value: serde_json::Value,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub children: Option<Vec<Self>>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct Tree {
+        pub value: serde_json::Value,
+        #[optional]
+        pub children: Vec<Tree>,
+    }
 }
-deserialize_impl!(Tree);
-serialize_impl!(Tree);
 impl Tree {
     #[must_use]
     pub const fn new(value: serde_json::Value) -> Self {
         Self { value, children: None }
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct StringTree {
-    pub value: String,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub children: Option<Vec<Self>>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct StringTree {
+        pub value: String,
+        #[optional]
+        pub children: Vec<StringTree>,
+    }
 }
-deserialize_impl!(StringTree);
-serialize_impl!(StringTree);
 impl StringTree {
     #[must_use]
     pub const fn new(value: String) -> Self {

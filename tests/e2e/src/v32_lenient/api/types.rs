@@ -15,45 +15,18 @@
     clippy::init_numbered_fields,
     reason = "a spec default builds its checked type as `Type { 0: value }`, which also works through the alias of a twin"
 )]
-macro_rules! deserialize_impl {
-    ($t:ty) => {
-        impl<'de> serde::Deserialize<'de> for $t {
-            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-                Self::deserialize(runtime::NoSeq(d))
-            }
-        }
-    };
-}
-macro_rules! serialize_impl {
-    ($t:ty) => {
-        impl serde::Serialize for $t {
-            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-                Self::serialize(self, s)
-            }
-        }
-    };
-}
 use super::runtime;
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct Order {
-    pub id: String,
-    pub status: Status,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub priority: Option<OrderPriority>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub delivery: Option<Delivery>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+    pub struct Order {
+        pub id: String,
+        pub status: Status,
+        #[optional]
+        pub priority: OrderPriority,
+        #[optional]
+        pub delivery: Delivery,
+    }
 }
-deserialize_impl!(Order);
-serialize_impl!(Order);
 impl Order {
     #[must_use]
     pub const fn new(id: String, status: Status) -> Self {
@@ -162,28 +135,26 @@ impl Delivery {
     }
 }
 runtime::checked_impls!(Delivery, DeliveryVariants);
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct Pickup {
-    pub kind: String,
-    pub store: String,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct Pickup {
+        pub kind: String,
+        pub store: String,
+    }
 }
-deserialize_impl!(Pickup);
-serialize_impl!(Pickup);
 impl Pickup {
     #[must_use]
     pub const fn new(kind: String, store: String) -> Self {
         Self { kind, store }
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct Courier {
-    pub kind: String,
-    pub address: String,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct Courier {
+        pub kind: String,
+        pub address: String,
+    }
 }
-deserialize_impl!(Courier);
-serialize_impl!(Courier);
 impl Courier {
     #[must_use]
     pub const fn new(kind: String, address: String) -> Self {
@@ -221,27 +192,18 @@ impl TryFrom<i64> for OrderPriority {
     }
 }
 runtime::int_enum_impls!(OrderPriority);
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-#[serde(deny_unknown_fields)]
-pub struct OrderRequest {
-    pub id: String,
-    pub status: StatusRequest,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub priority: Option<OrderPriorityRequest>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub delivery: Option<DeliveryRequest>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+    #[serde(deny_unknown_fields)]
+    pub struct OrderRequest {
+        pub id: String,
+        pub status: StatusRequest,
+        #[optional]
+        pub priority: OrderPriorityRequest,
+        #[optional]
+        pub delivery: DeliveryRequest,
+    }
 }
-deserialize_impl!(OrderRequest);
-serialize_impl!(OrderRequest);
 impl OrderRequest {
     #[must_use]
     pub const fn new(id: String, status: StatusRequest) -> Self {

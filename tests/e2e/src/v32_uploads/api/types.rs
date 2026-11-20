@@ -16,20 +16,11 @@
     reason = "a spec default builds its checked type as `Type { 0: value }`, which also works through the alias of a twin"
 )]
 use super::runtime;
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct PutFileOk {
-    pub bytes: i64,
-    pub chunks: i64,
-}
-impl<'de> serde::Deserialize<'de> for PutFileOk {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        Self::deserialize(runtime::NoSeq(d))
-    }
-}
-impl serde::Serialize for PutFileOk {
-    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        Self::serialize(self, s)
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct PutFileOk {
+        pub bytes: i64,
+        pub chunks: i64,
     }
 }
 impl PutFileOk {

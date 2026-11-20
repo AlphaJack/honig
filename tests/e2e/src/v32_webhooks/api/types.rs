@@ -15,52 +15,28 @@
     clippy::init_numbered_fields,
     reason = "a spec default builds its checked type as `Type { 0: value }`, which also works through the alias of a twin"
 )]
-macro_rules! deserialize_impl {
-    ($t:ty) => {
-        impl<'de> serde::Deserialize<'de> for $t {
-            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-                Self::deserialize(runtime::NoSeq(d))
-            }
-        }
-    };
-}
-macro_rules! serialize_impl {
-    ($t:ty) => {
-        impl serde::Serialize for $t {
-            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-                Self::serialize(self, s)
-            }
-        }
-    };
-}
 use super::runtime;
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct Product {
-    pub id: i64,
-    pub name: String,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct Product {
+        pub id: i64,
+        pub name: String,
+    }
 }
-deserialize_impl!(Product);
-serialize_impl!(Product);
 impl Product {
     #[must_use]
     pub const fn new(id: i64, name: String) -> Self {
         Self { id, name }
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct Event {
-    pub kind: EventKind,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub at: Option<runtime::DateTimeText>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+    pub struct Event {
+        pub kind: EventKind,
+        #[optional]
+        pub at: runtime::DateTimeText,
+    }
 }
-deserialize_impl!(Event);
-serialize_impl!(Event);
 impl Event {
     #[must_use]
     pub const fn new(kind: EventKind) -> Self {
@@ -98,17 +74,16 @@ impl TryFrom<&str> for EventKind {
     }
 }
 runtime::str_enum_impls!(EventKind);
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct SubscribeBody {
-    #[serde(
-        rename = "callbackUrl",
-        deserialize_with = "runtime::formats::read::<_, _, runtime::formats::Text<runtime::formats::format::Uri>>"
-    )]
-    pub callback_url: url::Url,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+    pub struct SubscribeBody {
+        #[serde(rename = "callbackUrl")]
+        #[serde(
+            deserialize_with = "runtime::formats::read::<_, _, runtime::formats::Text<runtime::formats::format::Uri>>"
+        )]
+        pub callback_url: url::Url,
+    }
 }
-deserialize_impl!(SubscribeBody);
-serialize_impl!(SubscribeBody);
 impl SubscribeBody {
     #[must_use]
     pub const fn new(callback_url: url::Url) -> Self {

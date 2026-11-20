@@ -15,36 +15,18 @@
     clippy::init_numbered_fields,
     reason = "a spec default builds its checked type as `Type { 0: value }`, which also works through the alias of a twin"
 )]
-macro_rules! deserialize_impl {
-    ($t:ty) => {
-        impl<'de> serde::Deserialize<'de> for $t {
-            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-                Self::deserialize(runtime::NoSeq(d))
-            }
-        }
-    };
-}
-macro_rules! serialize_impl {
-    ($t:ty) => {
-        impl serde::Serialize for $t {
-            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-                Self::serialize(self, s)
-            }
-        }
-    };
-}
 use super::runtime;
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct Key {
-    pub id: String,
-    #[serde(rename = "lastSeen", default, skip_serializing_if = "Option::is_none")]
-    pub last_seen: Option<runtime::DateTimeText>,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub owner: Option<Owner>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct Key {
+        pub id: String,
+        #[maybe]
+        #[serde(rename = "lastSeen")]
+        pub last_seen: runtime::DateTimeText,
+        #[maybe]
+        pub owner: Owner,
+    }
 }
-deserialize_impl!(Key);
-serialize_impl!(Key);
 impl Key {
     #[must_use]
     pub const fn new(id: String) -> Self {
@@ -55,29 +37,27 @@ impl Key {
         }
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct Owner {
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub name: Option<String>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct Owner {
+        #[maybe]
+        pub name: String,
+    }
 }
-deserialize_impl!(Owner);
-serialize_impl!(Owner);
 impl Owner {
     #[must_use]
     pub const fn new() -> Self {
         Self { name: None }
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct UploadBody {
-    pub file: runtime::Binary,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub note: Option<String>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct UploadBody {
+        pub file: runtime::Binary,
+        #[maybe]
+        pub note: String,
+    }
 }
-deserialize_impl!(UploadBody);
-serialize_impl!(UploadBody);
 impl UploadBody {
     #[must_use]
     pub const fn new(file: runtime::Binary) -> Self {

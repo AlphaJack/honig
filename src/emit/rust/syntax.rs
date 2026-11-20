@@ -317,7 +317,7 @@ pub(crate) fn unparse(mut file: syn::File) -> String {
     let mut bodies = Vec::new();
     for item in &mut file.items {
         let syn::Item::Macro(m) = item else { continue };
-        let Some(text) = macro_rules_text(m) else { continue };
+        let Some(text) = macro_rules_text(m).or_else(|| items_macro_text(m)) else { continue };
         let marker = quote::format_ident!("__HONIG_MACRO_{}", bodies.len());
         let attrs = &m.attrs;
         let Ok(placeholder) = syn::parse2::<syn::Item>(quote!(#(#attrs)* const #marker: () = ();)) else { continue };
@@ -352,6 +352,23 @@ fn hide_metavars(tokens: TokenStream) -> TokenStream {
         }
     }
     out.into_iter().collect()
+}
+
+/// Returns a call of a runtime macro whose body is items, `runtime::object! { .. }`, with the body printed as those
+/// items. `None` for any other macro or a body that does not parse as items.
+fn items_macro_text(m: &syn::ItemMacro) -> Option<String> {
+    let path = &m.mac.path;
+    let runtime = path.segments.len() == 2 && path.segments.first().is_some_and(|s| s.ident == "runtime");
+    if !runtime || !matches!(m.mac.delimiter, syn::MacroDelimiter::Brace(_)) {
+        return None;
+    }
+    let items: syn::File = syn::parse2(m.mac.tokens.clone()).ok()?;
+    let name = path.segments.last()?.ident.to_string();
+    let body: String = prettyplease::unparse(&items)
+        .lines()
+        .map(|l| if l.is_empty() { "\n".to_owned() } else { format!("    {l}\n") })
+        .collect();
+    Some(format!("runtime::{name}! {{\n{body}}}\n"))
 }
 
 /// Returns `macro_rules! name { (matcher) => { body }; }` with its body printed as items. `None` for any other macro

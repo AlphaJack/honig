@@ -15,72 +15,29 @@
     clippy::init_numbered_fields,
     reason = "a spec default builds its checked type as `Type { 0: value }`, which also works through the alias of a twin"
 )]
-macro_rules! deserialize_impl {
-    ($t:ty) => {
-        impl<'de> serde::Deserialize<'de> for $t {
-            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-                Self::deserialize(runtime::NoSeq(d))
-            }
-        }
-    };
-}
-macro_rules! serialize_impl {
-    ($t:ty) => {
-        impl serde::Serialize for $t {
-            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-                Self::serialize(self, s)
-            }
-        }
-    };
-}
 use super::runtime;
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct Book {
-    pub id: i64,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub lang: Option<String>,
-    pub title: String,
-    #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
-    pub subtitle: runtime::Nullable<String>,
-    pub authors: Vec<Author>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub tags: Option<Vec<String>>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub price: Option<Price>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub sequel: Option<Box<Self>>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub blurb: Option<Blurb>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub meta: Option<Meta>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct Book {
+        pub id: i64,
+        #[optional]
+        pub lang: String,
+        pub title: String,
+        #[nullable]
+        pub subtitle: String,
+        pub authors: Vec<Author>,
+        #[optional]
+        pub tags: Vec<String>,
+        #[optional]
+        pub price: Price,
+        #[optional]
+        pub sequel: Box<Book>,
+        #[optional]
+        pub blurb: Blurb,
+        #[optional]
+        pub meta: Meta,
+    }
 }
-deserialize_impl!(Book);
-serialize_impl!(Book);
 impl Book {
     #[must_use]
     pub const fn new(id: i64, title: String, authors: Vec<Author>) -> Self {
@@ -270,19 +227,14 @@ impl runtime::XmlShape for Book {
         &NODE
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct Author {
-    pub name: String,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub born: Option<i64>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct Author {
+        pub name: String,
+        #[optional]
+        pub born: i64,
+    }
 }
-deserialize_impl!(Author);
-serialize_impl!(Author);
 impl Author {
     #[must_use]
     pub const fn new(name: String) -> Self {
@@ -333,19 +285,14 @@ impl runtime::XmlShape for Author {
         &NODE
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct Price {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub currency: Option<String>,
-    pub amount: String,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct Price {
+        #[optional]
+        pub currency: String,
+        pub amount: String,
+    }
 }
-deserialize_impl!(Price);
-serialize_impl!(Price);
 impl Price {
     #[must_use]
     pub const fn new(amount: String) -> Self {
@@ -396,19 +343,14 @@ impl runtime::XmlShape for Price {
         &NODE
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct Blurb {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub format: Option<String>,
-    pub text: String,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct Blurb {
+        #[optional]
+        pub format: String,
+        pub text: String,
+    }
 }
-deserialize_impl!(Blurb);
-serialize_impl!(Blurb);
 impl Blurb {
     #[must_use]
     pub const fn new(text: String) -> Self {
@@ -459,19 +401,14 @@ impl runtime::XmlShape for Blurb {
         &NODE
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct Meta {
-    pub isbn: String,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub pages: Option<i64>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct Meta {
+        pub isbn: String,
+        #[optional]
+        pub pages: i64,
+    }
 }
-deserialize_impl!(Meta);
-serialize_impl!(Meta);
 impl Meta {
     #[must_use]
     pub const fn new(isbn: String) -> Self {

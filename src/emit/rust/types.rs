@@ -647,17 +647,15 @@ fn derives(space: &Space<'_>, id: TypeId, default: bool) -> TokenStream {
 }
 
 /// Returns a struct field with doc, serde attributes and declaration.
+/// Returns one field of `runtime::object!`: its kind, its name and its type, with the serde attributes that its kind
+/// does not imply (a rename, a spec default, a reader of a library format).
 fn field(space: &Space<'_>, f: &Field, owner: &str) -> TokenStream {
     let doc = doc_opt(f.doc.as_deref());
     let doc = if f.deprecated { quote!(#doc #[deprecated]) } else { doc };
-    let (name, t) = (snake_ident(&f.name), field_ty(space, f));
+    let name = snake_ident(&f.name);
     // serde already uses the field name (a raw `r#type` as `type`).
     let wire = lit(&f.wire);
-    let rename = (f.wire != snake(&f.name)).then(|| quote!(rename = #wire));
-    let serde = |rest: &[Option<TokenStream>]| {
-        let all: Vec<&TokenStream> = rename.iter().chain(rest.iter().flatten()).collect();
-        (!all.is_empty()).then(|| quote!(#[serde(#(#all),*)]))
-    };
+    let rename = (f.wire != snake(&f.name)).then(|| quote!(#[serde(rename = #wire)]));
     // A library type that reads more than its format allows gets its text checked first. `wrap` holds it as the
     // field's own type does: `Option`, `runtime::Nullable` or itself.
     let checked = |t: &Ty, wrap: &str| {
@@ -667,28 +665,49 @@ fn field(space: &Space<'_>, f: &Field, owner: &str) -> TokenStream {
             quote!(deserialize_with = #read)
         })
     };
-    let attr = if field_default(space, f).is_some() {
+    let plain = |attrs: TokenStream| {
+        let t = field_ty(space, f);
+        quote! { #doc #rename #[serde(#attrs)] pub #name: #t, }
+    };
+    if field_default(space, f).is_some() {
         let fun = lit(&format!("{owner}::default_{}", snake(&f.name)));
-        serde(&[Some(quote!(default = #fun)), checked(&f.ty, "")])
-    } else if f.required && space.types.nullable(&f.ty).is_some() {
+        let read = checked(&f.ty, "").map(|r| quote!(, #r));
+        return plain(quote!(default = #fun #read));
+    }
+    if f.required && space.types.nullable(&f.ty).is_some() {
         // serde reads a missing `Option` as `None`: its own deserializer makes the property required again.
         let read = checked(&f.ty, "").unwrap_or_else(|| quote!(deserialize_with = "runtime::required_nullable"));
-        serde(&[Some(read)])
-    } else if f.required {
-        serde(&[checked(&f.ty, "")])
-    } else if let Some(inner) = space.types.nullable(&f.ty) {
-        let skip = quote!(skip_serializing_if = "runtime::Nullable::is_absent");
-        serde(&[Some(quote!(default)), Some(skip), checked(inner, "OrNull")])
-    } else if f.null_as_absent {
+        return plain(read);
+    }
+    if f.required {
+        if let Some(read) = checked(&f.ty, "") {
+            return plain(read);
+        }
+        let t = ty(space, &f.ty, false);
+        return quote! { #doc #rename pub #name: #t, };
+    }
+    if let Some(inner) = space.types.nullable(&f.ty) {
+        if let Some(read) = checked(inner, "OrNull") {
+            return plain(quote!(default, skip_serializing_if = "runtime::Nullable::is_absent", #read));
+        }
+        let t = ty(space, inner, false);
+        return quote! { #[nullable] #doc #rename pub #name: #t, };
+    }
+    let inner = f.ty.non_null();
+    if f.null_as_absent {
         // serde's own `Option`: `null` and absent both read as `None`.
-        let skip = quote!(skip_serializing_if = "Option::is_none");
-        serde(&[Some(quote!(default)), Some(skip), checked(&f.ty, "Maybe")])
-    } else {
-        // `null` is no value of a property that is not nullable whether it is absent or not.
-        let not_null = checked(&f.ty, "Present").unwrap_or_else(|| quote!(deserialize_with = "runtime::not_null"));
-        serde(&[Some(quote!(default)), Some(quote!(skip_serializing_if = "Option::is_none")), Some(not_null)])
-    };
-    quote! { #doc #attr pub #name: #t, }
+        if let Some(read) = checked(&f.ty, "Maybe") {
+            return plain(quote!(default, skip_serializing_if = "Option::is_none", #read));
+        }
+        let t = ty(space, inner, false);
+        return quote! { #[maybe] #doc #rename pub #name: #t, };
+    }
+    // `null` is no value of a property that is not nullable whether it is absent or not.
+    if let Some(read) = checked(&f.ty, "Present") {
+        return plain(quote!(default, skip_serializing_if = "Option::is_none", #read));
+    }
+    let t = ty(space, inner, false);
+    quote! { #[optional] #doc #rename pub #name: #t, }
 }
 
 /// Returns [`holds`] as the text of a `deserialize_with` path. It is paths, generics and numbers: no space is needed.
@@ -819,32 +838,23 @@ fn structure(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, s: &St
     // A lenient client's response type reads a property that the server added. Its request copy refuses it.
     let closed = (s.closed && s.additional.is_none() && s.patterns.is_empty() && !def.lenient)
         .then(|| quote!(#[serde(deny_unknown_fields)]));
-    // `remote = "Self"` turns the derives into inherent functions. The trait impls call them, decoding through
-    // `NoSeq`: a derived struct would also read a JSON array field by field, and `type: object` allows none.
-    // An extra map encodes through `UniqueKeys`: an entry named like a declared field would write the name twice.
-    let encoder =
-        if s.additional.is_some() || !s.patterns.is_empty() { quote!(runtime::UniqueKeys(s)) } else { quote!(s) };
+    // `runtime::object!` writes the struct with `remote = "Self"` and the trait impls that decode through `NoSeq`: a
+    // derived struct would also read a JSON array field by field, and `type: object` allows none. An extra map encodes
+    // through `UniqueKeys`: an entry named like a declared field would write the name twice.
+    let encode = (s.additional.is_some() || !s.patterns.is_empty()).then(|| quote!(#[unique_keys]));
     items.push(quote! {
-        #doc
-        #derive
-        #[serde(remote = "Self")]
-        #closed
-        pub struct #name {
-            #(#fields)*
-            #additional
-            #held
+        runtime::object! {
+            #encode
+            #doc
+            #derive
+            #closed
+            pub struct #name {
+                #(#fields)*
+                #additional
+                #held
+            }
         }
         #readers
-        impl<'de> serde::Deserialize<'de> for #name {
-            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-                Self::deserialize(runtime::NoSeq(d))
-            }
-        }
-        impl serde::Serialize for #name {
-            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-                Self::serialize(self, #encoder)
-            }
-        }
     });
     items.push(struct_new(space, &name, s, &extra));
     if !defaults.is_empty() {

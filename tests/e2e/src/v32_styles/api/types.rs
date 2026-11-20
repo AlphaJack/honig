@@ -18,24 +18,15 @@
 use super::runtime;
 pub type Str = String;
 pub type Arr = Vec<String>;
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct Obj {
-    #[serde(rename = "R")]
-    pub r: i64,
-    #[serde(rename = "G")]
-    pub g: i64,
-    #[serde(rename = "B")]
-    pub b: i64,
-}
-impl<'de> serde::Deserialize<'de> for Obj {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        Self::deserialize(runtime::NoSeq(d))
-    }
-}
-impl serde::Serialize for Obj {
-    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        Self::serialize(self, s)
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct Obj {
+        #[serde(rename = "R")]
+        pub r: i64,
+        #[serde(rename = "G")]
+        pub g: i64,
+        #[serde(rename = "B")]
+        pub b: i64,
     }
 }
 impl Obj {

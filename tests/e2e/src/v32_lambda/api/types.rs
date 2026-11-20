@@ -16,39 +16,18 @@
     reason = "a spec default builds its checked type as `Type { 0: value }`, which also works through the alias of a twin"
 )]
 use super::runtime;
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct GetItemOk {
-    pub id: String,
-    pub tags: Vec<String>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub trace: Option<String>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub session: Option<String>,
-    #[serde(
-        rename = "sourceIp",
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub source_ip: Option<String>,
-}
-impl<'de> serde::Deserialize<'de> for GetItemOk {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        Self::deserialize(runtime::NoSeq(d))
-    }
-}
-impl serde::Serialize for GetItemOk {
-    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        Self::serialize(self, s)
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct GetItemOk {
+        pub id: String,
+        pub tags: Vec<String>,
+        #[optional]
+        pub trace: String,
+        #[optional]
+        pub session: String,
+        #[optional]
+        #[serde(rename = "sourceIp")]
+        pub source_ip: String,
     }
 }
 impl GetItemOk {

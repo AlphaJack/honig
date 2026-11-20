@@ -71,26 +71,13 @@ impl Open {
     }
 }
 runtime::checked_impls!(Open, Vec < serde_json::Value >);
-#[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct Route {
-    pub start: Point,
-    pub stops: Vec<Point>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub tags: Option<Open>,
-}
-impl<'de> serde::Deserialize<'de> for Route {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        Self::deserialize(runtime::NoSeq(d))
-    }
-}
-impl serde::Serialize for Route {
-    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        Self::serialize(self, s)
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct Route {
+        pub start: Point,
+        pub stops: Vec<Point>,
+        #[optional]
+        pub tags: Open,
     }
 }
 impl Route {

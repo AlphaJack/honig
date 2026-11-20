@@ -15,43 +15,16 @@
     clippy::init_numbered_fields,
     reason = "a spec default builds its checked type as `Type { 0: value }`, which also works through the alias of a twin"
 )]
-macro_rules! deserialize_impl {
-    ($t:ty) => {
-        impl<'de> serde::Deserialize<'de> for $t {
-            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-                Self::deserialize(runtime::NoSeq(d))
-            }
-        }
-    };
-}
-macro_rules! serialize_impl {
-    ($t:ty) => {
-        impl serde::Serialize for $t {
-            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-                Self::serialize(self, s)
-            }
-        }
-    };
-}
 use super::runtime;
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct Person {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub id: Option<i32>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub name: Option<String>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct Person {
+        #[optional]
+        pub id: i32,
+        #[optional]
+        pub name: String,
+    }
 }
-deserialize_impl!(Person);
-serialize_impl!(Person);
 impl Person {
     #[must_use]
     pub const fn new() -> Self {
@@ -102,18 +75,13 @@ impl runtime::XmlShape for Person {
         &NODE
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct Documentation {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub content: Option<String>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct Documentation {
+        #[optional]
+        pub content: String,
+    }
 }
-deserialize_impl!(Documentation);
-serialize_impl!(Documentation);
 impl Documentation {
     #[must_use]
     pub const fn new() -> Self {
@@ -148,18 +116,13 @@ impl runtime::XmlShape for Documentation {
         &NODE
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct NoXmlObjectOk {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub products: Option<String>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct NoXmlObjectOk {
+        #[optional]
+        pub products: String,
+    }
 }
-deserialize_impl!(NoXmlObjectOk);
-serialize_impl!(NoXmlObjectOk);
 impl NoXmlObjectOk {
     #[must_use]
     pub const fn new() -> Self {
@@ -194,18 +157,13 @@ impl runtime::XmlShape for NoXmlObjectOk {
         &NODE
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct NoXmlObjectArrayOk {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub products: Option<Vec<String>>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct NoXmlObjectArrayOk {
+        #[optional]
+        pub products: Vec<String>,
+    }
 }
-deserialize_impl!(NoXmlObjectArrayOk);
-serialize_impl!(NoXmlObjectArrayOk);
 impl NoXmlObjectArrayOk {
     #[must_use]
     pub const fn new() -> Self {
@@ -240,18 +198,13 @@ impl runtime::XmlShape for NoXmlObjectArrayOk {
         &NODE
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct XmlArrayItemNamesOk {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub products: Option<Vec<String>>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct XmlArrayItemNamesOk {
+        #[optional]
+        pub products: Vec<String>,
+    }
 }
-deserialize_impl!(XmlArrayItemNamesOk);
-serialize_impl!(XmlArrayItemNamesOk);
 impl XmlArrayItemNamesOk {
     #[must_use]
     pub const fn new() -> Self {
@@ -286,18 +239,13 @@ impl runtime::XmlShape for XmlArrayItemNamesOk {
         &NODE
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct XmlArrayNameWithoutWrapperOk {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub products: Option<Vec<String>>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct XmlArrayNameWithoutWrapperOk {
+        #[optional]
+        pub products: Vec<String>,
+    }
 }
-deserialize_impl!(XmlArrayNameWithoutWrapperOk);
-serialize_impl!(XmlArrayNameWithoutWrapperOk);
 impl XmlArrayNameWithoutWrapperOk {
     #[must_use]
     pub const fn new() -> Self {
@@ -332,18 +280,13 @@ impl runtime::XmlShape for XmlArrayNameWithoutWrapperOk {
         &NODE
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct XmlArrayWrappedOk {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub products: Option<Vec<String>>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct XmlArrayWrappedOk {
+        #[optional]
+        pub products: Vec<String>,
+    }
 }
-deserialize_impl!(XmlArrayWrappedOk);
-serialize_impl!(XmlArrayWrappedOk);
 impl XmlArrayWrappedOk {
     #[must_use]
     pub const fn new() -> Self {
@@ -378,18 +321,13 @@ impl runtime::XmlShape for XmlArrayWrappedOk {
         &NODE
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct XmlArrayWrappedItemNamesOk {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub products: Option<Vec<String>>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct XmlArrayWrappedItemNamesOk {
+        #[optional]
+        pub products: Vec<String>,
+    }
 }
-deserialize_impl!(XmlArrayWrappedItemNamesOk);
-serialize_impl!(XmlArrayWrappedItemNamesOk);
 impl XmlArrayWrappedItemNamesOk {
     #[must_use]
     pub const fn new() -> Self {
@@ -424,18 +362,13 @@ impl runtime::XmlShape for XmlArrayWrappedItemNamesOk {
         &NODE
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct XmlArrayWrappedRenamedOk {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub products: Option<Vec<String>>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct XmlArrayWrappedRenamedOk {
+        #[optional]
+        pub products: Vec<String>,
+    }
 }
-deserialize_impl!(XmlArrayWrappedRenamedOk);
-serialize_impl!(XmlArrayWrappedRenamedOk);
 impl XmlArrayWrappedRenamedOk {
     #[must_use]
     pub const fn new() -> Self {
@@ -497,24 +430,15 @@ impl<'de> serde::Deserialize<'de> for ElementsWithAttributesAndTextOkItem {
         }
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct ElementsWithAttributesAndTextOkItemObject {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub kind: Option<String>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub name: Option<String>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct ElementsWithAttributesAndTextOkItemObject {
+        #[optional]
+        pub kind: String,
+        #[optional]
+        pub name: String,
+    }
 }
-deserialize_impl!(ElementsWithAttributesAndTextOkItemObject);
-serialize_impl!(ElementsWithAttributesAndTextOkItemObject);
 impl ElementsWithAttributesAndTextOkItemObject {
     #[must_use]
     pub const fn new() -> Self {
@@ -565,23 +489,18 @@ impl runtime::XmlShape for ElementsWithAttributesAndTextOkItemObject {
         &NODE
     }
 }
-#[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct XmlWithNullValuesOk {
-    #[serde(deserialize_with = "runtime::required_nullable")]
-    pub count: Option<f64>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub rating: Option<String>,
-    pub description: String,
-    #[serde(deserialize_with = "runtime::required_nullable")]
-    pub related: Option<std::collections::BTreeMap<String, serde_json::Value>>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct XmlWithNullValuesOk {
+        #[serde(deserialize_with = "runtime::required_nullable")]
+        pub count: Option<f64>,
+        #[optional]
+        pub rating: String,
+        pub description: String,
+        #[serde(deserialize_with = "runtime::required_nullable")]
+        pub related: Option<std::collections::BTreeMap<String, serde_json::Value>>,
+    }
 }
-deserialize_impl!(XmlWithNullValuesOk);
-serialize_impl!(XmlWithNullValuesOk);
 impl XmlWithNullValuesOk {
     #[must_use]
     pub const fn new(
