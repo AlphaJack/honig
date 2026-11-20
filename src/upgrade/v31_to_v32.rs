@@ -3,6 +3,7 @@
 //! | 3.1 | Becomes |
 //! | --- | --- |
 //! | array-form `items` (JSON Schema 2019-09 and older) | `prefixItems` |
+//! | `dependencies` (JSON Schema draft 7 and older) | `dependentRequired` and `dependentSchemas` |
 //! | an object where an array is required | an array of its values |
 //! | `xml.attribute` and `xml.wrapped` | `xml.nodeType`. With both, `attribute` wins |
 //! | `x-tagGroups` | `tags[].parent`, only when the mapping is unambiguous |
@@ -221,6 +222,19 @@ fn repair(s: &mut Obj, ptr: &str, diags: &mut Diagnostics) {
         && !s.contains_key("items")
     {
         s.insert("items".into(), extra);
+    }
+    // Draft 7 `dependencies`, which 2019-09 split: a list of names is `dependentRequired`, a schema `dependentSchemas`.
+    if let Some(Value::Object(deps)) = s.remove("dependencies") {
+        diags.warning(
+            join(ptr, "dependencies"),
+            "`dependencies` is JSON Schema draft 7 or older; using `dependentRequired` and `dependentSchemas`",
+        );
+        for (name, dep) in deps {
+            let key = if dep.is_array() { "dependentRequired" } else { "dependentSchemas" };
+            if let Value::Object(m) = s.entry(key).or_insert_with(|| json!({})) {
+                m.entry(name).or_insert(dep);
+            }
+        }
     }
     // Draft-04 boolean `exclusiveMinimum` / `exclusiveMaximum` mean nothing in
     // 2020-12 but still show up in 3.1 and 3.2 documents.
