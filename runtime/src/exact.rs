@@ -14,18 +14,24 @@ pub(crate) fn all_digits(s: &str) -> bool {
     s.bytes().all(|b| b.is_ascii_digit())
 }
 
+/// Returns the count `n` as an `i64`, `i64::MAX` past it: a count of digits to add to an exponent.
+pub(crate) fn signed(n: usize) -> i64 {
+    i64::try_from(n).unwrap_or(i64::MAX)
+}
+
 /// A decimal number as its significant digits and the power of ten they scale by: `-1.50e3` is `(true, "15", 2)`.
-/// Zero has no digits.
+/// The digits are `head` then `tail`, two slices of the text, so reading them copies nothing. Zero has no digits.
 struct Parts<'s> {
     negative: bool,
-    digits: &'s str,
+    head: &'s str,
+    tail: &'s str,
     exponent: i64,
 }
 
 impl<'s> Parts<'s> {
     /// Reads decimal text: an optional `-`, digits with an optional fraction and an optional exponent. `None` for any
     /// other text or an exponent past `i64`.
-    fn of(text: &'s str, buf: &'s mut String) -> Option<Self> {
+    fn of(text: &'s str) -> Option<Self> {
         let (negative, unsigned) = text.strip_prefix('-').map_or((false, text), |rest| (true, rest));
         let (mantissa, exponent) = unsigned.split_once(['e', 'E']).unwrap_or((unsigned, "0"));
         let exponent: i64 = exponent.strip_prefix('+').unwrap_or(exponent).parse().ok()?;
@@ -33,29 +39,45 @@ impl<'s> Parts<'s> {
         if whole.is_empty() || !all_digits(whole) || !all_digits(fraction) {
             return None;
         }
-        buf.clear();
-        buf.push_str(whole);
-        buf.push_str(fraction);
-        let significant = buf.trim_start_matches('0');
-        let trimmed = significant.trim_end_matches('0');
-        let len = |s: &str| i64::try_from(s.len()).unwrap_or(i64::MAX);
-        let exponent = exponent.checked_sub(len(fraction))?.checked_add(len(significant) - len(trimmed))?;
-        Some(Self { negative, digits: trimmed, exponent })
+        let whole_significant = whole.trim_start_matches('0');
+        let (head, tail) = if whole_significant.is_empty() {
+            ("", fraction.trim_start_matches('0'))
+        } else {
+            (whole_significant, fraction)
+        };
+        let tail_trimmed = tail.trim_end_matches('0');
+        let (head, tail, trailing_zeros) = if tail_trimmed.is_empty() {
+            let head_trimmed = head.trim_end_matches('0');
+            (head_trimmed, "", tail.len() + head.len() - head_trimmed.len())
+        } else {
+            (head, tail_trimmed, tail.len() - tail_trimmed.len())
+        };
+        let exponent = exponent.checked_sub(signed(fraction.len()))?.checked_add(signed(trailing_zeros))?;
+        Some(Self { negative, head, tail, exponent })
+    }
+
+    /// Returns the significant digits as numbers, the first first.
+    fn digits(&self) -> impl Iterator<Item = u8> + use<'s> {
+        self.head.bytes().chain(self.tail.bytes()).map(|d| d - b'0')
+    }
+
+    /// Returns how many significant digits there are.
+    fn len(&self) -> usize {
+        self.head.len() + self.tail.len()
     }
 
     /// Returns the power of ten of the first significant digit: the order of magnitude.
     fn magnitude(&self) -> i64 {
-        self.exponent.saturating_add(i64::try_from(self.digits.len()).unwrap_or(i64::MAX) - 1)
+        self.exponent.saturating_add(signed(self.len()) - 1)
     }
 }
 
 /// Compares two decimal numbers exactly. `None` when either is not decimal text.
 #[must_use]
 pub(crate) fn compare(a: &str, b: &str) -> Option<Ordering> {
-    let (mut buf_a, mut buf_b) = (String::new(), String::new());
-    let (a, b) = (Parts::of(a, &mut buf_a)?, Parts::of(b, &mut buf_b)?);
+    let (a, b) = (Parts::of(a)?, Parts::of(b)?);
     let sign = |p: &Parts<'_>| {
-        if p.digits.is_empty() {
+        if p.len() == 0 {
             0
         } else if p.negative {
             -1
@@ -69,8 +91,9 @@ pub(crate) fn compare(a: &str, b: &str) -> Option<Ordering> {
     }
     let magnitude = a.magnitude().cmp(&b.magnitude()).then_with(|| {
         // Same order of magnitude: the digits compare from the first, the shorter one padded with zeros.
-        let width = a.digits.len().max(b.digits.len());
-        format!("{:0<width$}", a.digits).cmp(&format!("{:0<width$}", b.digits))
+        let width = a.len().max(b.len());
+        let (da, db) = (a.digits().chain(std::iter::repeat(0)), b.digits().chain(std::iter::repeat(0)));
+        da.take(width).cmp(db.take(width))
     });
     Some(if sa < 0 { magnitude.reverse() } else { magnitude })
 }
@@ -81,38 +104,40 @@ pub(crate) fn compare(a: &str, b: &str) -> Option<Ordering> {
 /// a whole number when `a*10^(e-f)` is a multiple of `b`. With `e < f` it would need `a` to end in a zero, so it is not.
 #[must_use]
 pub(crate) fn is_multiple(value: &str, of: &str) -> Option<bool> {
-    let (mut buf_v, mut buf_m) = (String::new(), String::new());
-    let (v, m) = (Parts::of(value, &mut buf_v)?, Parts::of(of, &mut buf_m)?);
-    if m.negative || m.digits.is_empty() {
+    let (v, m) = (Parts::of(value)?, Parts::of(of)?);
+    if m.negative || m.len() == 0 {
         return None;
     }
-    if v.digits.is_empty() {
+    if v.len() == 0 {
         return Some(true);
     }
     let Some(shift) = v.exponent.checked_sub(m.exponent).filter(|s| *s >= 0) else { return Some(false) };
-    let Ok(b) = m.digits.parse::<u64>().map(u128::from) else {
-        return Some(divides_long(v.digits, shift.unsigned_abs(), m.digits));
+    let Some(b) = m
+        .digits()
+        .try_fold(0_u64, |b, d| b.checked_mul(u64::from(DIGIT_BASE))?.checked_add(u64::from(d)))
+        .map(u128::from)
+    else {
+        return Some(divides_long(v.digits(), shift.unsigned_abs(), &m.digits().collect::<Vec<_>>()));
     };
     // `a mod b`, a digit at a time: `r < b < 2^64` keeps `10*r + 9` inside a `u128`.
-    let a = v.digits.bytes().fold(0, |r, d| (r * DECIMAL_BASE + u128::from(d - b'0')) % b);
+    let a = v.digits().fold(0, |r, d| (r * DECIMAL_BASE + u128::from(d)) % b);
     Some((a * power_of_ten_mod(shift.unsigned_abs(), b)).is_multiple_of(b))
 }
 
-/// Does `b` divide `a*10^shift`? `a` and `b` are digit text without leading zeros, `b` of any length. It is long
+/// Does `b` divide `a*10^shift`? `a` and `b` are digits without leading zeros, `b` of any length. It is long
 /// division: one digit of the dividend at a time, the remainder kept below `b` by at most nine subtractions.
 ///
 /// Only the first `4*len(b)` factors of ten can matter: `b` holds fewer factors of 2, and of 5, than that. Past them a
 /// factor of ten is coprime to what is left of `b`, so the check ends however large `shift` is.
-fn divides_long(a: &str, shift: u64, b: &str) -> bool {
-    let b: Vec<u8> = b.bytes().map(|d| d - b'0').collect();
+fn divides_long(a: impl Iterator<Item = u8>, shift: u64, b: &[u8]) -> bool {
     let zeros = shift.min(FACTORS_PER_DIGIT.saturating_mul(u64::try_from(b.len()).unwrap_or(u64::MAX)));
     let mut r: Vec<u8> = vec![];
-    for d in a.bytes().map(|d| d - b'0').chain((0..zeros).map(|_| 0)) {
+    for d in a.chain((0..zeros).map(|_| 0)) {
         if !(r.is_empty() && d == 0) {
             r.push(d);
         }
-        while r.len() > b.len() || (r.len() == b.len() && r >= b) {
-            subtract(&mut r, &b);
+        while r.len() > b.len() || (r.len() == b.len() && r.as_slice() >= b) {
+            subtract(&mut r, b);
         }
     }
     r.is_empty()
