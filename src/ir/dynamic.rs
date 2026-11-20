@@ -66,13 +66,15 @@ fn rewrite(
             if let Some(special) = specialize_site(doc, o, ptr) {
                 *o = special;
                 *changed = true;
-            } else if let Some(bindings) = scopes.get(ptr)
-                && let Value::Object(bound) =
-                    bind_in(doc, &Value::Object(o.clone()), bindings, &mut vec![(ptr.to_owned(), ptr.to_owned())], true)
-                && bound != *o
-            {
-                *o = bound;
-                *changed = true;
+            } else if let Some(bindings) = scopes.get(ptr) {
+                let mut binder = Binder::new(doc, bindings, ptr, ptr);
+                if let Value::Object(mut bound) = binder.bind(&Value::Object(o.clone()), true) {
+                    binder.hoist(&mut bound);
+                    if bound != *o {
+                        *o = bound;
+                        *changed = true;
+                    }
+                }
             }
             for (k, c) in o.iter_mut() {
                 rewrite(doc, scopes, c, &join(ptr, k), changed);
@@ -106,9 +108,8 @@ fn specialize_site(doc: &Doc, o: &Map<String, Value>, ptr: &str) -> Option<Map<S
     if !uses_any(doc, target, &bindings, &mut BTreeSet::from([target_ptr.clone()])) {
         return None;
     }
-    let mut chain = vec![(target_ptr, ptr.to_owned())];
-    let Value::Object(body) = bind(doc, target, &bindings, &mut chain) else { return None };
-    let mut body = body;
+    let mut binder = Binder::new(doc, &bindings, &target_ptr, ptr);
+    let Value::Object(mut body) = binder.bind(target, false) else { return None };
     // The generic's own `$id` would make the copy a second resource of that name. The site's own `$id` stays: the
     // site is still its resource, and its `$dynamicAnchor`s scope there.
     body.remove("$id");
@@ -125,11 +126,13 @@ fn specialize_site(doc: &Doc, o: &Map<String, Value>, ptr: &str) -> Option<Map<S
         let mut members = vec![Value::Object(body)];
         members.extend(out.remove("allOf").and_then(|a| a.as_array().cloned()).into_iter().flatten());
         out.insert("allOf".into(), Value::Array(members));
+        binder.hoist(&mut out);
         return Some(out);
     }
     for (k, x) in own {
         body.insert(k.clone(), x.clone());
     }
+    binder.hoist(&mut body);
     Some(body)
 }
 
@@ -143,63 +146,103 @@ fn anchor_name(doc: &Doc, r: &str) -> Option<String> {
     target.get("$dynamicAnchor").and_then(Value::as_str).map(String::from)
 }
 
-/// Generics expanded inside one another before the rest stays unbound.
-const MAX_BINDING_CHAIN: usize = 16;
-
-/// Returns `v` with `$dynamicRef`s to bound anchors replaced. `$ref`s into other
-/// generics that use them are inlined (and specialized too). `chain` holds
-/// (generic pointer, specialized pointer) pairs being expanded. A `$ref` back
-/// into one of them points at its specialized copy.
-fn bind(doc: &Doc, v: &Value, bindings: &BTreeMap<String, String>, chain: &mut Vec<(String, String)>) -> Value {
-    bind_in(doc, v, bindings, chain, false)
+/// Binds the anchors of one site in the generics that it reaches. Each generic is copied once, bound, into the `$defs`
+/// of the site, and every reference to it points at that copy: the bindings are the same throughout the site, so one
+/// copy serves them all, a recursion ends at its own copy, and no depth cuts it.
+struct Binder<'d> {
+    doc: &'d Doc,
+    bindings: &'d BTreeMap<String, String>,
+    /// The `$defs` of the site, where the copies go.
+    defs: String,
+    /// The pointer of the copy of each generic, by the generic's pointer. The site is the copy of the generic it
+    /// `$ref`s.
+    copies: BTreeMap<String, String>,
+    /// The copies made, by their name in the site's `$defs`.
+    made: Vec<(String, Value)>,
 }
 
-/// Returns [`bind`] of `v`. With `own_scope`, a schema resource nested in it (an `$id`) is kept as it is: only a
-/// reference brings it into the dynamic scope.
-fn bind_in(
-    doc: &Doc,
-    v: &Value,
-    bindings: &BTreeMap<String, String>,
-    chain: &mut Vec<(String, String)>,
-    own_scope: bool,
-) -> Value {
-    let child = |x: &Value, chain: &mut Vec<(String, String)>| {
-        if own_scope && x.get("$id").is_some() { x.clone() } else { bind_in(doc, x, bindings, chain, own_scope) }
-    };
-    match v {
-        Value::Object(o) => {
-            if let Some(name) = o.get("$dynamicRef").and_then(Value::as_str).and_then(|r| anchor_name(doc, r))
-                && let Some(to) = bindings.get(&name)
-            {
-                let mut rest = o.clone();
-                rest.remove("$dynamicRef");
-                rest.insert("$ref".into(), Value::String(format!("#{to}")));
-                return Value::Object(rest);
-            }
-            if let Some(r) = o.get("$ref").and_then(Value::as_str)
-                && let Some(p) = doc.local_pointer(r)
-            {
-                if let Some((_, special)) = chain.iter().find(|(g, _)| *g == p) {
+impl<'d> Binder<'d> {
+    /// Returns a binder of `bindings` for the site at `site`, which stands for the generic at `generic`.
+    fn new(doc: &'d Doc, bindings: &'d BTreeMap<String, String>, generic: &str, site: &str) -> Self {
+        let copies = BTreeMap::from([(generic.to_owned(), site.to_owned())]);
+        Self { doc, bindings, defs: join(site, "$defs"), copies, made: vec![] }
+    }
+
+    /// Returns `v` with `$dynamicRef`s to bound anchors replaced, and each `$ref` into a generic that uses them pointed
+    /// at its bound copy. With `own_scope`, a schema resource nested in it (an `$id`) is kept as it is: only a
+    /// reference brings it into the dynamic scope.
+    fn bind(&mut self, v: &Value, own_scope: bool) -> Value {
+        match v {
+            Value::Object(o) => {
+                if let Some(name) = o.get("$dynamicRef").and_then(Value::as_str).and_then(|r| anchor_name(self.doc, r))
+                    && let Some(to) = self.bindings.get(&name)
+                {
                     let mut rest = o.clone();
-                    rest.insert("$ref".into(), Value::String(format!("#{special}")));
+                    rest.remove("$dynamicRef");
+                    rest.insert("$ref".into(), Value::String(format!("#{to}")));
                     return Value::Object(rest);
                 }
-                if let Some(target) = pointer(&doc.root, &p)
-                    && chain.len() < MAX_BINDING_CHAIN
-                    && uses_any(doc, target, bindings, &mut chain.iter().map(|(g, _)| g.clone()).collect())
-                {
-                    // Another generic in the same dynamic scope: inline its
-                    // specialization (its recursion then points back here).
-                    chain.push((p, String::new()));
-                    let inner = bind_in(doc, target, bindings, chain, own_scope);
-                    chain.pop();
-                    return inner;
+                if let Some(copy) = o.get("$ref").and_then(Value::as_str).and_then(|r| self.copy_of(r)) {
+                    let mut rest = o.clone();
+                    rest.insert("$ref".into(), Value::String(format!("#{copy}")));
+                    return Value::Object(rest);
                 }
+                Value::Object(
+                    o.iter()
+                        .map(|(k, x)| {
+                            let kept = own_scope && x.get("$id").is_some();
+                            (k.clone(), if kept { x.clone() } else { self.bind(x, own_scope) })
+                        })
+                        .collect(),
+                )
             }
-            Value::Object(o.iter().map(|(k, x)| (k.clone(), child(x, chain))).collect())
+            Value::Array(a) => Value::Array(a.iter().map(|x| self.bind(x, own_scope)).collect()),
+            Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_) => v.clone(),
         }
-        Value::Array(a) => Value::Array(a.iter().map(|x| child(x, chain)).collect()),
-        Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_) => v.clone(),
+    }
+
+    /// Returns the pointer of the bound copy of the generic that `$ref` `r` reaches, made on first use. `None` when the
+    /// target uses no bound anchor: the reference stays as it is.
+    fn copy_of(&mut self, r: &str) -> Option<String> {
+        let p = self.doc.local_pointer(r)?;
+        if let Some(copy) = self.copies.get(&p) {
+            return Some(copy.clone());
+        }
+        let target = pointer(&self.doc.root, &p)?;
+        if !uses_any(self.doc, target, self.bindings, &mut self.copies.keys().cloned().collect()) {
+            return None;
+        }
+        // Named after the site and the generic: `SiteTree`. The type of the copy takes that name.
+        let last = |p: &str| crate::json::unescape_token(p.rsplit('/').next().unwrap_or_default());
+        let site = last(self.defs.trim_end_matches("/$defs"));
+        let mut name = format!("{site}{}", last(&p));
+        let taken = |n: &str| pointer(&self.doc.root, &join(&self.defs, n)).is_some();
+        while self.made.iter().any(|(n, _)| *n == name) || taken(&name) {
+            name.push('_');
+        }
+        let copy = join(&self.defs, &name);
+        // Reserved before the body is bound: a recursion back into it points here.
+        self.copies.insert(p, copy.clone());
+        let i = self.made.len();
+        self.made.push((name, Value::Null));
+        let mut body = self.bind(target, false);
+        // The generic's own `$id` would make the copy a second resource of that name.
+        if let Value::Object(b) = &mut body {
+            b.remove("$id");
+        }
+        self.made[i].1 = body;
+        Some(copy)
+    }
+
+    /// Puts the copies made into the `$defs` of the site `o`.
+    fn hoist(self, o: &mut Map<String, Value>) {
+        if self.made.is_empty() {
+            return;
+        }
+        let defs = o.entry("$defs").or_insert_with(|| Value::Object(Map::new()));
+        if let Value::Object(defs) = defs {
+            defs.extend(self.made);
+        }
     }
 }
 
