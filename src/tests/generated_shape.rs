@@ -1290,3 +1290,39 @@ fn draft_7_dependencies_are_split() {
     assert!(types.contains("is required when") && types.contains("is present: "), "{types}");
     assert!(!types.contains("check_schema"), "{types}");
 }
+
+/// A resource that declares a `$dynamicAnchor` and reaches a generic through a plain `$ref` binds it: the outermost
+/// resource in the dynamic scope wins (JSON Schema 2020-12 section 8.2.3.2). The list's items are its strings, and no
+/// schema is checked whole.
+#[test]
+fn a_resource_binds_the_generic_that_it_reaches() {
+    let root = json!({"$id": "https://example.test/root", "type": "object", "required": ["list"],
+    "properties": {"list": {"$ref": "list"}},
+    "$defs": {
+        "item": {"$dynamicAnchor": "item", "type": "string"},
+        "list": {"$id": "list", "type": "array", "items": {"$dynamicRef": "#item"},
+            "$defs": {"item": {"$dynamicAnchor": "item"}}},
+    }});
+    let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Root": root}}));
+    let types =
+        common::file(&common::generate("dynamic-scope", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
+    assert!(types.contains("pub list: Vec<String>") && !types.contains("check_schema"), "{types}");
+}
+
+/// A resource nested in a binding resource is not in its dynamic scope when it is reached directly: its `$dynamicRef`
+/// keeps its own anchor. Only the copy that the binding resource reaches by reference is bound.
+#[test]
+fn a_nested_resource_reached_directly_keeps_its_anchor() {
+    let root = json!({"$id": "https://example.test/main", "type": "object", "required": ["item"],
+    "properties": {"item": {"$ref": "item"}},
+    "$defs": {"bar": {"$id": "bar", "type": "array", "items": {"$ref": "item"},
+        "$defs": {
+            "item": {"$id": "item", "type": "object", "properties": {"content": {"$dynamicRef": "#content"}},
+                "$defs": {"default": {"$dynamicAnchor": "content", "type": "integer"}}},
+            "content": {"$dynamicAnchor": "content", "type": "string"},
+        }}}});
+    let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Main": root}}));
+    let types = common::file(&common::generate("nested-resource", &doc, &crate::emit::Options::default()), "types.rs")
+        .to_owned();
+    assert!(types.contains("pub content: Option<i64>"), "{types}");
+}

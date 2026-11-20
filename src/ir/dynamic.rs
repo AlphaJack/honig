@@ -28,7 +28,8 @@ pub(crate) fn monomorphize(doc: &Doc) -> Option<Doc> {
     }
     let mut root = doc.root.clone();
     let mut changed = false;
-    rewrite(doc, &mut root, "", &mut changed);
+    let scopes = scopes(doc);
+    rewrite(doc, &scopes, &mut root, "", &mut changed);
     changed.then(|| {
         let mut special = Doc::new(root);
         special.externals.clone_from(&doc.externals);
@@ -36,21 +37,50 @@ pub(crate) fn monomorphize(doc: &Doc) -> Option<Doc> {
     })
 }
 
-/// Specializes every schema object under `v` (at `ptr`) that binds anchors.
-fn rewrite(doc: &Doc, v: &mut Value, ptr: &str, changed: &mut bool) {
+/// Returns the `$dynamicAnchor`s that each schema resource with an `$id` declares, by the pointer of its root: the
+/// name of each anchor to the pointer of the schema that declares it. The document itself is left out: its components
+/// often declare one name several times.
+fn scopes(doc: &Doc) -> BTreeMap<String, BTreeMap<String, String>> {
+    let mut out: BTreeMap<String, BTreeMap<String, String>> = BTreeMap::new();
+    for ((resource, name), at) in crate::schema_ids::dynamic(&doc.root).anchors {
+        if !resource.is_empty() {
+            out.entry(resource).or_default().insert(name, at);
+        }
+    }
+    out
+}
+
+/// Specializes every schema object under `v` (at `ptr`) that binds anchors: a site that `$ref`s a generic beside its
+/// own anchors, and the root of a resource that declares anchors. A `$dynamicRef` resolves to the outermost resource
+/// in the dynamic scope that declares its anchor (JSON Schema 2020-12 section 8.2.3.2): from that root, each generic
+/// that it reaches is copied with the root's anchors bound. Its original keeps its own, for every other way in.
+fn rewrite(
+    doc: &Doc,
+    scopes: &BTreeMap<String, BTreeMap<String, String>>,
+    v: &mut Value,
+    ptr: &str,
+    changed: &mut bool,
+) {
     match v {
         Value::Object(o) => {
             if let Some(special) = specialize_site(doc, o, ptr) {
                 *o = special;
                 *changed = true;
+            } else if let Some(bindings) = scopes.get(ptr)
+                && let Value::Object(bound) =
+                    bind_in(doc, &Value::Object(o.clone()), bindings, &mut vec![(ptr.to_owned(), ptr.to_owned())], true)
+                && bound != *o
+            {
+                *o = bound;
+                *changed = true;
             }
             for (k, c) in o.iter_mut() {
-                rewrite(doc, c, &join(ptr, k), changed);
+                rewrite(doc, scopes, c, &join(ptr, k), changed);
             }
         }
         Value::Array(a) => {
             for (i, c) in a.iter_mut().enumerate() {
-                rewrite(doc, c, &format!("{ptr}/{i}"), changed);
+                rewrite(doc, scopes, c, &format!("{ptr}/{i}"), changed);
             }
         }
         Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_) => {}
@@ -108,6 +138,21 @@ const MAX_BINDING_CHAIN: usize = 16;
 /// (generic pointer, specialized pointer) pairs being expanded. A `$ref` back
 /// into one of them points at its specialized copy.
 fn bind(doc: &Doc, v: &Value, bindings: &BTreeMap<String, String>, chain: &mut Vec<(String, String)>) -> Value {
+    bind_in(doc, v, bindings, chain, false)
+}
+
+/// Returns [`bind`] of `v`. With `own_scope`, a schema resource nested in it (an `$id`) is kept as it is: only a
+/// reference brings it into the dynamic scope.
+fn bind_in(
+    doc: &Doc,
+    v: &Value,
+    bindings: &BTreeMap<String, String>,
+    chain: &mut Vec<(String, String)>,
+    own_scope: bool,
+) -> Value {
+    let child = |x: &Value, chain: &mut Vec<(String, String)>| {
+        if own_scope && x.get("$id").is_some() { x.clone() } else { bind_in(doc, x, bindings, chain, own_scope) }
+    };
     match v {
         Value::Object(o) => {
             if let Some(name) = o.get("$dynamicRef").and_then(Value::as_str).and_then(|r| anchor_name(doc, r))
@@ -133,14 +178,14 @@ fn bind(doc: &Doc, v: &Value, bindings: &BTreeMap<String, String>, chain: &mut V
                     // Another generic in the same dynamic scope: inline its
                     // specialization (its recursion then points back here).
                     chain.push((p, String::new()));
-                    let inner = bind(doc, target, bindings, chain);
+                    let inner = bind_in(doc, target, bindings, chain, own_scope);
                     chain.pop();
                     return inner;
                 }
             }
-            Value::Object(o.iter().map(|(k, x)| (k.clone(), bind(doc, x, bindings, chain))).collect())
+            Value::Object(o.iter().map(|(k, x)| (k.clone(), child(x, chain))).collect())
         }
-        Value::Array(a) => Value::Array(a.iter().map(|x| bind(doc, x, bindings, chain)).collect()),
+        Value::Array(a) => Value::Array(a.iter().map(|x| child(x, chain)).collect()),
         Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_) => v.clone(),
     }
 }
