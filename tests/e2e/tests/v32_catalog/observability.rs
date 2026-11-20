@@ -112,3 +112,31 @@ fn an_undeclared_path_under_axum_logs_an_event_through_the_fallback() {
         (1, &serde_json::json!("not_found"), &serde_json::json!(404))
     );
 }
+
+/// The event holds why the request was refused. A layer's 401 is `unauthorized`.
+#[tokio::test]
+async fn the_event_holds_the_reason_of_a_refusal() {
+    let seen = Arc::new(Mutex::new(vec![]));
+    let record = Arc::clone(&seen);
+    let service = api::Server::new(Catalog::default())
+        .authenticate(super::check_key)
+        .operation_layer(tower::filter::AsyncFilterLayer::new(|_: api::Request| {
+            std::future::ready(Err::<api::Request, _>(api::ApiError::new(
+                api::http::StatusCode::UNAUTHORIZED,
+                "expired session",
+            )))
+        }))
+        .on_event(move |event: &api::RequestEvent| {
+            if let Ok(mut seen) = record.lock() {
+                seen.push((event.snapshot().error, event.to_json()));
+            }
+        })
+        .into_service();
+    let client = api::Client::new(service).with_api_key("secret");
+    client.get_product(ops::get_product::Params::new(7)).await.unwrap_err();
+    let seen = seen.lock().unwrap();
+    let (error, json) = &seen[0];
+    assert!(matches!(error, Some(api::Reason::Denied(e)) if e.message == "expired session"), "{error:?}");
+    let event: serde_json::Value = serde_json::from_str(json).unwrap();
+    assert_eq!(event["error"], "unauthorized");
+}

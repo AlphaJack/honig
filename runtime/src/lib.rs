@@ -54,6 +54,7 @@ mod transport;
 mod unique_keys;
 mod uri;
 mod uri_template;
+mod violation;
 #[cfg(feature = "xml")]
 mod xml;
 #[cfg(feature = "xml")]
@@ -99,7 +100,7 @@ pub use server::conditional::CacheValidators;
 #[cfg(feature = "server")]
 pub use server::event::peer;
 #[cfg(feature = "server")]
-pub use server::event::{Context, EventKey, Failure, RequestEvent, RequestEventFields};
+pub use server::event::{Context, EventKey, RequestEvent, RequestEventFields};
 #[cfg(feature = "server")]
 pub use server::operation::Operation;
 #[cfg(feature = "server")]

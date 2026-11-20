@@ -80,7 +80,7 @@ impl<Id: Operation> Config<Id> {
             (self.on_event)(&event);
             return resp;
         }
-        event.fail(crate::Failure::of(&reason), 0);
+        event.fail(&reason);
         let resp = for_method(method, self.reject(errors, None, reason, head.headers.clone()));
         event.finish(&resp, started);
         (self.on_event)(&event);
@@ -102,7 +102,7 @@ fn log<Id: Operation>(event: &RequestEvent<Id>) {
         response_bytes = f.response_bytes,
         schemes = %f.schemes.join(","),
         scopes = %f.scopes.join(","),
-        error = f.error.map(crate::Failure::name),
+        error = f.error.as_ref().map(Reason::name),
         violations = f.violations,
         // `tracing` fixes the names of its fields at compile time. So the fields that you set go as one JSON object.
         fields = %serde_json::Value::Object(f.extra),
@@ -249,7 +249,7 @@ pub async fn serve<C, Id: Operation>(
     let op = operation.op();
     // The headers of the request go along for the error renderer. They are taken at the failure and not up front.
     let fail = |headers: http::HeaderMap, reason: Reason| {
-        event.fail(crate::Failure::of(&reason), reason.violations().len());
+        event.fail(&reason);
         config.reject(op.errors, Some(operation), reason, headers)
     };
     if satisfied.mutual_tls && !mutual_tls_verified {
@@ -307,7 +307,7 @@ pub async fn serve_signed_in<C, Id: Operation>(
 ) -> Response {
     let Call { config, operation, satisfied, principal, event, mutual_tls_verified } = call;
     let Some(principal) = principal else {
-        event.fail(crate::Failure::Unauthorized, 0);
+        event.fail(&Reason::Unauthorized);
         let errors = operation.op().errors;
         return config.reject(errors, Some(operation), Reason::Unauthorized, routed.request.headers().clone());
     };

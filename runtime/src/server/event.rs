@@ -43,74 +43,12 @@ pub struct RequestEventFields<Id = ()> {
     pub schemes: Vec<&'static str>,
     /// Scopes the operation requires.
     pub scopes: Vec<&'static str>,
-    /// What went wrong, when something did.
-    pub error: Option<Failure>,
+    /// Why the server refused the request, when it did.
+    pub error: Option<Reason>,
     /// Number of constraint violations of an `invalid` request.
     pub violations: usize,
     /// Fields set by handlers.
     pub extra: Map<String, Value>,
-}
-
-/// What kind of failure a request met: the `error` of its [`RequestEvent`].
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[non_exhaustive]
-pub enum Failure {
-    /// No route matches the path (404).
-    NotFound,
-    /// The path exists but not for the method (405).
-    MethodNotAllowed,
-    /// `Accept` takes none of the response media types (406).
-    NotAcceptable,
-    /// The body is larger than the limit (413).
-    PayloadTooLarge,
-    /// A parameter or the body does not decode, or its media type is not declared (400 or 415).
-    BadRequest,
-    /// The request breaks schema constraints (400).
-    Invalid,
-    /// No credentials, or credentials a layer refused (401).
-    Unauthorized,
-    /// A layer refused the request (403, 429 or another status).
-    Forbidden,
-    /// The handler returned `Err`.
-    Handler,
-    /// The handler's response could not be encoded (500).
-    Encode,
-}
-
-impl Failure {
-    /// Returns the kind of failure that `reason` is.
-    pub(crate) fn of(reason: &Reason) -> Self {
-        match reason {
-            Reason::NotFound => Self::NotFound,
-            Reason::MethodNotAllowed(_) => Self::MethodNotAllowed,
-            Reason::NotAcceptable(_) => Self::NotAcceptable,
-            Reason::PayloadTooLarge(_) => Self::PayloadTooLarge,
-            Reason::UnsupportedMediaType(..) | Reason::Body(_) | Reason::Unreadable(_) => Self::BadRequest,
-            Reason::Invalid(_) => Self::Invalid,
-            Reason::Unauthorized => Self::Unauthorized,
-            Reason::Denied(e) if e.status == http::StatusCode::UNAUTHORIZED => Self::Unauthorized,
-            Reason::Denied(_) => Self::Forbidden,
-            Reason::Handler(_) => Self::Handler,
-            Reason::Encode(_) => Self::Encode,
-        }
-    }
-
-    /// Returns the name in the event's JSON and log line (`not_found`).
-    #[must_use]
-    pub const fn name(self) -> &'static str {
-        match self {
-            Self::NotFound => "not_found",
-            Self::MethodNotAllowed => "method_not_allowed",
-            Self::NotAcceptable => "not_acceptable",
-            Self::PayloadTooLarge => "payload_too_large",
-            Self::BadRequest => "bad_request",
-            Self::Invalid => "invalid",
-            Self::Unauthorized => "unauthorized",
-            Self::Forbidden => "forbidden",
-            Self::Handler => "api_error",
-            Self::Encode => "encode_error",
-        }
-    }
 }
 
 /// The name of a field that you add to a [`RequestEvent`].
@@ -188,11 +126,11 @@ impl<Id: Clone> RequestEvent<Id> {
         self.with(|f| f.extra.insert(key.0.to_owned(), value));
     }
 
-    /// Records a failure (and how many violations for [`Failure::Invalid`]).
-    pub fn fail(&self, error: Failure, violations: usize) {
+    /// Records why the request was refused, and how many violations it holds.
+    pub fn fail(&self, reason: &Reason) {
         self.with(|f| {
-            f.error = Some(error);
-            f.violations = violations;
+            f.violations = reason.violations().len();
+            f.error = Some(reason.clone());
         });
     }
 
@@ -245,7 +183,7 @@ impl<Id: Operation> RequestEvent<Id> {
             if !f.scopes.is_empty() {
                 o.insert("scopes".into(), f.scopes.clone().into());
             }
-            if let Some(e) = f.error {
+            if let Some(e) = &f.error {
                 o.insert("error".into(), e.name().into());
             }
             if f.violations > 0 {

@@ -110,6 +110,24 @@ impl Reason {
         Some(r)
     }
 
+    /// Returns the name of the reason in the wide event's JSON and log line (`not_found`).
+    #[must_use]
+    pub fn name(&self) -> &'static str {
+        match self {
+            Self::NotFound => "not_found",
+            Self::MethodNotAllowed(_) => "method_not_allowed",
+            Self::NotAcceptable(_) => "not_acceptable",
+            Self::PayloadTooLarge(_) => "payload_too_large",
+            Self::UnsupportedMediaType(..) | Self::Body(_) | Self::Unreadable(_) => "bad_request",
+            Self::Invalid(_) => "invalid",
+            Self::Unauthorized => "unauthorized",
+            Self::Denied(e) if e.status == http::StatusCode::UNAUTHORIZED => "unauthorized",
+            Self::Denied(_) => "forbidden",
+            Self::Handler(_) => "api_error",
+            Self::Encode(_) => "encode_error",
+        }
+    }
+
     /// Returns the HTTP status.
     #[must_use]
     pub fn status(&self) -> http::StatusCode {
