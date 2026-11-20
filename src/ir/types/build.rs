@@ -1973,8 +1973,11 @@ impl<'a> Builder<'a> {
                 let read_write = read_only || write_only;
                 // A literal default makes an optional field always present. Whether `ty` can hold it
                 // is known once every component is filled: `finish` drops the ones it cannot.
-                let default = literal_default(self.doc, prop)
-                    .filter(|_| !required.contains(wire.as_str()) && !read_write && !dependent.contains(wire.as_str()));
+                // A count of the properties sees the ones sent: a default filled in would count one that was not.
+                let counted = o.contains_key("minProperties") || o.contains_key("maxProperties");
+                let default = literal_default(self.doc, prop).filter(|_| {
+                    !required.contains(wire.as_str()) && !read_write && !dependent.contains(wire.as_str()) && !counted
+                });
                 fields.push(Field {
                     name: unique(Name::new(wire), &mut taken),
                     wire: wire.clone(),

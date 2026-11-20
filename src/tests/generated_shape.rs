@@ -1492,3 +1492,16 @@ fn a_part_takes_the_media_type_of_its_schema() {
     let client = common::file(&files, "client.rs");
     assert!(client.contains(r#"("icon", "image/png")"#), "{client}");
 }
+
+/// `minProperties` and `maxProperties` on a struct count the declared properties that are present and the names that
+/// it does not declare.
+#[test]
+fn a_struct_counts_its_properties() {
+    let s = json!({"type": "object", "properties": {"a": {"type": "string", "default": "x"}}, "maxProperties": 1});
+    let holder = json!({"type": "object", "properties": {"s": {"$ref": "#/components/schemas/S"}}});
+    let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"S": s, "Holder": holder}}));
+    let types =
+        common::file(&common::generate("struct-count", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
+    let flat: String = types.split_whitespace().collect();
+    assert!(flat.contains("usize::from(value.a.is_some())") && flat.contains("\"properties\""), "{types}");
+}

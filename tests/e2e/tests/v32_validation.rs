@@ -747,3 +747,13 @@ fn settings_decode_each_name_into_its_pattern() {
     // `x_n` matches both patterns: it is a string of `^x_` and an integer of `_n$`, which no value is.
     assert!(decode(json!({"x_n": "1"})).is_err(), "a name of both patterns meets both");
 }
+
+/// `minProperties` and `maxProperties` on a struct count the declared properties sent and the names it keeps.
+#[test]
+fn a_pair_counts_its_properties() {
+    let decode = |v: serde_json::Value| serde_json::from_value::<types::Pair>(v);
+    assert!(decode(json!({"a": "x", "b": "y"})).is_ok());
+    assert!(decode(json!({"a": "x", "c": "z"})).is_ok(), "a kept name counts as one");
+    assert!(decode(json!({"a": "x", "b": "y", "c": "z"})).is_err(), "three is more than two");
+    assert!(decode(json!({})).is_err(), "none is fewer than one");
+}
