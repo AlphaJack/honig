@@ -473,7 +473,36 @@ impl LogEntry {
         }
     }
 }
-pub type Log = Vec<LogEntry>;
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
+pub struct Log(pub(super) Vec<LogEntry>);
+impl<'de> serde::Deserialize<'de> for Log {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let value = <Vec<LogEntry> as serde::Deserialize>::deserialize(d)?;
+        Self::try_from(value).map_err(serde::de::Error::custom)
+    }
+}
+impl TryFrom<Vec<LogEntry>> for Log {
+    type Error = runtime::BuildError;
+    fn try_from(value: Vec<LogEntry>) -> Result<Self, runtime::BuildError> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            runtime::check_len(
+                out,
+                &runtime::InstancePath::Root,
+                value.len(),
+                None,
+                Some(100),
+                "items",
+            );
+        }
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
+    }
+}
+checked_impls!(Log, Vec < LogEntry >);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Event {

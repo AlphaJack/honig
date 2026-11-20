@@ -1507,3 +1507,15 @@ fn a_struct_counts_its_properties() {
     let flat: String = types.split_whitespace().collect();
     assert!(flat.contains("usize::from(value.a.is_some())") && flat.contains("\"properties\""), "{types}");
 }
+
+/// A list component with keywords that `Vec` does not hold is a checked type of it, and a field of it needs no wrapper.
+#[test]
+fn a_list_component_with_keywords_is_a_checked_type() {
+    let tags = json!({"type": "array", "items": {"type": "string"}, "maxItems": 3});
+    let holder = json!({"type": "object", "properties": {"tags": {"$ref": "#/components/schemas/Tags"}}});
+    let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Tags": tags, "Holder": holder}}));
+    let types =
+        common::file(&common::generate("checked-alias", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
+    assert!(types.contains("pub struct Tags(pub(super) Vec<String>);"), "{types}");
+    assert!(types.contains("pub tags: Option<Tags>,"), "{types}");
+}

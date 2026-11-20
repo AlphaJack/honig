@@ -14,6 +14,7 @@ use super::types::{Checked, Constraints, Kind, Ty, TypeDef, TypeId, TypeSpace, X
 
 /// Wraps every value with checks that its type does not hold in a checked type of its own.
 pub(crate) fn wrap(types: &mut TypeSpace, http: &mut Http) {
+    checked_aliases(types);
     let mut taken = types.name_keys();
     // The shape of a split type names its fields' wrappers after the type itself: `ProductAttrs`, not
     // `ProductFieldsAttrs`.
@@ -83,6 +84,20 @@ pub(crate) fn wrap(types: &mut TypeSpace, http: &mut Http) {
             // An optional body is an `Option` of its content: the content type takes the checks.
             c.ty = space.wrap(&c.ty, &own, &name);
         }
+    }
+}
+
+/// Makes each component that names a type with keywords that the type does not hold (`Tags: {type: array, maxItems:
+/// 3}`) a checked type of it: a value of the component meets them however it is made, not only where a field uses it.
+fn checked_aliases(types: &mut TypeSpace) {
+    for i in 0..types.defs.len() {
+        let def = &types.defs[i];
+        let Kind::Alias(base) = &def.kind else { continue };
+        if !def.component || def.rust_type.is_some() || !needs_checks(types, base, &def.own, 0) {
+            continue;
+        }
+        let checked = Checked { base: base.clone(), constraints: def.own.clone() };
+        types.defs[i].kind = Kind::Checked(Box::new(checked));
     }
 }
 
@@ -345,6 +360,10 @@ pub(crate) fn needs_checks(types: &TypeSpace, t: &Ty, c: &Constraints, hops: usi
             Kind::Alias(x) if hops < MAX_ALIAS_HOPS => needs_checks(types, x, c, hops + 1),
             // The union of an implied shape (`Object` or `Array`, and `Other`): keywords of one kind beside the shape.
             Kind::Union(u) if u.rest => checked_by_kind(c),
+            // A checked type holds its own keywords: any other beside them is checked on its base.
+            Kind::Checked(own) if hops < MAX_ALIAS_HOPS && own.constraints != *c => {
+                needs_checks(types, &own.base, c, hops + 1)
+            }
             Kind::Alias(_)
             | Kind::Struct(_)
             | Kind::StrEnum(_)

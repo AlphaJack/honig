@@ -757,3 +757,12 @@ fn a_pair_counts_its_properties() {
     assert!(decode(json!({"a": "x", "b": "y", "c": "z"})).is_err(), "three is more than two");
     assert!(decode(json!({})).is_err(), "none is fewer than one");
 }
+
+/// A map component with keywords of its own is a checked type: a value built in code meets them too, not only one that
+/// a field decodes.
+#[test]
+fn a_map_component_checks_a_value_built_in_code() {
+    let labels = |name: &str| std::collections::BTreeMap::from([(name.to_owned(), "x".to_owned())]);
+    assert!(types::Labels::try_from(labels("red")).is_ok());
+    assert!(types::Labels::try_from(labels("Red")).is_err(), "a name outside `^[a-z]+$`");
+}
