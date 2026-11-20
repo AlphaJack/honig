@@ -106,7 +106,7 @@ pub(super) fn subschema_checks(
     value: &TokenStream,
     path: &TokenStream,
 ) -> TokenStream {
-    if c.json_checks().is_empty() && c.tuple.is_none() {
+    if c.json_checks().is_empty() {
         return TokenStream::new();
     }
     let ty = |n: usize| super::syntax::ty(space, &space.types.subschemas[n].0, false);
@@ -484,14 +484,17 @@ pub(super) fn checks(
     if let Some(settled) = settled_checks(space, t, c, path) {
         return settled;
     }
-    let json = c.json_checks();
     // A Rust tuple holds its items by their types.
-    let tuple = c.tuple.is_some() && !matches!(t, Ty::Tuple(_));
-    if !json.is_empty() || tuple {
-        let held = !tuple && crate::ir::checked::json_held_by_type(space.types, t, &json, 0);
+    let c = &if crate::ir::checked::rust_tuple(space.types, t, 0) {
+        Constraints { tuple: None, ..c.clone() }
+    } else {
+        c.clone()
+    };
+    let json = c.json_checks();
+    if !json.is_empty() {
+        let held = crate::ir::checked::json_held_by_type(space.types, t, &json, 0);
         let typed = (!held).then(|| subschema_checks(space, c, value, path));
-        let rest = Constraints { tuple: None, ..c.without_json() };
-        let rest = checks(space, t, &rest, value, path);
+        let rest = checks(space, t, &c.without_json(), value, path);
         return quote!(#typed #rest);
     }
     match t {

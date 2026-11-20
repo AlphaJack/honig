@@ -55,7 +55,7 @@ impl Constraints {
     }
 
     /// Returns the checks that judge the value as JSON (`not`, `dependentSchemas`, `if`, a counted `oneOf`, keywords
-    /// beside a union), and no other.
+    /// beside a union, a tuple), and no other.
     pub(crate) fn json_checks(&self) -> Self {
         Self {
             not: self.not.clone(),
@@ -73,6 +73,7 @@ impl Constraints {
             names_schema: self.names_schema,
             json_contains: self.json_contains,
             json_dependents: self.json_dependents.clone(),
+            tuple: self.tuple.clone(),
             ..Self::default()
         }
     }
@@ -95,6 +96,7 @@ impl Constraints {
             names_schema: None,
             json_contains: None,
             json_dependents: vec![],
+            tuple: None,
             ..self.clone()
         }
     }

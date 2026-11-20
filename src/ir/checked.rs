@@ -264,6 +264,12 @@ pub(crate) fn json_held_by_type(types: &TypeSpace, t: &Ty, json: &Constraints, h
     }
 }
 
+/// Is `t` a Rust tuple, maybe through aliases? It holds the items of a `prefixItems` tuple by their types.
+pub(crate) fn rust_tuple(types: &TypeSpace, t: &Ty, hops: usize) -> bool {
+    let alias = |id: &TypeId| matches!(&types.get(*id).kind, Kind::Alias(x) if rust_tuple(types, x, hops + 1));
+    matches!(t, Ty::Tuple(_)) || matches!(t, Ty::Named(id) if hops < MAX_ALIAS_HOPS && alias(id))
+}
+
 /// Does `c` hold a keyword of one kind that a `serde_json::Value` checks by its kind (`minimum`, `maxLength`,
 /// `required`, ...)?
 fn checked_by_kind(c: &Constraints) -> bool {
@@ -290,12 +296,12 @@ pub(crate) fn needs_checks(types: &TypeSpace, t: &Ty, c: &Constraints, hops: usi
     if c.never {
         return true;
     }
-    let json = c.json_checks();
-    if !json.is_empty() && !json_held_by_type(types, t, &json, hops) {
-        return true;
-    }
+    let mut json = c.json_checks();
     // A Rust tuple holds its items by their types.
-    if c.tuple.is_some() && !matches!(t, Ty::Tuple(_)) {
+    if rust_tuple(types, t, hops) {
+        json.tuple = None;
+    }
+    if !json.is_empty() && !json_held_by_type(types, t, &json, hops) {
         return true;
     }
     let c = &c.without_json();
