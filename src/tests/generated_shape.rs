@@ -585,11 +585,18 @@ fn a_body_of_your_own_type_is_left_to_it() {
 /// tokens.
 #[test]
 fn a_macro_body_reads_as_items() {
-    let doc = common::spec("3.1.0", &json!({}), &json!({"schemas": {"Kind": {"type": "string", "enum": ["a", "b"]}}}));
+    let object = json!({"type": "object", "properties": {"a": {"type": "string"}}});
+    let doc = common::spec(
+        "3.1.0",
+        &json!({}),
+        &json!({"schemas": {"A": object, "B": {"type": "object", "properties": {"b": {"type": "integer"}}}}}),
+    );
     let files = common::generate("shape-macro-body", &doc, &crate::emit::Options::default());
     let types = common::file(&files, "types.rs");
     assert!(
-        types.contains("macro_rules! str_enum_impls {\n    ($n:ident) => {\n        impl std::fmt::Display for $n {\n"),
+        types.contains(
+            "macro_rules! deserialize_impl {\n    ($t:ty) => {\n        impl<'de> serde::Deserialize<'de> for $t {\n"
+        ),
         "{types}"
     );
 }
