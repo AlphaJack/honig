@@ -597,7 +597,7 @@ where
             Some(satisfied) => (operation, op, satisfied, method),
             None => {
                 let event = RequestEvent::new(Some(operation), method);
-                event.fail(crate::Failure::Unauthorized, 0);
+                event.fail(&Reason::Unauthorized);
                 let mut resp = config.reject(op.errors, Some(operation), Reason::Unauthorized, head.headers.clone());
                 challenge(&mut resp, op.security);
                 let resp = for_method(method, resp);
@@ -626,12 +626,13 @@ where
     let mut resp = match traced(op, remote, through).await {
         Ok(resp) => ranges.answer(conditions.answer(resp)),
         Err(e) => {
-            event.fail(crate::Failure::Forbidden, 0);
+            let reason = Reason::Denied(e);
+            event.fail(&reason);
             let mut headers = http::HeaderMap::new();
             if let Some(accept) = accept {
                 headers.insert(http::header::ACCEPT, accept);
             }
-            config.reject(op.errors, Some(operation), Reason::Denied(e), headers)
+            config.reject(op.errors, Some(operation), reason, headers)
         }
     };
     // Every 401 carries a challenge (RFC 9110 section 15.5.2): a refusal of the server, of a layer or of a handler.

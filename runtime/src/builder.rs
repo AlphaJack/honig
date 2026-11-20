@@ -4,40 +4,41 @@
 
 use std::fmt;
 
-/// A field of a builder whose value did not convert to its type.
+use crate::violation::Violation;
+
+/// A value that its schema refuses: the field of a builder whose value did not convert, or a rule of the whole
+/// value. It holds one [`Violation`], as a refused request does.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct BuildError {
-    field: &'static str,
-    message: String,
-}
+pub struct BuildError(Violation);
 
 impl BuildError {
-    /// Returns the error of a built value that breaks a rule of its whole schema (`if`/`then`, `not`, ...). It points to no
-    /// field.
+    /// Returns the error of a built value that breaks a rule of its whole schema (`if`/`then`, `not`, ...). Its path is
+    /// empty.
     #[must_use]
     pub const fn value(message: String) -> Self {
-        Self { field: "", message }
+        Self(Violation { path: String::new(), message })
     }
 
-    /// Returns the name of the field as the description spells it. It is empty for a rule of the whole value.
+    /// Returns where and why: the path is a JSON pointer into the value (`/age`), empty for a rule of the whole value.
     #[must_use]
-    pub const fn field(&self) -> &'static str {
-        self.field
+    pub const fn violation(&self) -> &Violation {
+        &self.0
     }
+}
 
-    /// Returns why the value did not convert.
-    #[must_use]
-    pub fn message(&self) -> &str {
-        &self.message
+impl From<BuildError> for Violation {
+    fn from(e: BuildError) -> Self {
+        e.0
     }
 }
 
 impl fmt::Display for BuildError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.field.is_empty() {
-            return f.write_str(&self.message);
+        let Violation { path, message } = &self.0;
+        if path.is_empty() {
+            return f.write_str(message);
         }
-        write!(f, "`{}`: {}", self.field, self.message)
+        write!(f, "{path}: {message}")
     }
 }
 
@@ -53,7 +54,10 @@ where
     V: TryInto<F>,
     V::Error: fmt::Display,
 {
-    value.try_into().map_err(|e| BuildError { field, message: e.to_string() })
+    value.try_into().map_err(|e| {
+        let path = format!("/{}", field.replace('~', "~0").replace('/', "~1"));
+        BuildError(Violation { path, message: e.to_string() })
+    })
 }
 
 /// Builds a `T` one field at a time and keeps the first field that does not convert.
@@ -110,20 +114,20 @@ mod tests {
         let bad =
             Builder::start(|| Ok(Pair::default())).set("a", 300_i64, |p, v| p.a = v).set("b", -1_i64, |p, v| p.b = v);
         let err = bad.build().expect_err("300 is past u8");
-        assert_eq!(err.field(), "a");
-        assert_eq!(err.to_string(), format!("`a`: {}", u8::try_from(300_i64).expect_err("past u8")));
+        assert_eq!(err.violation().path, "/a");
+        assert_eq!(err.to_string(), format!("/a: {}", u8::try_from(300_i64).expect_err("past u8")));
     }
 
     #[test]
-    fn a_rule_of_the_whole_value_names_no_field() {
+    fn a_rule_of_the_whole_value_has_an_empty_path() {
         let err = BuildError::value("`customs` is required".to_owned());
-        assert_eq!((err.field(), err.to_string()), ("", "`customs` is required".to_owned()));
+        assert_eq!((err.violation().path.as_str(), err.to_string()), ("", "`customs` is required".to_owned()));
     }
 
     #[test]
     fn a_required_field_that_does_not_convert_skips_the_setters() {
         let start = || Ok(Pair { a: field("a", 256_i64)?, b: 0 });
         let err = Builder::start(start).set("b", 1_i64, |p, v| p.b = v).build().expect_err("256 is past u8");
-        assert_eq!(err.field(), "a");
+        assert_eq!(err.violation().path, "/a");
     }
 }

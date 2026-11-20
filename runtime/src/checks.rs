@@ -5,14 +5,7 @@ use std::fmt;
 use serde::Serialize;
 use serde_json::Value;
 
-/// A constraint a value breaks: where (JSON pointer) and why.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
-pub struct Violation {
-    /// JSON pointer into the request, e.g. `/body/tags/0`.
-    pub path: String,
-    /// What is wrong.
-    pub message: String,
-}
+pub use crate::violation::Violation;
 
 /// Where a value is in a request. It is a JSON pointer that is formatted only on a violation.
 #[derive(Debug, Clone, Copy)]

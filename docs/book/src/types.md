@@ -173,7 +173,7 @@ A struct with a checked field has a builder. A builder converts every field and 
 {{#include ../../../tests/e2e/tests/v32_validation.rs:builder}}
 ```
 
-The error points to the field as the description spells it: `` `age`: 150 must be less than 150 ``. The builder of `User` is `types::builders::User`. A struct without a checked field has none: `new` and struct update build it with no `?`.
+The error points to the field with a JSON pointer, as a refused request does: `/age: 150 must be less than 150`. The builder of `User` is `types::builders::User`. A struct without a checked field has none: `new` and struct update build it with no `?`.
 
 `try_from`, `parse` and `build` all fail with `api::BuildError`, so a function that mixes them needs no `Box<dyn Error>`. In a handler, `?` turns it into a `500`: the handler's inputs are checked already, so a value that its schema refuses came from the server's own data.
 
