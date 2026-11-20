@@ -78,6 +78,7 @@ fn cases() -> Vec<Case> {
                 .as_array()
                 .unwrap()
                 .iter()
+                .filter(|t| !annotation_only(t))
                 .map(|t| {
                     let key = unique(&mut seen, format!("{name}: {}", t["description"].as_str().unwrap_or_default()));
                     (key, t["data"].clone(), t["valid"].as_bool().unwrap())
@@ -88,6 +89,13 @@ fn cases() -> Vec<Case> {
         }
     }
     out
+}
+
+/// Does test `t` expect `format` to be an annotation only? JSON Schema 2020-12 says so by default (section 7.2.1).
+/// honig asserts every format it knows instead, as an `OpenAPI` description that names one expects, so it refuses such
+/// a value by design.
+fn annotation_only(t: &Value) -> bool {
+    t["description"].as_str().is_some_and(|d| d.ends_with("is only an annotation by default"))
 }
 
 /// Returns `key`, or `key (n)` for its n-th repeat. A few descriptions repeat within a file.
@@ -139,7 +147,11 @@ fn component(i: usize, case: &Case) -> Value {
 /// Puts each document that a case retrieves into the `$defs` of its schema, with the URI that it is retrieved at as its
 /// `$id`, as the suite's README suggests. A document with an `$id` of its own keeps it: the URI becomes a `$ref` to it.
 fn embed(schema: &mut serde_json::Map<String, Value>, external: &serde_json::Map<String, Value>) {
-    for (n, (uri, document)) in external.iter().enumerate() {
+    // A metaschema that `$schema` names picks vocabularies, which honig does not read: it is no schema of the value.
+    let meta = schema.get("$schema").and_then(Value::as_str).map(str::to_owned);
+    for (n, (uri, document)) in
+        external.iter().enumerate().filter(|(_, (uri, _))| meta.as_deref() != Some(uri.as_str()))
+    {
         let mut document = document.clone();
         let own = document.get("$id").and_then(Value::as_str).filter(|id| *id != uri).map(str::to_owned);
         let defs = schema.entry("$defs").or_insert_with(|| json!({})).as_object_mut().unwrap();
@@ -171,30 +183,36 @@ fn generable(i: usize, case: &Case) -> Result<(), String> {
     }
 }
 
-/// Does `schema` hold a `$ref` to an absolute URI that no `$id` within it names? A relative one resolves against an
-/// `$id` within it.
+/// Does `schema` hold a reference to a document that no `$id` within it names? Each `$id` and reference resolves against
+/// the base of the resource around it.
 fn refers_outside(schema: &Value) -> bool {
     let mut ids = vec![];
     let mut refs = vec![];
-    collect(schema, &mut ids, &mut refs);
+    collect(schema, "", &mut ids, &mut refs);
     refs.iter().any(|r| {
         let doc = r.split('#').next().unwrap_or_default();
-        doc.contains(':') && !ids.iter().any(|id: &&str| id.trim_end_matches('#') == doc)
+        doc.contains(':') && !ids.iter().any(|id: &String| id.trim_end_matches('#') == doc)
     })
 }
 
-fn collect<'a>(v: &'a Value, ids: &mut Vec<&'a str>, refs: &mut Vec<&'a str>) {
+/// Collects each `$id` and each `$ref` or `$dynamicRef` under `v`, resolved against `base`.
+fn collect(v: &Value, base: &str, ids: &mut Vec<String>, refs: &mut Vec<String>) {
     match v {
         Value::Object(o) => {
+            let base = match o.get("$id").and_then(Value::as_str) {
+                Some(id) => crate::schema_ids::resolve(base, id),
+                None => base.to_owned(),
+            };
+            ids.push(base.clone());
             for (key, value) in o {
                 match (key.as_str(), value.as_str()) {
-                    ("$id", Some(id)) => ids.push(id),
-                    ("$ref" | "$dynamicRef", Some(r)) => refs.push(r),
-                    _ => collect(value, ids, refs),
+                    ("$id", Some(_)) => {}
+                    ("$ref" | "$dynamicRef", Some(r)) => refs.push(crate::schema_ids::resolve(&base, r)),
+                    _ => collect(value, &base, ids, refs),
                 }
             }
         }
-        Value::Array(items) => items.iter().for_each(|x| collect(x, ids, refs)),
+        Value::Array(items) => items.iter().for_each(|x| collect(x, base, ids, refs)),
         Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_) => {}
     }
 }
