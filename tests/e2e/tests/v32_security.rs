@@ -395,3 +395,35 @@ proptest! {
         prop_assert_eq!(send(method, path, &creds), expected(op.op().security, &creds), "{} {} with {:?}", method, path, creds);
     }
 }
+
+// ANCHOR: optional-rate-limit
+type Filter = std::future::Ready<Result<api::Request, api::ApiError>>;
+
+/// Anonymous callers of `/optional` get at most `limit` requests. A caller whose token passed is never limited: the
+/// layer runs after the server checked the credentials, so the principal is in the extensions. A real limiter keys the
+/// anonymous count by the client's address (`api::peer`) and a time window.
+fn limit_anonymous(limit: u32) -> tower::filter::AsyncFilterLayer<impl Fn(api::Request) -> Filter + Clone> {
+    let used = Arc::new(std::sync::atomic::AtomicU32::new(0));
+    tower::filter::AsyncFilterLayer::new(move |req: api::Request| {
+        let signed_in = req.extensions().get::<String>().is_some();
+        let over = !signed_in && used.fetch_add(1, std::sync::atomic::Ordering::Relaxed) >= limit;
+        let refusal = api::ApiError::new(api::http::StatusCode::TOO_MANY_REQUESTS, "sign in for more requests");
+        std::future::ready(if over { Err(refusal) } else { Ok(req) })
+    })
+}
+// ANCHOR_END: optional-rate-limit
+
+#[test]
+fn anonymous_callers_are_limited_and_signed_in_ones_are_not() {
+    let service = api::Server::new(Server::default()).operation_layer(limit_anonymous(2)).into_service();
+    let get = |token: Option<&str>| {
+        let mut req = api::runtime::new_request("GET", "/optional".to_owned(), vec![]).unwrap();
+        if let Some(t) = token {
+            req.headers_mut()
+                .append("authorization", honig::http::HeaderValue::try_from(format!("Bearer {t}")).unwrap());
+        }
+        api::block_on(service.handle(req)).status().as_u16()
+    };
+    assert_eq!([get(None), get(None), get(None)], [204, 204, 429], "the third anonymous request is over the limit");
+    assert_eq!([get(Some("b-ann")), get(Some("b-ann"))], [204, 204], "a signed-in caller is not counted");
+}
