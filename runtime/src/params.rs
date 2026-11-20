@@ -3,6 +3,7 @@
 
 mod decode;
 mod encode;
+mod keys;
 mod pairs;
 mod percent;
 

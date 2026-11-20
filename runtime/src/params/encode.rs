@@ -1,9 +1,6 @@
 //! Writing a parameter value in its style: path, query, header and cookie.
 
-use std::fmt;
-
-use serde::de::{self, Deserializer, MapAccess, Visitor};
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use serde_json::{Map, Value};
 
 use super::{Enc, Style, pct, pct_path};
@@ -77,33 +74,7 @@ fn object_order<T: Serialize + ?Sized>(value: &Value, v: &T) -> Vec<String> {
     if value.is_object() { key_order(v) } else { Vec::new() }
 }
 
-/// Returns keys of the top-level object of `v` in the order that `v` serializes them.
-/// That is the field order of a struct or the property order of the schema.
-/// `Value` is a sorted map and loses it. Empty for anything but an object.
-pub(crate) fn key_order<T: Serialize + ?Sized>(v: &T) -> Vec<String> {
-    struct Keys(Vec<String>);
-    impl<'de> Deserialize<'de> for Keys {
-        fn deserialize<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-            struct V;
-            impl<'de> Visitor<'de> for V {
-                type Value = Keys;
-                fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                    f.write_str("an object")
-                }
-                fn visit_map<A: MapAccess<'de>>(self, mut m: A) -> Result<Keys, A::Error> {
-                    let mut keys = vec![];
-                    while let Some(k) = m.next_key::<String>()? {
-                        m.next_value::<de::IgnoredAny>()?;
-                        keys.push(k);
-                    }
-                    Ok(Keys(keys))
-                }
-            }
-            d.deserialize_map(V)
-        }
-    }
-    serde_json::to_string(v).ok().and_then(|s| serde_json::from_str::<Keys>(&s).ok()).map(|k| k.0).unwrap_or_default()
-}
+pub(crate) use super::keys::key_order;
 
 /// Returns the entries of an object in `order`. RFC 6570 expands an associative array in
 /// its own order. Keys that `order` lacks follow in sorted order.
@@ -310,5 +281,29 @@ mod tests {
     fn keys_keep_the_order_of_their_fields() {
         assert_eq!(super::key_order(&Pair { b: 1, a: 2 }), ["b", "a"]);
         assert_eq!(super::key_order(&5), Vec::<String>::new());
+    }
+
+    /// A value that JSON cannot write: refuses to serialize.
+    struct Unwritable;
+
+    impl serde::Serialize for Unwritable {
+        fn serialize<S: serde::Serializer>(&self, _: S) -> Result<S::Ok, S::Error> {
+            Err(serde::ser::Error::custom("not written"))
+        }
+    }
+
+    #[derive(serde::Serialize)]
+    struct Holder {
+        b: Unwritable,
+        #[serde(flatten)]
+        rest: std::collections::BTreeMap<String, u8>,
+    }
+
+    /// The names come without writing the values: a value that does not serialize still gives its name, and a
+    /// flattened map gives its own after the fields.
+    #[test]
+    fn keys_come_without_their_values() {
+        let holder = Holder { b: Unwritable, rest: [("a".to_owned(), 1)].into() };
+        assert_eq!(super::key_order(&holder), ["b", "a"]);
     }
 }
