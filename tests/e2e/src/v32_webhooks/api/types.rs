@@ -95,28 +95,16 @@ impl SubscribeBody {
 pub mod builders {
     use super as types;
     use super::runtime;
-    impl super::Event {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            kind: impl TryInto<types::EventKind, Error: std::fmt::Display>,
-        ) -> Event {
-            Event(
-                runtime::Builder::start(|| Ok(Self::new(runtime::field("kind", kind)?))),
-            )
-        }
+    runtime::typestate_builder! {
+        Product => super::Product; required { id : R0 : i64 = "id", name : R1 : String =
+        "name" } optional {} fixed {}
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct Event(runtime::Builder<super::Event>);
-    impl Event {
-        pub fn at(
-            self,
-            value: impl TryInto<runtime::DateTimeText, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("at", value, |s, v| s.at = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::Event, runtime::BuildError> {
-            self.0.build()
-        }
+    runtime::typestate_builder! {
+        Event => super::Event; required { kind : R0 : types::EventKind = "kind" }
+        optional { at(at) : runtime::DateTimeText = "at" => some, None } fixed {}
+    }
+    runtime::typestate_builder! {
+        SubscribeBody => super::SubscribeBody; required { callback_url : R0 : url::Url =
+        "callbackUrl" } optional {} fixed {}
     }
 }

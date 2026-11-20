@@ -17,6 +17,7 @@
 )]
 pub mod plan {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/route";
     #[derive(Debug, Clone, PartialEq)]
@@ -27,6 +28,14 @@ pub mod plan {
         #[must_use]
         pub const fn new(body: types::Route) -> Self {
             Self { body }
+        }
+    }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { body : R0 : types::Route = "body" }
+            optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq)]

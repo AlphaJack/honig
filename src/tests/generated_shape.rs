@@ -1706,4 +1706,37 @@ fn a_reorder_of_colliding_names_changes_nothing() {
         let (x, y) = (pairs(text), b.iter().find(|(f, _)| f == file).map(|(_, t)| pairs(t)).unwrap_or_default());
         assert_eq!(x, y, "{file}");
     }
+
+/// Two required values of the same type could swap in a positional `new`: such a type or `Params` has only its builder,
+/// which takes them by name. One whose required values all differ in type keeps `new`.
+#[test]
+fn new_exists_only_where_no_two_required_values_can_swap() {
+    let doc = common::spec(
+        "3.2.0",
+        &json!({
+            "/orgs/{org}/repos/{repo}": {"get": {"operationId": "getRepo",
+                "parameters": [
+                    {"name": "org", "in": "path", "required": true, "schema": {"type": "string"}},
+                    {"name": "repo", "in": "path", "required": true, "schema": {"type": "string"}}
+                ],
+                "responses": {"204": {"description": "ok"}}}},
+            "/orders/{id}": {"get": {"operationId": "getOrder",
+                "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "integer"}}],
+                "responses": {"204": {"description": "ok"}}}}
+        }),
+        &json!({"schemas": {
+            "Person": {"type": "object", "required": ["first_name", "last_name"],
+                "properties": {"first_name": {"type": "string"}, "last_name": {"type": "string"}}},
+            "Point": {"type": "object", "required": ["x", "label"],
+                "properties": {"x": {"type": "number"}, "label": {"type": "string"}}}
+        }}),
+    );
+    let files = common::generate("new-or-builder", &doc, &crate::emit::Options::default());
+    let types = common::file(&files, "types.rs");
+    let ops = common::file(&files, "operations.rs");
+    assert!(!types.contains("impl Person {"), "no positional new for two strings: {types}");
+    assert!(types.contains("impl Point {"), "a number and a string cannot swap: {types}");
+    assert!(types.contains("Person => super::Person"), "Person has its builder: {types}");
+    assert!(!op_module(ops, "get_repo").contains("fn new("), "two string path parameters: {ops}");
+    assert!(op_module(ops, "get_order").contains("fn new("), "one path parameter: {ops}");
 }

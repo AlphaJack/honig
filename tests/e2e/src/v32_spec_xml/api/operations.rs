@@ -100,6 +100,7 @@ pub mod no_xml_object_array {
 }
 pub mod xml_attribute_prefix_and_namespace {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/people";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -113,6 +114,14 @@ pub mod xml_attribute_prefix_and_namespace {
         }
     }
     default_impl!(Params);
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required {} optional { body(body) : types::Person =
+            "body" => some, None } fixed {}
+        }
+    }
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// ok

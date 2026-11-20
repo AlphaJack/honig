@@ -69,30 +69,17 @@ impl UploadBody {
 pub mod builders {
     use super as types;
     use super::runtime;
-    impl super::Key {
-        /// Starts a builder from the required properties.
-        pub fn builder(id: impl TryInto<String, Error: std::fmt::Display>) -> Key {
-            Key(runtime::Builder::start(|| Ok(Self::new(runtime::field("id", id)?))))
-        }
+    runtime::typestate_builder! {
+        Key => super::Key; required { id : R0 : String = "id" } optional {
+        last_seen(last_seen) : runtime::DateTimeText = "lastSeen" => some, None,
+        owner(owner) : types::Owner = "owner" => some, None } fixed {}
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct Key(runtime::Builder<super::Key>);
-    impl Key {
-        pub fn last_seen(
-            self,
-            value: impl TryInto<runtime::DateTimeText, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("lastSeen", value, |s, v| s.last_seen = Some(v)))
-        }
-        pub fn owner(
-            self,
-            value: impl TryInto<types::Owner, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("owner", value, |s, v| s.owner = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::Key, runtime::BuildError> {
-            self.0.build()
-        }
+    runtime::typestate_builder! {
+        Owner => super::Owner; required {} optional { name(name) : String = "name" =>
+        some, None } fixed {}
+    }
+    runtime::typestate_builder! {
+        UploadBody => super::UploadBody; required { file : R0 : runtime::Binary = "file"
+        } optional { note(note) : String = "note" => some, None } fixed {}
     }
 }

@@ -79,34 +79,6 @@ runtime::object! {
         pub bin: i64,
     }
 }
-impl Box2 {
-    #[must_use]
-    pub const fn new(
-        width: i64,
-        height: i64,
-        depth: i64,
-        weight: i64,
-        color: i64,
-        shelf: i64,
-        row: i64,
-        bin: i64,
-    ) -> Self {
-        #![allow(
-            clippy::too_many_arguments,
-            reason = "one argument per required property"
-        )]
-        Self {
-            width,
-            height,
-            depth,
-            weight,
-            color,
-            shelf,
-            row,
-            bin,
-        }
-    }
-}
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
 #[serde(transparent)]
 pub struct Note(pub(super) NoteVariants);
@@ -864,267 +836,76 @@ runtime::checked_impls!(NotChecked, serde_json::Value);
 pub mod builders {
     use super as types;
     use super::runtime;
-    impl super::TextNote {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            text: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> TextNote {
-            TextNote(
-                runtime::Builder::start(|| Ok(
-                    super::TextNoteFields::new(runtime::field("text", text)?),
-                )),
-            )
-        }
+    runtime::typestate_builder! {
+        Box2 => super::Box2; required { width : R0 : i64 = "width", height : R1 : i64 =
+        "height", depth : R2 : i64 = "depth", weight : R3 : i64 = "weight", color : R4 :
+        i64 = "color", shelf : R5 : i64 = "shelf", row : R6 : i64 = "row", bin : R7 : i64
+        = "bin" } optional {} fixed {}
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct TextNote(runtime::Builder<super::TextNoteFields>);
-    impl TextNote {
-        pub fn kind(
-            self,
-            value: impl TryInto<types::TextNoteKind, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("kind", value, |s, v| s.kind = Some(v)))
-        }
-        pub fn point(
-            self,
-            value: impl TryInto<[f64; 2], Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("point", value, |s, v| s.point = Some(v)))
-        }
-        pub fn rgb(
-            self,
-            value: impl TryInto<types::TextNoteRgb, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("rgb", value, |s, v| s.rgb = Some(v)))
-        }
-        /// Returns the value once its whole schema holds.
-        pub fn build(self) -> Result<super::TextNote, runtime::BuildError> {
-            self.0.build().and_then(super::TextNote::try_from)
-        }
+    runtime::typestate_builder! {
+        TextNote => super::TextNoteFields, try_from super::TextNote; required { text : R0
+        : String = "text" } optional { kind(kind) : types::TextNoteKind = "kind" => some,
+        None, point(point) : [f64; 2] = "point" => some, None, rgb(rgb) :
+        types::TextNoteRgb = "rgb" => some, None } fixed {}
     }
-    impl super::ImageNote {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            url: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> ImageNote {
-            ImageNote(
-                runtime::Builder::start(|| Ok(Self::new(runtime::field("url", url)?))),
-            )
-        }
+    runtime::typestate_builder! {
+        ImageNote => super::ImageNote; required { url : R0 : String = "url" } optional {
+        width(width) : types::Pixels = "width" => value,
+        super::ImageNote::default_width(), crop(crop) : types::Crop = "crop" => some,
+        None } fixed { kind : types::ImageNoteKind {}, }
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct ImageNote(runtime::Builder<super::ImageNote>);
-    impl ImageNote {
-        pub fn width(
-            self,
-            value: impl TryInto<types::Pixels, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("width", value, |s, v| s.width = v))
-        }
-        pub fn crop(
-            self,
-            value: impl TryInto<types::Crop, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("crop", value, |s, v| s.crop = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::ImageNote, runtime::BuildError> {
-            self.0.build()
-        }
+    runtime::typestate_builder! {
+        NoteTextNote => super::NoteTextNoteFields, try_from super::NoteTextNote; required
+        { text : R0 : String = "text" } optional { kind(kind) : types::NoteTextNoteKind =
+        "kind" => some, None, point(point) : [f64; 2] = "point" => some, None, rgb(rgb) :
+        types::NoteTextNoteRgb = "rgb" => some, None, size(size) : i64 = "size" => some,
+        None } fixed {}
     }
-    impl super::NoteTextNote {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            text: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> NoteTextNote {
-            NoteTextNote(
-                runtime::Builder::start(|| Ok(
-                    super::NoteTextNoteFields::new(runtime::field("text", text)?),
-                )),
-            )
-        }
+    runtime::typestate_builder! {
+        NoteImageNote => super::NoteImageNote; required { url : R0 : String = "url" }
+        optional { width(width) : types::Pixels = "width" => value,
+        super::NoteImageNote::default_width(), crop(crop) : types::Crop = "crop" => some,
+        None, text(text) : String = "text" => some, None, size(size) : i64 = "size" =>
+        some, None } fixed { kind : types::NoteImageNoteKind {}, }
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct NoteTextNote(runtime::Builder<super::NoteTextNoteFields>);
-    impl NoteTextNote {
-        pub fn kind(
-            self,
-            value: impl TryInto<types::NoteTextNoteKind, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("kind", value, |s, v| s.kind = Some(v)))
-        }
-        pub fn point(
-            self,
-            value: impl TryInto<[f64; 2], Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("point", value, |s, v| s.point = Some(v)))
-        }
-        pub fn rgb(
-            self,
-            value: impl TryInto<types::NoteTextNoteRgb, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("rgb", value, |s, v| s.rgb = Some(v)))
-        }
-        pub fn size(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
-            Self(self.0.set("size", value, |s, v| s.size = Some(v)))
-        }
-        /// Returns the value once its whole schema holds.
-        pub fn build(self) -> Result<super::NoteTextNote, runtime::BuildError> {
-            self.0.build().and_then(super::NoteTextNote::try_from)
-        }
+    runtime::typestate_builder! {
+        CropVariant2Variant2 => super::CropVariant2Variant2; required {} optional { x(x)
+        : i64 = "x" => some, None, y(y) : i64 = "y" => some, None } fixed {}
     }
-    impl super::NoteImageNote {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            url: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> NoteImageNote {
-            NoteImageNote(
-                runtime::Builder::start(|| Ok(Self::new(runtime::field("url", url)?))),
-            )
-        }
+    runtime::typestate_builder! {
+        ArchiveConflict => super::ArchiveConflict; required { code : R0 : i64 = "code",
+        message : R1 : String = "message" } optional {} fixed {}
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct NoteImageNote(runtime::Builder<super::NoteImageNote>);
-    impl NoteImageNote {
-        pub fn width(
-            self,
-            value: impl TryInto<types::Pixels, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("width", value, |s, v| s.width = v))
-        }
-        pub fn crop(
-            self,
-            value: impl TryInto<types::Crop, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("crop", value, |s, v| s.crop = Some(v)))
-        }
-        pub fn text(
-            self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("text", value, |s, v| s.text = Some(v)))
-        }
-        pub fn size(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
-            Self(self.0.set("size", value, |s, v| s.size = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::NoteImageNote, runtime::BuildError> {
-            self.0.build()
-        }
+    runtime::typestate_builder! {
+        AddNoteCreatedXTags => super::AddNoteCreatedXTags; required {} optional { a(a) :
+        String = "a" => some, None, b(b) : String = "b" => some, None } fixed {}
     }
-    impl super::NotObject {
-        /// Starts a builder from the required properties.
-        pub fn builder() -> NotObject {
-            NotObject(runtime::Builder::start(|| Ok(Self::new())))
-        }
+    runtime::typestate_builder! {
+        NotObject => super::NotObject; required {} optional { size(size) :
+        types::NotObjectSize = "size" => some, None } fixed { additional_properties :
+        std::collections::BTreeMap::new(), }
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct NotObject(runtime::Builder<super::NotObject>);
-    impl NotObject {
-        pub fn size(
-            self,
-            value: impl TryInto<types::NotObjectSize, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("size", value, |s, v| s.size = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::NotObject, runtime::BuildError> {
-            self.0.build()
-        }
+    runtime::typestate_builder! {
+        Not2Object => super::Not2Object; required {} optional { text(text) :
+        types::Not2ObjectText = "text" => some, None } fixed { additional_properties :
+        std::collections::BTreeMap::new(), }
     }
-    impl super::Not2Object {
-        /// Starts a builder from the required properties.
-        pub fn builder() -> Not2Object {
-            Not2Object(runtime::Builder::start(|| Ok(Self::new())))
-        }
+    runtime::typestate_builder! {
+        Not3 => super::Not3; required {} optional { kind(kind) : String = "kind" => some,
+        None, text(text) : String = "text" => some, None, size(size) : i64 = "size" =>
+        some, None } fixed { additional_properties : std::collections::BTreeMap::new(), }
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct Not2Object(runtime::Builder<super::Not2Object>);
-    impl Not2Object {
-        pub fn text(
-            self,
-            value: impl TryInto<types::Not2ObjectText, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("text", value, |s, v| s.text = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::Not2Object, runtime::BuildError> {
-            self.0.build()
-        }
+    runtime::typestate_builder! {
+        TextNoteFields => super::TextNoteFields; required { text : R0 : String = "text" }
+        optional { kind(kind) : types::TextNoteKind = "kind" => some, None, point(point)
+        : [f64; 2] = "point" => some, None, rgb(rgb) : types::TextNoteRgb = "rgb" =>
+        some, None } fixed {}
     }
-    impl super::TextNoteFields {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            text: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> TextNoteFields {
-            TextNoteFields(
-                runtime::Builder::start(|| Ok(Self::new(runtime::field("text", text)?))),
-            )
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct TextNoteFields(runtime::Builder<super::TextNoteFields>);
-    impl TextNoteFields {
-        pub fn kind(
-            self,
-            value: impl TryInto<types::TextNoteKind, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("kind", value, |s, v| s.kind = Some(v)))
-        }
-        pub fn point(
-            self,
-            value: impl TryInto<[f64; 2], Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("point", value, |s, v| s.point = Some(v)))
-        }
-        pub fn rgb(
-            self,
-            value: impl TryInto<types::TextNoteRgb, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("rgb", value, |s, v| s.rgb = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::TextNoteFields, runtime::BuildError> {
-            self.0.build()
-        }
-    }
-    impl super::NoteTextNoteFields {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            text: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> NoteTextNoteFields {
-            NoteTextNoteFields(
-                runtime::Builder::start(|| Ok(Self::new(runtime::field("text", text)?))),
-            )
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct NoteTextNoteFields(runtime::Builder<super::NoteTextNoteFields>);
-    impl NoteTextNoteFields {
-        pub fn kind(
-            self,
-            value: impl TryInto<types::NoteTextNoteKind, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("kind", value, |s, v| s.kind = Some(v)))
-        }
-        pub fn point(
-            self,
-            value: impl TryInto<[f64; 2], Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("point", value, |s, v| s.point = Some(v)))
-        }
-        pub fn rgb(
-            self,
-            value: impl TryInto<types::NoteTextNoteRgb, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("rgb", value, |s, v| s.rgb = Some(v)))
-        }
-        pub fn size(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
-            Self(self.0.set("size", value, |s, v| s.size = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::NoteTextNoteFields, runtime::BuildError> {
-            self.0.build()
-        }
+    runtime::typestate_builder! {
+        NoteTextNoteFields => super::NoteTextNoteFields; required { text : R0 : String =
+        "text" } optional { kind(kind) : types::NoteTextNoteKind = "kind" => some, None,
+        point(point) : [f64; 2] = "point" => some, None, rgb(rgb) :
+        types::NoteTextNoteRgb = "rgb" => some, None, size(size) : i64 = "size" => some,
+        None } fixed {}
     }
 }

@@ -17,6 +17,7 @@
 )]
 pub mod put_stamp {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/stamps";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -27,6 +28,14 @@ pub mod put_stamp {
         #[must_use]
         pub const fn new(body: types::Stamp) -> Self {
             Self { body }
+        }
+    }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { body : R0 : types::Stamp = "body" }
+            optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]

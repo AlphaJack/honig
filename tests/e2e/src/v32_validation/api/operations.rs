@@ -52,6 +52,15 @@ pub mod create_user {
             }
         }
     }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { body : R0 : types::User = "body" }
+            optional { limit(limit) : types::CreateUserLimit = "limit" => some, None,
+            x_team(x_team) : types::CreateUserXTeam = "X-Team" => some, None } fixed {}
+        }
+    }
     #[derive(Debug, Clone, PartialEq)]
     pub enum Response {
         /// Created.
@@ -82,6 +91,7 @@ pub mod create_user {
 }
 pub mod create_shipment {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/shipments";
     #[derive(Debug, Clone, PartialEq)]
@@ -92,6 +102,14 @@ pub mod create_shipment {
         #[must_use]
         pub const fn new(body: types::Shipment) -> Self {
             Self { body }
+        }
+    }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { body : R0 : types::Shipment = "body" }
+            optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -122,6 +140,7 @@ pub mod create_shipment {
 }
 pub mod login {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/logins";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -132,6 +151,14 @@ pub mod login {
         #[must_use]
         pub const fn new(body: types::LoginRequest) -> Self {
             Self { body }
+        }
+    }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { body : R0 : types::LoginRequest = "body"
+            } optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -158,6 +185,7 @@ pub mod login {
 }
 pub mod add_member {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/members";
     #[derive(Debug, Clone, PartialEq)]
@@ -168,6 +196,13 @@ pub mod add_member {
         #[must_use]
         pub const fn new(body: Body) -> Self {
             Self { body }
+        }
+    }
+    pub mod builders {
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { body : R0 : super::Body = "body" }
+            optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq)]
@@ -193,6 +228,7 @@ pub mod add_member {
 }
 pub mod add_closed {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/closed";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -203,6 +239,13 @@ pub mod add_closed {
         #[must_use]
         pub const fn new(body: Body) -> Self {
             Self { body }
+        }
+    }
+    pub mod builders {
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { body : R0 : super::Body = "body" }
+            optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -229,6 +272,7 @@ pub mod add_closed {
 }
 pub mod add_badge {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/badges";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -244,6 +288,13 @@ pub mod add_badge {
     impl Default for Params {
         fn default() -> Self {
             Self::new()
+        }
+    }
+    pub mod builders {
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required {} optional { body(body) : super::Body =
+            "body" => some, None } fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]

@@ -33,6 +33,7 @@ macro_rules! error_impl {
 }
 pub mod matrix_fs {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/matrix-f-s/{color}";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -43,6 +44,14 @@ pub mod matrix_fs {
         #[must_use]
         pub const fn new(color: types::Str) -> Self {
             Self { color }
+        }
+    }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { color : R0 : types::Str = "color" }
+            optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -63,6 +72,7 @@ pub mod matrix_fs {
 }
 pub mod matrix_fa {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/matrix-f-a/{color}";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -73,6 +83,14 @@ pub mod matrix_fa {
         #[must_use]
         pub const fn new(color: types::Arr) -> Self {
             Self { color }
+        }
+    }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { color : R0 : types::Arr = "color" }
+            optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -93,6 +111,7 @@ pub mod matrix_fa {
 }
 pub mod matrix_fo {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/matrix-f-o/{color}";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -103,6 +122,14 @@ pub mod matrix_fo {
         #[must_use]
         pub const fn new(color: types::Obj) -> Self {
             Self { color }
+        }
+    }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { color : R0 : types::Obj = "color" }
+            optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -123,6 +150,7 @@ pub mod matrix_fo {
 }
 pub mod matrix_ta {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/matrix-t-a/{color}";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -133,6 +161,14 @@ pub mod matrix_ta {
         #[must_use]
         pub const fn new(color: types::Arr) -> Self {
             Self { color }
+        }
+    }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { color : R0 : types::Arr = "color" }
+            optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -153,6 +189,7 @@ pub mod matrix_ta {
 }
 pub mod matrix_to {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/matrix-t-o/{color}";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -163,6 +200,14 @@ pub mod matrix_to {
         #[must_use]
         pub const fn new(color: types::Obj) -> Self {
             Self { color }
+        }
+    }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { color : R0 : types::Obj = "color" }
+            optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -183,6 +228,7 @@ pub mod matrix_to {
 }
 pub mod label_fs {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/label-f-s/{color}";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -193,6 +239,14 @@ pub mod label_fs {
         #[must_use]
         pub const fn new(color: types::Str) -> Self {
             Self { color }
+        }
+    }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { color : R0 : types::Str = "color" }
+            optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -213,6 +267,7 @@ pub mod label_fs {
 }
 pub mod label_fa {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/label-f-a/{color}";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -223,6 +278,14 @@ pub mod label_fa {
         #[must_use]
         pub const fn new(color: types::Arr) -> Self {
             Self { color }
+        }
+    }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { color : R0 : types::Arr = "color" }
+            optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -243,6 +306,7 @@ pub mod label_fa {
 }
 pub mod label_fo {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/label-f-o/{color}";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -253,6 +317,14 @@ pub mod label_fo {
         #[must_use]
         pub const fn new(color: types::Obj) -> Self {
             Self { color }
+        }
+    }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { color : R0 : types::Obj = "color" }
+            optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -273,6 +345,7 @@ pub mod label_fo {
 }
 pub mod label_ta {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/label-t-a/{color}";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -283,6 +356,14 @@ pub mod label_ta {
         #[must_use]
         pub const fn new(color: types::Arr) -> Self {
             Self { color }
+        }
+    }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { color : R0 : types::Arr = "color" }
+            optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -303,6 +384,7 @@ pub mod label_ta {
 }
 pub mod label_to {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/label-t-o/{color}";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -313,6 +395,14 @@ pub mod label_to {
         #[must_use]
         pub const fn new(color: types::Obj) -> Self {
             Self { color }
+        }
+    }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { color : R0 : types::Obj = "color" }
+            optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -333,6 +423,7 @@ pub mod label_to {
 }
 pub mod simple_fa {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/simple-f-a/{color}";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -343,6 +434,14 @@ pub mod simple_fa {
         #[must_use]
         pub const fn new(color: types::Arr) -> Self {
             Self { color }
+        }
+    }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { color : R0 : types::Arr = "color" }
+            optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -363,6 +462,7 @@ pub mod simple_fa {
 }
 pub mod simple_fo {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/simple-f-o/{color}";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -373,6 +473,14 @@ pub mod simple_fo {
         #[must_use]
         pub const fn new(color: types::Obj) -> Self {
             Self { color }
+        }
+    }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { color : R0 : types::Obj = "color" }
+            optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -393,6 +501,7 @@ pub mod simple_fo {
 }
 pub mod simple_ta {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/simple-t-a/{color}";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -403,6 +512,14 @@ pub mod simple_ta {
         #[must_use]
         pub const fn new(color: types::Arr) -> Self {
             Self { color }
+        }
+    }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { color : R0 : types::Arr = "color" }
+            optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -423,6 +540,7 @@ pub mod simple_ta {
 }
 pub mod simple_to {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/simple-t-o/{color}";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -433,6 +551,14 @@ pub mod simple_to {
         #[must_use]
         pub const fn new(color: types::Obj) -> Self {
             Self { color }
+        }
+    }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { color : R0 : types::Obj = "color" }
+            optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -453,6 +579,7 @@ pub mod simple_to {
 }
 pub mod form_fa {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/form-f-a";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -463,6 +590,14 @@ pub mod form_fa {
         #[must_use]
         pub const fn new(color: types::Arr) -> Self {
             Self { color }
+        }
+    }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { color : R0 : types::Arr = "color" }
+            optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -483,6 +618,7 @@ pub mod form_fa {
 }
 pub mod form_fo {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/form-f-o";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -493,6 +629,14 @@ pub mod form_fo {
         #[must_use]
         pub const fn new(color: types::Obj) -> Self {
             Self { color }
+        }
+    }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { color : R0 : types::Obj = "color" }
+            optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -513,6 +657,7 @@ pub mod form_fo {
 }
 pub mod form_ta {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/form-t-a";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -523,6 +668,14 @@ pub mod form_ta {
         #[must_use]
         pub const fn new(color: types::Arr) -> Self {
             Self { color }
+        }
+    }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { color : R0 : types::Arr = "color" }
+            optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -543,6 +696,7 @@ pub mod form_ta {
 }
 pub mod form_to {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/form-t-o";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -553,6 +707,14 @@ pub mod form_to {
         #[must_use]
         pub const fn new(color: types::Obj) -> Self {
             Self { color }
+        }
+    }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { color : R0 : types::Obj = "color" }
+            optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -573,6 +735,7 @@ pub mod form_to {
 }
 pub mod space_fa {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/space-f-a";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -583,6 +746,14 @@ pub mod space_fa {
         #[must_use]
         pub const fn new(color: types::Arr) -> Self {
             Self { color }
+        }
+    }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { color : R0 : types::Arr = "color" }
+            optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -603,6 +774,7 @@ pub mod space_fa {
 }
 pub mod space_fo {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/space-f-o";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -613,6 +785,14 @@ pub mod space_fo {
         #[must_use]
         pub const fn new(color: types::Obj) -> Self {
             Self { color }
+        }
+    }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { color : R0 : types::Obj = "color" }
+            optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -633,6 +813,7 @@ pub mod space_fo {
 }
 pub mod pipe_fa {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/pipe-f-a";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -643,6 +824,14 @@ pub mod pipe_fa {
         #[must_use]
         pub const fn new(color: types::Arr) -> Self {
             Self { color }
+        }
+    }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { color : R0 : types::Arr = "color" }
+            optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -663,6 +852,7 @@ pub mod pipe_fa {
 }
 pub mod pipe_fo {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/pipe-f-o";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -673,6 +863,14 @@ pub mod pipe_fo {
         #[must_use]
         pub const fn new(color: types::Obj) -> Self {
             Self { color }
+        }
+    }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { color : R0 : types::Obj = "color" }
+            optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -693,6 +891,7 @@ pub mod pipe_fo {
 }
 pub mod deep_o {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/deep-o";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -703,6 +902,14 @@ pub mod deep_o {
         #[must_use]
         pub const fn new(color: types::Obj) -> Self {
             Self { color }
+        }
+    }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { color : R0 : types::Obj = "color" }
+            optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -723,6 +930,7 @@ pub mod deep_o {
 }
 pub mod header_fa {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/header-f-a";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -733,6 +941,14 @@ pub mod header_fa {
         #[must_use]
         pub const fn new(color: types::Arr) -> Self {
             Self { color }
+        }
+    }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { color : R0 : types::Arr = "color" }
+            optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -753,6 +969,7 @@ pub mod header_fa {
 }
 pub mod header_fo {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/header-f-o";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -763,6 +980,14 @@ pub mod header_fo {
         #[must_use]
         pub const fn new(color: types::Obj) -> Self {
             Self { color }
+        }
+    }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { color : R0 : types::Obj = "color" }
+            optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -783,6 +1008,7 @@ pub mod header_fo {
 }
 pub mod header_ta {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/header-t-a";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -793,6 +1019,14 @@ pub mod header_ta {
         #[must_use]
         pub const fn new(color: types::Arr) -> Self {
             Self { color }
+        }
+    }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { color : R0 : types::Arr = "color" }
+            optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -813,6 +1047,7 @@ pub mod header_ta {
 }
 pub mod header_to {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/header-t-o";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -823,6 +1058,14 @@ pub mod header_to {
         #[must_use]
         pub const fn new(color: types::Obj) -> Self {
             Self { color }
+        }
+    }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { color : R0 : types::Obj = "color" }
+            optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -843,6 +1086,7 @@ pub mod header_to {
 }
 pub mod cookie_form_fa {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/cookie-form-f-a";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -853,6 +1097,14 @@ pub mod cookie_form_fa {
         #[must_use]
         pub const fn new(color: types::Arr) -> Self {
             Self { color }
+        }
+    }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { color : R0 : types::Arr = "color" }
+            optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -873,6 +1125,7 @@ pub mod cookie_form_fa {
 }
 pub mod cookie_form_fo {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/cookie-form-f-o";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -883,6 +1136,14 @@ pub mod cookie_form_fo {
         #[must_use]
         pub const fn new(color: types::Obj) -> Self {
             Self { color }
+        }
+    }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { color : R0 : types::Obj = "color" }
+            optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -903,6 +1164,7 @@ pub mod cookie_form_fo {
 }
 pub mod cookie_fa {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/cookie-f-a";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -913,6 +1175,14 @@ pub mod cookie_fa {
         #[must_use]
         pub const fn new(color: types::Arr) -> Self {
             Self { color }
+        }
+    }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { color : R0 : types::Arr = "color" }
+            optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -933,6 +1203,7 @@ pub mod cookie_fa {
 }
 pub mod cookie_fo {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/cookie-f-o";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -943,6 +1214,14 @@ pub mod cookie_fo {
         #[must_use]
         pub const fn new(color: types::Obj) -> Self {
             Self { color }
+        }
+    }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { color : R0 : types::Obj = "color" }
+            optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -963,6 +1242,7 @@ pub mod cookie_fo {
 }
 pub mod cookie_ta {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/cookie-t-a";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -973,6 +1253,14 @@ pub mod cookie_ta {
         #[must_use]
         pub const fn new(color: types::Arr) -> Self {
             Self { color }
+        }
+    }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { color : R0 : types::Arr = "color" }
+            optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -993,6 +1281,7 @@ pub mod cookie_ta {
 }
 pub mod cookie_to {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/cookie-t-o";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -1003,6 +1292,14 @@ pub mod cookie_to {
         #[must_use]
         pub const fn new(color: types::Obj) -> Self {
             Self { color }
+        }
+    }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { color : R0 : types::Obj = "color" }
+            optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]

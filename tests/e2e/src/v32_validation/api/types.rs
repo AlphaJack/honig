@@ -378,12 +378,6 @@ runtime::object! {
         pub at: NarrowStampAt,
     }
 }
-impl NarrowStamp {
-    #[must_use]
-    pub const fn new(at: NarrowStampAt) -> Self {
-        Self { at }
-    }
-}
 impl runtime::XmlShape for NarrowStamp {
     fn xml() -> &'static runtime::XmlNode {
         static NODE: runtime::XmlNode = runtime::XmlNode {
@@ -1102,12 +1096,6 @@ runtime::object! {
         pub holders: BadgeHolders,
     }
 }
-impl Badge {
-    #[must_use]
-    pub const fn new(id: i64, label: BadgeLabel, holders: BadgeHolders) -> Self {
-        Self { id, label, holders }
-    }
-}
 impl runtime::XmlShape for Badge {
     fn xml() -> &'static runtime::XmlNode {
         static NODE: runtime::XmlNode = runtime::XmlNode {
@@ -1173,12 +1161,6 @@ runtime::object! {
     pub struct Login {
         pub user: String,
         pub token: String,
-    }
-}
-impl Login {
-    #[must_use]
-    pub const fn new(user: String, token: String) -> Self {
-        Self { user, token }
     }
 }
 impl runtime::XmlShape for Login {
@@ -1832,24 +1814,6 @@ runtime::object! {
         pub loyalty: UserLoyalty,
         #[nullable]
         pub note: UserNote,
-    }
-}
-impl User {
-    #[must_use]
-    pub const fn new(name: UserName, role: UserRole) -> Self {
-        Self {
-            name,
-            handle: None,
-            age: None,
-            score: None,
-            tags: None,
-            role,
-            email: None,
-            site: None,
-            meta: None,
-            loyalty: None,
-            note: runtime::Nullable::Absent,
-        }
     }
 }
 impl runtime::XmlShape for User {
@@ -3799,15 +3763,6 @@ runtime::object! {
         pub additional_properties: std::collections::BTreeMap<String, serde_json::Value>,
     }
 }
-impl Not9Object {
-    #[must_use]
-    pub const fn new(amount: Not9ObjectAmount) -> Self {
-        Self {
-            amount,
-            additional_properties: std::collections::BTreeMap::new(),
-        }
-    }
-}
 impl runtime::XmlShape for Not9Object {
     fn xml() -> &'static runtime::XmlNode {
         static NODE: runtime::XmlNode = runtime::XmlNode {
@@ -3841,12 +3796,6 @@ runtime::object! {
     pub struct BadgeRequest {
         pub label: BadgeLabel,
         pub holders: BadgeRequestHolders,
-    }
-}
-impl BadgeRequest {
-    #[must_use]
-    pub const fn new(label: BadgeLabel, holders: BadgeRequestHolders) -> Self {
-        Self { label, holders }
     }
 }
 impl runtime::XmlShape for BadgeRequest {
@@ -3898,12 +3847,6 @@ runtime::object! {
     pub struct LoginRequest {
         pub user: String,
         pub password: LoginPassword,
-    }
-}
-impl LoginRequest {
-    #[must_use]
-    pub const fn new(user: String, password: LoginPassword) -> Self {
-        Self { user, password }
     }
 }
 impl runtime::XmlShape for LoginRequest {
@@ -4395,26 +4338,6 @@ runtime::object! {
     }
 }
 impl ShipmentInternationalFields {
-    #[must_use]
-    pub fn new(customs: String, parcels: ShipmentInternationalParcels) -> Self {
-        Self {
-            kind: ShipmentInternationalKind {},
-            customs,
-            insured: None,
-            insurer: None,
-            options: None,
-            rating: None,
-            meta: None,
-            label: Self::default_label(),
-            parcels,
-            scores: None,
-            priority: runtime::Nullable::Absent,
-            weight: runtime::Nullable::Absent,
-            labels: None,
-        }
-    }
-}
-impl ShipmentInternationalFields {
     #[doc(hidden)]
     #[must_use]
     pub fn default_label() -> ShipmentInternationalLabel {
@@ -4716,26 +4639,6 @@ runtime::object! {
         pub weight: ShipmentOtherwiseWeight,
         #[optional]
         pub labels: ShipmentOtherwiseLabels,
-    }
-}
-impl ShipmentOtherwiseFields {
-    #[must_use]
-    pub fn new(kind: ShipmentOtherwiseKind, parcels: ShipmentOtherwiseParcels) -> Self {
-        Self {
-            kind,
-            customs: None,
-            insured: None,
-            insurer: None,
-            options: None,
-            rating: None,
-            meta: None,
-            label: Self::default_label(),
-            parcels,
-            scores: None,
-            priority: runtime::Nullable::Absent,
-            weight: runtime::Nullable::Absent,
-            labels: None,
-        }
     }
 }
 impl ShipmentOtherwiseFields {
@@ -5469,1002 +5372,291 @@ runtime::checked_impls!(
 pub mod builders {
     use super as types;
     use super::runtime;
-    impl super::NarrowStamp {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            at: impl TryInto<types::NarrowStampAt, Error: std::fmt::Display>,
-        ) -> NarrowStamp {
-            NarrowStamp(
-                runtime::Builder::start(|| Ok(Self::new(runtime::field("at", at)?))),
-            )
-        }
+    runtime::typestate_builder! {
+        Stamp => super::Stamp; required {} optional { at(at) : String = "at" => nullable,
+        runtime::Nullable::Absent } fixed {}
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct NarrowStamp(runtime::Builder<super::NarrowStamp>);
-    impl NarrowStamp {
-        /// Returns the value.
-        pub fn build(self) -> Result<super::NarrowStamp, runtime::BuildError> {
-            self.0.build()
-        }
+    runtime::typestate_builder! {
+        NarrowStamp => super::NarrowStamp; required { at : R0 : types::NarrowStampAt =
+        "at" } optional {} fixed {}
     }
-    impl super::Exact {
-        /// Starts a builder from the required properties.
-        pub fn builder() -> Exact {
-            Exact(runtime::Builder::start(|| Ok(Self::new())))
-        }
+    runtime::typestate_builder! {
+        Exact => super::Exact; required {} optional { tenth(tenth) : types::ExactTenth =
+        "tenth" => some, None, cents(cents) : types::ExactCents = "cents" => some, None }
+        fixed {}
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct Exact(runtime::Builder<super::Exact>);
-    impl Exact {
-        pub fn tenth(
-            self,
-            value: impl TryInto<types::ExactTenth, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("tenth", value, |s, v| s.tenth = Some(v)))
-        }
-        pub fn cents(
-            self,
-            value: impl TryInto<types::ExactCents, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("cents", value, |s, v| s.cents = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::Exact, runtime::BuildError> {
-            self.0.build()
-        }
+    runtime::typestate_builder! {
+        Degenerate => super::Degenerate; required {} optional { never(never) :
+        types::DegenerateNever = "never" => some, None, huge(huge) :
+        types::DegenerateHuge = "huge" => some, None, fives(fives) :
+        types::DegenerateFives = "fives" => some, None, zero(zero) :
+        types::DegenerateZero = "zero" => some, None, half(half) : types::DegenerateHalf
+        = "half" => some, None } fixed {}
     }
-    impl super::Degenerate {
-        /// Starts a builder from the required properties.
-        pub fn builder() -> Degenerate {
-            Degenerate(runtime::Builder::start(|| Ok(Self::new())))
-        }
+    runtime::typestate_builder! {
+        Ledger => super::Ledger; required {} optional { entries(entries) : Vec <
+        types::Entry > = "entries" => some, None } fixed {}
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct Degenerate(runtime::Builder<super::Degenerate>);
-    impl Degenerate {
-        pub fn never(
-            self,
-            value: impl TryInto<types::DegenerateNever, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("never", value, |s, v| s.never = Some(v)))
-        }
-        pub fn huge(
-            self,
-            value: impl TryInto<types::DegenerateHuge, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("huge", value, |s, v| s.huge = Some(v)))
-        }
-        pub fn fives(
-            self,
-            value: impl TryInto<types::DegenerateFives, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("fives", value, |s, v| s.fives = Some(v)))
-        }
-        pub fn zero(
-            self,
-            value: impl TryInto<types::DegenerateZero, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("zero", value, |s, v| s.zero = Some(v)))
-        }
-        pub fn half(
-            self,
-            value: impl TryInto<types::DegenerateHalf, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("half", value, |s, v| s.half = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::Degenerate, runtime::BuildError> {
-            self.0.build()
-        }
+    runtime::typestate_builder! {
+        Entry => super::Entry; required {} optional { lines(lines) :
+        types::EntryLinesChecked = "lines" => some, None, id(id) : i64 = "id" => some,
+        None } fixed {}
     }
-    impl super::Entry {
-        /// Starts a builder from the required properties.
-        pub fn builder() -> Entry {
-            Entry(runtime::Builder::start(|| Ok(Self::new())))
-        }
+    runtime::typestate_builder! {
+        EntryFields => super::EntryFields; required {} optional { lines(lines) : Vec <
+        types::Line > = "lines" => some, None } fixed {}
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct Entry(runtime::Builder<super::Entry>);
-    impl Entry {
-        pub fn lines(
-            self,
-            value: impl TryInto<types::EntryLinesChecked, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("lines", value, |s, v| s.lines = Some(v)))
-        }
-        pub fn id(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
-            Self(self.0.set("id", value, |s, v| s.id = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::Entry, runtime::BuildError> {
-            self.0.build()
-        }
+    runtime::typestate_builder! {
+        Line => super::Line; required {} optional { note(note) : types::LineNote = "note"
+        => nullable, runtime::Nullable::Absent } fixed {}
     }
-    impl super::Line {
-        /// Starts a builder from the required properties.
-        pub fn builder() -> Line {
-            Line(runtime::Builder::start(|| Ok(Self::new())))
-        }
+    runtime::typestate_builder! {
+        Refusal => super::Refusal; required { detail : R0 : String = "detail" } optional
+        {} fixed { object : types::RefusalObject {}, }
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct Line(runtime::Builder<super::Line>);
-    impl Line {
-        pub fn note(
-            self,
-            value: impl TryInto<types::LineNote, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("note", value, |s, v| s.note = runtime::Nullable::Value(v)))
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::Line, runtime::BuildError> {
-            self.0.build()
-        }
+    runtime::typestate_builder! {
+        Problem => super::Problem; required { code : R0 : types::ProblemCode = "code",
+        status : R1 : i32 = "status", detail : R2 : String = "detail" } optional {} fixed
+        {}
     }
-    impl super::Badge {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            id: impl TryInto<i64, Error: std::fmt::Display>,
-            label: impl TryInto<types::BadgeLabel, Error: std::fmt::Display>,
-            holders: impl TryInto<types::BadgeHolders, Error: std::fmt::Display>,
-        ) -> Badge {
-            Badge(
-                runtime::Builder::start(|| Ok(
-                    Self::new(
-                        runtime::field("id", id)?,
-                        runtime::field("label", label)?,
-                        runtime::field("holders", holders)?,
-                    ),
-                )),
-            )
-        }
+    runtime::typestate_builder! {
+        Closed => super::Closed; required { name : R0 : String = "name" } optional {}
+        fixed {}
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct Badge(runtime::Builder<super::Badge>);
-    impl Badge {
-        /// Returns the value.
-        pub fn build(self) -> Result<super::Badge, runtime::BuildError> {
-            self.0.build()
-        }
+    runtime::typestate_builder! {
+        NoOptions => super::NoOptions; required {} optional {} fixed {}
     }
-    impl super::Loose {
-        /// Starts a builder from the required properties.
-        pub fn builder() -> Loose {
-            Loose(runtime::Builder::start(|| Ok(Self::new())))
-        }
+    runtime::typestate_builder! {
+        Badge => super::Badge; required { id : R0 : i64 = "id", label : R1 :
+        types::BadgeLabel = "label", holders : R2 : types::BadgeHolders = "holders" }
+        optional {} fixed {}
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct Loose(runtime::Builder<super::Loose>);
-    impl Loose {
-        pub fn v(
-            self,
-            value: impl TryInto<types::LooseV, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("v", value, |s, v| s.v = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::Loose, runtime::BuildError> {
-            self.0.build()
-        }
+    runtime::typestate_builder! {
+        Login => super::Login; required { user : R0 : String = "user", token : R1 :
+        String = "token" } optional {} fixed {}
     }
-    impl super::Voucher {
-        /// Starts a builder from the required properties.
-        pub fn builder() -> Voucher {
-            Voucher(runtime::Builder::start(|| Ok(super::VoucherFields::new())))
-        }
+    runtime::typestate_builder! {
+        Loose => super::Loose; required {} optional { v(v) : types::LooseV = "v" => some,
+        None } fixed {}
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct Voucher(runtime::Builder<super::VoucherFields>);
-    impl Voucher {
-        pub fn code(
-            self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("code", value, |s, v| s.code = Some(v)))
-        }
-        pub fn amount(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
-            Self(self.0.set("amount", value, |s, v| s.amount = Some(v)))
-        }
-        /// Returns the value once its whole schema holds.
-        pub fn build(self) -> Result<super::Voucher, runtime::BuildError> {
-            self.0.build().and_then(super::Voucher::try_from)
-        }
+    runtime::typestate_builder! {
+        Voucher => super::VoucherFields, try_from super::Voucher; required {} optional {
+        code(code) : String = "code" => some, None, amount(amount) : i64 = "amount" =>
+        some, None } fixed {}
     }
-    impl super::Payment {
-        /// Starts a builder from the required properties.
-        pub fn builder() -> Payment {
-            Payment(runtime::Builder::start(|| Ok(super::PaymentFields::new())))
-        }
+    runtime::typestate_builder! {
+        Payment => super::PaymentFields, try_from super::Payment; required {} optional {
+        card(card) : String = "card" => some, None, cvc(cvc) : String = "cvc" => some,
+        None, holder(holder) : String = "holder" => nullable, runtime::Nullable::Absent,
+        note(note) : String = "note" => some, None } fixed {}
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct Payment(runtime::Builder<super::PaymentFields>);
-    impl Payment {
-        pub fn card(
-            self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("card", value, |s, v| s.card = Some(v)))
-        }
-        pub fn cvc(self, value: impl TryInto<String, Error: std::fmt::Display>) -> Self {
-            Self(self.0.set("cvc", value, |s, v| s.cvc = Some(v)))
-        }
-        pub fn holder(
-            self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(
-                self
-                    .0
-                    .set("holder", value, |s, v| s.holder = runtime::Nullable::Value(v)),
-            )
-        }
-        pub fn note(
-            self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("note", value, |s, v| s.note = Some(v)))
-        }
-        /// Returns the value once its whole schema holds.
-        pub fn build(self) -> Result<super::Payment, runtime::BuildError> {
-            self.0.build().and_then(super::Payment::try_from)
-        }
+    runtime::typestate_builder! {
+        Labelled => super::Labelled; required {} optional { labels(labels) :
+        types::Labels = "labels" => some, None } fixed {}
     }
-    impl super::Labelled {
-        /// Starts a builder from the required properties.
-        pub fn builder() -> Labelled {
-            Labelled(runtime::Builder::start(|| Ok(Self::new())))
-        }
+    runtime::typestate_builder! {
+        Pair => super::PairFields, try_from super::Pair; required {} optional { a(a) :
+        String = "a" => some, None, b(b) : String = "b" => some, None } fixed {
+        additional_properties : std::collections::BTreeMap::new(), }
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct Labelled(runtime::Builder<super::Labelled>);
-    impl Labelled {
-        pub fn labels(
-            self,
-            value: impl TryInto<types::Labels, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("labels", value, |s, v| s.labels = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::Labelled, runtime::BuildError> {
-            self.0.build()
-        }
+    runtime::typestate_builder! {
+        Settings => super::Settings; required {} optional { name(name) : String = "name"
+        => some, None } fixed { pattern_1 : std::collections::BTreeMap::new(), pattern_2
+        : std::collections::BTreeMap::new(), additional_properties : runtime::Closed, }
     }
-    impl super::Pair {
-        /// Starts a builder from the required properties.
-        pub fn builder() -> Pair {
-            Pair(runtime::Builder::start(|| Ok(super::PairFields::new())))
-        }
+    runtime::typestate_builder! {
+        Profile => super::ProfileFields, try_from super::Profile; required {} optional {
+        name(name) : String = "name" => some, None, nick_name(nick_name) : String =
+        "Nick-Name" => some, None } fixed { additional_properties :
+        std::collections::BTreeMap::new(), }
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct Pair(runtime::Builder<super::PairFields>);
-    impl Pair {
-        pub fn a(self, value: impl TryInto<String, Error: std::fmt::Display>) -> Self {
-            Self(self.0.set("a", value, |s, v| s.a = Some(v)))
-        }
-        pub fn b(self, value: impl TryInto<String, Error: std::fmt::Display>) -> Self {
-            Self(self.0.set("b", value, |s, v| s.b = Some(v)))
-        }
-        /// Returns the value once its whole schema holds.
-        pub fn build(self) -> Result<super::Pair, runtime::BuildError> {
-            self.0.build().and_then(super::Pair::try_from)
-        }
+    runtime::typestate_builder! {
+        Scored => super::Scored; required {} optional { scores(scores) : types::Scores =
+        "scores" => some, None } fixed {}
     }
-    impl super::Profile {
-        /// Starts a builder from the required properties.
-        pub fn builder() -> Profile {
-            Profile(runtime::Builder::start(|| Ok(super::ProfileFields::new())))
-        }
+    runtime::typestate_builder! {
+        Price => super::Price; required {} optional { amount(amount) : types::PriceAmount
+        = "amount" => some, None, retired(retired) : () = "retired" => some, None } fixed
+        {}
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct Profile(runtime::Builder<super::ProfileFields>);
-    impl Profile {
-        pub fn name(
-            self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("name", value, |s, v| s.name = Some(v)))
-        }
-        pub fn nick_name(
-            self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("Nick-Name", value, |s, v| s.nick_name = Some(v)))
-        }
-        /// Returns the value once its whole schema holds.
-        pub fn build(self) -> Result<super::Profile, runtime::BuildError> {
-            self.0.build().and_then(super::Profile::try_from)
-        }
+    runtime::typestate_builder! {
+        User => super::User; required { name : R0 : types::UserName = "name", role : R1 :
+        types::UserRole = "role" } optional { handle(handle) : types::UserHandle =
+        "handle" => some, None, age(age) : types::UserAge = "age" => some, None,
+        score(score) : types::UserScore = "score" => some, None, tags(tags) :
+        types::UserTags = "tags" => some, None, email(email) : runtime::EmailText =
+        "email" => some, None, site(site) : runtime::IdnHostnameText = "site" => some,
+        None, meta(meta) : types::UserMeta = "meta" => some, None, loyalty(loyalty) :
+        types::UserLoyalty = "loyalty" => some, None, note(note) : types::UserNote =
+        "note" => nullable, runtime::Nullable::Absent } fixed {}
     }
-    impl super::Scored {
-        /// Starts a builder from the required properties.
-        pub fn builder() -> Scored {
-            Scored(runtime::Builder::start(|| Ok(Self::new())))
-        }
+    runtime::typestate_builder! {
+        TaggedLabel => super::TaggedLabel; required {} optional { size(size) : i64 =
+        "size" => some, None } fixed { label : types::TaggedLabelLabel {},
+        additional_properties : std::collections::BTreeMap::new(), }
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct Scored(runtime::Builder<super::Scored>);
-    impl Scored {
-        pub fn scores(
-            self,
-            value: impl TryInto<types::Scores, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("scores", value, |s, v| s.scores = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::Scored, runtime::BuildError> {
-            self.0.build()
-        }
+    runtime::typestate_builder! {
+        TaggedColour => super::TaggedColour; required {} optional { size(size) : i64 =
+        "size" => some, None } fixed { colour : types::TaggedColourColour {},
+        additional_properties : std::collections::BTreeMap::new(), }
     }
-    impl super::Price {
-        /// Starts a builder from the required properties.
-        pub fn builder() -> Price {
-            Price(runtime::Builder::start(|| Ok(Self::new())))
-        }
+    runtime::typestate_builder! {
+        TreeVariant1 => super::TreeVariant1; required { items : R0 : Vec < types::Tree >
+        = "items", x : R1 : String = "x" } optional {} fixed {}
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct Price(runtime::Builder<super::Price>);
-    impl Price {
-        pub fn amount(
-            self,
-            value: impl TryInto<types::PriceAmount, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("amount", value, |s, v| s.amount = Some(v)))
-        }
-        pub fn retired(self, value: impl TryInto<(), Error: std::fmt::Display>) -> Self {
-            Self(self.0.set("retired", value, |s, v| s.retired = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::Price, runtime::BuildError> {
-            self.0.build()
-        }
+    runtime::typestate_builder! {
+        TreeVariant2 => super::TreeVariant2; required { items : R0 : Vec < types::Tree >
+        = "items", x : R1 : i64 = "x" } optional {} fixed {}
     }
-    impl super::User {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            name: impl TryInto<types::UserName, Error: std::fmt::Display>,
-            role: impl TryInto<types::UserRole, Error: std::fmt::Display>,
-        ) -> User {
-            User(
-                runtime::Builder::start(|| Ok(
-                    Self::new(
-                        runtime::field("name", name)?,
-                        runtime::field("role", role)?,
-                    ),
-                )),
-            )
-        }
+    runtime::typestate_builder! {
+        ShipmentInternational => super::ShipmentInternationalFields, try_from
+        super::ShipmentInternational; required { customs : R0 : String = "customs",
+        parcels : R1 : types::ShipmentInternationalParcels = "parcels" } optional {
+        insured(insured) : bool = "insured" => some, None, insurer(insurer) : String =
+        "insurer" => some, None, options(options) : types::NoOptions = "options" => some,
+        None, rating(rating) : types::ShipmentInternationalRating = "rating" => some,
+        None, meta(meta) : types::ShipmentInternationalMeta = "meta" => some, None,
+        label(label) : types::ShipmentInternationalLabel = "label" => value,
+        super::ShipmentInternationalFields::default_label(), scores(scores) :
+        types::ShipmentInternationalScores = "scores" => some, None, priority(priority) :
+        types::ShipmentInternationalPriority = "priority" => nullable,
+        runtime::Nullable::Absent, weight(weight) : types::ShipmentInternationalWeight =
+        "weight" => nullable, runtime::Nullable::Absent, labels(labels) :
+        types::ShipmentInternationalLabels = "labels" => some, None } fixed { kind :
+        types::ShipmentInternationalKind {}, }
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct User(runtime::Builder<super::User>);
-    impl User {
-        pub fn handle(
-            self,
-            value: impl TryInto<types::UserHandle, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("handle", value, |s, v| s.handle = Some(v)))
-        }
-        pub fn age(
-            self,
-            value: impl TryInto<types::UserAge, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("age", value, |s, v| s.age = Some(v)))
-        }
-        pub fn score(
-            self,
-            value: impl TryInto<types::UserScore, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("score", value, |s, v| s.score = Some(v)))
-        }
-        pub fn tags(
-            self,
-            value: impl TryInto<types::UserTags, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("tags", value, |s, v| s.tags = Some(v)))
-        }
-        pub fn email(
-            self,
-            value: impl TryInto<runtime::EmailText, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("email", value, |s, v| s.email = Some(v)))
-        }
-        pub fn site(
-            self,
-            value: impl TryInto<runtime::IdnHostnameText, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("site", value, |s, v| s.site = Some(v)))
-        }
-        pub fn meta(
-            self,
-            value: impl TryInto<types::UserMeta, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("meta", value, |s, v| s.meta = Some(v)))
-        }
-        pub fn loyalty(
-            self,
-            value: impl TryInto<types::UserLoyalty, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("loyalty", value, |s, v| s.loyalty = Some(v)))
-        }
-        pub fn note(
-            self,
-            value: impl TryInto<types::UserNote, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("note", value, |s, v| s.note = runtime::Nullable::Value(v)))
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::User, runtime::BuildError> {
-            self.0.build()
-        }
+    runtime::typestate_builder! {
+        MetaObject => super::MetaObject; required {} optional { count(count) : i64 =
+        "count" => some, None } fixed {}
     }
-    impl super::ShipmentInternational {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            customs: impl TryInto<String, Error: std::fmt::Display>,
-            parcels: impl TryInto<
-                types::ShipmentInternationalParcels,
-                Error: std::fmt::Display,
-            >,
-        ) -> ShipmentInternational {
-            ShipmentInternational(
-                runtime::Builder::start(|| Ok(
-                    super::ShipmentInternationalFields::new(
-                        runtime::field("customs", customs)?,
-                        runtime::field("parcels", parcels)?,
-                    ),
-                )),
-            )
-        }
+    runtime::typestate_builder! {
+        ParcelsItem => super::ParcelsItem; required {} optional { fragile(fragile) : bool
+        = "fragile" => some, None } fixed {}
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct ShipmentInternational(
-        runtime::Builder<super::ShipmentInternationalFields>,
-    );
-    impl ShipmentInternational {
-        pub fn insured(
-            self,
-            value: impl TryInto<bool, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("insured", value, |s, v| s.insured = Some(v)))
-        }
-        pub fn insurer(
-            self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("insurer", value, |s, v| s.insurer = Some(v)))
-        }
-        pub fn options(
-            self,
-            value: impl TryInto<types::NoOptions, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("options", value, |s, v| s.options = Some(v)))
-        }
-        pub fn rating(
-            self,
-            value: impl TryInto<
-                types::ShipmentInternationalRating,
-                Error: std::fmt::Display,
-            >,
-        ) -> Self {
-            Self(self.0.set("rating", value, |s, v| s.rating = Some(v)))
-        }
-        pub fn meta(
-            self,
-            value: impl TryInto<
-                types::ShipmentInternationalMeta,
-                Error: std::fmt::Display,
-            >,
-        ) -> Self {
-            Self(self.0.set("meta", value, |s, v| s.meta = Some(v)))
-        }
-        pub fn label(
-            self,
-            value: impl TryInto<
-                types::ShipmentInternationalLabel,
-                Error: std::fmt::Display,
-            >,
-        ) -> Self {
-            Self(self.0.set("label", value, |s, v| s.label = v))
-        }
-        pub fn scores(
-            self,
-            value: impl TryInto<
-                types::ShipmentInternationalScores,
-                Error: std::fmt::Display,
-            >,
-        ) -> Self {
-            Self(self.0.set("scores", value, |s, v| s.scores = Some(v)))
-        }
-        pub fn priority(
-            self,
-            value: impl TryInto<
-                types::ShipmentInternationalPriority,
-                Error: std::fmt::Display,
-            >,
-        ) -> Self {
-            Self(
-                self
-                    .0
-                    .set(
-                        "priority",
-                        value,
-                        |s, v| s.priority = runtime::Nullable::Value(v),
-                    ),
-            )
-        }
-        pub fn weight(
-            self,
-            value: impl TryInto<
-                types::ShipmentInternationalWeight,
-                Error: std::fmt::Display,
-            >,
-        ) -> Self {
-            Self(
-                self
-                    .0
-                    .set("weight", value, |s, v| s.weight = runtime::Nullable::Value(v)),
-            )
-        }
-        pub fn labels(
-            self,
-            value: impl TryInto<
-                types::ShipmentInternationalLabels,
-                Error: std::fmt::Display,
-            >,
-        ) -> Self {
-            Self(self.0.set("labels", value, |s, v| s.labels = Some(v)))
-        }
-        /// Returns the value once its whole schema holds.
-        pub fn build(self) -> Result<super::ShipmentInternational, runtime::BuildError> {
-            self.0.build().and_then(super::ShipmentInternational::try_from)
-        }
+    runtime::typestate_builder! {
+        ShipmentInternationalLabels => super::LabelsFields, try_from
+        super::ShipmentInternationalLabels; required {} optional {} fixed { pattern_1 :
+        std::collections::BTreeMap::new(), additional_properties :
+        std::collections::BTreeMap::new(), }
     }
-    impl super::ShipmentInternationalLabels {
-        /// Starts a builder from the required properties.
-        pub fn builder() -> ShipmentInternationalLabels {
-            ShipmentInternationalLabels(
-                runtime::Builder::start(|| Ok(super::LabelsFields::new())),
-            )
-        }
+    runtime::typestate_builder! {
+        ShipmentOtherwise => super::ShipmentOtherwiseFields, try_from
+        super::ShipmentOtherwise; required { kind : R0 : types::ShipmentOtherwiseKind =
+        "kind", parcels : R1 : types::ShipmentOtherwiseParcels = "parcels" } optional {
+        customs(customs) : String = "customs" => some, None, insured(insured) : bool =
+        "insured" => some, None, insurer(insurer) : String = "insurer" => some, None,
+        options(options) : types::NoOptions = "options" => some, None, rating(rating) :
+        types::ShipmentOtherwiseRating = "rating" => some, None, meta(meta) :
+        types::ShipmentOtherwiseMeta = "meta" => some, None, label(label) :
+        types::ShipmentOtherwiseLabel = "label" => value,
+        super::ShipmentOtherwiseFields::default_label(), scores(scores) :
+        types::ShipmentOtherwiseScores = "scores" => some, None, priority(priority) :
+        types::ShipmentOtherwisePriority = "priority" => nullable,
+        runtime::Nullable::Absent, weight(weight) : types::ShipmentOtherwiseWeight =
+        "weight" => nullable, runtime::Nullable::Absent, labels(labels) :
+        types::ShipmentOtherwiseLabels = "labels" => some, None } fixed {}
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct ShipmentInternationalLabels(runtime::Builder<super::LabelsFields>);
-    impl ShipmentInternationalLabels {
-        /// Returns the value once its whole schema holds.
-        pub fn build(
-            self,
-        ) -> Result<super::ShipmentInternationalLabels, runtime::BuildError> {
-            self.0.build().and_then(super::ShipmentInternationalLabels::try_from)
-        }
+    runtime::typestate_builder! {
+        ShipmentOtherwiseLabels => super::ShipmentOtherwiseLabelsFields, try_from
+        super::ShipmentOtherwiseLabels; required {} optional {} fixed { pattern_1 :
+        std::collections::BTreeMap::new(), additional_properties :
+        std::collections::BTreeMap::new(), }
     }
-    impl super::ShipmentOtherwise {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            kind: impl TryInto<types::ShipmentOtherwiseKind, Error: std::fmt::Display>,
-            parcels: impl TryInto<
-                types::ShipmentOtherwiseParcels,
-                Error: std::fmt::Display,
-            >,
-        ) -> ShipmentOtherwise {
-            ShipmentOtherwise(
-                runtime::Builder::start(|| Ok(
-                    super::ShipmentOtherwiseFields::new(
-                        runtime::field("kind", kind)?,
-                        runtime::field("parcels", parcels)?,
-                    ),
-                )),
-            )
-        }
+    runtime::typestate_builder! {
+        Not => super::Not; required {} optional { size(size) : i64 = "size" => some, None
+        } fixed { additional_properties : std::collections::BTreeMap::new(), }
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct ShipmentOtherwise(runtime::Builder<super::ShipmentOtherwiseFields>);
-    impl ShipmentOtherwise {
-        pub fn customs(
-            self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("customs", value, |s, v| s.customs = Some(v)))
-        }
-        pub fn insured(
-            self,
-            value: impl TryInto<bool, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("insured", value, |s, v| s.insured = Some(v)))
-        }
-        pub fn insurer(
-            self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("insurer", value, |s, v| s.insurer = Some(v)))
-        }
-        pub fn options(
-            self,
-            value: impl TryInto<types::NoOptions, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("options", value, |s, v| s.options = Some(v)))
-        }
-        pub fn rating(
-            self,
-            value: impl TryInto<types::ShipmentOtherwiseRating, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("rating", value, |s, v| s.rating = Some(v)))
-        }
-        pub fn meta(
-            self,
-            value: impl TryInto<types::ShipmentOtherwiseMeta, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("meta", value, |s, v| s.meta = Some(v)))
-        }
-        pub fn label(
-            self,
-            value: impl TryInto<types::ShipmentOtherwiseLabel, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("label", value, |s, v| s.label = v))
-        }
-        pub fn scores(
-            self,
-            value: impl TryInto<types::ShipmentOtherwiseScores, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("scores", value, |s, v| s.scores = Some(v)))
-        }
-        pub fn priority(
-            self,
-            value: impl TryInto<
-                types::ShipmentOtherwisePriority,
-                Error: std::fmt::Display,
-            >,
-        ) -> Self {
-            Self(
-                self
-                    .0
-                    .set(
-                        "priority",
-                        value,
-                        |s, v| s.priority = runtime::Nullable::Value(v),
-                    ),
-            )
-        }
-        pub fn weight(
-            self,
-            value: impl TryInto<types::ShipmentOtherwiseWeight, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(
-                self
-                    .0
-                    .set("weight", value, |s, v| s.weight = runtime::Nullable::Value(v)),
-            )
-        }
-        pub fn labels(
-            self,
-            value: impl TryInto<types::ShipmentOtherwiseLabels, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("labels", value, |s, v| s.labels = Some(v)))
-        }
-        /// Returns the value once its whole schema holds.
-        pub fn build(self) -> Result<super::ShipmentOtherwise, runtime::BuildError> {
-            self.0.build().and_then(super::ShipmentOtherwise::try_from)
-        }
+    runtime::typestate_builder! {
+        Not2Object => super::Not2Object; required {} optional {} fixed { label :
+        types::Not2ObjectLabel {}, additional_properties :
+        std::collections::BTreeMap::new(), }
     }
-    impl super::ShipmentOtherwiseLabels {
-        /// Starts a builder from the required properties.
-        pub fn builder() -> ShipmentOtherwiseLabels {
-            ShipmentOtherwiseLabels(
-                runtime::Builder::start(|| Ok(
-                    super::ShipmentOtherwiseLabelsFields::new(),
-                )),
-            )
-        }
+    runtime::typestate_builder! {
+        Not3Object => super::Not3Object; required {} optional {} fixed { colour :
+        types::Not3ObjectColour {}, additional_properties :
+        std::collections::BTreeMap::new(), }
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct ShipmentOtherwiseLabels(
-        runtime::Builder<super::ShipmentOtherwiseLabelsFields>,
-    );
-    impl ShipmentOtherwiseLabels {
-        /// Returns the value once its whole schema holds.
-        pub fn build(
-            self,
-        ) -> Result<super::ShipmentOtherwiseLabels, runtime::BuildError> {
-            self.0.build().and_then(super::ShipmentOtherwiseLabels::try_from)
-        }
+    runtime::typestate_builder! {
+        Not5Object => super::Not5Object; required {} optional {} fixed { fragile :
+        types::Not5ObjectFragile {}, additional_properties :
+        std::collections::BTreeMap::new(), }
     }
-    impl super::Not9Object {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            amount: impl TryInto<types::Not9ObjectAmount, Error: std::fmt::Display>,
-        ) -> Not9Object {
-            Not9Object(
-                runtime::Builder::start(|| Ok(
-                    Self::new(runtime::field("amount", amount)?),
-                )),
-            )
-        }
+    runtime::typestate_builder! {
+        Not6Object => super::Not6Object; required {} optional {} fixed { customs :
+        types::ObjectCustoms {}, additional_properties :
+        std::collections::BTreeMap::new(), }
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct Not9Object(runtime::Builder<super::Not9Object>);
-    impl Not9Object {
-        /// Returns the value.
-        pub fn build(self) -> Result<super::Not9Object, runtime::BuildError> {
-            self.0.build()
-        }
+    runtime::typestate_builder! {
+        Not9Object => super::Not9Object; required { amount : R0 : types::Not9ObjectAmount
+        = "amount" } optional {} fixed { additional_properties :
+        std::collections::BTreeMap::new(), }
     }
-    impl super::BadgeRequest {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            label: impl TryInto<types::BadgeLabel, Error: std::fmt::Display>,
-            holders: impl TryInto<types::BadgeRequestHolders, Error: std::fmt::Display>,
-        ) -> BadgeRequest {
-            BadgeRequest(
-                runtime::Builder::start(|| Ok(
-                    Self::new(
-                        runtime::field("label", label)?,
-                        runtime::field("holders", holders)?,
-                    ),
-                )),
-            )
-        }
+    runtime::typestate_builder! {
+        BadgeRequest => super::BadgeRequest; required { label : R0 : types::BadgeLabel =
+        "label", holders : R1 : types::BadgeRequestHolders = "holders" } optional {}
+        fixed {}
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct BadgeRequest(runtime::Builder<super::BadgeRequest>);
-    impl BadgeRequest {
-        /// Returns the value.
-        pub fn build(self) -> Result<super::BadgeRequest, runtime::BuildError> {
-            self.0.build()
-        }
+    runtime::typestate_builder! {
+        LoginRequest => super::LoginRequest; required { user : R0 : String = "user",
+        password : R1 : types::LoginPassword = "password" } optional {} fixed {}
     }
-    impl super::LoginRequest {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            user: impl TryInto<String, Error: std::fmt::Display>,
-            password: impl TryInto<types::LoginPassword, Error: std::fmt::Display>,
-        ) -> LoginRequest {
-            LoginRequest(
-                runtime::Builder::start(|| Ok(
-                    Self::new(
-                        runtime::field("user", user)?,
-                        runtime::field("password", password)?,
-                    ),
-                )),
-            )
-        }
+    runtime::typestate_builder! {
+        VoucherFields => super::VoucherFields; required {} optional { code(code) : String
+        = "code" => some, None, amount(amount) : i64 = "amount" => some, None } fixed {}
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct LoginRequest(runtime::Builder<super::LoginRequest>);
-    impl LoginRequest {
-        /// Returns the value.
-        pub fn build(self) -> Result<super::LoginRequest, runtime::BuildError> {
-            self.0.build()
-        }
+    runtime::typestate_builder! {
+        PaymentFields => super::PaymentFields; required {} optional { card(card) : String
+        = "card" => some, None, cvc(cvc) : String = "cvc" => some, None, holder(holder) :
+        String = "holder" => nullable, runtime::Nullable::Absent, note(note) : String =
+        "note" => some, None } fixed {}
     }
-    impl super::ShipmentInternationalFields {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            customs: impl TryInto<String, Error: std::fmt::Display>,
-            parcels: impl TryInto<
-                types::ShipmentInternationalParcels,
-                Error: std::fmt::Display,
-            >,
-        ) -> ShipmentInternationalFields {
-            ShipmentInternationalFields(
-                runtime::Builder::start(|| Ok(
-                    Self::new(
-                        runtime::field("customs", customs)?,
-                        runtime::field("parcels", parcels)?,
-                    ),
-                )),
-            )
-        }
+    runtime::typestate_builder! {
+        PairFields => super::PairFields; required {} optional { a(a) : String = "a" =>
+        some, None, b(b) : String = "b" => some, None } fixed { additional_properties :
+        std::collections::BTreeMap::new(), }
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct ShipmentInternationalFields(
-        runtime::Builder<super::ShipmentInternationalFields>,
-    );
-    impl ShipmentInternationalFields {
-        pub fn insured(
-            self,
-            value: impl TryInto<bool, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("insured", value, |s, v| s.insured = Some(v)))
-        }
-        pub fn insurer(
-            self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("insurer", value, |s, v| s.insurer = Some(v)))
-        }
-        pub fn options(
-            self,
-            value: impl TryInto<types::NoOptions, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("options", value, |s, v| s.options = Some(v)))
-        }
-        pub fn rating(
-            self,
-            value: impl TryInto<
-                types::ShipmentInternationalRating,
-                Error: std::fmt::Display,
-            >,
-        ) -> Self {
-            Self(self.0.set("rating", value, |s, v| s.rating = Some(v)))
-        }
-        pub fn meta(
-            self,
-            value: impl TryInto<
-                types::ShipmentInternationalMeta,
-                Error: std::fmt::Display,
-            >,
-        ) -> Self {
-            Self(self.0.set("meta", value, |s, v| s.meta = Some(v)))
-        }
-        pub fn label(
-            self,
-            value: impl TryInto<
-                types::ShipmentInternationalLabel,
-                Error: std::fmt::Display,
-            >,
-        ) -> Self {
-            Self(self.0.set("label", value, |s, v| s.label = v))
-        }
-        pub fn scores(
-            self,
-            value: impl TryInto<
-                types::ShipmentInternationalScores,
-                Error: std::fmt::Display,
-            >,
-        ) -> Self {
-            Self(self.0.set("scores", value, |s, v| s.scores = Some(v)))
-        }
-        pub fn priority(
-            self,
-            value: impl TryInto<
-                types::ShipmentInternationalPriority,
-                Error: std::fmt::Display,
-            >,
-        ) -> Self {
-            Self(
-                self
-                    .0
-                    .set(
-                        "priority",
-                        value,
-                        |s, v| s.priority = runtime::Nullable::Value(v),
-                    ),
-            )
-        }
-        pub fn weight(
-            self,
-            value: impl TryInto<
-                types::ShipmentInternationalWeight,
-                Error: std::fmt::Display,
-            >,
-        ) -> Self {
-            Self(
-                self
-                    .0
-                    .set("weight", value, |s, v| s.weight = runtime::Nullable::Value(v)),
-            )
-        }
-        pub fn labels(
-            self,
-            value: impl TryInto<
-                types::ShipmentInternationalLabels,
-                Error: std::fmt::Display,
-            >,
-        ) -> Self {
-            Self(self.0.set("labels", value, |s, v| s.labels = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(
-            self,
-        ) -> Result<super::ShipmentInternationalFields, runtime::BuildError> {
-            self.0.build()
-        }
+    runtime::typestate_builder! {
+        ProfileFields => super::ProfileFields; required {} optional { name(name) : String
+        = "name" => some, None, nick_name(nick_name) : String = "Nick-Name" => some, None
+        } fixed { additional_properties : std::collections::BTreeMap::new(), }
     }
-    impl super::ShipmentOtherwiseFields {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            kind: impl TryInto<types::ShipmentOtherwiseKind, Error: std::fmt::Display>,
-            parcels: impl TryInto<
-                types::ShipmentOtherwiseParcels,
-                Error: std::fmt::Display,
-            >,
-        ) -> ShipmentOtherwiseFields {
-            ShipmentOtherwiseFields(
-                runtime::Builder::start(|| Ok(
-                    Self::new(
-                        runtime::field("kind", kind)?,
-                        runtime::field("parcels", parcels)?,
-                    ),
-                )),
-            )
-        }
+    runtime::typestate_builder! {
+        ShipmentInternationalFields => super::ShipmentInternationalFields; required {
+        customs : R0 : String = "customs", parcels : R1 :
+        types::ShipmentInternationalParcels = "parcels" } optional { insured(insured) :
+        bool = "insured" => some, None, insurer(insurer) : String = "insurer" => some,
+        None, options(options) : types::NoOptions = "options" => some, None,
+        rating(rating) : types::ShipmentInternationalRating = "rating" => some, None,
+        meta(meta) : types::ShipmentInternationalMeta = "meta" => some, None,
+        label(label) : types::ShipmentInternationalLabel = "label" => value,
+        super::ShipmentInternationalFields::default_label(), scores(scores) :
+        types::ShipmentInternationalScores = "scores" => some, None, priority(priority) :
+        types::ShipmentInternationalPriority = "priority" => nullable,
+        runtime::Nullable::Absent, weight(weight) : types::ShipmentInternationalWeight =
+        "weight" => nullable, runtime::Nullable::Absent, labels(labels) :
+        types::ShipmentInternationalLabels = "labels" => some, None } fixed { kind :
+        types::ShipmentInternationalKind {}, }
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct ShipmentOtherwiseFields(runtime::Builder<super::ShipmentOtherwiseFields>);
-    impl ShipmentOtherwiseFields {
-        pub fn customs(
-            self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("customs", value, |s, v| s.customs = Some(v)))
-        }
-        pub fn insured(
-            self,
-            value: impl TryInto<bool, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("insured", value, |s, v| s.insured = Some(v)))
-        }
-        pub fn insurer(
-            self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("insurer", value, |s, v| s.insurer = Some(v)))
-        }
-        pub fn options(
-            self,
-            value: impl TryInto<types::NoOptions, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("options", value, |s, v| s.options = Some(v)))
-        }
-        pub fn rating(
-            self,
-            value: impl TryInto<types::ShipmentOtherwiseRating, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("rating", value, |s, v| s.rating = Some(v)))
-        }
-        pub fn meta(
-            self,
-            value: impl TryInto<types::ShipmentOtherwiseMeta, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("meta", value, |s, v| s.meta = Some(v)))
-        }
-        pub fn label(
-            self,
-            value: impl TryInto<types::ShipmentOtherwiseLabel, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("label", value, |s, v| s.label = v))
-        }
-        pub fn scores(
-            self,
-            value: impl TryInto<types::ShipmentOtherwiseScores, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("scores", value, |s, v| s.scores = Some(v)))
-        }
-        pub fn priority(
-            self,
-            value: impl TryInto<
-                types::ShipmentOtherwisePriority,
-                Error: std::fmt::Display,
-            >,
-        ) -> Self {
-            Self(
-                self
-                    .0
-                    .set(
-                        "priority",
-                        value,
-                        |s, v| s.priority = runtime::Nullable::Value(v),
-                    ),
-            )
-        }
-        pub fn weight(
-            self,
-            value: impl TryInto<types::ShipmentOtherwiseWeight, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(
-                self
-                    .0
-                    .set("weight", value, |s, v| s.weight = runtime::Nullable::Value(v)),
-            )
-        }
-        pub fn labels(
-            self,
-            value: impl TryInto<types::ShipmentOtherwiseLabels, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("labels", value, |s, v| s.labels = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(
-            self,
-        ) -> Result<super::ShipmentOtherwiseFields, runtime::BuildError> {
-            self.0.build()
-        }
+    runtime::typestate_builder! {
+        LabelsFields => super::LabelsFields; required {} optional {} fixed { pattern_1 :
+        std::collections::BTreeMap::new(), additional_properties :
+        std::collections::BTreeMap::new(), }
+    }
+    runtime::typestate_builder! {
+        ShipmentOtherwiseFields => super::ShipmentOtherwiseFields; required { kind : R0 :
+        types::ShipmentOtherwiseKind = "kind", parcels : R1 :
+        types::ShipmentOtherwiseParcels = "parcels" } optional { customs(customs) :
+        String = "customs" => some, None, insured(insured) : bool = "insured" => some,
+        None, insurer(insurer) : String = "insurer" => some, None, options(options) :
+        types::NoOptions = "options" => some, None, rating(rating) :
+        types::ShipmentOtherwiseRating = "rating" => some, None, meta(meta) :
+        types::ShipmentOtherwiseMeta = "meta" => some, None, label(label) :
+        types::ShipmentOtherwiseLabel = "label" => value,
+        super::ShipmentOtherwiseFields::default_label(), scores(scores) :
+        types::ShipmentOtherwiseScores = "scores" => some, None, priority(priority) :
+        types::ShipmentOtherwisePriority = "priority" => nullable,
+        runtime::Nullable::Absent, weight(weight) : types::ShipmentOtherwiseWeight =
+        "weight" => nullable, runtime::Nullable::Absent, labels(labels) :
+        types::ShipmentOtherwiseLabels = "labels" => some, None } fixed {}
     }
 }

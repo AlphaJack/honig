@@ -80,6 +80,7 @@ pub mod search_orders {
     }
 }
 pub mod update_order {
+    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/orders/{id}";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -90,6 +91,13 @@ pub mod update_order {
         #[must_use]
         pub const fn new(id: String) -> Self {
             Self { id }
+        }
+    }
+    pub mod builders {
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { id : R0 : String = "id" } optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -137,6 +145,7 @@ pub mod status_at {
     }
 }
 pub mod status_by_key {
+    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/status/{key}";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -147,6 +156,13 @@ pub mod status_by_key {
         #[must_use]
         pub const fn new(key: String) -> Self {
             Self { key }
+        }
+    }
+    pub mod builders {
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { key : R0 : String = "key" } optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -194,6 +210,7 @@ pub mod latest_meta {
     }
 }
 pub mod file_raw {
+    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/files/{dir}/raw";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -204,6 +221,13 @@ pub mod file_raw {
         #[must_use]
         pub const fn new(dir: String) -> Self {
             Self { dir }
+        }
+    }
+    pub mod builders {
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { dir : R0 : String = "dir" } optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -223,6 +247,7 @@ pub mod file_raw {
     }
 }
 pub mod file_ext {
+    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/files/{name}.{ext}";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -230,10 +255,11 @@ pub mod file_ext {
         pub name: String,
         pub ext: String,
     }
-    impl Params {
-        #[must_use]
-        pub const fn new(name: String, ext: String) -> Self {
-            Self { name, ext }
+    pub mod builders {
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { name : R0 : String = "name", ext : R1 :
+            String = "ext" } optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -253,6 +279,7 @@ pub mod file_ext {
     }
 }
 pub mod mix_literal_tail {
+    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/m/{a}.json/x";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -263,6 +290,13 @@ pub mod mix_literal_tail {
         #[must_use]
         pub const fn new(a: String) -> Self {
             Self { a }
+        }
+    }
+    pub mod builders {
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { a : R0 : String = "a" } optional {} fixed
+            {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -282,6 +316,7 @@ pub mod mix_literal_tail {
     }
 }
 pub mod mix_mixed_tail {
+    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/m/{a}.{b}/y-{c}";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -290,10 +325,11 @@ pub mod mix_mixed_tail {
         pub b: String,
         pub c: String,
     }
-    impl Params {
-        #[must_use]
-        pub const fn new(a: String, b: String, c: String) -> Self {
-            Self { a, b, c }
+    pub mod builders {
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { a : R0 : String = "a", b : R1 : String =
+            "b", c : R2 : String = "c" } optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -313,6 +349,7 @@ pub mod mix_mixed_tail {
     }
 }
 pub mod mix_var_tail {
+    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/m/{a}.json/{c}";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -320,10 +357,11 @@ pub mod mix_var_tail {
         pub a: String,
         pub c: String,
     }
-    impl Params {
-        #[must_use]
-        pub const fn new(a: String, c: String) -> Self {
-            Self { a, c }
+    pub mod builders {
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { a : R0 : String = "a", c : R1 : String =
+            "c" } optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]

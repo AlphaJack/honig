@@ -17,6 +17,7 @@
 )]
 pub mod order_shipped_post {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -27,6 +28,14 @@ pub mod order_shipped_post {
         #[must_use]
         pub const fn new(body: types::Shipment) -> Self {
             Self { body }
+        }
+    }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { body : R0 : types::Shipment = "body" }
+            optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]

@@ -33,6 +33,7 @@ macro_rules! display_impl {
 }
 pub mod upload {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/photos";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -52,6 +53,16 @@ pub mod upload {
                 meta_x_revision: None,
                 body,
             }
+        }
+    }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { image_x_checksum : R0 :
+            types::UploadImageXChecksum = "X-Checksum", body : R1 : types::UploadBody =
+            "body" } optional { meta_x_revision(meta_x_revision) : i64 = "X-Revision" =>
+            some, None } fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -96,6 +107,14 @@ pub mod put_icon {
             }
         }
     }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { body : R0 : types::PutIconBody = "body" }
+            optional {} fixed { part_types : runtime::PartTypes::new() }
+        }
+    }
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Stored.
@@ -114,6 +133,7 @@ pub mod put_icon {
 }
 pub mod upload_scan {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/scans";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -125,6 +145,14 @@ pub mod upload_scan {
         #[must_use]
         pub const fn new(body: types::UploadScanBody) -> Self {
             Self { body }
+        }
+    }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { body : R0 : types::UploadScanBody =
+            "body" } optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -144,6 +172,7 @@ pub mod upload_scan {
     }
 }
 pub mod deploy {
+    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/deploy";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -160,6 +189,14 @@ pub mod deploy {
     impl Default for Params {
         fn default() -> Self {
             Self::new()
+        }
+    }
+    pub mod builders {
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required {} optional { body(body) :
+            std::collections::BTreeMap < String, serde_json::Value > = "body" => some,
+            None } fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]

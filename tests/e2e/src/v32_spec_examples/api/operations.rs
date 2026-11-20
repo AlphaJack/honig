@@ -53,6 +53,7 @@ macro_rules! display_impl_2 {
 }
 pub mod form_with_xml {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/form-with-xml";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -66,6 +67,14 @@ pub mod form_with_xml {
         }
     }
     default_impl!(Params);
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required {} optional { body(body) : types::FormData
+            = "body" => some, None } fixed {}
+        }
+    }
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// ok
@@ -84,6 +93,7 @@ pub mod form_with_xml {
 }
 pub mod parameter_examples {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/users/{username}";
     #[derive(Debug, Clone, PartialEq)]
@@ -112,6 +122,19 @@ pub mod parameter_examples {
             }
         }
     }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { username : R0 : String = "username",
+            x_token : R1 : Vec < i64 > = "X-Token" } optional { cookie(cookie) :
+            types::ParameterExamplesCookie = "cookie" => some, None, greeting(greeting) :
+            String = "greeting" => some, None, thing(thing) : Vec < String > = "thing" =>
+            some, None, free_form(free_form) : std::collections::BTreeMap < String, i64 >
+            = "freeForm" => some, None, coordinates(coordinates) :
+            types::ParameterExamplesCoordinates = "coordinates" => some, None } fixed {}
+        }
+    }
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// ok
@@ -130,6 +153,7 @@ pub mod parameter_examples {
 }
 pub mod querystring_form {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/querystring/form";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -143,6 +167,14 @@ pub mod querystring_form {
         }
     }
     default_impl!(Params);
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required {} optional { metadata(metadata) :
+            types::QuerystringFormMetadata = "metadata" => some, None } fixed {}
+        }
+    }
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// ok
@@ -161,6 +193,7 @@ pub mod querystring_form {
 }
 pub mod querystring_json {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/querystring/json";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -174,6 +207,14 @@ pub mod querystring_json {
         }
     }
     default_impl!(Params);
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required {} optional { json(json) :
+            types::QuerystringJsonJson = "json" => some, None } fixed {}
+        }
+    }
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// ok
@@ -192,6 +233,7 @@ pub mod querystring_json {
 }
 pub mod basic_multipart_form {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/multipart/basic";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -205,6 +247,14 @@ pub mod basic_multipart_form {
         }
     }
     default_impl!(Params);
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required {} optional { body(body) :
+            types::BasicMultipartFormBody = "body" => some, None } fixed {}
+        }
+    }
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// ok
@@ -244,6 +294,17 @@ pub mod multipart_form_with_encoding_objects {
         }
     }
     default_impl!(Params);
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required {} optional {
+            profile_image_x_rate_limit_limit(profile_image_x_rate_limit_limit) : i64 =
+            "X-Rate-Limit-Limit" => some, None, body(body) :
+            types::MultipartFormWithEncodingObjectsBody = "body" => some, None } fixed {
+            part_types : runtime::PartTypes::new() }
+        }
+    }
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// ok
@@ -262,6 +323,7 @@ pub mod multipart_form_with_encoding_objects {
 }
 pub mod multipart_form_with_multiple_files {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/multipart/files";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -275,6 +337,14 @@ pub mod multipart_form_with_multiple_files {
         }
     }
     default_impl!(Params);
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required {} optional { body(body) :
+            types::MultipartFormWithMultipleFilesBody = "body" => some, None } fixed {}
+        }
+    }
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// ok
@@ -292,6 +362,7 @@ pub mod multipart_form_with_multiple_files {
     }
 }
 pub mod ordered_unnamed_multipart {
+    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/multipart/ordered";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -305,6 +376,13 @@ pub mod ordered_unnamed_multipart {
         }
     }
     default_impl!(Params);
+    pub mod builders {
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required {} optional { body(body) : Vec <
+            serde_json::Value > = "body" => some, None } fixed {}
+        }
+    }
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// ok
@@ -343,6 +421,15 @@ pub mod ordered_multipart_with_required_header {
         }
     }
     default_impl!(Params);
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required {} optional { body(body) : (String, Vec <
+            types::OrderedMultipartWithRequiredHeaderBodyItem >,) = "body" => some, None
+            } fixed { part_types : runtime::PartTypes::new() }
+        }
+    }
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// ok
@@ -360,6 +447,7 @@ pub mod ordered_multipart_with_required_header {
     }
 }
 pub mod nested_multipart_mixed {
+    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/multipart/nested";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -373,6 +461,13 @@ pub mod nested_multipart_mixed {
         }
     }
     default_impl!(Params);
+    pub mod builders {
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required {} optional { body(body) : Vec <
+            serde_json::Value > = "body" => some, None } fixed {}
+        }
+    }
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// ok
@@ -454,6 +549,7 @@ pub mod streaming_byte_ranges {
     }
 }
 pub mod querystring_jsonpath {
+    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/querystring/jsonpath";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -467,6 +563,13 @@ pub mod querystring_jsonpath {
         }
     }
     default_impl!(Params);
+    pub mod builders {
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required {} optional { selector(selector) : String =
+            "selector" => some, None } fixed {}
+        }
+    }
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// ok
@@ -735,6 +838,14 @@ pub mod server_sent_event_streams {
             body: runtime::Items<types::ServerSentEventStreamsBodyItem>,
         ) -> Self {
             Self { body }
+        }
+    }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { body : R0 : runtime::Items <
+            types::ServerSentEventStreamsBodyItem > = "body" } optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]

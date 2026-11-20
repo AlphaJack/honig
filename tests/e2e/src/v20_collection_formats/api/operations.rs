@@ -32,6 +32,7 @@ macro_rules! error_impl {
     };
 }
 pub mod list_items {
+    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/items/{ids}";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -62,6 +63,18 @@ pub mod list_items {
             }
         }
     }
+    pub mod builders {
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { ids : R0 : Vec < i64 > = "ids" } optional
+            { csv(csv) : Vec < String > = "csv" => some, None, ssv(ssv) : Vec < String >
+            = "ssv" => some, None, tsv(tsv) : Vec < String > = "tsv" => some, None,
+            pipes(pipes) : Vec < String > = "pipes" => some, None, multi(multi) : Vec <
+            i64 > = "multi" => some, None, x_tags(x_tags) : Vec < String > = "X-Tags" =>
+            some, None, flag(flag) : bool = "flag" => some, None, page(page) : i64 =
+            "page" => some, None } fixed {}
+        }
+    }
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// ok
@@ -80,6 +93,7 @@ pub mod list_items {
 }
 pub mod upload {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/upload";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -90,6 +104,14 @@ pub mod upload {
         #[must_use]
         pub const fn new(body: types::UploadBody) -> Self {
             Self { body }
+        }
+    }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { body : R0 : types::UploadBody = "body" }
+            optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]

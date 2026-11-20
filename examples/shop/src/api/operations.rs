@@ -46,6 +46,15 @@ pub mod list_products {
             Self::new()
         }
     }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required {} optional { limit(limit) :
+            types::ListProductsLimit = "limit" => some, None, tags(tags) : Vec < String >
+            = "tags" => some, None } fixed {}
+        }
+    }
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// A page of products
@@ -91,6 +100,14 @@ pub mod create_product {
             Self { body }
         }
     }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { body : R0 : types::Product = "body" }
+            optional {} fixed {}
+        }
+    }
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Created
@@ -121,6 +138,7 @@ pub mod create_product {
 }
 pub mod get_product {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/products/{productId}";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -131,6 +149,13 @@ pub mod get_product {
         #[must_use]
         pub const fn new(product_id: i64) -> Self {
             Self { product_id }
+        }
+    }
+    pub mod builders {
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { product_id : R0 : i64 = "productId" }
+            optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]

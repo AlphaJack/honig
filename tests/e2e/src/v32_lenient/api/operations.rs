@@ -22,6 +22,7 @@ macro_rules! error_impl {
 }
 pub mod get_order {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/orders/{id}";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -32,6 +33,13 @@ pub mod get_order {
         #[must_use]
         pub const fn new(id: String) -> Self {
             Self { id }
+        }
+    }
+    pub mod builders {
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { id : R0 : String = "id" } optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -58,6 +66,7 @@ pub mod get_order {
 }
 pub mod put_order {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/orders";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -68,6 +77,14 @@ pub mod put_order {
         #[must_use]
         pub const fn new(body: types::OrderRequest) -> Self {
             Self { body }
+        }
+    }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { body : R0 : types::OrderRequest = "body"
+            } optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]

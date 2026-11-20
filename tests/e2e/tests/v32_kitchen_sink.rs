@@ -193,7 +193,7 @@ fn lamp() -> types::Product {
 /// The lamp with the id `id`. Its schema is checked whole (`types::Product` wraps `types::ProductFields`).
 fn lamp_numbered(id: i64) -> Result<types::Product, api::BuildError> {
     // ANCHOR: whole-schema
-    let lamp: types::Product = types::Product::builder(id, "Lamp", types::ProductKind::Book).build()?;
+    let lamp: types::Product = types::Product::builder().id(id).name("Lamp").kind(types::ProductKind::Book).build()?;
     let fields: &types::ProductFields = &lamp; // reads as its fields
     // ANCHOR_END: whole-schema
     assert_eq!(fields.name.as_str(), "Lamp");

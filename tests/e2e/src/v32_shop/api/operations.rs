@@ -142,6 +142,14 @@ pub mod get_all_data {
         }
     }
     default_impl!(Params);
+    pub mod builders {
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required {} optional { limit(limit) : i64 = "limit"
+            => value, 10i64, offset(offset) : i64 = "offset" => value, 0i64 } fixed {
+            media : super::Media::ALL[0] }
+        }
+    }
     #[derive(Debug, Clone, PartialEq)]
     pub enum Response {
         /// OK
@@ -282,6 +290,13 @@ pub mod create_product {
         }
     }
     default_impl!(Params);
+    pub mod builders {
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required {} optional { body(body) : super::Body =
+            "body" => some, None } fixed { media : super::Media::ALL[0] }
+        }
+    }
     #[derive(Debug, Clone, PartialEq)]
     pub enum Body {
         Json(types::ProductRequest),
@@ -425,6 +440,14 @@ pub mod query_products {
             Self { body }
         }
     }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { body : R0 : types::ProductQuery = "body"
+            } optional {} fixed {}
+        }
+    }
     #[derive(Debug, Clone, PartialEq)]
     pub enum Response {
         /// Matching products
@@ -480,6 +503,14 @@ pub mod search_products {
         }
     }
     default_impl!(Params);
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required {} optional { filter(filter) :
+            types::ProductQuery = "filter" => some, None } fixed {}
+        }
+    }
     #[derive(Debug, Clone, PartialEq)]
     pub enum Response {
         /// Matching products
@@ -546,6 +577,14 @@ pub mod get_product {
                 if_none_match: None,
                 media: Media::ALL[0],
             }
+        }
+    }
+    pub mod builders {
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { product_id : R0 : i64 = "productId" }
+            optional { if_none_match(if_none_match) : String = "If-None-Match" => some,
+            None } fixed { media : super::Media::ALL[0] }
         }
     }
     #[derive(Debug, Clone, PartialEq)]
@@ -669,6 +708,14 @@ pub mod update_product {
             }
         }
     }
+    pub mod builders {
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { product_id : R0 : i64 = "productId" }
+            optional { if_match(if_match) : String = "If-Match" => some, None, body(body)
+            : super::Body = "body" => some, None } fixed { media : super::Media::ALL[0] }
+        }
+    }
     #[derive(Debug, Clone, PartialEq)]
     pub enum Body {
         Json(types::ProductRequest),
@@ -740,6 +787,7 @@ pub mod update_product {
 }
 /// Deprecated, since deleting a product breaks its open orders.
 pub mod delete_product {
+    use super::super::runtime;
     pub const METHOD: &str = "DELETE";
     pub const PATH: &str = "/products/{productId}";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -751,6 +799,13 @@ pub mod delete_product {
         #[must_use]
         pub const fn new(product_id: i64) -> Self {
             Self { product_id }
+        }
+    }
+    pub mod builders {
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { product_id : R0 : i64 = "productId" }
+            optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -800,6 +855,14 @@ pub mod copy_product {
             destination: runtime::UriReferenceText,
         ) -> Self {
             Self { product_id, destination }
+        }
+    }
+    pub mod builders {
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { product_id : R0 : i64 = "productId",
+            destination : R1 : runtime::UriReferenceText = "Destination" } optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq)]
@@ -896,6 +959,15 @@ pub mod upload_image {
                 body: None,
                 media: Media::ALL[0],
             }
+        }
+    }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { product_id : R0 : i64 = "productId" }
+            optional { body(body) : types::UploadImageBody = "body" => some, None } fixed
+            { media : super::Media::ALL[0] }
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -997,6 +1069,14 @@ pub mod stream_product_events {
         }
     }
     default_impl!(Params);
+    pub mod builders {
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required {} optional { last_event_id(last_event_id)
+            : String = "Last-Event-ID" => some, None } fixed { media :
+            super::Media::ALL[0] }
+        }
+    }
     #[derive(Debug, Clone, PartialEq)]
     pub enum Response {
         /// An open stream of product events
@@ -1046,6 +1126,15 @@ pub mod upload_photos {
             Self { product_id, body }
         }
     }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { product_id : R0 : i64 = "productId", body
+            : R1 : (types::PhotoBatchMeta, Vec < runtime::Binary >,) = "body" } optional
+            {} fixed {}
+        }
+    }
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Photos accepted for processing
@@ -1092,6 +1181,7 @@ pub mod upload_photos {
 /// Add a product or a variant, anything the shop sells.
 pub mod create_item {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/items";
     #[derive(Debug, Clone, PartialEq)]
@@ -1103,6 +1193,14 @@ pub mod create_item {
         #[must_use]
         pub const fn new(body: types::ItemRequest) -> Self {
             Self { body }
+        }
+    }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { body : R0 : types::ItemRequest = "body" }
+            optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq)]
@@ -1171,6 +1269,13 @@ pub mod create_user {
         }
     }
     default_impl!(Params);
+    pub mod builders {
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required {} optional { body(body) : super::Body =
+            "body" => some, None } fixed { media : super::Media::ALL[0] }
+        }
+    }
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Body {
         Json(types::CreateUserBodyRequest),
@@ -1290,6 +1395,13 @@ pub mod get_token {
         }
     }
     default_impl!(Params);
+    pub mod builders {
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required {} optional { body(body) : super::Body =
+            "body" => some, None } fixed { media : super::Media::ALL[0] }
+        }
+    }
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Body {
         Json(types::CredentialsRequest),
@@ -1485,6 +1597,7 @@ pub mod get_me {
 }
 pub mod new_product_post {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "";
     #[derive(Debug, Clone, PartialEq)]
@@ -1499,6 +1612,14 @@ pub mod new_product_post {
         }
     }
     default_impl!(Params);
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required {} optional { body(body) :
+            types::ProductRequest = "body" => some, None } fixed {}
+        }
+    }
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Return a 200 status to indicate that the data was received successfully
@@ -1517,6 +1638,7 @@ pub mod new_product_post {
 }
 pub mod create_product_product_created_post {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "";
     #[derive(Debug, Clone, PartialEq)]
@@ -1531,6 +1653,14 @@ pub mod create_product_product_created_post {
         }
     }
     default_impl!(Params);
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required {} optional { body(body) :
+            types::ProductRequest = "body" => some, None } fixed {}
+        }
+    }
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Your server returns this code if it accepts the callback
@@ -1558,6 +1688,7 @@ pub mod create_product_product_created_post {
 }
 pub mod create_product_product_creation_failed_post {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "";
     #[derive(Debug, Clone, PartialEq)]
@@ -1572,6 +1703,14 @@ pub mod create_product_product_creation_failed_post {
         }
     }
     default_impl!(Params);
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required {} optional { body(body) :
+            types::ProductRequest = "body" => some, None } fixed {}
+        }
+    }
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Your server returns this code if it accepts the failure callback notification
@@ -1590,6 +1729,7 @@ pub mod create_product_product_creation_failed_post {
 }
 pub mod create_product_product_discontinued_post {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "";
     #[derive(Debug, Clone, PartialEq)]
@@ -1604,6 +1744,14 @@ pub mod create_product_product_discontinued_post {
         }
     }
     default_impl!(Params);
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required {} optional { body(body) :
+            types::ProductRequest = "body" => some, None } fixed {}
+        }
+    }
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Your server returns this code if it accepts the discontinued product callback notification

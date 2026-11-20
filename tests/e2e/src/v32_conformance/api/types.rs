@@ -301,3 +301,44 @@ impl<'de> runtime::TaggedUnion<'de> for ProductVariants {
         }
     }
 }
+/// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
+/// its field. `build` returns the first field that did not convert.
+pub mod builders {
+    use super as types;
+    use super::runtime;
+    runtime::typestate_builder! {
+        Closed => super::Closed; required {} optional { a(a) : String = "a" => some, None
+        } fixed {}
+    }
+    runtime::typestate_builder! {
+        Gadget => super::Gadget; required {} optional { purrs(purrs) : bool = "purrs" =>
+        some, None } fixed { kind : types::GadgetKind {}, }
+    }
+    runtime::typestate_builder! {
+        Book => super::Book; required {} optional { barks(barks) : bool = "barks" =>
+        some, None } fixed { kind : types::BookKind {}, }
+    }
+    runtime::typestate_builder! {
+        ProductGadget => super::ProductGadget; required {} optional { purrs(purrs) : bool
+        = "purrs" => some, None } fixed { kind : types::ProductGadgetKind {}, }
+    }
+    runtime::typestate_builder! {
+        ProductBook => super::ProductBook; required {} optional { barks(barks) : bool =
+        "barks" => some, None } fixed { kind : types::ProductBookKind {}, }
+    }
+    runtime::typestate_builder! {
+        UploadBody => super::UploadBody; required {} optional { name(name) : String =
+        "name" => some, None, count(count) : i64 = "count" => some, None, meta(meta) :
+        types::UploadBodyMeta = "meta" => some, None, file(file) : runtime::Binary =
+        "file" => some, None, tags(tags) : Vec < String > = "tags" => some, None } fixed
+        {}
+    }
+    runtime::typestate_builder! {
+        UploadBodyMeta => super::UploadBodyMeta; required {} optional { x(x) : i64 = "x"
+        => some, None } fixed {}
+    }
+    runtime::typestate_builder! {
+        Not => super::Not; required { kind : R0 : String = "kind" } optional {} fixed {
+        additional_properties : std::collections::BTreeMap::new(), }
+    }
+}

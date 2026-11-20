@@ -123,3 +123,33 @@ impl UploadScanBody {
         Self { label: None, scan }
     }
 }
+/// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
+/// its field. `build` returns the first field that did not convert.
+pub mod builders {
+    use super as types;
+    use super::runtime;
+    runtime::typestate_builder! {
+        UploadBody => super::UploadBody; required { image : R0 : runtime::Binary =
+        "image", meta : R1 : types::UploadBodyMeta = "meta" } optional { tags(tags) : Vec
+        < String > = "tags" => some, None, bundle(bundle) : types::UploadBodyBundle =
+        "bundle" => some, None, pages(pages) : Vec < String > = "pages" => some, None }
+        fixed {}
+    }
+    runtime::typestate_builder! {
+        UploadBodyMeta => super::UploadBodyMeta; required { title : R0 : String = "title"
+        } optional { width(width) : i64 = "width" => some, None } fixed {}
+    }
+    runtime::typestate_builder! {
+        UploadBodyBundle => super::UploadBodyBundle; required {} optional { note(note) :
+        String = "note" => some, None, scan(scan) : runtime::Binary = "scan" => some,
+        None } fixed {}
+    }
+    runtime::typestate_builder! {
+        PutIconBody => super::PutIconBody; required { icon : R0 : runtime::Binary =
+        "icon" } optional { name(name) : String = "name" => some, None } fixed {}
+    }
+    runtime::typestate_builder! {
+        UploadScanBody => super::UploadScanBody; required { scan : R0 : runtime::Binary =
+        "scan" } optional { label(label) : String = "label" => some, None } fixed {}
+    }
+}

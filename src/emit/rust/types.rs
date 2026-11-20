@@ -47,10 +47,8 @@ pub(super) fn emit(
         match &def.kind {
             Kind::Struct(s) => {
                 structure(&mut items, space, id, s);
-                if s.fields.iter().any(|f| holds_checked(space, &f.ty)) {
-                    builders.push(builder(space, &name, &name, s));
-                    builders_name_types |= names_types(space, s);
-                }
+                builders.push(builder(space, &name, &name, s));
+                builders_name_types |= names_types(space, s);
                 if xml {
                     items.push(xml_shape(space, def, s));
                 }
@@ -856,7 +854,9 @@ fn structure(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, s: &St
         }
         #readers
     });
-    items.push(struct_new(space, &name, s, &extra));
+    if new_is_safe(space, s) {
+        items.push(struct_new(space, &name, s, &extra));
+    }
     if !defaults.is_empty() {
         let funs = defaults.iter().map(|(f, e)| {
             let (fun, t) = (format_ident!("default_{}", snake(&f.name)), ty(space, &f.ty, false));
@@ -869,6 +869,16 @@ fn structure(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, s: &St
             items.push(default_impl(space, &name, s, &extra));
         }
     }
+}
+
+/// Can `new` take the required fields of `s` by position? Only when it cannot fail and no two of them can swap: no
+/// argument holds a checked value, and no two have the same type. Otherwise the builder is the one constructor.
+fn new_is_safe(space: &Space<'_>, s: &Struct) -> bool {
+    let args: Vec<&Field> = s.fields.iter().filter(|f| is_arg(space, f)).collect();
+    let mut types: Vec<String> = args.iter().map(|f| field_ty(space, f).to_string()).collect();
+    types.sort();
+    types.dedup();
+    types.len() == args.len() && !args.iter().any(|f| holds_checked(space, &f.ty))
 }
 
 /// Returns `new(required...)`: every required field without a spec default in document order. The rest start empty or
@@ -980,8 +990,8 @@ fn holds_checked(space: &Space<'_>, t: &Ty) -> bool {
 
 /// Does a field of `s` that its builder takes refer to a generated type? Then the builder refers to it through
 /// `types::`. A required `const` it fills itself.
-fn names_types(space: &Space<'_>, s: &Struct) -> bool {
-    s.fields.iter().filter(|f| !is_unit(space, f)).any(|f| super::syntax::mentions(&f.ty).0)
+fn names_types(_space: &Space<'_>, s: &Struct) -> bool {
+    s.fields.iter().any(|f| super::syntax::mentions(&f.ty).0)
 }
 
 /// Returns the builder of a checked type whose base is a struct, and whether it refers to a generated type. A struct whose
@@ -994,77 +1004,48 @@ fn checked_builder(space: &Space<'_>, name: &proc_macro2::Ident, c: &Checked) ->
     Some((builder(space, name, &fields, s), names_types))
 }
 
-/// Returns `builder(required...)` on the struct and its builder for the `builders` module. `builder` takes the
-/// arguments of `new`, so a missing required property stays a compile error. Every argument and setter takes anything
-/// that converts to the type of its field.
-///
-/// `name` is the type that `build` returns. `shape` is the struct that holds the fields: `name` itself, or the fields of
-/// a checked type whose `try_from` then checks the whole value.
+/// Returns the builder of `name` for the `builders` module: `runtime::typestate_builder!` over the fields of `shape`.
+/// It takes each property by name; `build` exists once every required one is set. `shape` is the struct that holds
+/// the fields: `name` itself, or the fields of a checked type whose `try_from` then checks the whole value.
 fn builder(space: &Space<'_>, name: &proc_macro2::Ident, shape: &proc_macro2::Ident, s: &Struct) -> TokenStream {
-    let args: Vec<&Field> = s.fields.iter().filter(|f| is_arg(space, f)).collect();
-    let params = args.iter().map(|f| {
-        let (n, t) = (snake_ident(&f.name), field_ty_in(space, f, true));
-        quote!(#n: impl TryInto<#t, Error: std::fmt::Display>)
-    });
-    let converted = args.iter().map(|f| {
-        let (n, wire) = (snake_ident(&f.name), lit(&f.wire));
-        quote!(runtime::field(#wire, #n)?)
-    });
-    let many = many_arguments(args.len());
-    // A setter named like `build` would hide it: its name takes a `_`.
-    let setters = s.fields.iter().filter(|f| !is_arg(space, f) && !is_unit(space, f)).map(|f| {
-        let n = snake_ident(&f.name);
+    let setter = |f: &Field| {
         let mut setter = snake(&f.name);
-        if setter == "build" {
+        if setter == "build" || setter == "new" || setter == "builder" {
             setter.push('_');
         }
-        let setter = ident(&setter);
-        let wire = lit(&f.wire);
-        let doc = doc_opt(f.doc.as_deref());
-        let (t, put) = if f.required || field_default(space, f).is_some() {
-            (ty(space, &f.ty, true), quote!(v))
-        } else if let Some(inner) = space.types.nullable(&f.ty) {
-            (ty(space, inner, true), quote!(runtime::Nullable::Value(v)))
-        } else {
-            (ty(space, &f.ty, true), quote!(Some(v)))
-        };
-        quote! {
-            #doc
-            pub fn #setter(self, value: impl TryInto<#t, Error: std::fmt::Display>) -> Self {
-                Self(self.0.set(#wire, value, |s, v| s.#n = #put))
-            }
-        }
-    });
-    // In the impl of the struct itself its `new` is `Self::new` (clippy `use_self`).
-    let new = if name == shape { quote!(Self::new) } else { quote!(super::#shape::new) };
-    let build = if name == shape {
-        quote! {
-            /// Returns the value.
-            pub fn build(self) -> Result<super::#name, runtime::BuildError> {
-                self.0.build()
-            }
-        }
-    } else {
-        quote! {
-            /// Returns the value once its whole schema holds.
-            pub fn build(self) -> Result<super::#name, runtime::BuildError> {
-                self.0.build().and_then(super::#name::try_from)
-            }
-        }
+        ident(&setter)
     };
+    let required = s.fields.iter().filter(|f| is_arg(space, f)).enumerate().map(|(i, f)| {
+        let (n, g, t, wire) = (snake_ident(&f.name), format_ident!("R{i}"), field_ty_in(space, f, true), lit(&f.wire));
+        quote!(#n: #g: #t = #wire)
+    });
+    let optional = s.fields.iter().filter(|f| !is_arg(space, f) && !is_unit(space, f)).map(|f| {
+        let (n, set, wire) = (snake_ident(&f.name), setter(f), lit(&f.wire));
+        let (t, wrap, start) = if let Some(_) = field_default(space, f) {
+            let fun = format_ident!("default_{}", snake(&f.name));
+            (ty(space, &f.ty, true), quote!(value), quote!(super::#shape::#fun()))
+        } else if f.required {
+            (ty(space, &f.ty, true), quote!(value), quote!(Default::default()))
+        } else if let Some(inner) = space.types.nullable(&f.ty) {
+            (ty(space, inner, true), quote!(nullable), quote!(runtime::Nullable::Absent))
+        } else {
+            (ty(space, f.ty.non_null(), true), quote!(some), quote!(None))
+        };
+        quote!(#n (#set): #t = #wire => #wrap, #start)
+    });
+    let units = s.fields.iter().filter(|f| !is_arg(space, f) && is_unit(space, f)).map(|f| {
+        let (n, t) = (snake_ident(&f.name), field_ty_in(space, f, true));
+        quote!(#n: #t {})
+    });
+    let extra = ident(&super::syntax::extra_field(s));
+    let extras = extra_inits(s, &extra).into_iter();
+    let outer = (name != shape).then(|| quote!(, try_from super::#name));
     quote! {
-        impl super::#name {
-            /// Starts a builder from the required properties.
-            pub fn builder(#(#params),*) -> #name {
-                #many
-                #name(runtime::Builder::start(|| Ok(#new(#(#converted),*))))
-            }
-        }
-        #[must_use = "a builder does nothing until `build`"]
-        pub struct #name(runtime::Builder<super::#shape>);
-        impl #name {
-            #(#setters)*
-            #build
+        runtime::typestate_builder! {
+            #name => super::#shape #outer;
+            required { #(#required),* }
+            optional { #(#optional),* }
+            fixed { #(#units,)* #(#extras)* }
         }
     }
 }

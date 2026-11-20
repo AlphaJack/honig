@@ -32,6 +32,13 @@ pub mod put_file {
             Self { name, body }
         }
     }
+    pub mod builders {
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { name : R0 : String = "name", body : R1 :
+            runtime::Blob = "body" } optional {} fixed {}
+        }
+    }
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// What arrived.

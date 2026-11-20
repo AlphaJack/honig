@@ -592,3 +592,58 @@ impl runtime::XmlShape for XmlWithNullValuesOk {
         &NODE
     }
 }
+/// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
+/// its field. `build` returns the first field that did not convert.
+pub mod builders {
+    use super::runtime;
+    runtime::typestate_builder! {
+        Person => super::Person; required {} optional { id(id) : i32 = "id" => some,
+        None, name(name) : String = "name" => some, None } fixed {}
+    }
+    runtime::typestate_builder! {
+        Documentation => super::Documentation; required {} optional { content(content) :
+        String = "content" => some, None } fixed {}
+    }
+    runtime::typestate_builder! {
+        NoXmlObjectOk => super::NoXmlObjectOk; required {} optional { products(products)
+        : String = "products" => some, None } fixed {}
+    }
+    runtime::typestate_builder! {
+        NoXmlObjectArrayOk => super::NoXmlObjectArrayOk; required {} optional {
+        products(products) : Vec < String > = "products" => some, None } fixed {}
+    }
+    runtime::typestate_builder! {
+        XmlArrayItemNamesOk => super::XmlArrayItemNamesOk; required {} optional {
+        products(products) : Vec < String > = "products" => some, None } fixed {}
+    }
+    runtime::typestate_builder! {
+        XmlArrayNameWithoutWrapperOk => super::XmlArrayNameWithoutWrapperOk; required {}
+        optional { products(products) : Vec < String > = "products" => some, None } fixed
+        {}
+    }
+    runtime::typestate_builder! {
+        XmlArrayWrappedOk => super::XmlArrayWrappedOk; required {} optional {
+        products(products) : Vec < String > = "products" => some, None } fixed {}
+    }
+    runtime::typestate_builder! {
+        XmlArrayWrappedItemNamesOk => super::XmlArrayWrappedItemNamesOk; required {}
+        optional { products(products) : Vec < String > = "products" => some, None } fixed
+        {}
+    }
+    runtime::typestate_builder! {
+        XmlArrayWrappedRenamedOk => super::XmlArrayWrappedRenamedOk; required {} optional
+        { products(products) : Vec < String > = "products" => some, None } fixed {}
+    }
+    runtime::typestate_builder! {
+        ElementsWithAttributesAndTextOkItemObject =>
+        super::ElementsWithAttributesAndTextOkItemObject; required {} optional {
+        kind(kind) : String = "kind" => some, None, name(name) : String = "name" => some,
+        None } fixed {}
+    }
+    runtime::typestate_builder! {
+        XmlWithNullValuesOk => super::XmlWithNullValuesOk; required { count : R0 : Option
+        < f64 > = "count", description : R1 : String = "description", related : R2 :
+        Option < std::collections::BTreeMap < String, serde_json::Value > > = "related" }
+        optional { rating(rating) : String = "rating" => some, None } fixed {}
+    }
+}

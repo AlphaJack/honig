@@ -181,6 +181,14 @@ pub mod tile_batch {
             Self { body }
         }
     }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { body : R0 : runtime::Items <
+            types::TileEvent > = "body" } optional {} fixed {}
+        }
+    }
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Taken.

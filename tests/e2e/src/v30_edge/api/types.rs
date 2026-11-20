@@ -90,12 +90,6 @@ runtime::object! {
         pub currency: MoneyCurrency,
     }
 }
-impl Money {
-    #[must_use]
-    pub const fn new(amount_cents: i64, currency: MoneyCurrency) -> Self {
-        Self { amount_cents, currency }
-    }
-}
 runtime::object! {
     #[unique_keys]
     #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -107,26 +101,10 @@ runtime::object! {
         pub additional_properties: std::collections::BTreeMap<String, serde_json::Value>,
     }
 }
-impl Customer {
-    #[must_use]
-    pub const fn new(name: CustomerName) -> Self {
-        Self {
-            name,
-            email: runtime::Nullable::Absent,
-            additional_properties: std::collections::BTreeMap::new(),
-        }
-    }
-}
 runtime::object! {
     #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct Card {
         pub last4: CardLast4,
-    }
-}
-impl Card {
-    #[must_use]
-    pub const fn new(last4: CardLast4) -> Self {
-        Self { last4 }
     }
 }
 runtime::object! {
@@ -242,23 +220,6 @@ runtime::object! {
         pub vehicle: Vehicle,
         #[optional]
         pub discount: OrderDiscount,
-    }
-}
-impl Order {
-    #[must_use]
-    pub const fn new(status: Status, total: Money, vehicle: Vehicle) -> Self {
-        Self {
-            id: None,
-            status,
-            total,
-            customer: runtime::Nullable::Absent,
-            notes: runtime::Nullable::Absent,
-            created_at: None,
-            labels: None,
-            payment: None,
-            vehicle,
-            discount: None,
-        }
     }
 }
 runtime::object! {
@@ -644,22 +605,6 @@ runtime::object! {
         pub discount: OrderDiscount,
     }
 }
-impl OrderRequest {
-    #[must_use]
-    pub const fn new(status: Status, total: Money, vehicle: Vehicle) -> Self {
-        Self {
-            status,
-            total,
-            customer: runtime::Nullable::Absent,
-            notes: runtime::Nullable::Absent,
-            secret: None,
-            labels: None,
-            payment: None,
-            vehicle,
-            discount: None,
-        }
-    }
-}
 runtime::object! {
     #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
     pub struct OrderPageRequest {
@@ -780,230 +725,72 @@ runtime::checked_impls!(OrderRequestCustomer, OrderCustomer);
 pub mod builders {
     use super as types;
     use super::runtime;
-    impl super::Money {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            amount_cents: impl TryInto<i64, Error: std::fmt::Display>,
-            currency: impl TryInto<types::MoneyCurrency, Error: std::fmt::Display>,
-        ) -> Money {
-            Money(
-                runtime::Builder::start(|| Ok(
-                    Self::new(
-                        runtime::field("amountCents", amount_cents)?,
-                        runtime::field("currency", currency)?,
-                    ),
-                )),
-            )
-        }
+    runtime::typestate_builder! {
+        Money => super::Money; required { amount_cents : R0 : i64 = "amountCents",
+        currency : R1 : types::MoneyCurrency = "currency" } optional {} fixed {}
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct Money(runtime::Builder<super::Money>);
-    impl Money {
-        /// Returns the value.
-        pub fn build(self) -> Result<super::Money, runtime::BuildError> {
-            self.0.build()
-        }
+    runtime::typestate_builder! {
+        Customer => super::Customer; required { name : R0 : types::CustomerName = "name"
+        } optional { email(email) : String = "email" => nullable,
+        runtime::Nullable::Absent } fixed { additional_properties :
+        std::collections::BTreeMap::new(), }
     }
-    impl super::Customer {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            name: impl TryInto<types::CustomerName, Error: std::fmt::Display>,
-        ) -> Customer {
-            Customer(
-                runtime::Builder::start(|| Ok(Self::new(runtime::field("name", name)?))),
-            )
-        }
+    runtime::typestate_builder! {
+        Card => super::Card; required { last4 : R0 : types::CardLast4 = "last4" }
+        optional {} fixed {}
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct Customer(runtime::Builder<super::Customer>);
-    impl Customer {
-        pub fn email(
-            self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(
-                self.0.set("email", value, |s, v| s.email = runtime::Nullable::Value(v)),
-            )
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::Customer, runtime::BuildError> {
-            self.0.build()
-        }
+    runtime::typestate_builder! {
+        Sepa => super::Sepa; required { iban : R0 : String = "iban" } optional {} fixed
+        {}
     }
-    impl super::Card {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            last4: impl TryInto<types::CardLast4, Error: std::fmt::Display>,
-        ) -> Card {
-            Card(
-                runtime::Builder::start(|| Ok(
-                    Self::new(runtime::field("last4", last4)?),
-                )),
-            )
-        }
+    runtime::typestate_builder! {
+        Car => super::Car; required { kind : R0 : String = "kind", seats : R1 : i64 =
+        "seats" } optional {} fixed {}
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct Card(runtime::Builder<super::Card>);
-    impl Card {
-        /// Returns the value.
-        pub fn build(self) -> Result<super::Card, runtime::BuildError> {
-            self.0.build()
-        }
+    runtime::typestate_builder! {
+        Van => super::Van; required { kind : R0 : String = "kind", cargo_litres : R1 :
+        i64 = "cargoLitres" } optional {} fixed {}
     }
-    impl super::Order {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            status: impl TryInto<types::Status, Error: std::fmt::Display>,
-            total: impl TryInto<types::Money, Error: std::fmt::Display>,
-            vehicle: impl TryInto<types::Vehicle, Error: std::fmt::Display>,
-        ) -> Order {
-            Order(
-                runtime::Builder::start(|| Ok(
-                    Self::new(
-                        runtime::field("status", status)?,
-                        runtime::field("total", total)?,
-                        runtime::field("vehicle", vehicle)?,
-                    ),
-                )),
-            )
-        }
+    runtime::typestate_builder! {
+        Order => super::Order; required { status : R0 : types::Status = "status", total :
+        R1 : types::Money = "total", vehicle : R2 : types::Vehicle = "vehicle" } optional
+        { id(id) : runtime::UuidText = "id" => some, None, customer(customer) :
+        types::OrderCustomerChecked = "customer" => nullable, runtime::Nullable::Absent,
+        notes(notes) : String = "notes" => nullable, runtime::Nullable::Absent,
+        created_at(created_at) : runtime::DateTimeText = "createdAt" => some, None,
+        labels(labels) : std::collections::BTreeMap < String, String > = "labels" =>
+        some, None, payment(payment) : types::OrderPayment = "payment" => some, None,
+        discount(discount) : types::OrderDiscount = "discount" => some, None } fixed {}
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct Order(runtime::Builder<super::Order>);
-    impl Order {
-        pub fn id(
-            self,
-            value: impl TryInto<runtime::UuidText, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("id", value, |s, v| s.id = Some(v)))
-        }
-        pub fn customer(
-            self,
-            value: impl TryInto<types::OrderCustomerChecked, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(
-                self
-                    .0
-                    .set(
-                        "customer",
-                        value,
-                        |s, v| s.customer = runtime::Nullable::Value(v),
-                    ),
-            )
-        }
-        pub fn notes(
-            self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(
-                self.0.set("notes", value, |s, v| s.notes = runtime::Nullable::Value(v)),
-            )
-        }
-        pub fn created_at(
-            self,
-            value: impl TryInto<runtime::DateTimeText, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("createdAt", value, |s, v| s.created_at = Some(v)))
-        }
-        pub fn labels(
-            self,
-            value: impl TryInto<
-                std::collections::BTreeMap<String, String>,
-                Error: std::fmt::Display,
-            >,
-        ) -> Self {
-            Self(self.0.set("labels", value, |s, v| s.labels = Some(v)))
-        }
-        pub fn payment(
-            self,
-            value: impl TryInto<types::OrderPayment, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("payment", value, |s, v| s.payment = Some(v)))
-        }
-        pub fn discount(
-            self,
-            value: impl TryInto<types::OrderDiscount, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("discount", value, |s, v| s.discount = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::Order, runtime::BuildError> {
-            self.0.build()
-        }
+    runtime::typestate_builder! {
+        OrderPage => super::OrderPage; required { items : R0 : Vec < types::Order > =
+        "items" } optional { total(total) : i64 = "total" => some, None } fixed {}
     }
-    impl super::OrderRequest {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            status: impl TryInto<types::Status, Error: std::fmt::Display>,
-            total: impl TryInto<types::Money, Error: std::fmt::Display>,
-            vehicle: impl TryInto<types::Vehicle, Error: std::fmt::Display>,
-        ) -> OrderRequest {
-            OrderRequest(
-                runtime::Builder::start(|| Ok(
-                    Self::new(
-                        runtime::field("status", status)?,
-                        runtime::field("total", total)?,
-                        runtime::field("vehicle", vehicle)?,
-                    ),
-                )),
-            )
-        }
+    runtime::typestate_builder! {
+        Problem => super::Problem; required { title : R0 : String = "title", status : R1
+        : i64 = "status" } optional { type_(type_) : String = "type" => value,
+        super::Problem::default_type_(), detail(detail) : String = "detail" => nullable,
+        runtime::Nullable::Absent } fixed {}
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct OrderRequest(runtime::Builder<super::OrderRequest>);
-    impl OrderRequest {
-        pub fn customer(
-            self,
-            value: impl TryInto<types::OrderRequestCustomer, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(
-                self
-                    .0
-                    .set(
-                        "customer",
-                        value,
-                        |s, v| s.customer = runtime::Nullable::Value(v),
-                    ),
-            )
-        }
-        pub fn notes(
-            self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(
-                self.0.set("notes", value, |s, v| s.notes = runtime::Nullable::Value(v)),
-            )
-        }
-        pub fn secret(
-            self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("secret", value, |s, v| s.secret = Some(v)))
-        }
-        pub fn labels(
-            self,
-            value: impl TryInto<
-                std::collections::BTreeMap<String, String>,
-                Error: std::fmt::Display,
-            >,
-        ) -> Self {
-            Self(self.0.set("labels", value, |s, v| s.labels = Some(v)))
-        }
-        pub fn payment(
-            self,
-            value: impl TryInto<types::OrderPayment, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("payment", value, |s, v| s.payment = Some(v)))
-        }
-        pub fn discount(
-            self,
-            value: impl TryInto<types::OrderDiscount, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("discount", value, |s, v| s.discount = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::OrderRequest, runtime::BuildError> {
-            self.0.build()
-        }
+    runtime::typestate_builder! {
+        UploadDocumentBody => super::UploadDocumentBody; required { file : R0 :
+        runtime::Binary = "file", kind : R1 : types::UploadDocumentBodyKind = "kind" }
+        optional {} fixed {}
+    }
+    runtime::typestate_builder! {
+        OrderRequest => super::OrderRequest; required { status : R0 : types::Status =
+        "status", total : R1 : types::Money = "total", vehicle : R2 : types::Vehicle =
+        "vehicle" } optional { customer(customer) : types::OrderRequestCustomer =
+        "customer" => nullable, runtime::Nullable::Absent, notes(notes) : String =
+        "notes" => nullable, runtime::Nullable::Absent, secret(secret) : String =
+        "secret" => some, None, labels(labels) : std::collections::BTreeMap < String,
+        String > = "labels" => some, None, payment(payment) : types::OrderPayment =
+        "payment" => some, None, discount(discount) : types::OrderDiscount = "discount"
+        => some, None } fixed {}
+    }
+    runtime::typestate_builder! {
+        OrderPageRequest => super::OrderPageRequest; required { items : R0 : Vec <
+        types::OrderRequest > = "items" } optional { total(total) : i64 = "total" =>
+        some, None } fixed {}
     }
 }

@@ -59,6 +59,19 @@ pub mod list_orders {
             Self::new()
         }
     }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required {} optional { status(status) : Vec <
+            types::Status > = "status" => some, None, created_after(created_after) :
+            runtime::DateTimeText = "createdAfter" => some, None, limit(limit) :
+            types::ListOrdersLimit = "limit" => value, types::ListOrdersLimit { 0 : 20i32
+            }, sort(sort) : types::ListOrdersSort = "sort" => value,
+            types::ListOrdersSort::Newest, cursor(cursor) : types::ListOrdersCursor =
+            "cursor" => some, None } fixed {}
+        }
+    }
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// A page of orders.
@@ -102,6 +115,14 @@ pub mod create_order {
         #[must_use]
         pub const fn new(body: types::OrderRequest) -> Self {
             Self { body }
+        }
+    }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { body : R0 : types::OrderRequest = "body"
+            } optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -152,6 +173,13 @@ pub mod get_order {
         #[must_use]
         pub const fn new(order_id: runtime::UuidText) -> Self {
             Self { order_id }
+        }
+    }
+    pub mod builders {
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { order_id : R0 : runtime::UuidText =
+            "orderId" } optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -223,6 +251,15 @@ pub mod upload_document {
             body: types::UploadDocumentBody,
         ) -> Self {
             Self { order_id, body }
+        }
+    }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { order_id : R0 : runtime::UuidText =
+            "orderId", body : R1 : types::UploadDocumentBody = "body" } optional {} fixed
+            {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]

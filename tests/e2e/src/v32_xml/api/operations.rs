@@ -17,6 +17,7 @@
 )]
 pub mod add_book {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/books";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -50,6 +51,14 @@ pub mod add_book {
         #[must_use]
         pub const fn new(body: types::Book) -> Self {
             Self { body, media: Media::ALL[0] }
+        }
+    }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { body : R0 : types::Book = "body" }
+            optional {} fixed { media : super::Media::ALL[0] }
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]

@@ -22,6 +22,7 @@ macro_rules! error_impl {
 }
 pub mod subscribe {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/subscriptions";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -32,6 +33,14 @@ pub mod subscribe {
         #[must_use]
         pub const fn new(body: types::SubscribeBody) -> Self {
             Self { body }
+        }
+    }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { body : R0 : types::SubscribeBody = "body"
+            } optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -72,6 +81,7 @@ pub mod subscribe {
 }
 pub mod new_product {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -82,6 +92,14 @@ pub mod new_product {
         #[must_use]
         pub const fn new(body: types::Product) -> Self {
             Self { body }
+        }
+    }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { body : R0 : types::Product = "body" }
+            optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -112,6 +130,7 @@ pub mod new_product {
 }
 pub mod subscribe_on_event_post {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -122,6 +141,14 @@ pub mod subscribe_on_event_post {
         #[must_use]
         pub const fn new(body: types::Event) -> Self {
             Self { body }
+        }
+    }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { body : R0 : types::Event = "body" }
+            optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]

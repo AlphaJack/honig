@@ -354,12 +354,6 @@ runtime::object! {
         pub href: runtime::UriReferenceText,
     }
 }
-impl SimpleLinkContextItem {
-    #[must_use]
-    pub const fn new(href: runtime::UriReferenceText) -> Self {
-        Self { href }
-    }
-}
 runtime::object! {
     #[unique_keys]
     #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
@@ -408,12 +402,6 @@ runtime::object! {
     pub struct ParameterExamplesCoordinates {
         pub lat: f64,
         pub long: f64,
-    }
-}
-impl ParameterExamplesCoordinates {
-    #[must_use]
-    pub const fn new(lat: f64, long: f64) -> Self {
-        Self { lat, long }
     }
 }
 runtime::object! {
@@ -1172,388 +1160,142 @@ runtime::checked_impls!(NotChecked, serde_json::Value);
 pub mod builders {
     use super as types;
     use super::runtime;
-    impl super::FormData {
-        /// Starts a builder from the required properties.
-        pub fn builder() -> FormData {
-            FormData(runtime::Builder::start(|| Ok(Self::new())))
-        }
+    runtime::typestate_builder! {
+        Address => super::Address; required {} optional { street(street) : String =
+        "street" => some, None, city(city) : String = "city" => some, None } fixed {}
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct FormData(runtime::Builder<super::FormData>);
-    impl FormData {
-        pub fn code(
-            self,
-            value: impl TryInto<types::FormDataCodeChecked, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("code", value, |s, v| s.code = Some(v)))
-        }
-        pub fn count(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
-            Self(self.0.set("count", value, |s, v| s.count = Some(v)))
-        }
-        pub fn extra(
-            self,
-            value: impl TryInto<types::FormDataExtra, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("extra", value, |s, v| s.extra = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::FormData, runtime::BuildError> {
-            self.0.build()
-        }
+    runtime::typestate_builder! {
+        FormData => super::FormData; required {} optional { code(code) :
+        types::FormDataCodeChecked = "code" => some, None, count(count) : i64 = "count"
+        => some, None, extra(extra) : types::FormDataExtra = "extra" => some, None }
+        fixed {}
     }
-    impl super::LogEntry {
-        /// Starts a builder from the required properties.
-        pub fn builder() -> LogEntry {
-            LogEntry(runtime::Builder::start(|| Ok(Self::new())))
-        }
+    runtime::typestate_builder! {
+        Product => super::Product; required {} optional { name(name) : String = "name" =>
+        some, None, product_type(product_type) : String = "productType" => some, None,
+        color(color) : String = "color" => some, None, material(material) : String =
+        "material" => some, None, brand(brand) : String = "brand" => some, None } fixed
+        {}
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct LogEntry(runtime::Builder<super::LogEntry>);
-    impl LogEntry {
-        pub fn timestamp(
-            self,
-            value: impl TryInto<runtime::DateTimeText, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("timestamp", value, |s, v| s.timestamp = Some(v)))
-        }
-        pub fn level(
-            self,
-            value: impl TryInto<types::LogEntryLevel, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("level", value, |s, v| s.level = Some(v)))
-        }
-        pub fn message(
-            self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("message", value, |s, v| s.message = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::LogEntry, runtime::BuildError> {
-            self.0.build()
-        }
+    runtime::typestate_builder! {
+        LogEntry => super::LogEntry; required {} optional { timestamp(timestamp) :
+        runtime::DateTimeText = "timestamp" => some, None, level(level) :
+        types::LogEntryLevel = "level" => some, None, message(message) : String =
+        "message" => some, None } fixed {}
     }
-    impl super::Event {
-        /// Starts a builder from the required properties.
-        pub fn builder(data: impl TryInto<String, Error: std::fmt::Display>) -> Event {
-            Event(
-                runtime::Builder::start(|| Ok(Self::new(runtime::field("data", data)?))),
-            )
-        }
+    runtime::typestate_builder! {
+        Event => super::Event; required { data : R0 : String = "data" } optional {
+        event(event) : String = "event" => some, None, id(id) : String = "id" => some,
+        None, retry(retry) : types::EventRetry = "retry" => some, None } fixed {}
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct Event(runtime::Builder<super::Event>);
-    impl Event {
-        pub fn event(
-            self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("event", value, |s, v| s.event = Some(v)))
-        }
-        pub fn id(self, value: impl TryInto<String, Error: std::fmt::Display>) -> Self {
-            Self(self.0.set("id", value, |s, v| s.id = Some(v)))
-        }
-        pub fn retry(
-            self,
-            value: impl TryInto<types::EventRetry, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("retry", value, |s, v| s.retry = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::Event, runtime::BuildError> {
-            self.0.build()
-        }
+    runtime::typestate_builder! {
+        CollectionLinks => super::CollectionLinks; required { linkset : R0 : Vec <
+        types::CollectionLinksLinksetItem > = "linkset" } optional {} fixed {}
     }
-    impl super::SimpleLinkContextItem {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            href: impl TryInto<runtime::UriReferenceText, Error: std::fmt::Display>,
-        ) -> SimpleLinkContextItem {
-            SimpleLinkContextItem(
-                runtime::Builder::start(|| Ok(Self::new(runtime::field("href", href)?))),
-            )
-        }
+    runtime::typestate_builder! {
+        FormDataExtra => super::FormDataExtra; required {} optional { info(info) : String
+        = "info" => some, None } fixed {}
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct SimpleLinkContextItem(runtime::Builder<super::SimpleLinkContextItem>);
-    impl SimpleLinkContextItem {
-        /// Returns the value.
-        pub fn build(self) -> Result<super::SimpleLinkContextItem, runtime::BuildError> {
-            self.0.build()
-        }
+    runtime::typestate_builder! {
+        SimpleLinkContextItem => super::SimpleLinkContextItem; required { href : R0 :
+        runtime::UriReferenceText = "href" } optional {} fixed {}
     }
-    impl super::ParameterExamplesCookie {
-        /// Starts a builder from the required properties.
-        pub fn builder() -> ParameterExamplesCookie {
-            ParameterExamplesCookie(runtime::Builder::start(|| Ok(Self::new())))
-        }
+    runtime::typestate_builder! {
+        CollectionLinksLinksetItem => super::CollectionLinksLinksetItem; required {}
+        optional { anchor(anchor) : url::Url = "anchor" => some, None } fixed {
+        additional_properties : std::collections::BTreeMap::new(), }
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct ParameterExamplesCookie(runtime::Builder<super::ParameterExamplesCookie>);
-    impl ParameterExamplesCookie {
-        pub fn greeting(
-            self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("greeting", value, |s, v| s.greeting = Some(v)))
-        }
-        pub fn code(
-            self,
-            value: impl TryInto<
-                types::ParameterExamplesCookieCode,
-                Error: std::fmt::Display,
-            >,
-        ) -> Self {
-            Self(self.0.set("code", value, |s, v| s.code = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(
-            self,
-        ) -> Result<super::ParameterExamplesCookie, runtime::BuildError> {
-            self.0.build()
-        }
+    runtime::typestate_builder! {
+        ParameterExamplesCookie => super::ParameterExamplesCookie; required {} optional {
+        greeting(greeting) : String = "greeting" => some, None, code(code) :
+        types::ParameterExamplesCookieCode = "code" => some, None } fixed {}
     }
-    impl super::BasicMultipartFormBody {
-        /// Starts a builder from the required properties.
-        pub fn builder() -> BasicMultipartFormBody {
-            BasicMultipartFormBody(runtime::Builder::start(|| Ok(Self::new())))
-        }
+    runtime::typestate_builder! {
+        ParameterExamplesCoordinates => super::ParameterExamplesCoordinates; required {
+        lat : R0 : f64 = "lat", long : R1 : f64 = "long" } optional {} fixed {}
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct BasicMultipartFormBody(runtime::Builder<super::BasicMultipartFormBody>);
-    impl BasicMultipartFormBody {
-        pub fn id(
-            self,
-            value: impl TryInto<runtime::UuidText, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("id", value, |s, v| s.id = Some(v)))
-        }
-        pub fn profile_image(
-            self,
-            value: impl TryInto<runtime::Binary, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("profileImage", value, |s, v| s.profile_image = Some(v)))
-        }
-        pub fn addresses(
-            self,
-            value: impl TryInto<Vec<types::Address>, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("addresses", value, |s, v| s.addresses = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(
-            self,
-        ) -> Result<super::BasicMultipartFormBody, runtime::BuildError> {
-            self.0.build()
-        }
+    runtime::typestate_builder! {
+        QuerystringFormMetadata => super::QuerystringFormMetadata; required {} optional {
+        foo(foo) : String = "foo" => some, None, bar(bar) : bool = "bar" => some, None }
+        fixed {}
     }
-    impl super::MultipartFormWithEncodingObjectsBody {
-        /// Starts a builder from the required properties.
-        pub fn builder() -> MultipartFormWithEncodingObjectsBody {
-            MultipartFormWithEncodingObjectsBody(
-                runtime::Builder::start(|| Ok(Self::new())),
-            )
-        }
+    runtime::typestate_builder! {
+        QuerystringJsonJson => super::QuerystringJsonJson; required {} optional {
+        numbers(numbers) : Vec < i64 > = "numbers" => some, None, flag(flag) : bool =
+        "flag" => nullable, runtime::Nullable::Absent } fixed {}
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct MultipartFormWithEncodingObjectsBody(
-        runtime::Builder<super::MultipartFormWithEncodingObjectsBody>,
-    );
-    impl MultipartFormWithEncodingObjectsBody {
-        pub fn id(
-            self,
-            value: impl TryInto<runtime::UuidText, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("id", value, |s, v| s.id = Some(v)))
-        }
-        pub fn alias(
-            self,
-            value: impl TryInto<
-                types::MultipartFormWithEncodingObjectsBodyAlias,
-                Error: std::fmt::Display,
-            >,
-        ) -> Self {
-            Self(self.0.set("alias", value, |s, v| s.alias = Some(v)))
-        }
-        /// addresses in XML format
-        pub fn addresses(
-            self,
-            value: impl TryInto<Vec<types::Address>, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("addresses", value, |s, v| s.addresses = Some(v)))
-        }
-        pub fn profile_image(
-            self,
-            value: impl TryInto<runtime::Binary, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("profileImage", value, |s, v| s.profile_image = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(
-            self,
-        ) -> Result<super::MultipartFormWithEncodingObjectsBody, runtime::BuildError> {
-            self.0.build()
-        }
+    runtime::typestate_builder! {
+        BasicMultipartFormBody => super::BasicMultipartFormBody; required {} optional {
+        id(id) : runtime::UuidText = "id" => some, None, profile_image(profile_image) :
+        runtime::Binary = "profileImage" => some, None, addresses(addresses) : Vec <
+        types::Address > = "addresses" => some, None } fixed {}
     }
-    impl super::ServerSentEventStreamsBodyItemEvent {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            data: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> ServerSentEventStreamsBodyItemEvent {
-            ServerSentEventStreamsBodyItemEvent(
-                runtime::Builder::start(|| Ok(Self::new(runtime::field("data", data)?))),
-            )
-        }
+    runtime::typestate_builder! {
+        MultipartFormWithEncodingObjectsBody =>
+        super::MultipartFormWithEncodingObjectsBody; required {} optional { id(id) :
+        runtime::UuidText = "id" => some, None, alias(alias) :
+        types::MultipartFormWithEncodingObjectsBodyAlias = "alias" => some, None,
+        addresses(addresses) : Vec < types::Address > = "addresses" => some, None,
+        profile_image(profile_image) : runtime::Binary = "profileImage" => some, None }
+        fixed {}
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct ServerSentEventStreamsBodyItemEvent(
-        runtime::Builder<super::ServerSentEventStreamsBodyItemEvent>,
-    );
-    impl ServerSentEventStreamsBodyItemEvent {
-        pub fn event(
-            self,
-            value: impl TryInto<
-                types::ServerSentEventStreamsBodyItemEventEvent,
-                Error: std::fmt::Display,
-            >,
-        ) -> Self {
-            Self(self.0.set("event", value, |s, v| s.event = Some(v)))
-        }
-        pub fn id(self, value: impl TryInto<String, Error: std::fmt::Display>) -> Self {
-            Self(self.0.set("id", value, |s, v| s.id = Some(v)))
-        }
-        pub fn retry(
-            self,
-            value: impl TryInto<
-                types::ServerSentEventStreamsBodyItemEventRetry,
-                Error: std::fmt::Display,
-            >,
-        ) -> Self {
-            Self(self.0.set("retry", value, |s, v| s.retry = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(
-            self,
-        ) -> Result<super::ServerSentEventStreamsBodyItemEvent, runtime::BuildError> {
-            self.0.build()
-        }
+    runtime::typestate_builder! {
+        MultipartFormWithMultipleFilesBody => super::MultipartFormWithMultipleFilesBody;
+        required {} optional { file(file) : Vec < runtime::Binary > = "file" => some,
+        None } fixed {}
     }
-    impl super::ServerSentEventStreamsBodyItemAddInt64 {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            data: impl TryInto<
-                types::ServerSentEventStreamsBodyItemAddInt64Data,
-                Error: std::fmt::Display,
-            >,
-        ) -> ServerSentEventStreamsBodyItemAddInt64 {
-            ServerSentEventStreamsBodyItemAddInt64(
-                runtime::Builder::start(|| Ok(Self::new(runtime::field("data", data)?))),
-            )
-        }
+    runtime::typestate_builder! {
+        ServerSentEventStreamsBodyItemEvent =>
+        super::ServerSentEventStreamsBodyItemEvent; required { data : R0 : String =
+        "data" } optional { event(event) :
+        types::ServerSentEventStreamsBodyItemEventEvent = "event" => some, None, id(id) :
+        String = "id" => some, None, retry(retry) :
+        types::ServerSentEventStreamsBodyItemEventRetry = "retry" => some, None } fixed
+        {}
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct ServerSentEventStreamsBodyItemAddInt64(
-        runtime::Builder<super::ServerSentEventStreamsBodyItemAddInt64>,
-    );
-    impl ServerSentEventStreamsBodyItemAddInt64 {
-        pub fn event(
-            self,
-            value: impl TryInto<
-                types::ServerSentEventStreamsBodyItemAddInt64Event,
-                Error: std::fmt::Display,
-            >,
-        ) -> Self {
-            Self(self.0.set("event", value, |s, v| s.event = Some(v)))
-        }
-        pub fn id(self, value: impl TryInto<String, Error: std::fmt::Display>) -> Self {
-            Self(self.0.set("id", value, |s, v| s.id = Some(v)))
-        }
-        pub fn retry(
-            self,
-            value: impl TryInto<
-                types::ServerSentEventStreamsBodyItemAddInt64Retry,
-                Error: std::fmt::Display,
-            >,
-        ) -> Self {
-            Self(self.0.set("retry", value, |s, v| s.retry = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(
-            self,
-        ) -> Result<super::ServerSentEventStreamsBodyItemAddInt64, runtime::BuildError> {
-            self.0.build()
-        }
+    runtime::typestate_builder! {
+        ServerSentEventStreamsBodyItemAddInt64 =>
+        super::ServerSentEventStreamsBodyItemAddInt64; required { data : R0 :
+        types::ServerSentEventStreamsBodyItemAddInt64Data = "data" } optional {
+        event(event) : types::ServerSentEventStreamsBodyItemAddInt64Event = "event" =>
+        some, None, id(id) : String = "id" => some, None, retry(retry) :
+        types::ServerSentEventStreamsBodyItemAddInt64Retry = "retry" => some, None }
+        fixed {}
     }
-    impl super::ServerSentEventStreamsBodyItemAddJson {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            data: impl TryInto<
-                types::ServerSentEventStreamsBodyItemAddJsonData,
-                Error: std::fmt::Display,
-            >,
-        ) -> ServerSentEventStreamsBodyItemAddJson {
-            ServerSentEventStreamsBodyItemAddJson(
-                runtime::Builder::start(|| Ok(Self::new(runtime::field("data", data)?))),
-            )
-        }
+    runtime::typestate_builder! {
+        ServerSentEventStreamsBodyItemAddJson =>
+        super::ServerSentEventStreamsBodyItemAddJson; required { data : R0 :
+        types::ServerSentEventStreamsBodyItemAddJsonData = "data" } optional {
+        event(event) : types::ServerSentEventStreamsBodyItemAddJsonEvent = "event" =>
+        some, None, id(id) : String = "id" => some, None, retry(retry) :
+        types::ServerSentEventStreamsBodyItemAddJsonRetry = "retry" => some, None } fixed
+        {}
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct ServerSentEventStreamsBodyItemAddJson(
-        runtime::Builder<super::ServerSentEventStreamsBodyItemAddJson>,
-    );
-    impl ServerSentEventStreamsBodyItemAddJson {
-        pub fn event(
-            self,
-            value: impl TryInto<
-                types::ServerSentEventStreamsBodyItemAddJsonEvent,
-                Error: std::fmt::Display,
-            >,
-        ) -> Self {
-            Self(self.0.set("event", value, |s, v| s.event = Some(v)))
-        }
-        pub fn id(self, value: impl TryInto<String, Error: std::fmt::Display>) -> Self {
-            Self(self.0.set("id", value, |s, v| s.id = Some(v)))
-        }
-        pub fn retry(
-            self,
-            value: impl TryInto<
-                types::ServerSentEventStreamsBodyItemAddJsonRetry,
-                Error: std::fmt::Display,
-            >,
-        ) -> Self {
-            Self(self.0.set("retry", value, |s, v| s.retry = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(
-            self,
-        ) -> Result<super::ServerSentEventStreamsBodyItemAddJson, runtime::BuildError> {
-            self.0.build()
-        }
+    runtime::typestate_builder! {
+        ServerSentEventStreamsBodyItemAddJsonData2Content =>
+        super::ServerSentEventStreamsBodyItemAddJsonData2Content; required { foo : R0 :
+        i64 = "foo" } optional {} fixed {}
     }
-    impl super::Not5Object {
-        /// Starts a builder from the required properties.
-        pub fn builder() -> Not5Object {
-            Not5Object(runtime::Builder::start(|| Ok(Self::new())))
-        }
+    runtime::typestate_builder! {
+        Not4Object => super::Not4Object; required {} optional { event(event) :
+        types::Not4ObjectEvent = "event" => some, None } fixed { additional_properties :
+        std::collections::BTreeMap::new(), }
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct Not5Object(runtime::Builder<super::Not5Object>);
-    impl Not5Object {
-        pub fn event(
-            self,
-            value: impl TryInto<types::Not5ObjectEvent, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("event", value, |s, v| s.event = Some(v)))
-        }
-        pub fn data(
-            self,
-            value: impl TryInto<types::Not5ObjectData, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("data", value, |s, v| s.data = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::Not5Object, runtime::BuildError> {
-            self.0.build()
-        }
+    runtime::typestate_builder! {
+        Not5Object => super::Not5Object; required {} optional { event(event) :
+        types::Not5ObjectEvent = "event" => some, None, data(data) :
+        types::Not5ObjectData = "data" => some, None } fixed { additional_properties :
+        std::collections::BTreeMap::new(), }
+    }
+    runtime::typestate_builder! {
+        Not6Object => super::Not6Object; required {} optional { event(event) :
+        types::Not6ObjectEvent = "event" => some, None, data(data) :
+        types::Not6ObjectData = "data" => some, None } fixed { additional_properties :
+        std::collections::BTreeMap::new(), }
+    }
+    runtime::typestate_builder! {
+        Not6ObjectDataContent => super::Not6ObjectDataContent; required { foo : R0 : i64
+        = "foo" } optional {} fixed { additional_properties :
+        std::collections::BTreeMap::new(), }
     }
 }

@@ -33,6 +33,7 @@ macro_rules! error_impl {
 }
 pub mod get_item {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/items/{id}";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -51,6 +52,15 @@ pub mod get_item {
                 x_trace: None,
                 session: None,
             }
+        }
+    }
+    pub mod builders {
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { id : R0 : String = "id" } optional {
+            tag(tag) : Vec < String > = "tag" => some, None, x_trace(x_trace) : String =
+            "X-Trace" => some, None, session(session) : String = "session" => some, None
+            } fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -82,6 +92,13 @@ pub mod put_blob {
         #[must_use]
         pub const fn new(id: String, body: runtime::Blob) -> Self {
             Self { id, body }
+        }
+    }
+    pub mod builders {
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { id : R0 : String = "id", body : R1 :
+            runtime::Blob = "body" } optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]

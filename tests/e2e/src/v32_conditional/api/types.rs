@@ -64,12 +64,6 @@ runtime::object! {
         pub email: runtime::EmailText,
     }
 }
-impl EmailRequest {
-    #[must_use]
-    pub const fn new(email: runtime::EmailText) -> Self {
-        Self { type_: EmailType {}, email }
-    }
-}
 runtime::object! {
     #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
     pub struct SmsRequest {
@@ -536,15 +530,6 @@ runtime::object! {
         pub email: runtime::EmailText,
     }
 }
-impl IfThenEmail {
-    #[must_use]
-    pub const fn new(email: runtime::EmailText) -> Self {
-        Self {
-            type_: IfThenEmailType {},
-            email,
-        }
-    }
-}
 pub use EmailType as IfThenEmailType;
 runtime::object! {
     #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
@@ -620,12 +605,6 @@ runtime::object! {
         pub street: String,
         #[serde(rename = "orderId")]
         pub order_id: String,
-    }
-}
-impl DeliveryAddress {
-    #[must_use]
-    pub const fn new(street: String, order_id: String) -> Self {
-        Self { street, order_id }
     }
 }
 runtime::object! {
@@ -774,45 +753,69 @@ impl ContactOtherwise {
 /// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
 /// its field. `build` returns the first field that did not convert.
 pub mod builders {
+    use super as types;
     use super::runtime;
-    impl super::EmailRequest {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            email: impl TryInto<runtime::EmailText, Error: std::fmt::Display>,
-        ) -> EmailRequest {
-            EmailRequest(
-                runtime::Builder::start(|| Ok(
-                    Self::new(runtime::field("email", email)?),
-                )),
-            )
-        }
+    runtime::typestate_builder! {
+        EmailRequest => super::EmailRequest; required { email : R0 : runtime::EmailText =
+        "email" } optional {} fixed { type_ : types::EmailType {}, }
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct EmailRequest(runtime::Builder<super::EmailRequest>);
-    impl EmailRequest {
-        /// Returns the value.
-        pub fn build(self) -> Result<super::EmailRequest, runtime::BuildError> {
-            self.0.build()
-        }
+    runtime::typestate_builder! {
+        SmsRequest => super::SmsRequest; required { phone : R0 : String = "phone" }
+        optional {} fixed { type_ : types::SmsType {}, }
     }
-    impl super::IfThenEmail {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            email: impl TryInto<runtime::EmailText, Error: std::fmt::Display>,
-        ) -> IfThenEmail {
-            IfThenEmail(
-                runtime::Builder::start(|| Ok(
-                    Self::new(runtime::field("email", email)?),
-                )),
-            )
-        }
+    runtime::typestate_builder! {
+        Address => super::Address; required { street : R0 : String = "street" } optional
+        {} fixed {}
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct IfThenEmail(runtime::Builder<super::IfThenEmail>);
-    impl IfThenEmail {
-        /// Returns the value.
-        pub fn build(self) -> Result<super::IfThenEmail, runtime::BuildError> {
-            self.0.build()
-        }
+    runtime::typestate_builder! {
+        IfThenEmail => super::IfThenEmail; required { email : R0 : runtime::EmailText =
+        "email" } optional {} fixed { type_ : types::IfThenEmailType {}, }
+    }
+    runtime::typestate_builder! {
+        IfThenSms => super::IfThenSms; required { phone : R0 : String = "phone" }
+        optional {} fixed { type_ : types::IfThenSmsType {}, }
+    }
+    runtime::typestate_builder! {
+        IfThenOtherwise => super::IfThenOtherwise; required {} optional { type_(type_) :
+        String = "type" => some, None } fixed {}
+    }
+    runtime::typestate_builder! {
+        ConstOneOfEmail => super::ConstOneOfEmail; required { email : R0 : String =
+        "email" } optional {} fixed { type_ : types::ConstOneOfEmailType {}, }
+    }
+    runtime::typestate_builder! {
+        DeliveryPickup => super::DeliveryPickup; required { pickup : R0 : bool =
+        "pickup", order_id : R1 : String = "orderId" } optional {} fixed {}
+    }
+    runtime::typestate_builder! {
+        DeliveryAddress => super::DeliveryAddress; required { street : R0 : String =
+        "street", order_id : R1 : String = "orderId" } optional {} fixed {}
+    }
+    runtime::typestate_builder! {
+        DeliveryMethodPickup => super::DeliveryMethodPickup; required { pickup : R0 :
+        bool = "pickup" } optional {} fixed {}
+    }
+    runtime::typestate_builder! {
+        ShippingUs => super::ShippingUs; required { zip : R0 : String = "zip" } optional
+        { postcode(postcode) : String = "postcode" => some, None } fixed { country :
+        types::ShippingUsCountry {}, }
+    }
+    runtime::typestate_builder! {
+        ShippingOtherwise => super::ShippingOtherwise; required { postcode : R0 : String
+        = "postcode" } optional { country(country) : String = "country" => some, None,
+        zip(zip) : String = "zip" => some, None } fixed {}
+    }
+    runtime::typestate_builder! {
+        ContactEmailOrMail => super::ContactEmailOrMail; required { via : R0 :
+        types::ContactEmailOrMailVia = "via", address : R1 : String = "address" }
+        optional {} fixed {}
+    }
+    runtime::typestate_builder! {
+        ContactSms => super::ContactSms; required { phone : R0 : String = "phone" }
+        optional {} fixed { via : types::ContactSmsVia {}, }
+    }
+    runtime::typestate_builder! {
+        ContactOtherwise => super::ContactOtherwise; required {} optional { via(via) :
+        String = "via" => some, None } fixed {}
     }
 }
