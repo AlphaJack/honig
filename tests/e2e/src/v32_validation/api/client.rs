@@ -112,7 +112,7 @@ impl<T: runtime::Transport> Client<T> {
         let path = String::from("/shipments");
         let query = Vec::new();
         let mut req = runtime::new_request("POST", path, query)?;
-        runtime::Message::set_header(&mut req, "Accept", "application/json")?;
+        runtime::Message::set_header(&mut req, "Accept", "application/problem+json")?;
         runtime::Message::set_body(
             &mut req,
             "application/json",
@@ -131,7 +131,7 @@ impl<T: runtime::Transport> Client<T> {
                     status,
                     runtime::content_type_of(&head.headers),
                     Some(&body),
-                    &["application/json"],
+                    &["application/problem+json"],
                 )?;
                 runtime::json_decode(status, &body)
                     .map(ops::create_shipment::Response::BadRequest)

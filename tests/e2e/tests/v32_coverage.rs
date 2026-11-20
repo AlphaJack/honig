@@ -47,11 +47,3 @@ fn nested_one_of_variants_are_pascal_case() {
     let types::CropVariants::Variant2(types::CropVariant2::Variant2(inner)) = &*point else { panic!("{point:?}") };
     assert_eq!((inner.x, inner.y), (Some(1), Some(2)));
 }
-
-#[test]
-fn twin_error_schemas_share_one_conversion() {
-    // `UnarchiveConflict` aliases `ArchiveConflict`: one `From` impl serves both operations.
-    let twin: types::UnarchiveConflict = types::ArchiveConflict { code: 409, message: "not archived".to_owned() };
-    let err = e2e::v32_coverage::api::ApiError::from(twin);
-    assert_eq!(err.status, 409);
-}

@@ -37,14 +37,12 @@ pub(crate) struct Options {
     pub crates: Vec<String>,
 }
 
-/// Returns what only the emitter sees in a description it can generate: the error bodies that the server cannot fill.
+/// Returns what only the emitter sees in a description it can generate: the required headers of error responses.
 pub(crate) fn warnings(api: &Api, opts: &super::Options) -> Vec<crate::diag::Diagnostic> {
     if !opts.server {
         return vec![];
     }
-    let mut out = http::unfillable_errors(api, &Space::new(&api.types, &opts.rust.libs));
-    out.extend(http::unset_error_headers(api));
-    out
+    http::unset_error_headers(api)
 }
 
 /// Every file of a generated module and what it holds. The book lists them on its Generated module page, and its test
@@ -113,7 +111,7 @@ pub(crate) fn trees(api: &Api, opts: &super::Options) -> Trees {
         trees.push(("client.rs", http::client(api, space, opts.client_operations.as_deref(), opts.rust.binary)));
     }
     if opts.server {
-        trees.push(("server.rs", http::server(api, space, opts.allow_unimplemented, &aliases)));
+        trees.push(("server.rs", http::server(api, space, opts.allow_unimplemented)));
     }
     if let Some(examples) = examples {
         trees.push(("documented_examples.rs", examples));

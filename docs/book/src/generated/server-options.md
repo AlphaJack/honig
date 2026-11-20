@@ -31,7 +31,7 @@ while the server reads it. The server sees a broken body and answers `400`, not 
 
 Sets the response for a request that the server answers without the response of your handler. The cause is no
 route, bad input, missing credentials, the `Err` of a layer, validation, a handler `Err` or an encoding failure.
-Default: `Rejection::response`.
+Default: the `error_response` of the generated `Api`. This one replaces it for this server alone.
 
 ### `on_event`
 

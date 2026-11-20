@@ -35,12 +35,12 @@ paths:
       responses:
         "201":
           description: Created.
-        # A schema the runtime can fill, with a `const` (Vaultwarden's error body). It is the API's most common one,
-        # and still not what `createUser` refuses in.
+        # An RFC 9457 body that the runtime fills by its members' names, with a `const` of its own. It is the API's most
+        # common one, and still not what `createUser` refuses in.
         "400":
           description: Refused.
           content:
-            application/json:
+            application/problem+json:
               schema: {$ref: '#/components/schemas/Refusal'}
   /logins:
     post:
@@ -175,9 +175,9 @@ components:
         note: {type: [string, 'null'], maxLength: 3}
     Refusal:
       type: object
-      required: [message, object]
+      required: [detail, object]
       properties:
-        message: {type: string}
+        detail: {type: string}
         object: {type: string, const: error}
     Problem:
       type: object

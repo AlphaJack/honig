@@ -19,6 +19,8 @@ use super::{operations as ops, runtime};
 use std::future::Future;
 pub trait Api: Send + Sync + 'static {
     type Principal: Clone + Send + Sync + 'static;
+    /// Answers a request that the server refuses itself (no route, bad input, missing credentials, a handler `Err`) in the error body of the description. No standard names its fields, so this maps them: `rejection.reason` holds the status and the detail.
+    fn error_response(rejection: runtime::Rejection<Operation>) -> runtime::Response;
     fn create_user(
         &self,
         params: ops::create_user::Params,
@@ -85,9 +87,9 @@ pub type Context<'a, C = ()> = runtime::Context<'a, C, Operation>;
 pub type Rejection = runtime::Rejection<Operation>;
 pub type RequestEvent = runtime::RequestEvent<Operation>;
 const ERROR_SCHEMA_0: runtime::ErrorSchema = runtime::ErrorSchema {
-    media: "application/json",
+    media: "application/problem+json",
     fields: &[
-        ("message", runtime::ErrorField::Detail),
+        ("detail", runtime::ErrorField::Detail),
         ("object", runtime::ErrorField::Const("\"error\"")),
     ],
     open: true,
@@ -104,12 +106,6 @@ fn error_schema(
             }
         }
         _ => Some(&ERROR_SCHEMA_0),
-    }
-}
-impl From<super::types::Problem> for runtime::ApiError {
-    fn from(body: super::types::Problem) -> Self {
-        Self::new(runtime::status_of(body.status), body.detail.clone())
-            .with_body("application/problem+json", &body)
     }
 }
 static METHODS: &[&[(&str, (Op, Operation))]] = &[
@@ -166,6 +162,9 @@ impl<A: Api> From<A> for Routes<A> {
 impl<A: Api> runtime::Operations for Routes<A> {
     type Principal = A::Principal;
     type Operation = Operation;
+    fn error_response(&self) -> fn(runtime::Rejection<Operation>) -> runtime::Response {
+        |rejection| A::error_response(rejection)
+    }
     fn paths(&self) -> &'static [&'static str] {
         PATHS
     }
@@ -344,7 +343,7 @@ fn create_shipment_encode(
             ops::create_shipment::Response::BadRequest(body) => {
                 runtime::body_response(
                     400,
-                    "application/json",
+                    "application/problem+json",
                     runtime::json_encode(&body)?,
                 )
             }

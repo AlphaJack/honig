@@ -560,15 +560,15 @@ fn a_required_const_of_an_error_schema_gets_its_value() {
             "operationId": "createOrder",
             "responses": {
                 "201": {"description": "Created"},
-                "4XX": {"description": "Refused", "content": {"application/json": {
+                "4XX": {"description": "Refused", "content": {"application/problem+json": {
                     "schema": {"$ref": "#/components/schemas/Refusal"}}}}
             }
         }}}),
         &json!({"schemas": {"Refusal": {
             "type": "object",
-            "required": ["message", "object", "type"],
+            "required": ["detail", "object", "type"],
             "properties": {
-                "message": {"type": "string"},
+                "detail": {"type": "string"},
                 "object": {"type": "string", "const": "error"},
                 "type": {"type": "string", "const": "https://shop.example.com/errors/refused"},
                 "version": {"type": "integer", "const": 2}
@@ -579,14 +579,14 @@ fn a_required_const_of_an_error_schema_gets_its_value() {
     let fields = server.split_once("fields:&[").and_then(|(_, rest)| rest.split_once(']')).expect("fields").0;
     assert_eq!(
         fields,
-        r#"("message",runtime::ErrorField::Detail),("object",runtime::ErrorField::Const("\"error\"")),("type",runtime::ErrorField::Const("\"https://shop.example.com/errors/refused\""))"#,
+        r#"("detail",runtime::ErrorField::Detail),("object",runtime::ErrorField::Const("\"error\"")),("type",runtime::ErrorField::Const("\"https://shop.example.com/errors/refused\""))"#,
     );
 }
 
-/// An error body that the server cannot fill for its own refusals (a required enum, as Vaultwarden's `token`
-/// declares) is named at generation. Those refusals get RFC 9457 and not another operation's error schema.
+/// An error body whose fields no standard names (a token endpoint's `{error, error_description}` with a required enum)
+/// makes the generated `Api` require `error_response`, which maps it. `generate` reports nothing.
 #[test]
-fn an_unfillable_error_body_is_a_warning() {
+fn an_unfillable_error_body_requires_error_response() {
     let d = doc(
         &json!({"/token": {"post": {
             "operationId": "token",
@@ -606,10 +606,12 @@ fn an_unfillable_error_body_is_a_warning() {
     );
     let spec = common::write("error-unfillable", &d, &[]);
     let generated = crate::generate::generate(&spec, &Options::default()).expect("generates");
-    let warnings: Vec<String> = generated.diagnostics.0.iter().map(|d| d.pointer.clone()).collect();
-    assert_eq!(warnings, ["/paths/~1token/post/responses/400"]);
-    let server = crate::generate::generate(&spec, &Options { server: false, ..Options::default() }).expect("generates");
-    assert!(server.diagnostics.is_empty(), "a client alone refuses nothing");
+    assert!(generated.diagnostics.is_empty(), "{:?}", generated.diagnostics);
+    let server = squash(common::file(&generated.files, "server.rs"));
+    assert!(
+        server.contains("fnerror_response(rejection:runtime::Rejection<Operation>)->runtime::Response;"),
+        "{server}"
+    );
 }
 
 /// `allOf: [$ref: Base, {type: object, properties: ...}]` merges into one struct that holds every member: its fields
@@ -635,4 +637,30 @@ fn an_all_of_that_one_struct_cannot_hold_checks_each_member() {
     assert!(!typed.contains("check_schema"), "{typed}");
     let lossy = generated("all-of-lossy", json!({"type": "object", "properties": {"name": {"maxLength": 5}}}));
     assert!(lossy.contains(".decode_ref::<") && !lossy.contains("check_schema"), "{lossy}");
+}
+
+/// An error body of RFC 9457 `problem+json` is filled by the RFC's member names: the generated `Api` gives
+/// `error_response` a default, and no impl needs to write it.
+#[test]
+fn a_problem_json_error_body_needs_no_error_response() {
+    let d = doc(
+        &json!({"/orders": {"post": {
+            "operationId": "createOrder",
+            "responses": {
+                "201": {"description": "Created"},
+                "4XX": {"description": "Refused", "content": {"application/problem+json": {"schema": {
+                    "type": "object",
+                    "properties": {"title": {"type": "string"}, "status": {"type": "integer"}, "detail": {"type": "string"}}
+                }}}}
+            }
+        }}}),
+        &json!({}),
+    );
+    let server = squash(&server_of("error-problem", &d));
+    assert!(
+        server.contains(
+            "fnerror_response(rejection:runtime::Rejection<Operation>)->runtime::Response{rejection.response()}"
+        ),
+        "{server}"
+    );
 }

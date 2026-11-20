@@ -2,12 +2,8 @@
 
 | Variant | Meaning |
 |---|---|
-| `Status` | The HTTP status as a number (`code` or `status`). |
-| `StatusText` | The HTTP status as text (`code` declared as a string). |
-| `Title` | The reason phrase (`title`). |
-| `Detail` | What went wrong (`message`, `detail` or `error`). |
-| `Type` | `about:blank` (`type`). |
-| `Violations` | Every violation as `{path, message}` (`errors` or `violations`). |
-| `ViolationMessages` | Every violation as one string each (`errors` of strings). |
-| `Const` | A required `const` (`object: {const: error}`): its one value, as JSON text. |
-| `Empty` | A required field nothing maps to: its type's empty value. |
+| `Status` | `status`: the HTTP status. |
+| `Title` | `title`: the reason phrase. |
+| `Detail` | `detail`: what went wrong. |
+| `Type` | `type`: `about:blank`. |
+| `Const` | A required `const`: its one value, as JSON text. |

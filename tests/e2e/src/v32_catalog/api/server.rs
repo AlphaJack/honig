@@ -19,6 +19,8 @@ use super::{operations as ops, runtime};
 use std::future::Future;
 pub trait Api: Send + Sync + 'static {
     type Principal: Clone + Send + Sync + 'static;
+    /// Answers a request that the server refuses itself (no route, bad input, missing credentials, a handler `Err`) in the error body of the description. No standard names its fields, so this maps them: `rejection.reason` holds the status and the detail.
+    fn error_response(rejection: runtime::Rejection<Operation>) -> runtime::Response;
     fn list_products(
         &self,
         params: ops::list_products::Params,
@@ -74,26 +76,11 @@ pub fn credentials(request: &impl runtime::Secured) -> Vec<Credential<'_>> {
         })
         .collect()
 }
-const ERROR_SCHEMA_0: runtime::ErrorSchema = runtime::ErrorSchema {
-    media: "application/json",
-    fields: &[
-        ("code", runtime::ErrorField::Status),
-        ("message", runtime::ErrorField::Detail),
-    ],
-    open: true,
-};
-const ERROR_SCHEMA: Option<&runtime::ErrorSchema> = Some(&ERROR_SCHEMA_0);
 const fn error_schema(
     _operation: Option<&str>,
     _status: u16,
 ) -> Option<&'static runtime::ErrorSchema> {
-    ERROR_SCHEMA
-}
-impl From<super::types::Error> for runtime::ApiError {
-    fn from(body: super::types::Error) -> Self {
-        Self::new(runtime::status_of(body.code), body.message.clone())
-            .with_body("application/json", &body)
-    }
+    None
 }
 static METHODS: &[&[(&str, (Op, Operation))]] = &[
     &[
@@ -131,6 +118,9 @@ impl<A: Api> From<A> for Routes<A> {
 impl<A: Api> runtime::Operations for Routes<A> {
     type Principal = A::Principal;
     type Operation = Operation;
+    fn error_response(&self) -> fn(runtime::Rejection<Operation>) -> runtime::Response {
+        |rejection| A::error_response(rejection)
+    }
     fn paths(&self) -> &'static [&'static str] {
         PATHS
     }

@@ -28,6 +28,12 @@ const fn error_schema(
 }
 pub trait Webhooks: Send + Sync + 'static {
     type Principal: Clone + Send + Sync + 'static;
+    /// Answers a request that the server refuses itself (no route, bad input, missing credentials, a handler `Err`). Default: RFC 9457 `problem+json`, or the error body of the description that it fills by name.
+    fn error_response(
+        rejection: runtime::Rejection<WebhookOperation>,
+    ) -> runtime::Response {
+        rejection.response()
+    }
     fn order_shipped_post(
         &self,
         params: ops::order_shipped_post::Params,
@@ -62,6 +68,11 @@ pub type WebhookContext<'a, C = ()> = runtime::Context<'a, C, WebhookOperation>;
 impl<A: Webhooks> runtime::Operations for WebhookRoutes<A> {
     type Principal = A::Principal;
     type Operation = WebhookOperation;
+    fn error_response(
+        &self,
+    ) -> fn(runtime::Rejection<WebhookOperation>) -> runtime::Response {
+        |rejection| A::error_response(rejection)
+    }
     fn paths(&self) -> &'static [&'static str] {
         &[]
     }

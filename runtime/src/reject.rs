@@ -154,8 +154,7 @@ impl Reason {
             body.insert("detail".into(), Value::String(d));
         }
         if let Self::Invalid(v) = self {
-            // A list on the wire, as RFC 9457 extensions and most error schemas hold violations.
-            body.insert("violations".into(), serde_json::to_value([v]).unwrap_or_default());
+            body.insert("errors".into(), errors_member(std::slice::from_ref(v)));
         }
         let mut r = self.head();
         r.set_body("application/problem+json", serde_json::to_vec(&Value::Object(body)).unwrap_or_default());
@@ -163,27 +162,20 @@ impl Reason {
     }
 }
 
-/// What a field of the description's error schema receives from a [`Reason`].
+/// What a member of the description's error body receives from a [`Reason`]: a member of RFC 9457 `problem+json`
+/// by its name in the RFC, or a required `const`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ErrorField {
-    /// The HTTP status as a number (`code` or `status`).
+    /// `status`: the HTTP status.
     Status,
-    /// The HTTP status as text (`code` declared as a string).
-    StatusText,
-    /// The reason phrase (`title`).
+    /// `title`: the reason phrase.
     Title,
-    /// What went wrong (`message`, `detail` or `error`).
+    /// `detail`: what went wrong.
     Detail,
-    /// `about:blank` (`type`).
+    /// `type`: `about:blank`.
     Type,
-    /// Every violation as `{path, message}` (`errors` or `violations`).
-    Violations,
-    /// Every violation as one string each (`errors` of strings).
-    ViolationMessages,
-    /// A required `const` (`object: {const: error}`): its one value, as JSON text.
+    /// A required `const`: its one value, as JSON text.
     Const(&'static str),
-    /// A required field nothing maps to: its type's empty value.
-    Empty(&'static str),
 }
 
 /// The error schema of the description as [`Reason::in_schema`] fills it.
@@ -213,30 +205,16 @@ impl Reason {
         for (name, field) in schema.fields {
             let v = match field {
                 ErrorField::Status => Value::from(status),
-                ErrorField::StatusText => Value::String(status.to_string()),
                 ErrorField::Title => Value::String(reason(status).into()),
                 ErrorField::Detail => Value::String(detail.clone()),
                 ErrorField::Type => Value::String("about:blank".into()),
-                ErrorField::Violations => serde_json::to_value(violations).unwrap_or_default(),
-                ErrorField::ViolationMessages => Value::Array(
-                    violations.iter().map(|v| Value::String(format!("{}: {}", v.path, v.message))).collect(),
-                ),
                 ErrorField::Const(json) => serde_json::from_str(json).unwrap_or_default(),
-                ErrorField::Empty(kind) => match *kind {
-                    "integer" | "number" => Value::from(0),
-                    "boolean" => Value::Bool(false),
-                    "array" => Value::Array(vec![]),
-                    "object" => Value::Object(Map::new()),
-                    _ => Value::String(String::new()),
-                },
             };
             o.insert((*name).to_owned(), v);
         }
-        // Validation details survive even when the schema has no list for them.
-        let listed =
-            schema.fields.iter().any(|(_, f)| matches!(f, ErrorField::Violations | ErrorField::ViolationMessages));
-        if schema.open && !listed && !violations.is_empty() {
-            o.insert("violations".into(), serde_json::to_value(violations).unwrap_or_default());
+        // An extension member of RFC 9457, where the body takes members that it does not declare.
+        if schema.open && !violations.is_empty() {
+            o.insert("errors".into(), errors_member(violations));
         }
         let mut r = self.head();
         r.set_body(schema.media, serde_json::to_vec(&Value::Object(o)).unwrap_or_default());
@@ -260,12 +238,17 @@ fn decode_violation(pointer: &str, why: &str) -> Violation {
     Violation { path: format!("/body{pointer}"), message: why.to_owned() }
 }
 
-/// Returns `400 Bad Request` listing every violation as JSON.
-pub fn violations_response(violations: &[Violation]) -> Response {
-    let mut r = crate::new_response(http::StatusCode::BAD_REQUEST.as_u16());
-    let body = serde_json::to_vec(&serde_json::json!({ "violations": violations })).unwrap_or_default();
-    r.set_body("application/json", body);
-    r
+/// Returns the `errors` extension member of a problem: each violation as `{detail, pointer}`, the shape of the
+/// validation example of RFC 9457 (section 3). `pointer` is a JSON Pointer in its URI fragment form: into the request
+/// content for a value of the body (`#/sku`), into the request otherwise (`#/query/limit`).
+fn errors_member(violations: &[Violation]) -> Value {
+    let pointer = |path: &str| match path.strip_prefix("/body") {
+        Some(rest) if rest.is_empty() || rest.starts_with('/') => format!("#{rest}"),
+        _ => format!("#{path}"),
+    };
+    Value::Array(
+        violations.iter().map(|v| serde_json::json!({"detail": v.message, "pointer": pointer(&v.path)})).collect(),
+    )
 }
 
 impl Reason {
@@ -373,7 +356,8 @@ pub struct Rejection<Id = ()> {
 
 impl<Id> Rejection<Id> {
     /// Returns the body that your handler or a layer set ([`ApiError::with_body`]). Otherwise the reason in the error
-    /// schema of the description ([`Rejection::schema`]). Otherwise RFC 9457 `problem+json`.
+    /// body of the description that the server fills by name ([`Rejection::schema`]). Otherwise RFC 9457
+    /// `problem+json`. It is the default `error_response` of an `Api` whose error bodies are all filled so.
     pub fn response(&self) -> Response {
         self.reason
             .own()
@@ -396,7 +380,7 @@ mod tests {
         let schema = ErrorSchema {
             media: "application/json",
             fields: &[
-                ("message", ErrorField::Detail),
+                ("detail", ErrorField::Detail),
                 ("object", ErrorField::Const("\"error\"")),
                 ("version", ErrorField::Const("2")),
             ],
@@ -404,7 +388,7 @@ mod tests {
         };
         let r = Reason::invalid("/query/limit", "is required").in_schema(&schema);
         let body: Value = serde_json::from_slice(r.body().bytes()).unwrap();
-        assert_eq!(body, serde_json::json!({"message": "/query/limit: is required", "object": "error", "version": 2}));
+        assert_eq!(body, serde_json::json!({"detail": "/query/limit: is required", "object": "error", "version": 2}));
     }
 
     #[test]
@@ -431,8 +415,8 @@ mod tests {
         assert_eq!(r.to_string(), "/body/sku: `bad` does not match `^[A-Z]{3}$`");
         let body: Value = serde_json::from_slice(r.problem().body().bytes()).unwrap();
         assert_eq!(
-            body["violations"],
-            serde_json::json!([{"path": "/body/sku", "message": "`bad` does not match `^[A-Z]{3}$`"}])
+            body["errors"],
+            serde_json::json!([{"detail": "`bad` does not match `^[A-Z]{3}$`", "pointer": "#/sku"}])
         );
     }
 
@@ -442,11 +426,11 @@ mod tests {
         assert_eq!(r.to_string(), "/body/name: is required");
         let schema = ErrorSchema {
             media: "application/json",
-            fields: &[("code", ErrorField::Status), ("message", ErrorField::Detail)],
+            fields: &[("status", ErrorField::Status), ("detail", ErrorField::Detail)],
             open: true,
         };
         let body: Value = serde_json::from_slice(r.in_schema(&schema).body().bytes()).unwrap();
-        assert_eq!(body["violations"], serde_json::json!([{"path": "/body/name", "message": "is required"}]));
+        assert_eq!(body["errors"], serde_json::json!([{"detail": "is required", "pointer": "#/name"}]));
         let nested = undecoded("/items/0", "missing field `id`");
         assert_eq!(nested.violations()[0].path, "/body/items/0/id");
         let unknown = undecoded("", "unknown field `b`, expected `a` at line 1 column 12");
@@ -460,30 +444,5 @@ mod tests {
         let Reason::Invalid(Violation { path, message }) = &reason else { panic!("invalid") };
         assert_eq!((path.as_str(), message.as_str()), ("/query/limit", "must be at most 100"));
         assert_eq!(reason.to_string(), "/query/limit: must be at most 100");
-    }
-
-    /// A required field that nothing maps to gets the empty value of its type.
-    #[test]
-    fn a_required_field_gets_the_empty_value_of_its_type() {
-        static SCHEMA: ErrorSchema = ErrorSchema {
-            media: "application/json",
-            fields: &[
-                ("n", ErrorField::Empty("integer")),
-                ("ok", ErrorField::Empty("boolean")),
-                ("list", ErrorField::Empty("array")),
-                ("more", ErrorField::Empty("object")),
-                ("text", ErrorField::Empty("string")),
-            ],
-            open: false,
-        };
-        let r = Rejection::<()> {
-            reason: Reason::NotFound,
-            operation: None,
-            schema: Some(&SCHEMA),
-            headers: http::HeaderMap::new(),
-        };
-        assert_eq!(r.status(), http::StatusCode::NOT_FOUND);
-        let body: Value = serde_json::from_slice(r.response().body().bytes()).unwrap();
-        assert_eq!(body, serde_json::json!({"n": 0, "ok": false, "list": [], "more": {}, "text": ""}));
     }
 }

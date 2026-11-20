@@ -19,6 +19,10 @@ use super::{operations as ops, runtime};
 use std::future::Future;
 pub trait Api: Send + Sync + 'static {
     type Principal: Clone + Send + Sync + 'static;
+    /// Answers a request that the server refuses itself (no route, bad input, missing credentials, a handler `Err`). Default: RFC 9457 `problem+json`, or the error body of the description that it fills by name.
+    fn error_response(rejection: runtime::Rejection<Operation>) -> runtime::Response {
+        rejection.response()
+    }
     fn form_with_xml(
         &self,
         params: ops::form_with_xml::Params,
@@ -359,6 +363,9 @@ impl<A: Api> From<A> for Routes<A> {
 impl<A: Api> runtime::Operations for Routes<A> {
     type Principal = A::Principal;
     type Operation = Operation;
+    fn error_response(&self) -> fn(runtime::Rejection<Operation>) -> runtime::Response {
+        |rejection| A::error_response(rejection)
+    }
     fn paths(&self) -> &'static [&'static str] {
         PATHS
     }

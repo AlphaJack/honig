@@ -19,14 +19,14 @@ fn shipment(body: &serde_json::Value) -> api::Response {
     api::block_on(api::Server::new(Users).into_service().handle(req))
 }
 
-/// Paths of every violation in a 400 response.
+/// Each entry of the RFC 9457 `errors` member of a 400 response: its `pointer` and `detail`.
 fn violations(r: &api::Response) -> Vec<String> {
     let v: serde_json::Value = serde_json::from_slice(r.body().bytes()).unwrap_or_default();
-    v["violations"]
+    v["errors"]
         .as_array()
         .into_iter()
         .flatten()
-        .map(|x| format!("{} {}", x["path"].as_str().unwrap_or(""), x["message"].as_str().unwrap_or("")))
+        .map(|x| format!("{} {}", x["pointer"].as_str().unwrap_or(""), x["detail"].as_str().unwrap_or("")))
         .collect()
 }
 
@@ -78,13 +78,16 @@ fn if_then_requirement_is_a_decode_error() {
 fn not_and_max_contains_reject() {
     let r = shipment(&json!({"kind":"domestic","customs":"none","insurer":"acme","parcels":[{"fragile":true}]}));
     let v = violations(&r).join("\n");
-    assert!(v.contains("/body matches `not`"), "{v}");
+    assert!(v.contains("# matches `not`"), "{v}");
     let r = shipment(&json!({"kind":"domestic","parcels":[{"fragile":true},{"fragile":true},{"fragile":true}]}));
     let v = violations(&r).join("\n");
     assert!(v.contains("contains 3 matching items, more than allowed"), "{v}");
 }
 
 impl api::Api for Users {
+    fn error_response(rejection: api::Rejection) -> api::Response {
+        rejection.response()
+    }
     type Principal = ();
 
     fn login(
@@ -111,7 +114,9 @@ impl api::Api for Users {
     ) -> impl Future<Output = Result<ops::create_user::Response, api::ApiError>> + Send {
         std::future::ready(if p.body.name.as_str() == "Taken" {
             let detail = "the name is taken".to_owned();
-            Err(types::Problem { code: types::ProblemCode::Taken, status: 409, detail }.into())
+            let body = types::Problem { code: types::ProblemCode::Taken, status: 409, detail: detail.clone() };
+            Err(api::ApiError::new(api::http::StatusCode::CONFLICT, detail)
+                .with_body("application/problem+json", &body))
         } else {
             Ok(ops::create_user::Response::Created(Box::new(p.body)))
         })
@@ -158,10 +163,10 @@ fn every_media_type_of_a_body_is_validated() {
         serde_json::to_vec(&json!({"name":"Ann","role":"admin","age":150})).unwrap(),
     );
     assert_eq!(json.status().as_u16(), 400, "{}", String::from_utf8_lossy(json.body().bytes()));
-    assert!(violations(&json).join("\n").contains("/body/age"), "{:?}", violations(&json));
+    assert!(violations(&json).join("\n").contains("#/age"), "{:?}", violations(&json));
     let form = post("/members", "application/x-www-form-urlencoded", b"name=Ann&role=admin&age=150".to_vec());
     assert_eq!(form.status().as_u16(), 400, "{}", String::from_utf8_lossy(form.body().bytes()));
-    assert!(violations(&form).join("\n").contains("/body/age"), "{:?}", violations(&form));
+    assert!(violations(&form).join("\n").contains("#/age"), "{:?}", violations(&form));
 }
 
 /// Untyped keywords of a several-media-types body are checked too. The
@@ -174,8 +179,8 @@ fn untyped_keywords_of_a_body_enum_are_checked_without_read_only_fields() {
     let bad = post("/badges", "application/json", body(json!({"label":"gold","holders":["ann"]})));
     assert_eq!(bad.status().as_u16(), 400, "{}", String::from_utf8_lossy(bad.body().bytes()));
     let v = violations(&bad).join("\n");
-    assert!(v.contains("/body/holders must contain at least 1"), "{v}");
-    assert!(!v.contains("/body/id"), "a request has no readOnly id: {v}");
+    assert!(v.contains("#/holders must contain at least 1"), "{v}");
+    assert!(!v.contains("#/id"), "a request has no readOnly id: {v}");
 }
 
 fn send(query: &str, team: &str, body: &serde_json::Value) -> api::Response {
@@ -200,12 +205,12 @@ fn the_first_violation_is_reported_with_its_path() {
         let r = send(query, "core", body);
         assert_eq!(r.status().as_u16(), 400);
         let v: serde_json::Value = serde_json::from_slice(r.body().bytes()).unwrap();
-        v["violations"].clone()
+        v["errors"].clone()
     };
     let ok = json!({"name": "Ann", "role": "admin"});
-    assert_eq!(first("limit=0", &ok), json!([{"path": "/query/limit", "message": "0 is less than the minimum 1"}]));
+    assert_eq!(first("limit=0", &ok), json!([{"detail": "0 is less than the minimum 1", "pointer": "#/query/limit"}]));
     let old = json!({"name": "Ann", "role": "admin", "age": 150, "score": 1.2});
-    assert_eq!(first("limit=5", &old)[0]["path"], "/body/age");
+    assert_eq!(first("limit=5", &old)[0]["pointer"], "#/age");
 }
 
 /// An enum is closed: a value that it does not list fails to decode. The request is refused for that value alone.
@@ -214,7 +219,7 @@ fn an_unlisted_enum_value_is_a_bad_request() {
     let r = send("limit=5", "core", &json!({"name":"Ann","role":"root","age":150}));
     assert_eq!(r.status().as_u16(), 400);
     let v: serde_json::Value = serde_json::from_slice(r.body().bytes()).unwrap();
-    assert_eq!(v["violations"], json!([{"path": "/body/role", "message": "`root` is not one of `admin`, `user`"}]));
+    assert_eq!(v["errors"], json!([{"detail": "`root` is not one of `admin`, `user`", "pointer": "#/role"}]));
 }
 
 /// A string with a `pattern` is a type that only `TryFrom` (and decoding) builds.
@@ -244,6 +249,9 @@ fn pattern_fields_are_checked_types() {
 struct Recording(std::sync::Mutex<Vec<serde_json::Map<String, serde_json::Value>>>);
 
 impl api::Api for Recording {
+    fn error_response(rejection: api::Rejection) -> api::Response {
+        rejection.response()
+    }
     type Principal = ();
 
     fn login(
@@ -373,9 +381,9 @@ fn the_bounds_of_a_union_branch_are_checked() {
     };
     assert!(user(json!({"loyalty": 4, "note": "fine"})).is_empty());
     assert!(user(json!({"loyalty": "VIP", "note": null})).is_empty());
-    assert_eq!(user(json!({"loyalty": 11})), ["/body/loyalty 11 is greater than the maximum 10"]);
-    assert_eq!(user(json!({"loyalty": "GOLD"})), ["/body/loyalty at most 3 characters allowed, found 4"]);
-    assert_eq!(user(json!({"note": "too long"})), ["/body/note at most 5 characters allowed, found 8"]);
+    assert_eq!(user(json!({"loyalty": 11})), ["#/loyalty 11 is greater than the maximum 10"]);
+    assert_eq!(user(json!({"loyalty": "GOLD"})), ["#/loyalty at most 3 characters allowed, found 4"]);
+    assert_eq!(user(json!({"note": "too long"})), ["#/note at most 5 characters allowed, found 8"]);
 }
 
 fn login(body: &serde_json::Value) -> api::Response {
@@ -448,7 +456,7 @@ fn an_unfillable_error_schema_falls_back_to_rfc_9457() {
     );
     let body: serde_json::Value = serde_json::from_slice(r.body().bytes()).unwrap();
     assert_eq!((body["title"].as_str(), body.get("code")), (Some("Bad Request"), None), "{body}");
-    assert_eq!(violations(&r), ["/body/age 200 must be less than 150"], "{body}");
+    assert_eq!(violations(&r), ["#/age 200 must be less than 150"], "{body}");
 }
 
 /// `email` and `idn-hostname` are types that only a valid value can be (`api::EmailText` and `api::IdnHostnameText`). A
@@ -483,13 +491,13 @@ fn a_refusal_fills_the_declared_schema() {
     let r = shipment(&json!({"kind": "domestic", "parcels": "none"}));
     assert_eq!(
         (r.status().as_u16(), r.headers().get("content-type").map_or("", |v| v.to_str().unwrap_or(""))),
-        (400, "application/json")
+        (400, "application/problem+json")
     );
     let body: serde_json::Value = serde_json::from_slice(r.body().bytes()).unwrap();
-    // The body decodes as its type: the wrong type is a violation of the body.
-    let message = "/body: invalid type: string \"none\", expected a sequence";
-    let violations = json!([{"path": "/body", "message": "invalid type: string \"none\", expected a sequence"}]);
-    assert_eq!(body, json!({"message": message, "object": "error", "violations": violations}));
+    // The body decodes as its type: the wrong type is a violation of the whole body.
+    let detail = "/body: invalid type: string \"none\", expected a sequence";
+    let errors = json!([{"detail": "invalid type: string \"none\", expected a sequence", "pointer": "#"}]);
+    assert_eq!(body, json!({"detail": detail, "object": "error", "errors": errors}));
 }
 
 /// JSON Schema 2020-12 section 6.1.1: `type: null` allows only `null`. Absent, it is `None`. `null` is `Some(())`, which
@@ -533,9 +541,9 @@ fn a_pattern_does_not_run_past_max_length() {
     assert_eq!(err.to_string(), "at most 20 characters allowed, found 30001");
 }
 
-/// A recursive union whose branches differ in a field after the recursive one. Each level used to decode its nested
-/// trees once per branch: depth 40 took 2^40 tries. A branch that cannot fit is now skipped before decoding, and the
-/// stack of a test thread holds it in a debug build.
+/// A recursive union whose branches differ in a field after the recursive one. A branch that cannot fit is skipped
+/// before decoding, so depth 40 decodes in steps linear in its depth, and the stack of a test thread holds it in a
+/// debug build.
 #[test]
 fn a_recursive_union_decodes_in_time_linear_in_its_depth() {
     let mut json = String::from(r#"{"items":[],"x":1}"#);

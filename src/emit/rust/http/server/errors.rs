@@ -1,7 +1,5 @@
 //! The error schema of the server: which response renders a rejection and the conversions to it.
 
-use std::collections::BTreeMap;
-
 use proc_macro2::{Literal, TokenStream};
 use quote::{format_ident, quote};
 
@@ -9,86 +7,53 @@ use crate::emit::rust::http::shared::{send_media, some_ref};
 use crate::emit::rust::names::snake;
 use crate::emit::rust::space::Space;
 use crate::emit::rust::syntax::lit;
-use crate::emit::rust::syntax::{pascal_ident, snake_ident};
 use crate::ir::Api;
 use crate::ir::http::{Content, Status};
 use crate::ir::media::MediaKind;
 use crate::ir::types::{JsonKind, Kind, Ty};
 
-/// Returns the `runtime::ErrorSchema` of the JSON body of an error response if the generator can fill
-/// it. It needs at least a status or a message field. Every other required field must be
-/// a `const`, or a scalar, array or object that it can leave empty.
+/// Returns the `runtime::ErrorSchema` of the JSON body of an error response if the generator can fill it: RFC 9457
+/// `problem+json`, whose members the RFC names. Each of `type`, `title`, `status` and `detail` of the RFC's type is
+/// filled. A required `const` gets its value. Any other required member, or a member of the RFC of another type, has
+/// no value that the server knows: then `None`, and the server needs your `error_response`.
 pub(crate) fn error_schema(space: &Space<'_>, c: &Content) -> Option<TokenStream> {
+    let media = send_media(c);
+    if !media.split(';').next().unwrap_or_default().trim().eq_ignore_ascii_case("application/problem+json") {
+        return None;
+    }
     let Ty::Named(id) = &c.ty else { return None };
     let Kind::Struct(st) = &space.types.get(*id).kind else { return None };
     let mut fields = vec![];
-    let mut useful = false;
     for f in &st.fields {
-        let wire = plain_name(&f.wire);
-        // A `const` has one valid value: whatever name it has, any other value would break it.
+        let w = lit(&f.wire);
         if let Some(value) = const_value(space, &f.ty) {
             if f.required {
-                let (w, v) = (lit(&f.wire), lit(&value.to_string()));
+                let v = lit(&value.to_string());
                 fields.push(quote!((#w, runtime::ErrorField::Const(#v))));
             }
             continue;
         }
-        // An enum (a closed `code` list) has no value that the runtime can choose. So the schema cannot be filled
-        // when it requires one. Any value written would break it.
-        if is_enum(space, &f.ty) {
-            if f.required {
-                return None;
-            }
-            continue;
-        }
-        let kind = space.kind_of(f.ty.non_null());
-        let item_is_string = matches!(f.ty.non_null(), Ty::Vec(t) if space.kind_of(t) == JsonKind::String);
-        let (status, detail) = (STATUS_FIELDS.contains(&wire.as_str()), DETAIL_FIELDS.contains(&wire.as_str()));
-        let what = match (wire.as_str(), kind) {
-            (_, JsonKind::Integer | JsonKind::Number) if status => quote!(Status),
-            (_, JsonKind::String) if status => quote!(StatusText),
-            (_, JsonKind::String) if detail => quote!(Detail),
+        let what = match (f.wire.as_str(), space.kind_of(f.ty.non_null())) {
+            ("status", JsonKind::Integer) => quote!(Status),
             ("title", JsonKind::String) => quote!(Title),
+            ("detail", JsonKind::String) => quote!(Detail),
             ("type", JsonKind::String) => quote!(Type),
-            ("errors" | "violations" | "issues" | "details", JsonKind::Array) if item_is_string => {
-                quote!(ViolationMessages)
-            }
-            ("errors" | "violations" | "issues" | "details", JsonKind::Array) => quote!(Violations),
             _ if !f.required => continue,
-            (_, JsonKind::String) => quote!(Empty("string")),
-            (_, JsonKind::Integer | JsonKind::Number) => quote!(Empty("integer")),
-            (_, JsonKind::Bool) => quote!(Empty("boolean")),
-            (_, JsonKind::Array) => quote!(Empty("array")),
             _ => return None,
         };
-        useful |= !what.to_string().starts_with("Empty");
-        let w = lit(&f.wire);
         fields.push(quote!((#w, runtime::ErrorField::#what)));
     }
-    let media = lit(&send_media(c));
+    let media = lit(&media);
     let open = !st.closed || st.additional.is_some();
-    useful.then(|| quote!(runtime::ErrorSchema { media: #media, fields: &[#(#fields),*], open: #open }))
+    Some(quote!(runtime::ErrorSchema { media: #media, fields: &[#(#fields),*], open: #open }))
 }
 
-/// Returns a warning per error response whose body the server cannot fill for a request that it refuses itself. Such a
-/// refusal goes out as RFC 9457 `problem+json` and not in the declared body. A handler's typed error still can.
-pub(crate) fn unfillable_errors(api: &Api, space: &Space<'_>) -> Vec<crate::diag::Diagnostic> {
-    let mut out = vec![];
-    for op in &api.http.operations {
-        for r in op.responses.iter().filter(|r| has_error_body(r)) {
-            if declared_error_schema(space, r).is_some() {
-                continue;
-            }
-            out.push(crate::diag::Diagnostic::warning(
-                format!("{}/responses/{}", op.pointer, status_key(r.status)),
-                "the server cannot fill this error body for the requests it refuses itself, so they get RFC 9457 \
-                 `application/problem+json`. A JSON body needs a status or message property, and every other \
-                 required property must be a `const`, a scalar, an array or an object (a required enum has no value \
-                 to choose). A `text/*` body needs `type: string`",
-            ));
-        }
-    }
-    out
+/// Does the server fill every error body that the description declares by itself ([`declared_error_schema`])? Then
+/// its `ErrorBodies` is `runtime::Filled`. Otherwise `runtime::Unfilled`, and the server needs `error_response`.
+pub(crate) fn all_filled(api: &Api, space: &Space<'_>) -> bool {
+    (api.http.operations.iter())
+        .flat_map(|op| op.responses.iter().filter(|r| has_error_body(r)))
+        .all(|r| declared_error_schema(space, r).is_some())
 }
 
 /// Returns a warning per required header of an error response. The server refuses some requests itself (`400` for an
@@ -152,18 +117,6 @@ fn is_error(r: &crate::ir::http::Resp) -> bool {
     !matches!(r.status, Status::Code(c) if c < runtime::http::StatusCode::BAD_REQUEST.as_u16())
 }
 
-/// Error schema properties that hold the HTTP status as [`plain_name`] spells them.
-const STATUS_FIELDS: [&str; 6] = ["code", "status", "statuscode", "httpstatus", "httpcode", "errorcode"];
-/// Error schema properties that say what went wrong as [`plain_name`] spells them.
-const DETAIL_FIELDS: [&str; 9] =
-    ["message", "detail", "details", "error", "description", "reason", "msg", "errordescription", "errormessage"];
-
-/// Returns a property name in lower case without `_` and `-`. So `errorCode`, `error_code` and `Error-Code` are one
-/// name.
-fn plain_name(wire: &str) -> String {
-    wire.chars().filter(|c| !matches!(c, '_' | '-')).map(|c| c.to_ascii_lowercase()).collect()
-}
-
 /// Returns the value of `ty` when it is a `const` through aliases.
 fn const_value<'s>(space: &'s Space<'_>, ty: &Ty) -> Option<&'s serde_json::Value> {
     let Ty::Named(id) = ty.non_null() else { return None };
@@ -178,64 +131,6 @@ fn const_value<'s>(space: &'s Space<'_>, ty: &Ty) -> Option<&'s serde_json::Valu
         | Kind::Checked(_)
         | Kind::Pending => None,
     }
-}
-
-/// Is `ty` a string or integer enum through aliases?
-fn is_enum(space: &Space<'_>, ty: &Ty) -> bool {
-    let Ty::Named(id) = ty.non_null() else { return false };
-    match &space.types.get(*id).kind {
-        Kind::StrEnum(_) | Kind::IntEnum(_) => true,
-        Kind::Alias(t) => is_enum(space, t),
-        Kind::Struct(_) | Kind::Union(_) | Kind::Newtype(_) | Kind::Const(_) | Kind::Checked(_) | Kind::Pending => {
-            false
-        }
-    }
-}
-
-/// Returns `impl From<types::X> for runtime::ApiError` for each error schema with a required integer status. A handler
-/// returns `Err(types::X { .. }.into())`. The body goes out as it is at that status with its detail as the message.
-/// `aliases`: types declared as an alias of another. The other one gets the impl.
-pub(crate) fn error_conversions(api: &Api, space: &Space<'_>, aliases: &BTreeMap<usize, usize>) -> TokenStream {
-    let mut seen: Vec<crate::ir::types::TypeId> = vec![];
-    let mut out = vec![];
-    let errors = api.http.operations.iter().flat_map(|op| &op.responses).filter(|r| is_error(r));
-    for c in errors.flat_map(|r| &r.contents).filter(|c| c.kind == MediaKind::Json) {
-        let Ty::Named(id) = &c.ty else { continue };
-        let id = &crate::ir::types::TypeId(aliases.get(&id.0).copied().unwrap_or(id.0));
-        let Kind::Struct(st) = &space.types.get(*id).kind else { continue };
-        if seen.contains(id) || space.types.get(*id).rust_type.is_some() {
-            continue;
-        }
-        let field = |names: &[&str], kind: JsonKind| {
-            st.fields.iter().find(|f| {
-                f.required
-                    && !is_enum(space, &f.ty)
-                    && space.types.nullable(&f.ty).is_none()
-                    && names.contains(&plain_name(&f.wire).as_str())
-                    && space.kind_of(&f.ty) == kind
-            })
-        };
-        let Some(status) = field(&STATUS_FIELDS, JsonKind::Integer) else { continue };
-        seen.push(*id);
-        let status_ident = snake_ident(&status.name);
-        let status = quote!(runtime::status_of(body.#status_ident));
-        let message = field(&DETAIL_FIELDS, JsonKind::String).map_or_else(
-            || quote!(String::new()),
-            |f| {
-                let n = snake_ident(&f.name);
-                quote!(body.#n.clone())
-            },
-        );
-        let (name, media) = (pascal_ident(&space.types.get(*id).name), lit(&send_media(c)));
-        out.push(quote! {
-            impl From<super::types::#name> for runtime::ApiError {
-                fn from(body: super::types::#name) -> Self {
-                    Self::new(#status, #message).with_body(#media, &body)
-                }
-            }
-        });
-    }
-    quote!(#(#out)*)
 }
 
 /// Returns `error_schema`: the error schema that the description declares for an operation and status.

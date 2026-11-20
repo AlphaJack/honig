@@ -20,6 +20,10 @@ use super::{operations as ops, runtime};
 use std::future::Future;
 pub trait Api: Send + Sync + 'static {
     type Principal: Clone + Send + Sync + 'static;
+    /// Answers a request that the server refuses itself (no route, bad input, missing credentials, a handler `Err`). Default: RFC 9457 `problem+json`, or the error body of the description that it fills by name.
+    fn error_response(rejection: runtime::Rejection<Operation>) -> runtime::Response {
+        rejection.response()
+    }
     fn submit_form(
         &self,
         params: ops::submit_form::Params,
@@ -241,10 +245,7 @@ pub fn scopes_held(
 }
 const ERROR_SCHEMA_0: runtime::ErrorSchema = runtime::ErrorSchema {
     media: "application/problem+json",
-    fields: &[
-        ("code", runtime::ErrorField::Status),
-        ("message", runtime::ErrorField::Detail),
-    ],
+    fields: &[],
     open: true,
 };
 const ERROR_SCHEMA: Option<&runtime::ErrorSchema> = Some(&ERROR_SCHEMA_0);
@@ -256,6 +257,12 @@ const fn error_schema(
 }
 pub trait Webhooks: Send + Sync + 'static {
     type Principal: Clone + Send + Sync + 'static;
+    /// Answers a request that the server refuses itself (no route, bad input, missing credentials, a handler `Err`). Default: RFC 9457 `problem+json`, or the error body of the description that it fills by name.
+    fn error_response(
+        rejection: runtime::Rejection<WebhookOperation>,
+    ) -> runtime::Response {
+        rejection.response()
+    }
     fn new_product_post(
         &self,
         params: ops::new_product_post::Params,
@@ -308,6 +315,11 @@ pub type WebhookContext<'a, C = ()> = runtime::Context<'a, C, WebhookOperation>;
 impl<A: Webhooks> runtime::Operations for WebhookRoutes<A> {
     type Principal = A::Principal;
     type Operation = WebhookOperation;
+    fn error_response(
+        &self,
+    ) -> fn(runtime::Rejection<WebhookOperation>) -> runtime::Response {
+        |rejection| A::error_response(rejection)
+    }
     fn paths(&self) -> &'static [&'static str] {
         &[]
     }
@@ -432,6 +444,9 @@ impl<A: Api> From<A> for Routes<A> {
 impl<A: Api> runtime::Operations for Routes<A> {
     type Principal = A::Principal;
     type Operation = Operation;
+    fn error_response(&self) -> fn(runtime::Rejection<Operation>) -> runtime::Response {
+        |rejection| A::error_response(rejection)
+    }
     fn paths(&self) -> &'static [&'static str] {
         PATHS
     }

@@ -19,6 +19,8 @@ use super::{operations as ops, runtime};
 use std::future::Future;
 pub trait Api: Send + Sync + 'static {
     type Principal: Clone + Send + Sync + 'static;
+    /// Answers a request that the server refuses itself (no route, bad input, missing credentials, a handler `Err`) in the error body of the description. No standard names its fields, so this maps them: `rejection.reason` holds the status and the detail.
+    fn error_response(rejection: runtime::Rejection<Operation>) -> runtime::Response;
     fn open(
         &self,
         params: ops::open::Params,
@@ -191,6 +193,9 @@ impl<A: Api> From<A> for Routes<A> {
 impl<A: Api> runtime::Operations for Routes<A> {
     type Principal = A::Principal;
     type Operation = Operation;
+    fn error_response(&self) -> fn(runtime::Rejection<Operation>) -> runtime::Response {
+        |rejection| A::error_response(rejection)
+    }
     fn paths(&self) -> &'static [&'static str] {
         PATHS
     }
