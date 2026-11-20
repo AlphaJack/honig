@@ -162,6 +162,10 @@ name = "codecs"
 required-features = ["cookie", "multipart", "xml"]
 
 [[test]]
+name = "format_checks"
+required-features = ["idn"]
+
+[[test]]
 name = "xml_memory"
 required-features = ["xml"]
 

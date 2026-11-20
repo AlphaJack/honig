@@ -1114,6 +1114,11 @@ mod mail {
     /// holds 1 to 63 octets of letters, digits and inner hyphens. The name holds 253 in all. A punycode label (`xn--`)
     /// must decode to a valid one.
     fn hostname(value: &str, unicode: bool) -> bool {
+        plain_name(value) || mapped_name(value, unicode)
+    }
+
+    /// Returns a host name as [`hostname`] reads it, through UTS 46 mapping.
+    fn mapped_name(value: &str, unicode: bool) -> bool {
         // The labels as UTS 46 maps them: `\u{3002}` separates two labels and a zero width space is dropped.
         let (mapped, mapping) = Uts46::new().to_unicode(value.as_bytes(), AsciiDenyList::STD3, Hyphens::Check);
         (unicode || value.is_ascii())
@@ -1121,6 +1126,26 @@ mod mail {
             && mapping.is_ok()
             && Uts46::new().to_ascii(value.as_bytes(), AsciiDenyList::STD3, Hyphens::Check, DnsLength::Verify).is_ok()
             && mapped.trim_end_matches('.').split('.').all(idna2008_label)
+    }
+
+    /// The most octets of a label (RFC 1035 section 2.3.4).
+    const LABEL: usize = 63;
+    /// The most octets of a host name without its root dot.
+    const NAME: usize = 253;
+
+    /// Returns a host name of plain ASCII labels that the full check accepts without reading it again: letters, digits
+    /// and inner hyphens, no label an A-label or with `--` where UTS 46 reserves it. UTS 46 maps such a name to itself
+    /// and lower case. Any other name takes the full check, so a `false` here refuses nothing.
+    fn plain_name(value: &str) -> bool {
+        (1..=NAME).contains(&value.len())
+            && value.split('.').all(|label| {
+                let b = label.as_bytes();
+                (1..=LABEL).contains(&b.len())
+                    && b.iter().all(|c| c.is_ascii_alphanumeric() || *c == b'-')
+                    && b.first() != Some(&b'-')
+                    && b.last() != Some(&b'-')
+                    && b.get(2..ACE.len()) != Some(b"--")
+            })
     }
 
     /// The prefix of an A-label (RFC 5890 section 2.3.2.1).
@@ -1252,7 +1277,7 @@ mod mail {
 
     #[cfg(test)]
     mod tests {
-        use super::{email, hostname};
+        use super::{LABEL, email, hostname, mapped_name, plain_name};
         use crate::{EmailText, IdnHostnameText};
 
         #[test]
@@ -1304,6 +1329,41 @@ mod mail {
             assert!(email("실례@실례.테스트", true), "idn-email allows UTF-8");
             assert!(!email("2962", true));
             assert!(!email(&format!("{}@example.com", "a".repeat(65)), false), "a local part over 64 octets");
+        }
+
+        /// Every name the plain path takes, the mapped path takes too: names of up to six octets of letters, digits,
+        /// hyphens and dots, and labels and names at their longest.
+        #[test]
+        fn a_plain_name_is_one_that_mapping_takes() {
+            const ALPHABET: [u8; 5] = *b"aZ0-.";
+            let mut names: Vec<String> = vec![];
+            for len in 1..=6_u32 {
+                for i in 0..ALPHABET.len().pow(len) {
+                    let mut i = i;
+                    let name = (0..len).map(|_| {
+                        let c = ALPHABET[i % ALPHABET.len()];
+                        i /= ALPHABET.len();
+                        char::from(c)
+                    });
+                    names.push(name.collect());
+                }
+            }
+            let label = "a".repeat(LABEL);
+            names.extend([label.clone(), format!("{label}a"), format!("{label}.{label}.{label}.{}", "a".repeat(61))]);
+            names.extend([
+                "xn--4gbwdl".to_owned(),
+                "ab--c".to_owned(),
+                "abc--d".to_owned(),
+                format!("{label}.{label}.{label}.{label}"),
+            ]);
+            let mut plain = 0;
+            for name in &names {
+                if plain_name(name) {
+                    plain += 1;
+                    assert!(mapped_name(name, false) && mapped_name(name, true), "plain but not mapped: {name}");
+                }
+            }
+            assert!(plain > 1000, "the plain path took {plain} names");
         }
 
         /// JSON Schema Test Suite, draft 2020-12, `optional/format/hostname.json` and `idn-hostname.json`.

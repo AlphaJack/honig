@@ -81,14 +81,15 @@ const OCTETS: usize = 4;
 /// Returns RFC 2673 dotted quad: four decimal octets without leading zeros.
 #[must_use]
 pub(crate) fn is_ipv4(s: &str) -> bool {
-    let parts: Vec<&str> = s.split('.').collect();
-    parts.len() == OCTETS
-        && parts.iter().all(|p| {
-            !p.is_empty()
-                && p.bytes().all(|b| b.is_ascii_digit())
-                && (p.len() == 1 || !p.starts_with('0'))
-                && p.parse::<u8>().is_ok()
-        })
+    let mut octets = 0;
+    s.split('.').all(|p| {
+        octets += 1;
+        octets <= OCTETS
+            && !p.is_empty()
+            && p.bytes().all(|b| b.is_ascii_digit())
+            && (p.len() == 1 || !p.starts_with('0'))
+            && p.parse::<u8>().is_ok()
+    }) && octets == OCTETS
 }
 
 /// Returns RFC 4291 section 2.2 text forms, with `::` and an IPv4 tail.

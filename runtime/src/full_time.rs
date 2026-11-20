@@ -150,15 +150,16 @@ fn split_offset(text: &str) -> Option<(&str, i64)> {
 
 /// Returns `N` two-digit numbers between colons.
 fn fields<const N: usize>(text: &str) -> Option<[i64; N]> {
-    let parts: [&str; N] = text.split(':').collect::<Vec<_>>().try_into().ok()?;
+    let mut parts = text.split(':');
     let mut out = [0; N];
-    for (o, p) in out.iter_mut().zip(parts) {
+    for o in &mut out {
+        let p = parts.next()?;
         if p.len() != 2 || !p.bytes().all(|b| b.is_ascii_digit()) {
             return None;
         }
         *o = p.parse().ok()?;
     }
-    Some(out)
+    parts.next().is_none().then_some(out)
 }
 
 #[cfg(test)]
