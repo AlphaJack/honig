@@ -3,11 +3,32 @@
 /// A server variable: (name, default, allowed values). Empty allowed values mean any.
 pub type ServerVar = (&'static str, &'static str, &'static [&'static str]);
 
+/// A server of the description: its URL template, its name and its variables.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ServerUrl {
+    /// The URL, with `{variable}` in place of each variable.
+    pub template: &'static str,
+    /// The name that the description gives the server.
+    pub name: Option<&'static str>,
+    /// The variables of the template.
+    pub variables: &'static [ServerVar],
+}
+
+impl ServerUrl {
+    /// Returns the URL with `values` for its variables and the default of each other one.
+    ///
+    /// # Errors
+    /// A value outside the `enum` of a variable, or a value for a variable that the server does not declare.
+    pub fn resolve(&self, values: &[(&str, &str)]) -> Result<String, String> {
+        server_url(self.template, self.variables, values)
+    }
+}
+
 /// Returns `path` under the operation's first server (variables at their defaults).
 /// An absolute result bypasses the transport's base URL.
-pub fn operation_path(servers: &[&str], vars: &[&[ServerVar]], path: String) -> String {
-    let (Some(url), Some(vars)) = (servers.first(), vars.first()) else { return path };
-    let base = server_url(url, vars, &[]).unwrap_or_else(|_| (*url).to_owned());
+pub fn operation_path(servers: &[ServerUrl], path: String) -> String {
+    let Some(server) = servers.first() else { return path };
+    let base = server.resolve(&[]).unwrap_or_else(|_| server.template.to_owned());
     format!("{}{path}", base.trim_end_matches('/'))
 }
 

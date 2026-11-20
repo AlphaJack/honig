@@ -18,17 +18,22 @@
 )]
 use super::{operations as ops, runtime};
 use super::types;
+/// 0. Prod
+///
+/// `region`: Region
+pub const SERVERS: &[runtime::ServerUrl] = &[
+    runtime::ServerUrl {
+        template: "https://{region}.example.com/v1",
+        name: Some("production"),
+        variables: &[("region", "eu", &["eu", "us"])],
+    },
+];
 #[derive(Debug, Clone)]
 pub struct Client<T> {
     pub transport: T,
     pub(super) credentials: runtime::Credentials,
 }
 impl<T> Client<T> {
-    /// 0. Prod
-    ///
-    /// `region`: Region
-    pub const SERVERS: &'static [&'static str] = &["https://{region}.example.com/v1"];
-    pub const SERVER_NAMES: &'static [&'static str] = &["production"];
     #[deprecated = "the security scheme is deprecated"]
     #[must_use]
     pub fn authorization_url_oauth(
@@ -62,18 +67,6 @@ impl<T> Client<T> {
             scopes,
             state,
         )
-    }
-    pub const SERVER_VARIABLES: &'static [&'static [runtime::ServerVar]] = &[
-        &[("region", "eu", &["eu", "us"])],
-    ];
-    pub fn server_url(index: usize, values: &[(&str, &str)]) -> Result<String, String> {
-        let (Some(url), Some(vars)) = (
-            Self::SERVERS.get(index),
-            Self::SERVER_VARIABLES.get(index),
-        ) else {
-            return Err(format!("no server {index}"));
-        };
-        runtime::server_url(url, vars, values)
     }
     pub const fn new(transport: T) -> Self {
         Self {
@@ -247,11 +240,7 @@ impl<T: runtime::Transport> Client<T> {
     ) -> Result<ops::submit_form::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/forms");
-        let path = runtime::operation_path(
-            ops::submit_form::SERVERS,
-            ops::submit_form::SERVER_VARIABLES,
-            path,
-        );
+        let path = runtime::operation_path(ops::submit_form::SERVERS, path);
         let query = Vec::new();
         let mut req = runtime::new_request("POST", path, query)?;
         runtime::Message::set_body(
@@ -309,11 +298,7 @@ impl<T: runtime::Transport> Client<T> {
         let p = runtime::IntoArg::into_arg(p).into_owned();
         let mut path = String::from("/blobs/");
         path.push_str(&runtime::encode_path("id", &p.id, runtime::Enc::SIMPLE)?);
-        let path = runtime::operation_path(
-            ops::put_blob::SERVERS,
-            ops::put_blob::SERVER_VARIABLES,
-            path,
-        );
+        let path = runtime::operation_path(ops::put_blob::SERVERS, path);
         let mut query: Vec<String> = Vec::new();
         runtime::encode_query(&mut query, "legacy", &p.legacy, runtime::Enc::FORM)?;
         let mut req = runtime::new_request("PUT", path, query)?;
@@ -380,11 +365,7 @@ impl<T: runtime::Transport> Client<T> {
         let p = runtime::IntoArg::into_arg(p).into_owned();
         let mut path = String::from("/blobs/");
         path.push_str(&runtime::encode_path("id", &p.id, runtime::Enc::SIMPLE)?);
-        let path = runtime::operation_path(
-            ops::put_blob::SERVERS,
-            ops::put_blob::SERVER_VARIABLES,
-            path,
-        );
+        let path = runtime::operation_path(ops::put_blob::SERVERS, path);
         let mut query: Vec<String> = Vec::new();
         runtime::encode_query(&mut query, "legacy", &p.legacy, runtime::Enc::FORM)?;
         let mut req = runtime::new_request("PUT", path, query)?;
@@ -425,11 +406,7 @@ impl<T: runtime::Transport> Client<T> {
     ) -> Result<ops::list_products::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/products");
-        let path = runtime::operation_path(
-            ops::list_products::SERVERS,
-            ops::list_products::SERVER_VARIABLES,
-            path,
-        );
+        let path = runtime::operation_path(ops::list_products::SERVERS, path);
         let mut query: Vec<String> = Vec::new();
         runtime::encode_query(&mut query, "limit", &p.limit, runtime::Enc::FORM)?;
         runtime::encode_query(
@@ -585,11 +562,7 @@ impl<T: runtime::Transport> Client<T> {
     > {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/products");
-        let path = runtime::operation_path(
-            ops::list_products::SERVERS,
-            ops::list_products::SERVER_VARIABLES,
-            path,
-        );
+        let path = runtime::operation_path(ops::list_products::SERVERS, path);
         let mut query: Vec<String> = Vec::new();
         runtime::encode_query(&mut query, "limit", &p.limit, runtime::Enc::FORM)?;
         runtime::encode_query(
@@ -715,11 +688,7 @@ impl<T: runtime::Transport> Client<T> {
     ) -> Result<ops::create_product::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/products");
-        let path = runtime::operation_path(
-            ops::create_product::SERVERS,
-            ops::create_product::SERVER_VARIABLES,
-            path,
-        );
+        let path = runtime::operation_path(ops::create_product::SERVERS, path);
         let query = Vec::new();
         let mut req = runtime::new_request("POST", path, query)?;
         if let Some(h) = runtime::encode_header(&p.x_trace, false)? {
@@ -788,11 +757,7 @@ impl<T: runtime::Transport> Client<T> {
     ) -> Result<ops::search_products::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/products");
-        let path = runtime::operation_path(
-            ops::search_products::SERVERS,
-            ops::search_products::SERVER_VARIABLES,
-            path,
-        );
+        let path = runtime::operation_path(ops::search_products::SERVERS, path);
         let query = Vec::new();
         let mut req = runtime::new_request("QUERY", path, query)?;
         runtime::Message::set_header(&mut req, "Accept", "application/json")?;
@@ -839,11 +804,7 @@ impl<T: runtime::Transport> Client<T> {
     ) -> Result<ops::copy_products::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p);
         let path = String::from("/products");
-        let path = runtime::operation_path(
-            ops::copy_products::SERVERS,
-            ops::copy_products::SERVER_VARIABLES,
-            path,
-        );
+        let path = runtime::operation_path(ops::copy_products::SERVERS, path);
         let query = Vec::new();
         let mut req = runtime::new_request("COPY", path, query)?;
         if let Some(h) = runtime::encode_header(&p.x_trace, false)? {

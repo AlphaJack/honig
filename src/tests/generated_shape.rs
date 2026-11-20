@@ -72,7 +72,8 @@ fn operations(test: &str) -> String {
 #[test]
 fn only_operations_with_their_own_servers_get_servers() {
     let ops = operations("shape-servers");
-    assert!(op_module(&ops, "a").contains("pub const SERVERS: &[&str] = &[\"https://a.example.com\"];"), "{ops}");
+    let a = op_module(&ops, "a");
+    assert!(a.contains("pub const SERVERS: &[runtime::ServerUrl]") && a.contains("\"https://a.example.com\""), "{ops}");
     assert!(!op_module(&ops, "b").contains("SERVERS"), "{ops}");
 }
 

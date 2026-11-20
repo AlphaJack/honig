@@ -7,7 +7,7 @@ use quote::{format_ident, quote};
 
 use super::shared::{Boxing, VariantShape};
 use super::shared::{
-    blob, body_ty, boxed, boxing, content_ty, eq_derive, param_init, server_variables, spec_default, status_code,
+    blob, body_ty, boxed, boxing, content_ty, eq_derive, param_init, server_url, spec_default, status_code,
     variant_shape,
 };
 use crate::emit::rust::names::{off_prelude, pascal, snake};
@@ -552,11 +552,9 @@ fn const_default(space: &Space<'_>, p: &Param) -> bool {
 pub(crate) fn params_struct(space: &Space<'_>, op: &Operation, conveniences: bool) -> TokenStream {
     let (method, path) = (lit(&op.method), lit(&op.path));
     let servers = (!op.servers.is_empty()).then(|| {
-        let urls = op.servers.iter().map(|s| lit(&s.url));
-        let vars = op.servers.iter().map(server_variables);
+        let urls = op.servers.iter().map(server_url);
         quote! {
-            pub const SERVERS: &[&str] = &[#(#urls),*];
-            pub const SERVER_VARIABLES: &[&[runtime::ServerVar]] = &[#(#vars),*];
+            pub const SERVERS: &[runtime::ServerUrl] = &[#(#urls),*];
         }
     });
     let mut tys: Vec<&Ty> = op.params.iter().map(|p| &p.ty).collect();

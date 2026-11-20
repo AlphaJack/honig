@@ -58,18 +58,19 @@ fn integer_enum_values_are_checked() {
 #[test]
 fn path_servers_expand_their_variables() {
     assert_eq!(
-        api::runtime::operation_path(ops::put_blob::SERVERS, ops::put_blob::SERVER_VARIABLES, "/blobs/1".to_owned()),
+        api::runtime::operation_path(ops::put_blob::SERVERS, "/blobs/1".to_owned()),
         "https://eu.blobs.example.com/blobs/1"
     );
     assert_eq!(api::runtime::split_target("https://eu.blobs.example.com/blobs/1?x=1"), ("/blobs/1", "x=1"));
 }
 
-/// The servers of the API by index with their variables at a chosen value or their default.
+/// The servers of the API with their variables at a chosen value or their default.
 #[test]
 fn api_servers_expand_their_variables() {
-    assert_eq!(Client::<()>::server_url(0, &[]).as_deref(), Ok("https://eu.example.com/v1"));
-    assert_eq!(Client::<()>::server_url(0, &[("region", "us")]).as_deref(), Ok("https://us.example.com/v1"));
-    assert_eq!(Client::<()>::server_url(1, &[]), Err("no server 1".to_owned()));
+    let [eu] = api::client::SERVERS else { panic!("one server") };
+    assert_eq!(eu.resolve(&[]).as_deref(), Ok("https://eu.example.com/v1"));
+    assert_eq!(eu.resolve(&[("region", "us")]).as_deref(), Ok("https://us.example.com/v1"));
+    assert!(eu.resolve(&[("region", "mars")]).is_err(), "not an allowed value");
 }
 
 /// The `createProduct` request a server received: the callback URLs read its body and its query.

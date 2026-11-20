@@ -82,8 +82,13 @@ pub mod submit_form {
     use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/forms";
-    pub const SERVERS: &[&str] = &["https://forms.example.com"];
-    pub const SERVER_VARIABLES: &[&[runtime::ServerVar]] = &[&[]];
+    pub const SERVERS: &[runtime::ServerUrl] = &[
+        runtime::ServerUrl {
+            template: "https://forms.example.com",
+            name: Some("forms"),
+            variables: &[],
+        },
+    ];
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct Params {
         pub body: types::SubmitFormBody,
@@ -115,9 +120,12 @@ pub mod put_blob {
     use super::super::runtime;
     pub const METHOD: &str = "PUT";
     pub const PATH: &str = "/blobs/{id}";
-    pub const SERVERS: &[&str] = &["https://{region}.blobs.example.com"];
-    pub const SERVER_VARIABLES: &[&[runtime::ServerVar]] = &[
-        &[("region", "eu", &["eu", "us"])],
+    pub const SERVERS: &[runtime::ServerUrl] = &[
+        runtime::ServerUrl {
+            template: "https://{region}.blobs.example.com",
+            name: None,
+            variables: &[("region", "eu", &["eu", "us"])],
+        },
     ];
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct Params {
@@ -164,8 +172,13 @@ pub mod list_products {
     use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/products";
-    pub const SERVERS: &[&str] = &["https://products.example.com"];
-    pub const SERVER_VARIABLES: &[&[runtime::ServerVar]] = &[&[]];
+    pub const SERVERS: &[runtime::ServerUrl] = &[
+        runtime::ServerUrl {
+            template: "https://products.example.com",
+            name: None,
+            variables: &[],
+        },
+    ];
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct Params {
         pub limit: Option<types::ListProductsLimit>,
@@ -289,8 +302,13 @@ pub mod create_product {
     use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/products";
-    pub const SERVERS: &[&str] = &["https://products.example.com"];
-    pub const SERVER_VARIABLES: &[&[runtime::ServerVar]] = &[&[]];
+    pub const SERVERS: &[runtime::ServerUrl] = &[
+        runtime::ServerUrl {
+            template: "https://products.example.com",
+            name: None,
+            variables: &[],
+        },
+    ];
     #[derive(Debug, Clone, PartialEq)]
     pub struct Params {
         pub x_trace: Option<runtime::UuidText>,
@@ -366,8 +384,13 @@ pub mod search_products {
     use super::super::runtime;
     pub const METHOD: &str = "QUERY";
     pub const PATH: &str = "/products";
-    pub const SERVERS: &[&str] = &["https://products.example.com"];
-    pub const SERVER_VARIABLES: &[&[runtime::ServerVar]] = &[&[]];
+    pub const SERVERS: &[runtime::ServerUrl] = &[
+        runtime::ServerUrl {
+            template: "https://products.example.com",
+            name: None,
+            variables: &[],
+        },
+    ];
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct Params {
         pub x_trace: Option<runtime::UuidText>,
@@ -403,8 +426,13 @@ pub mod copy_products {
     use super::super::runtime;
     pub const METHOD: &str = "COPY";
     pub const PATH: &str = "/products";
-    pub const SERVERS: &[&str] = &["https://products.example.com"];
-    pub const SERVER_VARIABLES: &[&[runtime::ServerVar]] = &[&[]];
+    pub const SERVERS: &[runtime::ServerUrl] = &[
+        runtime::ServerUrl {
+            template: "https://products.example.com",
+            name: None,
+            variables: &[],
+        },
+    ];
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct Params {
         pub x_trace: Option<runtime::UuidText>,
