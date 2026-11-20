@@ -29,6 +29,12 @@ pub(crate) fn wrap(types: &mut TypeSpace, http: &mut Http) {
                     f.ty = space.wrap(&f.ty, &c, &owner.and(&f.name));
                     f.constraints = c;
                 }
+                for (i, (_, t, c)) in s.patterns.iter_mut().enumerate() {
+                    *t = space.wrap(t, c, &owner.and(&Name::new(&format!("pattern {}", i + 1))));
+                }
+                if let Some(t) = s.additional.as_mut().filter(|_| !s.additional_constraints.is_empty()) {
+                    *t = space.wrap(t, &s.additional_constraints, &owner.and(&Name::new("value")));
+                }
             }
             Kind::Union(u) => {
                 for v in &mut u.variants {

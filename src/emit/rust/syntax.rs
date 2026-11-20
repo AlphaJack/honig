@@ -1042,7 +1042,17 @@ pub(crate) fn shared_arms(arms: Vec<(TokenStream, Option<Ty>, TokenStream)>) -> 
 
 /// Returns the name of the field that holds the other properties of `s`.
 pub(crate) fn extra_field(s: &crate::ir::types::Struct) -> String {
-    let mut name = "additional_properties".to_owned();
+    free_field(s, "additional_properties")
+}
+
+/// Returns the field name of pattern `i` (from 0) of `s`: `pattern_1`, ..., with `_` added while a property has it.
+pub(crate) fn pattern_field(s: &crate::ir::types::Struct, i: usize) -> Ident {
+    ident(&free_field(s, &format!("pattern_{}", i + 1)))
+}
+
+/// Returns `base`, with `_` added while a property of `s` has that field name.
+pub(crate) fn free_field(s: &crate::ir::types::Struct, base: &str) -> String {
+    let mut name = base.to_owned();
     while s.fields.iter().any(|f| snake(&f.name) == name) {
         name.push('_');
     }

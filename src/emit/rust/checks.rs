@@ -624,7 +624,11 @@ fn struct_name_checks(
         let field = super::syntax::ident(&super::syntax::extra_field(shape));
         name_checks(names, &quote!(#r.#field.keys()), path)
     });
-    quote!(#(#declared)* #extra)
+    let patterns = (0..shape.patterns.len()).map(|i| {
+        let field = super::syntax::pattern_field(shape, i);
+        name_checks(names, &quote!(#r.#field.keys()), path)
+    });
+    quote!(#(#declared)* #extra #(#patterns)*)
 }
 
 /// Returns `dependentRequired` on the fields of `shape` (`value` is a `&` of it): when a property is present, so are the

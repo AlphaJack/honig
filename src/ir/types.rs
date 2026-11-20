@@ -439,10 +439,18 @@ pub(crate) struct EnumValue {
 pub(crate) struct Struct {
     /// Declared properties in document order.
     pub fields: Vec<Field>,
-    /// `additionalProperties` schema: flattened map of extra keys.
+    /// `additionalProperties` schema: flattened map of extra keys. Beside [`Self::patterns`], of the names that no
+    /// pattern matches.
     pub additional: Option<Ty>,
-    /// `additionalProperties: false`: decoding rejects undeclared properties.
+    /// `additionalProperties: false`: decoding rejects undeclared properties. Beside [`Self::patterns`], those that no
+    /// pattern matches.
     pub closed: bool,
+    /// `patternProperties` that the struct holds: each pattern with the type of its schema and the keywords that the
+    /// type does not hold, as a field has them. An undeclared name goes to the map of the first pattern that matches
+    /// it, and decodes as every pattern that does.
+    pub patterns: Vec<(String, Ty, Constraints)>,
+    /// Beside [`Self::patterns`]: the keywords of `additionalProperties` that its type does not hold.
+    pub additional_constraints: Box<Constraints>,
 }
 
 #[derive(Debug, Clone)]

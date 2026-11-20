@@ -263,6 +263,23 @@ fn typed_pattern_map(s: &Value) -> Option<String> {
     (closed && !o.contains_key("properties")).then(|| patterns.keys().next().cloned()).flatten()
 }
 
+/// Returns `patternProperties` of `s` when its struct holds them ([`Struct::patterns`]): an object with properties of
+/// its own beside them, and `additionalProperties` absent, a bool or a schema. Every pattern compiles, so the
+/// generator can tell which declared names it matches.
+fn struct_patterns(s: &Value) -> Option<&serde_json::Map<String, Value>> {
+    let o = s.as_object().filter(|o| is_object(o))?;
+    json::object(o, "properties").filter(|p| !p.is_empty())?;
+    let typed_extra = matches!(o.get("additionalProperties"), None | Some(Value::Bool(_) | Value::Object(_)));
+    let patterns = o.get("patternProperties")?.as_object().filter(|p| !p.is_empty())?;
+    (typed_extra && patterns.keys().all(|p| regex(p).is_some())).then_some(patterns)
+}
+
+/// Returns `pattern` compiled as JSON Schema reads it: ECMA-262 with Unicode semantics, or without them for a pattern
+/// that only compiles so, as the run-time check does.
+fn regex(pattern: &str) -> Option<regress::Regex> {
+    regress::Regex::with_flags(pattern, "u").or_else(|_| regress::Regex::new(pattern)).ok()
+}
+
 /// Returns `patternProperties` of `s` when generated code checks it: on an object whose `additionalProperties` is
 /// absent, `true` or `false`. A schema there would type the names that patterns match too. `None` leaves it to the
 /// run-time check of the whole schema.
@@ -1285,7 +1302,9 @@ impl<'a> Builder<'a> {
         let dependent_schemas = typed_dependent_schemas(s);
         // `contains` on an array type counts the items that decode as the type of its schema.
         let typed_contains = s.get("contains").is_some() && s.as_object().is_some_and(|o| may_be(o, "array"));
-        let patterns = (!pattern_map).then(|| typed_patterns(s)).flatten();
+        // A struct that holds its patterns decodes each name as them.
+        let held_patterns = struct_patterns(s).is_some();
+        let patterns = (!pattern_map && !held_patterns).then(|| typed_patterns(s)).flatten();
         // `if`/`then` on one property's constants becomes a tagged union (`conditional_union`): its variants hold the
         // conditions. Only conditions that it cannot type stay a run-time check.
         let typed_conditional = typed_conditional(s);
@@ -1301,7 +1320,7 @@ impl<'a> Builder<'a> {
                 || (unevaluated_items && k == "unevaluatedItems")
                 // On a schema whose `type` takes no array, `contains` asserts nothing.
                 || matches!(k, "contains" | "minContains" | "maxContains")
-                || (patterns.is_some() && k == "patternProperties")
+                || ((patterns.is_some() || held_patterns) && k == "patternProperties")
         };
         let conditional_member = |m: &Value| {
             typed_conditional
@@ -1926,8 +1945,18 @@ impl<'a> Builder<'a> {
         let mut taken = BTreeSet::new();
         let mut fields = vec![];
         if let Some(Value::Object(props)) = o.get("properties") {
+            let patterns = struct_patterns(&Value::Object(o.clone())).cloned().unwrap_or_default();
             for (wire, prop) in props {
                 let fptr = join(&join(ptr, "properties"), wire);
+                // A declared name that a pattern matches meets that pattern's schema too.
+                let matched: Vec<&Value> = patterns
+                    .iter()
+                    .filter(|(p, _)| regex(p).is_some_and(|re| re.find(wire).is_some()))
+                    .map(|(_, x)| x)
+                    .collect();
+                let both = (!matched.is_empty())
+                    .then(|| serde_json::json!({"allOf": std::iter::once(prop).chain(matched).collect::<Vec<_>>()}));
+                let prop = both.as_ref().unwrap_or(prop);
                 let ty = self.ty(prop, &fptr, &name.and(&Name::new(wire)));
                 let read_only = prop.get("readOnly") == Some(&Value::Bool(true));
                 let write_only = prop.get("writeOnly") == Some(&Value::Bool(true));
@@ -1990,11 +2019,43 @@ impl<'a> Builder<'a> {
                 || undeclared_dependent)
                 .then_some(Ty::Any)
         });
+        if let Some(held) = struct_patterns(&Value::Object(o.clone())).cloned() {
+            return self.patterned(o, &held, fields, ptr, name);
+        }
         let closed = o.get("additionalProperties") == Some(&Value::Bool(false))
             && !o.contains_key("patternProperties")
             && !o.contains_key("unevaluatedProperties")
             && fields.iter().all(|f| f.access == Access::ReadWrite);
-        Struct { fields, additional, closed }
+        Struct { fields, additional, closed, patterns: vec![], additional_constraints: Box::default() }
+    }
+
+    /// Returns the struct of `o` with `fields` that holds its `patternProperties` `held` ([`struct_patterns`]): a map
+    /// per pattern, and the names that none matches as `additionalProperties` says.
+    fn patterned(
+        &mut self,
+        o: &serde_json::Map<String, Value>,
+        held: &serde_json::Map<String, Value>,
+        fields: Vec<Field>,
+        ptr: &str,
+        name: &Name,
+    ) -> Struct {
+        let patterns = (held.iter().enumerate())
+            .map(|(i, (p, x))| {
+                let at = join(&join(ptr, "patternProperties"), p);
+                let ty = self.ty(x, &at, &name.and(&Name::new(&format!("pattern {}", i + 1))));
+                (p.clone(), ty, self.constraints(x))
+            })
+            .collect();
+        let (additional, additional_constraints) = match o.get("additionalProperties") {
+            Some(Value::Bool(false)) => (None, Box::default()),
+            Some(extra @ Value::Object(m)) if !m.is_empty() => (
+                Some(self.ty(extra, &join(ptr, "additionalProperties"), &name.and(&Name::new("Value")))),
+                Box::new(self.constraints(extra)),
+            ),
+            _ => (Some(Ty::Any), Box::default()),
+        };
+        let closed = additional.is_none();
+        Struct { fields, additional, closed, patterns, additional_constraints }
     }
 
     /// Returns `allOf: [{oneOf: [A, B]}, C]` means `oneOf: [allOf: [A, C], allOf: [B, C]]`: each value is one branch

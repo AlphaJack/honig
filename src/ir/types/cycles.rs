@@ -43,6 +43,7 @@ pub(crate) fn map_kind(kind: &mut Kind, f: &dyn Fn(&mut Ty)) {
             if let Some(a) = &mut s.additional {
                 f(a);
             }
+            s.patterns.iter_mut().for_each(|(_, t, _)| f(t));
         }
         Kind::Union(u) => u.variants.iter_mut().for_each(|v| f(&mut v.ty)),
         Kind::Alias(t) | Kind::Newtype(t) => f(t),
@@ -70,7 +71,13 @@ pub(crate) fn all_refs(ty: &Ty, out: &mut Vec<TypeId>) {
 
 pub(crate) fn def_types(kind: &Kind) -> Vec<&Ty> {
     match kind {
-        Kind::Struct(s) => s.fields.iter().map(|f| &f.ty).chain(s.additional.iter()).collect(),
+        Kind::Struct(s) => s
+            .fields
+            .iter()
+            .map(|f| &f.ty)
+            .chain(s.additional.iter())
+            .chain(s.patterns.iter().map(|(_, t, _)| t))
+            .collect(),
         Kind::Union(u) => u.variants.iter().map(|v| &v.ty).collect(),
         Kind::Alias(t) | Kind::Newtype(t) => vec![t],
         Kind::Checked(c) => vec![&c.base],

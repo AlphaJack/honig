@@ -72,3 +72,97 @@ mod tests {
         assert!(!compiles("(a"));
     }
 }
+
+/// Reads the undeclared names of a struct that `patterns[index]` matches, each value decoded as `T`.
+///
+/// A name that an earlier pattern matches too is checked here but kept by that pattern's map, so it is written once.
+/// It is the `deserialize_with` of a flattened field of `patternProperties`.
+///
+/// # Errors
+/// A value that a matching name holds does not decode as `T`.
+pub fn pattern_entries<'de, D, T>(d: D, patterns: &[&str], index: usize) -> Result<BTreeMap<String, T>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+    T: serde::Deserialize<'de>,
+{
+    let mut out = BTreeMap::new();
+    for (name, value) in names(d)? {
+        if !pattern_matches_dyn(patterns[index], &name) {
+            continue;
+        }
+        let decoded: T = decode(&name, &value)?;
+        if patterns.iter().position(|p| pattern_matches_dyn(p, &name)) == Some(index) {
+            out.insert(name, decoded);
+        }
+    }
+    Ok(out)
+}
+
+/// Reads, from the undeclared names of a struct, those that no pattern of `patterns` matches: each value decodes as
+/// `T` (`additionalProperties`).
+///
+/// # Errors
+/// Such a value does not decode as `T`.
+pub fn other_entries<'de, D, T>(d: D, patterns: &[&str]) -> Result<BTreeMap<String, T>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+    T: serde::Deserialize<'de>,
+{
+    let mut out = BTreeMap::new();
+    for (name, value) in names(d)? {
+        if !patterns.iter().any(|p| pattern_matches_dyn(p, &name)) {
+            let decoded = decode(&name, &value)?;
+            out.insert(name, decoded);
+        }
+    }
+    Ok(out)
+}
+
+/// Refuses, from the undeclared names of a struct, one that no pattern of `patterns` matches
+/// (`additionalProperties: false`).
+///
+/// # Errors
+/// Such a name is present.
+pub fn no_other_entries<'de, D: serde::Deserializer<'de>>(d: D, patterns: &[&str]) -> Result<Closed, D::Error> {
+    match names(d)?.into_iter().find(|(name, _)| !patterns.iter().any(|p| pattern_matches_dyn(p, name))) {
+        Some((name, _)) => Err(serde::de::Error::custom(format!("`{name}` is not allowed"))),
+        None => Ok(Closed),
+    }
+}
+
+/// Returns the value of the undeclared name `name` decoded as `T`. Errors: it does not decode, with the name.
+fn decode<'de, T: serde::Deserialize<'de>, E: serde::de::Error>(
+    name: &str,
+    value: &crate::tagged::Content<'de>,
+) -> Result<T, E> {
+    value.decode_ref().map_err(|e| E::custom(format!("`{name}`: {e}")))
+}
+
+/// The names and values of the object that `d` reads, each value buffered.
+fn names<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Vec<(String, crate::tagged::Content<'de>)>, D::Error> {
+    struct Names;
+    impl<'de> serde::de::Visitor<'de> for Names {
+        type Value = Vec<(String, crate::tagged::Content<'de>)>;
+        fn expecting(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.write_str("an object")
+        }
+        fn visit_map<A: serde::de::MapAccess<'de>>(self, mut map: A) -> Result<Self::Value, A::Error> {
+            let mut out = vec![];
+            while let Some(entry) = map.next_entry()? {
+                out.push(entry);
+            }
+            Ok(out)
+        }
+    }
+    d.deserialize_map(Names)
+}
+
+/// A struct that refuses the names that none of its patterns matches: it holds none of them, and writes nothing.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
+pub struct Closed;
+
+impl serde::Serialize for Closed {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        serde::ser::SerializeMap::end(s.serialize_map(Some(0))?)
+    }
+}

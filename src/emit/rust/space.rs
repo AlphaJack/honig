@@ -191,6 +191,7 @@ fn def_size(kind: &Kind, named: &mut dyn FnMut(TypeId) -> usize) -> usize {
                 .map(|f| if f.required { size_in(&f.ty, named) } else { option_size(&f.ty, named) })
                 .sum::<usize>()
                 + if s.additional.is_some() { COLLECTION } else { 0 }
+                + COLLECTION * s.patterns.len()
         }
         Kind::StrEnum(_) | Kind::IntEnum(_) => COLLECTION,
         // A checked type holds its base.
