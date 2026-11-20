@@ -696,15 +696,24 @@ impl Evaluation for EvaluatedItems {
     }
 }
 
-/// Collects each reference under one of `keys` (`$ref`, `$dynamicRef`) of `s` and its subschemas (not data such as
-/// `enum`) into `out`.
+/// Collects each reference under one of `keys` (`$ref`, `$dynamicRef`) of `s` and the subschemas that apply to its
+/// value into `out`. Data such as `enum` holds none. `$defs` applies only where a reference reaches it, and that
+/// reference is collected.
 fn references<'s>(s: &'s Value, keys: &[&str], out: &mut Vec<&'s str>) {
     match s {
         Value::Object(o) => {
             out.extend(keys.iter().filter_map(|k| o.get(*k).and_then(Value::as_str)));
             for (k, v) in o {
-                if !matches!(k.as_str(), "enum" | "const" | "default" | "examples" | "example") {
-                    references(v, keys, out);
+                match k.as_str() {
+                    "enum" | "const" | "default" | "examples" | "example" | "$defs" | "definitions" => {}
+                    // A map of names to schemas: a name such as `$defs` is no keyword there.
+                    "properties" | "patternProperties" | "dependentSchemas" => {
+                        v.as_object()
+                            .into_iter()
+                            .flat_map(serde_json::Map::values)
+                            .for_each(|x| references(x, keys, out));
+                    }
+                    _ => references(v, keys, out),
                 }
             }
         }
