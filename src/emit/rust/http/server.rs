@@ -122,8 +122,8 @@ fn error_response_method(operation: &TokenStream, filled: bool) -> TokenStream {
          Default: RFC 9457 `problem+json`, or the error body of the description that it fills by name."
     } else {
         " Answers a request that the server refuses itself (no route, bad input, missing credentials, a handler `Err`) \
-         in the error body of the description. No standard defines its fields, so this maps them: `rejection.reason` \
-         holds the status and the detail."
+         in the error body of the description. No standard defines its fields, so this maps them: \
+         `rejection.json(&body)` sends `body` with the status of the reason, and `rejection.message()` is the detail."
     };
     quote! {
         #[doc = #doc]

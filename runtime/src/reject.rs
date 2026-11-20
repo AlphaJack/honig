@@ -430,6 +430,29 @@ impl<Id> Rejection<Id> {
         })
     }
 
+    /// Returns `body` as the JSON error body of the reason, with its status and headers. A body that your handler or a
+    /// layer set ([`ApiError::with_body`]) goes out instead. A `body` that does not serialize gives
+    /// [`Rejection::response`].
+    pub fn json<T: serde::Serialize + ?Sized>(&self, body: &T) -> Response {
+        if let Some(own) = self.reason.own() {
+            return own;
+        }
+        match serde_json::to_vec(body) {
+            Ok(bytes) => {
+                let mut r = self.reason.head();
+                r.set_body("application/json", bytes);
+                r
+            }
+            Err(_) => self.response(),
+        }
+    }
+
+    /// Returns what went wrong: the detail of the reason, or the reason phrase of its status.
+    #[must_use]
+    pub fn message(&self) -> String {
+        self.reason.detail().unwrap_or_else(|| reason(self.status().as_u16()).to_owned())
+    }
+
     /// Returns the reason as RFC 9457 problem details. Set `instance` or another member, then send it with
     /// [`Problem::into_response`].
     #[must_use]
@@ -535,6 +558,21 @@ mod tests {
         let status = http::StatusCode::from_u16(599).unwrap();
         let problem = Reason::Handler(ApiError::new(status, "upstream")).problem();
         assert_eq!(problem.title, "Error");
+    }
+
+    #[test]
+    fn a_json_error_body_takes_the_status_and_headers_of_the_reason() {
+        let rejection =
+            |reason| Rejection::<()> { reason, operation: None, schema: None, headers: http::HeaderMap::new() };
+        let r = rejection(Reason::MethodNotAllowed(vec!["GET"]));
+        let resp = r.json(&serde_json::json!({"code": 405, "message": r.message()}));
+        assert_eq!(resp.status(), 405);
+        assert_eq!(resp.headers().get("allow").map(|v| v.to_str().unwrap()), Some("GET, OPTIONS"));
+        let body: Value = serde_json::from_slice(resp.body().bytes()).unwrap();
+        assert_eq!(body, serde_json::json!({"code": 405, "message": "Method Not Allowed"}));
+        let own = ApiError::new(http::StatusCode::CONFLICT, "taken").with_body("text/plain", "own");
+        let resp = rejection(Reason::Handler(own)).json(&serde_json::json!({"code": 409}));
+        assert_eq!(resp.body().bytes(), b"\"own\"", "the handler's own body goes out");
     }
 
     /// A request is refused at its first violation: the reason holds that one, and the body lists it.
