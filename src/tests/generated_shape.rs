@@ -1584,3 +1584,27 @@ fn a_checked_type_reads_json_text_once() {
         common::file(&common::generate("read-once", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
     assert!(types.contains("runtime::read_once::<") && types.contains("runtime::Content::parse(text)"), "{types}");
 }
+
+/// The impls that every enum and checked newtype shares come from the runtime: a module calls them and holds no copy.
+#[test]
+fn shared_impls_are_runtime_macros_and_not_copies() {
+    let doc = common::spec(
+        "3.2.0",
+        &json!({}),
+        &json!({"schemas": {
+            "Kind": {"type": "string", "enum": ["a", "b"]},
+            "Level": {"type": "integer", "enum": [1, 2]},
+            "Code": {"type": "string", "pattern": "^[A-Z]+$"},
+            "Count": {"type": "integer", "minimum": 1}
+        }}),
+    );
+    let files = common::generate("shared-impls", &doc, &crate::emit::Options::default());
+    let types = common::file(&files, "types.rs");
+    assert!(!types.contains("macro_rules!"), "{types}");
+    for call in
+        ["runtime::str_enum_impls!(Kind)", "runtime::int_enum_impls!(Level)", "runtime::checked_str_impls!(Code)"]
+    {
+        assert!(types.contains(call), "{call} in {types}");
+    }
+    assert!(types.contains("runtime::checked_num_impls!(Count, i64)"), "{types}");
+}

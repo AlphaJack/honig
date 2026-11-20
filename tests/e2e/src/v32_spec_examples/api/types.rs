@@ -192,146 +192,6 @@ macro_rules! deserialize_impl_4 {
     };
 }
 use super::runtime;
-macro_rules! checked_str_impls {
-    ($n:ident) => {
-        impl $n {
-            #[must_use]
-            pub fn as_str(&self) -> &str {
-                &self.0
-            }
-            #[must_use]
-            pub fn into_inner(self) -> String {
-                self.0
-            }
-        }
-        impl TryFrom<&str> for $n {
-            type Error = runtime::BuildError;
-            fn try_from(value: &str) -> Result<Self, runtime::BuildError> {
-                Self::try_from(value.to_owned())
-            }
-        }
-        impl std::str::FromStr for $n {
-            type Err = runtime::BuildError;
-            fn from_str(s: &str) -> Result<Self, runtime::BuildError> {
-                Self::try_from(s)
-            }
-        }
-        impl std::ops::Deref for $n {
-            type Target = str;
-            fn deref(&self) -> &str {
-                &self.0
-            }
-        }
-        impl AsRef<str> for $n {
-            fn as_ref(&self) -> &str {
-                &self.0
-            }
-        }
-        impl std::fmt::Display for $n {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                f.write_str(&self.0)
-            }
-        }
-        impl PartialEq<str> for $n {
-            fn eq(&self, other: &str) -> bool {
-                self.0 == other
-            }
-        }
-        impl PartialEq<&str> for $n {
-            fn eq(&self, other: &&str) -> bool {
-                self.0 == *other
-            }
-        }
-        impl From<$n> for String {
-            fn from(value: $n) -> Self {
-                value.0
-            }
-        }
-        impl<'de> serde::Deserialize<'de> for $n {
-            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-                let s = <String as serde::Deserialize>::deserialize(d)?;
-                Self::try_from(s).map_err(serde::de::Error::custom)
-            }
-        }
-    };
-}
-macro_rules! checked_num_impls {
-    ($n:ident, $t:ty) => {
-        impl $n {
-            #[must_use]
-            pub const fn get(self) -> $t {
-                self.0
-            }
-        }
-        impl std::str::FromStr for $n {
-            type Err = runtime::BuildError;
-            fn from_str(s: &str) -> Result<Self, runtime::BuildError> {
-                let v: $t = s
-                    .parse()
-                    .map_err(|e| runtime::BuildError::value(format!("{e}")))?;
-                Self::try_from(v)
-            }
-        }
-        impl std::ops::Deref for $n {
-            type Target = $t;
-            fn deref(&self) -> &$t {
-                &self.0
-            }
-        }
-        impl std::fmt::Display for $n {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                std::fmt::Display::fmt(&self.0, f)
-            }
-        }
-        impl PartialEq<$t> for $n {
-            fn eq(&self, other: &$t) -> bool {
-                self.0 == *other
-            }
-        }
-        impl PartialOrd<$t> for $n {
-            fn partial_cmp(&self, other: &$t) -> Option<std::cmp::Ordering> {
-                self.0.partial_cmp(other)
-            }
-        }
-        impl From<$n> for $t {
-            fn from(value: $n) -> Self {
-                value.0
-            }
-        }
-        impl<'de> serde::Deserialize<'de> for $n {
-            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-                let v = <$t as serde::Deserialize>::deserialize(d)?;
-                Self::try_from(v).map_err(serde::de::Error::custom)
-            }
-        }
-    };
-}
-macro_rules! checked_impls {
-    ($n:ident, $t:ty) => {
-        impl $n {
-            #[must_use]
-            pub fn into_inner(self) -> $t {
-                self.0
-            }
-        }
-        impl std::ops::Deref for $n {
-            type Target = $t;
-            fn deref(&self) -> &$t {
-                &self.0
-            }
-        }
-        impl AsRef<$t> for $n {
-            fn as_ref(&self) -> &$t {
-                &self.0
-            }
-        }
-        impl From<$n> for $t {
-            fn from(value: $n) -> Self {
-                value.0
-            }
-        }
-    };
-}
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Address {
@@ -502,7 +362,7 @@ impl TryFrom<Vec<LogEntry>> for Log {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(Log, Vec < LogEntry >);
+runtime::checked_impls!(Log, Vec < LogEntry >);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Event {
@@ -561,7 +421,7 @@ impl FormDataCode2 {
     pub const PATTERN: &'static str = "1";
 }
 try_from_impl!(FormDataCode2);
-checked_str_impls!(FormDataCode2);
+runtime::checked_str_impls!(FormDataCode2);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct FormDataExtra {
@@ -584,12 +444,12 @@ impl FormDataExtra {
 #[serde(transparent)]
 pub struct LogEntryLevel(pub(super) i64);
 try_from_impl_2!(LogEntryLevel);
-checked_num_impls!(LogEntryLevel, i64);
+runtime::checked_num_impls!(LogEntryLevel, i64);
 #[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct EventRetry(pub(super) i64);
 try_from_impl_2!(EventRetry);
-checked_num_impls!(EventRetry, i64);
+runtime::checked_num_impls!(EventRetry, i64);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct SimpleLinkContextItem {
@@ -654,7 +514,7 @@ impl ParameterExamplesCookie {
 #[serde(transparent)]
 pub struct ParameterExamplesCookieCode(pub(super) i64);
 try_from_impl_2!(ParameterExamplesCookieCode);
-checked_num_impls!(ParameterExamplesCookieCode, i64);
+runtime::checked_num_impls!(ParameterExamplesCookieCode, i64);
 #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct ParameterExamplesCoordinates {
@@ -854,7 +714,7 @@ impl TryFrom<String> for MultipartFormWithEncodingObjectsBodyAliasString {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_str_impls!(MultipartFormWithEncodingObjectsBodyAliasString);
+runtime::checked_str_impls!(MultipartFormWithEncodingObjectsBodyAliasString);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct MultipartFormWithMultipleFilesBody {
@@ -971,7 +831,9 @@ impl ServerSentEventStreamsBodyItem {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(ServerSentEventStreamsBodyItem, ServerSentEventStreamsBodyItemVariants);
+runtime::checked_impls!(
+    ServerSentEventStreamsBodyItem, ServerSentEventStreamsBodyItemVariants
+);
 /// event
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -1148,7 +1010,7 @@ impl Not {
     pub const PATTERN: &'static str = "2";
 }
 try_from_impl_3!(Not);
-checked_str_impls!(Not);
+runtime::checked_str_impls!(Not);
 #[derive(Debug, Clone, PartialEq)]
 pub enum Not2 {
     String(Not2String),
@@ -1184,7 +1046,7 @@ impl Not2String {
     pub const PATTERN: &'static str = "1";
 }
 try_from_impl!(Not2String);
-checked_str_impls!(Not2String);
+runtime::checked_str_impls!(Not2String);
 #[derive(Debug, Clone, PartialEq, Copy, PartialOrd, serde::Serialize)]
 #[serde(transparent)]
 pub struct Not2Number(pub(super) f64);
@@ -1206,7 +1068,7 @@ impl TryFrom<f64> for Not2Number {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_num_impls!(Not2Number, f64);
+runtime::checked_num_impls!(Not2Number, f64);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct Not3(pub(super) String);
@@ -1214,7 +1076,7 @@ impl Not3 {
     pub const PATTERN: &'static str = "2";
 }
 try_from_impl_3!(Not3);
-checked_str_impls!(Not3);
+runtime::checked_str_impls!(Not3);
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Not4 {
     Object(Not4Object),
@@ -1481,7 +1343,7 @@ impl FormDataCodeChecked {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(FormDataCodeChecked, FormDataCode);
+runtime::checked_impls!(FormDataCodeChecked, FormDataCode);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct Not5ObjectData(pub(super) serde_json::Value);
@@ -1501,7 +1363,7 @@ impl TryFrom<serde_json::Value> for Not5ObjectData {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(Not5ObjectData, serde_json::Value);
+runtime::checked_impls!(Not5ObjectData, serde_json::Value);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct NotChecked(pub(super) serde_json::Value);
@@ -1526,7 +1388,7 @@ impl TryFrom<serde_json::Value> for NotChecked {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(NotChecked, serde_json::Value);
+runtime::checked_impls!(NotChecked, serde_json::Value);
 /// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
 /// its field. `build` returns the first field that did not convert.
 pub mod builders {

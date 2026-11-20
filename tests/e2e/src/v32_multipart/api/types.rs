@@ -34,69 +34,6 @@ macro_rules! serialize_impl {
     };
 }
 use super::runtime;
-macro_rules! checked_str_impls {
-    ($n:ident) => {
-        impl $n {
-            #[must_use]
-            pub fn as_str(&self) -> &str {
-                &self.0
-            }
-            #[must_use]
-            pub fn into_inner(self) -> String {
-                self.0
-            }
-        }
-        impl TryFrom<&str> for $n {
-            type Error = runtime::BuildError;
-            fn try_from(value: &str) -> Result<Self, runtime::BuildError> {
-                Self::try_from(value.to_owned())
-            }
-        }
-        impl std::str::FromStr for $n {
-            type Err = runtime::BuildError;
-            fn from_str(s: &str) -> Result<Self, runtime::BuildError> {
-                Self::try_from(s)
-            }
-        }
-        impl std::ops::Deref for $n {
-            type Target = str;
-            fn deref(&self) -> &str {
-                &self.0
-            }
-        }
-        impl AsRef<str> for $n {
-            fn as_ref(&self) -> &str {
-                &self.0
-            }
-        }
-        impl std::fmt::Display for $n {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                f.write_str(&self.0)
-            }
-        }
-        impl PartialEq<str> for $n {
-            fn eq(&self, other: &str) -> bool {
-                self.0 == other
-            }
-        }
-        impl PartialEq<&str> for $n {
-            fn eq(&self, other: &&str) -> bool {
-                self.0 == *other
-            }
-        }
-        impl From<$n> for String {
-            fn from(value: $n) -> Self {
-                value.0
-            }
-        }
-        impl<'de> serde::Deserialize<'de> for $n {
-            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-                let s = <String as serde::Deserialize>::deserialize(d)?;
-                Self::try_from(s).map_err(serde::de::Error::custom)
-            }
-        }
-    };
-}
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct UploadImageXChecksum(pub(super) String);
@@ -121,7 +58,7 @@ impl TryFrom<String> for UploadImageXChecksum {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_str_impls!(UploadImageXChecksum);
+runtime::checked_str_impls!(UploadImageXChecksum);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct UploadBody {

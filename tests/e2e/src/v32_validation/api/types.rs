@@ -236,213 +236,6 @@ macro_rules! deserialize_impl_5 {
     };
 }
 use super::runtime;
-macro_rules! str_enum_impls {
-    ($n:ident) => {
-        impl std::fmt::Display for $n {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                f.write_str(self.as_str())
-            }
-        }
-        impl std::str::FromStr for $n {
-            type Err = runtime::BuildError;
-            fn from_str(s: &str) -> Result<Self, Self::Err> {
-                Self::try_from(s)
-            }
-        }
-        impl serde::Serialize for $n {
-            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-                s.serialize_str(self.as_str())
-            }
-        }
-        impl<'de> serde::Deserialize<'de> for $n {
-            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-                let s = <std::borrow::Cow<'de, str> as serde::Deserialize>::deserialize(d)?;
-                Self::try_from(&*s).map_err(serde::de::Error::custom)
-            }
-        }
-    };
-}
-macro_rules! checked_str_impls {
-    ($n:ident) => {
-        impl $n {
-            #[must_use]
-            pub fn as_str(&self) -> &str {
-                &self.0
-            }
-            #[must_use]
-            pub fn into_inner(self) -> String {
-                self.0
-            }
-        }
-        impl TryFrom<&str> for $n {
-            type Error = runtime::BuildError;
-            fn try_from(value: &str) -> Result<Self, runtime::BuildError> {
-                Self::try_from(value.to_owned())
-            }
-        }
-        impl std::str::FromStr for $n {
-            type Err = runtime::BuildError;
-            fn from_str(s: &str) -> Result<Self, runtime::BuildError> {
-                Self::try_from(s)
-            }
-        }
-        impl std::ops::Deref for $n {
-            type Target = str;
-            fn deref(&self) -> &str {
-                &self.0
-            }
-        }
-        impl AsRef<str> for $n {
-            fn as_ref(&self) -> &str {
-                &self.0
-            }
-        }
-        impl std::fmt::Display for $n {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                f.write_str(&self.0)
-            }
-        }
-        impl PartialEq<str> for $n {
-            fn eq(&self, other: &str) -> bool {
-                self.0 == other
-            }
-        }
-        impl PartialEq<&str> for $n {
-            fn eq(&self, other: &&str) -> bool {
-                self.0 == *other
-            }
-        }
-        impl From<$n> for String {
-            fn from(value: $n) -> Self {
-                value.0
-            }
-        }
-        impl<'de> serde::Deserialize<'de> for $n {
-            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-                let s = <String as serde::Deserialize>::deserialize(d)?;
-                Self::try_from(s).map_err(serde::de::Error::custom)
-            }
-        }
-    };
-}
-macro_rules! checked_num_impls {
-    ($n:ident, $t:ty) => {
-        impl $n {
-            #[must_use]
-            pub const fn get(self) -> $t {
-                self.0
-            }
-        }
-        impl std::str::FromStr for $n {
-            type Err = runtime::BuildError;
-            fn from_str(s: &str) -> Result<Self, runtime::BuildError> {
-                let v: $t = s
-                    .parse()
-                    .map_err(|e| runtime::BuildError::value(format!("{e}")))?;
-                Self::try_from(v)
-            }
-        }
-        impl std::ops::Deref for $n {
-            type Target = $t;
-            fn deref(&self) -> &$t {
-                &self.0
-            }
-        }
-        impl std::fmt::Display for $n {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                std::fmt::Display::fmt(&self.0, f)
-            }
-        }
-        impl PartialEq<$t> for $n {
-            fn eq(&self, other: &$t) -> bool {
-                self.0 == *other
-            }
-        }
-        impl PartialOrd<$t> for $n {
-            fn partial_cmp(&self, other: &$t) -> Option<std::cmp::Ordering> {
-                self.0.partial_cmp(other)
-            }
-        }
-        impl From<$n> for $t {
-            fn from(value: $n) -> Self {
-                value.0
-            }
-        }
-        impl<'de> serde::Deserialize<'de> for $n {
-            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-                let v = <$t as serde::Deserialize>::deserialize(d)?;
-                Self::try_from(v).map_err(serde::de::Error::custom)
-            }
-        }
-    };
-}
-macro_rules! checked_decimal_impls {
-    ($n:ident) => {
-        impl $n {
-            #[must_use]
-            pub fn into_inner(self) -> runtime::Decimal {
-                self.0
-            }
-        }
-        impl std::str::FromStr for $n {
-            type Err = runtime::BuildError;
-            fn from_str(s: &str) -> Result<Self, runtime::BuildError> {
-                let v: runtime::Decimal = s
-                    .parse()
-                    .map_err(|e| runtime::BuildError::value(format!("{e}")))?;
-                Self::try_from(v)
-            }
-        }
-        impl std::ops::Deref for $n {
-            type Target = runtime::Decimal;
-            fn deref(&self) -> &runtime::Decimal {
-                &self.0
-            }
-        }
-        impl std::fmt::Display for $n {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                std::fmt::Display::fmt(&self.0, f)
-            }
-        }
-        impl From<$n> for runtime::Decimal {
-            fn from(value: $n) -> Self {
-                value.0
-            }
-        }
-        impl<'de> serde::Deserialize<'de> for $n {
-            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-                let v = <runtime::Decimal as serde::Deserialize>::deserialize(d)?;
-                Self::try_from(v).map_err(serde::de::Error::custom)
-            }
-        }
-    };
-}
-macro_rules! checked_impls {
-    ($n:ident, $t:ty) => {
-        impl $n {
-            #[must_use]
-            pub fn into_inner(self) -> $t {
-                self.0
-            }
-        }
-        impl std::ops::Deref for $n {
-            type Target = $t;
-            fn deref(&self) -> &$t {
-                &self.0
-            }
-        }
-        impl AsRef<$t> for $n {
-            fn as_ref(&self) -> &$t {
-                &self.0
-            }
-        }
-        impl From<$n> for $t {
-            fn from(value: $n) -> Self {
-                value.0
-            }
-        }
-    };
-}
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct Tagged(pub(super) TaggedVariants);
@@ -513,7 +306,7 @@ impl Tagged {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(Tagged, TaggedVariants);
+runtime::checked_impls!(Tagged, TaggedVariants);
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Slug {
     Empty(SlugEmpty),
@@ -1565,7 +1358,7 @@ impl Shipment {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(Shipment, ShipmentVariants);
+runtime::checked_impls!(Shipment, ShipmentVariants);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Loose {
@@ -1660,7 +1453,7 @@ impl Voucher {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(Voucher, VoucherFields);
+runtime::checked_impls!(Voucher, VoucherFields);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct Payment(pub(super) PaymentFields);
@@ -1694,7 +1487,7 @@ impl TryFrom<PaymentFields> for Payment {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(Payment, PaymentFields);
+runtime::checked_impls!(Payment, PaymentFields);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Labelled {
@@ -1785,7 +1578,7 @@ impl TryFrom<std::collections::BTreeMap<String, String>> for Labels {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(Labels, std::collections::BTreeMap < String, String >);
+runtime::checked_impls!(Labels, std::collections::BTreeMap < String, String >);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct Pair(pub(super) PairFields);
@@ -1816,7 +1609,7 @@ impl TryFrom<PairFields> for Pair {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(Pair, PairFields);
+runtime::checked_impls!(Pair, PairFields);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Settings {
@@ -1969,7 +1762,7 @@ impl TryFrom<ProfileFields> for Profile {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(Profile, ProfileFields);
+runtime::checked_impls!(Profile, ProfileFields);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Scored {
@@ -2057,7 +1850,7 @@ impl TryFrom<std::collections::BTreeMap<String, ScoresValue>> for Scores {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(Scores, std::collections::BTreeMap < String, ScoresValue >);
+runtime::checked_impls!(Scores, std::collections::BTreeMap < String, ScoresValue >);
 #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Price {
@@ -2576,17 +2369,17 @@ impl SlugVariant2 {
     pub const PATTERN: &'static str = "^[a-z]+$";
 }
 try_from_impl!(SlugVariant2);
-checked_str_impls!(SlugVariant2);
+runtime::checked_str_impls!(SlugVariant2);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct NarrowStampAt(pub(super) String);
 try_from_impl_2!(NarrowStampAt);
-checked_str_impls!(NarrowStampAt);
+runtime::checked_str_impls!(NarrowStampAt);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct CodeVariant1(pub(super) String);
 try_from_impl_3!(CodeVariant1);
-checked_str_impls!(CodeVariant1);
+runtime::checked_str_impls!(CodeVariant1);
 pub type CodeVariant2 = SlugVariant2;
 #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize)]
 #[serde(transparent)]
@@ -2609,7 +2402,7 @@ impl TryFrom<runtime::Decimal> for ExactTenth {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_decimal_impls!(ExactTenth);
+runtime::checked_decimal_impls!(ExactTenth);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize)]
 #[serde(transparent)]
 pub struct ExactCents(pub(super) runtime::Decimal);
@@ -2631,7 +2424,7 @@ impl TryFrom<runtime::Decimal> for ExactCents {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_decimal_impls!(ExactCents);
+runtime::checked_decimal_impls!(ExactCents);
 #[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct DegenerateNever(pub(super) u8);
@@ -2657,7 +2450,7 @@ impl TryFrom<u8> for DegenerateNever {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_num_impls!(DegenerateNever, u8);
+runtime::checked_num_impls!(DegenerateNever, u8);
 #[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct DegenerateHuge(pub(super) i64);
@@ -2683,7 +2476,7 @@ impl TryFrom<i64> for DegenerateHuge {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_num_impls!(DegenerateHuge, i64);
+runtime::checked_num_impls!(DegenerateHuge, i64);
 #[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct DegenerateFives(pub(super) i64);
@@ -2705,7 +2498,7 @@ impl TryFrom<i64> for DegenerateFives {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_num_impls!(DegenerateFives, i64);
+runtime::checked_num_impls!(DegenerateFives, i64);
 #[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct DegenerateZero(pub(super) u8);
@@ -2727,7 +2520,7 @@ impl TryFrom<u8> for DegenerateZero {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_num_impls!(DegenerateZero, u8);
+runtime::checked_num_impls!(DegenerateZero, u8);
 #[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct DegenerateHalf(pub(super) i64);
@@ -2749,7 +2542,7 @@ impl TryFrom<i64> for DegenerateHalf {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_num_impls!(DegenerateHalf, i64);
+runtime::checked_num_impls!(DegenerateHalf, i64);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct TreeVariant1 {
@@ -2871,7 +2664,7 @@ pub type EntryLines = Vec<Line>;
 #[serde(transparent)]
 pub struct LineNote(pub(super) String);
 try_from_impl_3!(LineNote);
-checked_str_impls!(LineNote);
+runtime::checked_str_impls!(LineNote);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 pub struct RefusalObject;
 impl RefusalObject {
@@ -2914,12 +2707,12 @@ impl TryFrom<&str> for ProblemCode {
         }
     }
 }
-str_enum_impls!(ProblemCode);
+runtime::str_enum_impls!(ProblemCode);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct BadgeLabel(pub(super) String);
 try_from_impl_2!(BadgeLabel);
-checked_str_impls!(BadgeLabel);
+runtime::checked_str_impls!(BadgeLabel);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct LoginPassword(pub(super) String);
@@ -2944,7 +2737,7 @@ impl TryFrom<String> for LoginPassword {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_str_impls!(LoginPassword);
+runtime::checked_str_impls!(LoginPassword);
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
 #[serde(transparent)]
 pub struct ShipmentInternational(pub(super) ShipmentInternationalFields);
@@ -3001,7 +2794,7 @@ impl ShipmentInternational {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(ShipmentInternational, ShipmentInternationalFields);
+runtime::checked_impls!(ShipmentInternational, ShipmentInternationalFields);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 pub struct ShipmentInternationalKind;
 impl ShipmentInternationalKind {
@@ -3091,7 +2884,7 @@ impl TryFrom<String> for ShipmentInternationalLabel {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_str_impls!(ShipmentInternationalLabel);
+runtime::checked_str_impls!(ShipmentInternationalLabel);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct ParcelsItem {
@@ -3142,7 +2935,7 @@ impl runtime::XmlShape for ParcelsItem {
 #[serde(transparent)]
 pub struct ShipmentInternationalScoresValue(pub(super) i64);
 try_from_impl_4!(ShipmentInternationalScoresValue);
-checked_num_impls!(ShipmentInternationalScoresValue, i64);
+runtime::checked_num_impls!(ShipmentInternationalScoresValue, i64);
 #[derive(Debug, Clone, PartialEq, Copy, PartialOrd, serde::Serialize)]
 #[serde(transparent)]
 pub struct ShipmentInternationalPriority(pub(super) f64);
@@ -3164,7 +2957,7 @@ impl TryFrom<f64> for ShipmentInternationalPriority {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_num_impls!(ShipmentInternationalPriority, f64);
+runtime::checked_num_impls!(ShipmentInternationalPriority, f64);
 #[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct ShipmentInternationalWeight(pub(super) i64);
@@ -3186,7 +2979,7 @@ impl TryFrom<i64> for ShipmentInternationalWeight {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_num_impls!(ShipmentInternationalWeight, i64);
+runtime::checked_num_impls!(ShipmentInternationalWeight, i64);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct ShipmentInternationalLabels(pub(super) LabelsFields);
@@ -3238,12 +3031,12 @@ impl TryFrom<LabelsFields> for ShipmentInternationalLabels {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(ShipmentInternationalLabels, LabelsFields);
+runtime::checked_impls!(ShipmentInternationalLabels, LabelsFields);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct LabelsPattern1(pub(super) String);
 try_from_impl_3!(LabelsPattern1);
-checked_str_impls!(LabelsPattern1);
+runtime::checked_str_impls!(LabelsPattern1);
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
 #[serde(transparent)]
 pub struct ShipmentOtherwise(pub(super) ShipmentOtherwiseFields);
@@ -3298,7 +3091,7 @@ impl ShipmentOtherwise {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(ShipmentOtherwise, ShipmentOtherwiseFields);
+runtime::checked_impls!(ShipmentOtherwise, ShipmentOtherwiseFields);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum ShipmentOtherwiseKind {
     Domestic,
@@ -3329,7 +3122,7 @@ impl TryFrom<&str> for ShipmentOtherwiseKind {
         }
     }
 }
-str_enum_impls!(ShipmentOtherwiseKind);
+runtime::str_enum_impls!(ShipmentOtherwiseKind);
 pub type ShipmentOtherwiseMeta = ShipmentInternationalMeta;
 pub type ShipmentOtherwiseMetaObject = MetaObject;
 pub type ShipmentOtherwiseLabel = ShipmentInternationalLabel;
@@ -3392,14 +3185,14 @@ impl TryFrom<ShipmentOtherwiseLabelsFields> for ShipmentOtherwiseLabels {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(ShipmentOtherwiseLabels, ShipmentOtherwiseLabelsFields);
+runtime::checked_impls!(ShipmentOtherwiseLabels, ShipmentOtherwiseLabelsFields);
 pub type ShipmentOtherwiseLabelsPattern1 = LabelsPattern1;
 pub type SettingsPattern1 = LabelsPattern1;
 #[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct SettingsPattern2(pub(super) i64);
 try_from_impl_4!(SettingsPattern2);
-checked_num_impls!(SettingsPattern2, i64);
+runtime::checked_num_impls!(SettingsPattern2, i64);
 pub type ScoresValue = ShipmentInternationalScoresValue;
 #[derive(Debug, Clone, PartialEq, Copy, PartialOrd, serde::Serialize)]
 #[serde(transparent)]
@@ -3417,7 +3210,7 @@ impl TryFrom<f64> for PriceAmount {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_num_impls!(PriceAmount, f64);
+runtime::checked_num_impls!(PriceAmount, f64);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct UserName(pub(super) String);
@@ -3460,7 +3253,7 @@ impl TryFrom<String> for UserName {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_str_impls!(UserName);
+runtime::checked_str_impls!(UserName);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct UserHandle(pub(super) String);
@@ -3503,7 +3296,7 @@ impl TryFrom<String> for UserHandle {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_str_impls!(UserHandle);
+runtime::checked_str_impls!(UserHandle);
 #[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct UserAge(pub(super) i64);
@@ -3525,7 +3318,7 @@ impl TryFrom<i64> for UserAge {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_num_impls!(UserAge, i64);
+runtime::checked_num_impls!(UserAge, i64);
 #[derive(Debug, Clone, PartialEq, Copy, PartialOrd, serde::Serialize)]
 #[serde(transparent)]
 pub struct UserScore(pub(super) f64);
@@ -3542,12 +3335,12 @@ impl TryFrom<f64> for UserScore {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_num_impls!(UserScore, f64);
+runtime::checked_num_impls!(UserScore, f64);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct UserTagsItem(pub(super) String);
 try_from_impl_3!(UserTagsItem);
-checked_str_impls!(UserTagsItem);
+runtime::checked_str_impls!(UserTagsItem);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum UserRole {
     Admin,
@@ -3578,7 +3371,7 @@ impl TryFrom<&str> for UserRole {
         }
     }
 }
-str_enum_impls!(UserRole);
+runtime::str_enum_impls!(UserRole);
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum UserLoyalty {
     Variant1(UserLoyaltyVariant1),
@@ -3622,18 +3415,18 @@ impl TryFrom<i64> for UserLoyaltyVariant1 {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_num_impls!(UserLoyaltyVariant1, i64);
+runtime::checked_num_impls!(UserLoyaltyVariant1, i64);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct UserLoyaltyVariant2(pub(super) String);
 try_from_impl_3!(UserLoyaltyVariant2);
-checked_str_impls!(UserLoyaltyVariant2);
+runtime::checked_str_impls!(UserLoyaltyVariant2);
 pub type UserNote = UserNote2;
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct UserNote2(pub(super) String);
 try_from_impl_2!(UserNote2);
-checked_str_impls!(UserNote2);
+runtime::checked_str_impls!(UserNote2);
 #[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct CreateUserLimit(pub(super) i64);
@@ -3655,7 +3448,7 @@ impl TryFrom<i64> for CreateUserLimit {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_num_impls!(CreateUserLimit, i64);
+runtime::checked_num_impls!(CreateUserLimit, i64);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct CreateUserXTeam(pub(super) String);
@@ -3663,7 +3456,7 @@ impl CreateUserXTeam {
     pub const PATTERN: &'static str = "^[a-z]+$";
 }
 try_from_impl!(CreateUserXTeam);
-checked_str_impls!(CreateUserXTeam);
+runtime::checked_str_impls!(CreateUserXTeam);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Not {
@@ -3747,7 +3540,7 @@ impl TryFrom<Not2Variants> for Not2 {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(Not2, Not2Variants);
+runtime::checked_impls!(Not2, Not2Variants);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Not2Object {
@@ -3827,7 +3620,7 @@ impl TryFrom<Not3Variants> for Not3 {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(Not3, Not3Variants);
+runtime::checked_impls!(Not3, Not3Variants);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Not3Object {
@@ -3919,7 +3712,7 @@ impl TryFrom<Not5Variants> for Not5 {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(Not5, Not5Variants);
+runtime::checked_impls!(Not5, Not5Variants);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Not5Object {
@@ -4005,7 +3798,7 @@ impl TryFrom<Not6Variants> for Not6 {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(Not6, Not6Variants);
+runtime::checked_impls!(Not6, Not6Variants);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Not6Object {
@@ -4096,7 +3889,7 @@ impl TryFrom<Not7Variants> for Not7 {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(Not7, Not7Variants);
+runtime::checked_impls!(Not7, Not7Variants);
 pub type Not7Object = Not6Object;
 pub use ObjectCustoms as Not7ObjectCustoms;
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
@@ -4131,7 +3924,7 @@ impl TryFrom<Not8Variants> for Not8 {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(Not8, Not8Variants);
+runtime::checked_impls!(Not8, Not8Variants);
 pub type Not8Object = Not6Object;
 pub use ObjectCustoms as Not8ObjectCustoms;
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
@@ -4166,7 +3959,7 @@ impl TryFrom<Not9Variants> for Not9 {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(Not9, Not9Variants);
+runtime::checked_impls!(Not9, Not9Variants);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
 pub struct Not9Object {
@@ -5513,7 +5306,7 @@ impl TryFrom<EntryLines> for EntryLinesChecked {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(EntryLinesChecked, EntryLines);
+runtime::checked_impls!(EntryLinesChecked, EntryLines);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct BadgeHolders(pub(super) Vec<String>);
@@ -5566,7 +5359,7 @@ impl BadgeHolders {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(BadgeHolders, Vec < String >);
+runtime::checked_impls!(BadgeHolders, Vec < String >);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct LooseV(pub(super) serde_json::Value);
@@ -5609,7 +5402,7 @@ impl TryFrom<serde_json::Value> for LooseV {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(LooseV, serde_json::Value);
+runtime::checked_impls!(LooseV, serde_json::Value);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct UserTags(pub(super) Vec<UserTagsItem>);
@@ -5640,7 +5433,7 @@ impl TryFrom<Vec<UserTagsItem>> for UserTags {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(UserTags, Vec < UserTagsItem >);
+runtime::checked_impls!(UserTags, Vec < UserTagsItem >);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct UserMeta(pub(super) std::collections::BTreeMap<String, String>);
@@ -5667,7 +5460,7 @@ impl TryFrom<std::collections::BTreeMap<String, String>> for UserMeta {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(UserMeta, std::collections::BTreeMap < String, String >);
+runtime::checked_impls!(UserMeta, std::collections::BTreeMap < String, String >);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct Not9ObjectAmount(pub(super) serde_json::Value);
@@ -5693,7 +5486,7 @@ impl TryFrom<serde_json::Value> for Not9ObjectAmount {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(Not9ObjectAmount, serde_json::Value);
+runtime::checked_impls!(Not9ObjectAmount, serde_json::Value);
 pub type BadgeRequestHolders = BadgeHolders;
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
@@ -5720,7 +5513,7 @@ impl TryFrom<serde_json::Value> for ShipmentInternationalRating {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(ShipmentInternationalRating, serde_json::Value);
+runtime::checked_impls!(ShipmentInternationalRating, serde_json::Value);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct ShipmentInternationalParcels(pub(super) Vec<ParcelsItem>);
@@ -5780,7 +5573,7 @@ impl ShipmentInternationalParcels {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(ShipmentInternationalParcels, Vec < ParcelsItem >);
+runtime::checked_impls!(ShipmentInternationalParcels, Vec < ParcelsItem >);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct ShipmentInternationalScores(
@@ -5825,7 +5618,7 @@ for ShipmentInternationalScores {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(
+runtime::checked_impls!(
     ShipmentInternationalScores, std::collections::BTreeMap < String,
     ShipmentInternationalScoresValue >
 );
@@ -5894,7 +5687,7 @@ impl ShipmentOtherwiseParcels {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(ShipmentOtherwiseParcels, Vec < ShipmentOtherwiseParcelsItem >);
+runtime::checked_impls!(ShipmentOtherwiseParcels, Vec < ShipmentOtherwiseParcelsItem >);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct ShipmentOtherwiseScores(
@@ -5939,7 +5732,7 @@ for ShipmentOtherwiseScores {
             .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(
+runtime::checked_impls!(
     ShipmentOtherwiseScores, std::collections::BTreeMap < String,
     ShipmentOtherwiseScoresValue >
 );

@@ -93,8 +93,6 @@ pub(super) fn emit(
     // A library exports the constructors. A binary may build a type only by decoding it.
     let unused = binary.then(|| quote!(#![allow(dead_code, reason = "a binary may build none of the types by hand")]));
     let header = quote!(#allow #unused);
-    let enum_macros = enum_macros(space);
-    let checked_macros = checked_macros(space);
     // A description without schemas has no type to validate.
     let runtime_import = (!items.is_empty()).then(|| {
         quote!(
@@ -102,7 +100,7 @@ pub(super) fn emit(
         )
     });
     let builders = builders_mod(&builders, builders_name_types);
-    quote! { #header #runtime_import #enum_macros #checked_macros #(#items)* #builders }
+    quote! { #header #runtime_import #(#items)* #builders }
 }
 
 /// Inlines types declared as an alias of an identical earlier one (one inline schema per operation): index to the
@@ -240,283 +238,6 @@ fn canonical_ty(t: &Ty, canon: &dyn Fn(TypeId) -> TypeId) -> Ty {
     let mut out = t.clone();
     canonical(&mut out, canon);
     out
-}
-
-/// Returns the trait impls that every string or integer enum, and every checked newtype of one base, shares. Each is written once as a macro. So generated code
-/// holds no two identical function bodies. Only the kinds that the description has.
-fn enum_macros(space: &Space<'_>) -> TokenStream {
-    let has = |f: fn(&Kind) -> bool| space.types.defs.iter().any(|d| f(&d.kind));
-    // A lenient string enum implements its own: its `as_str` borrows the unknown value.
-    let closed_str_enum = space.types.defs.iter().any(|d| matches!(d.kind, Kind::StrEnum(_)) && !d.lenient);
-    let str_enums = closed_str_enum.then(|| {
-        quote! {
-            macro_rules! str_enum_impls {
-                ($n:ident) => {
-                    impl std::fmt::Display for $n {
-                        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                            f.write_str(self.as_str())
-                        }
-                    }
-                    impl std::str::FromStr for $n {
-                        type Err = runtime::BuildError;
-                        fn from_str(s: &str) -> Result<Self, Self::Err> {
-                            Self::try_from(s)
-                        }
-                    }
-                    impl serde::Serialize for $n {
-                        fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-                            s.serialize_str(self.as_str())
-                        }
-                    }
-                    impl<'de> serde::Deserialize<'de> for $n {
-                        fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-                            let s = <std::borrow::Cow<'de, str> as serde::Deserialize>::deserialize(d)?;
-                            Self::try_from(&*s).map_err(serde::de::Error::custom)
-                        }
-                    }
-                };
-            }
-        }
-    });
-    let int_enums = has(|k| matches!(k, Kind::IntEnum(_))).then(|| {
-        quote! {
-            macro_rules! int_enum_impls {
-                ($n:ident) => {
-                    impl std::fmt::Display for $n {
-                        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                            write!(f, "{}", self.value())
-                        }
-                    }
-                    impl serde::Serialize for $n {
-                        fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-                            s.serialize_i64(self.value())
-                        }
-                    }
-                    impl<'de> serde::Deserialize<'de> for $n {
-                        fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-                            let v = <i64 as serde::Deserialize>::deserialize(d)?;
-                            Self::try_from(v).map_err(serde::de::Error::custom)
-                        }
-                    }
-                };
-            }
-        }
-    });
-    quote!(#str_enums #int_enums)
-}
-
-/// Returns the trait impls that every checked newtype of one base shares, one macro per base. Only the bases that the
-/// description has.
-fn checked_macros(space: &Space<'_>) -> TokenStream {
-    let checked =
-        |base: Base| space.types.defs.iter().any(|d| matches!(&d.kind, Kind::Checked(c) if Base::of(c) == base));
-    let checked_str = checked(Base::Str).then(checked_str_macro);
-    let checked_num = (checked(Base::Int) || checked(Base::Float)).then(checked_num_macro);
-    let checked_decimal = checked(Base::Decimal).then(checked_decimal_macro);
-    let checked_other = checked(Base::Other).then(checked_other_macro);
-    quote!(#checked_str #checked_num #checked_decimal #checked_other)
-}
-
-/// Returns the macro of the impls of a checked string.
-fn checked_str_macro() -> TokenStream {
-    quote! {
-        macro_rules! checked_str_impls {
-            ($n:ident) => {
-                impl $n {
-                    #[must_use]
-                    pub fn as_str(&self) -> &str {
-                        &self.0
-                    }
-                    #[must_use]
-                    pub fn into_inner(self) -> String {
-                        self.0
-                    }
-                }
-                impl TryFrom<&str> for $n {
-                    type Error = runtime::BuildError;
-                    fn try_from(value: &str) -> Result<Self, runtime::BuildError> {
-                        Self::try_from(value.to_owned())
-                    }
-                }
-                impl std::str::FromStr for $n {
-                    type Err = runtime::BuildError;
-                    fn from_str(s: &str) -> Result<Self, runtime::BuildError> {
-                        Self::try_from(s)
-                    }
-                }
-                impl std::ops::Deref for $n {
-                    type Target = str;
-                    fn deref(&self) -> &str {
-                        &self.0
-                    }
-                }
-                impl AsRef<str> for $n {
-                    fn as_ref(&self) -> &str {
-                        &self.0
-                    }
-                }
-                impl std::fmt::Display for $n {
-                    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                        f.write_str(&self.0)
-                    }
-                }
-                impl PartialEq<str> for $n {
-                    fn eq(&self, other: &str) -> bool {
-                        self.0 == other
-                    }
-                }
-                impl PartialEq<&str> for $n {
-                    fn eq(&self, other: &&str) -> bool {
-                        self.0 == *other
-                    }
-                }
-                impl From<$n> for String {
-                    fn from(value: $n) -> Self {
-                        value.0
-                    }
-                }
-                impl<'de> serde::Deserialize<'de> for $n {
-                    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-                        let s = <String as serde::Deserialize>::deserialize(d)?;
-                        Self::try_from(s).map_err(serde::de::Error::custom)
-                    }
-                }
-            };
-        }
-    }
-}
-
-/// Returns the macro of the impls of a checked integer or float.
-fn checked_num_macro() -> TokenStream {
-    quote! {
-        macro_rules! checked_num_impls {
-            ($n:ident, $t:ty) => {
-                impl $n {
-                    #[must_use]
-                    pub const fn get(self) -> $t {
-                        self.0
-                    }
-                }
-                impl std::str::FromStr for $n {
-                    type Err = runtime::BuildError;
-                    fn from_str(s: &str) -> Result<Self, runtime::BuildError> {
-                        let v: $t = s.parse().map_err(|e| runtime::BuildError::value(format!("{e}")))?;
-                        Self::try_from(v)
-                    }
-                }
-                impl std::ops::Deref for $n {
-                    type Target = $t;
-                    fn deref(&self) -> &$t {
-                        &self.0
-                    }
-                }
-                impl std::fmt::Display for $n {
-                    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                        std::fmt::Display::fmt(&self.0, f)
-                    }
-                }
-                impl PartialEq<$t> for $n {
-                    fn eq(&self, other: &$t) -> bool {
-                        self.0 == *other
-                    }
-                }
-                impl PartialOrd<$t> for $n {
-                    fn partial_cmp(&self, other: &$t) -> Option<std::cmp::Ordering> {
-                        self.0.partial_cmp(other)
-                    }
-                }
-                impl From<$n> for $t {
-                    fn from(value: $n) -> Self {
-                        value.0
-                    }
-                }
-                impl<'de> serde::Deserialize<'de> for $n {
-                    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-                        let v = <$t as serde::Deserialize>::deserialize(d)?;
-                        Self::try_from(v).map_err(serde::de::Error::custom)
-                    }
-                }
-            };
-        }
-    }
-}
-
-/// Returns the macro of the impls of a checked value of any other base. Its `Deserialize` is its own: the base may hold
-/// the text of a library format, read through `runtime::formats`.
-fn checked_other_macro() -> TokenStream {
-    quote! {
-        macro_rules! checked_impls {
-            ($n:ident, $t:ty) => {
-                impl $n {
-                    #[must_use]
-                    pub fn into_inner(self) -> $t {
-                        self.0
-                    }
-                }
-                impl std::ops::Deref for $n {
-                    type Target = $t;
-                    fn deref(&self) -> &$t {
-                        &self.0
-                    }
-                }
-                impl AsRef<$t> for $n {
-                    fn as_ref(&self) -> &$t {
-                        &self.0
-                    }
-                }
-                impl From<$n> for $t {
-                    fn from(value: $n) -> Self {
-                        value.0
-                    }
-                }
-            };
-        }
-    }
-}
-
-/// Returns the macro of the impls of a checked decimal.
-fn checked_decimal_macro() -> TokenStream {
-    quote! {
-        macro_rules! checked_decimal_impls {
-            ($n:ident) => {
-                impl $n {
-                    #[must_use]
-                    pub fn into_inner(self) -> runtime::Decimal {
-                        self.0
-                    }
-                }
-                impl std::str::FromStr for $n {
-                    type Err = runtime::BuildError;
-                    fn from_str(s: &str) -> Result<Self, runtime::BuildError> {
-                        let v: runtime::Decimal = s.parse().map_err(|e| runtime::BuildError::value(format!("{e}")))?;
-                        Self::try_from(v)
-                    }
-                }
-                impl std::ops::Deref for $n {
-                    type Target = runtime::Decimal;
-                    fn deref(&self) -> &runtime::Decimal {
-                        &self.0
-                    }
-                }
-                impl std::fmt::Display for $n {
-                    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                        std::fmt::Display::fmt(&self.0, f)
-                    }
-                }
-                impl From<$n> for runtime::Decimal {
-                    fn from(value: $n) -> Self {
-                        value.0
-                    }
-                }
-                impl<'de> serde::Deserialize<'de> for $n {
-                    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-                        let v = <runtime::Decimal as serde::Deserialize>::deserialize(d)?;
-                        Self::try_from(v).map_err(serde::de::Error::custom)
-                    }
-                }
-            };
-        }
-    }
 }
 
 /// The base of a checked newtype as its impls tell it apart.
@@ -1413,7 +1134,7 @@ fn int_enum(items: &mut Vec<TokenStream>, def: &TypeDef, values: &[(Name, i64)])
                 }
             }
         }
-        int_enum_impls!(#n);
+        runtime::int_enum_impls!(#n);
     });
 }
 
@@ -1497,10 +1218,10 @@ fn checked_type(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, def
         }
     };
     let shared = match kind {
-        Base::Str => quote!(checked_str_impls!(#n);),
-        Base::Decimal => quote!(checked_decimal_impls!(#n);),
-        Base::Int | Base::Float => quote!(checked_num_impls!(#n, #base);),
-        Base::Other => quote!(checked_impls!(#n, #base);),
+        Base::Str => quote!(runtime::checked_str_impls!(#n);),
+        Base::Decimal => quote!(runtime::checked_decimal_impls!(#n);),
+        Base::Int | Base::Float => quote!(runtime::checked_num_impls!(#n, #base);),
+        Base::Other => quote!(runtime::checked_impls!(#n, #base);),
     };
     let build = checked_try_from(&n, &base, subschemas.as_ref(), &checks);
     items.push(quote! {
@@ -1722,7 +1443,7 @@ fn str_enum(items: &mut Vec<TokenStream>, def: &TypeDef, values: &[EnumValue]) {
                 }
             }
         }
-        str_enum_impls!(#n);
+        runtime::str_enum_impls!(#n);
     });
 }
 
