@@ -21,7 +21,7 @@ pub(crate) fn satisfies(doc: &Doc, schema: &Value, value: &Value) -> bool {
     let mut budget = INLINE_BUDGET;
     let schema = inline(doc, schema, &mut budget, 0);
     let mut out = vec![];
-    runtime::__private::check_schema(&mut out, &runtime::InstancePath::Root, value, &schema);
+    crate::validate::interpreter::check_schema(&mut out, &runtime::InstancePath::Root, value, &schema);
     out.is_empty()
 }
 
@@ -33,7 +33,7 @@ pub(crate) fn check(doc: &Doc, diags: &mut Diagnostics) {
         let mut budget = INLINE_BUDGET;
         let schema = inline(doc, &schema, &mut budget, 0);
         let mut out = vec![];
-        runtime::__private::check_schema(&mut out, &runtime::InstancePath::Root, &value, &schema);
+        crate::validate::interpreter::check_schema(&mut out, &runtime::InstancePath::Root, &value, &schema);
         for v in out {
             let at = if v.path.is_empty() { String::new() } else { format!(" at `{}`", v.path) };
             diags.warning(&ptr, format!("the value does not match its schema{at}: {}", v.message));

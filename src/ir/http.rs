@@ -807,35 +807,9 @@ fn body(b: &mut Builder<'_>, site: &Site<'_>, prefix: &Name) -> Option<Body> {
     if contents.is_empty() {
         return None;
     }
-    // Only untyped keywords need the body's own constraints: the typed ones
-    // are checked by the body type's `Validate`.
-    let constraints =
-        match rb.get("content").and_then(Value::as_object).map(|m| m.values().collect::<Vec<_>>()).as_deref() {
-            Some([media]) => media.get("schema").map(|s| b.constraints(s)).unwrap_or_default(),
-            _ => crate::ir::types::Constraints::default(),
-        };
-    // The schema is checked on a request: `readOnly` properties are not sent.
-    let request = |schema: Option<Value>| {
-        schema.map(|mut s| {
-            crate::ir::types::request_view(&mut s);
-            s
-        })
-    };
-    let constraints = crate::ir::types::Constraints { schema: request(constraints.schema), ..Default::default() };
-    let variant_constraints = if contents.len() > 1 {
-        contents
-            .iter()
-            .map(|c| {
-                let schema = rb.get("content").and_then(|m| m.get(&c.media)).and_then(|m| m.get("schema"));
-                crate::ir::types::Constraints {
-                    schema: request(schema.and_then(|s| b.constraints(s).schema)),
-                    ..Default::default()
-                }
-            })
-            .collect()
-    } else {
-        vec![]
-    };
+    // The body's type checks every keyword of its schema where it decodes: the body holds no constraints of its own.
+    let constraints = crate::ir::types::Constraints::default();
+    let variant_constraints = vec![];
     Some(Body {
         required: json::flag(&rb, "required"),
         contents,

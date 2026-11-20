@@ -108,7 +108,7 @@ pub(crate) fn compare(a: &str, b: &str) -> Option<Ordering> {
 /// `value` is `a*10^e` and `of` is `b*10^f`, with `a` and `b` not ending in zeros. The quotient is `(a / b)*10^(e-f)`:
 /// a whole number when `a*10^(e-f)` is a multiple of `b`. With `e < f` it would need `a` to end in a zero, so it is not.
 #[must_use]
-pub(crate) fn is_multiple(value: &str, of: &str) -> Option<bool> {
+pub fn is_multiple(value: &str, of: &str) -> Option<bool> {
     let (v, m) = (Parts::of(value)?, Parts::of(of)?);
     if m.negative || m.len() == 0 {
         return None;

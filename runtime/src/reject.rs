@@ -291,36 +291,6 @@ pub fn check_media(actual: &str, declared: &[&str]) -> Result<(), Reason> {
     Err(Reason::UnsupportedMediaType(actual.to_owned(), declared.join(", ")))
 }
 
-/// Checks a JSON request body as sent against the whole schema of the body.
-///
-/// Decoding into the generated type drops what it does not hold and picks one variant. So `unevaluatedProperties`,
-/// an overlapping `oneOf` or nested `prefixItems` are judged here on the raw value. A body that is not JSON passes:
-/// decoding reports it.
-///
-/// # Errors
-/// [`Reason::Invalid`] with every violation, at `/body/...`.
-pub fn check_raw_json(body: &[u8], schema: &Value) -> Result<(), Reason> {
-    check_raw_json_in(body, schema, None)
-}
-
-/// [`check_raw_json`] with the definitions that the schemas of a generated module share
-/// ([`check_schema_in`](crate::validate::check_schema_in)).
-///
-/// # Errors
-/// The body breaks the schema.
-pub fn check_raw_json_in(body: &[u8], schema: &Value, shared: Option<&Map<String, Value>>) -> Result<(), Reason> {
-    let Ok(value) = serde_json::from_slice::<Value>(body) else { return Ok(()) };
-    let mut out = vec![];
-    crate::validate::check_schema_in(
-        &mut out,
-        &crate::InstancePath::Key(&crate::InstancePath::Root, "body"),
-        &value,
-        schema,
-        shared,
-    );
-    out.into_iter().next().map_or(Ok(()), |v| Err(Reason::Invalid(v)))
-}
-
 impl From<Error> for Reason {
     fn from(e: Error) -> Self {
         match e {
@@ -490,43 +460,6 @@ mod tests {
         let Reason::Invalid(Violation { path, message }) = &reason else { panic!("invalid") };
         assert_eq!((path.as_str(), message.as_str()), ("/query/limit", "must be at most 100"));
         assert_eq!(reason.to_string(), "/query/limit: must be at most 100");
-    }
-
-    #[test]
-    fn a_body_checked_whole_is_judged_as_sent() {
-        let schema = serde_json::json!({"properties": {"foo": {}}, "unevaluatedProperties": false});
-        assert!(check_raw_json(br#"{"foo": 1}"#, &schema).is_ok());
-        let Err(Reason::Invalid(v)) = check_raw_json(br#"{"foo": 1, "bar": 2}"#, &schema) else {
-            panic!("an unevaluated property is refused");
-        };
-        assert_eq!(v.path, "/body/bar");
-        assert!(check_raw_json(b"not json", &schema).is_ok(), "decoding reports it");
-    }
-
-    #[test]
-    fn a_union_that_no_branch_matches_names_the_field_of_the_closest_branch() {
-        let urls = serde_json::json!({"oneOf": [{"type": "string"}, {"type": "array", "items": {"type": "string"}}]});
-        let schema = serde_json::json!({"oneOf": [
-            {"type": "object", "required": ["status", "alerts"], "properties": {"urls": urls}},
-            {"type": "object", "not": {"required": ["status"]}, "properties": {"urls": urls}},
-        ]});
-        let first = |body: &[u8]| match check_raw_json(body, &schema) {
-            Err(Reason::Invalid(v)) => Some((v.path, v.message)),
-            other => panic!("refused as invalid: {other:?}"),
-        };
-        // The second branch only fails on `urls`: the first also misses `status` and `alerts`.
-        let (path, message) = first(br#"{"urls": 5}"#).unwrap();
-        assert_eq!((path.as_str(), message.as_str()), ("/body/urls", "matches 0 of `oneOf`, not exactly one"));
-        // Every branch fails on the value itself: the union's own message.
-        let (path, message) = first(b"5").unwrap();
-        assert_eq!((path.as_str(), message.as_str()), ("/body", "matches 0 of `oneOf`, not exactly one"));
-        // Each branch misses its own required property: neither got further.
-        let charge = serde_json::json!({"oneOf": [{"required": ["refund"]}, {"required": ["fee"]}]});
-        let Err(Reason::Invalid(v)) = check_raw_json(br#"{"neither": 1}"#, &charge) else { panic!("refused") };
-        assert_eq!(v.path, "/body");
-        let any = serde_json::json!({"anyOf": [{"properties": {"a": {"type": "string"}}}, {"type": "array"}]});
-        let Err(Reason::Invalid(v)) = check_raw_json(br#"{"a": 1}"#, &any) else { panic!("refused") };
-        assert_eq!(v.path, "/body/a");
     }
 
     /// A required field that nothing maps to gets the empty value of its type.

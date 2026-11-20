@@ -1,6 +1,7 @@
 anchor: Location-independent identifier with base URI change in subschema: match	refers to another document
 anchor: Location-independent identifier with base URI change in subschema: mismatch	refers to another document
-dynamicRef: A $dynamicRef that initially resolves to a schema with a matching $dynamicAnchor resolves to the first $dynamicAnchor in the dynamic scope: The recursive part is not valid against the root	decodes an invalid instance
+dynamicRef: A $dynamicRef that initially resolves to a schema with a matching $dynamicAnchor resolves to the first $dynamicAnchor in the dynamic scope: The recursive part is not valid against the root	does not generate: generated code cannot check this schema: a `$dynamicRef` whose anchor another resource that reaches it declares
+dynamicRef: A $dynamicRef that initially resolves to a schema with a matching $dynamicAnchor resolves to the first $dynamicAnchor in the dynamic scope: The recursive part is valid against the root	does not generate: generated code cannot check this schema: a `$dynamicRef` whose anchor another resource that reaches it declares
 format-date-time: date-time annotation: invalid date-time string is only an annotation by default	refuses a valid instance: is not a valid date-time at line 1 column 37
 format-date: date format annotation: invalid date string is only an annotation by default	refuses a valid instance: is not a valid date at line 1 column 18
 format-duration: duration format annotation: invalid duration string is only an annotation by default	refuses a valid instance: is not a valid duration at line 1 column 12

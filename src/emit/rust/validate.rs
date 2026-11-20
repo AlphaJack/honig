@@ -487,25 +487,6 @@ pub(super) fn checks(
         let rest = checks(space, t, &rest, value, path);
         return quote!(#typed #rest);
     }
-    // Keywords without a Rust type of their own. The whole fragment (refs
-    // inlined) is checked on the serialized value. Typed checks are skipped.
-    // It is JSON text parsed once: as Rust that builds the value, a large
-    // fragment costs the compiler minutes.
-    if let Some(schema) = &c.schema
-        && !matches!(t, Ty::Option(_) | Ty::Indirect(_))
-    {
-        // The definitions that it reaches by pointer are in `runtime.rs` once for the whole module.
-        let json = lit(&schema.to_string());
-        let shared = if space.types.shared.is_empty() { quote!(None) } else { quote!(runtime::schema_defs()) };
-        return quote! {
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(#value).unwrap_or_default();
-                let schema = SCHEMA.get_or_init(|| serde_json::from_str(#json).unwrap_or_default());
-                runtime::check_schema_in(out, #path, &value, schema, #shared);
-            }
-        };
-    }
     match t {
         Ty::Option(x) => option_checks(space, x, c, value, path),
         Ty::Indirect(x) => checks(space, x, c, &quote!((#value).as_ref()), path),

@@ -10,7 +10,6 @@ mod rewrite;
 use build::kind_in;
 pub(crate) use build::{Builder, doc_of, literal_default, text_of, with_external_docs};
 pub(crate) use build::{binary_media, is_annotation_only};
-pub(crate) use rewrite::request_view;
 
 pub(crate) use cycles::{all_refs, def_types};
 use cycles::{direction, map_kind, map_named};
@@ -286,10 +285,6 @@ pub(crate) struct Constraints {
     /// Schemas that the value also decodes as, as indices into [`TypeSpace::subschemas`]: the keywords beside a
     /// union, which hold for whichever branch matches, and the members of an `allOf` that one merged type cannot hold.
     pub also: Vec<usize>,
-    /// The schema with `$ref`s inlined when it uses keywords that no type expresses on its own
-    /// (`contains`, `patternProperties`, `if`, `not`, ...). `runtime::check_schema`
-    /// checks it at runtime.
-    pub schema: Option<Value>,
 }
 
 /// What the items after `prefixItems` take: `items` beside them.
@@ -570,9 +565,6 @@ pub(crate) enum JsonKind {
 pub(crate) struct TypeSpace {
     /// Indexed by `TypeId`.
     pub defs: Vec<TypeDef>,
-    /// The definitions that schemas checked whole at run time reach, by pointer: `#/$defs/<pointer>` in
-    /// `Constraints::schema` names one. Each is here once for the whole document.
-    pub shared: std::collections::BTreeMap<String, Value>,
     /// The type of each schema that a typed check decodes the value as (`not`, `dependentSchemas`), with its constraints
     /// until `checked::wrap` makes it a type that checks them.
     pub subschemas: Vec<(Ty, Constraints)>,
@@ -831,7 +823,7 @@ impl TypeSpace {
 
     /// Creates a space of these definitions.
     pub(crate) const fn new(defs: Vec<TypeDef>) -> Self {
-        Self { defs, shared: std::collections::BTreeMap::new(), subschemas: vec![] }
+        Self { defs, subschemas: vec![] }
     }
 
     /// Returns `ty` with its aliases followed.

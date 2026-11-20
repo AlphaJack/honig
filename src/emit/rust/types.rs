@@ -530,9 +530,6 @@ enum Base {
 impl Base {
     /// Returns how the checked type `c` is written.
     const fn of(c: &Checked) -> Self {
-        if c.constraints.schema.is_some() {
-            return Self::Other;
-        }
         match &c.base {
             Ty::String => Self::Str,
             Ty::F32 | Ty::F64 => Self::Float,

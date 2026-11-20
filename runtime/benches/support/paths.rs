@@ -460,18 +460,4 @@ pub(crate) const PATHS: &[Path] = &[
             (size, on((nodes, path), |(n, p)| runtime::route(n, p).map(|(leaf, _)| leaf)))
         },
     },
-    Path {
-        name: "validate_untyped",
-        prepare: |size| {
-            let schema = serde_json::json!({"type": "array", "uniqueItems": false, "items": {"type": "object",
-                "required": ["id"], "properties": {"id": {"type": "integer", "minimum": 0},
-                "note": {"type": "string", "maxLength": 200}}}});
-            let check = |(value, schema): &(Value, Value)| {
-                let mut out = vec![];
-                runtime::check_schema(&mut out, &runtime::InstancePath::Root, value, schema);
-                out
-            };
-            (size, on((Value::Array(items(size)), schema), check))
-        },
-    },
 ];

@@ -257,6 +257,15 @@ pub(crate) fn decimal_parts(n: &serde_json::Number) -> Option<(u128, i32)> {
     Some((digits, exponent.checked_sub(i32::try_from(fraction.len()).ok()?)?))
 }
 
+/// Does schema `s` hold only string keywords (`pattern`, `minLength`, `maxLength`, `type: string`)?
+pub(crate) fn text_only(s: &Map<String, Value>) -> bool {
+    s.iter().all(|(k, v)| match k.as_str() {
+        "pattern" | "minLength" | "maxLength" => true,
+        "type" => v == "string",
+        _ => false,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use serde_json::json;
