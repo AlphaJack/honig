@@ -18,7 +18,7 @@ fn with_live_updates() -> axum::Router {
         let catalog = Arc::clone(&catalog);
         move |ws: WebSocketUpgrade| async move { ws.on_upgrade(move |socket| count_products(socket, catalog)) }
     };
-    api::Server::new(catalog).into_axum().route("/v1/live", axum::routing::get(live))
+    api::Server::new(catalog).authenticate(super::check_key).into_axum().route("/v1/live", axum::routing::get(live))
 }
 
 async fn count_products(mut socket: WebSocket, catalog: Arc<Catalog>) {

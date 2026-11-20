@@ -98,7 +98,12 @@ fn the_server_applies_parameter_defaults() {
     let seen = std::sync::Arc::new(Seen::default());
     let mut req = api::runtime::new_request("GET", "/orders".to_owned(), vec![]).unwrap();
     req.headers_mut().append("authorization", honig::http::HeaderValue::try_from("Bearer t".to_owned()).unwrap());
-    api::block_on(api::Server::new(std::sync::Arc::clone(&seen)).into_service().handle(req));
+    api::block_on(
+        api::Server::new(std::sync::Arc::clone(&seen))
+            .authenticate(|_: &api::Request| std::future::ready(Ok(Some(()))))
+            .into_service()
+            .handle(req),
+    );
     assert_eq!(*seen.0.lock().unwrap(), Some(20));
 }
 
@@ -108,7 +113,10 @@ fn the_client_leaves_out_a_parameter_at_its_default() {
     let log = std::sync::Arc::clone(&sent);
     let client = api::Client::new(support::loopback(move |req: api::Request| {
         log.lock().unwrap().push(req.uri().to_string());
-        api::Server::new(Seen::default()).into_service().handle(req)
+        api::Server::new(Seen::default())
+            .authenticate(|_: &api::Request| std::future::ready(Ok(Some(()))))
+            .into_service()
+            .handle(req)
     }))
     .with_bearer("t");
     for limit in [20, 5] {
@@ -132,7 +140,14 @@ fn create_order(body: &serde_json::Value) -> u16 {
     req.headers_mut()
         .insert(honig::http::header::CONTENT_TYPE, honig::http::HeaderValue::from_static("application/json"));
     *req.body_mut() = honig::Body::from(serde_json::to_vec(body).unwrap());
-    api::runtime::block_on(api::Server::new(Seen::default()).into_service().handle(req)).status().as_u16()
+    api::runtime::block_on(
+        api::Server::new(Seen::default())
+            .authenticate(|_: &api::Request| std::future::ready(Ok(Some(()))))
+            .into_service()
+            .handle(req),
+    )
+    .status()
+    .as_u16()
 }
 
 #[test]
@@ -171,7 +186,12 @@ fn rejections_use_the_described_error_schema() {
         )
         .unwrap(),
     );
-    let r = api::block_on(api::Server::new(std::sync::Arc::clone(&seen)).into_service().handle(req));
+    let r = api::block_on(
+        api::Server::new(std::sync::Arc::clone(&seen))
+            .authenticate(|_: &api::Request| std::future::ready(Ok(Some(()))))
+            .into_service()
+            .handle(req),
+    );
     assert_eq!(
         (r.status().as_u16(), r.headers().get("content-type").map_or("", |v| v.to_str().unwrap_or(""))),
         (400, "application/problem+json")

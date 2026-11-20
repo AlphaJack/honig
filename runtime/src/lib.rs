@@ -105,7 +105,7 @@ pub use server::operation::Operation;
 #[cfg(feature = "server")]
 pub use server::service::{
     Anonymous, ApiService, Authenticate, AuthenticateLayer, Authenticated, Authentication, ClientCertificateVerified,
-    Endpoint, Errors, MatchedOperation, Secured, Server, read_body,
+    DeclaredSecurity, Endpoint, Errors, MatchedOperation, NoSecurity, Secured, Server, read_body,
 };
 pub use source::{Blob, Body, ByteStream, Sse};
 pub use stream::{Framing, ItemStream, Items, Streamed};

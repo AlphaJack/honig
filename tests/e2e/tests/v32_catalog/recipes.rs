@@ -27,7 +27,7 @@ async fn app(uri: axum::http::Uri) -> axum::response::Response {
 }
 
 fn web_app() -> axum::Router {
-    let api = api::Server::new(Catalog::default()).into_service();
+    let api = api::Server::new(Catalog::default()).authenticate(super::check_key).into_service();
     axum::Router::new().nest_service("/v1", api).fallback(app)
 }
 // ANCHOR_END: spa
@@ -66,7 +66,7 @@ fn with_claims() -> axum::Router {
 /// into a response with `HandleErrorLayer`. `errors()` renders it in the error schema of the description, so a
 /// client decodes it as its typed error.
 fn guarded(max_in_flight: usize) -> axum::Router {
-    let server = api::Server::new(Catalog::default());
+    let server = api::Server::new(Catalog::default()).authenticate(super::check_key);
     let errors = server.errors();
     server.into_axum().layer(
         tower::ServiceBuilder::new()

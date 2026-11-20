@@ -86,7 +86,7 @@ fn get(verify: bool, path: &str, headers: &[(&str, &str)]) -> u16 {
             honig::http::HeaderValue::try_from((*v).to_owned()).unwrap(),
         );
     }
-    let server = api::Server::new(Server);
+    let server = api::Server::new(Server).authenticate(|_: &api::Request| std::future::ready(Ok(Some(()))));
     let resp = if verify {
         api::block_on(server.operation_layer(VerifyCertificateLayer).into_service().handle(req))
     } else {
@@ -187,6 +187,6 @@ proptest::proptest! {
 
     #[test]
     fn malformed_requests_get_a_client_error(case in malformed::case(&FIXTURE)) {
-        malformed::check(api::Server::new(Server).into_service(), &case)?;
+        malformed::check(api::Server::new(Server).authenticate(|_: &api::Request| std::future::ready(Ok(Some(())))).into_service(), &case)?;
     }
 }

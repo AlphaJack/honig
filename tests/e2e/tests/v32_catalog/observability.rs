@@ -10,6 +10,7 @@ use super::Catalog;
 /// The wide event of each request as one JSON line to wherever your logs go. Here it is a list that a test reads.
 fn logged(lines: Arc<Mutex<Vec<String>>>) -> api::Client<impl api::Transport> {
     let service = api::Server::new(Catalog::default())
+        .authenticate(super::check_key)
         .on_event(move |event: &api::RequestEvent| {
             if let Ok(mut lines) = lines.lock() {
                 lines.push(event.to_json());
@@ -59,6 +60,7 @@ fn a_request_continues_the_callers_trace() {
     let seen = Arc::new(Mutex::new(None));
     let record = Arc::clone(&seen);
     let service = api::Server::new(Catalog::default())
+        .authenticate(super::check_key)
         .operation_layer(tower::filter::AsyncFilterLayer::new(move |req: api::Request| {
             if let Ok(mut seen) = record.lock() {
                 *seen = Some(trace_id(&tracing::Span::current()));
@@ -84,11 +86,13 @@ fn a_request_continues_the_callers_trace() {
 fn with_fallback(lines: Arc<Mutex<Vec<String>>>) -> axum::Router {
     let server = || {
         let lines = Arc::clone(&lines);
-        api::Server::new(Catalog::default()).on_event(move |event: &api::RequestEvent| {
-            if let Ok(mut lines) = lines.lock() {
-                lines.push(event.to_json());
-            }
-        })
+        api::Server::new(Catalog::default()).authenticate(super::check_key).on_event(
+            move |event: &api::RequestEvent| {
+                if let Ok(mut lines) = lines.lock() {
+                    lines.push(event.to_json());
+                }
+            },
+        )
     };
     server().into_axum().fallback_service(server().into_service())
 }

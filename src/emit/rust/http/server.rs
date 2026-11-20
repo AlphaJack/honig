@@ -188,6 +188,7 @@ fn webhooks(api: &Api, allow_unimplemented: bool, filled: bool) -> Option<TokenS
     (!hooks.is_empty()).then(|| {
     let methods = hooks.iter().map(|op| api_method(op, allow_unimplemented));
     let error_response = error_response_method(&quote!(WebhookOperation), filled);
+    let security = declared_security(hooks.iter().copied());
     let found = hooks.iter().map(|op| {
         let (key, method, v) = (lit(&hook_name(op)), lit(&op.method), operation_variant(op));
         quote!((#key, #method) => Ok(WebhookOperation::#v),)
@@ -223,6 +224,7 @@ fn webhooks(api: &Api, allow_unimplemented: bool, filled: bool) -> Option<TokenS
         impl<A: Webhooks> runtime::Operations for WebhookRoutes<A> {
             type Principal = A::Principal;
             type Operation = WebhookOperation;
+            type Security = #security;
 
             fn error_response(&self) -> fn(runtime::Rejection<WebhookOperation>) -> runtime::Response {
                 |rejection| A::error_response(rejection)

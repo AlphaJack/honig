@@ -10,7 +10,7 @@ use super::{Catalog, lamp};
 
 // ANCHOR: hyper
 async fn serve_with_hyper(listener: tokio::net::TcpListener) -> std::io::Result<()> {
-    let service = api::Server::new(Catalog::default()).into_service();
+    let service = api::Server::new(Catalog::default()).authenticate(super::check_key).into_service();
     loop {
         let (stream, _) = listener.accept().await?;
         let service = hyper_util::service::TowerToHyperService::new(service.clone());
@@ -80,6 +80,7 @@ fn retrying(base_url: &str) -> api::Client<api::ReqwestMiddlewareTransport> {
 async fn the_client_retries_until_the_server_answers() {
     let failures = Arc::new(std::sync::atomic::AtomicU32::new(1));
     let router = api::Server::new(Catalog::default())
+        .authenticate(super::check_key)
         .operation_layer(tower::filter::AsyncFilterLayer::new(move |req: api::Request| {
             let fail = failures.fetch_sub(1, std::sync::atomic::Ordering::Relaxed) > 0;
             std::future::ready(if fail {
@@ -101,6 +102,7 @@ async fn the_client_sends_a_failed_post_once() {
     let calls = Arc::new(std::sync::atomic::AtomicU32::new(0));
     let seen = Arc::clone(&calls);
     let router = api::Server::new(Catalog::default())
+        .authenticate(super::check_key)
         .operation_layer(tower::filter::AsyncFilterLayer::new(move |_: api::Request| {
             seen.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
             std::future::ready(Err::<api::Request, _>(api::ApiError::new(
@@ -123,7 +125,7 @@ async fn the_client_sends_a_failed_post_once() {
 // ANCHOR: loopback
 /// A client wired straight to the server with no socket. A test of your server needs this.
 fn in_memory_client() -> api::Client<impl api::Transport> {
-    let service = api::Server::new(Catalog::default()).into_service();
+    let service = api::Server::new(Catalog::default()).authenticate(super::check_key).into_service();
     api::Client::new(service).with_api_key("secret")
 }
 // ANCHOR_END: loopback
@@ -150,7 +152,7 @@ fn with_request_id(transport: impl api::Transport) -> impl api::Transport {
 
 #[tokio::test]
 async fn a_transport_of_your_own_wraps_another() {
-    let service = api::Server::new(Catalog::default()).into_service();
+    let service = api::Server::new(Catalog::default()).authenticate(super::check_key).into_service();
     let seen = crate::support::loopback(move |req: api::Request| {
         assert!(req.headers().get("x-request-id").is_some_and(|v| v == "req-1"));
         service.handle(req)
