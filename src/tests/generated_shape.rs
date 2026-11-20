@@ -539,13 +539,13 @@ fn a_named_schema_keeps_its_name_beside_a_twin() {
 
 #[test]
 fn a_body_of_your_own_type_is_left_to_it() {
-    // A body whose `dependencies` no Rust type judges: the generated code checks it as JSON, unless the schema is a
-    // type of yours. Empty, it asserts nothing.
+    // A body whose `dependentRequired` no struct judges (`b` has a default, which hides that it is absent): the
+    // generated code checks it as JSON, unless the schema is a type of yours.
     let generate = |test: &str, rust_type: Option<&str>| {
         let mut note = json!({
             "type": "object",
-            "properties": {"a": {"type": "string"}, "b": {"type": "string"}},
-            "dependencies": {},
+            "properties": {"a": {"type": "string"}, "b": {"type": "string", "default": "x"}},
+            "dependentRequired": {"a": ["b"]},
         });
         if let Some(path) = rust_type {
             note["x-rust-type"] = json!(path);
@@ -661,12 +661,12 @@ fn a_schema_that_many_whole_checks_reach_is_generated_once() {
     );
     let mut paths = serde_json::Map::new();
     for i in 0..20 {
-        // `dependencies` has no Rust type: each of these is checked whole at run time, and reaches `Big`. Empty, it
-        // asserts nothing.
+        // A `dependentRequired` of a name with a default has no Rust type: each of these is checked whole at run time,
+        // and reaches `Big`.
         schemas.insert(
             format!("S{i}"),
-            json!({"type": "object", "properties": {"big": {"$ref": "#/components/schemas/Big"}},
-                "dependencies": {}}),
+            json!({"type": "object", "properties": {"big": {"$ref": "#/components/schemas/Big"}, "n": {"type": "string",
+                "default": "x"}}, "dependentRequired": {"big": ["n"]}}),
         );
         paths.insert(
             format!("/s{i}"),
@@ -1276,4 +1276,17 @@ fn keywords_beside_a_ref_are_checked() {
         common::file(&common::generate("ref-siblings", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
     assert!(types.contains("check_len") && types.contains("matches `not`"), "{types}");
     assert!(types.contains("pub b: String") && !types.contains("check_schema"), "{types}");
+}
+
+/// Draft 7 `dependencies` is split as 2019-09 did: a list of names is `dependentRequired`, a schema `dependentSchemas`.
+/// Both are checked by generated code, and no schema is checked whole.
+#[test]
+fn draft_7_dependencies_are_split() {
+    let card = json!({"type": "object", "properties": {"card": {"type": "string"}, "cvc": {"type": "string"}},
+        "dependencies": {"card": ["cvc"], "cvc": {"required": ["card"]}}});
+    let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Card": card}}));
+    let types =
+        common::file(&common::generate("dependencies", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
+    assert!(types.contains("is required when") && types.contains("is present: "), "{types}");
+    assert!(!types.contains("check_schema"), "{types}");
 }

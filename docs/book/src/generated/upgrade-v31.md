@@ -5,6 +5,7 @@ OpenAPI 3.1 to 3.2.
 | 3.1 | Becomes |
 | --- | --- |
 | array-form `items` (JSON Schema 2019-09 and older) | `prefixItems` |
+| `dependencies` (JSON Schema draft 7 and older) | `dependentRequired` and `dependentSchemas` |
 | an object where an array is required | an array of its values |
 | `xml.attribute` and `xml.wrapped` | `xml.nodeType`. With both, `attribute` wins |
 | `x-tagGroups` | `tags[].parent`, only when the mapping is unambiguous |
