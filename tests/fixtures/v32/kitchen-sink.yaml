@@ -209,7 +209,7 @@ components:
         nickname: {type: [string, 'null'], default: null}
         secret: {type: string, writeOnly: true, deprecated: true}
         tags: {type: array, items: {type: string}, uniqueItems: true, minItems: 0, maxItems: 10, contains: {const: vip}, minContains: 0, maxContains: 1}
-        point: {type: array, prefixItems: [{type: number}, {type: number}], items: false, unevaluatedItems: false}
+        point: {type: array, prefixItems: [{type: number}, {type: number}], unevaluatedItems: false}
         attrs: {type: object, patternProperties: {'^x_': {type: string}}, propertyNames: {pattern: '^[a-z_]+$'}, minProperties: 0, maxProperties: 20, unevaluatedProperties: false}
         weight: {type: number, multipleOf: 0.01, exclusiveMinimum: 0}
         # Inside `$id` a `#` reference resolves against that `$id` (JSON Schema): the document's own base reaches Owner.

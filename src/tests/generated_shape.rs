@@ -539,13 +539,13 @@ fn a_named_schema_keeps_its_name_beside_a_twin() {
 
 #[test]
 fn a_body_of_your_own_type_is_left_to_it() {
-    // A body whose `dependentRequired` no struct judges (`b` has a default, which hides that it is absent): the
-    // generated code checks it as JSON, unless the schema is a type of yours.
+    // A body whose `dependentRequired` no struct judges (`c` is not declared): the generated code checks it as JSON,
+    // unless the schema is a type of yours.
     let generate = |test: &str, rust_type: Option<&str>| {
         let mut note = json!({
             "type": "object",
-            "properties": {"a": {"type": "string"}, "b": {"type": "string", "default": "x"}},
-            "dependentRequired": {"a": ["b"]},
+            "properties": {"a": {"type": "string"}, "b": {"type": "string"}},
+            "dependentRequired": {"a": ["c"]},
         });
         if let Some(path) = rust_type {
             note["x-rust-type"] = json!(path);
@@ -661,12 +661,12 @@ fn a_schema_that_many_whole_checks_reach_is_generated_once() {
     );
     let mut paths = serde_json::Map::new();
     for i in 0..20 {
-        // A `dependentRequired` of a name with a default has no Rust type: each of these is checked whole at run time,
-        // and reaches `Big`.
+        // A `dependentRequired` of an undeclared name has no Rust type: each of these is checked whole at run time, and
+        // reaches `Big`.
         schemas.insert(
             format!("S{i}"),
-            json!({"type": "object", "properties": {"big": {"$ref": "#/components/schemas/Big"}, "n": {"type": "string",
-                "default": "x"}}, "dependentRequired": {"big": ["n"]}}),
+            json!({"type": "object", "properties": {"big": {"$ref": "#/components/schemas/Big"}},
+                "dependentRequired": {"big": ["n"]}}),
         );
         paths.insert(
             format!("/s{i}"),
@@ -761,7 +761,8 @@ fn dependent_required_checks_the_fields() {
     assert!(undeclared.contains("check_schema"), "{undeclared}");
     let defaulted = types(json!({"type": "object", "properties": {"card": {"type": "string"},
         "cvc": {"type": "string", "default": "000"}}, "dependentRequired": {"card": ["cvc"]}}));
-    assert!(defaulted.contains("check_schema"), "{defaulted}");
+    // A name with a default fills in no default here: its absence shows.
+    assert!(defaulted.contains("is required when") && !defaulted.contains("check_schema"), "{defaulted}");
 }
 
 /// `propertyNames` of `pattern`, `minLength` and `maxLength` is a check of each name: no schema is checked whole. Any
@@ -1288,6 +1289,19 @@ fn draft_7_dependencies_are_split() {
     let types =
         common::file(&common::generate("dependencies", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
     assert!(types.contains("is required when") && types.contains("is present: "), "{types}");
+}
+
+/// A property that `dependentRequired` reads keeps its absence: its `default` is not filled in, so the check sees
+/// whether it was sent. No schema is checked whole.
+#[test]
+fn a_dependent_name_with_a_default_keeps_its_absence() {
+    let card = json!({"type": "object", "properties": {"card": {"type": "string"},
+        "cvc": {"type": "string", "default": "000"}}, "dependentRequired": {"card": ["cvc"]}});
+    let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Card": card}}));
+    let types =
+        common::file(&common::generate("dependent-default", &doc, &crate::emit::Options::default()), "types.rs")
+            .to_owned();
+    assert!(types.contains("pub cvc: Option<String>") && types.contains("is required when"), "{types}");
     assert!(!types.contains("check_schema"), "{types}");
 }
 
