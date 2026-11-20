@@ -853,7 +853,6 @@ impl ContactOtherwise {
 /// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
 /// its field. `build` returns the first field that did not convert.
 pub mod builders {
-    use super as types;
     use super::runtime;
     impl super::EmailRequest {
         /// Starts a builder from the required properties.

@@ -49,7 +49,7 @@ pub(super) fn emit(
                 structure(&mut items, space, id, s);
                 if s.fields.iter().any(|f| holds_checked(space, &f.ty)) {
                     builders.push(builder(space, &name, &name, s));
-                    builders_name_types |= names_types(s);
+                    builders_name_types |= names_types(space, s);
                 }
                 if xml {
                     items.push(xml_shape(space, def, s));
@@ -1247,9 +1247,10 @@ fn holds_checked(space: &Space<'_>, t: &Ty) -> bool {
     }
 }
 
-/// Does a field of `s` refer to a generated type? Then its builder refers to it through `types::`.
-fn names_types(s: &Struct) -> bool {
-    s.fields.iter().any(|f| super::syntax::mentions(&f.ty).0)
+/// Does a field of `s` that its builder takes refer to a generated type? Then the builder refers to it through
+/// `types::`. A required `const` it fills itself.
+fn names_types(space: &Space<'_>, s: &Struct) -> bool {
+    s.fields.iter().filter(|f| !is_unit(space, f)).any(|f| super::syntax::mentions(&f.ty).0)
 }
 
 /// Returns the builder of a checked type whose base is a struct, and whether it refers to a generated type. A struct whose
@@ -1258,7 +1259,7 @@ fn checked_builder(space: &Space<'_>, name: &proc_macro2::Ident, c: &Checked) ->
     let Ty::Named(shape) = &c.base else { return None };
     let Kind::Struct(s) = &space.types.get(*shape).kind else { return None };
     let fields = pascal_ident(&space.types.get(*shape).name);
-    let names_types = names_types(s);
+    let names_types = names_types(space, s);
     Some((builder(space, name, &fields, s), names_types))
 }
 
