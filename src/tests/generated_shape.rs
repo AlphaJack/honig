@@ -959,15 +959,15 @@ fn an_all_of_that_loses_keywords_checks_each_member() {
     assert!(types.contains(".decode_ref::<") && !types.contains("check_schema"), "{types}");
 }
 
-/// An `enum` or `const` of values that no Rust type holds (numbers with strings, objects) compares the value as JSON:
-/// no schema is checked whole.
+/// An `enum` or `const` of values that no scalar type holds (numbers with strings, objects) is a type of unit structs
+/// that each decode one value: nothing is compared as JSON after decoding.
 #[test]
-fn values_that_no_type_holds_are_compared_as_json() {
+fn values_that_no_scalar_type_holds_are_unit_types() {
     let mixed = json!({"type": "object", "properties": {"size": {"enum": [1, "large", {"w": 2}]}, "unit": {"const": {"si": true}}}});
     let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Sized": mixed}}));
     let types = common::file(&common::generate("untyped-values", &doc, &crate::emit::Options::default()), "types.rs")
         .to_owned();
-    assert!(types.contains("runtime::content_equal") && !types.contains("check_schema"), "{types}");
+    assert!(types.contains("runtime::expect_const") && !types.contains("runtime::content_equal"), "{types}");
 }
 
 /// `unevaluatedProperties` refuses the names that the schema, what it applies in place and the branches that the value
