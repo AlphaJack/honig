@@ -67,6 +67,15 @@ macro_rules! serialize_impl_4 {
     ($t:ty) => {
         impl serde::Serialize for $t {
             fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                Self::serialize(self, runtime::UniqueKeys(s))
+            }
+        }
+    };
+}
+macro_rules! serialize_impl_5 {
+    ($t:ty) => {
+        impl serde::Serialize for $t {
+            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
                 s.serialize_str(Self::VALUE)
             }
         }
@@ -151,7 +160,7 @@ macro_rules! try_from_impl_3 {
         }
     };
 }
-macro_rules! serialize_impl_5 {
+macro_rules! serialize_impl_6 {
     ($t:ty) => {
         impl serde::Serialize for $t {
             fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
@@ -177,15 +186,6 @@ macro_rules! deserialize_impl_3 {
                     | runtime::Kind::String
                     | runtime::Kind::Array => Ok(Self::Other(v.into_value())),
                 }
-            }
-        }
-    };
-}
-macro_rules! serialize_impl_6 {
-    ($t:ty) => {
-        impl serde::Serialize for $t {
-            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-                Self::serialize(self, runtime::UniqueKeys(s))
             }
         }
     };
@@ -2113,52 +2113,81 @@ impl runtime::XmlShape for User {
     }
 }
 /// label
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
-#[serde(transparent)]
-pub struct TaggedLabel(pub(super) TaggedLabelFields);
-impl<'de> serde::Deserialize<'de> for TaggedLabel {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <TaggedLabelFields as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
-    }
+#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct TaggedLabel {
+    pub label: TaggedLabelLabel,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub size: Option<i64>,
+    #[serde(flatten)]
+    pub additional_properties: std::collections::BTreeMap<String, serde_json::Value>,
 }
-impl TryFrom<TaggedLabelFields> for TaggedLabel {
-    type Error = runtime::BuildError;
-    fn try_from(value: TaggedLabelFields) -> Result<Self, runtime::BuildError> {
-        let mut violations: Vec<runtime::Violation> = Vec::new();
-        {
-            let out = &mut violations;
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&value).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"properties\":{\"label\":{\"const\":\"a\"}},\"required\":[\"label\"]}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Root,
-                    &value,
-                    schema,
-                    None,
-                );
-            }
+deserialize_impl_2!(TaggedLabel);
+serialize_impl_4!(TaggedLabel);
+impl TaggedLabel {
+    #[must_use]
+    pub const fn new(label: TaggedLabelLabel) -> Self {
+        Self {
+            label,
+            size: None,
+            additional_properties: std::collections::BTreeMap::new(),
         }
-        runtime::first(violations)
-            .map(|()| Self(value))
-            .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(TaggedLabel, TaggedLabelFields);
+impl runtime::XmlShape for TaggedLabel {
+    fn xml() -> &'static runtime::XmlNode {
+        static NODE: runtime::XmlNode = runtime::XmlNode {
+            name: "TaggedLabel",
+            namespace: "",
+            prefix: "",
+            fields: &[
+                runtime::XmlField {
+                    wire: "label",
+                    name: "label",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: true,
+                    item: "label",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "size",
+                    name: "size",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "size",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+            ],
+        };
+        &NODE
+    }
+}
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 pub struct TaggedLabelLabel;
 impl TaggedLabelLabel {
     pub const VALUE: &'static str = "a";
 }
-serialize_impl_4!(TaggedLabelLabel);
+serialize_impl_5!(TaggedLabelLabel);
 impl<'de> serde::Deserialize<'de> for TaggedLabelLabel {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         runtime::expect_const(d, &serde_json::Value::String("a".to_owned()))
@@ -2166,52 +2195,81 @@ impl<'de> serde::Deserialize<'de> for TaggedLabelLabel {
     }
 }
 /// colour
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
-#[serde(transparent)]
-pub struct TaggedColour(pub(super) TaggedColourFields);
-impl<'de> serde::Deserialize<'de> for TaggedColour {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <TaggedColourFields as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
-    }
+#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+#[serde(remote = "Self")]
+pub struct TaggedColour {
+    pub colour: TaggedColourColour,
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        deserialize_with = "runtime::not_null"
+    )]
+    pub size: Option<i64>,
+    #[serde(flatten)]
+    pub additional_properties: std::collections::BTreeMap<String, serde_json::Value>,
 }
-impl TryFrom<TaggedColourFields> for TaggedColour {
-    type Error = runtime::BuildError;
-    fn try_from(value: TaggedColourFields) -> Result<Self, runtime::BuildError> {
-        let mut violations: Vec<runtime::Violation> = Vec::new();
-        {
-            let out = &mut violations;
-            {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&value).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"properties\":{\"colour\":{\"const\":\"red\"}},\"required\":[\"colour\"]}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Root,
-                    &value,
-                    schema,
-                    None,
-                );
-            }
+deserialize_impl_2!(TaggedColour);
+serialize_impl_4!(TaggedColour);
+impl TaggedColour {
+    #[must_use]
+    pub const fn new(colour: TaggedColourColour) -> Self {
+        Self {
+            colour,
+            size: None,
+            additional_properties: std::collections::BTreeMap::new(),
         }
-        runtime::first(violations)
-            .map(|()| Self(value))
-            .map_err(runtime::BuildError::value)
     }
 }
-checked_impls!(TaggedColour, TaggedColourFields);
+impl runtime::XmlShape for TaggedColour {
+    fn xml() -> &'static runtime::XmlNode {
+        static NODE: runtime::XmlNode = runtime::XmlNode {
+            name: "TaggedColour",
+            namespace: "",
+            prefix: "",
+            fields: &[
+                runtime::XmlField {
+                    wire: "colour",
+                    name: "colour",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: true,
+                    item: "colour",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+                runtime::XmlField {
+                    wire: "size",
+                    name: "size",
+                    prefix: "",
+                    attribute: false,
+                    text: false,
+                    list: false,
+                    wrapped: false,
+                    required: false,
+                    item: "size",
+                    child: None,
+                    cdata: false,
+                    inline: false,
+                    nullable: false,
+                    object: false,
+                },
+            ],
+        };
+        &NODE
+    }
+}
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 pub struct TaggedColourColour;
 impl TaggedColourColour {
     pub const VALUE: &'static str = "red";
 }
-serialize_impl_4!(TaggedColourColour);
+serialize_impl_5!(TaggedColourColour);
 impl<'de> serde::Deserialize<'de> for TaggedColourColour {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         runtime::expect_const(d, &serde_json::Value::String("red".to_owned()))
@@ -2223,7 +2281,7 @@ pub struct SlugEmpty;
 impl SlugEmpty {
     pub const VALUE: &'static str = "";
 }
-serialize_impl_4!(SlugEmpty);
+serialize_impl_5!(SlugEmpty);
 impl<'de> serde::Deserialize<'de> for SlugEmpty {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         runtime::expect_const(d, &serde_json::Value::String(String::new()))
@@ -2538,7 +2596,7 @@ pub struct RefusalObject;
 impl RefusalObject {
     pub const VALUE: &'static str = "error";
 }
-serialize_impl_4!(RefusalObject);
+serialize_impl_5!(RefusalObject);
 impl<'de> serde::Deserialize<'de> for RefusalObject {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         runtime::expect_const(d, &serde_json::Value::String("error".to_owned()))
@@ -2651,7 +2709,7 @@ pub struct ShipmentInternationalKind;
 impl ShipmentInternationalKind {
     pub const VALUE: &'static str = "international";
 }
-serialize_impl_4!(ShipmentInternationalKind);
+serialize_impl_5!(ShipmentInternationalKind);
 impl<'de> serde::Deserialize<'de> for ShipmentInternationalKind {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         runtime::expect_const(d, &serde_json::Value::String("international".to_owned()))
@@ -2663,7 +2721,7 @@ pub enum ShipmentInternationalMeta {
     Object(MetaObject),
     Other(serde_json::Value),
 }
-serialize_impl_5!(ShipmentInternationalMeta);
+serialize_impl_6!(ShipmentInternationalMeta);
 deserialize_impl_3!(ShipmentInternationalMeta);
 #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
 #[serde(remote = "Self")]
@@ -3201,7 +3259,7 @@ pub struct Not {
     pub additional_properties: std::collections::BTreeMap<String, serde_json::Value>,
 }
 deserialize_impl_2!(Not);
-serialize_impl_6!(Not);
+serialize_impl_4!(Not);
 impl Not {
     #[must_use]
     pub const fn new() -> Self {
@@ -3255,22 +3313,15 @@ impl TryFrom<Not2Variants> for Not2 {
         {
             let out = &mut violations;
             {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&value).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"properties\":{\"label\":{\"const\":\"a\"}},\"required\":[\"label\"]}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Root,
-                    &value,
-                    schema,
-                    None,
-                );
+                let json = runtime::to_value(&value).unwrap_or_default();
+                if let serde_json::Value::Object(n) = &json {
+                    runtime::check_required(
+                        out,
+                        &runtime::InstancePath::Root,
+                        |name| n.contains_key(name),
+                        &["label"],
+                    );
+                }
             }
         }
         runtime::first(violations)
@@ -3287,7 +3338,7 @@ pub struct Not2Object {
     pub additional_properties: std::collections::BTreeMap<String, serde_json::Value>,
 }
 deserialize_impl_2!(Not2Object);
-serialize_impl_6!(Not2Object);
+serialize_impl_4!(Not2Object);
 impl Not2Object {
     #[must_use]
     pub const fn new(label: Not2ObjectLabel) -> Self {
@@ -3342,22 +3393,15 @@ impl TryFrom<Not3Variants> for Not3 {
         {
             let out = &mut violations;
             {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&value).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"properties\":{\"colour\":{\"const\":\"red\"}},\"required\":[\"colour\"]}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Root,
-                    &value,
-                    schema,
-                    None,
-                );
+                let json = runtime::to_value(&value).unwrap_or_default();
+                if let serde_json::Value::Object(n) = &json {
+                    runtime::check_required(
+                        out,
+                        &runtime::InstancePath::Root,
+                        |name| n.contains_key(name),
+                        &["colour"],
+                    );
+                }
             }
         }
         runtime::first(violations)
@@ -3374,7 +3418,7 @@ pub struct Not3Object {
     pub additional_properties: std::collections::BTreeMap<String, serde_json::Value>,
 }
 deserialize_impl_2!(Not3Object);
-serialize_impl_6!(Not3Object);
+serialize_impl_4!(Not3Object);
 impl Not3Object {
     #[must_use]
     pub const fn new(colour: Not3ObjectColour) -> Self {
@@ -3418,7 +3462,7 @@ pub struct Not4;
 impl Not4 {
     pub const VALUE: &'static str = "owner";
 }
-serialize_impl_4!(Not4);
+serialize_impl_5!(Not4);
 impl<'de> serde::Deserialize<'de> for Not4 {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         runtime::expect_const(d, &serde_json::Value::String("owner".to_owned()))
@@ -3441,22 +3485,15 @@ impl TryFrom<Not5Variants> for Not5 {
         {
             let out = &mut violations;
             {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&value).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"properties\":{\"fragile\":{\"const\":true}},\"required\":[\"fragile\"]}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Root,
-                    &value,
-                    schema,
-                    None,
-                );
+                let json = runtime::to_value(&value).unwrap_or_default();
+                if let serde_json::Value::Object(n) = &json {
+                    runtime::check_required(
+                        out,
+                        &runtime::InstancePath::Root,
+                        |name| n.contains_key(name),
+                        &["fragile"],
+                    );
+                }
             }
         }
         runtime::first(violations)
@@ -3473,7 +3510,7 @@ pub struct Not5Object {
     pub additional_properties: std::collections::BTreeMap<String, serde_json::Value>,
 }
 deserialize_impl_2!(Not5Object);
-serialize_impl_6!(Not5Object);
+serialize_impl_4!(Not5Object);
 impl Not5Object {
     #[must_use]
     pub const fn new(fragile: Not5ObjectFragile) -> Self {
@@ -3539,22 +3576,15 @@ impl TryFrom<Not7Variants> for Not7 {
         {
             let out = &mut violations;
             {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&value).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"required\":[\"customs\",\"insurer\"],\"properties\":{\"customs\":{\"const\":\"none\"}}}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Root,
-                    &value,
-                    schema,
-                    None,
-                );
+                let json = runtime::to_value(&value).unwrap_or_default();
+                if let serde_json::Value::Object(n) = &json {
+                    runtime::check_required(
+                        out,
+                        &runtime::InstancePath::Root,
+                        |name| n.contains_key(name),
+                        &["customs", "insurer"],
+                    );
+                }
             }
         }
         runtime::first(violations)
@@ -3571,7 +3601,7 @@ pub struct Not7Object {
     pub additional_properties: std::collections::BTreeMap<String, serde_json::Value>,
 }
 deserialize_impl_2!(Not7Object);
-serialize_impl_6!(Not7Object);
+serialize_impl_4!(Not7Object);
 impl Not7Object {
     #[must_use]
     pub const fn new(customs: ObjectCustoms) -> Self {
@@ -3614,7 +3644,7 @@ pub struct ObjectCustoms;
 impl ObjectCustoms {
     pub const VALUE: &'static str = "none";
 }
-serialize_impl_4!(ObjectCustoms);
+serialize_impl_5!(ObjectCustoms);
 impl<'de> serde::Deserialize<'de> for ObjectCustoms {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         runtime::expect_const(d, &serde_json::Value::String("none".to_owned()))
@@ -3637,22 +3667,15 @@ impl TryFrom<Not8Variants> for Not8 {
         {
             let out = &mut violations;
             {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&value).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"required\":[\"customs\",\"insurer\"],\"properties\":{\"customs\":{\"const\":\"none\"}}}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Root,
-                    &value,
-                    schema,
-                    None,
-                );
+                let json = runtime::to_value(&value).unwrap_or_default();
+                if let serde_json::Value::Object(n) = &json {
+                    runtime::check_required(
+                        out,
+                        &runtime::InstancePath::Root,
+                        |name| n.contains_key(name),
+                        &["customs", "insurer"],
+                    );
+                }
             }
         }
         runtime::first(violations)
@@ -3679,22 +3702,15 @@ impl TryFrom<Not9Variants> for Not9 {
         {
             let out = &mut violations;
             {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&value).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"required\":[\"customs\",\"insurer\"],\"properties\":{\"customs\":{\"const\":\"none\"}}}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Root,
-                    &value,
-                    schema,
-                    None,
-                );
+                let json = runtime::to_value(&value).unwrap_or_default();
+                if let serde_json::Value::Object(n) = &json {
+                    runtime::check_required(
+                        out,
+                        &runtime::InstancePath::Root,
+                        |name| n.contains_key(name),
+                        &["customs", "insurer"],
+                    );
+                }
             }
         }
         runtime::first(violations)
@@ -3721,22 +3737,15 @@ impl TryFrom<Not10Variants> for Not10 {
         {
             let out = &mut violations;
             {
-                static SCHEMA: std::sync::OnceLock<serde_json::Value> = std::sync::OnceLock::new();
-                let value = runtime::to_value(&value).unwrap_or_default();
-                let schema = SCHEMA
-                    .get_or_init(|| {
-                        serde_json::from_str(
-                                "{\"properties\":{\"amount\":{\"maximum\":100}},\"required\":[\"amount\"]}",
-                            )
-                            .unwrap_or_default()
-                    });
-                runtime::check_schema_in(
-                    out,
-                    &runtime::InstancePath::Root,
-                    &value,
-                    schema,
-                    None,
-                );
+                let json = runtime::to_value(&value).unwrap_or_default();
+                if let serde_json::Value::Object(n) = &json {
+                    runtime::check_required(
+                        out,
+                        &runtime::InstancePath::Root,
+                        |name| n.contains_key(name),
+                        &["amount"],
+                    );
+                }
             }
         }
         runtime::first(violations)
@@ -3753,7 +3762,7 @@ pub struct Not10Object {
     pub additional_properties: std::collections::BTreeMap<String, serde_json::Value>,
 }
 deserialize_impl_2!(Not10Object);
-serialize_impl_6!(Not10Object);
+serialize_impl_4!(Not10Object);
 impl Not10Object {
     #[must_use]
     pub const fn new(amount: Not10ObjectAmount) -> Self {
@@ -3923,8 +3932,38 @@ impl serde::Serialize for TaggedVariants {
 impl<'de> serde::Deserialize<'de> for TaggedVariants {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         let v = <runtime::Content<'de> as serde::Deserialize>::deserialize(d)?;
-        let fit_0 = v.kind() == runtime::Kind::Object;
-        let fit_1 = v.kind() == runtime::Kind::Object;
+        let fit_0 = v.kind() == runtime::Kind::Object
+            && runtime::fits(
+                &v,
+                &[
+                    ("label", true, &[runtime::Kind::String]),
+                    (
+                        "size",
+                        false,
+                        &[
+                            runtime::Kind::Integer,
+                            runtime::Kind::Number,
+                            runtime::Kind::Null,
+                        ],
+                    ),
+                ],
+            );
+        let fit_1 = v.kind() == runtime::Kind::Object
+            && runtime::fits(
+                &v,
+                &[
+                    ("colour", true, &[runtime::Kind::String]),
+                    (
+                        "size",
+                        false,
+                        &[
+                            runtime::Kind::Integer,
+                            runtime::Kind::Number,
+                            runtime::Kind::Null,
+                        ],
+                    ),
+                ],
+            );
         let mut first: Option<String> = None;
         if fit_0 {
             match v.decode_ref::<TaggedLabel>() {
@@ -4202,7 +4241,7 @@ pub struct ProfileFields {
     pub additional_properties: std::collections::BTreeMap<String, serde_json::Value>,
 }
 deserialize_impl_2!(ProfileFields);
-serialize_impl_6!(ProfileFields);
+serialize_impl_4!(ProfileFields);
 impl ProfileFields {
     #[must_use]
     pub const fn new() -> Self {
@@ -4246,146 +4285,6 @@ impl runtime::XmlShape for ProfileFields {
                     wrapped: false,
                     required: false,
                     item: "Nick-Name",
-                    child: None,
-                    cdata: false,
-                    inline: false,
-                    nullable: false,
-                    object: false,
-                },
-            ],
-        };
-        &NODE
-    }
-}
-/// label
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct TaggedLabelFields {
-    pub label: TaggedLabelLabel,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub size: Option<i64>,
-    #[serde(flatten)]
-    pub additional_properties: std::collections::BTreeMap<String, serde_json::Value>,
-}
-deserialize_impl_2!(TaggedLabelFields);
-serialize_impl_6!(TaggedLabelFields);
-impl TaggedLabelFields {
-    #[must_use]
-    pub const fn new(label: TaggedLabelLabel) -> Self {
-        Self {
-            label,
-            size: None,
-            additional_properties: std::collections::BTreeMap::new(),
-        }
-    }
-}
-impl runtime::XmlShape for TaggedLabelFields {
-    fn xml() -> &'static runtime::XmlNode {
-        static NODE: runtime::XmlNode = runtime::XmlNode {
-            name: "TaggedLabelFields",
-            namespace: "",
-            prefix: "",
-            fields: &[
-                runtime::XmlField {
-                    wire: "label",
-                    name: "label",
-                    prefix: "",
-                    attribute: false,
-                    text: false,
-                    list: false,
-                    wrapped: false,
-                    required: true,
-                    item: "label",
-                    child: None,
-                    cdata: false,
-                    inline: false,
-                    nullable: false,
-                    object: false,
-                },
-                runtime::XmlField {
-                    wire: "size",
-                    name: "size",
-                    prefix: "",
-                    attribute: false,
-                    text: false,
-                    list: false,
-                    wrapped: false,
-                    required: false,
-                    item: "size",
-                    child: None,
-                    cdata: false,
-                    inline: false,
-                    nullable: false,
-                    object: false,
-                },
-            ],
-        };
-        &NODE
-    }
-}
-/// colour
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct TaggedColourFields {
-    pub colour: TaggedColourColour,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub size: Option<i64>,
-    #[serde(flatten)]
-    pub additional_properties: std::collections::BTreeMap<String, serde_json::Value>,
-}
-deserialize_impl_2!(TaggedColourFields);
-serialize_impl_6!(TaggedColourFields);
-impl TaggedColourFields {
-    #[must_use]
-    pub const fn new(colour: TaggedColourColour) -> Self {
-        Self {
-            colour,
-            size: None,
-            additional_properties: std::collections::BTreeMap::new(),
-        }
-    }
-}
-impl runtime::XmlShape for TaggedColourFields {
-    fn xml() -> &'static runtime::XmlNode {
-        static NODE: runtime::XmlNode = runtime::XmlNode {
-            name: "TaggedColourFields",
-            namespace: "",
-            prefix: "",
-            fields: &[
-                runtime::XmlField {
-                    wire: "colour",
-                    name: "colour",
-                    prefix: "",
-                    attribute: false,
-                    text: false,
-                    list: false,
-                    wrapped: false,
-                    required: true,
-                    item: "colour",
-                    child: None,
-                    cdata: false,
-                    inline: false,
-                    nullable: false,
-                    object: false,
-                },
-                runtime::XmlField {
-                    wire: "size",
-                    name: "size",
-                    prefix: "",
-                    attribute: false,
-                    text: false,
-                    list: false,
-                    wrapped: false,
-                    required: false,
-                    item: "size",
                     child: None,
                     cdata: false,
                     inline: false,
@@ -5016,28 +4915,28 @@ pub enum Not2Variants {
     Object(Not2Object),
     Other(serde_json::Value),
 }
-serialize_impl_5!(Not2Variants);
+serialize_impl_6!(Not2Variants);
 deserialize_impl_3!(Not2Variants);
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Not3Variants {
     Object(Not3Object),
     Other(serde_json::Value),
 }
-serialize_impl_5!(Not3Variants);
+serialize_impl_6!(Not3Variants);
 deserialize_impl_3!(Not3Variants);
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Not5Variants {
     Object(Not5Object),
     Other(serde_json::Value),
 }
-serialize_impl_5!(Not5Variants);
+serialize_impl_6!(Not5Variants);
 deserialize_impl_3!(Not5Variants);
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Not7Variants {
     Object(Not7Object),
     Other(serde_json::Value),
 }
-serialize_impl_5!(Not7Variants);
+serialize_impl_6!(Not7Variants);
 deserialize_impl_3!(Not7Variants);
 pub type Not8Variants = Not7Variants;
 pub type Not9Variants = Not7Variants;
@@ -5046,7 +4945,7 @@ pub enum Not10Variants {
     Object(Not10Object),
     Other(serde_json::Value),
 }
-serialize_impl_5!(Not10Variants);
+serialize_impl_6!(Not10Variants);
 deserialize_impl_3!(Not10Variants);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
@@ -6067,52 +5966,6 @@ pub mod builders {
         /// Returns the value.
         pub fn build(self) -> Result<super::User, runtime::BuildError> {
             self.0.build()
-        }
-    }
-    impl super::TaggedLabel {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            label: impl TryInto<types::TaggedLabelLabel, Error: std::fmt::Display>,
-        ) -> TaggedLabel {
-            TaggedLabel(
-                runtime::Builder::start(|| Ok(
-                    super::TaggedLabelFields::new(runtime::field("label", label)?),
-                )),
-            )
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct TaggedLabel(runtime::Builder<super::TaggedLabelFields>);
-    impl TaggedLabel {
-        pub fn size(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
-            Self(self.0.set("size", value, |s, v| s.size = Some(v)))
-        }
-        /// Returns the value once its whole schema holds.
-        pub fn build(self) -> Result<super::TaggedLabel, runtime::BuildError> {
-            self.0.build().and_then(super::TaggedLabel::try_from)
-        }
-    }
-    impl super::TaggedColour {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            colour: impl TryInto<types::TaggedColourColour, Error: std::fmt::Display>,
-        ) -> TaggedColour {
-            TaggedColour(
-                runtime::Builder::start(|| Ok(
-                    super::TaggedColourFields::new(runtime::field("colour", colour)?),
-                )),
-            )
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct TaggedColour(runtime::Builder<super::TaggedColourFields>);
-    impl TaggedColour {
-        pub fn size(self, value: impl TryInto<i64, Error: std::fmt::Display>) -> Self {
-            Self(self.0.set("size", value, |s, v| s.size = Some(v)))
-        }
-        /// Returns the value once its whole schema holds.
-        pub fn build(self) -> Result<super::TaggedColour, runtime::BuildError> {
-            self.0.build().and_then(super::TaggedColour::try_from)
         }
     }
     impl super::ShipmentInternational {

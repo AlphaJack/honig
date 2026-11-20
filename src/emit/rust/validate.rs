@@ -535,8 +535,9 @@ pub(super) fn checks(
                 let dependents = dependent_checks(space, s, c, value, path);
                 quote!(#names #dependents)
             }
-            // The union of an implied shape (`Object` and `Other`): the names of an object value.
-            Kind::Union(_) if c.property_names.is_some() => union_name_checks(c, value, path),
+            // The union of an implied shape (`Object` or `Array`, and `Other`): keywords of one kind beside the shape and
+            // the names of an object, on the value by its kind.
+            Kind::Union(u) if u.rest || c.property_names.is_some() => implied_checks(c, value, path),
             // Any other named type holds its own keywords: only a valid value decodes or is built.
             Kind::Struct(_)
             | Kind::StrEnum(_)
@@ -557,12 +558,21 @@ fn name_check(names: &Constraints, path: &TokenStream) -> TokenStream {
     string_checks(names, &quote!(name), &quote!(&runtime::InstancePath::Key(#path, name)))
 }
 
-/// Returns `propertyNames` of `c` on a value of the union of an implied shape (`Object` and `Other`): the names of an
-/// object value.
-fn union_name_checks(c: &Constraints, value: &TokenStream, path: &TokenStream) -> TokenStream {
-    let names = c.property_names.as_deref().map(|n| name_checks(n, &quote!(object.keys()), path));
+/// Returns the keywords of one kind beside an implied shape (`required` beside `properties`, `minimum` beside
+/// `items`) and `propertyNames`, checked on the JSON value of the union by its kind.
+fn implied_checks(c: &Constraints, value: &TokenStream, path: &TokenStream) -> TokenStream {
+    let by_kind = any_checks(c, &quote!(&json), path);
+    let names = c.property_names.as_deref().map(|n| {
+        let names = name_checks(n, &quote!(object.keys()), path);
+        quote!(if let serde_json::Value::Object(object) = &json { #names })
+    });
+    if by_kind.is_empty() && names.is_none() {
+        return TokenStream::new();
+    }
     quote! {
-        if let serde_json::Value::Object(object) = runtime::to_value(#value).unwrap_or_default() {
+        {
+            let json = runtime::to_value(#value).unwrap_or_default();
+            #by_kind
             #names
         }
     }

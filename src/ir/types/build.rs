@@ -504,13 +504,16 @@ const ASSERTIONS: [&str; 20] = [
 fn typeless_assertions(s: &Value) -> bool {
     // `false` refuses every value: [`Constraints::never`].
     let Value::Object(o) = s else { return false };
-    // The union of an implied shape holds its own keywords: an `Array` or `Object` variant and `Other`.
+    // The union of an implied shape holds its own keywords (an `Array` or `Object` variant and `Other`), and checks
+    // those of one kind beside them by kind.
     let shape = inferred_kind(o).is_some();
+    let held = |k: &str| {
+        matches!(k, "items" | "prefixItems" | "additionalProperties")
+            || (KIND_SCOPED.contains(&k) && !matches!(k, "enum" | "const"))
+    };
     !o.contains_key("type")
         && json::object(o, "properties").is_none_or(serde_json::Map::is_empty)
-        && ASSERTIONS
-            .iter()
-            .any(|k| o.contains_key(*k) && !(shape && matches!(*k, "items" | "prefixItems" | "additionalProperties")))
+        && ASSERTIONS.iter().any(|k| o.contains_key(*k) && !(shape && held(k)))
 }
 
 /// Keywords that apply to one kind of value only and pass any other (JSON Schema 2020-12 section 7.2.1): checked on a
@@ -570,9 +573,11 @@ fn mixed(s: &Value) -> bool {
             )
         };
         (inferred_kind(o).is_some()
-            && ASSERTIONS
-                .iter()
-                .any(|k| !matches!(*k, "items" | "prefixItems" | "additionalProperties") && o.contains_key(*k)))
+            && ASSERTIONS.iter().any(|k| {
+                // A keyword of one kind is checked on the value of the union by its kind (`implied_checks`).
+                let by_kind = KIND_SCOPED.contains(k) && !matches!(*k, "enum" | "const");
+                !matches!(*k, "items" | "prefixItems" | "additionalProperties") && !by_kind && o.contains_key(*k)
+            }))
             // An extension (`x-...`) asserts nothing either.
             || (o.contains_key("$ref") && o.keys().any(|k| !quiet(k) && !k.starts_with("x-")))
     })
@@ -1276,7 +1281,8 @@ impl<'a> Builder<'a> {
         let typed_tuple = !dynamic && checked_items(s);
         let mixed = mixed(s);
         let scoped = typeless_assertions(s) && kind_scoped(s);
-        if scoped {
+        // Without `type`, a value of any kind or of the union of an implied shape: `required` and `format` by kind.
+        if scoped || s.as_object().is_some_and(|o| inferred_kind(o).is_some()) {
             scoped_keywords(s, &mut c);
         }
         if (typeless_assertions(s) && !scoped)

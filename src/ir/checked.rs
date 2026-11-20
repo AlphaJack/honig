@@ -122,6 +122,9 @@ fn split_own_checks(types: &mut TypeSpace, taken: &mut BTreeSet<String>) -> BTre
             names_schema: own.names_schema,
             ..Constraints::default()
         };
+        // The union of an implied shape also checks the keywords of one kind beside the shape.
+        let implied = matches!(&def.kind, Kind::Union(u) if u.rest);
+        let constraints = if implied { Constraints { items: None, ..own.clone() } } else { constraints };
         if def.rust_type.is_some() || constraints.is_empty() {
             continue;
         }
@@ -312,6 +315,19 @@ fn held_by_type(types: &TypeSpace, t: &Ty, schema: &serde_json::Value, hops: usi
     }
 }
 
+/// Does `c` hold a keyword of one kind that a `serde_json::Value` checks by its kind (`minimum`, `maxLength`,
+/// `required`, ...)?
+fn checked_by_kind(c: &Constraints) -> bool {
+    [&c.minimum, &c.maximum, &c.exclusive_minimum, &c.exclusive_maximum, &c.multiple_of].iter().any(|b| b.is_some())
+        || [c.min_length, c.max_length, c.min_items, c.max_items, c.min_properties, c.max_properties]
+            .iter()
+            .any(Option::is_some)
+        || c.pattern.is_some()
+        || c.unique_items
+        || !c.required.is_empty()
+        || c.format.is_some()
+}
+
 /// Aliases followed before a value is taken to need no checks: a chain may loop.
 const MAX_ALIAS_HOPS: usize = 32;
 
@@ -371,6 +387,8 @@ pub(crate) fn needs_checks(types: &TypeSpace, t: &Ty, c: &Constraints, hops: usi
         }
         Ty::Named(id) => match &types.get(*id).kind {
             Kind::Alias(x) if hops < MAX_ALIAS_HOPS => needs_checks(types, x, c, hops + 1),
+            // The union of an implied shape (`Object` or `Array`, and `Other`): keywords of one kind beside the shape.
+            Kind::Union(u) if u.rest => checked_by_kind(c),
             Kind::Alias(_)
             | Kind::Struct(_)
             | Kind::StrEnum(_)
@@ -381,18 +399,7 @@ pub(crate) fn needs_checks(types: &TypeSpace, t: &Ty, c: &Constraints, hops: usi
             | Kind::Checked(_)
             | Kind::Pending => false,
         },
-        Ty::Any => {
-            [&c.minimum, &c.maximum, &c.exclusive_minimum, &c.exclusive_maximum, &c.multiple_of]
-                .iter()
-                .any(|b| b.is_some())
-                || [c.min_length, c.max_length, c.min_items, c.max_items, c.min_properties, c.max_properties]
-                    .iter()
-                    .any(Option::is_some)
-                || c.pattern.is_some()
-                || c.unique_items
-                || !c.required.is_empty()
-                || c.format.is_some()
-        }
+        Ty::Any => checked_by_kind(c),
         Ty::Bool | Ty::Bytes | Ty::Binary | Ty::Unit | Ty::Tuple(_) => false,
     }
 }
