@@ -463,6 +463,53 @@ pub fn json_equal(a: &Value, b: &Value) -> bool {
     x == y
 }
 
+/// Returns [`json_equal`] of a buffered value and a JSON value.
+#[must_use]
+pub fn content_equal(a: &crate::tagged::Content<'_>, b: &Value) -> bool {
+    let (mut x, mut y) = (String::new(), String::new());
+    canonical_content(a, &mut x);
+    canonical(b, &mut y);
+    x == y
+}
+
+/// Writes `v` as [`canonical`] does.
+fn canonical_content(v: &crate::tagged::Content<'_>, out: &mut String) {
+    use crate::tagged::Content;
+    match v {
+        Content::Seq(items) => {
+            out.push('[');
+            for (i, x) in items.iter().enumerate() {
+                if i > 0 {
+                    out.push(',');
+                }
+                canonical_content(x, out);
+            }
+            out.push(']');
+        }
+        Content::Map(m) => {
+            let mut members: Vec<_> = m.iter().collect();
+            members.sort_unstable_by(|(a, _), (b, _)| a.cmp(b));
+            out.push('{');
+            for (i, (k, x)) in members.into_iter().enumerate() {
+                if i > 0 {
+                    out.push(',');
+                }
+                out.push_str(&Value::String(k.to_string()).to_string());
+                out.push(':');
+                canonical_content(x, out);
+            }
+            out.push('}');
+        }
+        Content::U64(u) => out.push_str(itoa::Buffer::new().format(*u)),
+        Content::I64(i) => out.push_str(itoa::Buffer::new().format(*i)),
+        Content::F64(f) => out.push_str(&canonical_float(*f)),
+        Content::Null => out.push_str("null"),
+        Content::Bool(b) => out.push_str(if *b { "true" } else { "false" }),
+        Content::Str(s) => out.push_str(&Value::String(s.to_string()).to_string()),
+        Content::Raw(text) => canonical(&serde_json::from_str(text).unwrap_or(Value::Null), out),
+    }
+}
+
 /// Checks `uniqueItems`.
 pub fn check_unique<T: Serialize>(out: &mut Vec<Violation>, path: &InstancePath<'_>, items: &[T]) {
     if has_duplicates(items) {

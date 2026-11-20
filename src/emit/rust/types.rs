@@ -1376,15 +1376,37 @@ fn checked_type(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, def
         Base::Int | Base::Float => quote!(checked_num_impls!(#n, #base);),
         Base::Other => quote!(checked_impls!(#n, #base);),
     };
+    let build = checked_try_from(&n, &base, subschemas.as_ref(), &checks);
     items.push(quote! {
         #doc
         #[derive(Debug, Clone, PartialEq, #derive serde::Serialize)]
         #[serde(transparent)]
         pub struct #n(pub(super) #base);
         #consts
+        #build
+        #shared
+    });
+}
+
+/// Returns `TryFrom<base>` of the checked type `n`: it runs `subschemas` and `checks` on the value. Checks that look
+/// into the value as JSON read one buffer of it, written out once.
+fn checked_try_from(
+    n: &proc_macro2::Ident,
+    base: &TokenStream,
+    subschemas: Option<&TokenStream>,
+    checks: &TokenStream,
+) -> TokenStream {
+    let json = reads_json(subschemas, checks).then(|| {
+        quote! {
+            let json = runtime::to_value(&value).unwrap_or_default();
+            let json = &runtime::Content::of(&json);
+        }
+    });
+    quote! {
         impl TryFrom<#base> for #n {
             type Error = runtime::BuildError;
             fn try_from(value: #base) -> Result<Self, runtime::BuildError> {
+                #json
                 let mut violations: Vec<runtime::Violation> = Vec::new();
                 {
                     let out = &mut violations;
@@ -1394,8 +1416,25 @@ fn checked_type(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, def
                 runtime::first(violations).map(|()| Self(value)).map_err(runtime::BuildError::value)
             }
         }
-        #shared
-    });
+    }
+}
+
+/// Do `checks` read `json`, the checked value as a buffer that the checked type binds? A block that binds its own
+/// (`let json = ...`, a value further in) does not.
+fn reads_json(subschemas: Option<&TokenStream>, checks: &TokenStream) -> bool {
+    fn reads(ts: &TokenStream) -> bool {
+        ts.clone().into_iter().any(|t| match t {
+            proc_macro2::TokenTree::Ident(i) => i == "json",
+            proc_macro2::TokenTree::Group(g) => {
+                let mut inner = g.stream().into_iter();
+                let binds = matches!((inner.next(), inner.next()),
+                    (Some(proc_macro2::TokenTree::Ident(l)), Some(proc_macro2::TokenTree::Ident(j))) if l == "let" && j == "json");
+                !binds && reads(&g.stream())
+            }
+            proc_macro2::TokenTree::Punct(_) | proc_macro2::TokenTree::Literal(_) => false,
+        })
+    }
+    subschemas.is_some_and(reads) || reads(checks)
 }
 
 /// Returns a `const`. It is a unit struct that serializes to the value and decodes only it.

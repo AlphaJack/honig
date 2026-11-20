@@ -894,15 +894,16 @@ impl TryFrom<ServerSentEventStreamsBodyItemVariants> for ServerSentEventStreamsB
     fn try_from(
         value: ServerSentEventStreamsBodyItemVariants,
     ) -> Result<Self, runtime::BuildError> {
+        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = &runtime::Content::of(&json);
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
             {
-                let json = runtime::to_value(&value).unwrap_or_default();
                 let hits = [
-                    serde_json::from_value::<Not4>(json.clone()).is_ok(),
-                    serde_json::from_value::<Not5>(json.clone()).is_ok(),
-                    serde_json::from_value::<Not6>(json.clone()).is_ok(),
+                    json.decode_ref::<Not4>().is_ok(),
+                    json.decode_ref::<Not5>().is_ok(),
+                    json.decode_ref::<Not6>().is_ok(),
                 ]
                     .into_iter()
                     .filter(|hit| *hit)
@@ -914,7 +915,7 @@ impl TryFrom<ServerSentEventStreamsBodyItemVariants> for ServerSentEventStreamsB
                         format!("matches {hits} of `oneOf`, not exactly one"),
                     );
                 }
-                if let Err(e) = serde_json::from_value::<NotChecked>(json.clone()) {
+                if let Err(e) = json.decode_ref::<NotChecked>() {
                     runtime::violation(out, &runtime::InstancePath::Root, e.to_string());
                 }
             }
@@ -1399,15 +1400,16 @@ impl<'de> serde::Deserialize<'de> for FormDataCodeChecked {
 impl TryFrom<FormDataCode> for FormDataCodeChecked {
     type Error = runtime::BuildError;
     fn try_from(value: FormDataCode) -> Result<Self, runtime::BuildError> {
+        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = &runtime::Content::of(&json);
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
             {
-                let json = runtime::to_value(&value).unwrap_or_default();
-                if let Err(e) = serde_json::from_value::<Not2>(json.clone()) {
+                if let Err(e) = json.decode_ref::<Not2>() {
                     runtime::violation(out, &runtime::InstancePath::Root, e.to_string());
                 }
-                if let Err(e) = serde_json::from_value::<Not3>(json.clone()) {
+                if let Err(e) = json.decode_ref::<Not3>() {
                     runtime::violation(out, &runtime::InstancePath::Root, e.to_string());
                 }
             }

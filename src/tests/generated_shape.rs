@@ -783,7 +783,7 @@ fn not_is_a_check_against_the_type_of_its_schema() {
     let code = json!({"type": "object", "properties": {"code": {"type": "string", "not": {"type": "string", "pattern": "^x"}}}});
     let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Coded": code}}));
     let types = common::file(&common::generate("not", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
-    assert!(types.contains("serde_json::from_value") && !types.contains("check_schema"), "{types}");
+    assert!(types.contains(".decode_ref::<") && !types.contains("check_schema"), "{types}");
 }
 
 /// `dependentSchemas` over properties that the struct declares is a check that the value decodes as the type of the
@@ -943,7 +943,7 @@ fn keywords_beside_a_union_hold_for_each_branch() {
     let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"A": a, "B": b, "Item": item}}));
     let types =
         common::file(&common::generate("beside-union", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
-    assert!(types.contains("serde_json::from_value") && !types.contains("check_schema"), "{types}");
+    assert!(types.contains(".decode_ref::<") && !types.contains("check_schema"), "{types}");
 }
 
 /// An `allOf` whose members one merged type cannot hold (two `maxLength`) is that type, and the value also decodes as
@@ -956,7 +956,7 @@ fn an_all_of_that_loses_keywords_checks_each_member() {
     let types =
         common::file(&common::generate("lossy-all-of-typed", &doc, &crate::emit::Options::default()), "types.rs")
             .to_owned();
-    assert!(types.contains("serde_json::from_value") && !types.contains("check_schema"), "{types}");
+    assert!(types.contains(".decode_ref::<") && !types.contains("check_schema"), "{types}");
 }
 
 /// An `enum` or `const` of values that no Rust type holds (numbers with strings, objects) compares the value as JSON:
@@ -967,7 +967,7 @@ fn values_that_no_type_holds_are_compared_as_json() {
     let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Sized": mixed}}));
     let types = common::file(&common::generate("untyped-values", &doc, &crate::emit::Options::default()), "types.rs")
         .to_owned();
-    assert!(types.contains("runtime::json_equal") && !types.contains("check_schema"), "{types}");
+    assert!(types.contains("runtime::content_equal") && !types.contains("check_schema"), "{types}");
 }
 
 /// `unevaluatedProperties` refuses the names that the schema, what it applies in place and the branches that the value
@@ -999,7 +999,7 @@ fn unevaluated_properties_beside_a_union_sees_its_branches() {
         common::file(&common::generate("unevaluated-beside-union", &doc, &crate::emit::Options::default()), "types.rs")
             .to_owned();
     assert_eq!(types.matches("is not allowed (unevaluatedProperties)").count(), 1, "{types}");
-    assert!(types.contains("matches!(name.as_str(), \"foo\")"), "{types}");
+    assert!(types.contains("matches!(name, \"foo\")"), "{types}");
 }
 
 /// `unevaluatedItems` refuses the items that `contains` and the branches that the value matches leave: no schema is
@@ -1028,7 +1028,7 @@ fn a_nested_branch_counts_only_inside_its_own() {
         common::file(&common::generate("nested-branch", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
     let flat: String = types.split_whitespace().collect();
     assert!(flat.contains("is not allowed (unevaluatedItems)".replace(' ', "").as_str()), "{types}");
-    assert!(flat.contains("&&(serde_json::from_value"), "{types}");
+    assert!(flat.contains("&&(item.decode_ref"), "{types}");
 }
 
 /// A `$dynamicRef` to an anchor that one resource declares always lands on it, as its type does: no schema is checked
@@ -1355,8 +1355,23 @@ fn unevaluated_properties_see_dependent_schemas() {
     let types =
         common::file(&common::generate("dependent-unevaluated", &doc, &crate::emit::Options::default()), "types.rs")
             .to_owned();
-    assert!(
-        types.contains("is present: ") && types.contains("(matched_0 && (matches!(name.as_str(), \"bar\")))"),
-        "{types}"
+    assert!(types.contains("is present: ") && types.contains("(matched_0 && (matches!(name, \"bar\")))"), "{types}");
+}
+
+/// Checks that decode the value as a schema's type (`not`, `oneOf`, `if`) read one buffer of it, with strings borrowed:
+/// none clones the value.
+#[test]
+fn subschema_checks_read_one_buffer() {
+    let item = json!({"type": "object", "properties": {"a": {"type": "string"}}, "not": {"required": ["b"]},
+        "if": {"required": ["a"]}, "then": {"properties": {"a": {"minLength": 2}}}});
+    let doc = common::spec(
+        "3.2.0",
+        &json!({}),
+        &json!({"schemas": {"Item": item, "Holder": {"type": "object", "properties": {
+            "item": {"$ref": "#/components/schemas/Item"}}}}}),
     );
+    let types =
+        common::file(&common::generate("one-buffer", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
+    assert_eq!(types.matches("runtime::to_value(").count(), 1, "{types}");
+    assert!(types.contains("runtime::Content::of(") && !types.contains(".clone())"), "{types}");
 }

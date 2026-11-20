@@ -634,5 +634,5 @@ fn an_all_of_that_one_struct_cannot_hold_checks_each_member() {
     let typed = generated("all-of-typed", json!({"type": "object", "properties": {"sku": {"type": "string"}}}));
     assert!(!typed.contains("check_schema"), "{typed}");
     let lossy = generated("all-of-lossy", json!({"type": "object", "properties": {"name": {"maxLength": 5}}}));
-    assert!(lossy.contains("serde_json::from_value") && !lossy.contains("check_schema"), "{lossy}");
+    assert!(lossy.contains(".decode_ref::<") && !lossy.contains("check_schema"), "{lossy}");
 }

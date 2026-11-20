@@ -404,14 +404,15 @@ impl<'de> serde::Deserialize<'de> for Item {
 impl TryFrom<ItemVariants> for Item {
     type Error = runtime::BuildError;
     fn try_from(value: ItemVariants) -> Result<Self, runtime::BuildError> {
+        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = &runtime::Content::of(&json);
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
             {
-                let json = runtime::to_value(&value).unwrap_or_default();
                 let hits = [
-                    serde_json::from_value::<Product>(json.clone()).is_ok(),
-                    serde_json::from_value::<Variant>(json.clone()).is_ok(),
+                    json.decode_ref::<Product>().is_ok(),
+                    json.decode_ref::<Variant>().is_ok(),
                 ]
                     .into_iter()
                     .filter(|hit| *hit)
@@ -4292,14 +4293,15 @@ impl<'de> serde::Deserialize<'de> for ItemRequest {
 impl TryFrom<ItemRequestVariants> for ItemRequest {
     type Error = runtime::BuildError;
     fn try_from(value: ItemRequestVariants) -> Result<Self, runtime::BuildError> {
+        let json = runtime::to_value(&value).unwrap_or_default();
+        let json = &runtime::Content::of(&json);
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
             {
-                let json = runtime::to_value(&value).unwrap_or_default();
                 let hits = [
-                    serde_json::from_value::<Product>(json.clone()).is_ok(),
-                    serde_json::from_value::<Variant>(json.clone()).is_ok(),
+                    json.decode_ref::<Product>().is_ok(),
+                    json.decode_ref::<Variant>().is_ok(),
                 ]
                     .into_iter()
                     .filter(|hit| *hit)
@@ -5548,9 +5550,8 @@ impl TryFrom<Vec<serde_json::Value>> for PaginatedResourceData {
                 for (i, v) in value.iter().enumerate() {
                     {
                         let json = runtime::to_value(v).unwrap_or_default();
-                        if serde_json::from_value::<serde_json::Value>(json.clone())
-                            .is_ok()
-                        {
+                        let json = &runtime::Content::of(&json);
+                        if json.decode_ref::<serde_json::Value>().is_ok() {
                             runtime::violation(
                                 out,
                                 &runtime::InstancePath::Index(base, i),
