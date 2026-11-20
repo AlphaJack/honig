@@ -37,16 +37,8 @@ impl api::Api for Catalog {
     /// A request that the server refuses itself (no route, bad input, a handler `Err`) in the shop's `Error`: the
     /// status goes in `code`, the detail in `message`.
     fn error_response(rejection: api::Rejection) -> api::Response {
-        use api::Message as _;
-        if let Some(own) = rejection.reason.own() {
-            return own;
-        }
-        let status = rejection.status();
-        let message = rejection.reason.detail().unwrap_or_else(|| status.to_string());
-        let body = types::Error::new(i32::from(status.as_u16()), message);
-        let mut response = rejection.reason.head();
-        response.set_body("application/json", serde_json::to_vec(&body).unwrap_or_default());
-        response
+        let code = i32::from(rejection.status().as_u16());
+        rejection.json(&types::Error::new(code, rejection.message()))
     }
     // ANCHOR_END: error_response
 
