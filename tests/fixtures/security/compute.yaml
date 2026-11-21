@@ -1,0 +1,20 @@
+openapi: 3.0.3
+info:
+  title: compute
+  version: "1"
+paths:
+  /op0:
+    get:
+      operationId: op0
+      responses:
+        "204":
+          description: done
+      security:
+        - bearer_auth: []
+components:
+  securitySchemes:
+    bearer_auth:
+      scheme: bearer
+      type: http
+security:
+  - bearer_auth: []

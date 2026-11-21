@@ -622,3 +622,31 @@ fn a_server_for_some_operations_holds_the_types_they_reach() {
         .expect("cargo runs");
     assert!(built.status.success(), "{}", String::from_utf8_lossy(&built.stderr));
 }
+
+/// The security sections of three public descriptions, with neutral names: an issue tracker (basic or `OAuth` 2.0 by
+/// scope, often also anonymous), an accounting service (`OAuth` 2.0 by scope) and a cloud host (one bearer scheme for
+/// every operation). Each generates a client and a server that compile without a warning.
+#[test]
+#[ignore = "compiles generated crates"]
+fn public_security_shapes_compile() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    for name in ["tracker", "accounting", "compute"] {
+        let out = root.join("target").join("gen-tests").join(format!("security-{name}"));
+        // A missing directory is fine: there is nothing to clean up.
+        std::fs::remove_dir_all(&out).ok();
+        std::fs::create_dir_all(&out).unwrap();
+        let spec = out.join("openapi.yaml");
+        std::fs::copy(root.join("tests").join("fixtures").join("security").join(format!("{name}.yaml")), &spec)
+            .unwrap();
+        super::common::new_crate(&spec, &out, &format!("security-{name}"), &crate::emit::Options::default());
+        super::common::use_local_runtime(&out.join("Cargo.toml"));
+        let built = Command::new(env!("CARGO"))
+            .args(["check", "--quiet"])
+            .current_dir(&out)
+            .env("CARGO_TARGET_DIR", root.join("target").join("gen-tests").join("target"))
+            .env("RUSTFLAGS", "-D warnings")
+            .output()
+            .expect("cargo runs");
+        assert!(built.status.success(), "{name}: {}", String::from_utf8_lossy(&built.stderr));
+    }
+}
