@@ -1742,3 +1742,34 @@ fn new_exists_only_where_no_two_required_values_can_swap() {
     assert!(!op_module(ops, "get_repo").contains("fn new("), "two string path parameters: {ops}");
     assert!(op_module(ops, "get_order").contains("fn new("), "one path parameter: {ops}");
 }
+
+/// `anyOf` has no order: a value that several branches take decodes as the same one whatever their order.
+#[test]
+fn a_reorder_of_any_of_branches_decodes_the_same() {
+    let tries = |flip: bool| {
+        let (a, b) = (json!({"$ref": "#/components/schemas/A"}), json!({"type": "string", "format": "uuid"}));
+        let (c, d) = (json!({"$ref": "#/components/schemas/B"}), json!({"type": "string"}));
+        let any = if flip { json!([d, c, b, a]) } else { json!([a, b, c, d]) };
+        let doc = common::spec(
+            "3.1.0",
+            &json!({}),
+            &json!({"schemas": {
+                "A": {"type": "object", "properties": {"a": {"type": "string"}}},
+                "B": {"type": "object", "properties": {"b": {"type": "string"}}},
+                "Any": {"anyOf": any},
+            }}),
+        );
+        let files =
+            common::generate(if flip { "any-of-b" } else { "any-of-a" }, &doc, &crate::emit::Options::default());
+        let types = common::file(&files, "types.rs");
+        let body = types.split("for Any {").nth(2).unwrap_or_else(|| panic!("{types}")).to_owned();
+        body.split("decode_ref::<")
+            .skip(1)
+            .filter_map(|t| t.split_once('>'))
+            .map(|(t, _)| t.to_owned())
+            .collect::<Vec<_>>()
+    };
+    let first = tries(false);
+    assert_eq!(first.len(), 4, "{first:?}");
+    assert_eq!(first, tries(true));
+}

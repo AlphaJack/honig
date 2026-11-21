@@ -3942,17 +3942,17 @@ impl<'de> serde::Deserialize<'de> for TaggedVariants {
                 ],
             );
         let mut first: Option<String> = None;
-        if fit_0 {
-            match v.decode_ref::<TaggedLabel>() {
-                Ok(x) => return Ok(Self::Label(x)),
+        if fit_1 {
+            match v.decode_ref::<TaggedColour>() {
+                Ok(x) => return Ok(Self::Colour(x)),
                 Err(e) => {
                     first.get_or_insert(e.to_string());
                 }
             }
         }
-        if fit_1 {
-            match v.decode_ref::<TaggedColour>() {
-                Ok(x) => return Ok(Self::Colour(x)),
+        if fit_0 {
+            match v.decode_ref::<TaggedLabel>() {
+                Ok(x) => return Ok(Self::Label(x)),
                 Err(e) => {
                     first.get_or_insert(e.to_string());
                 }

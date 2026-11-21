@@ -215,22 +215,22 @@ impl<'de> serde::Deserialize<'de> for EventCharge {
         let mut first: Option<String> = None;
         let mut matches = 0usize;
         let mut found: Option<Self> = None;
-        if fit_0 {
-            match v.decode_ref::<EventChargeRefund>() {
+        if fit_1 {
+            match v.decode_ref::<EventChargeFee>() {
                 Ok(x) => {
                     matches += 1;
-                    found.get_or_insert(Self::Refund(x));
+                    found.get_or_insert(Self::Fee(x));
                 }
                 Err(e) => {
                     first.get_or_insert(e.to_string());
                 }
             }
         }
-        if fit_1 {
-            match v.decode_ref::<EventChargeFee>() {
+        if fit_0 {
+            match v.decode_ref::<EventChargeRefund>() {
                 Ok(x) => {
                     matches += 1;
-                    found.get_or_insert(Self::Fee(x));
+                    found.get_or_insert(Self::Refund(x));
                 }
                 Err(e) => {
                     first.get_or_insert(e.to_string());

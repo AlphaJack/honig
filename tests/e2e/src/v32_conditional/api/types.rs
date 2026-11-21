@@ -288,22 +288,22 @@ impl<'de> serde::Deserialize<'de> for Delivery {
         let mut first: Option<String> = None;
         let mut matches = 0usize;
         let mut found: Option<Self> = None;
-        if fit_0 {
-            match v.decode_ref::<DeliveryPickup>() {
+        if fit_1 {
+            match v.decode_ref::<DeliveryAddress>() {
                 Ok(x) => {
                     matches += 1;
-                    found.get_or_insert(Self::Pickup(x));
+                    found.get_or_insert(Self::Address(x));
                 }
                 Err(e) => {
                     first.get_or_insert(e.to_string());
                 }
             }
         }
-        if fit_1 {
-            match v.decode_ref::<DeliveryAddress>() {
+        if fit_0 {
+            match v.decode_ref::<DeliveryPickup>() {
                 Ok(x) => {
                     matches += 1;
-                    found.get_or_insert(Self::Address(x));
+                    found.get_or_insert(Self::Pickup(x));
                 }
                 Err(e) => {
                     first.get_or_insert(e.to_string());
@@ -344,22 +344,22 @@ impl<'de> serde::Deserialize<'de> for DeliveryMethod {
         let mut first: Option<String> = None;
         let mut matches = 0usize;
         let mut found: Option<Self> = None;
-        if fit_0 {
-            match v.decode_ref::<DeliveryMethodPickup>() {
+        if fit_1 {
+            match v.decode_ref::<Address>() {
                 Ok(x) => {
                     matches += 1;
-                    found.get_or_insert(Self::Pickup(x));
+                    found.get_or_insert(Self::Address(x));
                 }
                 Err(e) => {
                     first.get_or_insert(e.to_string());
                 }
             }
         }
-        if fit_1 {
-            match v.decode_ref::<Address>() {
+        if fit_0 {
+            match v.decode_ref::<DeliveryMethodPickup>() {
                 Ok(x) => {
                     matches += 1;
-                    found.get_or_insert(Self::Address(x));
+                    found.get_or_insert(Self::Pickup(x));
                 }
                 Err(e) => {
                     first.get_or_insert(e.to_string());
