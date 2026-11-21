@@ -1,4 +1,4 @@
-//! The schema keywords that the `Builder` reads: which constraints a schema holds and of which kind.
+//! The schema keywords that the `Builder` understands: which constraints a schema has and of which kind.
 
 use std::collections::BTreeSet;
 
@@ -14,16 +14,16 @@ use crate::json::join;
 pub(super) const MAX_FIXED_LEN: usize = 32;
 /// `$ref` and alias chains followed before giving up: a chain may loop.
 pub(super) const MAX_ALIAS_HOPS: usize = 16;
-/// Subschemas read for constraints or inlined for run-time checks before the rest is left unchecked.
+/// Subschemas visited for constraints or inlined for run-time checks before the rest is left unchecked.
 pub(super) const MAX_SCHEMA_DEPTH: usize = 8;
 
 /// Nested schemas typed in one go: a deeper one becomes a named type filled later from no depth, so the stack stays
 /// bounded and nothing goes untyped.
 pub(super) const MAX_TYPE_DEPTH: usize = 48;
-/// The most `prefixItems` a tuple takes: std implements the traits up to 12.
+/// The most `prefixItems` a tuple accepts: std implements the traits up to 12.
 pub(super) const MAX_TUPLE: usize = 12;
 
-/// Keywords that a typed check holds only in some shapes: in any other, generation stops and says so.
+/// Keywords that a typed check enforces only in some shapes: in any other, generation stops and says so.
 pub(crate) const UNTYPED_KEYWORDS: [&str; 14] = [
     "contains",
     "minContains",
@@ -124,7 +124,7 @@ impl Constraints {
             items: None,
             property_names: None,
             dependent_required: vec![],
-            // A struct holds the names that it declares. A map has none: its names are checked.
+            // A struct stores the names that it declares. A map has none: its names are checked.
             required: if json::object(s, "properties").is_none_or(serde_json::Map::is_empty) {
                 required_names(s).map(str::to_owned).collect()
             } else {
@@ -213,16 +213,16 @@ pub(super) fn typed_conditional(s: &Value) -> bool {
 }
 
 /// Are the items of `s` checked one by one ([`Constraints::tuple`])? A tuple (`prefixItems`, maybe closed by
-/// `items: false`) is, and so is `items` without `type`: the union of the implied shape holds the list, the check each
+/// `items: false`) is, and so is `items` without `type`: the union of the implied shape stores the list, the check each
 /// item.
 pub(super) fn checked_items(s: &Value) -> bool {
     let typeless_items = s.get("type").is_none() && s.get("items").is_some_and(Value::is_object);
     s.get("prefixItems").is_some() || s.get("items") == Some(&Value::Bool(false)) || typeless_items
 }
 
-/// Returns why no generated check holds `s`: its keywords that no type holds, and the shapes that none does. Empty
-/// when every keyword is typed. `shapes` says whether a `$dynamicRef` varies and whether keywords beside an implied
-/// shape are of no one kind ([`mixed`]).
+/// Returns why no generated check enforces `s`: its keywords that no type enforces, and the shapes that none does.
+/// Empty when every keyword is typed. `shapes` says whether a `$dynamicRef` varies and whether keywords beside an
+/// implied shape are of no one kind ([`mixed`]).
 pub(super) fn untyped(
     s: &Value,
     scoped: bool,
@@ -241,18 +241,18 @@ pub(super) fn untyped(
         .collect()
 }
 
-/// Whether the schema `o` takes an object: its `type` lists `object`.
+/// Whether the schema `o` accepts an object: its `type` lists `object`.
 pub(super) fn is_object(o: &serde_json::Map<String, Value>) -> bool {
     type_set(o).0.iter().any(|t| t == "object")
 }
 
-/// Whether the schema `o` may take a value of kind `kind`: its `type` lists it, or it has no `type`. Without one, its
+/// Whether the schema `o` may accept a value of kind `kind`: its `type` lists it, or it has no `type`. Without one, its
 /// value is a `serde_json::Value`, whose checks apply a keyword to values of its kind only.
 pub(super) fn may_be(o: &serde_json::Map<String, Value>, kind: &str) -> bool {
     !o.contains_key("type") || type_set(o).0.iter().any(|t| t == kind)
 }
 
-/// Returns the pattern of `s` when it is a map that generated code holds whole: `type: object` with one
+/// Returns the pattern of `s` when it is a map that generated code represents whole: `type: object` with one
 /// `patternProperties` entry, no `properties` and `additionalProperties: false`. Its type is a map of the pattern's
 /// schema ([`super::Builder::scalar`]), so each value decodes as that schema, and every name must match the pattern.
 pub(super) fn typed_pattern_map(s: &Value) -> Option<String> {
@@ -262,7 +262,7 @@ pub(super) fn typed_pattern_map(s: &Value) -> Option<String> {
     (closed && !o.contains_key("properties")).then(|| patterns.keys().next().cloned()).flatten()
 }
 
-/// Returns `patternProperties` of `s` when its struct holds them ([`crate::ir::types::Struct::patterns`]): an object,
+/// Returns `patternProperties` of `s` when its struct stores them ([`crate::ir::types::Struct::patterns`]): an object,
 /// with properties of its own or none, and `additionalProperties` absent, a bool or a schema. Every pattern compiles,
 /// so the generator can tell which declared names it matches.
 pub(super) fn struct_patterns(s: &Value) -> Option<&serde_json::Map<String, Value>> {
@@ -276,8 +276,8 @@ pub(super) fn struct_patterns(s: &Value) -> Option<&serde_json::Map<String, Valu
     (typed_extra && patterns.keys().all(|p| regex(p).is_some())).then_some(patterns)
 }
 
-/// Returns `pattern` compiled as JSON Schema reads it: ECMA-262 with Unicode semantics, or without them for a pattern
-/// that only compiles so, as the run-time check does.
+/// Returns `pattern` compiled as JSON Schema interprets it: ECMA-262 with Unicode semantics, or without them for a
+/// pattern that only compiles so, as the run-time check does.
 pub(super) fn regex(pattern: &str) -> Option<regress::Regex> {
     regress::Regex::with_flags(pattern, "u").or_else(|_| regress::Regex::new(pattern)).ok()
 }
@@ -295,7 +295,7 @@ pub(super) fn typed_patterns(s: &Value) -> Option<&serde_json::Map<String, Value
 /// only, maybe with `type: string`, on a schema of `type: object`. A name is a string, so that type asserts nothing.
 /// `None` leaves any other schema to the run-time check of the whole schema.
 pub(super) fn typed_property_names(s: &Value) -> Option<Box<Constraints>> {
-    // Only an object has names to check: a schema without `type: object` may take any value, which no map holds.
+    // Only an object has names to check: a schema without `type: object` may accept any value, which no map stores.
     s.as_object().filter(|o| is_object(o))?;
     let names = s.get("propertyNames")?.as_object()?;
     json::text_only(names).then(|| Box::new(Constraints::own(&Value::Object(names.clone()))))
@@ -325,7 +325,7 @@ pub(super) fn typed_dependents(s: &Value) -> Option<(Dependents, bool)> {
     Some((out, undeclared))
 }
 
-/// Returns the names that `dependentRequired` or `dependentSchemas` of `o` reads: each that triggers one, and each
+/// Returns the names that `dependentRequired` or `dependentSchemas` of `o` uses: each that triggers one, and each
 /// that one requires. Their struct fields fill in no default, so that their absence shows.
 pub(super) fn dependent_names(o: &serde_json::Map<String, Value>) -> BTreeSet<&str> {
     let required = json::object(o, "dependentRequired").into_iter().flatten();
@@ -392,7 +392,7 @@ pub(super) fn int_format(format: &str) -> Option<Ty> {
 
 /// Returns a string, integer or number schema with keywords of its own for its type (`pattern`, `maxLength`,
 /// `minimum`, `multipleOf`, ...) and no other typing (`enum`, `const`, a typed `format`, composition). Its type
-/// holds only the values that they allow.
+/// accepts only the values that they allow.
 pub(crate) fn checked_scalar(o: &serde_json::Map<String, Value>) -> bool {
     let (types, _) = type_set(o);
     let mut non_null = types.iter().filter(|t| *t != "null");
@@ -466,9 +466,9 @@ pub(super) fn values_union(o: &serde_json::Map<String, Value>) -> Option<serde_j
     Some(u)
 }
 
-/// Does `o` list values that no Rust type holds: an empty `enum`, one of other than strings or integers, or a `const`
-/// of other than a string? A constant is a unit type that decodes its one value, and a union of them a list of values
-/// ([`values_union`]), so each holds its keyword.
+/// Does `o` list values that no Rust type represents: an empty `enum`, one of other than strings or integers, or a
+/// `const` of other than a string? A constant is a unit type that decodes its one value, and a union of them a list of
+/// values ([`values_union`]), so each enforces its keyword.
 pub(super) fn untyped_values(o: &serde_json::Map<String, Value>) -> bool {
     let untyped = |v: &Value| !v.is_string() && !v.is_null();
     typed_const(o).is_none()
@@ -551,7 +551,7 @@ pub(super) const ASSERTIONS: [&str; 20] = [
 pub(super) fn typeless_assertions(s: &Value) -> bool {
     // `false` refuses every value: [`Constraints::never`].
     let Value::Object(o) = s else { return false };
-    // The union of an implied shape holds its own keywords (an `Array` or `Object` variant and `Other`), and checks
+    // The union of an implied shape enforces its own keywords (an `Array` or `Object` variant and `Other`), and checks
     // those of one kind beside them by kind.
     let shape = inferred_kind(o).is_some();
     let held = |k: &str| {
@@ -596,9 +596,9 @@ pub(super) fn kind_scoped(s: &Value) -> bool {
     })
 }
 
-/// Keywords beside an implied shape hold for the `Other` variant too (`{enum: [...], properties: ...}`). Those of one
-/// kind are checked on the value of the union by its kind (`implied_checks`); any other is not held. A `$ref` with
-/// keywords beside it is the `allOf` of the two, which the merged type and its members hold.
+/// Keywords beside an implied shape apply to the `Other` variant too (`{enum: [...], properties: ...}`). Those of one
+/// kind are checked on the value of the union by its kind (`implied_checks`); any other is not enforced. A `$ref` with
+/// keywords beside it is the `allOf` of the two, which the merged type and its members enforce.
 pub(super) fn mixed(s: &Value) -> bool {
     s.as_object().is_some_and(|o| {
         inferred_kind(o).is_some()
@@ -614,7 +614,7 @@ pub(super) fn count_of(s: &Value, k: &str) -> Option<u64> {
     s.get(k).and_then(json::count)
 }
 
-/// Does schema `s` take every value: `true`, or an object of annotations only (`{}`, `{$comment: ...}`)?
+/// Does schema `s` accept every value: `true`, or an object of annotations only (`{}`, `{$comment: ...}`)?
 pub(super) fn asserts_nothing(s: &Value) -> bool {
     match s {
         Value::Bool(b) => *b,
@@ -626,8 +626,8 @@ pub(super) fn asserts_nothing(s: &Value) -> bool {
     }
 }
 
-/// Puts the keywords of a schema without `type` that a typed value's type would hold into `c`: `required` for an object
-/// and `format` for a string, each checked by its kind.
+/// Puts the keywords of a schema without `type` that a typed value's type would enforce into `c`: `required` for an
+/// object and `format` for a string, each checked by its kind.
 pub(super) fn scoped_keywords(s: &Value, c: &mut Constraints) {
     c.required = required_names(s).map(str::to_owned).collect();
     c.format = s.get("format").and_then(Value::as_str).map(str::to_owned);
@@ -638,7 +638,7 @@ pub(super) fn required_names(s: &Value) -> impl Iterator<Item = &str> {
     json::strs(s.get("required").and_then(Value::as_array).map_or(&[][..], Vec::as_slice))
 }
 
-/// Returns the keywords beside a `oneOf` or `anyOf` as a schema of their own: they hold for whichever branch matches,
+/// Returns the keywords beside a `oneOf` or `anyOf` as a schema of their own: they apply to whichever branch matches,
 /// so the value also decodes as its type. `None` without such keywords.
 pub(super) fn beside_union(s: &Value) -> Option<Value> {
     let o = s.as_object()?;
@@ -655,12 +655,13 @@ pub(super) fn beside_union(s: &Value) -> Option<Value> {
     (union && !beside.is_empty()).then_some(Value::Object(beside))
 }
 
-/// Returns the keyword of the union that `o` holds: `oneOf` or `anyOf` with a list of branches.
+/// Returns the keyword of the union that `o` contains: `oneOf` or `anyOf` with a list of branches.
 pub(super) fn union_keyword(o: &serde_json::Map<String, Value>) -> Option<&'static str> {
     ["oneOf", "anyOf"].into_iter().find(|k| o.get(*k).is_some_and(Value::is_array))
 }
 
-/// Puts the `enum` and `const` of `s` into `c` when no Rust type holds their values: the value is compared as JSON.
+/// Puts the `enum` and `const` of `s` into `c` when no Rust type represents their values: the value is compared as
+/// JSON.
 pub(super) fn untyped_value_checks(s: &Value, c: &mut Constraints) {
     if let Some(o) = s.as_object().filter(|o| untyped_values(o)) {
         c.enum_values = o.get("enum").and_then(Value::as_array).cloned();
@@ -726,7 +727,7 @@ impl Evaluation for EvaluatedItems {
 }
 
 /// Collects each reference under one of `keys` (`$ref`, `$dynamicRef`) of `s` and the subschemas that apply to its
-/// value into `out`. Data such as `enum` holds none. `$defs` applies only where a reference reaches it, and that
+/// value into `out`. Data such as `enum` contains none. `$defs` applies only where a reference reaches it, and that
 /// reference is collected.
 pub(super) fn references<'s>(s: &'s Value, keys: &[&str], out: &mut Vec<&'s str>) {
     match s {

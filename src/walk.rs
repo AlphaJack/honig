@@ -1,4 +1,4 @@
-//! Structure-aware traversal of an `OpenAPI` document held as a `Value`. It covers 3.x and the 2.0 sections that
+//! Structure-aware traversal of an `OpenAPI` document stored as a `Value`. It covers 3.x and the 2.0 sections that
 //! bundling sees.
 //!
 //! Upgrades need to visit "every schema" or "every parameter". Those live in a
@@ -189,7 +189,7 @@ fn response(r: &mut Value, ptr: &str, v: &mut dyn Visit) {
     if !obj.contains_key("$ref") {
         v.response(obj, ptr);
     }
-    // A 2.0 response holds its schema directly.
+    // A 2.0 response contains its schema directly.
     if let Some(s) = obj.get_mut("schema") {
         schema(s, &join(ptr, "schema"), v);
     }

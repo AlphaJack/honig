@@ -159,7 +159,7 @@ pub(super) fn struct_default(space: &Space<'_>, s: &Struct, seen: &mut Vec<TypeI
     s.fields.iter().filter(|f| is_arg(space, f)).all(|f| ty_default(space, &f.ty, seen))
 }
 
-/// Is `f` required with no spec default and more than one value? Then `new` takes it as an argument.
+/// Is `f` required with no spec default and more than one value? Then `new` accepts it as an argument.
 pub(super) fn is_arg(space: &Space<'_>, f: &Field) -> bool {
     f.required && field_default(space, f).is_none() && !is_unit(space, f)
 }

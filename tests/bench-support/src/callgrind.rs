@@ -17,7 +17,7 @@ use crate::{Path, Phased, Work};
 
 /// The largest `k` in `cost ~ n^k` that a path may show. n log n fits under it. n^1.5 and n^2 do not.
 const MAX_EXPONENT: f64 = 1.3;
-/// A step this steep stops a path before its larger sizes. It is quadratic give or take fixed costs.
+/// A step this steep stops a path before its larger sizes. It is quadratic apart from fixed costs.
 const STOP_EXPONENT: f64 = 1.8;
 /// The name that callgrind gives the function each phase runs in (`crate::path`).
 const PHASE_FN: &str = "bench_support::path::measured_phase";
@@ -114,7 +114,7 @@ fn check(bench: &str, targets: &[&Target], sizes: &[usize], program: &str) -> Ex
         Column::right("change_%", "+999.9"),
         Column::left("result", "stopped".len()),
     ]);
-    // Counted first: the header and the rows then print together, however long the runs take.
+    // Counted first: the header and the rows then print together, however long the runs last.
     let runs = counted(&targets, sizes, program);
     // The cost grows as n^k with the size n of the input. The limit is the same for every path.
     println!("k may be at most {MAX_EXPONENT}; stopped: a step was steeper than k = {STOP_EXPONENT}");
@@ -144,7 +144,7 @@ fn check(bench: &str, targets: &[&Target], sizes: &[usize], program: &str) -> Ex
     if steep.is_empty() && functions.is_empty() {
         return ExitCode::SUCCESS;
     }
-    // The verdict goes to stdout under the tables: a CI log reads stdout and stderr apart and can put a line of
+    // The verdict goes to stdout under the tables: a CI log collects stdout and stderr apart and can put a line of
     // stderr between two rows.
     let mut verdict = vec![];
     if !steep.is_empty() {
@@ -244,7 +244,7 @@ fn print_functions(targets: &[&Target], steep: &[(&str, functions::Steep)]) {
 /// What one run counted: one report, or one per phase. `None` for a run that a steep step skipped.
 type Counts = Option<Result<Vec<Report>, String>>;
 
-/// [`growth`] of every target. Each core takes the next run (a target at a size) as soon as it is free, the sizes of a
+/// [`growth`] of every target. Each core starts the next run (a target at a size) as soon as it is free, the sizes of a
 /// target side by side. The smallest sizes go first: a target's largest run starts last, and is skipped when a step
 /// that already finished is steeper than [`STOP_EXPONENT`].
 fn counted(targets: &[&Target], sizes: &[usize], program: &str) -> Vec<Vec<Counts>> {
@@ -301,10 +301,10 @@ fn growth(target: &Target, sizes: &[usize], runs: &[Counts]) -> Result<Vec<Growt
     Ok(growths)
 }
 
-/// The instructions that `target` takes at `size` as callgrind counts them in a run of this program: one count, or
+/// The instructions that `target` costs at `size` as callgrind counts them in a run of this program: one count, or
 /// one per phase in the order they ran. The error says which step failed.
-#[expect(clippy::disallowed_methods, reason = "runs the bench under valgrind and reads its report")]
-#[expect(clippy::needless_collect, reason = "the reports are read before they are removed")]
+#[expect(clippy::disallowed_methods, reason = "runs the bench under valgrind and parses its report")]
+#[expect(clippy::needless_collect, reason = "the reports are parsed before they are removed")]
 fn instructions(program: &str, target: &Target, size: usize) -> Result<Vec<Report>, String> {
     let out = std::env::temp_dir().join(format!("callgrind-{}-{size}-{}", target.name, std::process::id()));
     let mut valgrind = Command::new("valgrind");
@@ -313,7 +313,7 @@ fn instructions(program: &str, target: &Target, size: usize) -> Result<Vec<Repor
         valgrind.arg("--toggle-collect=*measured*");
     } else {
         // Each phase is a call of `measured_phase`: its count is written as it ends, to `<out>.1`, `<out>.2` and on.
-        // `--dump-after` takes the exact name that callgrind gives the function, and no pattern.
+        // `--dump-after` expects the exact name that callgrind gives the function, and no pattern.
         valgrind.args([format!("--toggle-collect={PHASE_FN}"), format!("--dump-after={PHASE_FN}")]);
     }
     let run = valgrind

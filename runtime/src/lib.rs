@@ -127,7 +127,7 @@ pub mod __private {
     pub use crate::base64::*;
     pub use crate::binary::*;
     pub use crate::builder::{Builder, field};
-    /// Library types of formats, read with their text checked.
+    /// Library types of formats, decoded with their text checked.
     pub mod formats {
         pub use crate::formats::*;
     }

@@ -34,8 +34,8 @@ impl From<serde_json::Error> for CoerceError {
     }
 }
 
-/// Each number that text is read as: the method of the deserializer, the method of the visitor, the type, the
-/// `format` of the schema and what a value must be. [`Coerce`] and the XML stream read text through it.
+/// Each number that text is parsed as: the method of the deserializer, the method of the visitor, the type, the
+/// `format` of the schema and what a value must be. [`Coerce`] and the XML stream parse text through it.
 macro_rules! numbers {
     ($each:ident) => {
         $each!(deserialize_i8, visit_i8, i8, "int8", |_| true);
@@ -78,7 +78,7 @@ pub(crate) fn not_a_boolean(text: &str) -> CoerceError {
     CoerceError(format!("`{text}` is not a boolean"))
 }
 
-/// Text read as a number of `$ty` by [`number`].
+/// Text parsed as a number of `$ty` by [`number`].
 macro_rules! coerce_num {
     ($method:ident, $visit:ident, $ty:ty, $format:literal, $ok:expr) => {
         fn $method<V: Visitor<'de>>(self, v: V) -> Result<V::Value, CoerceError> {
@@ -196,10 +196,11 @@ impl<'de> Deserializer<'de> for Coerce {
     }
 
     fn deserialize_newtype_struct<V: Visitor<'de>>(self, name: &'static str, v: V) -> Result<V::Value, CoerceError> {
-        // `Binary` reads the marked string itself (no text conversion).
+        // `Binary` decodes the marked string itself (no text conversion).
         match self.0 {
             Value::String(s) if name == BINARY => v.visit_string(s),
-            // A `format: decimal` number asks for its text. That is the digits as sent and not an `f64` read from them.
+            // A `format: decimal` number asks for its text. That is the digits as sent and not an `f64` parsed from
+            // them.
             Value::String(s) if name == RAW_VALUE => v.visit_string(s),
             other @ (Value::Null
             | Value::Bool(_)
@@ -241,7 +242,7 @@ impl<'de> Deserializer<'de> for Coerce {
     fn deserialize_map<V: Visitor<'de>>(self, v: V) -> Result<V::Value, CoerceError> {
         match self.0 {
             Value::Object(o) => v.visit_map(CoerceMap(o.into_iter(), None)),
-            // A multipart part declared XML arrives as raw bytes. When an object is wanted it is read as XML.
+            // A multipart part declared XML arrives as raw bytes. When an object is wanted it is parsed as XML.
             Value::String(s) => match raw_part(&s) {
                 #[cfg(feature = "xml")]
                 Some(raw) if raw.content_type.as_deref().is_some_and(crate::media::is_xml_media) => {
@@ -384,7 +385,7 @@ mod tests {
         assert_eq!(read::<bool>("yes").unwrap_err().to_string(), "`yes` is not a boolean");
     }
 
-    /// A multipart part declared XML is read as XML when an object is wanted. A part of another media type is not.
+    /// A multipart part declared XML is parsed as XML when an object is wanted. A part of another media type is not.
     #[cfg(all(feature = "multipart", feature = "xml"))]
     #[test]
     fn an_xml_part_is_read_as_an_object() {

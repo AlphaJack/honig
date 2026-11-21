@@ -92,14 +92,14 @@ fn form_data_parameters_arrive_as_a_multipart_body() {
     assert_eq!(seen.upload.lock().ok().and_then(|mut s| s.take()), Some(sent));
 }
 
-/// A 2.0 response `schema` becomes the typed body the client reads.
+/// A 2.0 response `schema` becomes the typed body the client decodes.
 #[test]
 fn a_response_schema_is_the_typed_body() {
     let got = api::block_on(served(&std::sync::Arc::new(Seen::default())).list_keys(ops::list_keys::Params::new()));
     assert_eq!(got.ok(), Some(ops::list_keys::Response::Ok(keys())));
 }
 
-/// Swagger 2.0 has no `nullable`. So an optional property that a service sends as `null` reads as absent. A required
+/// Swagger 2.0 has no `nullable`. So an optional property that a service sends as `null` decodes as absent. A required
 /// one still refuses it.
 #[test]
 fn an_optional_property_sent_as_null_is_absent() {

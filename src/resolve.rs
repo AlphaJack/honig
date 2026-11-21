@@ -66,7 +66,7 @@ pub(crate) fn bundle(root: Value, base: Option<&Path>, diags: &mut Diagnostics) 
 /// Rounds of adopting component files: a handful reaches a fixpoint for any realistic nesting.
 const MAX_ADOPTION_PASSES: usize = 16;
 
-/// How long a remote `$ref` may take to download.
+/// How long a remote `$ref` may last to download.
 #[cfg(feature = "remote-refs")]
 const FETCH_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(60);
 
@@ -274,7 +274,7 @@ fn download(url: &str) -> Result<String, Error> {
     })
 }
 
-/// Returns the text of every `externalValue` in `root` read relative to `dir` or why it could not be read. The IR
+/// Returns the text of every `externalValue` in `root` loaded relative to `dir` or why it could not be loaded. The IR
 /// checks examples against it without touching files.
 pub(crate) fn read_externals(root: &Value, dir: Option<&Path>) -> crate::json::Externals {
     let mut uris = BTreeSet::new();
@@ -299,7 +299,7 @@ fn external_values(v: &Value, out: &mut BTreeSet<String>) {
 /// the generator is built with `remote-refs`.
 ///
 /// # Errors
-/// The file cannot be read or the URL fetched.
+/// The file cannot be opened or the URL fetched.
 fn read_external(dir: Option<&Path>, uri: &str) -> Result<String, Error> {
     if is_http(uri) {
         return download(uri);
@@ -612,7 +612,7 @@ impl Hoist<'_> {
         changed
     }
 
-    /// Names of the component that holds the target of `r`. It is fetched once.
+    /// Names of the component that contains the target of `r`. It is fetched once.
     fn component(&mut self, r: &str, kind: &'static str) -> Option<String> {
         let key = canonical_key(r, self.base);
         if let Some((k, name)) = self.names.get(&key)
@@ -653,7 +653,7 @@ impl Layout {
         Self { v20: root.get("swagger").is_some() }
     }
 
-    /// Returns JSON pointer of the section holding `kind`; `None` when the version has none.
+    /// Returns JSON pointer of the section containing `kind`; `None` when the version has none.
     fn section(self, kind: &str) -> Option<String> {
         match (self.v20, kind) {
             (false, _) => Some(format!("/components/{kind}")),
@@ -669,7 +669,7 @@ impl Layout {
         format!("#{section}/{}", escape_token(name))
     }
 
-    /// Returns the section that holds `kind` in the document at `root`. It is created when missing.
+    /// Returns the section that contains `kind` in the document at `root`. It is created when missing.
     fn section_mut<'d>(self, root: &'d mut Value, kind: &str) -> Option<&'d mut Map<String, Value>> {
         let section = self.section(kind)?;
         let mut cur = root;
@@ -885,7 +885,7 @@ mod tests {
         assert!(d.is_empty(), "{d:?}");
         let names = |kind: &str| -> Vec<&String> { out["components"][kind].as_object().unwrap().keys().collect() };
         assert_eq!(names("schemas"), ["Order", "Order2", "Order3"]);
-        assert_eq!(names("parameters"), ["lang", "lang2", "lang3", "lang4"], "`lang` was taken already");
+        assert_eq!(names("parameters"), ["lang", "lang2", "lang3", "lang4"], "`lang` was in use already");
         assert_eq!(out["components"]["parameters"]["lang"]["name"], "own");
         std::fs::remove_dir_all(dir).ok();
     }

@@ -20,8 +20,8 @@ workspace = true
 # Integers as text without a heap allocation.
 itoa = "1"
 serde = { version = "1", features = ["derive"] }
-# `raw_value`: a `format: decimal` number reads and writes its exact digits (`Decimal`).
-# `float_roundtrip`: a float reads back as the same `f64`. Without it the last digit can move (2.598486701473248e-187
+# `raw_value`: a `format: decimal` number parses and writes its exact digits (`Decimal`).
+# `float_roundtrip`: a float parses back as the same `f64`. Without it the last digit can move (2.598486701473248e-187
 # became 2.5984867014732485e-187), and a body passed on would carry other numbers than it got.
 serde_json = { version = "1", features = ["raw_value", "float_roundtrip"] }
 # `pkce`: the `S256` challenge.
@@ -37,7 +37,7 @@ multer = { version = "3.1", optional = true }
 # Bodies and items that arrive or leave a piece at a time are a `Stream`.
 futures-core = { version = "0.3", default-features = false }
 futures-util = { version = "0.3", default-features = false, features = ["alloc"] }
-# `multipart/mixed` boundaries and stream framing. multer does not read these boundaries (parts without headers).
+# `multipart/mixed` boundaries and stream framing. multer does not parse these boundaries (parts without headers).
 memchr = "2"
 # `Source::unfold` keeps the step it runs inside itself: polled in place, no box per item.
 pin-project-lite = "0.2"
@@ -64,7 +64,7 @@ jiff = { version = "1", optional = true, default-features = false }
 idna = { version = "1", optional = true }
 # The general category of a code point (RFC 5892 section 2.1). `idna` depends on it already.
 icu_properties = { version = "2", optional = true }
-# `pattern` checks: ECMA-262 as JSON Schema reads it.
+# `pattern` checks: ECMA-262 as JSON Schema interprets it.
 regress = { version = "0.12", optional = true }
 # `simd`: SIMD JSON, UTF-8 and base64. serde_json still reports where a body that fails to
 # decode is wrong. sonic-rs has SIMD on x86_64 and aarch64 only. Elsewhere JSON stays on serde_json.
@@ -75,7 +75,7 @@ base64-simd = { version = "0.8", optional = true }
 # 0.5.11: the depth limit fits a 2 MiB stack in debug builds too (cloudwego/sonic-rs#267).
 sonic-rs = { version = "0.5.11", optional = true }
 
-# wasm32 reads reqwest responses through `bytes_stream`.
+# wasm32 receives reqwest responses through `bytes_stream`.
 # `Pkce::new`: a verifier from OS randomness. wasm32 has none without configuration: a browser passes its own to
 # `Pkce::from_verifier`.
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

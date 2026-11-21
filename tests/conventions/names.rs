@@ -1,4 +1,4 @@
-//! The name of the package is written once in its `Cargo.toml`. Code takes it from `env!("CARGO_PKG_NAME")`. Each
+//! The name of the package is written once in its `Cargo.toml`. Code gets it from `env!("CARGO_PKG_NAME")`. Each
 //! binary sees the library through one `extern crate <name> as generator;`.
 
 use std::fs;
@@ -28,7 +28,7 @@ fn the_package_name_is_written_once() {
         .iter()
         .flat_map(|(file, source)| written(source, &name).into_iter().map(move |line| format!("{file}:{line}")))
         .collect();
-    assert!(found.is_empty(), "`{name}` written out, instead of taken from the package:\n{}", found.join("\n"));
+    assert!(found.is_empty(), "`{name}` written out, instead of derived from the package:\n{}", found.join("\n"));
 }
 
 #[test]

@@ -45,7 +45,7 @@ pub mod no_xml_object {
     display_impl!(Response);
     error_impl!(Response);
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<types::NoXmlObjectOk, Box<Self>> {
             match self {
                 Self::Ok(body) => Ok(body),
@@ -74,7 +74,7 @@ pub mod no_xml_object_array {
     display_impl!(Response);
     error_impl!(Response);
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<types::NoXmlObjectArrayOk, Box<Self>> {
             match self {
                 Self::Ok(body) => Ok(body),
@@ -120,7 +120,7 @@ pub mod xml_attribute_prefix_and_namespace {
     }
     error_impl!(Response);
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<(), Box<Self>> {
             match self {
                 Self::NoContent => Ok(()),
@@ -149,7 +149,7 @@ pub mod xml_array_item_names {
     display_impl!(Response);
     error_impl!(Response);
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<types::XmlArrayItemNamesOk, Box<Self>> {
             match self {
                 Self::Ok(body) => Ok(body),
@@ -178,7 +178,7 @@ pub mod xml_array_name_without_wrapper {
     display_impl!(Response);
     error_impl!(Response);
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<types::XmlArrayNameWithoutWrapperOk, Box<Self>> {
             match self {
                 Self::Ok(body) => Ok(body),
@@ -207,7 +207,7 @@ pub mod xml_array_wrapped {
     display_impl!(Response);
     error_impl!(Response);
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<types::XmlArrayWrappedOk, Box<Self>> {
             match self {
                 Self::Ok(body) => Ok(body),
@@ -236,7 +236,7 @@ pub mod xml_array_wrapped_item_names {
     display_impl!(Response);
     error_impl!(Response);
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<types::XmlArrayWrappedItemNamesOk, Box<Self>> {
             match self {
                 Self::Ok(body) => Ok(body),
@@ -265,7 +265,7 @@ pub mod xml_array_wrapped_renamed {
     display_impl!(Response);
     error_impl!(Response);
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<types::XmlArrayWrappedRenamedOk, Box<Self>> {
             match self {
                 Self::Ok(body) => Ok(body),
@@ -293,7 +293,7 @@ pub mod elements_with_attributes_and_text {
     display_impl!(Response);
     error_impl!(Response);
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<String, Box<Self>> {
             match self {
                 Self::Ok(body) => Ok(body),
@@ -322,7 +322,7 @@ pub mod referenced_element_with_cdata {
     display_impl!(Response);
     error_impl!(Response);
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<types::Documentation, Box<Self>> {
             match self {
                 Self::Ok(body) => Ok(body),
@@ -350,7 +350,7 @@ pub mod ordered_elements {
     display_impl!(Response);
     error_impl!(Response);
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<String, Box<Self>> {
             match self {
                 Self::Ok(body) => Ok(body),
@@ -378,7 +378,7 @@ pub mod ordered_elements_and_text {
     display_impl!(Response);
     error_impl!(Response);
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<String, Box<Self>> {
             match self {
                 Self::Ok(body) => Ok(body),
@@ -407,7 +407,7 @@ pub mod xml_with_null_values {
     display_impl!(Response);
     error_impl!(Response);
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<types::XmlWithNullValuesOk, Box<Self>> {
             match self {
                 Self::Ok(body) => Ok(body),

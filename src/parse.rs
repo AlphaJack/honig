@@ -132,7 +132,7 @@ fn parse_yaml(text: &str) -> Result<Value, Diagnostic> {
 
 /// Reads and parses a JSON or YAML file.
 pub(crate) fn load_file(path: &Path) -> Result<(Value, Format), Diagnostic> {
-    let text = crate::disk::read(path).map_err(|e| Diagnostic::error("", format!("cannot read {e}")))?;
+    let text = crate::disk::read(path).map_err(|e| Diagnostic::error("", format!("cannot open {e}")))?;
     parse_str(&text)
 }
 

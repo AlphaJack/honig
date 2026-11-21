@@ -11,9 +11,9 @@
 //! | A range that starts past the end | `416 Range Not Satisfiable` with `Content-Range: bytes */5000` |
 //! | `If-Range` next to it with an `ETag` or date that the body no longer has | `200`: the whole new body |
 //!
-//! Only a body whose length is known can be cut. That is a body held whole (shared bytes of a [`crate::Blob`] are cut
+//! Only a body whose length is known can be cut. That is a body in memory (shared bytes of a [`crate::Blob`] are cut
 //! without a copy) or a [`crate::Blob::ranged`]. The server calls the `open(first, last)` of a ranged blob once with
-//! the bytes it sends. So the bytes before the range are never read.
+//! the bytes it sends. So the bytes before the range are never loaded.
 //!
 //! These go out whole with no `Accept-Ranges`, as RFC 9110 allows: a [`crate::Blob::stream`] of unknown length, JSON
 //! and other structured bodies, several ranges in one request and a `Range` that does not parse. An operation that
@@ -51,7 +51,7 @@ impl Ranges {
     }
 
     /// Returns the response cut to the range asked for. That is `206` with `Content-Range` or `416` when no byte of it
-    /// exists. A body held whole is cut without a copy. A body that streams is cut only when its source opens at the
+    /// exists. A body in memory is cut without a copy. A body that streams is cut only when its source opens at the
     /// range.
     pub(crate) fn answer(self, mut resp: Response) -> Response {
         if !self.on || resp.status() != http::StatusCode::OK {
@@ -151,7 +151,7 @@ mod tests {
         Ranges::of(&head, true).answer(resp)
     }
 
-    /// The body: the bytes held whole and then every piece of its stream.
+    /// The body: the bytes in memory and then every piece of its stream.
     fn bytes(resp: &Response) -> Vec<u8> {
         let mut out = resp.body().bytes().to_vec();
         if let Some(mut source) = resp.body().chunks().take_source() {

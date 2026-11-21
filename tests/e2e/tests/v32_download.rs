@@ -1,6 +1,6 @@
 //! A binary response streams chunk by chunk when the handler returns
 //! a streamed `api::Blob`. So a large download never sits in memory whole. A manifest carries an `ETag`. The
-//! server answers a `GET` that the client already holds with `304`. It refuses a stale replace with `412`. A ranged
+//! server answers a `GET` that the client already has with `304`. It refuses a stale replace with `412`. A ranged
 //! `GET` of an export whose length is known gets only those bytes with `206`. So a broken download resumes. An export
 //! from `Blob::ranged` is opened at the range.
 
@@ -43,7 +43,7 @@ impl api::Api for Server {
                 ops::get_export::Response::Ok(api::Blob::stream(futures_util::stream::iter(CHUNKS.map(<[u8]>::to_vec))))
             }
             "small" => ops::get_export::Response::Ok(b"zip".to_vec().into()),
-            // A file read from where the range starts. The bytes before it are never read.
+            // A file opened where the range starts. The bytes before it are never loaded.
             "archive" => ops::get_export::Response::Ok(api::Blob::ranged(ARCHIVE.len() as u64, |first, last| {
                 let (first, last) = (usize::try_from(first).unwrap_or(0), usize::try_from(last).unwrap_or(0));
                 futures_util::stream::iter(ARCHIVE.get(first..=last).map(<[u8]>::to_vec))
@@ -101,7 +101,7 @@ impl api::Api for Server {
             .lock()
             .map_err(|_| api::ApiError::new(api::http::StatusCode::INTERNAL_SERVER_ERROR, "manifest lock poisoned"))?;
         let etag = format!("\"v{}\"", manifest.0);
-        // 412 unless the client changed the version it read.
+        // 412 unless the client changed the version it received.
         ctx.preconditions(Some(api::CacheValidators { etag: Some(&etag), last_modified: Some(LAST_MODIFIED) }))?;
         *manifest = (manifest.0 + 1, p.body);
         Ok(ops::replace_manifest::Response::NoContent)
@@ -197,7 +197,7 @@ fn a_replace_of_a_version_the_client_did_not_read_is_refused_412() {
     assert_eq!(replace("*"), ops::replace_manifest::Response::NoContent);
 }
 
-/// A `GET` of an export with these request headers through the server. Its streamed body is read.
+/// A `GET` of an export with these request headers through the server. Its streamed body is collected.
 fn get_export(id: &str, headers: &[(&'static str, &'static str)]) -> api::Response {
     let mut req = api::runtime::new_request("GET", format!("/exports/{id}"), vec![]).unwrap();
     for (k, v) in headers {
@@ -281,7 +281,7 @@ proptest::proptest! {
 }
 
 /// A body declared as a range (`image/*`) goes out as the media type of the blob when it fits the range, else as
-/// `application/octet-stream`. The client reads the blob back with the type it came as.
+/// `application/octet-stream`. The client gets the blob back with the type it came as.
 #[test]
 fn a_range_goes_out_as_the_media_type_of_the_blob() {
     let sent = |id: &str| {

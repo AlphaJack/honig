@@ -13,9 +13,9 @@ image. Your handler returns the whole body as usual:
 | A range that starts past the end | `416 Range Not Satisfiable` with `Content-Range: bytes */5000` |
 | `If-Range` next to it with an `ETag` or date that the body no longer has | `200`: the whole new body |
 
-Only a body whose length is known can be cut. That is a body held whole (shared bytes of a `crate::Blob` are cut
+Only a body whose length is known can be cut. That is a body in memory (shared bytes of a `crate::Blob` are cut
 without a copy) or a `crate::Blob::ranged`. The server calls the `open(first, last)` of a ranged blob once with
-the bytes it sends. So the bytes before the range are never read.
+the bytes it sends. So the bytes before the range are never loaded.
 
 These go out whole with no `Accept-Ranges`, as RFC 9110 allows: a `crate::Blob::stream` of unknown length, JSON
 and other structured bodies, several ranges in one request and a `Range` that does not parse. An operation that

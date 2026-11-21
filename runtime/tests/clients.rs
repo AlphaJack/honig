@@ -1,7 +1,7 @@
-//! The client transports over a real socket: each sends to an echo server on localhost and reads back what it sent.
+//! The client transports over a real socket: each sends to an echo server on localhost and receives back what it sent.
 //!
-//! Bodies run from empty to 3 MiB. So a response arrives in many reads. Each transport sends a whole body. It reads a
-//! response whole and as it arrives. It streams an upload chunked.
+//! Bodies run from empty to 3 MiB. So a response arrives in many pieces. Each transport sends a whole body. It receives
+//! a response whole and as it arrives. It streams an upload chunked.
 
 #![cfg(any(feature = "reqwest", feature = "ureq"))]
 #![expect(clippy::unwrap_used, reason = "test code fails loudly")]
@@ -58,7 +58,7 @@ fn echo(conn: TcpStream) {
         body.len()
     );
     out.write_all(head.as_bytes()).unwrap();
-    // Written in pieces. So a client that reads as it arrives gets more than one chunk.
+    // Written in pieces. So a client that consumes as it arrives gets more than one chunk.
     for piece in body.chunks(64 << 10) {
         out.write_all(piece).unwrap();
         out.flush().unwrap();
@@ -130,7 +130,8 @@ async fn roundtrips(transport: &impl Transport) {
         let resp = honig::send(transport, up).await.unwrap();
         assert!(resp.body().bytes() == want.as_slice(), "streamed upload, {size} bytes: the body differs");
 
-        // The same pieces with their total. They are sent with `Content-Length` for servers that read no chunked body.
+        // The same pieces with their total. They are sent with `Content-Length` for servers that accept no chunked
+        // body.
         let mut up = request(size);
         let pieces: Vec<Vec<u8>> = want.chunks(100_000).map(<[u8]>::to_vec).collect();
         up.headers_mut().remove("content-type");
@@ -143,7 +144,7 @@ async fn roundtrips(transport: &impl Transport) {
             "sized streamed upload, {size} bytes"
         );
 
-        // A buffer that another `Blob` still holds goes out as it is with its length and not in chunks.
+        // A buffer that another `Blob` still shares goes out as it is with its length and not in chunks.
         let shared = Blob::from(honig::Bytes::from(want.clone()));
         let kept = shared.clone();
         let mut up = request(size);
@@ -160,11 +161,11 @@ async fn roundtrips(transport: &impl Transport) {
     }
 }
 
-/// The piece that a held server sends first and the one that it sends once the client has read it.
+/// The piece that a paused server sends first and the one that it sends once the client has received it.
 const FIRST: &[u8] = b"data: first\n\n";
 const SECOND: &[u8] = b"data: second\n\n";
 
-/// How long a held server waits for the client to read the first piece. Then it sends the rest anyway. A client
+/// How long a paused server waits for the client to receive the first piece. Then it sends the rest anyway. A client
 /// that buffers the body gets both pieces as one after this.
 const HOLD: std::time::Duration = std::time::Duration::from_secs(5);
 
@@ -188,7 +189,7 @@ fn held_server(read: std::sync::mpsc::Receiver<()>) -> String {
     format!("http://{addr}")
 }
 
-/// A transport gives the first piece while the server still holds the rest. An event stream needs this.
+/// A transport gives the first piece while the server still keeps the rest. An event stream needs this.
 async fn streams_as_it_arrives(transport: &impl Transport, read: std::sync::mpsc::Sender<()>) {
     let events = honig::__private::new_request("GET", "/events".to_owned(), vec![]).unwrap();
     let resp = honig::send_streaming(transport, events).await.unwrap();

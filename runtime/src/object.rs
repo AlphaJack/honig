@@ -2,14 +2,14 @@
 //! `Serialize` and `Deserialize` through `NoSeq`.
 
 /// Writes an object type: the struct with the serde attributes of each field, and its `Serialize` and `Deserialize`.
-/// `Deserialize` reads through `NoSeq`: `type: object` takes no array. The serde attributes refer to `runtime::`
-/// paths, so the calling module imports the runtime as `runtime`. The body is a struct, so it reads and prints as one.
+/// `Deserialize` decodes through `NoSeq`: `type: object` accepts no array. The serde attributes refer to `runtime::`
+/// paths, so the calling module imports the runtime as `runtime`. The body is a struct, so it looks and prints as one.
 ///
 /// A marker first on a field picks its kind:
 ///
 /// - none: the field as it is, with only the attributes given
 /// - `#[optional] pub f: T`: `Option<T>`, absent when `None`; `null` is refused
-/// - `#[maybe] pub f: T`: `Option<T>`, absent when `None`; `null` reads as absent
+/// - `#[maybe] pub f: T`: `Option<T>`, absent when `None`; `null` decodes as absent
 /// - `#[nullable] pub f: T`: `runtime::Nullable<T>`, absent when `Absent`
 ///
 /// `#[unique_keys]` first on the struct writes through `UniqueKeys`: an extra map may not repeat a declared name.

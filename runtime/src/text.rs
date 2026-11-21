@@ -1,4 +1,4 @@
-//! Text bodies and the text and errors that every other body is read and written with.
+//! Text bodies and the text and errors that every other body is decoded and encoded with.
 
 use std::borrow::Cow;
 use std::fmt;

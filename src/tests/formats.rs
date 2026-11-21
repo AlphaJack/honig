@@ -23,8 +23,8 @@ fn types_rs(test: &str, dates: Option<DateLib>) -> String {
     common::file(&common::generate(test, &doc, &opts), "types.rs").to_owned()
 }
 
-/// `time` has an offset (`08:30:06Z`) that no date library's time type holds. It is the runtime's `FullTime`, plain
-/// numbers, whatever the date library.
+/// `time` has an offset (`08:30:06Z`) that no date library's time type represents. It is the runtime's `FullTime`,
+/// plain numbers, whatever the date library.
 #[test]
 fn time_is_a_full_time_with_any_date_library() {
     for (test, dates) in
@@ -35,8 +35,8 @@ fn time_is_a_full_time_with_any_date_library() {
     }
 }
 
-/// A `format: decimal` number keeps its digits (`runtime::Decimal` read through the raw value of `serde_json`). There
-/// is nothing to warn about.
+/// A `format: decimal` number keeps its digits (`runtime::Decimal` decoded through the raw value of `serde_json`).
+/// There is nothing to warn about.
 #[test]
 fn a_decimal_number_keeps_its_digits() {
     let doc = common::spec(
@@ -52,7 +52,7 @@ fn a_decimal_number_keeps_its_digits() {
     assert!(diags.is_empty(), "{diags:#?}");
     let t = types_rs_of("decimal-number-types", &doc);
     assert!(t.contains("#[optional]\n        pub amount: runtime::Decimal"), "{t}");
-    // `decimal128` keeps its digits too, as a checked type held to the limits of IEEE 754 decimal128.
+    // `decimal128` keeps its digits too, as a checked type bound to the limits of IEEE 754 decimal128.
     assert!(
         t.contains("#[optional]\n        pub total: PriceTotal") && t.contains("runtime::check_decimal128("),
         "{t}"
@@ -82,7 +82,7 @@ fn a_string_decimal_is_checked_text() {
     assert!(t.contains("pub wide: runtime::Decimal128Text"), "{t}");
 }
 
-/// `date-time-local` and `time-local` (RFC 3339 without an offset) take the date library's civil types.
+/// `date-time-local` and `time-local` (RFC 3339 without an offset) get the date library's civil types.
 #[test]
 fn local_date_time_formats_use_the_date_library() {
     let doc = common::spec(
@@ -129,8 +129,8 @@ fn a_pattern_beside_a_typed_format_is_reported_unchecked() {
     assert!(at[0].contains("format: uuid"), "{at:?}");
 }
 
-/// A type that the `formats` table sets takes the place of a library for its format. Its text is checked first, as a
-/// library's is: the type may read more than the format allows. It has no `Default` that honig could know of.
+/// A type that the `formats` table sets replaces a library for its format. Its text is checked first, as a
+/// library's is: the type may accept more than the format allows. It has no `Default` that honig could know of.
 #[test]
 fn a_named_type_holds_its_format_with_the_text_checked() {
     let doc = common::spec(

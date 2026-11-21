@@ -105,7 +105,7 @@ async fn the_device_flow_polls_until_the_token_is_ready() {
 }
 
 // ANCHOR: stream
-/// Every product event of the feed read as they arrive. The feed ends with `data: [DONE]`. That is not an event.
+/// Every product event of the feed decoded as they arrive. The feed ends with `data: [DONE]`. That is not an event.
 async fn product_events(
     client: &api::Client<impl api::Transport>,
 ) -> Result<Vec<types::ProductEvent>, api::ClientError> {
@@ -156,7 +156,7 @@ fn the_callback_goes_where_the_request_says() {
 }
 
 // ANCHOR: feed
-/// The feed after the event that a reconnecting client read last. Each event carries its `id`. The client sends it
+/// The feed after the event that a reconnecting client received last. Each event carries its `id`. The client sends it
 /// back as `Last-Event-ID`. `retry` tells clients how long to wait before they reconnect. On a quiet minute a
 /// comment goes out. So proxies keep the connection open.
 fn feed(
@@ -177,8 +177,8 @@ fn feed(
 
 // ANCHOR: reconnect
 /// Follows the feed. When the connection ends or breaks off the stream waits for the `retry` of the server. Then it
-/// asks again with `Last-Event-ID`. So no event is lost or read twice. It ends when the server answers `204` or after
-/// five failed reconnections in a row.
+/// asks again with `Last-Event-ID`. So no event is lost or received twice. It ends when the server answers `204` or
+/// after five failed reconnections in a row.
 async fn follow(
     client: &api::Client<impl api::Transport>,
     mut on_event: impl FnMut(types::ProductEvent),
@@ -227,7 +227,7 @@ async fn the_feed_resumes_after_the_last_event_read() {
     assert_eq!(*asked.lock().unwrap(), [None, Some("e1".to_owned()), Some("e2".to_owned())]);
 }
 
-/// `into_ok` gives the success and any other response as an `Err` that `?` takes into any error type.
+/// `into_ok` gives the success and any other response as an `Err` that `?` converts into any error type.
 #[tokio::test]
 async fn into_ok_gives_the_success_and_errs_with_the_rest() -> Result<(), Box<dyn std::error::Error>> {
     let gone = shop(|_| std::future::ready(api::runtime::new_response(204)));

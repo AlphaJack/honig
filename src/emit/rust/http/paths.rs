@@ -55,7 +55,7 @@ pub(crate) fn value_expr(p: &Param) -> TokenStream {
     } else if p.content == Some(MediaKind::Json) {
         quote!(runtime::json_param(&p.#n)?)
     } else {
-        // Encoders take `Serialize` directly: scalars skip `serde_json::Value`.
+        // Encoders accept `Serialize` directly: scalars skip `serde_json::Value`.
         quote!(p.#n)
     }
 }

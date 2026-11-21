@@ -58,7 +58,7 @@ pub(crate) fn all_filled(api: &Api, space: &Space<'_>) -> bool {
 
 /// Returns a warning per required header of an error response. The server refuses some requests itself (`400` for an
 /// invalid one, `401`, `406`, `415`) and cannot know the value. Such a refusal goes out without the header. A client
-/// that requires it then reads none of them.
+/// that requires it then decodes none of them.
 pub(crate) fn unset_error_headers(api: &Api) -> Vec<crate::diag::Diagnostic> {
     let mut out = vec![];
     for op in &api.http.operations {
@@ -72,7 +72,7 @@ pub(crate) fn unset_error_headers(api: &Api) -> Vec<crate::diag::Diagnostic> {
                         crate::json::escape_token(&h.wire)
                     ),
                     "a required header of an error response: the requests that the server refuses itself (an \
-                     invalid one, a missing credential) go out without it, so a client that requires it cannot read \
+                     invalid one, a missing credential) go out without it, so a client that requires it cannot decode \
                      them. Set it in a tower layer around the server",
                 ));
             }
@@ -99,7 +99,7 @@ fn has_error_body(r: &crate::ir::http::Resp) -> bool {
 }
 
 /// Returns the `runtime::ProblemSchema` of the body of a response if the generator can fill it: a JSON body by its
-/// fields, or a `text/*` string that holds the detail alone.
+/// fields, or a `text/*` string that contains the detail alone.
 fn declared_error_schema(space: &Space<'_>, r: &crate::ir::http::Resp) -> Option<TokenStream> {
     let json = r.contents.iter().find(|c| c.kind == MediaKind::Json).and_then(|c| error_schema(space, c));
     json.or_else(|| {
@@ -178,7 +178,7 @@ pub(crate) fn error_schema_fn(api: &Api, space: &Space<'_>) -> TokenStream {
     // status that an operation declares no error for (one error schema across the API). Never for a status whose
     // declared body cannot be filled: that one gets RFC 9457 and not a schema the description gives elsewhere.
     let global = uses.iter().max_by_key(|(_, n)| *n).map_or_else(|| quote!(None), |(n, _)| some_ref(n));
-    // (status match, whether it reads `status`, operation names). Operations with the same match share an arm.
+    // (status match, whether it uses `status`, operation names). Operations with the same match share an arm.
     let mut arms: Vec<(String, TokenStream, bool, Vec<Literal>)> = vec![];
     for (name, by_status) in declared {
         let by_status: Vec<(Status, TokenStream)> =
@@ -222,7 +222,7 @@ pub(crate) fn error_schema_fn(api: &Api, space: &Space<'_>) -> TokenStream {
 /// Returns the error schema of one operation by status as an expression of type `Option<&runtime::ProblemSchema>`:
 /// `answer` per declared status and `otherwise` for the rest. A status that the next broader entry already answers the
 /// same way is dropped (`400` under a same-schema `4XX`). The rest share one arm per answer (`400 | 404 => ..`). The
-/// flag says whether it reads `status`.
+/// flag says whether it uses `status`.
 pub(crate) fn status_match(by_status: &[(Status, TokenStream)], otherwise: &TokenStream) -> (TokenStream, bool) {
     /// Status intervals per answer in first-seen order.
     type Tier<'a> = Vec<(&'a TokenStream, Vec<(u16, u16)>)>;

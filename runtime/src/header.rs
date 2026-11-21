@@ -14,7 +14,7 @@ pub(crate) fn header_value(v: Cow<'static, str>) -> Option<http::HeaderValue> {
     }
 }
 
-/// Returns a header value as text. It is borrowed when it is UTF-8. Otherwise it is read as ISO-8859-1. Adapters use
+/// Returns a header value as text. It is borrowed when it is UTF-8. Otherwise it is decoded as ISO-8859-1. Adapters use
 /// it.
 pub fn header_text(bytes: &[u8]) -> Cow<'_, str> {
     match std::str::from_utf8(bytes) {

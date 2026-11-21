@@ -138,9 +138,9 @@ nursery = { level = "warn", priority = -1 }
 redundant_pub_crate = "allow"
 # Each `const fn` is a promise to callers. Here it gives nothing.
 missing_const_for_fn = "allow"
-# `map_or_else` chains read worse than `if let`.
+# `map_or_else` chains are harder to follow than `if let`.
 option_if_let_else = "allow"
-# It flags guards held on purpose across the work they protect.
+# It flags guards kept on purpose across the work they protect.
 significant_drop_tightening = "allow"
 # Generated clients run on wasm32. There futures are not `Send`.
 future_not_send = "allow"
@@ -175,7 +175,7 @@ mod_module_files = "deny"
 similar_names = "allow"
 # Options mirror the switches of `[package.metadata.honig]`.
 struct_excessive_bools = "allow"
-# Matches on booleans read as tables of cases.
+# Matches on booleans look like tables of cases.
 match_bool = "allow"
 single_match_else = "allow"
 missing_errors_doc = "allow"

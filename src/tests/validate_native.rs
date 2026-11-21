@@ -75,7 +75,7 @@ fn component_names_tag_loops_ref_siblings_and_querystrings() {
 }
 
 /// 2.0 rules: a `file` parameter needs a form media type, `allowEmptyValue` belongs to `query` and `formData`, and an
-/// array may hold arrays.
+/// array may contain arrays.
 #[test]
 fn file_parameters_empty_values_and_nested_arrays_in_v20() {
     let file = json!({"name": "f", "in": "formData", "type": "file"});

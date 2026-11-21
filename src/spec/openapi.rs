@@ -212,7 +212,7 @@ impl PathItem {
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 #[serde(bound(deserialize = "P: serde::de::DeserializeOwned"))]
 #[serde(rename_all = "camelCase")]
-#[expect(clippy::struct_field_names, reason = "fields are named as the OpenAPI fields they hold")]
+#[expect(clippy::struct_field_names, reason = "fields are named as the OpenAPI fields they store")]
 pub(crate) struct Operation<P> {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub tags: Option<Vec<String>>,
@@ -370,7 +370,7 @@ pub(crate) struct MediaType {
 #[derive(Debug, Clone, PartialEq, Default, Serialize, Deserialize)]
 #[serde(bound(deserialize = "H: serde::de::DeserializeOwned"))]
 #[serde(rename_all = "camelCase")]
-#[expect(clippy::struct_field_names, reason = "fields are named as the OpenAPI fields they hold")]
+#[expect(clippy::struct_field_names, reason = "fields are named as the OpenAPI fields they store")]
 pub(crate) struct Encoding<H> {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub content_type: Option<String>,

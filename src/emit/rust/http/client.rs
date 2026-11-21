@@ -50,7 +50,7 @@ pub(crate) fn client(api: &Api, space: &Space<'_>, opts: &crate::emit::Options) 
     let (flows, flow_urls) = oauth_methods(api);
     let webhook_client = webhook_client(space, api, &sec);
     let header = binary.then(|| quote!(#![allow(dead_code, reason = "a binary calls part of the client: its server list and setters may go unused")]));
-    // The operations read credentials. The setters and flows write them. Without any operation none are kept.
+    // The operations use credentials. The setters and flows write them. Without any operation none are kept.
     let keeps = api.http.operations.iter().any(|op| called(&op))
         || [&setters, &tokens, &devices, &flows].iter().any(|methods| !methods.is_empty());
     let (credentials, no_credentials) = if keeps {
@@ -301,7 +301,7 @@ fn accept(op: &Operation) -> Option<String> {
 /// (response index, item type and per sequential media type: content index, media, framing).
 pub(crate) type StreamTarget<'a> = (usize, &'a Ty, Vec<(usize, &'a str, TokenStream)>);
 
-/// Returns the success response that a `<op>_stream` method reads. That is its index, the item
+/// Returns the success response that a `<op>_stream` method yields. That is its index, the item
 /// type and per sequential media type (content index, media, framing).
 /// Every sequential media type must carry the same item type.
 pub(crate) fn stream_target(op: &Operation) -> Option<StreamTarget<'_>> {
@@ -353,11 +353,11 @@ pub(crate) fn stream_method(
 ) -> Option<TokenStream> {
     let Some((ri, item, seq)) = stream_target(op) else { return blob_stream_method(op, p, prelude, respond) };
     let Status::Code(status) = op.responses[ri].status else { return None };
-    // Each item has the text of its library formats checked before the library reads it, as on the server.
+    // Each item has the text of its library formats checked before the library parses it, as on the server.
     let multipart = seq.iter().any(|(_, _, f)| f.to_string().contains("multipart"));
     let validated =
         crate::emit::rust::syntax::holds(space, item).filter(|_| !multipart).map(|h| quote!(.validated::<#h>()));
-    // `minItems`, `maxItems` and `uniqueItems` of the sequence hold on the items as they arrive.
+    // `minItems`, `maxItems` and `uniqueItems` of the sequence apply to the items as they arrive.
     let limits = op.responses[ri].contents.iter().find(|c| c.kind.is_sequence()).map(|c| c.item_limits);
     let validated = match limits.and_then(super::codec::item_limits) {
         Some(l) => Some(quote!(#validated.limited(#l))),
@@ -430,9 +430,9 @@ pub(crate) fn stream_method(
     })
 }
 
-/// Returns the answer of a `<op>_stream` method to a status that it does not stream. The body is read whole and decoded
-/// as the method without `_stream` decodes it. So a declared error arrives typed and an undeclared status is still an
-/// error.
+/// Returns the answer of a `<op>_stream` method to a status that it does not stream. The body is collected whole and
+/// decoded as the method without `_stream` decodes it. So a declared error arrives typed and an undeclared status is
+/// still an error.
 fn other_statuses(m: &TokenStream, response: &TokenStream) -> TokenStream {
     quote! {
         let (head, body) = resp.into_parts();
@@ -443,7 +443,7 @@ fn other_statuses(m: &TokenStream, response: &TokenStream) -> TokenStream {
 }
 
 /// Returns `<op>_stream` for binary success responses. It gives the chunks of the body as they
-/// arrive for downloads too large to hold in memory. Every success status whose
+/// arrive for downloads too large to keep in memory. Every success status whose
 /// body is binary streams (a `200` and a `206` for a range).
 pub(crate) fn blob_stream_method(
     op: &Operation,
@@ -493,8 +493,9 @@ pub(crate) fn blob_stream_method(
     })
 }
 
-/// Returns whether the client only reads the request body. Then it can encode it from borrowed parameters. Bytes, text
-/// and streamed items move into the request. Borrowed parameters are cloned for them as the caller would have done.
+/// Returns whether the client only borrows the request body. Then it can encode it from borrowed parameters. Bytes,
+/// text and streamed items move into the request. Borrowed parameters are cloned for them as the caller would have
+/// done.
 fn reads_body(op: &Operation) -> bool {
     op.body.as_ref().is_none_or(|b| {
         b.contents.iter().all(|c| match c.kind {
@@ -510,7 +511,7 @@ fn reads_body(op: &Operation) -> bool {
     })
 }
 
-/// Returns the parameters as the method body uses them. They are borrowed when it only reads them. Otherwise owned
+/// Returns the parameters as the method body uses them. They are borrowed when it only borrows them. Otherwise owned
 /// (cloned if lent).
 fn take_params(op: &Operation, p: &proc_macro2::Ident) -> Option<TokenStream> {
     (p == "p").then(|| {
@@ -594,7 +595,7 @@ pub(crate) fn client_response(
         .enumerate()
         .filter(|(_, r)| !matches!(r.status, Status::Code(c) if skip.contains(&c)))
         .collect();
-    // The response in parts: its head and its bytes. A body that a transport held whole is not copied.
+    // The response in parts: its head and its bytes. A body that a transport received whole is not copied.
     let parts = quote! {
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -614,11 +615,11 @@ pub(crate) fn client_response(
             (r, pat, e)
         })
         .collect();
-    // A lone `default` takes every status: no match.
+    // A lone `default` matches every status: no match.
     if let [(r, _, only)] = arms.as_slice()
         && r.status == Status::Default
     {
-        // A response with neither a body nor headers reads only its status, and only as the variant's field.
+        // A response with neither a body nor headers decodes only its status, and only as the variant's field.
         if r.contents.is_empty() && r.headers.is_empty() {
             return quote! { let (head, _) = resp.into_parts(); #guard #ct #only };
         }
@@ -711,7 +712,7 @@ fn response_arm(
 }
 
 /// Returns a `304` to an operation that sends `If-None-Match` or `If-Modified-Since` but declares no `304`. The client
-/// already holds the representation. No declared response describes it (RFC 9110 section 15.4.5).
+/// already has the representation. No declared response describes it (RFC 9110 section 15.4.5).
 fn not_modified_guard(op: &Operation) -> Option<TokenStream> {
     let conditional = op.params.iter().any(|p| {
         matches!(p.location, Location::Header)

@@ -2,13 +2,13 @@
 
 use crate::{Body, ClientError};
 
-/// Returns the body as it is: bytes held whole go out with their length.
-#[expect(clippy::unused_async, reason = "the same signature as wasm32's, which reads the pieces first")]
+/// Returns the body as it is: bytes in one buffer go out with their length.
+#[expect(clippy::unused_async, reason = "the same signature as wasm32's, which collects the pieces first")]
 pub(crate) async fn body(body: Body) -> Result<reqwest::Body, ClientError> {
     Ok(body.into())
 }
 
-/// Bytes held whole go out with their length. A body that streams goes out chunk by chunk.
+/// Bytes in one buffer go out with their length. A body that streams goes out chunk by chunk.
 impl From<Body> for reqwest::Body {
     fn from(body: Body) -> Self {
         if body.is_streamed() { Self::wrap(body) } else { body.into_parts().0.into() }

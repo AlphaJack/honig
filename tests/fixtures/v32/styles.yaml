@@ -1,7 +1,7 @@
 # OpenAPI 3.2 section 4.12.6 "Style Examples": one operation per row and value type
 # of the table, each with one parameter named `color`. `styles.rs` checks the
 # generated client writes exactly the spec's serialization and the generated
-# server reads it back.
+# server decodes it back.
 openapi: 3.2.0
 info: {title: Styles, version: "1"}
 components:

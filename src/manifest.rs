@@ -14,7 +14,7 @@ use crate::settings::FEATURES;
 /// Returns `text` with the runtime crate dependency at the version of the generator. Of the features that `generate`
 /// owns it lists exactly `needed`. It keeps the features that are yours as you list them.
 ///
-/// A dependency with `workspace = true` takes its version from `[workspace.dependencies]`: cargo allows only
+/// A dependency with `workspace = true` gets its version from `[workspace.dependencies]`: cargo allows only
 /// `features` next to it. Then the version goes in the root ([`with_pinned_workspace`]), which is this file when it
 /// is the root too.
 ///
@@ -72,7 +72,7 @@ pub(crate) fn with_runtime(text: &str, needed: &[&str]) -> Result<String, Error>
     Ok(doc.to_string())
 }
 
-/// Does the crate of `text` take the runtime from `[workspace.dependencies]` (`honig = { workspace = true }`)?
+/// Does the crate of `text` get the runtime from `[workspace.dependencies]` (`honig = { workspace = true }`)?
 pub(crate) fn inherits_runtime(text: &str) -> bool {
     text.parse::<DocumentMut>().is_ok_and(|doc| {
         doc.get("dependencies").and_then(|d| d.get("honig")).and_then(|h| h.get("workspace")).and_then(Item::as_bool)
@@ -80,7 +80,7 @@ pub(crate) fn inherits_runtime(text: &str) -> bool {
     })
 }
 
-/// Returns the workspace root `text` with `[workspace.dependencies]` holding the runtime at the version of the
+/// Returns the workspace root `text` with `[workspace.dependencies]` pinning the runtime at the version of the
 /// generator. Its other keys stay as written. Each member lists the features that it needs.
 ///
 /// # Errors

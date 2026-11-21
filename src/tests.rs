@@ -1,6 +1,6 @@
 //! Tests across the pipeline. A description goes in. Diagnostics, the IR or generated text come out.
 //!
-//! Fixtures under `tests/fixtures/` are descriptions. `tests/e2e` holds the crate generated from them with its
+//! Fixtures under `tests/fixtures/` are descriptions. `tests/e2e` contains the crate generated from them with its
 //! hand-written tests. `generated_crates::wasm_client` compiles a crate of its own. So it is ignored by default.
 
 #![expect(clippy::disallowed_methods, reason = "tests set up files and run cargo")]

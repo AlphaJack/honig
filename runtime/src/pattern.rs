@@ -1,10 +1,11 @@
-//! `pattern` and `patternProperties`: ECMA-262 regular expressions with Unicode semantics as JSON Schema reads them.
+//! `pattern` and `patternProperties`: ECMA-262 regular expressions with Unicode semantics as JSON Schema interprets
+//! them.
 
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::sync::OnceLock;
 
-/// The pattern of one check site, with its text. It is compiled on first use. Lookups after that take no lock.
+/// The pattern of one check site, with its text. It is compiled on first use. Lookups after that need no lock.
 #[derive(Debug)]
 pub struct Pattern {
     text: &'static str,
@@ -57,7 +58,7 @@ fn compile(pattern: &str) -> Option<regress::Regex> {
     regress::Regex::with_flags(pattern, "u").or_else(|_| regress::Regex::new(pattern)).ok()
 }
 
-/// A pattern that does not compile matches nothing: a value that it should judge is never taken unchecked.
+/// A pattern that does not compile matches nothing: a value that it should judge is never accepted unchecked.
 /// `generate` refuses such a pattern, so generated code never has one.
 fn is_match(re: Option<&regress::Regex>, s: &str) -> bool {
     re.is_some_and(|re| re.find(s).is_some())
@@ -88,7 +89,7 @@ mod tests {
 /// It is the `deserialize_with` of a flattened field of `patternProperties`.
 ///
 /// # Errors
-/// A value that a matching name holds does not decode as `T`.
+/// A value that a matching name has does not decode as `T`.
 pub fn pattern_entries<'de, D, T>(d: D, patterns: &[&str], index: usize) -> Result<BTreeMap<String, T>, D::Error>
 where
     D: serde::Deserializer<'de>,
@@ -147,7 +148,7 @@ fn decode<'de, T: serde::Deserialize<'de>, E: serde::de::Error>(
     value.decode_ref().map_err(|e| E::custom(format!("`{name}`: {e}")))
 }
 
-/// The names and values of the object that `d` reads, each value buffered.
+/// The names and values of the object that `d` decodes, each value buffered.
 fn names<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Vec<(String, crate::tagged::Content<'de>)>, D::Error> {
     struct Names;
     impl<'de> serde::de::Visitor<'de> for Names {
@@ -166,7 +167,7 @@ fn names<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Vec<(String, crate::t
     d.deserialize_map(Names)
 }
 
-/// A struct that refuses the names that none of its patterns matches: it holds none of them, and writes nothing.
+/// A struct that refuses the names that none of its patterns matches: it stores none of them, and writes nothing.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 pub struct Closed;
 

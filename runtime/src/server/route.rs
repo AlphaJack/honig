@@ -40,7 +40,7 @@ pub fn normalize_path(path: &str) -> Cow<'_, str> {
     Cow::Owned(out)
 }
 
-/// Returns the entry of `method` among the methods of a path. A `HEAD` takes the `GET` entry when the path declares no
+/// Returns the entry of `method` among the methods of a path. A `HEAD` uses the `GET` entry when the path declares no
 /// `HEAD` of its own: a server supports `HEAD` wherever it supports `GET` (RFC 9110 section 9.1).
 pub fn find_method<'m, T>(methods: &'m [(&'static str, T)], method: &str) -> Option<&'m (&'static str, T)> {
     let exact = |m: &str| methods.iter().find(|(own, _)| *own == m);
@@ -102,7 +102,7 @@ pub fn route<'p>(nodes: &[Node], path: &'p str) -> Option<(usize, Captures<'p>)>
     Some((leaf as usize, caps))
 }
 
-/// The raw path variables of a route in path order. They are held inline (no
+/// The raw path variables of a route in path order. They are stored inline (no
 /// allocation) up to [`Captures::INLINE`] and on the heap past that.
 #[derive(Debug, Clone)]
 pub struct Captures<'p> {
@@ -118,7 +118,7 @@ impl Default for Captures<'_> {
 }
 
 impl<'p> Captures<'p> {
-    /// Variables held without allocating.
+    /// Variables stored without allocating.
     pub const INLINE: usize = 8;
 
     fn push(&mut self, s: &'p str) {

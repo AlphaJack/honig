@@ -36,8 +36,8 @@ pub(crate) fn takes_body(op: &Operation) -> bool {
 pub(crate) fn param_inputs(op: &Operation) -> ParamInputs {
     let has = |l: Location| op.params.iter().any(|p| p.location == l);
     ParamInputs {
-        // A body needs the request for its content type. It is checked against the declared media types. It is read to
-        // pick one of several (multipart) or to tell an absent body.
+        // A body needs the request for its content type. It is checked against the declared media types. It is buffered
+        // to pick one of several (multipart) or to tell an absent body.
         req: has(Location::Header) || has(Location::Cookie) || has(Location::Part) || op.body.is_some(),
         caps: has(Location::Path),
         raw_query: has(Location::QueryString),
@@ -64,7 +64,8 @@ pub(crate) fn spread_object(space: &Space<'_>, op: &Operation, p: &Param, raw: T
     quote!(runtime::without_keys(#raw, &[#(#others),*]))
 }
 
-/// Returns where parameter `p` is in the request as a JSON pointer: `/query/limit`. Validation points to it the same way.
+/// Returns where parameter `p` is in the request as a JSON pointer: `/query/limit`. Validation points to it the same
+/// way.
 pub(crate) fn param_pointer(p: &Param) -> String {
     let loc = match p.location {
         Location::Path => "path",
@@ -81,7 +82,7 @@ pub(crate) fn param_pointer(p: &Param) -> String {
     }
 }
 
-/// Returns where the server reads one parameter from as an `Option<Value>` expression. `at` is its
+/// Returns where the server gets one parameter from as an `Option<Value>` expression. `at` is its
 /// [`param_pointer`].
 #[expect(clippy::too_many_arguments, reason = "the parts of one parameter that its source needs")]
 pub(crate) fn param_source(
@@ -106,7 +107,7 @@ pub(crate) fn param_source(
             quote!(#cap.and_then(|c| runtime::decode_path(c, #wire, #s, #shape, #explode)))
         }
         // `allowEmptyValue`: a bare `?flag` turns a boolean on; other
-        // non-string types read an empty value as absent.
+        // non-string types decode an empty value as absent.
         Location::Query if p.allow_empty => {
             let inner = if let Ty::Option(t) = &p.ty { t.as_ref() } else { &p.ty };
             let as_flag = *inner == Ty::Bool;
@@ -252,7 +253,7 @@ pub(crate) fn server_params(
     decoder(op, &f, m, inputs, &read, media_check.as_ref(), &value)
 }
 
-/// Returns the decoder `f`. It binds what it reads of the `Incoming`, checks the media type of the body and builds
+/// Returns the decoder `f`. It binds what it uses of the `Incoming`, checks the media type of the body and builds
 /// `value`.
 fn decoder(
     op: &Operation,

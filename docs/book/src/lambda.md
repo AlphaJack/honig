@@ -1,6 +1,6 @@
 # AWS Lambda
 
-A honig server runs on AWS Lambda through [`lambda_http`](https://docs.rs/lambda_http), behind the API Gateway route `ANY /{proxy+}`. `lambda_http::run` takes the router in the same way as its adapter does here:
+A honig server runs on AWS Lambda through [`lambda_http`](https://docs.rs/lambda_http), behind the API Gateway route `ANY /{proxy+}`. `lambda_http::run` accepts the router in the same way as its adapter does here:
 
 ```rust
 {{#include ../../../tests/e2e/tests/v32_lambda.rs:lambda}}

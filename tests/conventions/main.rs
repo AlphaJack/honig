@@ -1,6 +1,7 @@
-//! The code conventions in CONTRIBUTING that a test can check. They are read from the sources with `syn` in one binary.
+//! The code conventions in CONTRIBUTING that a test can check. They are parsed from the sources with `syn` in one
+//! binary.
 
-#![expect(clippy::disallowed_methods, reason = "reads the sources")]
+#![expect(clippy::disallowed_methods, reason = "parses the sources")]
 
 use std::{
     fs,

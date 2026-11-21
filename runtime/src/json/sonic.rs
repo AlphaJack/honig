@@ -23,7 +23,8 @@ mod tests {
     /// The deepest nesting `sonic-rs` decodes. One level more is an error.
     const DEPTH: usize = 254;
 
-    /// A schema that refers to itself, as generated code has it: a struct that holds itself in an object and in a list.
+    /// A schema that refers to itself, as generated code has it: a struct that contains itself in an object and in a
+    /// list.
     #[derive(Deserialize)]
     #[expect(dead_code, reason = "decoded for its depth")]
     struct Node {

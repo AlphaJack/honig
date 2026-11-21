@@ -42,7 +42,7 @@ pub mod get_export {
     }
     error_impl!(Response);
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<runtime::Blob, Box<Self>> {
             match self {
                 Self::Ok(body) => Ok(body),
@@ -86,7 +86,7 @@ pub mod get_thumbnail {
     }
     error_impl!(Response);
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<runtime::Blob, Box<Self>> {
             match self {
                 Self::Ok(body) => Ok(body),
@@ -117,7 +117,7 @@ pub mod get_manifest {
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
-        /// The files the export holds.
+        /// The files the export contains.
         Ok { body: Vec<String>, e_tag: Option<String>, last_modified: Option<String> },
         /// No such export.
         NotFound,
@@ -134,7 +134,7 @@ pub mod get_manifest {
     /// The body and headers of the success, in order: what `Response::into_ok` gives.
     pub type Success = (Vec<String>, Option<String>, Option<String>);
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<Success, Box<Self>> {
             match self {
                 Self::Ok { body, e_tag, last_modified } => {
@@ -188,7 +188,7 @@ pub mod replace_manifest {
     }
     error_impl!(Response);
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<(), Box<Self>> {
             match self {
                 Self::NoContent => Ok(()),

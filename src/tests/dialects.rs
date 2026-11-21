@@ -1,4 +1,4 @@
-//! Schemas are read with the `OpenAPI` dialect. A description that declares
+//! Schemas are interpreted with the `OpenAPI` dialect. A description that declares
 //! another one or a `$vocabulary` gets a warning instead of silence.
 
 use super::common;

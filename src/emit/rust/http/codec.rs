@@ -27,7 +27,7 @@ pub(crate) fn framing(kind: MediaKind) -> TokenStream {
 }
 
 /// Returns the `&[(part, media)]` that a multipart body encodes with. A request whose parts list several
-/// types reads the choice of the caller from `p.part_types`. Only the client encodes requests with
+/// types gets the choice of the caller from `p.part_types`. Only the client encodes requests with
 /// `p` in scope. Everything else sends the first listed type of each part.
 fn part_types(c: &Content) -> TokenStream {
     if !c.response && lists_part_types(c) {
@@ -40,7 +40,7 @@ fn part_types(c: &Content) -> TokenStream {
 /// Statements that put `e` (an owned place, moved or borrowed) into `target` as body `c`.
 /// `parts`: a `parts` list of (property, header, value) is in scope for multipart bodies.
 /// `by_ref`: `e` is already a reference. A body that the client encodes from borrowed parameters is one. That is
-/// only kinds that it reads and never one that moves into the request.
+/// only kinds that it borrows and never one that moves into the request.
 pub(crate) fn encode_body(
     target: &TokenStream,
     e: &TokenStream,
@@ -92,7 +92,7 @@ pub(crate) fn encode_body(
                 runtime::Message::set_body(&mut #target, ct, bytes);
             }
         }
-        // What is left is a sequential body sent as it is produced. `body_bytes` took every other kind.
+        // What is left is a sequential body sent as it is produced. `body_bytes` handled every other kind.
         MediaKind::Json
         | MediaKind::Linkset
         | MediaKind::Text
@@ -107,7 +107,7 @@ pub(crate) fn encode_body(
     }
 }
 
-/// Returns the bytes of body `c` from `e` when it is encoded whole (`set_body` takes them). `None` for a blob, a
+/// Returns the bytes of body `c` from `e` when it is encoded whole (`set_body` accepts them). `None` for a blob, a
 /// multipart body or one sent as it is produced. `by_ref` as for [`encode_body`].
 pub(crate) fn body_bytes(e: &TokenStream, c: &Content, by_ref: bool) -> Option<TokenStream> {
     let arg = if by_ref { e.clone() } else { quote!(&#e) };
@@ -115,7 +115,7 @@ pub(crate) fn body_bytes(e: &TokenStream, c: &Content, by_ref: bool) -> Option<T
         MediaKind::Json => quote!(runtime::json_encode(#arg)?),
         MediaKind::Linkset => quote!(runtime::linkset_encode(#arg)?.into_bytes()),
         // An owned `String` body moves into the response (no copy). A named string type converts first. The
-        // function form also takes `*body` (the body of a boxed variant). `*body.into_bytes()` would misparse that.
+        // function form also accepts `*body` (the body of a boxed variant). `*body.into_bytes()` would misparse that.
         MediaKind::Text if matches!(c.ty, Ty::String) => quote!(String::into_bytes(#e)),
         MediaKind::Text => quote!(String::from(#e).into_bytes()),
         MediaKind::Xml => quote!(runtime::xml_encode(#arg)?),
@@ -178,23 +178,23 @@ pub(crate) struct Decode {
     pub(crate) q: TokenStream,
     /// What the body is. It decides how a binary body becomes its own `Vec<u8>`.
     pub(crate) held: Held,
-    /// The body of a request still to come (`stream`). A binary body takes it as it arrives. `None` for a
+    /// The body of a request still to come (`stream`). A binary body consumes it as it arrives. `None` for a
     /// response.
     pub(crate) stream: Option<TokenStream>,
 }
 
-/// The body a decoder reads.
+/// The body a decoder decodes.
 #[derive(Clone, Copy)]
 pub(crate) enum Held {
-    /// A response's bytes nothing reads afterwards: moved out without a copy.
+    /// A response's bytes nothing uses afterwards: moved out without a copy.
     Moved,
-    /// Bytes that something reads afterwards: copied. That is a response kept for its headers or a borrowed request.
+    /// Bytes that something uses afterwards: copied. That is a response kept for its headers or a borrowed request.
     Borrowed,
     /// A request's `Cow` the decoder owns: `into_owned` moves an owned buffer instead of copying it.
     OwnedCow,
 }
 
-/// Returns the `(name, style, shape, explode)` of each styled form field as the decoder takes them.
+/// Returns the `(name, style, shape, explode)` of each styled form field as the decoder expects them.
 fn form_decode_styles(c: &Content) -> Vec<TokenStream> {
     c.form_styles
         .iter()
@@ -218,7 +218,7 @@ fn form_types(c: &Content) -> Vec<TokenStream> {
         .collect()
 }
 
-/// Returns the `(name, style)` of each styled form field as the encoder takes them.
+/// Returns the `(name, style)` of each styled form field as the encoder expects them.
 fn form_encode_styles(c: &Content) -> Vec<TokenStream> {
     c.form_styles
         .iter()
@@ -229,8 +229,8 @@ fn form_encode_styles(c: &Content) -> Vec<TokenStream> {
         .collect()
 }
 
-/// Returns `.map(...)` that takes a decoded `runtime::formats::Validated` of `t` apart: the decoder reads `t` with the text
-/// of its library formats checked first. `None` when `t` holds none.
+/// Returns `.map(...)` that unwraps a decoded `runtime::formats::Validated` of `t`: the decoder decodes `t` with the
+/// text of its library formats checked first. `None` when `t` contains none.
 pub(crate) fn validated_map(space: &Space<'_>, t: &Ty) -> Option<TokenStream> {
     let h = holds(space, t)?;
     let t = ty(space, t, true);
@@ -301,7 +301,7 @@ fn decode_sequence(space: &Space<'_>, c: &Content, d: &Decode) -> (TokenStream, 
             Some(h) => quote!(runtime::Items::received_validated::<#h>(&#body, &#stream, #framing)),
             None => quote!(runtime::Items::received(&#body, &#stream, #framing)),
         };
-        // `minItems`, `maxItems` and `uniqueItems` hold on the items as they arrive.
+        // `minItems`, `maxItems` and `uniqueItems` apply to the items as they arrive.
         return match item_limits(c.item_limits) {
             Some(l) => (quote!(#received.and_then(|items| items.limited(#l))), true),
             None => (received, true),
@@ -413,7 +413,7 @@ pub(crate) fn decode_contents(
     chain
 }
 
-/// Does decoding read the `Content-Type` (`ct`)? To choose among several, for a multipart boundary or for the media
+/// Does decoding use the `Content-Type` (`ct`)? To choose among several, for a multipart boundary or for the media
 /// type that a [`runtime::Blob`] of a range keeps.
 pub(crate) fn needs_ct(contents: &[Content]) -> bool {
     contents.len() > 1

@@ -24,7 +24,7 @@ struct Found<'a> {
 }
 
 impl Found<'_> {
-    /// Returns whether the branch through `$ref`s and `allOf` members fixes `prop` to one value. `seen` holds the
+    /// Returns whether the branch through `$ref`s and `allOf` members fixes `prop` to one value. `seen` contains the
     /// `$ref`s on the way: one met again is a cycle, which fixes nothing more.
     fn pins(&self, branch: &Value, prop: &str, seen: &mut Vec<String>) -> bool {
         let branch = match branch.get("$ref").and_then(Value::as_str) {

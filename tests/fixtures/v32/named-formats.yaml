@@ -1,6 +1,6 @@
 openapi: 3.2.0
 info: {title: Named format types, version: "1"}
-# `named-formats.toml` sets `String` for `date-time`. It reads any text: honig checks the format before it.
+# `named-formats.toml` sets `String` for `date-time`. It accepts any text: honig checks the format before it.
 paths:
   /stamps:
     post:

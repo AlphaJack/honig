@@ -2,7 +2,7 @@
 //! written out again and again. A body is compared with its own parameters renamed. So `|a| a.len()` and
 //! `|b| b.len()` are the same. Some bodies say nothing twice and tests may repeat themselves. Those that only:
 //! - build a value as `|e| Error::Io { e }` and `Missing::Page(path)` do
-//! - read a field as `self.calls.lock().clone()` does or pass fields, names and constants on as
+//! - get a field as `self.calls.lock().clone()` does or pass fields, names and constants on as
 //!   `retry_at(self.at, self.failures)` and `find(&self.headers, name)` do
 //! - compare with a constant as `|r| r.level() == Level::Failure` does
 //! - set fields of `self` and maybe return it as `{ self.name = Some(name.into()); self }` of a builder does
@@ -72,7 +72,7 @@ impl Visitor<'_> {
     }
 }
 
-/// Whether it only builds a value, reads or passes on fields of `self` or compares with a constant.
+/// Whether it only builds a value, gets or passes on fields of `self` or compares with a constant.
 fn builds(expr: &Expr) -> bool {
     if let Expr::Block(b) = expr {
         return builds_only(&b.block.stmts);
@@ -255,7 +255,7 @@ impl<'ast> Visit<'ast> for Visitor<'_> {
     }
 }
 
-/// What the `src` of each package holds. A package cannot call the private helpers of another. So each is checked
+/// What the `src` of each package contains. A package cannot call the private helpers of another. So each is checked
 /// alone.
 fn found() -> Vec<Found> {
     let sources = super::all_sources();

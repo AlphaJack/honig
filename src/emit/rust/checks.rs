@@ -1,4 +1,4 @@
-//! The checks of a checked type: the keywords of its schema that its base type does not hold, run by its `try_from`.
+//! The checks of a checked type: the keywords of its schema that its base type does not enforce, run by its `try_from`.
 //!
 //! Numeric bounds are typed per value at generation time (integers get integer bounds). So generated code compares in
 //! the own type of the value and never casts. The `regress` feature of the runtime checks `pattern`. `generate` turns
@@ -84,7 +84,7 @@ pub(super) fn string_checks(c: &Constraints, value: &TokenStream, path: &TokenSt
     }
     let (min, max) = (opt_u64(c.min_length), opt_u64(c.max_length));
     let r = receiver(value);
-    // A value past `maxLength` is wrong already. Its pattern does not run on it: a pattern that backtracks takes
+    // A value past `maxLength` is wrong already. Its pattern does not run on it: a pattern that backtracks needs
     // exponential time on a long value that almost matches.
     let pat = match (pat, c.max_length) {
         (Some(pat), Some(m)) => {
@@ -151,7 +151,7 @@ pub(super) fn subschema_checks(
     let contains = json_contains_checks(c, &ty, path);
     let required =
         (!c.json_dependents.is_empty()).then(|| object_dependent_checks(&c.json_dependents, &quote!(json), path));
-    // The checked type binds `json` to its whole value. A value further in reads its own.
+    // The checked type binds `json` to its whole value. A value further in binds its own.
     let own = own_buffer(value);
     quote! {
         {
@@ -184,8 +184,8 @@ fn own_buffer(value: &TokenStream) -> Option<TokenStream> {
     })
 }
 
-/// Returns `contains` of `c` on the items of `value` (a `&` of a list) at `path`: it counts the items of its buffer that
-/// decode as the type of the schema, and holds the count to `minContains` and `maxContains`.
+/// Returns `contains` of `c` on the items of `value` (a `&` of a list) at `path`: it counts the items of its buffer
+/// that decode as the type of the schema, and limits the count to `minContains` and `maxContains`.
 fn contains_checks(space: &Space<'_>, c: &Constraints, value: &TokenStream, path: &TokenStream) -> TokenStream {
     let Some((n, min, max)) = c.contains else { return TokenStream::new() };
     let ty = super::syntax::ty(space, &space.types.subschemas[n].0, false);
@@ -245,7 +245,7 @@ fn pattern_checks(c: &Constraints, ty: &dyn Fn(usize) -> TokenStream, path: &Tok
         let re = pattern_static(pattern);
         let matches = quote!(runtime::pattern_matches(#re, name));
         let refuse = quote!(runtime::violation(out, &runtime::InstancePath::Key(#path, name), e.to_string()););
-        // Without `additionalProperties` nothing else happens on a match: one `if` holds both conditions.
+        // Without `additionalProperties` nothing else happens on a match: one `if` tests both conditions.
         if closed {
             quote! {
                 if #matches {
@@ -297,8 +297,9 @@ fn pattern_checks(c: &Constraints, ty: &dyn Fn(usize) -> TokenStream, path: &Tok
     }
 }
 
-/// Returns `unevaluatedProperties` on the object in `json`: each name that `ev` does not evaluate is refused, or decodes
-/// as the type of the schema of `leftover`. A branch that evaluates names decodes the value once, before the names.
+/// Returns `unevaluatedProperties` on the object in `json`: each name that `ev` does not evaluate is refused, or
+/// decodes as the type of the schema of `leftover`. A branch that evaluates names decodes the value once, before the
+/// names.
 fn unevaluated_checks(
     ev: &Evaluated,
     leftover: Leftover,
@@ -346,8 +347,8 @@ fn unevaluated_checks(
     }
 }
 
-/// Returns `unevaluatedItems` on the list in `json`: each item that `ev` does not evaluate is refused, or decodes as the
-/// type of the schema of `leftover`.
+/// Returns `unevaluatedItems` on the list in `json`: each item that `ev` does not evaluate is refused, or decodes as
+/// the type of the schema of `leftover`.
 fn unevaluated_item_checks(
     ev: &EvaluatedItems,
     leftover: Leftover,
@@ -383,7 +384,7 @@ fn unevaluated_item_checks(
         Some(evaluated) => quote!(if !(#evaluated) { #check }),
         None => check,
     };
-    // The item is bound only where a decode reads it.
+    // The item is bound only where a decode uses it.
     let uses_item =
         matches!(leftover, Leftover::Schema(_)) || evaluated.is_some_and(|e| e.to_string().contains("item"));
     let binding = if uses_item { quote!((i, item)) } else { quote!((i, _)) };
@@ -397,8 +398,8 @@ fn unevaluated_item_checks(
     }
 }
 
-/// Returns whether item `i` (`item`) is evaluated by `ev`, as an expression, or `None` when no item is. Each branch adds
-/// its decode, run once, to `flags`.
+/// Returns whether item `i` (`item`) is evaluated by `ev`, as an expression, or `None` when no item is. Each branch
+/// adds its decode, run once, to `flags`.
 fn evaluated_item_expr(
     ev: &EvaluatedItems,
     ty: &dyn Fn(usize) -> TokenStream,
@@ -485,7 +486,7 @@ pub(super) fn checks(
     if let Some(settled) = settled_checks(space, t, c, path) {
         return settled;
     }
-    // A Rust tuple holds its items by their types.
+    // A Rust tuple enforces its items by their types.
     let c = &if crate::ir::checked::rust_tuple(space.types, t, 0) {
         Constraints { tuple: None, ..c.clone() }
     } else {
@@ -532,7 +533,7 @@ pub(super) fn checks(
         Ty::Map(_) => map_checks(c, value, path),
         Ty::Named(id) => match &space.types.get(*id).kind {
             Kind::Alias(x) => checks(space, x, c, value, path),
-            // The fields of a struct hold `dependentRequired` together: the checked type of its shape runs it.
+            // The fields of a struct share `dependentRequired`: the checked type of its shape runs it.
             Kind::Struct(s)
                 if !c.dependent_required.is_empty()
                     || c.property_names.is_some()
@@ -544,14 +545,14 @@ pub(super) fn checks(
                 let count = struct_count_checks(space, s, c, value, path);
                 quote!(#names #dependents #count)
             }
-            // The union of an implied shape (`Object` or `Array`, and `Other`): keywords of one kind beside the shape and
-            // the names of an object, on the value by its kind.
+            // The union of an implied shape (`Object` or `Array`, and `Other`): keywords of one kind beside the shape
+            // and the names of an object, on the value by its kind.
             Kind::Union(u) if u.rest || c.property_names.is_some() => implied_checks(c, value, path),
-            // A checked type holds its own keywords: other ones beside them are checked on its base.
+            // A checked type enforces its own keywords: other ones beside them are checked on its base.
             Kind::Checked(own) if own.constraints != *c => {
                 checks(space, &own.base, c, &quote!(std::ops::Deref::deref(#value)), path)
             }
-            // Any other named type holds its own keywords: only a valid value decodes or is built.
+            // Any other named type enforces its own keywords: only a valid value decodes or is built.
             Kind::Struct(_)
             | Kind::StrEnum(_)
             | Kind::IntEnum(_)
@@ -685,8 +686,8 @@ fn struct_count_checks(
     })
 }
 
-/// Returns `dependentRequired` on the fields of `shape` (`value` is a `&` of it): when a property is present, so are the
-/// properties that it requires.
+/// Returns `dependentRequired` on the fields of `shape` (`value` is a `&` of it): when a property is present, so are
+/// the properties that it requires.
 fn dependent_checks(
     space: &Space<'_>,
     shape: &crate::ir::types::Struct,
@@ -812,7 +813,7 @@ pub(super) fn integer_checks(t: &Ty, c: &Constraints, value: &TokenStream, path:
     quote!(#range #multiple)
 }
 
-/// Which side of a value a bound keyword holds, and whether it takes the bound itself.
+/// Which side of a value a bound keyword limits, and whether it includes the bound itself.
 #[derive(Clone, Copy)]
 enum Bound {
     /// `minimum`: the value is the bound or more.
@@ -878,7 +879,7 @@ fn whole_bound(n: &Number, up: bool) -> i128 {
 }
 
 /// Returns the integer whose multiples are the integers that are multiples of `m`, from the decimal text of `m`. An
-/// integer is a multiple of `p / 10^k` when it is one of `p` with its factors of 2 and 5 that `10^k` holds removed:
+/// integer is a multiple of `p / 10^k` when it is one of `p` with its factors of 2 and 5 that `10^k` has removed:
 /// `2.5` is `25 / 10`, so `5`. `None` for a `multipleOf` that is not positive or does not fit an `i128`; a modulus past
 /// `i128` is `i128::MAX`, past every integer type.
 fn integer_modulus(m: &Number) -> Option<i128> {
@@ -963,7 +964,7 @@ pub(super) fn decimal_checks(c: &Constraints, value: &TokenStream, path: &TokenS
         let m = lit(&m.to_string());
         quote!(runtime::check_multiple_text(out, #path, #r.as_str(), #m);)
     });
-    // `format: decimal128`: the digits that IEEE 754 decimal128 holds.
+    // `format: decimal128`: the digits that IEEE 754 decimal128 represents.
     let limits = c.decimal128.then(|| quote!(runtime::check_decimal128(out, #path, #r.as_str());));
     quote!(#range #multiple #limits)
 }
@@ -1140,7 +1141,7 @@ fn object_dependent_checks(
     quote!(#(#checks)*)
 }
 
-/// Returns `enum` and `const` of `c` on `json` when no type holds their values: the value is compared as JSON.
+/// Returns `enum` and `const` of `c` on `json` when no type represents their values: the value is compared as JSON.
 fn value_checks(c: &Constraints, path: &TokenStream) -> TokenStream {
     let one_of_values = c.enum_values.as_ref().map(|values| {
         let values = values.iter().map(super::syntax::json_tokens);
@@ -1193,7 +1194,7 @@ fn condition_checks(c: &Constraints, ty: &dyn Fn(usize) -> TokenStream, path: &T
     quote!(#(#conditions)*)
 }
 
-/// Returns `propertyNames` of `c` when no text check holds it: each name of the object in `json`, as a JSON string,
+/// Returns `propertyNames` of `c` when no text check enforces it: each name of the object in `json`, as a JSON string,
 /// decodes as the type of the schema.
 fn names_schema_checks(c: &Constraints, ty: &dyn Fn(usize) -> TokenStream, path: &TokenStream) -> TokenStream {
     let Some(n) = c.names_schema else { return TokenStream::new() };

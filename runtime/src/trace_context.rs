@@ -99,7 +99,7 @@ const SPAN_ID_HEX: usize = 16;
 const FIELDS_LEN: usize = TRACE_ID_HEX + 1 + SPAN_ID_HEX + 1 + BYTE_HEX;
 
 /// Returns the span that a `traceparent` names with the `tracestate` next to it. `None` when the `traceparent` is
-/// malformed as W3C Trace Context section 3.2 reads it. A future version may append fields after a `-`. `ff` is no
+/// malformed as W3C Trace Context section 3.2 defines it. A future version may append fields after a `-`. `ff` is no
 /// version.
 #[cfg(all(feature = "tracing", feature = "tracing-opentelemetry"))]
 fn span_context(parent: &str, state: Option<&str>) -> Option<opentelemetry::trace::SpanContext> {

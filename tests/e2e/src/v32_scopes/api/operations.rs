@@ -54,7 +54,7 @@ pub mod list_issues {
     display_impl!(Response);
     error_impl!(Response);
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<(), Box<Self>> {
             match self {
                 Self::NoContent => Ok(()),
@@ -82,7 +82,7 @@ pub mod create_issue {
     display_impl!(Response);
     error_impl!(Response);
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<(), Box<Self>> {
             match self {
                 Self::NoContent => Ok(()),
@@ -110,7 +110,7 @@ pub mod open {
     display_impl!(Response);
     error_impl!(Response);
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<(), Box<Self>> {
             match self {
                 Self::NoContent => Ok(()),

@@ -48,7 +48,7 @@ paths:
               examples:
                 ref: {$ref: '#/components/examples/Hi'}
                 file: {$ref: '#/components/examples/HiFile'}
-  # More required parameters and properties than clippy allows: `Params::new` and `Box::new` say why they take them.
+  # More required parameters and properties than clippy allows: `Params::new` and `Box::new` say why they need them.
   /boxes:
     get:
       operationId: findBox

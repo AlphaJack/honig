@@ -61,9 +61,11 @@ pub(crate) struct Builder<'a> {
     pub keep_unknown: bool,
     /// The generated crate's dependencies (`-` as `_`): an object-form `x-rust-type` refers to one of them.
     pub crates: Vec<String>,
-    /// The description was Swagger 2.0: an optional property reads `null` as absent ([`crate::ir::types::Field::null_as_absent`]).
+    /// The description was Swagger 2.0: an optional property decodes `null` as absent
+    /// ([`crate::ir::types::Field::null_as_absent`]).
     pub from_v20: bool,
-    /// The `$ref` targets whose keywords are being read: one met again is a cycle, whose keywords its own type holds.
+    /// The `$ref` targets whose keywords are being collected: one met again is a cycle, whose keywords its own type
+    /// enforces.
     reading: RefCell<Vec<String>>,
     /// The schemas that typed checks decode the value as (`not`, `dependentSchemas`), by index, with the pointer of
     /// each when it has one. `finish` builds a type for each.
@@ -72,7 +74,8 @@ pub(crate) struct Builder<'a> {
     subschema_index: RefCell<BTreeMap<(Option<String>, String), usize>>,
     /// The JSON kind of each type once it is final ([`Kinds`]).
     kinds: RefCell<Vec<Option<JsonKind>>>,
-    /// Schemas that no generated check holds, by pointer, with what makes them so. `finish` reports each as an error.
+    /// Schemas that no generated check enforces, by pointer, with what makes them so. `finish` reports each as an
+    /// error.
     unchecked: RefCell<BTreeMap<String, String>>,
     /// Schemas nested too deep to type where they are ([`MAX_TYPE_DEPTH`]): each a reserved type, filled from no
     /// depth by `finish`.
@@ -224,7 +227,7 @@ impl<'a> Builder<'a> {
     /// Returns a property's `xml` object. Items' `$ref`s give the item name.
     fn xml_hint(&self, prop: &Value) -> XmlHint {
         // A property element is named by the property (or its own `xml.name`),
-        // not by the referenced schema; items take the item schema's name.
+        // not by the referenced schema; items get the item schema's name.
         let mut hint = XmlHint::of(prop);
         if hint.item.is_none() {
             hint.item = self.array_items(prop).and_then(|items| self.xml_name(&items));
@@ -243,8 +246,8 @@ impl<'a> Builder<'a> {
         self.constraints_at(s, 0, Some(ptr))
     }
 
-    /// Puts `patternProperties` of `s` into `c`: each pattern with the type of its schema, and what `additionalProperties`
-    /// takes of the other names.
+    /// Puts `patternProperties` of `s` into `c`: each pattern with the type of its schema, and what
+    /// `additionalProperties` accepts of the other names.
     fn queue_patterns(
         &self,
         s: &Value,
@@ -252,8 +255,8 @@ impl<'a> Builder<'a> {
         at: Option<&str>,
         c: &mut Constraints,
     ) {
-        // Without patterns and without `type`, the union of the implied shape holds the object, the check the other
-        // names. With a `type`, the struct or map holds them, and a map of one pattern its names.
+        // Without patterns and without `type`, the union of the implied shape stores the object, the check the other
+        // names. With a `type`, the struct or map stores them, and a map of one pattern its names.
         let Some(patterns) = patterns else {
             if s.get("type").is_none() && s.get("patternProperties").is_none() {
                 self.queue_closed(s, c);
@@ -268,7 +271,7 @@ impl<'a> Builder<'a> {
     }
 
     /// Puts `additionalProperties` (`false` or a schema) of `s` into `c`: the names that `s` declares, and what the
-    /// other names that no pattern matches take.
+    /// other names that no pattern matches accept.
     fn queue_closed(&self, s: &Value, c: &mut Constraints) {
         let declared = s.get("properties").and_then(Value::as_object).into_iter().flat_map(serde_json::Map::keys);
         let declared = declared.cloned().collect();
@@ -283,7 +286,7 @@ impl<'a> Builder<'a> {
     }
 
     /// Returns `unevaluatedProperties` of `s` as generated code checks it: what `s` evaluates, and what the other names
-    /// take. `None` for `unevaluatedProperties: true`, which takes every name.
+    /// accept. `None` for `unevaluatedProperties: true`, which accepts every name.
     fn unevaluated(&self, s: &Value, at: Option<&str>) -> Option<(Evaluated, Leftover)> {
         let leftover = match s.get("unevaluatedProperties")? {
             Value::Bool(true) => return None,
@@ -296,7 +299,7 @@ impl<'a> Builder<'a> {
     }
 
     /// Returns `unevaluatedItems` of `s` as generated code checks it: what `s` evaluates of a list, and what the other
-    /// items take. `None` for `unevaluatedItems: true`, which takes every item.
+    /// items accept. `None` for `unevaluatedItems: true`, which accepts every item.
     fn unevaluated_items(&self, s: &Value, at: Option<&str>) -> Option<(EvaluatedItems, Leftover)> {
         let leftover = match s.get("unevaluatedItems")? {
             Value::Bool(true) => return None,
@@ -308,8 +311,8 @@ impl<'a> Builder<'a> {
         Some((self.evaluation(s, 0, true)?, leftover))
     }
 
-    /// Returns what `s` evaluates ([`Evaluated`] of names, [`EvaluatedItems`] of items). With `queue`, the schema of each
-    /// branch is queued for a type; without, nothing is. `None` when that is not known before the value is: a
+    /// Returns what `s` evaluates ([`Evaluated`] of names, [`EvaluatedItems`] of items). With `queue`, the schema of
+    /// each branch is queued for a type; without, nothing is. `None` when that is not known before the value is: a
     /// `dependentSchemas`, a `$dynamicRef` or a cycle of references.
     fn evaluation<E: Evaluation>(&self, s: &Value, depth: usize, queue: bool) -> Option<E> {
         if depth > MAX_SCHEMA_DEPTH {
@@ -420,7 +423,7 @@ impl<'a> Builder<'a> {
         (prefix, rest)
     }
 
-    /// Queues `not`, and `if` with its `then` and `else` unless a tagged union holds them, as subschemas of `c`.
+    /// Queues `not`, and `if` with its `then` and `else` unless a tagged union enforces them, as subschemas of `c`.
     fn queue_not_and_if(&self, s: &Value, at: Option<&str>, typed_conditional: bool, c: &mut Constraints) {
         if let Some(not) = s.get("not") {
             c.not.push(self.queue_subschema(not, at.map(|p| join(p, "not"))));
@@ -432,12 +435,12 @@ impl<'a> Builder<'a> {
     }
 
     /// Queues the schemas that a value also decodes as: the keywords beside a union, and the members of an `allOf` that
-    /// one merged type cannot hold.
+    /// one merged type cannot represent.
     fn queue_also(&self, s: &Value, at: Option<&str>, c: &mut Constraints) {
         if let Some(beside) = beside_union(s) {
             c.also.push(self.queue_subschema(&beside, None));
         }
-        // Members that one merged type cannot hold: the value also decodes as each of them.
+        // Members that one merged type cannot represent: the value also decodes as each of them.
         if self.lossy_all_of(s) {
             let at = at.map(|p| join(p, "allOf"));
             for (i, m) in json::items(s.get("allOf")) {
@@ -447,14 +450,14 @@ impl<'a> Builder<'a> {
     }
 
     fn constraints_at(&self, s: &Value, depth: usize, at: Option<&str>) -> Constraints {
-        // Keywords further down belong to the named types on the way, which hold them. Only a schema checked whole
+        // Keywords further down belong to the named types on the way, which enforce them. Only a schema checked whole
         // loses what it cuts (`inline_scoped`).
         if depth > MAX_SCHEMA_DEPTH {
             return Constraints::default();
         }
         let mut c = Constraints::own(s);
         let (dependents, names, pattern_map) = typed_object_keywords(s, &mut c);
-        // What the names that nothing evaluated take is known before the value is.
+        // What the names that nothing evaluated accept is known before the value is.
         let unevaluated =
             s.get("unevaluatedProperties").is_some() && self.evaluation::<Evaluated>(s, 0, false).is_some();
         let unevaluated_items =
@@ -465,11 +468,11 @@ impl<'a> Builder<'a> {
         let dependent_schemas = typed_dependent_schemas(s);
         // `contains` on an array type counts the items that decode as the type of its schema.
         let typed_contains = s.get("contains").is_some() && s.as_object().is_some_and(|o| may_be(o, "array"));
-        // A struct that holds its patterns decodes each name as them.
+        // A struct that stores its patterns decodes each name as them.
         let held_patterns = struct_patterns(s).is_some();
         let patterns = (!pattern_map && !held_patterns).then(|| typed_patterns(s)).flatten();
-        // `if`/`then` on one property's constants becomes a tagged union (`conditional_union`): its variants hold the
-        // conditions. Only conditions that it cannot type stay a run-time check.
+        // `if`/`then` on one property's constants becomes a tagged union (`conditional_union`): its variants enforce
+        // the conditions. Only conditions that it cannot type stay a run-time check.
         let typed_conditional = typed_conditional(s);
         let conditional_key = |k: &str| {
             // An `if` that is no tagged union is a check of the types of its schemas.
@@ -481,7 +484,7 @@ impl<'a> Builder<'a> {
                 || (dependent_schemas.is_some() && k == "dependentSchemas")
                 || (unevaluated && k == "unevaluatedProperties")
                 || (unevaluated_items && k == "unevaluatedItems")
-                // On a schema whose `type` takes no array, `contains` asserts nothing.
+                // On a schema whose `type` accepts no array, `contains` asserts nothing.
                 || matches!(k, "contains" | "minContains" | "maxContains")
                 || ((patterns.is_some() || held_patterns) && k == "patternProperties")
         };
@@ -525,7 +528,7 @@ impl<'a> Builder<'a> {
                 c.dependent_schemas.push((name.clone(), self.queue_subschema(sub, at)));
             }
         } else {
-            // No generated check holds them: generation stops with the keywords that it cannot check.
+            // No generated check enforces them: generation stops with the keywords that it cannot check.
             self.unchecked.borrow_mut().entry(at.unwrap_or_default().to_owned()).or_insert_with(|| untyped.join(", "));
         }
         for m in s.get("allOf").and_then(Value::as_array).into_iter().flatten().filter(|m| !conditional_member(m)) {
@@ -540,7 +543,7 @@ impl<'a> Builder<'a> {
     fn merge_reached(&self, s: &Value, depth: usize, c: &mut Constraints) {
         // One hop: a target that has keywords beside its own `$ref` (3.1) keeps them. Following the whole chain
         // would skip them.
-        // A target that is being read already is a cycle: its type holds its keywords where it recurs.
+        // A target that is being collected already is a cycle: its type enforces its keywords where it recurs.
         if let Some(p) = s.get("$ref").and_then(Value::as_str).and_then(|r| self.doc.local_pointer(r))
             && let Some(target) = pointer(&self.doc.root, &p)
             && !self.reading.borrow().contains(&p)
@@ -554,7 +557,7 @@ impl<'a> Builder<'a> {
         if let [branch] = only_non_null_branch(s).as_slice() {
             c.merge(self.constraints_at(branch, depth + 1, None));
         }
-        // Beside `prefixItems`, `items` holds for the rest only: the tuple checks it.
+        // Beside `prefixItems`, `items` applies to the rest only: the tuple checks it.
         if c.items.is_none()
             && s.get("prefixItems").is_none()
             && let Some(items) = s.get("items")
@@ -566,12 +569,12 @@ impl<'a> Builder<'a> {
         }
     }
 
-    /// Returns an `allOf` that one merged type cannot hold. The members merge into one struct (or the type they share)
-    /// with one value per keyword. So two members that set the same keyword (two `maximum`s, two
+    /// Returns an `allOf` that one merged type cannot represent. The members merge into one struct (or the type they
+    /// share) with one value per keyword. So two members that set the same keyword (two `maximum`s, two
     /// `additionalProperties`), or whose `type`s share none, would lose one of them: the whole schema is then checked
-    /// at run time. A property that two members declare is the `allOf` of its schemas, which its field holds. `required` adds up, one shared `type` is kept and each member's
-    /// untyped keywords are checked with it. So the usual `allOf: [$ref: Base, {type: object, properties: ...}]` and an
-    /// `allOf` of `if`/`then` pairs stay typed.
+    /// at run time. A property that two members declare is the `allOf` of its schemas, which its field enforces.
+    /// `required` adds up, one shared `type` is kept and each member's untyped keywords are checked with it. So the
+    /// usual `allOf: [$ref: Base, {type: object, properties: ...}]` and an `allOf` of `if`/`then` pairs stay typed.
     fn lossy_all_of(&self, s: &Value) -> bool {
         let Some(o) = s.as_object() else { return false };
         let Some(members) = o.get("allOf").and_then(Value::as_array) else { return false };
@@ -603,7 +606,7 @@ impl<'a> Builder<'a> {
             let Some(mo) = m.as_object() else { continue };
             for k in mo.keys() {
                 // A member's untyped keywords (`if`, `not`) are checked whole with that member already. A property
-                // that two members declare merges into the `allOf` of its schemas: its field holds both.
+                // that two members declare merges into the `allOf` of its schemas: its field enforces both.
                 let lossless = matches!(k.as_str(), "type" | "required" | "allOf" | "$ref" | "properties")
                     || UNTYPED_KEYWORDS.contains(&k.as_str())
                     || ANNOTATIONS.contains(&k.as_str())
@@ -635,8 +638,8 @@ impl<'a> Builder<'a> {
         // decodes every branch and counts. A discriminator that does
         // not pin each branch picks one by its tag and would not count, so the whole schema is checked then.
         let one_of = o.contains_key("oneOf");
-        // A branch that asserts nothing takes any value: an `anyOf` with one holds for every value, which its variant of
-        // any value decodes.
+        // A branch that asserts nothing accepts any value: an `anyOf` with one is true for every value, which its
+        // variant of any value decodes.
         if !one_of && branches.iter().any(asserts_nothing) {
             return false;
         }
@@ -725,7 +728,7 @@ impl<'a> Builder<'a> {
     /// means that the schema maps to an existing type expression.
     fn named_kind(&mut self, s: &Value, ptr: &str, name: &Name) -> Option<Kind> {
         // `unevaluatedProperties` judges the names that its branches and members leave. The run-time check sees the
-        // value as it re-serializes, so the objects it holds keep the names that they do not declare.
+        // value as it re-serializes, so the objects it contains keep the names that they do not declare.
         let unevaluated = s.get("unevaluatedProperties").is_some_and(|u| u != &Value::Bool(true));
         let keep = self.keep_unknown;
         self.keep_unknown |= unevaluated;
@@ -759,7 +762,7 @@ impl<'a> Builder<'a> {
             return Some(Kind::Newtype(self.ty(inner, &join(ptr, "contentSchema"), &name.and(&Name::new("Content")))));
         }
         // `properties` or `items` without `type`: they apply to objects or arrays only, and any other value is valid
-        // too (2020-12 section 7.6.1). One variant holds the shape, `Other` the rest.
+        // too (2020-12 section 7.6.1). One variant stores the shape, `Other` the rest.
         if let Some(kind) = inferred_kind(o) {
             self.diags.warning(
                 ptr,
@@ -814,7 +817,7 @@ impl<'a> Builder<'a> {
     pub(crate) fn ty(&mut self, s: &Value, ptr: &str, hint: &Name) -> Ty {
         let Some(o) = s.as_object() else { return Ty::Any };
         if self.depth > MAX_TYPE_DEPTH {
-            // Its type holds `null` too: the reserved type is the whole schema.
+            // Its type accepts `null` too: the reserved type is the whole schema.
             if let Some(id) = self.by_ptr.get(ptr) {
                 return Ty::Named(*id);
             }
@@ -1022,7 +1025,7 @@ impl<'a> Builder<'a> {
                     return const_ty(c);
                 }
                 // One `patternProperties` schema and no other name allowed types every value; the key pattern is still
-                // checked. An open map holds any value under a name that the pattern does not match.
+                // checked. An open map stores any value under a name that the pattern does not match.
                 let single_pattern = o.get("patternProperties").and_then(Value::as_object).filter(|p| p.len() == 1);
                 if let Some((pat, schema)) = single_pattern.and_then(|p| p.iter().next())
                     && !o.contains_key("properties")
@@ -1031,7 +1034,7 @@ impl<'a> Builder<'a> {
                     let at = join(&join(ptr, "patternProperties"), pat);
                     return Ty::Map(Box::new(self.ty(schema, &at, &hint.and(&Name::new("Value")))));
                 }
-                // Beside `patternProperties`, `additionalProperties` holds for the names that no pattern matches: the
+                // Beside `patternProperties`, `additionalProperties` applies to the names that no pattern matches: the
                 // check judges each value.
                 match o.get("additionalProperties") {
                     Some(ap @ Value::Object(m)) if !m.is_empty() && !o.contains_key("patternProperties") => Ty::Map(
@@ -1108,8 +1111,8 @@ impl<'a> Builder<'a> {
         None
     }
 
-    /// Finishes the space: resolves placeholders, drops defaults that the type of their field cannot hold and breaks
-    /// cycles with `Box`.
+    /// Finishes the space: resolves placeholders, drops defaults that the type of their field cannot represent and
+    /// breaks cycles with `Box`.
     pub(crate) fn finish(mut self) -> TypeSpace {
         self.fill_deferred();
         let subschemas = self.build_subschemas();
@@ -1205,8 +1208,8 @@ mod tests {
         d.iter().filter_map(|x| x.message.strip_prefix("generated code cannot check this schema: ")).collect()
     }
 
-    /// A keyword that a type or a generated check holds is checked; beside it, one that none holds still stops
-    /// generation. The same keyword where nothing holds it stops it too.
+    /// A keyword that a type or a generated check enforces is checked; beside it, one that none enforces still stops
+    /// generation. The same keyword where nothing enforces it stops it too.
     #[test]
     fn a_held_keyword_hides_no_other() {
         let held = [
@@ -1250,7 +1253,7 @@ mod tests {
         assert_eq!(names("F"), ["One", "Two"]);
     }
 
-    /// Two aliases that hold each other cannot be `type` aliases: each becomes a newtype.
+    /// Two aliases that contain each other cannot be `type` aliases: each becomes a newtype.
     #[test]
     fn aliases_in_a_cycle_become_newtypes() {
         let list = |of: &str| json!({"type": "array", "items": {"$ref": format!("#/components/schemas/{of}")}});
@@ -1315,8 +1318,8 @@ mod tests {
         );
     }
 
-    /// A union of unions: each layer holds the two before it, so 2^40 paths reach the bottom. Each kind is found once,
-    /// and `Top` tells a text from a number however deep the text is.
+    /// A union of unions: each layer contains the two before it, so 2^40 paths reach the bottom. Each kind is found
+    /// once, and `Top` tells a text from a number however deep the text is.
     #[test]
     fn a_union_of_unions_finds_each_kind_once() {
         let mut schemas = serde_json::Map::new();

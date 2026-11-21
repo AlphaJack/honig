@@ -25,7 +25,7 @@ pub(crate) fn setter_name(api: &Api, scheme: &str) -> proc_macro2::Ident {
 }
 
 /// Returns one typed setter per security scheme. A misspelt scheme is a compile
-/// error. Basic auth takes the user and password apart.
+/// error. Basic auth splits the user and password apart.
 pub(crate) fn credential_setters(api: &Api) -> Vec<TokenStream> {
     api.schemes
         .iter()

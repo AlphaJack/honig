@@ -10,8 +10,9 @@ pub(crate) fn content_length(headers: &http::HeaderMap) -> Option<usize> {
     headers.get(http::header::CONTENT_LENGTH)?.to_str().ok()?.parse().ok()
 }
 
-/// A request body that the adapter has not read. For an operation that decodes it the server reads it whole into a
-/// buffer sized from `Content-Length`. Otherwise a handler reads it piece by piece. Either way it stops past `limit`.
+/// A request body that the adapter has not consumed. For an operation that decodes it the server buffers it whole into
+/// a buffer sized from `Content-Length`. Otherwise a handler consumes it piece by piece. Either way it stops past
+/// `limit`.
 pub(crate) struct Unread<B> {
     body: B,
     hint: Option<usize>,
@@ -59,7 +60,7 @@ where
 }
 
 /// Returns the whole body in one buffer sized from `Content-Length` (`hint`). Each frame is appended and then dropped.
-/// So the body is held once and never as frames plus a joined copy. Reading stops past `limit`.
+/// So the body is in memory once and never as frames plus a joined copy. Buffering stops past `limit`.
 async fn read_body<B>(mut body: B, hint: Option<usize>, limit: usize) -> Result<Vec<u8>, BodyError>
 where
     B: http_body::Body<Data = bytes::Bytes> + Unpin,

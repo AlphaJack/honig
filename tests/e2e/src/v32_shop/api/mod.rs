@@ -57,7 +57,7 @@
 )]
 #![allow(
     clippy::missing_errors_doc,
-    reason = "generated docs hold only the description's own prose"
+    reason = "generated docs contain only the description's own prose"
 )]
 #![allow(
     clippy::init_numbered_fields,

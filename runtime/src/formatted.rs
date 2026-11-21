@@ -1,5 +1,5 @@
 //! The text of a string format that the crate has no library type for. Only text of that format is one: `try_from`,
-//! `parse` and decoding check it. It reads as a `str`.
+//! `parse` and decoding check it. It derefs to `str`.
 
 use std::borrow::Borrow;
 use std::cmp::Ordering;
@@ -187,14 +187,14 @@ pub type IdnEmailText = Formatted<format::IdnEmail>;
 pub type HostnameText = Formatted<format::Hostname>;
 /// `format: idn-hostname`. Checking it needs the `idn` feature.
 pub type IdnHostnameText = Formatted<format::IdnHostname>;
-/// `{type: string, format: decimal}`: every digit, past what a decimal type holds.
+/// `{type: string, format: decimal}`: every digit, past what a decimal type supports.
 pub type DecimalText = Formatted<format::Decimal>;
-/// `{type: string, format: decimal128}`: a decimal that IEEE 754 decimal128 holds exactly, at most 34 significant
+/// `{type: string, format: decimal128}`: a decimal that IEEE 754 decimal128 represents exactly, at most 34 significant
 /// digits within its exponent range.
 pub type Decimal128Text = Formatted<format::Decimal128>;
 /// `format: http-date`.
 pub type HttpDateText = Formatted<format::HttpDate>;
-/// `format: duration`: no std type holds `P1M`, a month has no fixed length.
+/// `format: duration`: no std type represents `P1M`, a month has no fixed length.
 pub type DurationText = Formatted<format::Duration>;
 /// `format: json-pointer`.
 pub type JsonPointerText = Formatted<format::JsonPointer>;
@@ -213,7 +213,7 @@ mod tests {
     fn only_text_of_the_format_is_one() {
         let id = UuidText::try_from("01234567-89ab-4def-8123-456789abcdef").expect("hyphenated");
         assert_eq!(id, "01234567-89ab-4def-8123-456789abcdef");
-        assert_eq!(id.len(), 36, "reads as a `str`");
+        assert_eq!(id.len(), 36, "derefs to `str`");
         assert_eq!(
             UuidText::try_from("{01234567-89ab-4def-8123-456789abcdef}"),
             Err(BuildError::value("`{01234567-89ab-4def-8123-456789abcdef}` is not a valid uuid".to_owned()))

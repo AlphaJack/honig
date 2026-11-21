@@ -39,7 +39,7 @@ pub(crate) fn wire_fn() -> TokenStream {
     }
 }
 
-/// Returns a check that the `dataValue` of a parameter reads as its `serializedValue`. The value is decoded
+/// Returns a check that the `dataValue` of a parameter encodes as its `serializedValue`. The value is decoded
 /// into its type and sent the way that the client sends it: typed, so an object keeps the order of its fields.
 pub(crate) fn wire_check(
     p: &Param,
@@ -213,8 +213,8 @@ pub(crate) fn tests(api: &Api, space: &Space<'_>) -> Option<TokenStream> {
     let param_fn = uses_param.then(|| {
         quote! {
             fn param<T: serde::de::DeserializeOwned>(bad: &mut Vec<String>, at: &'static str, text: &str) {
-                // A parameter is read as its style coerces it: the documented value is parsed once for that. The error
-                // points to `at`.
+                // A parameter is decoded as its style coerces it: the documented value is parsed once for that. The
+                // error points to `at`.
                 if let Err(e) = runtime::from_param::<T>(serde_json::from_str(text).ok(), at) {
                     bad.push(e.to_string());
                 }

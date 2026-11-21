@@ -67,7 +67,7 @@ pub mod list_items {
     display_impl!(Response);
     error_impl!(Response);
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<Vec<String>, Box<Self>> {
             match self {
                 Self::Ok(body) => Ok(body),
@@ -112,7 +112,7 @@ pub mod upload {
     }
     error_impl!(Response);
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<(), Box<Self>> {
             match self {
                 Self::NoContent => Ok(()),
@@ -145,7 +145,7 @@ pub mod list_keys {
     display_impl!(Response);
     error_impl!(Response);
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<Vec<types::Key>, Box<Self>> {
             match self {
                 Self::Ok(body) => Ok(body),

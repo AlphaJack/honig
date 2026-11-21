@@ -97,7 +97,7 @@ impl<'ast> Visit<'ast> for Numbers {
         }
     }
 
-    /// A `match self` arm may hold a number such as the status code of a variant.
+    /// A `match self` arm may contain a number such as the status code of a variant.
     fn visit_expr_match(&mut self, m: &'ast syn::ExprMatch) {
         let on_self = matches!(&*m.expr, syn::Expr::Path(p) if p.path.is_ident("self"))
             || matches!(&*m.expr, syn::Expr::Unary(u) if matches!(&*u.expr, syn::Expr::Path(p) if p.path.is_ident("self")));

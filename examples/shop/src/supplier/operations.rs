@@ -59,7 +59,7 @@ pub mod add_book {
     }
     impl std::error::Error for Response {}
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<types::Book, Box<Self>> {
             match self {
                 Self::Created(body) => Ok(body),

@@ -44,8 +44,8 @@ impl Drop for Restore {
     }
 }
 
-/// `tests/e2e` holds what the fixtures generate: every description as a module. A stale file is rewritten. The module
-/// of a fixture that is gone is removed.
+/// `tests/e2e` contains what the fixtures generate: every description as a module. A stale file is rewritten. The
+/// module of a fixture that is gone is removed.
 #[test]
 fn e2e_is_fresh() {
     let dir = root().join("tests").join("e2e");
@@ -92,7 +92,7 @@ fn snapshot(dir: &Path) -> Vec<(PathBuf, String)> {
     out
 }
 
-/// `examples/shop` holds what `cargo honig generate` writes for the two module tables of its `Cargo.toml`. Its
+/// `examples/shop` contains what `cargo honig generate` writes for the two module tables of its `Cargo.toml`. Its
 /// `openapi.yaml` is the `catalog` fixture and its `supplier.yaml` the `xml` fixture. Then `check` of every module and
 /// of one module finds nothing stale, and generating one module keeps the runtime features the other needs.
 #[test]

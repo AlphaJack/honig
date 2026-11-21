@@ -6,7 +6,7 @@ use std::fs;
 
 use super::root;
 
-/// The `file:line` of each Rust block in `text` that holds anything but `{{#include}}` lines.
+/// The `file:line` of each Rust block in `text` that contains anything but `{{#include}}` lines.
 fn hand_written(file: &str, text: &str) -> Vec<String> {
     let mut found = vec![];
     let mut block: Option<(usize, bool)> = None;

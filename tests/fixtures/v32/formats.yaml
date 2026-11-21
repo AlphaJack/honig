@@ -36,7 +36,7 @@ components:
         token: {type: string, contentEncoding: base64url}
         level: {type: integer, format: int8}
         port: {type: integer, format: uint16, minimum: 1024}
-        # More digits than an f64 holds: `runtime::Decimal`, read and written as its digits.
+        # More digits than an f64 stores: `runtime::Decimal`, parsed and written as its digits.
         amount: {type: number, format: decimal, minimum: 0}
         sum: {type: number, format: decimal128}
         # Typed when the crate has the library: `char` always, `uri` with `url`, the CIDR formats with `ipnet`;
@@ -52,9 +52,9 @@ components:
         # The same, for 34 significant digits.
         total: {type: string, format: decimal128}
         opens: {type: string, format: time}
-        # No library reads it: a `String` checked as one of the three forms of RFC 9110.
+        # No library parses it: a `String` checked as one of the three forms of RFC 9110.
         expires: {type: string, format: http-date}
-        # An ISO 8601 duration: no std type holds `P1M`, which has no fixed length.
+        # An ISO 8601 duration: no std type represents `P1M`, which has no fixed length.
         lasts: {type: string, format: duration}
         # Grammars the runtime checks itself: references (RFC 3986 and 3987), pointers, templates and ECMA-262.
         link: {type: string, format: uri-reference}
@@ -69,7 +69,7 @@ components:
           oneOf:
             - {type: object, required: [refund], properties: {refund: {type: number, format: decimal}}}
             - {type: object, required: [fee], properties: {fee: {type: number, format: decimal}}}
-        # The same through a discriminator, wherever it sits in the object: the tag is read from the JSON text.
+        # The same through a discriminator, wherever it sits in the object: the tag is parsed from the JSON text.
         payment:
           oneOf:
             - $ref: '#/components/schemas/Card'

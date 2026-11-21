@@ -7,7 +7,7 @@ use std::task::{Context, Poll};
 use e2e::v32_uploads::api::{self, Client, operations as ops, types};
 use futures_util::StreamExt;
 
-/// Counts what arrives; refuses a body that was held whole before the handler ran.
+/// Counts what arrives; refuses a body that was buffered whole before the handler ran.
 struct Server;
 
 impl api::Api for Server {
@@ -23,7 +23,7 @@ impl api::Api for Server {
         if !body.is_streamed() {
             return Err(api::ApiError::new(
                 api::http::StatusCode::INTERNAL_SERVER_ERROR,
-                "the body was read before the handler",
+                "the body was buffered before the handler",
             ));
         }
         let (mut bytes, mut chunks) = (0, 0);

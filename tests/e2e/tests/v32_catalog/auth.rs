@@ -83,7 +83,7 @@ fn without_the_layer_authentication_refuses() {
 }
 
 // ANCHOR: credentials
-/// The principal that an API key belongs to. Nobody for a key that nobody holds.
+/// The principal that an API key belongs to. Nobody for a key that nobody has.
 fn holder(key: &str, _: &api::Request) -> Option<String> {
     (key == "secret").then(|| "ann".to_owned())
 }

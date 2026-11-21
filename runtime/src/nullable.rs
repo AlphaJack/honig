@@ -75,7 +75,7 @@ impl<'de, T: Deserialize<'de>> Deserialize<'de> for Nullable<T> {
 
 /// Returns `deserialize_with` of a required property that may be `null`.
 ///
-/// serde reads a missing `Option` field as `None` unless the field has its own deserializer: with this one,
+/// serde decodes a missing `Option` field as `None` unless the field has its own deserializer: with this one,
 /// leaving the property out is an error and `null` is `None`.
 ///
 /// # Errors
@@ -86,7 +86,7 @@ pub fn required_nullable<'de, D: Deserializer<'de>, T: Deserialize<'de>>(d: D) -
 
 /// Returns `deserialize_with` of an optional property that may not be `null`.
 ///
-/// `#[serde(default)]` reads it absent as `None`; `null` is refused with `T`'s own error.
+/// `#[serde(default)]` decodes it absent as `None`; `null` is refused with `T`'s own error.
 ///
 /// # Errors
 /// The value is not a `T`; `null` is none.

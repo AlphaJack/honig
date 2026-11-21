@@ -1,4 +1,4 @@
-//! The edge: every file the generator reads or writes goes through here. `clippy.toml` bans `std::fs` everywhere else.
+//! The edge: every file the generator opens or writes goes through here. `clippy.toml` bans `std::fs` everywhere else.
 
 use std::path::Path;
 
@@ -12,14 +12,14 @@ fn failed(path: &Path) -> impl Fn(std::io::Error) -> Error + '_ {
 /// Returns the text of the file at `path`.
 ///
 /// # Errors
-/// The file cannot be read. The error has its path.
-#[expect(clippy::disallowed_methods, reason = "the edge reads files")]
+/// The file cannot be opened. The error has its path.
+#[expect(clippy::disallowed_methods, reason = "the edge opens files")]
 pub(crate) fn read(path: &Path) -> Result<String, Error> {
     std::fs::read_to_string(path).map_err(failed(path))
 }
 
 /// Returns whether `path` is a file.
-#[expect(clippy::disallowed_methods, reason = "the edge reads files")]
+#[expect(clippy::disallowed_methods, reason = "the edge opens files")]
 pub(crate) fn is_file(path: &Path) -> bool {
     path.is_file()
 }
@@ -27,8 +27,8 @@ pub(crate) fn is_file(path: &Path) -> bool {
 /// Returns the files directly in `dir`, sorted by path.
 ///
 /// # Errors
-/// The folder cannot be read. The error has its path.
-#[expect(clippy::disallowed_methods, reason = "the edge reads folders")]
+/// The folder cannot be listed. The error has its path.
+#[expect(clippy::disallowed_methods, reason = "the edge lists folders")]
 pub(crate) fn files_in(dir: &Path) -> Result<Vec<std::path::PathBuf>, Error> {
     let mut out: Vec<_> = std::fs::read_dir(dir)
         .map_err(failed(dir))?
@@ -43,8 +43,8 @@ pub(crate) fn files_in(dir: &Path) -> Result<Vec<std::path::PathBuf>, Error> {
 /// Returns the folders directly in `dir`, sorted.
 ///
 /// # Errors
-/// The folder cannot be read. The error has its path.
-#[expect(clippy::disallowed_methods, reason = "the edge reads folders")]
+/// The folder cannot be listed. The error has its path.
+#[expect(clippy::disallowed_methods, reason = "the edge lists folders")]
 pub(crate) fn dirs_in(dir: &Path) -> Result<Vec<std::path::PathBuf>, Error> {
     let mut out: Vec<_> = std::fs::read_dir(dir)
         .map_err(failed(dir))?
@@ -56,7 +56,7 @@ pub(crate) fn dirs_in(dir: &Path) -> Result<Vec<std::path::PathBuf>, Error> {
     Ok(out)
 }
 
-/// Writes `text` to `path` and creates its folder. A file that already holds `text` is left as it is, so Cargo does
+/// Writes `text` to `path` and creates its folder. A file that already contains `text` is left as it is, so Cargo does
 /// not rebuild it.
 ///
 /// # Errors
@@ -129,7 +129,7 @@ pub(crate) fn cargo_metadata(path: &Path) -> Result<cargo_metadata::Metadata, Er
 
 #[cfg(test)]
 mod tests {
-    #![expect(clippy::disallowed_methods, reason = "the test reads and dates a file")]
+    #![expect(clippy::disallowed_methods, reason = "the test opens and dates a file")]
 
     use std::time::{Duration, SystemTime};
 

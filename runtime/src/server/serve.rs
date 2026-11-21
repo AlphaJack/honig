@@ -15,7 +15,7 @@ use crate::{
 /// What the server does besides routing and your layers: the builder options of [`Server`](crate::Server). `Id` is
 /// the generated `Operation` of the API.
 pub struct Config<Id> {
-    /// The largest request body read in bytes.
+    /// The largest request body buffered, in bytes.
     pub(crate) max_body_bytes: usize,
     /// Renders a request the server answers without your handler's response.
     pub(crate) errors: Arc<dyn Fn(Rejection<Id>) -> Response + Send + Sync>,
@@ -65,8 +65,9 @@ impl<Id: Operation> Config<Id> {
         (self.errors)(Rejection { reason, operation, schema, headers })
     }
 
-    /// Returns the response to a request that no operation takes (404 or 405) with its own wide event. An `OPTIONS` of
-    /// a path that declares no `options` gets `204` with the methods of the path in `Allow` (RFC 9110 section 9.3.7).
+    /// Returns the response to a request that no operation matches (404 or 405) with its own wide event. An `OPTIONS`
+    /// of a path that declares no `options` gets `204` with the methods of the path in `Allow` (RFC 9110 section
+    /// 9.3.7).
     pub(crate) fn unrouted(&self, errors: ProblemSchemas, head: &http::request::Parts, reason: Reason) -> Response {
         let started = std::time::Instant::now();
         let method = known_method(head.method.as_str());
@@ -116,7 +117,7 @@ fn log<Id>(_: &RequestEvent<Id>) {}
 /// A routed request.
 #[derive(Debug)]
 pub struct Routed<'r> {
-    /// The request; an operation that takes its body moves it out.
+    /// The request; an operation that consumes its body moves it out.
     pub request: &'r mut Request,
     /// The path template's variables, in order.
     pub caps: &'r [&'r str],
@@ -126,10 +127,10 @@ pub struct Routed<'r> {
     pub query: &'r Query<'r>,
 }
 
-/// What an operation's parameter decoder reads.
+/// What an operation's parameter decoder decodes.
 #[derive(Debug)]
 pub struct Incoming<'r> {
-    /// The request; its body is empty when the operation takes it.
+    /// The request; its body is empty when the operation consumes it.
     pub request: &'r Request,
     /// The path template's variables, in order.
     pub caps: &'r [&'r str],
@@ -137,9 +138,9 @@ pub struct Incoming<'r> {
     pub raw_query: &'r str,
     /// The query string's pairs, decoded.
     pub query: &'r Query<'r>,
-    /// The body. It is moved out of the request when the operation takes it. Otherwise it is borrowed.
+    /// The body. It is moved out of the request when the operation consumes it. Otherwise it is borrowed.
     pub body: Cow<'r, [u8]>,
-    /// The body still to come when the operation takes it as it arrives. Otherwise empty.
+    /// The body still to come when the operation consumes it as it arrives. Otherwise empty.
     pub stream: crate::ByteStream,
     /// The index in [`Op::produces`] of the media type `Accept` chose: what the handler answers in.
     pub media: usize,
@@ -164,7 +165,7 @@ impl<'r, C, Id> Call<'r, Option<C>, Id> {
 }
 
 /// Returns the response as `method` gets it. A `HEAD` gets the headers of the `GET` without its body (RFC 9110 section
-/// 9.3.2). A body held whole keeps its length as `Content-Length`. A streamed one is never read.
+/// 9.3.2). A body in memory keeps its length as `Content-Length`. A streamed one is never consumed.
 pub(crate) fn for_method(method: &str, resp: Response) -> Response {
     if method != "HEAD" {
         return resp;
@@ -176,7 +177,7 @@ pub(crate) fn for_method(method: &str, resp: Response) -> Response {
     Response::from_parts(head, Body::default())
 }
 
-/// Returns the name of the method for an event. An event holds `'static` text. So an unknown method is `OTHER`.
+/// Returns the name of the method for an event. An event stores `'static` text. So an unknown method is `OTHER`.
 pub(crate) fn known_method(method: &str) -> &'static str {
     const KNOWN: [&str; 9] = ["GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE", "PATCH"];
     KNOWN.into_iter().find(|m| m.eq_ignore_ascii_case(method)).unwrap_or("OTHER")
@@ -193,7 +194,7 @@ pub type StepFuture<'r> = std::pin::Pin<Box<dyn Future<Output = Result<Response,
 
 /// The steps that differ per operation besides its [`Op`].
 ///
-/// They read the parameters, check them, run your handler and write its response.
+/// They decode the parameters, check them, run your handler and write its response.
 /// [`Steps`] implements it for each operation. Behind a trait object [`serve`] is compiled once for your server and
 /// not once per operation.
 pub trait OpSteps<C, Id>: Sync {
@@ -246,12 +247,12 @@ pub async fn serve<C, Id: Operation>(
     let Routed { request, caps, raw_query, query } = routed;
     let Call { config, operation, satisfied, principal, event } = call;
     let op = operation.op();
-    // The headers of the request go along for the error renderer. They are taken at the failure and not up front.
+    // The headers of the request go along for the error renderer. They are moved out at the failure and not up front.
     let fail = |headers: http::HeaderMap, reason: Reason| {
         event.fail(&reason);
         config.reject(op.errors, Some(operation), reason, headers)
     };
-    // 406 before the body is read: no answer the client takes is worth reading it for.
+    // 406 before the body is consumed: no answer the client accepts is worth receiving it for.
     let media = if op.produces.is_empty() {
         0
     } else {
@@ -262,7 +263,7 @@ pub async fn serve<C, Id: Operation>(
             }
         }
     };
-    // Every body but a binary or sequential one is read whole here once your layers let the request through.
+    // Every body but a binary or sequential one is buffered whole here once your layers let the request through.
     if let Some(unread) = (!op.takes_body).then(|| request.body().chunks().take_source()).flatten() {
         match unread.read_all(config.max_body_bytes).await {
             Ok(body) => *request.body_mut() = Body::new(body),

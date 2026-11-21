@@ -48,8 +48,8 @@ impl UploadBody {
         Self { file, note: None }
     }
 }
-/// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
-/// its field. `build` returns the first field that did not convert.
+/// One builder per struct, started by its `builder`. Each setter accepts anything that converts to the type
+/// of its field. `build` returns the first field that did not convert.
 pub mod builders {
     use super as types;
     use super::runtime;

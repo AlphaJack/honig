@@ -165,15 +165,15 @@ pub(super) fn shared_names(
 
 /// Inlines types identical to an earlier inline one in the same role (the last word of their names) as index to the
 /// first. Two types are identical when their kinds are.
-/// References to twins read as references to the first. So a struct of twin enums is a twin too. Repeated until
+/// References to twins resolve to the first. So a struct of twin enums is a twin too. Repeated until
 /// nothing changes.
 fn twins(space: &Space<'_>) -> std::collections::BTreeMap<usize, usize> {
     let mut first: std::collections::BTreeMap<usize, usize> = std::collections::BTreeMap::new();
     loop {
         let canon = |id: TypeId| TypeId(first.get(&id.0).copied().unwrap_or(id.0));
-        // References to a twin read as references to its first.
+        // References to a twin resolve to its first.
         // The last word of the name is the role (`type`, `usage`, `Ok`): twins with different roles stay apart, so an
-        // order's `type` does not read as a user's `status` although both are `enum: [0, 1]`.
+        // order's `type` does not merge with a user's `status` although both are `enum: [0, 1]`.
         let key = |def: &TypeDef| {
             let role = def.name.words().last().cloned().unwrap_or_default();
             format!("{:?}|{:?}|{}|{role}", canonical_kind(&def.kind, &canon), def.xml, def.json_string)
@@ -205,7 +205,7 @@ fn twins(space: &Space<'_>) -> std::collections::BTreeMap<usize, usize> {
     }
 }
 
-/// Returns `kind` with every named type it refers to read through `canon`.
+/// Returns `kind` with every named type it refers to mapped through `canon`.
 fn canonical_kind(kind: &Kind, canon: &dyn Fn(TypeId) -> TypeId) -> Kind {
     let mut kind = kind.clone();
     match &mut kind {
@@ -231,7 +231,7 @@ fn canonical_kind(kind: &Kind, canon: &dyn Fn(TypeId) -> TypeId) -> Kind {
     kind
 }
 
-/// Returns `t` with every named type read through `canon`.
+/// Returns `t` with every named type mapped through `canon`.
 fn canonical_ty(t: &Ty, canon: &dyn Fn(TypeId) -> TypeId) -> Ty {
     fn canonical(t: &mut Ty, canon: &dyn Fn(TypeId) -> TypeId) {
         if let Ty::Named(id) = t {
@@ -355,7 +355,7 @@ fn xml_shape(space: &Space<'_>, def: &TypeDef, s: &Struct) -> TokenStream {
         // `nodeType: none` on an array means no wrapper (an unwrapped list):
         // only an object's fields sit inline in the parent.
         let (cdata, inline) = (f.xml.cdata, f.xml.inline && !list);
-        // An omitted attribute of a property that may be `null` reads as `null`; an empty element of a free-form
+        // An omitted attribute of a property that may be `null` decodes as `null`; an empty element of a free-form
         // object as `{}`.
         let nullable = f.ty.is_option();
         let object = matches!(inner, Ty::Map(_));
@@ -437,8 +437,8 @@ fn xml_inner<'a>(space: &Space<'a>, mut t: &'a Ty) -> (&'a Ty, bool) {
     (t, list)
 }
 
-/// Returns `impl Default`. Spec defaults go through their functions. A required unit struct is its value, `Unit {}`. The
-/// rest is empty.
+/// Returns `impl Default`. Spec defaults go through their functions. A required unit struct is its value, `Unit {}`.
+/// The rest is empty.
 fn default_impl(space: &Space<'_>, name: &proc_macro2::Ident, s: &Struct, extra: &proc_macro2::Ident) -> TokenStream {
     let inits = s.fields.iter().map(|f| {
         let (n, t) = (snake_ident(&f.name), field_ty(space, f));
@@ -476,7 +476,7 @@ fn field(space: &Space<'_>, f: &Field, owner: &str) -> TokenStream {
     // serde already uses the field name (a raw `r#type` as `type`).
     let wire = lit(&f.wire);
     let rename = (f.wire != snake(&f.name)).then(|| quote!(#[serde(rename = #wire)]));
-    // A library type that reads more than its format allows gets its text checked first. `wrap` holds it as the
+    // A library type that accepts more than its format allows gets its text checked first. `wrap` wraps it as the
     // field's own type does: `Option`, `runtime::Nullable` or itself.
     let checked = |t: &Ty, wrap: &str| {
         holds_text(space, t).map(|h| {
@@ -495,7 +495,7 @@ fn field(space: &Space<'_>, f: &Field, owner: &str) -> TokenStream {
         return plain(quote!(default = #fun #read));
     }
     if f.required && space.types.nullable(&f.ty).is_some() {
-        // serde reads a missing `Option` as `None`: its own deserializer makes the property required again.
+        // serde decodes a missing `Option` as `None`: its own deserializer makes the property required again.
         let read = checked(&f.ty, "").unwrap_or_else(|| quote!(deserialize_with = "runtime::required_nullable"));
         return plain(read);
     }
@@ -515,7 +515,7 @@ fn field(space: &Space<'_>, f: &Field, owner: &str) -> TokenStream {
     }
     let inner = f.ty.non_null();
     if f.null_as_absent {
-        // serde's own `Option`: `null` and absent both read as `None`.
+        // serde's own `Option`: `null` and absent both decode as `None`.
         if let Some(read) = checked(&f.ty, "Maybe") {
             return plain(quote!(default, skip_serializing_if = "Option::is_none", #read));
         }
@@ -563,8 +563,8 @@ fn field_ty_in(space: &Space<'_>, f: &Field, qualify: bool) -> TokenStream {
     }
 }
 
-/// Returns the fields that hold the `patternProperties` of `s` ([`Struct::patterns`]) and the names that no pattern
-/// matches, with the functions that read each from the undeclared names. Empty without patterns.
+/// Returns the fields that store the `patternProperties` of `s` ([`Struct::patterns`]) and the names that no pattern
+/// matches, with the functions that decode each from the undeclared names. Empty without patterns.
 fn pattern_fields(
     space: &Space<'_>,
     s: &Struct,
@@ -616,7 +616,7 @@ fn pattern_fields(
     (quote!(#(#fields)*), quote!(impl #name { #(#readers)* }))
 }
 
-/// Returns the empty values of the fields of `s` that hold undeclared names.
+/// Returns the empty values of the fields of `s` that store undeclared names.
 fn extra_inits(s: &Struct, extra: &proc_macro2::Ident) -> Option<TokenStream> {
     if s.patterns.is_empty() {
         return s.additional.is_some().then(|| no_extra(extra));
@@ -655,12 +655,12 @@ fn structure(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, s: &St
     });
     // `additionalProperties: false`: an undeclared property is a decode error,
     // so a server answers 400 and a client reports a server off its contract.
-    // A lenient client's response type reads a property that the server added. Its request copy refuses it.
+    // A lenient client's response type accepts a property that the server added. Its request copy refuses it.
     let closed = (s.closed && s.additional.is_none() && s.patterns.is_empty() && !def.lenient)
         .then(|| quote!(#[serde(deny_unknown_fields)]));
     // `runtime::object!` writes the struct with `remote = "Self"` and the trait impls that decode through `NoSeq`: a
-    // derived struct would also read a JSON array field by field, and `type: object` allows none. An extra map encodes
-    // through `UniqueKeys`: an entry named like a declared field would write the name twice.
+    // derived struct would also decode a JSON array field by field, and `type: object` allows none. An extra map
+    // encodes through `UniqueKeys`: an entry named like a declared field would write the name twice.
     let encode = (s.additional.is_some() || !s.patterns.is_empty()).then(|| quote!(#[unique_keys]));
     items.push(quote! {
         runtime::object! {
@@ -684,7 +684,7 @@ fn structure(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, s: &St
         let funs = defaults.iter().map(|(f, e)| {
             let (fun, t) = (format_ident!("default_{}", snake(&f.name)), ty(space, &f.ty, false));
             let constness = const_default(space, f).then(|| quote!(const));
-            // Serde's `default = "..."` needs a path; users read defaults through `Default`.
+            // Serde's `default = "..."` needs a path; users get defaults through `Default`.
             quote!(#[doc(hidden)] #[must_use] pub #constness fn #fun() -> #t { #e })
         });
         items.push(quote!(impl #name { #(#funs)* }));
@@ -694,8 +694,8 @@ fn structure(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, s: &St
     }
 }
 
-/// Can `new` take the required fields of `s` by position? Only when it cannot fail and no two of them can swap: no
-/// argument holds a checked value, and no two have the same type. Otherwise the builder is the one constructor.
+/// Can `new` accept the required fields of `s` by position? Only when it cannot fail and no two of them can swap: no
+/// argument is of a checked type, and no two have the same type. Otherwise the builder is the one constructor.
 fn new_is_safe(space: &Space<'_>, s: &Struct) -> bool {
     let args: Vec<&Field> = s.fields.iter().filter(|f| is_arg(space, f)).collect();
     let mut types: Vec<String> = args.iter().map(|f| field_ty(space, f).to_string()).collect();
@@ -747,7 +747,7 @@ fn struct_new(space: &Space<'_>, name: &proc_macro2::Ident, s: &Struct, extra: &
 }
 
 /// Returns the `builders` module. Builders sit in a module of their own: `builders::User` cannot clash with a schema
-/// named `UserBuilder`. A builder takes the name of its type: the types are named through `types::`.
+/// named `UserBuilder`. A builder gets the name of its type: the types are named through `types::`.
 fn builders_mod(builders: &[TokenStream], names_types: bool) -> Option<TokenStream> {
     let types_import = names_types.then(|| {
         quote!(
@@ -756,8 +756,8 @@ fn builders_mod(builders: &[TokenStream], names_types: bool) -> Option<TokenStre
     });
     (!builders.is_empty()).then(|| {
         quote! {
-            /// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
-            /// its field. `build` returns the first field that did not convert.
+            /// One builder per struct, started by its `builder`. Each setter accepts anything that converts to the type
+            /// of its field. `build` returns the first field that did not convert.
             pub mod builders {
                 #types_import
                 use super::runtime;
@@ -767,8 +767,8 @@ fn builders_mod(builders: &[TokenStream], names_types: bool) -> Option<TokenStre
     })
 }
 
-/// Does `t` hold a value that only a checked conversion makes: a checked type, the text of a format without its
-/// library, a mail address or host name, or one of them in a list, map, option or box? Each such field takes a `?`,
+/// Does `t` contain a value that only a checked conversion makes: a checked type, the text of a format without its
+/// library, a mail address or host name, or one of them in a list, map, option or box? Each such field needs a `?`,
 /// which a builder gathers into one. Other fields build with `new` and struct update.
 fn holds_checked(space: &Space<'_>, t: &Ty) -> bool {
     match t {
@@ -811,14 +811,14 @@ fn holds_checked(space: &Space<'_>, t: &Ty) -> bool {
     }
 }
 
-/// Does a field of `s` that its builder takes refer to a generated type? Then the builder refers to it through
+/// Does a field of `s` that its builder accepts refer to a generated type? Then the builder refers to it through
 /// `types::`. A required `const` it fills itself.
 fn names_types(_space: &Space<'_>, s: &Struct) -> bool {
     s.fields.iter().any(|f| super::syntax::mentions(&f.ty).0)
 }
 
-/// Returns the builder of a checked type whose base is a struct, and whether it refers to a generated type. A struct whose
-/// schema checks the whole value builds through its fields.
+/// Returns the builder of a checked type whose base is a struct, and whether it refers to a generated type. A struct
+/// whose schema checks the whole value builds through its fields.
 fn checked_builder(space: &Space<'_>, name: &proc_macro2::Ident, c: &Checked) -> Option<(TokenStream, bool)> {
     let Ty::Named(shape) = &c.base else { return None };
     let Kind::Struct(s) = &space.types.get(*shape).kind else { return None };
@@ -828,7 +828,7 @@ fn checked_builder(space: &Space<'_>, name: &proc_macro2::Ident, c: &Checked) ->
 }
 
 /// Returns the builder of `name` for the `builders` module: `runtime::typestate_builder!` over the fields of `shape`.
-/// It takes each property by name; `build` exists once every required one is set. `shape` is the struct that holds
+/// It accepts each property by name; `build` exists once every required one is set. `shape` is the struct that contains
 /// the fields: `name` itself, or the fields of a checked type whose `try_from` then checks the whole value.
 fn builder(space: &Space<'_>, name: &proc_macro2::Ident, shape: &proc_macro2::Ident, s: &Struct) -> TokenStream {
     let setter = |f: &Field| {
@@ -873,9 +873,9 @@ fn builder(space: &Space<'_>, name: &proc_macro2::Ident, shape: &proc_macro2::Id
     }
 }
 
-/// Returns the `allow` of a constructor that takes `count` required properties, past what clippy allows. It goes inside
-/// the body: `clippy::allow_attributes` leaves an inner `#![allow]` alone, and an `#[expect]` would fail a crate that
-/// raises `too-many-arguments-threshold`.
+/// Returns the `allow` of a constructor that accepts `count` required properties, past what clippy allows. It goes
+/// inside the body: `clippy::allow_attributes` leaves an inner `#![allow]` alone, and an `#[expect]` would fail a crate
+/// that raises `too-many-arguments-threshold`.
 fn many_arguments(count: usize) -> Option<TokenStream> {
     (count > super::syntax::MAX_ARGUMENTS)
         .then(|| quote!(#![allow(clippy::too_many_arguments, reason = "one argument per required property")]))
@@ -913,7 +913,7 @@ fn int_enum(items: &mut Vec<TokenStream>, def: &TypeDef, values: &[(Name, i64)])
     let names: Vec<_> = values.iter().map(|(v, _)| pascal_ident(v)).collect();
     let nums: Vec<_> = values.iter().map(|(_, x)| proc_macro2::Literal::i64_unsuffixed(*x)).collect();
     let allowed = lit(&one_of(values.iter().map(|(_, v)| v.to_string())));
-    // A lenient client's response reads a value that the server added as `Other`. Its request copy is closed.
+    // A lenient client's response accepts a value that the server added as `Other`. Its request copy is closed.
     let (unknown, unknown_value, other) = if def.lenient {
         (
             quote!(#[doc = #OTHER_DOC] Other(i64),),
@@ -957,7 +957,7 @@ fn newtype(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, def: &Ty
     let name = pascal_ident(&def.name);
     let doc = doc_opt(def.doc.as_deref());
     let derive = derives(space, id, false);
-    // A library type has its text checked before the library reads it.
+    // A library type has its text checked before the library parses it.
     let read = holds_text(space, t).map(|h| {
         let read = lit(&format!("runtime::formats::read::<_, _, {h}>"));
         quote!(#[serde(deserialize_with = #read)])
@@ -1006,19 +1006,19 @@ fn checked_type(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, def
         }
         Base::Other => {
             let checks = super::checks::checks(space, &c.base, &c.constraints, &quote!(&value), &path);
-            // A member that the server added meets no keyword of the description: a lenient client takes it as it is.
+            // A member that the server added meets no keyword of the description: a lenient client accepts it as it is.
             let added = matches!(&c.base, Ty::Named(inner) if {
                 let inner = space.types.get(*inner);
                 matches!(&inner.kind, Kind::Union(union) if reads_added(inner, union))
             });
             let checks = if added { quote!(if !matches!(value, #base::Other(_)) { #checks }) } else { checks };
             let eq = (!has_float(space, &Ty::Named(id))).then(|| quote!(Eq,));
-            // The base reads the text of its library formats checked, as a field of it would.
+            // The base decodes the text of its library formats checked, as a field of it would.
             let read = match holds(space, &c.base) {
                 Some(h) => quote!(runtime::formats::read::<_, #base, #h>(d)?),
                 None => quote!(<#base as serde::Deserialize>::deserialize(d)?),
             };
-            // JSON text is read once ([`checked_deserialize`]); a base read through a library format keeps `read`.
+            // JSON text is parsed once ([`checked_deserialize`]); a base decoded through a library format keeps `read`.
             let once = holds(space, &c.base).is_none() && reads_json(subschemas.as_ref(), &checks);
             let de = checked_deserialize(&n, &base, &read, once);
             (checks, quote!(#eq), Some(de))
@@ -1043,7 +1043,7 @@ fn checked_type(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, def
 }
 
 /// Returns `TryFrom<base>` of the checked type `n`: it runs `subschemas` and `checks` on the value. Checks that look
-/// into the value as JSON read one buffer of it, written out once.
+/// into the value as JSON use one buffer of it, written out once.
 fn checked_try_from(
     n: &proc_macro2::Ident,
     base: &TokenStream,
@@ -1069,7 +1069,7 @@ fn checked_try_from(
             }
         };
     }
-    // The checks read the value as JSON: from the text that it was decoded from, or from the value written out once.
+    // The checks see the value as JSON: from the text that it was decoded from, or from the value written out once.
     quote! {
         impl TryFrom<#base> for #n {
             type Error = runtime::BuildError;
@@ -1086,9 +1086,9 @@ fn checked_try_from(
     }
 }
 
-/// Returns `Deserialize` of the checked type `n` of `base`, read by `read`. With `once`, JSON text is read once: the
-/// value decodes from it and the checks read it. Any other source of the value decodes as `read` does, and the checks
-/// read the value written out once.
+/// Returns `Deserialize` of the checked type `n` of `base`, decoded by `read`. With `once`, JSON text is parsed once:
+/// the value decodes from it and the checks use it. Any other source of the value decodes as `read` does, and the
+/// checks use the value written out once.
 fn checked_deserialize(n: &proc_macro2::Ident, base: &TokenStream, read: &TokenStream, once: bool) -> TokenStream {
     if !once {
         return quote! {
@@ -1117,7 +1117,7 @@ fn checked_deserialize(n: &proc_macro2::Ident, base: &TokenStream, read: &TokenS
     }
 }
 
-/// Do `checks` read `json`, the checked value as a buffer that the checked type binds? A block that binds its own
+/// Do `checks` use `json`, the checked value as a buffer that the checked type binds? A block that binds its own
 /// (`let json = ...`, a value further in) does not.
 fn reads_json(subschemas: Option<&TokenStream>, checks: &TokenStream) -> bool {
     fn reads(ts: &TokenStream) -> bool {

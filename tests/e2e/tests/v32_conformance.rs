@@ -165,7 +165,7 @@ fn an_empty_security_list_overrides_the_top_level_one() {
 }
 
 /// 3.2 Header Object, "Representing the `Set-Cookie` Header": one value per
-/// line because the `Expires` of a cookie holds a comma.
+/// line because the `Expires` of a cookie contains a comma.
 #[test]
 fn set_cookie_values_go_on_separate_lines_and_come_back_whole() {
     let r = send("GET", "/cookies", &[("Cookie", "SID=s")], None);

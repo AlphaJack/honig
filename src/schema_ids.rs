@@ -4,7 +4,7 @@
 //!
 //! Before bundling, each schema `$ref` is resolved against its base. One that refers to a resource of the document (a
 //! schema with that `$id`, or an `$anchor` in one) becomes a local pointer to it. Any other becomes absolute, and the
-//! bundler fetches or reads it. A `$ref` with no `$id` above it is left as written.
+//! bundler fetches or loads it. A `$ref` with no `$id` above it is left as written.
 
 use std::collections::BTreeMap;
 
@@ -36,7 +36,7 @@ pub(crate) struct Dynamic {
 }
 
 impl Dynamic {
-    /// Returns the resource that holds the schema at `ptr`: the nearest schema with an `$id` at or above it, or the
+    /// Returns the resource that contains the schema at `ptr`: the nearest schema with an `$id` at or above it, or the
     /// document.
     pub(crate) fn resource_of(&self, ptr: &str) -> String {
         self.resources
@@ -95,7 +95,7 @@ pub(crate) fn rebase(root: &mut Value) {
     rebase_from(root, doc_base.as_deref());
 }
 
-/// Runs [`rebase`] for a document retrieved from `uri` (a fetched or read schema file): its root is a resource at
+/// Runs [`rebase`] for a document retrieved from `uri` (a fetched or loaded schema file): its root is a resource at
 /// `uri`, so `#foo` in it finds its `$anchor`.
 pub(crate) fn rebase_fetched(root: &mut Value, uri: &str) {
     rebase_from(root, Some(uri));
@@ -253,7 +253,7 @@ pub(crate) fn resolve(base: &str, r: &str) -> String {
     }
     let Some(s) = scheme(base) else { return r.to_owned() };
     let rest = base.split_once(':').map_or("", |(_, rest)| rest);
-    // A base without a hierarchy (`urn:uuid:...`) takes only fragments.
+    // A base without a hierarchy (`urn:uuid:...`) accepts only fragments.
     let Some(after) = rest.strip_prefix("//") else {
         return if rest.starts_with('/') { format!("{s}:{}", remove_dots(&merge("", rest, r))) } else { r.to_owned() };
     };

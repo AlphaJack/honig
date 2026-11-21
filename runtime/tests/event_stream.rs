@@ -41,7 +41,7 @@ impl Script {
     }
 }
 
-/// The first answer as a generated `<op>_stream` reads it.
+/// The first answer as a generated `<op>_stream` receives it.
 fn open(script: &Arc<Script>) -> ItemStream<String> {
     let req = honig::__private::new_request("GET", "/events".to_owned(), vec![]).unwrap();
     let again = honig::__private::resendable(&req);

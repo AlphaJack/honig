@@ -8,7 +8,7 @@ use crate::{Message, Request, Response, params::parse_query};
 /// One finished HTTP exchange for the evaluation of `OpenAPI` runtime expressions in links and callbacks.
 ///
 /// The expressions are `$url`, `$method`, `$statusCode`, `$request.*` and `$response.*`. Leave out what you do not
-/// have. An expression that reads a missing part evaluates to `None`.
+/// have. An expression that refers to a missing part evaluates to `None`.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Exchange<'a> {
     /// The full request URL.
@@ -26,7 +26,7 @@ pub struct Exchange<'a> {
 impl Exchange<'_> {
     /// Evaluates one runtime expression (without `{}`) as JSON.
     /// `$request.path.*` needs the parameters of the operation. Generated code
-    /// reads those from `Params` instead.
+    /// gets those from `Params` instead.
     #[must_use]
     pub fn eval(&self, expr: &str) -> Option<Value> {
         fn body(bytes: &[u8], ptr: &str) -> Option<Value> {
@@ -104,7 +104,7 @@ pub fn value_text(v: Value) -> String {
     }
 }
 
-/// Returns a link value as the linked parameter's type; a string holding a number or
+/// Returns a link value as the linked parameter's type; a string containing a number or
 /// bool (`"0"`) also fills a typed parameter.
 pub fn link_value<T: DeserializeOwned>(v: Value) -> Option<T> {
     let text = v.as_str().map(str::to_owned);

@@ -54,7 +54,7 @@ A JWT or session layer that you already run puts its claims in the request's ext
 
 ## Optional sign-in with a limit for anonymous callers
 
-An operation whose `security` holds an empty alternative, `[{}, {bearer: []}]`, takes anonymous requests and signed-in ones. A public endpoint that limits anonymous callers and not signed-in ones is an `operation_layer`. It runs after the server checked the credentials, so the principal is in the request's extensions when the token passed. A token that the `Api` refuses is `401`, so a bad token never falls back to the anonymous limit:
+An operation whose `security` contains an empty alternative, `[{}, {bearer: []}]`, accepts anonymous requests and signed-in ones. A public endpoint that limits anonymous callers and not signed-in ones is an `operation_layer`. It runs after the server checked the credentials, so the principal is in the request's extensions when the token passed. A token that the `Api` refuses is `401`, so a bad token never falls back to the anonymous limit:
 
 ```rust
 {{#include ../../../tests/e2e/tests/v32_security.rs:optional-rate-limit}}

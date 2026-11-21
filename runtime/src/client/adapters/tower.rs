@@ -41,7 +41,7 @@ where
     B: HttpBody<Data = bytes::Bytes> + MaybeSend + 'static,
     B::Error: Into<BoxError>,
 {
-    /// Sends `req` and returns the response once its head is in. The body is still to read.
+    /// Sends `req` and returns the response once its head is in. The body is still to come.
     fn start(&self, mut req: Request) -> impl Future<Output = Result<Response, ClientError>> + MaybeSend + use<S, B> {
         let mut service = self.service.clone();
         let target = http::Uri::try_from(crate::message::target(&self.base_url, req.uri()));

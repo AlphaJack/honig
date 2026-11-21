@@ -43,7 +43,7 @@ paths:
           content:
             text/event-stream:
               schema: {}
-  # A sequence as a whole: `minItems`, `maxItems` and `uniqueItems` hold on its items as they arrive.
+  # A sequence as a whole: `minItems`, `maxItems` and `uniqueItems` apply to its items as they arrive.
   /tiles/batch:
     post:
       operationId: tileBatch

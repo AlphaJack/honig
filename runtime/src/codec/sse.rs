@@ -24,7 +24,7 @@ pub fn sse_encode<T: Serialize>(items: &[T]) -> Result<Vec<u8>, ClientError> {
 pub(crate) fn sse_write<T: Serialize>(out: &mut Vec<u8>, item: &T) -> Result<(), ClientError> {
     // A struct decides by the fields that it declares. The fields that this
     // value sets do not count. `{id, data}` with `id: None` is still an event.
-    // So `sse_item` reads it back the same way. Other values decide by their keys.
+    // So `sse_item` decodes it back the same way. Other values decide by their keys.
     let declared = struct_shape(item);
     // A struct that is not an event is its data. It is written as JSON straight: through a `Value` each item
     // would be a map, and its keys would come out sorted and not in the order that JSON Lines writes them.
@@ -72,10 +72,10 @@ pub(crate) fn push_text(out: &mut Vec<u8>, pieces: &[&str]) {
 }
 
 /// Writes one field. A `data` value goes line by line. Any other value goes on its one line.
-/// Errors: an `id` or `event` with a line break or an `id` with a NUL. No parser reads these back as written.
+/// Errors: an `id` or `event` with a line break or an `id` with a NUL. No parser parses these back as written.
 pub(crate) fn push_field(out: &mut Vec<u8>, key: &str, value: &str) -> Result<(), ClientError> {
     if key != "data" && (value.contains(['\r', '\n']) || (key == "id" && value.contains('\0'))) {
-        return Err(ClientError::Encode(format!("an event's `{key}` cannot hold a line break or a NUL: {value:?}")));
+        return Err(ClientError::Encode(format!("an event's `{key}` cannot contain a line break or a NUL: {value:?}")));
     }
     for line in text_lines(value) {
         push_text(out, &[key, ": ", line, "\n"]);
@@ -230,13 +230,13 @@ pub(crate) fn sse_item<T: DeserializeOwned>(status: Option<u16>, block: &str) ->
     }
     // The mirror of `sse_encode`. A struct whose fields are all event fields was
     // written field by field. Its `data` is never a whole item even when it
-    // holds a JSON object. Any other struct was written whole as JSON in `data`.
-    // Without a declared field list a `data` that holds a JSON object with keys
+    // contains a JSON object. Any other struct was written whole as JSON in `data`.
+    // Without a declared field list a `data` that contains a JSON object with keys
     // other than the event fields is a whole item.
     let declared = declared_fields::<T>();
     let event_shaped = declared.is_some_and(is_event_shape);
     let data = o.get("data").and_then(Value::as_str);
-    // A declared struct reads its JSON text straight. Through a `Value` every key and string would be
+    // A declared struct decodes its JSON text straight. Through a `Value` every key and string would be
     // allocated twice.
     if !event_shaped
         && declared.is_some()
@@ -271,8 +271,8 @@ pub(crate) fn sse_item<T: DeserializeOwned>(status: Option<u16>, block: &str) ->
     }
 }
 
-/// Returns the `data` of an event block with its lines joined with `\n`. This is what [`sse_item`] read. The rare item
-/// that needs it again uses it.
+/// Returns the `data` of an event block with its lines joined with `\n`. This is what [`sse_item`] decoded. The rare
+/// item that needs it again uses it.
 fn sse_data(block: &str) -> Option<String> {
     let lines: Vec<&str> = sse_lines(block)
         .map(|l| l.split_once(':').unwrap_or((l, "")))
@@ -632,7 +632,7 @@ mod tests {
         assert_eq!(sse_boundary(b"data: a\n\r\nx", 0, false), Ok((7, 10)));
     }
 
-    /// An event-shaped item reads its `data` as the field. A `data` object is not the whole item.
+    /// An event-shaped item decodes its `data` as the field. A `data` object is not the whole item.
     #[test]
     fn an_event_shaped_item_keeps_object_data_whole() {
         let inner = serde_json::json!({"data": {"k": "v"}}).as_object().cloned();

@@ -58,8 +58,8 @@ impl<T: DeserializeOwned> ItemStream<T> {
     ///
     /// It keeps a clone of `transport`: wrap a transport that is not `Clone` in an `Arc`. It waits
     /// [`ItemStream::retry`] (3 seconds until the server sends a `retry`). Then it sends `req` again with
-    /// `Last-Event-ID`, so the server can resume after the last event read. An event that the connection broke inside
-    /// is dropped. So no event is read twice.
+    /// `Last-Event-ID`, so the server can resume after the last event received. An event that the connection broke
+    /// inside is dropped. So no event is received twice.
     ///
     /// A failed reconnection is an `Err` and the next poll tries again. Each time it waits twice as long, up to a
     /// minute. A `429` or `5xx` counts as failed. The stream ends on a `204` or another status, on a response that is

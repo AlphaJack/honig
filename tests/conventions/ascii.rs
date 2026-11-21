@@ -20,7 +20,7 @@ fn only_in_strings(line: &str) -> bool {
     true
 }
 
-/// The `file:line` of each line of `text` with a character it may not hold.
+/// The `file:line` of each line of `text` with a character it may not contain.
 fn offending(file: &str, text: &str, code: bool) -> Vec<String> {
     let mut in_tests = super::is_test_file(file);
     text.lines()

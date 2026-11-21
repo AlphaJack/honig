@@ -1,12 +1,11 @@
 //! The XML encoder: a value written as the `xml` objects of its schemas shape it.
 //!
-//! Most bodies are written as they serialize: their fields come in the order of their shape. Any other body is
-//! written again with each field rendered alone and then put in order. That is the attributes, the text and the
-//! elements in the order of the shape, then the properties that the shape does not list in the order of a
-//! `serde_json::Map`. That covers
-//! a field out of order, an unlisted property, a map and a `nodeType: none` field. A leaf that is not text, a number
-//! or a boolean is written from its `serde_json::Value`, as JSON holds it. Examples are an `f32`, bytes, a tuple, an
-//! enum variant with data and a raw JSON value such as a `Decimal`.
+//! Most bodies are written as they serialize: their fields come in the order of their shape. Any other body is written
+//! again with each field rendered alone and then put in order. That is the attributes, the text and the elements in the
+//! order of the shape, then the properties that the shape does not list in the order of a `serde_json::Map`. That
+//! covers a field out of order, an unlisted property, a map and a `nodeType: none` field. A leaf that is not text, a
+//! number or a boolean is written from its `serde_json::Value`, as JSON represents it. Examples are an `f32`, bytes, a
+//! tuple, an enum variant with data and a raw JSON value such as a `Decimal`.
 
 use std::fmt::{self, Write as _};
 
@@ -123,7 +122,7 @@ fn value_element(out: &mut String, v: &Value, tag: Tag<'_>) {
 
 /// Returns the error of a `Value` that did not write. Every `Value` writes, so it is never `None`.
 fn written(stop: Stop) -> ClientError {
-    stop.0.unwrap_or_else(|| ClientError::Encode("a value XML does not hold".to_owned()))
+    stop.0.unwrap_or_else(|| ClientError::Encode("a value XML cannot represent".to_owned()))
 }
 
 /// Returns the `Value` of `v` for a part that is not written as it serializes.
@@ -307,7 +306,7 @@ struct Fields<'o, 'n> {
     mode: Mode,
     /// `nodeType: none`: only the text and the elements, inside the element of the parent.
     inline: bool,
-    /// Streamed: the start tag still takes attributes.
+    /// Streamed: the start tag still accepts attributes.
     open: bool,
     /// Streamed: the index in the shape of the last attribute, text and element written.
     attribute: Option<usize>,
@@ -378,7 +377,7 @@ impl<'o, 'n> Fields<'o, 'n> {
                 self.stream(i, f, v)
             }
             Mode::Ordered => match found {
-                // An object held in place keeps only its text and its elements.
+                // An inline object keeps only its text and its elements.
                 Some((_, f)) if self.inline && f.attribute => Ok(()),
                 Some((i, f)) => {
                     if let Some(slot) = self.slots.get_mut(i) {
@@ -612,7 +611,7 @@ impl<'o> Field<'o> {
         Element { out: self.out, tag: write::field(self.f), node, extra: "", mode: self.mode }
     }
 
-    /// Returns the fields of an object value: held in place for `nodeType: none` with a shape, else its own element.
+    /// Returns the fields of an object value: inlined for `nodeType: none` with a shape, else its own element.
     fn fields(self) -> Result<Fields<'o, 'static>> {
         let inline = self.f.inline && self.f.child.is_some();
         self.element().fields(inline)
@@ -961,7 +960,7 @@ mod tests {
         }
     }
 
-    /// The same fields in another order, a field held in place, an `f32`, and a property the shape does not list.
+    /// The same fields in another order, an inline field, an `f32`, and a property the shape does not list.
     #[derive(Serialize)]
     struct Mixed {
         score: f64,

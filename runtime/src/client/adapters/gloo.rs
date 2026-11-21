@@ -13,8 +13,8 @@ type Prepare = Rc<dyn Fn(gloo_net::http::RequestBuilder) -> gloo_net::http::Requ
 
 /// Browser `fetch` transport: `Client::new(api::GlooTransport::new("/api"))`.
 ///
-/// A response streams: each chunk comes as `fetch` reads it. A request body is read whole
-/// first because `fetch` takes no streamed one.
+/// A response streams: each chunk comes as `fetch` receives it. A request body is collected whole
+/// first because `fetch` accepts no streamed one.
 #[derive(Clone)]
 pub struct GlooTransport {
     /// Base URL without a trailing slash. A path such as `/api` resolves
@@ -75,9 +75,9 @@ fn forbidden(name: &str) -> bool {
 }
 
 impl GlooTransport {
-    /// Sends `req` and returns once the head of the response has arrived. Its body is still to read.
+    /// Sends `req` and returns once the head of the response has arrived. Its body is still to come.
     async fn start(&self, req: Request) -> Result<(Response, gloo_net::http::Response), ClientError> {
-        // `fetch` takes no streamed request body: its pieces are read first.
+        // `fetch` accepts no streamed request body: its pieces are collected first.
         let (head, body) = req.into_parts();
         let body = body.collect().await?;
         let built = self.build(&head, body);
@@ -123,7 +123,7 @@ async fn read(
     let reader = reader?;
     let read = match wasm_bindgen_futures::JsFuture::from(reader.read()).await {
         Ok(read) => read.unchecked_into::<web_sys::ReadableStreamReadResult>(),
-        Err(e) => return Some((Err(ClientError::transport(format!("reading the response body: {e:?}"))), None)),
+        Err(e) => return Some((Err(ClientError::transport(format!("receiving the response body: {e:?}"))), None)),
     };
     if read.get_done().unwrap_or(true) {
         return None;

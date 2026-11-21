@@ -1,6 +1,6 @@
 //! A JSON object type that writes each key once. A generated struct with `additionalProperties` writes its declared
 //! fields and then the entries of its extra map. Decoding never puts a declared name in that map. A value built by
-//! hand can, and the object would then hold the name twice: RFC 8259 section 4 leaves such an object to each
+//! hand can, and the object would then contain the name twice: RFC 8259 section 4 leaves such an object to each
 //! reader, and the struct's own decoder refuses it. Generated structs with an extra map encode through
 //! [`UniqueKeys`], which drops an entry whose key came before. So the declared field wins.
 

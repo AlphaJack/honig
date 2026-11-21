@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 
 use serde_json::{Map, Value};
 
-/// A JSON object held as a value or as its map.
+/// A JSON object stored as a value or as its map.
 pub(crate) trait Fields {
     /// Returns the member named `key`.
     fn field(&self, key: &str) -> Option<&Value>;
@@ -63,12 +63,12 @@ pub(crate) fn strings(values: &[Value]) -> Vec<String> {
     strs(values).map(String::from).collect()
 }
 
-/// Returns the owned string that `v` holds.
+/// Returns the owned string that `v` contains.
 pub(crate) fn owned_str(v: &Value) -> Option<String> {
     v.as_str().map(String::from)
 }
 
-/// Does `v` hold an object with the key `key`, itself or anywhere inside?
+/// Does `v` contain an object with the key `key`, itself or anywhere inside?
 pub(crate) fn mentions(v: &Value, key: &str) -> bool {
     match v {
         Value::Object(o) => o.contains_key(key) || o.values().any(|x| mentions(x, key)),
@@ -97,12 +97,12 @@ pub(crate) fn join(pointer: &str, token: &str) -> String {
     format!("{pointer}/{}", escape_token(token))
 }
 
-/// Does `key` (in an object found under `parent`) hold literal data?
+/// Does `key` (in an object found under `parent`) contain literal data?
 ///
 /// Examples, enum values and schema defaults are data. `default` under
 /// `responses` is the default response. That is structure. Under a map of
 /// names (`properties`, `definitions`, ...) every key is a name: a property
-/// called `default` holds a schema.
+/// called `default` contains a schema.
 pub(crate) fn is_data(parent: &str, key: &str) -> bool {
     if matches!(parent, "properties" | "patternProperties" | "definitions" | "$defs" | "dependentSchemas" | "schemas") {
         return false;
@@ -132,7 +132,7 @@ pub(crate) fn pointer<'a>(root: &'a Value, ptr: &str) -> Option<&'a Value> {
     Some(cur)
 }
 
-/// Returns an RFC 6901 array index: `0` or digits without a leading zero. `parse` alone would take `+1` and `01`.
+/// Returns an RFC 6901 array index: `0` or digits without a leading zero. `parse` alone would accept `+1` and `01`.
 fn array_index(token: &str) -> Option<usize> {
     let digits = !token.is_empty() && token.bytes().all(|b| b.is_ascii_digit());
     (digits && (token == "0" || !token.starts_with('0'))).then(|| token.parse().ok()).flatten()
@@ -153,11 +153,11 @@ pub(crate) struct Doc {
     /// Absolute `$id` to pointer.
     ids: BTreeMap<String, String>,
     self_uri: Option<String>,
-    /// The text of each `externalValue` read at load time or why it could not be read.
+    /// The text of each `externalValue` loaded at load time or why it could not be loaded.
     pub externals: Externals,
 }
 
-/// Each `externalValue` URI with its text or why it could not be read.
+/// Each `externalValue` URI with its text or why it could not be loaded.
 pub(crate) type Externals = BTreeMap<String, Result<String, String>>;
 
 impl Doc {
@@ -252,7 +252,7 @@ pub(crate) fn fixes_one_value(s: &Value) -> bool {
 }
 
 /// Returns a JSON number as the digits of its decimal text and the power of ten they scale by: `2.5` is `(25, -1)`
-/// and `1e3` is `(1, 3)`. `None` for a negative number or more digits than a `u128` holds.
+/// and `1e3` is `(1, 3)`. `None` for a negative number or more digits than a `u128` fits.
 pub(crate) fn decimal_parts(n: &serde_json::Number) -> Option<(u128, i32)> {
     let text = n.to_string();
     let (mantissa, exponent) = text.split_once(['e', 'E']).unwrap_or((&text, "0"));
@@ -265,7 +265,7 @@ pub(crate) fn decimal_parts(n: &serde_json::Number) -> Option<(u128, i32)> {
     Some((digits, exponent.checked_sub(i32::try_from(fraction.len()).ok()?)?))
 }
 
-/// Does schema `s` hold only string keywords (`pattern`, `minLength`, `maxLength`, `type: string`)?
+/// Does schema `s` contain only string keywords (`pattern`, `minLength`, `maxLength`, `type: string`)?
 pub(crate) fn text_only(s: &Map<String, Value>) -> bool {
     s.iter().all(|(k, v)| match k.as_str() {
         "pattern" | "minLength" | "maxLength" => true,

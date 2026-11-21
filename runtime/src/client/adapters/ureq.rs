@@ -6,7 +6,7 @@ use ureq::{RequestExt, http};
 
 use crate::{Body, ByteStream, ClientError, Request, Response, source::BodySource};
 
-/// The most that a read of a streamed response takes at once. A read returns what has arrived up to this.
+/// The most bytes that one pull of a streamed response returns. A pull returns what has arrived up to this.
 const CHUNK: usize = 16 << 10;
 
 /// Blocking `ureq` transport: `Client::new(api::UreqTransport::new("https://api.example.com"))`,
@@ -36,7 +36,7 @@ impl UreqTransport {
         req.with_agent(&self.agent).configure().http_status_as_error(false).run()
     }
 
-    /// Sends `req` and returns once the head of the response has arrived. Its body is still to read.
+    /// Sends `req` and returns once the head of the response has arrived. Its body is still to come.
     fn start(&self, req: Request) -> Result<http::Response<ureq::Body>, ClientError> {
         let target =
             http::Uri::try_from(crate::message::target(&self.base_url, req.uri())).map_err(ClientError::transport)?;
@@ -80,7 +80,8 @@ impl tower_service::Service<Request> for UreqTransport {
     }
 }
 
-/// A response body read as it arrives. Each read blocks this thread until some bytes come. Every `ureq` call does this.
+/// A response body received as it arrives. Each pull blocks this thread until some bytes come. Every `ureq` call does
+/// this.
 struct Incoming(ureq::BodyReader<'static>);
 
 impl Iterator for Incoming {
@@ -105,7 +106,7 @@ impl Iterator for Incoming {
     }
 }
 
-/// A streamed upload as `Read`. First the bytes held whole and then each piece. This thread waits for each piece.
+/// A streamed upload as `Read`. First the bytes in memory and then each piece. This thread waits for each piece.
 struct Pieces {
     buf: bytes::Bytes,
     pos: usize,

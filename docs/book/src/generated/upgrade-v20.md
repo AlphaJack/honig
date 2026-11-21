@@ -16,6 +16,6 @@ Swagger 2.0 to OpenAPI 3.0.
 
 What is lost:
 
-- An unknown `collectionFormat` is read as `csv`.
-- An unknown `OAuth2` `flow` is read as `implicit`.
+- An unknown `collectionFormat` is decoded as `csv`.
+- An unknown `OAuth2` `flow` is decoded as `implicit`.
 - A security scheme of an unknown `type` is kept as written. Generated code does not use it.

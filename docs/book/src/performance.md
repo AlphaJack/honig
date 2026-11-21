@@ -2,7 +2,7 @@
 
 ## Allocator
 
-Use mimalloc in your binary. Decoding a JSON body allocates every string and `Vec` it holds. The system allocator is the largest cost after parsing.
+Use mimalloc in your binary. Decoding a JSON body allocates every string and `Vec` it contains. The system allocator is the largest cost after parsing.
 
 Add `mimalloc = "0.1"` to `[dependencies]`. Then declare it in `main.rs`: `#[global_allocator] static ALLOC: mimalloc::MiMalloc = mimalloc::MiMalloc;`.
 
@@ -10,7 +10,7 @@ Add `mimalloc = "0.1"` to `[dependencies]`. Then declare it in `main.rs`: `#[glo
 
 The `simd` feature speeds up large bodies. Small ones see no difference. Its row in the [feature table](adapters.md) lists the library of each path and says when it is on.
 
-A body that fails to decode is read again by `serde_json`. Errors still point to the field that is wrong.
+A body that fails to decode is decoded again by `serde_json`. Errors still point to the field that is wrong.
 
 Leaving `simd` out of the features trades runtime performance for a lighter build. JSON goes through `serde_json` and base64 through the scalar engine of the `base64` crate. `memchr` stays.
 

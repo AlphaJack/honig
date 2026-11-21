@@ -1,5 +1,5 @@
-//! The trait impls that every generated string or integer enum, and every checked newtype of one base, shares. Generated
-//! code calls them as `runtime::str_enum_impls!(Name)`: the module holds no copy of them.
+//! The trait impls that every generated string or integer enum, and every checked newtype of one base, shares.
+//! Generated code calls them as `runtime::str_enum_impls!(Name)`: the module contains no copy of them.
 
 /// The impls that every generated type of one kind shares, written once here.
 #[doc(hidden)]

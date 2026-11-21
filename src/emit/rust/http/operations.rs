@@ -227,7 +227,7 @@ pub(crate) fn link_param<'a>(op: &'a Operation, key: &str) -> Option<&'a Param> 
     })
 }
 
-/// Which input a link value reads.
+/// Which input a link value uses.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) enum LinkInput {
     Constant,
@@ -238,7 +238,7 @@ pub(crate) enum LinkInput {
 }
 
 /// Returns a link parameter or `requestBody` value as an `Option<serde_json::Value>`
-/// expression and the inputs that it reads. Strings may embed runtime
+/// expression and the inputs that it uses. Strings may embed runtime
 /// expressions in `{}` (`/orders/{$response.body#/id}`). A string that starts
 /// with `$` is one expression.
 pub(crate) fn link_source(op: &Operation, expr: &serde_json::Value) -> (TokenStream, BTreeSet<LinkInput>) {
@@ -327,7 +327,7 @@ pub(crate) struct LinkFields<'a> {
 }
 
 impl<'a> LinkFields<'a> {
-    /// Adds `pub <field>: Option<<inner>>` read from `expr`.
+    /// Adds `pub <field>: Option<<inner>>` evaluated from `expr`.
     fn add(&mut self, space: &Space<'_>, op: &Operation, field: &str, inner: &'a Ty, expr: &serde_json::Value) {
         self.tys.push(inner);
         let (named, binary) = mentions(inner);
@@ -335,7 +335,7 @@ impl<'a> LinkFields<'a> {
         self.uses_runtime |= binary;
         let (f, t) = (ident(field), ty(space, inner, true));
         self.fields.push(quote!(pub #f: Option<#t>,));
-        // A string that holds a number or bool (`'0'`) also fills a typed parameter.
+        // A string that contains a number or bool (`'0'`) also fills a typed parameter.
         let (src, inputs) = link_source(op, expr);
         self.inputs.extend(inputs);
         self.uses_runtime = true;
@@ -542,8 +542,8 @@ fn is_required_param(space: &Space<'_>, p: &Param) -> bool {
     p.location == Location::Path || (!p.ty.is_option() && spec_default(space, p).is_none())
 }
 
-/// Can `Params::new` take the required values by position? Only when no two of them have the same type: then a swap is
-/// a type error. A required value of a checked type is made with its own `try_from` first.
+/// Can `Params::new` accept the required values by position? Only when no two of them have the same type: then a swap
+/// is a type error. A required value of a checked type is made with its own `try_from` first.
 fn params_new_is_safe(space: &Space<'_>, op: &Operation) -> bool {
     let mut types: Vec<String> = new_args(space, op).iter().map(|p| ty(space, &p.ty, true).to_string()).collect();
     if let Some(b) = op.body.as_ref().filter(|b| b.required) {
@@ -783,7 +783,7 @@ const SUCCESS_FROM: u16 = 200;
 /// The first status code past the successes.
 const SUCCESS_TO: u16 = 300;
 
-/// Returns the pattern that matches the variant of `r` whatever it holds.
+/// Returns the pattern that matches the variant of `r` whatever it contains.
 fn any_of(r: &Resp) -> TokenStream {
     let variant = pascal_ident(&r.variant);
     match variant_shape(r) {
@@ -798,7 +798,7 @@ fn either(patterns: &[TokenStream]) -> TokenStream {
     if let [one] = patterns { one.clone() } else { quote!((#(#patterns)|*)) }
 }
 
-/// Returns `Display` and `Error` for `Response`: its status and variant, so that `?` takes it into any error type.
+/// Returns `Display` and `Error` for `Response`: its status and variant, so that `?` converts it into any error type.
 fn response_error(op: &Operation) -> TokenStream {
     let arms = op.responses.iter().map(|r| {
         let variant = pascal_ident(&r.variant);
@@ -837,7 +837,8 @@ fn into_ok(space: &Space<'_>, op: &Operation, bx: &Boxing) -> Option<TokenStream
         let patterns = either(&failures.iter().map(|(_, r)| any_of(r)).collect::<Vec<_>>());
         quote!(other @ #patterns => Err(Box::new(other)),)
     });
-    let doc = " Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.";
+    let doc =
+        " Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.";
     let (success, arm, alias) = match successes[..] {
         [] => return None,
         [(index, resp)] => one_success(space, resp, bx.resp[index]),
@@ -857,7 +858,7 @@ fn into_ok(space: &Space<'_>, op: &Operation, bx: &Boxing) -> Option<TokenStream
     })
 }
 
-/// Returns the type that the one success `resp` gives from `into_ok`, the match arm that takes it apart and the alias
+/// Returns the type that the one success `resp` gives from `into_ok`, the match arm that destructures it and the alias
 /// that stands for a tuple: nothing, its body, its one header, or its body and headers as `Success` in order.
 fn one_success(space: &Space<'_>, resp: &Resp, boxed_body: bool) -> (TokenStream, TokenStream, Option<TokenStream>) {
     let variant = pascal_ident(&resp.variant);

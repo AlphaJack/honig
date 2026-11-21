@@ -1,5 +1,5 @@
-//! String `format` checks that the server runs on every value of a request. One value each as a field of a body holds
-//! it. A check costs per value and not per body byte.
+//! String `format` checks that the server runs on every value of a request. One value each as a field of a body
+//! contains it. A check costs per value and not per body byte.
 
 use divan::Bencher;
 use honig::__private::check_format;

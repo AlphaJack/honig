@@ -4,7 +4,7 @@ use crate::uri::{is_iprivate, is_ucschar};
 
 /// The operators an expression may start with, the reserved ones included.
 const OPERATORS: &str = "+#./;?&=,!@|";
-/// What a literal never holds besides controls and a space.
+/// What a literal never contains besides controls and a space.
 // RFC 6570 section 2.1 with verified erratum 6937: an apostrophe is a literal.
 const NOT_LITERAL: &str = "\"%<>\\^`{|}";
 /// The most digits of a prefix modifier (`:9999`).

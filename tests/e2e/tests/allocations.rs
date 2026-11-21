@@ -1,8 +1,8 @@
-//! The allocation bench of a pull request: no kind of path makes more than its `max_allocs` times the allocations
-//! of its hand-rolled baseline at any of `cost::BENCH_SIZES`. Counts do not depend on the machine or the build, so it
-//! runs with the other tests. The one exception is the box of each `std::sync::Mutex` on Apple targets: it is taken off
-//! the count of the generated side (`cost::lock_box`), so the budgets set on the CI hold on a Mac too. An extra copy of a body or a round trip through `serde_json::Value` shows here.
-//! `benches/time.rs` times the same paths.
+//! The allocation bench of a pull request: no kind of path makes more than its `max_allocs` times the allocations of
+//! its hand-rolled baseline at any of `cost::BENCH_SIZES`. Counts do not depend on the machine or the build, so it runs
+//! with the other tests. The one exception is the box of each `std::sync::Mutex` on Apple targets: it is subtracted
+//! from the count of the generated side (`cost::lock_box`), so the budgets set on the CI apply on a Mac too. An extra
+//! copy of a body or a round trip through `serde_json::Value` shows here. `benches/time.rs` times the same paths.
 
 #[path = "../cost/mod.rs"]
 mod cost;

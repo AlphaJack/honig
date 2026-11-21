@@ -65,7 +65,7 @@ fn served(accept: &str) -> api::Response {
     api::block_on(service.handle(request(accept)))
 }
 
-/// One `Book` in either media type. The server writes the one that `Accept` prefers. 406 when it takes neither.
+/// One `Book` in either media type. The server writes the one that `Accept` prefers. 406 when it accepts neither.
 #[test]
 fn the_server_writes_the_media_type_accept_prefers() {
     assert_eq!(

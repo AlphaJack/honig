@@ -1,6 +1,6 @@
 //! Roles on a bearer token (3.1+ Security Requirement role names) in the way that a
 //! fine-grained personal access token carries permissions. Requirements are
-//! OR. A token that holds either permission passes. `verify_pat` returns the
+//! OR. A token that grants either permission passes. `verify_pat` returns the
 //! permissions of a token as the typed `PatScope`, and the server checks them.
 
 use std::future::Future;
@@ -11,14 +11,14 @@ fn ok<T: Send>(r: T) -> impl Future<Output = Result<T, api::ApiError>> + Send {
     std::future::ready(Ok(r))
 }
 
-/// The token text lists the permissions it holds: `Bearer read+write`. `bad` is no token at all.
+/// The token text lists the permissions it grants: `Bearer read+write`. `bad` is no token at all.
 struct Server;
 
 impl api::Api for Server {
     type Principal = ();
 
     // ANCHOR: scopes
-    /// Who holds the token and the permissions that it grants. The server checks them against the operation.
+    /// Who owns the token and the permissions that it grants. The server checks them against the operation.
     async fn verify_pat(
         &self,
         token: &str,
@@ -165,10 +165,10 @@ impl api::Api for Named {
 fn each_operation_takes_the_caller_its_security_asks_for() {
     assert_eq!(answer(Named, "GET", "/issues", Some("ann")).status(), 204, "a principal reaches a secured operation");
     assert_eq!(answer(Named, "GET", "/issues", Some("anon")).status(), 401, "nobody does not");
-    assert_eq!(answer(Named, "GET", "/public", None).status(), 204, "a public operation takes nobody");
+    assert_eq!(answer(Named, "GET", "/public", None).status(), 204, "a public operation needs nobody");
 }
 
-/// A server whose handler refuses every token it sees: it was revoked after `verify_pat` read it.
+/// A server whose handler refuses every token it sees: it was revoked after `verify_pat` checked it.
 struct Revoked;
 
 impl api::Api for Revoked {
@@ -201,7 +201,7 @@ impl api::Api for Revoked {
     }
 }
 
-/// RFC 9110 section 15.5.2: a 401 carries a challenge for the operation's schemes. That holds for the one the server
+/// RFC 9110 section 15.5.2: a 401 carries a challenge for the operation's schemes. That applies to the one the server
 /// sends without a token and for the one a handler returns for a token it refuses.
 #[test]
 fn every_401_carries_a_challenge() {

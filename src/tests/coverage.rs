@@ -22,10 +22,10 @@ const NOT_EMITTED: &[(&str, &str, &str)] = &[
     ("Example", "summary", "by design: examples become test values, which carry no docs"),
     ("Example", "description", "by design: examples become test values, which carry no docs"),
     ("OpenApi", "jsonSchemaDialect", "by design: an unsupported dialect is a generation warning"),
-    ("OpenApi", "openapi", "by design: the version picks the upgrade at load; every later pass reads 3.2"),
+    ("OpenApi", "openapi", "by design: the version picks the upgrade at load; every later pass sees 3.2"),
     ("OpenApi", "$self", "by design: the base URI resolves `$ref`s at load; the loaded document has local ones"),
-    ("SecurityScheme", "bearerFormat", "by design: generated docs hold only the description's own prose"),
-    ("Tag", "kind", "by design: generated docs hold only the description's own prose"),
+    ("SecurityScheme", "bearerFormat", "by design: generated docs contain only the description's own prose"),
+    ("Tag", "kind", "by design: generated docs contain only the description's own prose"),
     ("Schema", "example", "by design: an annotation next to a `$ref`, which checks nothing"),
     ("Schema", "$comment", "by design: a note for the authors of the schema"),
     ("Schema", "$schema", "by design: a schema has the dialect of its OpenAPI version"),
@@ -34,7 +34,7 @@ const NOT_EMITTED: &[(&str, &str, &str)] = &[
 ];
 
 /// Fields that the model declares by object kind (the `src/spec` struct name).
-/// They are read from the source of the model: a `pub` field named in camelCase or the
+/// They are parsed from the source of the model: a `pub` field named in camelCase or the
 /// name that its `#[serde(rename = "...")]` gives.
 fn model_fields() -> BTreeSet<(String, String)> {
     let mut out = BTreeSet::new();
@@ -89,7 +89,7 @@ fn camel_case(snake: &str) -> String {
     out
 }
 
-/// Keys of a schema that hold one subschema, a map of them or a list.
+/// Keys of a schema that contain one subschema, a map of them or a list.
 const SUB_ONE: &[&str] = &[
     "items",
     "contains",
@@ -409,7 +409,7 @@ fn object_mut<'a>(doc: &'a mut Value, path: &[String]) -> Option<&'a mut Map<Str
 }
 
 /// The generated module of a 3.2 document as one string. `externals` are the files and URLs that its examples name:
-/// read once per fixture, since some are URLs and removing a field never adds a new one.
+/// loaded once per fixture, since some are URLs and removing a field never adds a new one.
 fn generate(doc: &Value, externals: &crate::json::Externals, opts: &crate::emit::Options) -> String {
     let mut diags = crate::diag::Diagnostics::default();
     let mut d = crate::json::Doc::new(doc.clone());

@@ -34,7 +34,7 @@ pub(crate) fn runtime_features(
     if uses.patterns && !features.contains(&REGRESS) {
         features.push(REGRESS);
     }
-    // A mail or host name `format` that no type holds (a schema without `type`) is checked at run time with `idn`.
+    // A mail or host name `format` that no type represents (a schema without `type`) is checked at run time with `idn`.
     if uses.mail_formats && !features.contains(&IDN) {
         features.push(IDN);
     }
@@ -42,7 +42,7 @@ pub(crate) fn runtime_features(
 }
 
 /// Returns the runtime codecs that the generated code calls. That is for a body or part in their media types, a
-/// `Cookie` API key or a cookie parameter that the server reads. The client writes one without the parser of the
+/// `Cookie` API key or a cookie parameter that the server parses. The client writes one without the parser of the
 /// runtime.
 fn codecs(api: &Api, server: bool) -> Vec<&'static str> {
     let contents = || api.http.operations.iter().flat_map(Operation::contents);
@@ -73,7 +73,7 @@ fn format_checks(api: &Api, libs: &FormatLibs) -> Vec<&'static str> {
     for ty in every_ty(api) {
         formats_in(ty, &mut used);
     }
-    // A type that the table sets reads text that the runtime checked first.
+    // A type that the table sets parses text that the runtime checked first.
     let checked = |formats: &[Format]| {
         formats.iter().any(|f| used.contains(f) && (untyped(libs, *f) || libs.named.contains_key(f)))
     };
@@ -83,7 +83,7 @@ fn format_checks(api: &Api, libs: &FormatLibs) -> Vec<&'static str> {
         (IDN, mail.iter().any(|f| used.contains(f))),
         // The libraries that would type these formats check them.
         (REGRESS, checked(&[Format::Regex])),
-        // `runtime::FullTime` reads as `jiff` types for a crate whose dates are `jiff`.
+        // `runtime::FullTime` converts to `jiff` types for a crate whose dates are `jiff`.
         (JIFF, used.contains(&Format::Time) && libs.dates == Some(DateLib::Jiff)),
     ];
     needed.into_iter().filter_map(|(feature, on)| on.then_some(feature)).collect()
@@ -99,7 +99,7 @@ fn every_ty(api: &Api) -> impl Iterator<Item = &Ty> {
     in_types.chain(in_ops)
 }
 
-/// Does `ty` hold binary data that JSON carries as base64 (`Binary` or `base64url`), itself or in what it holds?
+/// Does `ty` contain binary data that JSON carries as base64 (`Binary` or `base64url`), itself or in what it contains?
 fn holds_binary(ty: &Ty) -> bool {
     matches!(ty, Ty::Binary | Ty::Format(Format::Base64Url)) || ty.children().iter().any(holds_binary)
 }
@@ -114,7 +114,7 @@ fn has_flows(s: &SecurityScheme) -> bool {
         || s.discovery_url.is_some()
 }
 
-/// Collects every string format that `ty` holds itself or in what it holds.
+/// Collects every string format that `ty` contains itself or in what it contains.
 fn formats_in(ty: &Ty, out: &mut BTreeSet<Format>) {
     if let Ty::Format(f) = ty {
         out.insert(*f);

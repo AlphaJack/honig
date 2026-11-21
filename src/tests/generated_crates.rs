@@ -33,7 +33,7 @@ gloo-net = { version = "0.6", default-features = false, features = ["http"] }
         rust: crate::emit::rust::Options::default(),
         ..crate::emit::Options::default()
     };
-    // Streams, OAuth flows and webhooks are the client paths that hold futures.
+    // Streams, OAuth flows and webhooks are the client paths that keep futures.
     let spec = root.join("tests").join("fixtures").join("v32").join("shop.yaml");
     let generated = crate::generate::generate(&spec, &opts).unwrap_or_else(|d| panic!("generation failed: {:?}", d.0));
     crate::disk::write_module(
@@ -145,9 +145,9 @@ fn a_shift_keeps_every_offset_as_sent() {
     assert!(status.success(), "the jiff crate does not build or its test fails");
 }
 
-/// A library type reads more than its format allows: `jiff` and `chrono` read `2024-06-19 08:30:06Z`, `uuid` reads
-/// `{...}`, `url` reads a space and `ipnet` reads `01.2.3.4/8`. Generated code checks the text first, in every place a
-/// field can hold it.
+/// A library type accepts more than its format allows: `jiff` and `chrono` accept `2024-06-19 08:30:06Z`, `uuid`
+/// accepts `{...}`, `url` accepts a space and `ipnet` accepts `01.2.3.4/8`. Generated code checks the text first, in
+/// every place a field can contain it.
 #[test]
 #[ignore = "compiles generated crates"]
 fn library_types_read_only_their_format() {
@@ -161,7 +161,7 @@ fn library_types_read_only_their_format() {
     build_validated("validated-chrono", chrono, with_chrono, &types);
 }
 
-/// A struct with a checked format in every place a field can hold one: itself, `Option`, `runtime::Nullable`, a
+/// A struct with a checked format in every place a field can contain one: itself, `Option`, `runtime::Nullable`, a
 /// list, a tuple, an array, an alias, the undeclared properties, a union branch and a newtype.
 fn validated_schemas() -> serde_json::Value {
     serde_json::json!({
@@ -207,7 +207,7 @@ fn validated_schemas() -> serde_json::Value {
     })
 }
 
-/// The test of the generated crate: each place refuses a text that its library alone would read.
+/// The test of the generated crate: each place refuses a text that its library alone would accept.
 const VALIDATED_TEST: &str = r##"#![deny(warnings)]
 pub mod api;
 
@@ -226,7 +226,7 @@ fn decodes(json: &str) -> bool {
     serde_json::from_str::<api::types::Validated>(json).is_ok()
 }
 
-/// jiff reads a space in a `date-time`. Decoding refuses it before jiff reads it, on either side.
+/// jiff accepts a space in a `date-time`. Decoding refuses it before jiff parses it, on either side.
 #[test]
 fn text_that_the_library_reads_but_the_format_refuses_does_not_decode() {
     let spaced = OK.replace("\"at\":\"2024-06-19T08:30:06Z\"", "\"at\":\"2024-06-19 08:30:06Z\"");
@@ -263,7 +263,7 @@ fn every_place_checks_its_text() {
     assert!(decoded.is_empty(), "decoded: {decoded:?}");
 }
 
-/// A branch of an untagged union takes only its own format. Text that no branch takes does not decode.
+/// A branch of an untagged union accepts only its own format. Text that no branch accepts does not decode.
 #[test]
 fn an_untagged_branch_checks_its_text() {
     use api::types::SameKind;
@@ -357,7 +357,8 @@ fn validated_paths() -> serde_json::Value {
     })
 }
 
-/// Parameters and bodies of requests that are library types have their text validated. Responses are left to the library.
+/// Parameters and bodies of requests that are library types have their text validated. Responses are left to the
+/// library.
 #[test]
 #[ignore = "compiles generated crates"]
 fn library_types_in_requests_read_only_their_format() {
@@ -374,7 +375,8 @@ fn library_types_in_requests_read_only_their_format() {
     build_validated("validated-http", jiff, libs, &http);
 }
 
-/// The test of the generated client and server: a request with text that only the library reads fails. A response with it is read.
+/// The test of the generated client and server: a request with text that only the library accepts fails. A response
+/// with it is decoded.
 const VALIDATED_HTTP_TEST: &str = r#"#![deny(warnings)]
 pub mod api;
 
@@ -443,7 +445,7 @@ fn the_server_checks_parameters_and_bodies() {
     expect(204, "POST", "/stamps", None, "\"2024-06-19T08:30:06Z\"");
     expect(400, "POST", "/stamps", None, "\"2024-06-19 08:30:06Z\"");
     expect(204, "POST", "/days", None, "\"2024-06-19\"\n\"2024-06-20\"\n");
-    // The body is read as it arrives: the wrong item reaches the handler as an error, and it answers 422.
+    // The body is decoded as it arrives: the wrong item reaches the handler as an error, and it answers 422.
     expect(422, "POST", "/days", None, "\"2024-06-19\"\n\"20240620\"\n");
     assert!(wrong.is_empty(), "{wrong:#?}");
 }
@@ -476,8 +478,8 @@ impl api::Service<api::Request> for Answer {
     }
 }
 
-/// A client checks the text before its library reads it, as the server does: jiff reads a space and url reads one too,
-/// but the formats refuse them.
+/// A client checks the text before its library parses it, as the server does: jiff accepts a space and url accepts one
+/// too, but the formats refuse them.
 #[test]
 fn the_client_reads_only_what_the_format_allows() {
     let item = |location: &'static str, body: &'static str| {
@@ -587,8 +589,8 @@ fn served_subset() -> serde_json::Value {
     )
 }
 
-/// A server for a subset of the operations holds only the types that they reach, also those that only its checks reach.
-/// It builds, and a type that no served operation reaches is left out.
+/// A server for a subset of the operations contains only the types that they reach, also those that only its checks
+/// reach. It builds, and a type that no served operation reaches is left out.
 #[test]
 #[ignore = "compiles generated crates"]
 fn a_server_for_some_operations_holds_the_types_they_reach() {

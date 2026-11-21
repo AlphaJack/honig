@@ -42,13 +42,13 @@ pub struct Op {
     pub security: &'static [&'static [Requirement]],
     /// A binary or sequential body moves into the parameters and does not stay in
     /// [`Context::request`](crate::Context::request). It reaches the handler as it arrives
-    /// ([`Blob::is_streamed`](crate::Blob::is_streamed) and [`Items::Stream`](crate::Items::Stream)). The server reads
-    /// every other body whole first.
+    /// ([`Blob::is_streamed`](crate::Blob::is_streamed) and [`Items::Stream`](crate::Items::Stream)). The server
+    /// buffers every other body whole first.
     pub takes_body: bool,
     /// The description's error schemas.
     pub errors: ProblemSchemas,
     /// The media types of its success responses in the order of the description. `Accept` chooses among them (406
-    /// when it takes none). Empty when they have no body.
+    /// when it accepts none). Empty when they have no body.
     pub produces: &'static [&'static str],
     /// The server answers `Range` with one byte range of the success response. This is a `GET` with a binary success
     /// response that declares no `206` and no `Range` parameter of its own.
@@ -56,7 +56,7 @@ pub struct Op {
 }
 
 impl Op {
-    /// Returns the operation with no security, a body read whole, no success body and no ranges: the start of
+    /// Returns the operation with no security, a body buffered whole, no success body and no ranges: the start of
     /// `Op { takes_body: true, ..Op::new(..) }`.
     #[must_use]
     pub const fn new(

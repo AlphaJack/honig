@@ -18,7 +18,7 @@ where
     T::deserialize(tracked).map_err(|e| (failed.into_inner().unwrap_or_default(), e))
 }
 
-/// The path to the value being read with the innermost last.
+/// The path to the value being decoded with the innermost last.
 enum Chain<'a> {
     Root,
     Key(&'a Self, String),
@@ -37,8 +37,8 @@ impl Chain<'_> {
 }
 
 thread_local! {
-    /// Where a value decoded from its own text ([`crate::tagged::read_once`]) failed, relative to that value. The tracker
-    /// around the value adds it to the value's own pointer.
+    /// Where a value decoded from its own text ([`crate::tagged::read_once`]) failed, relative to that value. The
+    /// tracker around the value adds it to the value's own pointer.
     static NESTED: RefCell<Option<String>> = const { RefCell::new(None) };
 }
 
@@ -239,7 +239,7 @@ struct Map<'a, 'b, A> {
     inner: A,
     at: &'a Chain<'a>,
     failed: &'b RefCell<Option<String>>,
-    /// The key just read when it is text.
+    /// The key just decoded when it is text.
     key: Option<String>,
 }
 
@@ -447,7 +447,7 @@ mod tests {
         assert_eq!(pointer(r#"{"body": 5}"#), "/body");
         assert_eq!(pointer(r#"{"attachments": [{"url": "a"}, {"url": 3}]}"#), "/attachments/1/url");
         assert_eq!(pointer(r#"{"attachments": [{}]}"#), "/attachments/0");
-        // A struct read from a sequence: its first field is element 0.
+        // A struct decoded from a sequence: its first field is element 0.
         assert_eq!(pointer("[1]"), "/0");
         assert_eq!(pointer("5"), "");
     }

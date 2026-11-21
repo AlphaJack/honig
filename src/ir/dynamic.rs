@@ -114,7 +114,7 @@ fn specialize_site(doc: &Doc, o: &Map<String, Value>, ptr: &str) -> Option<Map<S
     // site is still its resource, and its `$dynamicAnchor`s scope there.
     body.remove("$id");
     let own = o.iter().filter(|(k, _)| *k != "$ref");
-    // Both apply. A keyword that both hold (`properties`) keeps each: the generic's becomes a member of `allOf`.
+    // Both apply. A keyword that both have (`properties`) keeps each: the generic's becomes a member of `allOf`.
     // `$defs` and annotations apply to no value: the site's stand.
     let applies = |k: &str| {
         !matches!(k, "$defs" | "definitions" | "$dynamicAnchor" | "$anchor" | "$comment" | "$schema" | "description")
@@ -212,7 +212,7 @@ impl<'d> Binder<'d> {
         if !uses_any(self.doc, target, self.bindings, &mut self.copies.keys().cloned().collect()) {
             return None;
         }
-        // Named after the site and the generic: `SiteTree`. The type of the copy takes that name.
+        // Named after the site and the generic: `SiteTree`. The type of the copy gets that name.
         let last = |p: &str| crate::json::unescape_token(p.rsplit('/').next().unwrap_or_default());
         let site = last(self.defs.trim_end_matches("/$defs"));
         let mut name = format!("{site}{}", last(&p));

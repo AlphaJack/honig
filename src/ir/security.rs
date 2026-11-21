@@ -154,7 +154,7 @@ pub(crate) fn schemes(b: &mut Builder<'_>) -> Vec<SecurityScheme> {
 /// authentication optional. A requirement that refers to an unknown scheme can never
 /// be met. So it is dropped and never shortened. Shortening `{unknown}` to `{}`
 /// would make the operation public. When every requirement is dropped the
-/// result is empty. That reads as public. So `generate` refuses to emit a
+/// result is empty. That counts as public. So `generate` refuses to emit a
 /// server for such a document (`resolve::unresolved_security`).
 pub(crate) fn requirements(security: Option<&Value>, schemes: &[SecurityScheme]) -> Vec<Vec<Requirement>> {
     let Some(Value::Array(reqs)) = security else { return vec![] };

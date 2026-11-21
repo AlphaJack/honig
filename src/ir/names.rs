@@ -153,7 +153,7 @@ pub(crate) fn capitalize(w: &str) -> String {
     }
 }
 
-/// Names a target language keeps for itself: no generated name takes one.
+/// Names a target language keeps for itself: no generated name uses one.
 #[derive(Debug, Clone, Copy, Default)]
 pub(crate) struct Reserved<'a> {
     /// Names types avoid.
@@ -183,9 +183,9 @@ pub(crate) fn unique(name: Name, taken: &mut BTreeSet<String>) -> Name {
     }
 }
 
-/// Returns a unique name within `taken` for each `(name, wire)`, in the order given. Colliding names are numbered in the
-/// sorted order of their wire keys, so a reorder of the group changes no name. A text key is `(length, text)`: `name`
-/// keeps `Name` and `-name` gets `Name2`.
+/// Returns a unique name within `taken` for each `(name, wire)`, in the order given. Colliding names are numbered in
+/// the sorted order of their wire keys, so a reorder of the group changes no name. A text key is `(length, text)`:
+/// `name` keeps `Name` and `-name` gets `Name2`.
 pub(crate) fn unique_sorted<W: Ord>(group: Vec<(Name, W)>, taken: &mut BTreeSet<String>) -> Vec<Name> {
     let mut order: Vec<usize> = (0..group.len()).collect();
     order.sort_by(|&a, &b| group.get(a).map(|g| &g.1).cmp(&group.get(b).map(|g| &g.1)));

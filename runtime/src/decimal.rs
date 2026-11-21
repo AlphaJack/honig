@@ -13,7 +13,7 @@ use crate::raw_value::RAW_VALUE as RAW;
 /// as written. An `f64` rounds it.
 ///
 /// Exact in JSON bodies, parameters, form and multipart fields and `oneOf` branches with or without the
-/// discriminator first. It rounds only in the `Other` of a union. That is a value that no branch takes. It is kept
+/// discriminator first. It rounds only in the `Other` of a union. That is a value that no branch accepts. It is kept
 /// as a `serde_json::Value`. For arithmetic parse [`Decimal::as_str`] into the decimal type of your choice. Parse
 /// its text back with `parse`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -131,16 +131,17 @@ impl<'de> Visitor<'de> for DecimalVisitor {
         f.write_str("a decimal number")
     }
 
-    // serde_json asked for the raw text gives a one-entry map that holds the number as written.
+    // serde_json asked for the raw text gives a one-entry map that contains the number as written.
     fn visit_map<A: MapAccess<'de>>(self, mut map: A) -> Result<Decimal, A::Error> {
         let Some((_, raw)) = map.next_entry::<String, String>()? else { return Err(de::Error::custom("no number")) };
-        // From a `serde_json::Value` that holds text (a parameter read from a query string) the raw JSON is a string.
+        // From a `serde_json::Value` that contains text (a parameter parsed from a query string) the raw JSON is a
+        // string.
         let text =
             if raw.starts_with('"') { serde_json::from_str::<String>(&raw).map_err(de::Error::custom)? } else { raw };
         text.parse().map_err(de::Error::custom)
     }
 
-    // Any other deserializer: what it read.
+    // Any other deserializer: what it decoded.
     fn visit_newtype_struct<D: Deserializer<'de>>(self, d: D) -> Result<Decimal, D::Error> {
         d.deserialize_any(self)
     }

@@ -316,7 +316,7 @@ jobs:
           save-if: ${{ github.ref == 'refs/heads/main' }}
           cache-directories: ${{ matrix.valgrind && '~/valgrind-debs' || '' }}
       # The runner's package index can list packages that the mirror has dropped, so it is updated first (about 5 s).
-      # apt then reads the cached packages and downloads only what the image moved past. needrestart would scan and
+      # apt then uses the cached packages and downloads only what the image moved past. needrestart would scan and
       # restart services after libc6 is upgraded: nothing here needs that.
       - name: Install valgrind
         if: steps.changed.outputs.run == 'true' && matrix.valgrind
@@ -328,7 +328,7 @@ jobs:
           sudo NEEDRESTART_SUSPEND=1 apt-get install -y --no-install-recommends "${apt_opts[@]}" \
             -o Dir::Cache::Archives="$HOME/valgrind-debs" valgrind
           # The cache keeps the packages only: apt's lock and its partial downloads are root's, and tar, run as the
-          # runner, cannot read them. Unreadable, they fail the save of the whole cache, cargo's included.
+          # runner, cannot open them. Unreadable, they fail the save of the whole cache, cargo's included.
           sudo rm -rf ~/valgrind-debs/partial ~/valgrind-debs/lock
           sudo chown -R "$USER" ~/valgrind-debs
       # What the last run on main measured, for the tables to show beside this run (`tests/bench-support/src/results.rs`).

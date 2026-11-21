@@ -43,7 +43,7 @@ pub(crate) fn from_value_as<T: DeserializeOwned>(value: Value) -> Result<T, Diag
     })
 }
 
-/// Serializes a model value back to JSON. Model types only hold string-keyed maps. Those always serialize.
+/// Serializes a model value back to JSON. Model types only contain string-keyed maps. Those always serialize.
 #[cfg(test)]
 pub(crate) fn to_value<T: Serialize>(model: &T) -> Value {
     serde_json::to_value(model).expect("model serialization is infallible")
@@ -105,7 +105,7 @@ pub(crate) struct ExternalDocs {
 
 /// Reference Object. `summary` and `description` override the target's.
 #[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
-#[expect(clippy::struct_field_names, reason = "fields are named as the OpenAPI fields they hold")]
+#[expect(clippy::struct_field_names, reason = "fields are named as the OpenAPI fields they store")]
 pub(crate) struct Reference {
     #[serde(rename = "$ref")]
     /// `$ref`: URI of the target.

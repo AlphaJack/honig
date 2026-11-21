@@ -7,7 +7,7 @@ use e2e::v32_catalog::api::{self, operations as ops};
 use super::Catalog;
 
 // ANCHOR: events
-/// The wide event of each request as one JSON line to wherever your logs go. Here it is a list that a test reads.
+/// The wide event of each request as one JSON line to wherever your logs go. Here it is a list that a test inspects.
 fn logged(lines: Arc<Mutex<Vec<String>>>) -> api::Client<impl api::Transport> {
     let service = api::Server::new(Catalog::default())
         .on_event(move |event: &api::RequestEvent| {
@@ -53,7 +53,7 @@ fn trace_id(span: &tracing::Span) -> opentelemetry::trace::TraceId {
 fn a_request_continues_the_callers_trace() {
     use tracing::Instrument as _;
     // Process-wide and not this thread's: with a thread-local subscriber, a test on another thread that reaches the
-    // runtime's request span first can leave it cached as disabled. Only this test reads spans.
+    // runtime's request span first can leave it cached as disabled. Only this test inspects spans.
     static EXPORTED: std::sync::Once = std::sync::Once::new();
     EXPORTED.call_once(|| tracing::subscriber::set_global_default(exported()).unwrap());
     let seen = Arc::new(Mutex::new(None));
@@ -109,7 +109,7 @@ fn an_undeclared_path_under_axum_logs_an_event_through_the_fallback() {
     );
 }
 
-/// The event holds why the request was refused. A layer's 401 is `unauthorized`.
+/// The event records why the request was refused. A layer's 401 is `unauthorized`.
 #[tokio::test]
 async fn the_event_holds_the_reason_of_a_refusal() {
     let seen = Arc::new(Mutex::new(vec![]));

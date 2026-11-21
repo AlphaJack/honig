@@ -1,4 +1,4 @@
-//! What `tests/e2e` holds: every fixture description of this repository generated as a module, and the manifest
+//! What `tests/e2e` contains: every fixture description of this repository generated as a module, and the manifest
 //! that compiles them. `tests/regen.rs` compares the crate with it and rewrites what is stale. It lives in the library
 //! so that a change to the generator rebuilds the library and one small test, not every unit test.
 
@@ -28,7 +28,7 @@ const LINTS: &[&str] = &[
 /// Returns every fixture description under `root` (`<version>/<name>.yaml`) as (module, spec) in path order.
 ///
 /// # Errors
-/// A folder cannot be read.
+/// A folder cannot be listed.
 pub fn fixtures(root: &Path) -> Result<Vec<(String, PathBuf)>, Error> {
     let mut out = vec![];
     for dir in crate::disk::dirs_in(root)? {
@@ -46,11 +46,11 @@ pub fn fixtures(root: &Path) -> Result<Vec<(String, PathBuf)>, Error> {
     Ok(out)
 }
 
-/// Returns what the crate at `e2e` must hold for the descriptions under `root`, as (path relative to it, contents). Its
-/// manifest gets the runtime of this checkout with the features that the fixtures need.
+/// Returns what the crate at `e2e` must contain for the descriptions under `root`, as (path relative to it, contents).
+/// Its manifest gets the runtime of this checkout with the features that the fixtures need.
 ///
 /// # Errors
-/// A file cannot be read or a fixture does not generate.
+/// A file cannot be opened or a fixture does not generate.
 pub fn e2e_files(e2e: &Path, root: &Path) -> Result<Vec<(PathBuf, String)>, Error> {
     let text = crate::disk::read(&e2e.join("Cargo.toml"))?;
     let parsed = crate::settings::Manifest::load(&e2e.join("Cargo.toml"))?;

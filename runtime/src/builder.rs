@@ -1,4 +1,4 @@
-//! What generated builders share. A setter takes anything that converts to the type of its field. A value that does
+//! What generated builders share. A setter accepts anything that converts to the type of its field. A value that does
 //! not convert is kept as the first error, and `build` returns it. So a chain of setters needs one `?` and not one per
 //! field.
 
@@ -7,7 +7,7 @@ use std::fmt;
 use crate::violation::Violation;
 
 /// A value that its schema refuses: the field of a builder whose value did not convert, or a rule of the whole
-/// value. It holds one [`Violation`], as a refused request does.
+/// value. It contains one [`Violation`], as a refused request does.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BuildError(Violation);
 

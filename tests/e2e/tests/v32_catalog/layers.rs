@@ -12,7 +12,7 @@ use tower::ServiceExt;
 use super::Catalog;
 
 // ANCHOR: inside
-/// Limits that answer in the description's error schema: a `503` once a request takes too long or too many run.
+/// Limits that answer in the description's error schema: a `503` once a request lasts too long or too many run.
 fn limited() -> axum::Router {
     api::Server::new(Catalog::default())
         .operation_layer(tower::timeout::TimeoutLayer::new(Duration::from_secs(10)))
@@ -39,7 +39,7 @@ fn rate_limited(limit: u32) -> axum::Router {
 // ANCHOR_END: rate-limit
 
 // ANCHOR: per-operation
-/// Writes cost more than reads: only `createProduct` is limited. The match lists every operation, so one added to the
+/// Writes cost more than queries: only `createProduct` is limited. The match lists every operation, so one added to the
 /// description fails to compile here until you decide its limit.
 fn writes_limited(limit: u32) -> axum::Router {
     let used = Arc::new(AtomicU32::new(0));
@@ -121,7 +121,7 @@ async fn the_guard_refuses_past_the_limit() {
 #[tokio::test]
 async fn only_the_operation_that_the_guard_names_is_limited() {
     let router = writes_limited(0);
-    assert_eq!(get(router.clone(), "/v1/products").await.status(), 200, "a read");
+    assert_eq!(get(router.clone(), "/v1/products").await.status(), 200, "a GET");
     let post = axum::http::Request::post("/v1/products")
         .header("X-API-Key", "secret")
         .header("Content-Type", "application/json")
@@ -130,7 +130,7 @@ async fn only_the_operation_that_the_guard_names_is_limited() {
     assert_eq!(router.oneshot(post).await.unwrap().status(), 429, "a write");
 }
 
-/// A refusal carries its operation as the generated enum, and a request that no operation takes carries none.
+/// A refusal carries its operation as the generated enum, and a request that no operation matches carries none.
 #[tokio::test]
 async fn a_rejection_names_its_operation() {
     let seen = Arc::new(std::sync::Mutex::new(vec![]));
@@ -163,9 +163,9 @@ async fn layers_outside_answer_in_the_error_schema() {
 }
 
 // ANCHOR: signed-body
-/// A signature over the body, as webhooks send. Here the signature is
-/// the body's length, a stand-in for an HMAC. The filter owns the request, so it reads the body itself. The operation
-/// then decodes the same bytes and reads nothing again.
+/// A signature over the body, as webhooks send. Here the signature is the body's length, a stand-in for an HMAC. The
+/// filter owns the request, so it collects the body itself. The operation then decodes the same bytes and collects
+/// nothing again.
 async fn verify(mut req: api::Request) -> Result<api::Request, api::ApiError> {
     let len = api::read_body(&mut req).await?.len();
     let ok = req.headers().get("x-signature").and_then(|v| v.to_str().ok()) == Some(len.to_string().as_str());
@@ -201,7 +201,7 @@ fn a_guard_checks_a_signature_over_the_body_that_the_operation_then_decodes() {
 
 // ANCHOR: any-api
 /// A tower layer for any honig server: it counts the requests of each operation by its name. It is a plain
-/// `tower::Layer` over `http` requests that reads the `MatchedOperation` that the server puts in the extensions.
+/// `tower::Layer` over `http` requests that gets the `MatchedOperation` that the server puts in the extensions.
 #[derive(Clone, Default)]
 struct CountByOperationLayer(Arc<std::sync::Mutex<std::collections::BTreeMap<&'static str, u32>>>);
 

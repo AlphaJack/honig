@@ -12,7 +12,7 @@ disallowed-methods = [
   { path = "core::str::FromStr::from_str", reason = "build tokens with quote!, never from strings" },
   { path = "syn::parse_str", reason = "build syntax trees with quote!, never from strings" },
   { path = "syn::parse_file", reason = "build syntax trees with quote!, never from strings" },
-  # Passes take values and return values. Only the edge reads and writes files, the environment and processes.
+  # Passes accept values and return values. Only the edge touches files, the environment and processes.
   { path = "std::process::Command::new", reason = "honig runs no programs" },
   { path = "std::env::var", reason = "configuration comes from Cargo.toml and the command line" },
   { path = "std::env::var_os", reason = "configuration comes from Cargo.toml and the command line" },

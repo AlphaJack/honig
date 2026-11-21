@@ -11,7 +11,7 @@ A schema with `readOnly` or `writeOnly` properties becomes two types:
 
 Each is required in Rust where the schema requires it. A missing password is a compile error and not a runtime check. Types that contain one split too. An example is `Session` and `SessionRequest`.
 
-Every struct has a builder that takes each property by name: `build` exists once every required one is set, so leaving one out is a compile error, and the order of the properties in the description does not matter. A struct also has `new` when that cannot go wrong: no required property holds a checked value and no two have the same type, so a swap is a type error. `new` takes the required properties; a property with a `default` starts at it, and any other optional property starts empty:
+Every struct has a builder that accepts each property by name: `build` exists once every required one is set, so leaving one out is a compile error, and the order of the properties in the description does not matter. A struct also has `new` when that cannot go wrong: no required property is of a checked type and no two have the same type, so a swap is a type error. `new` accepts the required properties; a property with a `default` starts at it, and any other optional property starts empty:
 
 ```rust
 {{#include ../../../tests/e2e/tests/v32_catalog/schemas.rs:new}}
@@ -25,9 +25,9 @@ A `const` is a unit struct that only decodes its value. Arrays with `minItems ==
 
 ## Enums and unions
 
-String and integer enums are closed. Each listed value is a variant. Any other value fails `try_from` and decoding. So a request with one gets `400`, and a client reading a response with one gets a decode error. Update the description and generate again when the server adds a value.
+String and integer enums are closed. Each listed value is a variant. Any other value fails `try_from` and decoding. So a request with one gets `400`, and a client decoding a response with one gets a decode error. Update the description and generate again when the server adds a value.
 
-A `oneOf` or `anyOf` is closed too: a value that no branch takes fails decoding. An `anyOf` is the first branch that decodes, keywords and all. A `oneOf` decodes every branch and takes the value only when exactly one does. A union has an `Other(serde_json::Value)` variant only when the schema itself takes any value. That is a branch of `{}`, or keywords such as `properties` without a `type`. Then any value of another kind is valid.
+A `oneOf` or `anyOf` is closed too: a value that no branch accepts fails decoding. An `anyOf` is the first branch that decodes, keywords and all. A `oneOf` decodes every branch and accepts the value only when exactly one does. A union has an `Other(serde_json::Value)` variant only when the schema itself accepts any value. That is a branch of `{}`, or keywords such as `properties` without a `type`. Then any value of another kind is valid.
 
 ## Values the description does not list
 
@@ -36,9 +36,9 @@ Two settings decide what happens to a property or a value that the description d
 | Setting | Applies to | What it does |
 |---|---|---|
 | `unknown_fields = "keep"` | objects without `additionalProperties`, both directions | keeps the undeclared properties in a map, so a value round-trips. The default `"drop"` ignores them |
-| `client = { strict = false }` | the responses of a client | reads what a server added: an enum value or a union branch as `Other`, and a property of a closed object (`additionalProperties: false`) by ignoring it. Requests stay strict through `<Name>Request` copies |
+| `client = { strict = false }` | the responses of a client | accepts what a server added: an enum value or a union branch as `Other`, and a property of a closed object (`additionalProperties: false`) by ignoring it. Requests stay strict through `<Name>Request` copies |
 
-An object without `additionalProperties` never refuses an undeclared property: the first setting only chooses whether to keep it. A closed object refuses it, unless `strict = false` reads a response.
+An object without `additionalProperties` never refuses an undeclared property: the first setting only chooses whether to keep it. A closed object refuses it, unless `strict = false` applies to the response.
 
 ## Conditional schemas
 
@@ -55,7 +55,7 @@ Notify:
 
 This gives `enum Notify { Email(NotifyEmail), Sms(NotifySms), Otherwise(NotifyOtherwise) }`. `NotifyEmail` has `email: String` as required.
 
-- `Otherwise` holds every other value. Its type has the base properties.
+- `Otherwise` contains every other value. Its type has the base properties.
 - A lone `if`/`then`/`else` becomes the same kind of enum. `else` is the `Otherwise` variant. `else: false` leaves none.
 - An `if` on `enum: [email, mail]` gives one variant for both values: `EmailOrMail`.
 - Conditions that cannot be typed, such as ranges or `not`, are still enforced. The server checks them on every request.
@@ -64,7 +64,7 @@ This gives `enum Notify { Email(NotifyEmail), Sms(NotifySms), Otherwise(NotifyOt
 
 ## Your own derives and types
 
-Generated types take extra derives. Use `"*"` for all types or the Rust name of one type:
+Generated types accept extra derives. Use `"*"` for all types or the Rust name of one type:
 
 ```toml
 [package.metadata.honig.api.derives]
@@ -85,7 +85,7 @@ Money:
 
 `types::Money` becomes an alias of your type. It must serialize like the schema. It must implement `Debug`, `Clone`, `PartialEq` and the serde traits. It must also check the constraints of the schema: honig checks none of them, neither where the schema is declared nor where a body or a field uses it.
 
-A type from another crate takes the object form:
+A type from another crate uses the object form:
 
 ```yaml
 OrderId:
@@ -117,13 +117,13 @@ A format with a check can also refer to a type of your own, or of a library that
 formats = { dates = "chrono", date-time = "time::OffsetDateTime", uuid = "crate::ids::OrderId" }
 ```
 
-The key is the name of the format. The value is the path of a type, without generic arguments. A named type wins over the shorthand for its format only: above, `date` stays `chrono::NaiveDate`. The type must implement `Debug`, `Clone`, `PartialEq`, `Eq` and the serde traits. It reads text that honig checked first, as a library type does. honig knows the quirks of the shorthand libraries only. For any type of `date-time`, `date-time-local` and `time-local` it cuts a fraction of a second to nine digits. honig does not check the type: the compiler reports a wrong one. A struct with a required field of a named type derives no `Default`.
+The key is the name of the format. The value is the path of a type, without generic arguments. A named type wins over the shorthand for its format only: above, `date` stays `chrono::NaiveDate`. The type must implement `Debug`, `Clone`, `PartialEq`, `Eq` and the serde traits. It parses text that honig checked first, as a library type does. honig knows the quirks of the shorthand libraries only. For any type of `date-time`, `date-time-local` and `time-local` it cuts a fraction of a second to nine digits. honig does not check the type: the compiler reports a wrong one. A struct with a required field of a named type derives no `Default`.
 
-`format: time` has an offset (`08:30:06+02:00`), and no date library's time type holds one. So it is `api::FullTime` with any `dates` setting: plain numbers (`hour`, `minute`, `second`, `nanosecond`, `offset_seconds`) and whether the second was a leap second. With `dates = "jiff"`, `time()` and `offset()` read it as `jiff` types.
+`format: time` has an offset (`08:30:06+02:00`), and no date library's time type supports one. So it is `api::FullTime` with any `dates` setting: plain numbers (`hour`, `minute`, `second`, `nanosecond`, `offset_seconds`) and whether the second was a leap second. With `dates = "jiff"`, `time()` and `offset()` return it as `jiff` types.
 
-A format without its library is its checked text, such as `api::UuidText` or `api::DateTimeText`. Only text of the format is one: `try_from`, `parse` and decoding check it as the library would on parsing. It reads as a `str`. `generate` turns on the runtime feature that each check needs. [Adapters](adapters.md) lists the features.
+A format without its library is its checked text, such as `api::UuidText` or `api::DateTimeText`. Only text of the format is one: `try_from`, `parse` and decoding check it as the library would on parsing. It derefs to `str`. `generate` turns on the runtime feature that each check needs. [Adapters](adapters.md) lists the features.
 
-A library reads more than its format allows. `jiff` and `chrono` read `2024-06-19 08:30Z` as a `date-time`. `uuid` reads `{...}` and `url` reads a space. So a library type in a property, a branch of a union, a newtype, a parameter or a body has its text validated first, as a `String` of that format is. The items of a body read as it arrives are validated one at a time. Then the library reads it. A server decoding a request and a client reading a response check alike. A fraction of a second past nine digits is cut: both date libraries hold nanoseconds.
+A library accepts more than its format allows. `jiff` and `chrono` accept `2024-06-19 08:30Z` as a `date-time`. `uuid` accepts `{...}` and `url` accepts a space. So a library type in a property, a branch of a union, a newtype, a parameter or a body has its text validated first, as a `String` of that format is. The items of a body decoded as it arrives are validated one at a time. Then the library parses it. A server decoding a request and a client decoding a response check alike. A fraction of a second past nine digits is cut: both date libraries store nanoseconds.
 
 Mail addresses and host names are types of the runtime. Only a valid value can be one of them. `try_from` and decoding check the value. They need the `idn` feature of the runtime. `generate` turns it on when the description uses them:
 
@@ -133,15 +133,15 @@ Mail addresses and host names are types of the runtime. Only a valid value can b
 
 {{#include generated/checked-text.md}}
 
-`http-date` is `api::HttpDateText`, one of the three forms of RFC 9110 section 5.6.7. `duration` is `api::DurationText`, an ISO 8601 duration of RFC 3339 Appendix A. No std type holds `P1M`: a month has no fixed length. `uri-reference`, `iri`, `iri-reference`, `json-pointer`, `relative-json-pointer`, `uri-template` and `regex` are checked text of their grammars (RFC 3986, 3987, 6901, 6570 and ECMA-262). `uuid` without its library takes only the hyphenated form of RFC 9562.
+`http-date` is `api::HttpDateText`, one of the three forms of RFC 9110 section 5.6.7. `duration` is `api::DurationText`, an ISO 8601 duration of RFC 3339 Appendix A. No std type represents `P1M`: a month has no fixed length. `uri-reference`, `iri`, `iri-reference`, `json-pointer`, `relative-json-pointer`, `uri-template` and `regex` are checked text of their grammars (RFC 3986, 3987, 6901, 6570 and ECMA-262). `uuid` without its library accepts only the hyphenated form of RFC 9562.
 
-`contentEncoding: base64url` gives `api::Base64Url`. It holds bytes in the URL-safe alphabet.
+`contentEncoding: base64url` gives `api::Base64Url`. It stores bytes in the URL-safe alphabet.
 
 `{type: number, format: decimal}` and `decimal128` are `api::Decimal`. It keeps the digits of the number. `12345678901234567.89` arrives and leaves as written. An `f64` would round it.
-It reads the exact text wherever the number is. This includes `oneOf` branches. It rounds only in the `Other` of an open union. That variant holds a value that no branch takes as a `serde_json::Value`.
+It parses the exact text wherever the number is. This includes `oneOf` branches. It rounds only in the `Other` of an open union. That variant stores a value that no branch accepts as a `serde_json::Value`.
 
 For arithmetic parse its digits into a decimal type with `d.as_str().parse::<rust_decimal::Decimal>()`.
-`{type: string, format: decimal}` is `api::DecimalText` with every digit, checked as a decimal. `decimal128` keeps every digit too, as a number or as `api::Decimal128Text`, and holds the limits of IEEE 754 decimal128: at most 34 significant digits within its exponent range. Use it past the 28 significant digits that `rust_decimal` holds.
+`{type: string, format: decimal}` is `api::DecimalText` with every digit, checked as a decimal. `decimal128` keeps every digit too, as a number or as `api::Decimal128Text`, and enforces the limits of IEEE 754 decimal128: at most 34 significant digits within its exponent range. Use it past the 28 significant digits that `rust_decimal` supports.
 
 JSON the description leaves untyped is a `serde_json::Value`:
 
@@ -149,7 +149,7 @@ JSON the description leaves untyped is a `serde_json::Value`:
 - a `{}` schema and an untyped `additionalProperties`
 - the `Other` of an open union
 
-A number in such a value rounds when it is past `u64`. It also rounds when it has more significant digits than an `f64` holds, which is about 17. RFC 8259 section 6 allows this. A client that reads such an object and writes it back can change that number. To keep a number exact declare it with `format: decimal`.
+A number in such a value rounds when it is past `u64`. It also rounds when it has more significant digits than an `f64` stores, which is about 17. RFC 8259 section 6 allows this. A client that decodes such an object and writes it back can change that number. To keep a number exact declare it with `format: decimal`.
 
 ## Checked types
 
@@ -159,7 +159,7 @@ A string with a `pattern`, `minLength` or `maxLength` is a type of its own. So i
 {{#include ../../../tests/e2e/tests/v32_catalog/schemas.rs:pattern}}
 ```
 
-So a request with a bad value gets `400`, and a client reading a response with one gets a decode error.
+So a request with a bad value gets `400`, and a client decoding a response with one gets a decode error.
 
 Where the field type is known, `try_into` builds the value. A spec `default` is filled in already checked:
 
@@ -167,7 +167,7 @@ Where the field type is known, `try_into` builds the value. A spec `default` is 
 {{#include ../../../tests/e2e/tests/v32_catalog/schemas.rs:try-into}}
 ```
 
-A builder converts every field and returns the first one that does not convert, from `build`. So the whole value needs one `?`. Each setter takes anything that converts to the type of its field: a number for a checked number, a `&str` for a string, a checked string or an enum:
+A builder converts every field and returns the first one that does not convert, from `build`. So the whole value needs one `?`. Each setter accepts anything that converts to the type of its field: a number for a checked number, a `&str` for a string, a checked string or an enum:
 
 ```rust
 {{#include ../../../tests/e2e/tests/v32_validation.rs:builder}}
@@ -177,13 +177,13 @@ The error points to the field with a JSON pointer, as a refused request does: `/
 
 `try_from`, `parse` and `build` all fail with `api::BuildError`, so a function that mixes them needs no `Box<dyn Error>`. In a handler, `?` turns it into a `500`: the handler's inputs are checked already, so a value that its schema refuses came from the server's own data.
 
-A checked type reads as its value: a string one derefs to `str` and compares with `&str`, a number one derefs to its number and compares with it. `get` and `into_inner` return the value, and `parse` reads one from text.
+A checked type behaves as its value: a string one derefs to `str` and compares with `&str`, a number one derefs to its number and compares with it. `get` and `into_inner` return the value, and `parse` parses one from text.
 
-Integer keywords are exact. A fractional bound rounds inward, `multipleOf: 2.5` takes the integers that are multiples of 5, and a bound that no value of the type meets refuses every value: `maximum: -1` on a `uint8` leaves none.
+Integer keywords are exact. A fractional bound rounds inward, `multipleOf: 2.5` accepts the integers that are multiples of 5, and a bound that no value of the type meets refuses every value: `maximum: -1` on a `uint8` leaves none.
 
 ## Whole schemas
 
-Some keywords say what no Rust type can: `not`, `contains`, `dependentRequired`, `if`/`then` beyond the constants of one property, the one branch that a `oneOf` takes when a discriminator picks branches it does not pin, tuples and `$dynamicRef`. A struct or union whose own schema has them is a checked type of its shape: `Product` holds a `ProductFields`, `Vehicle` holds a `VehicleVariants`. It reads as its shape. `try_from` and decoding check the whole schema. Its builder fills the fields and checks the whole value in `build`:
+Some keywords say what no Rust type can: `not`, `contains`, `dependentRequired`, `if`/`then` beyond the constants of one property, the one branch that a `oneOf` accepts when a discriminator picks branches it does not pin, tuples and `$dynamicRef`. A struct or union whose own schema has them is a checked type of its shape: `Product` wraps a `ProductFields`, `Vehicle` wraps a `VehicleVariants`. It derefs to its shape. `try_from` and decoding check the whole schema. Its builder fills the fields and checks the whole value in `build`:
 
 ```rust
 {{#include ../../../tests/e2e/tests/v32_kitchen_sink.rs:whole-schema}}

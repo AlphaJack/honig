@@ -4,7 +4,7 @@
 //! size counts each phase (load, ir, emit, print) apart, so a phase that grows too fast shows by name. Counted by
 //! callgrind: see `tests/bench-support/src/callgrind.rs`.
 
-#![expect(clippy::disallowed_methods, reason = "writes the description the generator reads")]
+#![expect(clippy::disallowed_methods, reason = "writes the description the generator loads")]
 
 // The library under one name, whatever the package is called.
 extern crate cargo_honig as generator;
@@ -16,7 +16,7 @@ use bench_support::{Phased, Work, callgrind, phase};
 /// Description sizes in bytes, each 4 times the one before. Small: each function is judged on its own cost, which shows
 /// a quadratic one long before it outweighs the rest of its phase.
 const SIZES: [usize; 3] = [4 << 10, 16 << 10, 64 << 10];
-/// About how many bytes of description one schema and its operation take.
+/// About how many bytes of description one schema and its operation need.
 const SCHEMA_BYTES: usize = 400;
 /// The same for [`any_of_chain`].
 const ANY_OF_SCHEMA_BYTES: usize = 460;
@@ -104,7 +104,7 @@ fn own(i: usize) -> Value {
         format!("p{i}"): {"type": "string", "maxLength": 80}, "id": {"type": "integer"}}})
 }
 
-/// Products whose `oneOf` holds the product before and an object of their own: unions nested as deep as the
+/// Products whose `oneOf` contains the product before and an object of their own: unions nested as deep as the
 /// description is long. A union counts the branches that match, so a nested one is judged at every level.
 fn one_of_chain(count: usize) -> Value {
     products(count, |i| match i.checked_sub(1) {
@@ -113,7 +113,7 @@ fn one_of_chain(count: usize) -> Value {
     })
 }
 
-/// How many `allOf` members a chain merges before it starts again: a struct holds the fields of every member, so an
+/// How many `allOf` members a chain merges before it starts again: a struct contains the fields of every member, so an
 /// endless chain would grow its output with the square of its length.
 const ALL_OF_RUN: usize = 8;
 
@@ -126,7 +126,7 @@ fn all_of_chain(count: usize) -> Value {
     })
 }
 
-/// Products whose `anyOf` holds the product before and an object of their own, with `unevaluatedProperties: false`:
+/// Products whose `anyOf` contains the product before and an object of their own, with `unevaluatedProperties: false`:
 /// checked whole, with the properties that any matching branch evaluates.
 fn unevaluated_chain(count: usize) -> Value {
     products(count, |i| match i.checked_sub(1) {
@@ -179,7 +179,7 @@ fn sized_any_of(size: usize) -> Value {
     any_of_chain(size.div_ceil(ANY_OF_SCHEMA_BYTES))
 }
 
-/// About how many bytes of description one product of [`products`] and its operation take.
+/// About how many bytes of description one product of [`products`] and its operation need.
 const PRODUCT_BYTES: usize = 370;
 
 const PATHS: &[Phased] = &[

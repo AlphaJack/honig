@@ -77,10 +77,10 @@ pub(crate) fn build(doc: &Doc, diags: &mut Diagnostics) -> Api {
 
 /// Returns the IR of a bundled 3.2 document, built with the options of the generator.
 ///
-/// `lenient`: response types read an enum value or a property that the description does not list
-/// (`client = { strict = false }`). `keep_unknown`: objects without `additionalProperties` keep unknown keys. `from_v20` (the description was
-/// Swagger 2.0): every optional property reads `null` as absent. `reserved`: names that the target language keeps for
-/// itself. Nothing generated takes them.
+/// `lenient`: response types accept an enum value or a property that the description does not list (`client = { strict
+/// = false }`). `keep_unknown`: objects without `additionalProperties` keep unknown keys. `from_v20` (the description
+/// was Swagger 2.0): every optional property decodes `null` as absent. `reserved`: names that the target language keeps
+/// for itself. Nothing generated uses them.
 pub(crate) fn build_with(
     doc: &Doc,
     diags: &mut Diagnostics,
@@ -177,7 +177,7 @@ fn info_doc(info: Option<&serde_json::Value>) -> Option<String> {
     (!parts.is_empty()).then(|| parts.join("\n\n"))
 }
 
-/// Returns JSON Schema dialects whose keywords the generator reads correctly: the OAS
+/// Returns JSON Schema dialects whose keywords the generator interprets correctly: the OAS
 /// dialects and JSON Schema drafts 6 to 2020-12.
 fn known_dialect(uri: &str) -> bool {
     let u = uri.trim_end_matches('#').trim_end_matches('/');
@@ -192,8 +192,8 @@ fn known_dialect(uri: &str) -> bool {
         .contains(&u)
 }
 
-/// Warns about a `jsonSchemaDialect` or `$schema` that the generator does not read.
-/// Also warn about `$vocabulary`. Schemas are always read with the OAS dialect.
+/// Warns about a `jsonSchemaDialect` or `$schema` that the generator does not support.
+/// Also warn about `$vocabulary`. Schemas are always interpreted with the OAS dialect.
 fn dialects(v: &serde_json::Value, ptr: &str, parent: &str, diags: &mut Diagnostics) {
     match v {
         serde_json::Value::Object(o) => {
@@ -201,14 +201,14 @@ fn dialects(v: &serde_json::Value, ptr: &str, parent: &str, diags: &mut Diagnost
                 if let Some(uri) = o.get(*key).and_then(serde_json::Value::as_str).filter(|u| !known_dialect(u)) {
                     diags.warning(
                         crate::json::join(ptr, key),
-                        format!("dialect `{uri}` is not supported: schemas are read with the OpenAPI dialect (JSON Schema 2020-12)"),
+                        format!("dialect `{uri}` is not supported: schemas are interpreted with the OpenAPI dialect (JSON Schema 2020-12)"),
                     );
                 }
             }
             if o.contains_key("$vocabulary") {
                 diags.warning(
                     crate::json::join(ptr, "$vocabulary"),
-                    "`$vocabulary` is not applied: schemas are read with every OpenAPI dialect keyword",
+                    "`$vocabulary` is not applied: schemas are interpreted with every OpenAPI dialect keyword",
                 );
             }
             for (k, c) in o {

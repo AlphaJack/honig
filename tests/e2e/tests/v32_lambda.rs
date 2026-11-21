@@ -124,7 +124,7 @@ fn http_api_parameters_reach_the_operation() {
     assert_eq!(json_of(&invoke(v2("GET", "/items/7", "tag=a&tag=b", None))), (200, item(&["a", "b"])));
 }
 
-/// Payload 2.0 joins repeated query values with commas in `queryStringParameters`. The router reads
+/// Payload 2.0 joins repeated query values with commas in `queryStringParameters`. The router uses
 /// `rawQueryString`. So a comma inside a value stays inside it.
 #[test]
 fn http_api_repeated_query_values_keep_their_commas() {
@@ -141,13 +141,13 @@ fn http_api_binary_bodies_roundtrip_base64() {
 }
 
 /// `lambda_http` puts the stage of a REST API in front of the path unless
-/// `AWS_LAMBDA_HTTP_IGNORE_STAGE_IN_PATH` is set. No route declares the stage. One test, so that no other reads the
+/// `AWS_LAMBDA_HTTP_IGNORE_STAGE_IN_PATH` is set. No route declares the stage. One test, so that no other uses the
 /// variable while it changes.
 #[test]
 fn rest_api_routes_once_the_stage_is_ignored() {
     let get = || invoke(v1("GET", "/items/7", &["a,b", "c"], None));
     assert_eq!(get()["statusCode"], json!(404));
-    // SAFETY: no other test in this binary reads the environment.
+    // SAFETY: no other test in this binary uses the environment.
     unsafe { std::env::set_var("AWS_LAMBDA_HTTP_IGNORE_STAGE_IN_PATH", "true") };
     assert_eq!(json_of(&get()), (200, item(&["a,b", "c"])));
     let resp = invoke(v1("PUT", "/items/7/blob", &[], Some("AAEC/w==")));

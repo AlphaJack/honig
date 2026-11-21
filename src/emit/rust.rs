@@ -1,7 +1,7 @@
 //! Rust code emission. Output is a module directory (`mod.rs` + submodules)
 //! that lives inside the user's crate.
 //!
-//! A spec type named like a prelude item (`String`, `Result`, `Option`) takes a suffix
+//! A spec type named like a prelude item (`String`, `Result`, `Option`) gets a suffix
 //! (`names::off_prelude`). So it cannot shadow it.
 //! Text from the spec only reaches code through `lit()` (string literals) or
 //! sanitized identifiers.
@@ -25,7 +25,7 @@ use space::Space;
 pub(crate) const RUNTIME_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[derive(Debug, Clone, Default)]
-/// What only Rust output needs. It is read from the `Cargo.toml` of the target crate.
+/// What only Rust output needs. It comes from the `Cargo.toml` of the target crate.
 pub(crate) struct Options {
     /// Extra derives from the settings as (Rust type name or `*`, derive paths).
     pub derives: Vec<(String, Vec<String>)>,
@@ -45,8 +45,8 @@ pub(crate) fn warnings(api: &Api, opts: &super::Options) -> Vec<crate::diag::Dia
     http::unset_error_headers(api)
 }
 
-/// Every file of a generated module and what it holds. The book lists them on its Generated module page, and its test
-/// checks the list against a generated module.
+/// Every file of a generated module and what it contains. The book lists them on its Generated module page, and its
+/// test checks the list against a generated module.
 #[cfg(test)]
 pub(crate) const FILES: [(&str, &str); 7] = [
     (
@@ -149,8 +149,8 @@ fn kept(api: &Api, opts: &super::Options) -> Option<Api> {
 pub(crate) fn trees(api: &Api, opts: &super::Options) -> Trees {
     let kept = kept(api, opts);
     let api = kept.as_ref().unwrap_or(api);
-    // A type that its twins alias takes the name they share. The names change before anything is emitted, so every
-    // file reads the same one.
+    // A type that its twins alias gets the name they share. The names change before anything is emitted, so every
+    // file uses the same one.
     let renamed = {
         let space = Space::new(&api.types, &opts.rust.libs);
         types::shared_names(&space, &types::aliases(&space, &opts.rust.derives))
@@ -223,7 +223,7 @@ fn root(api: &Api, opts: &super::Options, tests: bool) -> TokenStream {
                 pub use client::WebhookClient;
             )
         });
-        // In a binary too, so `api::Client` reads the same in every crate. `mod.rs` of a binary allows the unused
+        // In a binary too, so `api::Client` resolves the same in every crate. `mod.rs` of a binary allows the unused
         // import.
         quote! { #[rustfmt::skip] pub mod client; #[rustfmt::skip] pub use client::Client; #extra }
     });
@@ -245,14 +245,14 @@ fn root(api: &Api, opts: &super::Options, tests: bool) -> TokenStream {
         quote! { #[rustfmt::skip] pub mod server; #[rustfmt::skip] pub use server::Api; #typed #extra }
     });
     let test_mod = tests.then(|| quote! { #[cfg(test)] #[rustfmt::skip] mod documented_examples; });
-    // The API of the runtime at the root of the module. Your code refers to `api::Context` as it refers to `api::types`. A
-    // binary may refer to none of it there (only through `runtime::`). rustc reports that as an unused import.
-    // `runtime` is what generated code calls: hidden, so that each item has one path in the docs of your crate.
+    // The API of the runtime at the root of the module. Your code refers to `api::Context` as it refers to
+    // `api::types`. A binary may refer to none of it there (only through `runtime::`). rustc reports that as an unused
+    // import. `runtime` is what generated code calls: hidden, so that each item has one path in the docs of your crate.
     let runtime_crate = syntax::ident("honig");
     let unused = opts.rust.binary.then(
         || quote!(#![allow(unused_imports, reason = "a binary may refer to the runtime's items only through `runtime`, and the client or the server by its path")]),
     );
-    // The `#![allow]`s of `syntax::file_allow`, each with its reason, hold for every file of the module. Otherwise the
+    // The `#![allow]`s of `syntax::file_allow`, each with its reason, apply to every file of the module. Otherwise the
     // code passes strict clippy and rustdoc lint sets.
     let allow = syntax::file_allow(syntax::has_deprecated(api));
     // `rustfmt::skip`, on `mod.rs` and on each child: prettyplease prints the files and its layout differs from that

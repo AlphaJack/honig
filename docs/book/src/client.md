@@ -1,14 +1,14 @@
 # Client
 
-Each operation of the description is a method of the generated `Client`. It takes a `Params` with one field per parameter and returns one variant per documented response:
+Each operation of the description is a method of the generated `Client`. It accepts a `Params` with one field per parameter and returns one variant per documented response:
 
 ```rust
 {{#include ../../../examples/shop/tests/client.rs:client}}
 ```
 
-`Params::new` takes the path parameters in URL order. Then it takes the other required parameters and then a required body. The URL fixes the argument order. So a reordered description cannot swap two arguments silently. With no arguments `Params::default()` is the same value.
+`Params::new` accepts the path parameters in URL order. Then it accepts the other required parameters and then a required body. The URL fixes the argument order. So a reordered description cannot swap two arguments silently. With no arguments `Params::default()` is the same value.
 
-A method takes its `Params` or a reference to them. So `&params` keeps them for a retry. JSON, XML, form and multipart bodies are encoded from the reference with no copy.
+A method accepts its `Params` or a reference to them. So `&params` keeps them for a retry. JSON, XML, form and multipart bodies are encoded from the reference with no copy.
 
 Each security scheme gets its own setter with its name, such as `with_api_key` or `with_bearer_auth`. A misspelt scheme is a compile error.
 
@@ -54,13 +54,13 @@ Other flows get helpers by what the scheme declares:
 
 ## Streams
 
-A response declared as a sequence also gets `<op>_stream`. The sequence is JSON Lines or JSON text sequences or server-sent events. `<op>_stream` gives a `Stream` that yields each item as it arrives. Read it with `futures_util::StreamExt::next`. A binary response gets the `Response` with its body still to come: `resp.into_body().into_stream()` yields its raw chunks. An item that does not decode is an `Err`. The items after it can still be read. The `minItems`, `maxItems` and `uniqueItems` of the sequence hold as it arrives: the item past `maxItems` and an item met before are an `Err`, and so is an end short of `minItems`:
+A response declared as a sequence also gets `<op>_stream`. The sequence is JSON Lines or JSON text sequences or server-sent events. `<op>_stream` gives a `Stream` that yields each item as it arrives. Consume it with `futures_util::StreamExt::next`. A binary response gets the `Response` with its body still to come: `resp.into_body().into_stream()` yields its raw chunks. An item that does not decode is an `Err`. The items after it can still arrive. The `minItems`, `maxItems` and `uniqueItems` of the sequence apply as it arrives: the item past `maxItems` and an item met before are an `Err`, and so is an end short of `minItems`:
 
 ```rust
 {{#include ../../../tests/e2e/tests/v32_shop/client.rs:stream}}
 ```
 
-The plain method reads the whole body before it decodes it. On a feed that never ends it waits for ever.
+The plain method receives the whole body before it decodes it. On a feed that never ends it waits for ever.
 
 ### Reconnecting
 
@@ -104,9 +104,9 @@ A call returns `Err(api::ClientError)` when it gets no response the description 
 
 {{#include generated/errors.md}}
 
-Every other variant that read a response carries its raw body.
+Every other variant that received a response carries its raw body.
 
-A declared response that is not the success is still `Ok` from the call: the description declares it. `into_ok` turns the response into the success and anything else into an `Err` that `?` takes into any error type:
+A declared response that is not the success is still `Ok` from the call: the description declares it. `into_ok` turns the response into the success and anything else into an `Err` that `?` converts into any error type:
 
 ```rust
 {{#include ../../../tests/e2e/tests/v32_shop/client.rs:into-ok}}

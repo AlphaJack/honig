@@ -7,13 +7,13 @@ use std::time::{SystemTime, UNIX_EPOCH};
 pub(crate) const DAY_HOURS: i64 = 24;
 /// Minutes in an hour.
 pub(crate) const HOUR_MINUTES: i64 = 60;
-/// Seconds in a minute and the highest second that an HTTP date may hold. A leap second is `60`.
+/// Seconds in a minute and the highest second that an HTTP date may contain. A leap second is `60`.
 pub(crate) const MINUTE_SECONDS: i64 = 60;
 /// Seconds in an hour.
 pub(crate) const HOUR_SECONDS: i64 = HOUR_MINUTES * MINUTE_SECONDS;
 /// Seconds in a day.
 pub(crate) const DAY_SECONDS: i64 = DAY_HOURS * HOUR_SECONDS;
-/// How far ahead an RFC 850 date's two-digit year may be before it reads as the century before.
+/// How far ahead an RFC 850 date's two-digit year may be before it counts as the century before.
 const RFC850_YEARS_AHEAD: i64 = 50;
 /// Digits of a four-digit year.
 pub(crate) const YEAR_DIGITS: usize = 4;
@@ -29,7 +29,7 @@ const DAY_NAMES: [&str; 7] = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 const LONG_DAY_NAMES: [&str; 7] = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
 /// Is `text` an HTTP date as its grammar writes it? That is IMF-fixdate, the obsolete RFC 850 form or asctime with a
-/// day that its month has. A conditional request reads dates more loosely: RFC 9110 asks recipients to be robust.
+/// day that its month has. A conditional request parses dates more loosely: RFC 9110 asks recipients to be robust.
 pub(crate) fn is_http_date(text: &str) -> bool {
     let Some((day, month, year, clock)) = imf_fixdate(text).or_else(|| rfc850(text)).or_else(|| asctime(text)) else {
         return false;

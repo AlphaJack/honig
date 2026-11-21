@@ -14,8 +14,8 @@ use crate::ir::Api;
 use crate::ir::http::Operation;
 
 /// Returns the routes that a framework that routes first (axum, matchit) registers. These are the routes of the path
-/// operations. Each template comes alone and under each base path without duplicates. matchit takes a variable only
-/// as a whole segment. So a segment that holds one (`{name}.{ext}`) is a variable named after its position. So is a
+/// operations. Each template comes alone and under each base path without duplicates. matchit accepts a variable only
+/// as a whole segment. So a segment that contains one (`{name}.{ext}`) is a variable named after its position. So is a
 /// literal that axum would refuse (`:x`, `*x`). `Routes` then matches the real template.
 pub(crate) fn axum_paths(api: &Api) -> BTreeSet<String> {
     let bases = served_bases(api);
@@ -64,7 +64,7 @@ pub(crate) fn op_variant_path(variants: &[proc_macro2::Ident], i: usize) -> Toke
 pub(crate) fn dispatch_fns(path_ops: &[&Operation], variants: &[proc_macro2::Ident]) -> TokenStream {
     let sig = quote!(routed: runtime::Routed<'_>, call: runtime::Call<'_, Option<A::Principal>, Operation>);
     // The future of each operation is boxed. So `dispatch` stays a small match. Otherwise it would be one state
-    // machine that holds every operation (and your handler) inline. That is large in code and on the stack.
+    // machine that contains every operation (and your handler) inline. That is large in code and on the stack.
     let call = |op: &Operation| {
         let name = snake_ident(&op.name);
         quote!(Box::pin(#name(api, routed, call)).await)

@@ -309,7 +309,7 @@ pub(crate) fn server_op(space: &Space<'_>, api: &Api, sec: &Securities, op: &Ope
         (false, false, true) => quote!(|i| Ok(#params_fn(i))),
         (false, false, false) => quote!(|i| Ok(#params_fn(&i))),
     };
-    // The encoder takes the media type `Accept` chose only where a response is one type in several.
+    // The encoder receives the media type `Accept` chose only where a response is one type in several.
     let encode = match (encode_fallible(op), carries_data(op), encodes_by_media(space, op)) {
         (true, true, true) => quote!(#encode_fn),
         (true, true, false) => quote!(|r, _| #encode_fn(r)),

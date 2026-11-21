@@ -1,4 +1,4 @@
-//! How much memory the decoding of an XML body takes beyond the body itself. A global allocator counts it. So the
+//! How much memory the decoding of an XML body needs beyond the body itself. A global allocator counts it. So the
 //! number is exact and the same on every machine. It is its own test binary because the allocator is process-wide.
 
 #![expect(clippy::unwrap_used, reason = "test code fails loudly")]
@@ -39,14 +39,14 @@ unsafe impl GlobalAlloc for Counting {
 static ALLOC: Counting = Counting;
 
 #[derive(Debug, Deserialize)]
-#[expect(dead_code, reason = "decoded, not read")]
+#[expect(dead_code, reason = "decoded, never used")]
 struct Order {
     id: String,
     lines: Vec<Line>,
 }
 
 #[derive(Debug, Deserialize)]
-#[expect(dead_code, reason = "decoded, not read")]
+#[expect(dead_code, reason = "decoded, never used")]
 struct Line {
     sku: String,
     qty: i64,
@@ -123,5 +123,5 @@ fn decoding_xml_takes_a_bounded_multiple_of_the_body() {
     let body = format!("<?xml version=\"1.0\"?><order id=\"o-1\">{lines}</order>").into_bytes();
     let ratio = overhead(&body);
     println!("xml_decode: {} bytes, peak {ratio:.2}x the body", body.len());
-    assert!(ratio < MAX_OVERHEAD, "decoding takes {ratio:.2}x the body, past {MAX_OVERHEAD}x");
+    assert!(ratio < MAX_OVERHEAD, "decoding needs {ratio:.2}x the body, past {MAX_OVERHEAD}x");
 }

@@ -1,5 +1,5 @@
-//! A lenient client (`client = { strict = false }`) reads a response that holds what the server added: an enum value
-//! that the description does not list and a property of a closed object. Its requests stay strict.
+//! A lenient client (`client = { strict = false }`) accepts a response that contains what the server added: an enum
+//! value that the description does not list and a property of a closed object. Its requests stay strict.
 
 use e2e::v32_lenient::api::{self, operations as ops, types};
 
@@ -16,7 +16,7 @@ fn client_answering(body: &'static str) -> api::Client<impl api::Transport> {
 #[test]
 fn a_response_reads_an_added_enum_value_and_property() {
     let client = client_answering(r#"{"id":"o1","status":"archived","priority":9,"added":true}"#);
-    let response = api::block_on(client.get_order(ops::get_order::Params::new("o1".to_owned()))).expect("it reads");
+    let response = api::block_on(client.get_order(ops::get_order::Params::new("o1".to_owned()))).expect("it decodes");
     let ops::get_order::Response::Ok(order) = response;
     assert_eq!(order.status, types::Status::Other("archived".to_owned()));
     assert_eq!(order.priority, Some(types::OrderPriority::Other(9)));
@@ -35,7 +35,7 @@ fn a_request_stays_strict() {
 #[test]
 fn a_response_reads_an_added_member_of_a_tagged_union() {
     let client = client_answering(r#"{"id":"o1","status":"open","delivery":{"kind":"drone","pad":"roof"}}"#);
-    let response = api::block_on(client.get_order(ops::get_order::Params::new("o1".to_owned()))).expect("it reads");
+    let response = api::block_on(client.get_order(ops::get_order::Params::new("o1".to_owned()))).expect("it decodes");
     let ops::get_order::Response::Ok(order) = response;
     let delivery = order.delivery.expect("it has a delivery");
     let added = serde_json::json!({"kind": "drone", "pad": "roof"});

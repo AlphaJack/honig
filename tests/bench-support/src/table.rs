@@ -68,7 +68,7 @@ const UNITS: [&str; 4] = ["B", "KiB", "MiB", "GiB"];
 /// The step between two [`UNITS`].
 const STEP: usize = 1024;
 
-/// Returns `bytes` in the largest unit that holds it whole: `256B`, `16KiB`, `1MiB`.
+/// Returns `bytes` in the largest unit that fits it whole: `256B`, `16KiB`, `1MiB`.
 #[must_use]
 pub fn size(bytes: usize) -> String {
     let mut n = bytes;

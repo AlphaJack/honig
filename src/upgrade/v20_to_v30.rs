@@ -14,8 +14,8 @@
 //!
 //! What is lost:
 //!
-//! - An unknown `collectionFormat` is read as `csv`.
-//! - An unknown `OAuth2` `flow` is read as `implicit`.
+//! - An unknown `collectionFormat` is decoded as `csv`.
+//! - An unknown `OAuth2` `flow` is decoded as `implicit`.
 //! - A security scheme of an unknown `type` is kept as written. Generated code does not use it.
 
 use serde_json::{Value, json};
@@ -343,7 +343,7 @@ impl Cx<'_> {
             out.insert("explode".into(), json!(explode));
         }
         // No 3.x style is tab separated. Keep the format as an extension.
-        // The generator reads it back. Other tools see form and csv.
+        // The generator decodes it back. Other tools see form and csv.
         if p.get("type").and_then(Value::as_str) == Some("array")
             && p.get("collectionFormat").and_then(Value::as_str) == Some("tsv")
         {
@@ -659,7 +659,7 @@ mod tests {
         assert_eq!(p["schema"]["nullable"], json!(true), "{p:#}");
     }
 
-    /// A description may have properties called `default`, `enum` and `example`. They hold schemas whose references
+    /// A description may have properties called `default`, `enum` and `example`. They contain schemas whose references
     /// move too.
     #[test]
     fn a_property_named_like_a_keyword_has_its_reference_rewritten() {
