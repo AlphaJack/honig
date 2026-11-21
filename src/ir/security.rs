@@ -138,8 +138,9 @@ pub(crate) fn schemes(b: &mut Builder<'_>) -> Vec<SecurityScheme> {
     let mut seen: std::collections::BTreeMap<String, &str> = std::collections::BTreeMap::new();
     for s in &out {
         if let Some(other) = seen.insert(Name::new(&s.name).key(), &s.name) {
-            let (first, second) =
-                if other < s.name.as_str() { (other, s.name.as_str()) } else { (s.name.as_str(), other) };
+            let mut pair = [other, s.name.as_str()];
+            pair.sort_unstable();
+            let [first, second] = pair;
             b.diags.error(
                 format!("/components/securitySchemes/{}", escape_token(second)),
                 format!("security schemes `{first}` and `{second}` name the same item in Rust: rename one"),

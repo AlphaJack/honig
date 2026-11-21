@@ -1106,6 +1106,44 @@ mod tests {
         assert_eq!(grouped("1.5e10"), "1.5e10");
     }
 
+    /// A type names a generated type or a runtime one when anything it holds does.
+    #[test]
+    fn a_type_mentions_what_it_holds() {
+        use crate::ir::types::{Ty, TypeId};
+        let named = Ty::Named(TypeId(0));
+        assert_eq!(super::mentions(&Ty::Vec(Box::new(named.clone()))), (true, false));
+        assert_eq!(super::mentions(&Ty::Vec(Box::new(Ty::Binary))), (false, true));
+        assert_eq!(super::mentions(&Ty::Tuple(vec![named, Ty::Binary])), (true, true));
+        assert_eq!(super::mentions(&Ty::Vec(Box::new(Ty::String))), (false, false));
+    }
+
+    /// A shared impl takes the `cfg` of its uses when they all have it, and none when one does not.
+    #[test]
+    fn a_shared_impl_has_the_cfg_of_all_its_uses() {
+        let shared = |inside: proc_macro2::TokenStream| {
+            let tokens = quote::quote! {
+                #inside
+                #[cfg(test)]
+                mod t { impl Default for B { fn default() -> Self { Self::new() } } }
+            };
+            let text: String = super::print("x.rs", tokens, false).unwrap().split_whitespace().collect();
+            text.split("macro_rules!").next().unwrap_or_default().contains("#[cfg(test)]")
+        };
+        let at_top = quote::quote!(impl Default for A { fn default() -> Self { Self::new() } });
+        let in_test = quote::quote!(
+            #[cfg(test)]
+            mod u {
+                impl Default for A {
+                    fn default() -> Self {
+                        Self::new()
+                    }
+                }
+            }
+        );
+        assert!(!shared(at_top), "used outside the tests too");
+        assert!(shared(in_test), "used in the tests alone");
+    }
+
     #[test]
     fn prose_becomes_lint_clean_rustdoc() {
         assert_eq!(rustdoc("Uses OpenAPI and user_id."), "Uses `OpenAPI` and `user_id`.");
@@ -1119,6 +1157,9 @@ mod tests {
         assert_eq!(rustdoc("```json\n{}\n```"), "```json\n{}\n```");
         assert_eq!(rustdoc("text\n\n    code\n\nmore"), "text\n\n```text\ncode\n```\n\nmore");
         assert_eq!(rustdoc("- item\ncontinued"), "- item\n  continued");
+        assert_eq!(rustdoc("12. item\ncontinued"), "12. item\n    continued");
+        assert_eq!(rustdoc("See a::b and c>d."), "See `a::b` and `c>d`.");
+        assert_eq!(rustdoc(". no item\nnext"), ". no item\nnext");
         assert_eq!(rustdoc("GitHub is fine"), "GitHub is fine");
         assert_eq!(rustdoc("CamelCase's API"), "`CamelCase's` API");
     }

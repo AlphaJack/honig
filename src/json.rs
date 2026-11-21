@@ -273,6 +273,13 @@ mod tests {
     use super::*;
 
     #[test]
+    fn a_count_is_a_whole_non_negative_number() {
+        assert_eq!((count(&json!(2)), count(&json!(2.0))), (Some(2), Some(2)));
+        assert_eq!((count(&json!(2.5)), count(&json!(-1.0))), (None, None));
+        assert_eq!(count(&json!(9_007_199_254_740_992.0)), None, "2^53 is past the exact floats");
+    }
+
+    #[test]
     fn pointer_escaping_roundtrips() {
         assert_eq!(join("", "/orders/{id}"), "/~1orders~1{id}");
         assert_eq!(join("/a", "x~y"), "/a/x~0y");

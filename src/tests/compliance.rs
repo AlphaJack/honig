@@ -375,6 +375,31 @@ fn draft_2019_09_recursive_ref_follows_the_extending_schema() {
     assert!(types.contains("pubtypeForest=Vec<Tree>;"), "no anchor outside: static: {types}");
 }
 
+/// An extension that has an `allOf` of its own keeps it beside the copy of what it extends.
+#[test]
+fn draft_2019_09_recursive_extension_keeps_its_own_all_of() {
+    let (types, _) = types_of(
+        "recursive-extend-all-of",
+        &json!({
+            "Tree": {
+                "$schema": "https://json-schema.org/draft/2019-09/schema",
+                "$recursiveAnchor": true,
+                "type": "object",
+                "properties": {"kids": {"type": "array", "items": {"$recursiveRef": "#"}}}
+            },
+            "LabeledTree": {
+                "$recursiveAnchor": true,
+                "$ref": "#/components/schemas/Tree",
+                "allOf": [{"properties": {"color": {"type": "string"}}}],
+                "properties": {"label": {"type": "string"}}
+            }
+        }),
+    );
+    let labeled = types.split("pubstructLabeledTree{").nth(1).and_then(|r| r.split_once('}')).map(|(b, _)| b);
+    let labeled = labeled.unwrap_or_else(|| panic!("{types}"));
+    assert!(labeled.contains("pubcolor:String") && labeled.contains("pubkids:Vec<Self>"), "{labeled}");
+}
+
 #[test]
 fn draft_04_boolean_exclusive_bounds_still_bound_in_v31() {
     let mut diags = crate::diag::Diagnostics::default();

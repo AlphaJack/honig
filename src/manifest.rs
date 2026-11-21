@@ -165,6 +165,13 @@ mod tests {
     use super::*;
     use crate::settings::XML;
 
+    #[test]
+    fn only_a_workspace_dependency_inherits_the_runtime() {
+        assert!(inherits_runtime("[dependencies]\nhonig = { workspace = true }\n"));
+        assert!(!inherits_runtime("[dependencies]\nhonig = \"=0.0.1\"\n"));
+        assert!(!inherits_runtime("[dependencies]\nhonig = { workspace = false }\n"));
+    }
+
     const PINNED: &str =
         "[package]\nname = \"x\"\n\n[dependencies]\nhonig = { version = \"=0.0.1\", features = [FEATURES] }\n";
 

@@ -262,13 +262,10 @@ pub(crate) fn param_init(space: &Space<'_>, p: &Param, n: &proc_macro2::Ident) -
     quote!(#n: #start,)
 }
 
-/// Returns the value a parameter starts at: its spec `default`, else `None` or `Default::default()`.
+/// Returns the value an optional parameter starts at: its spec `default`, else `None`. A parameter without either is
+/// required: it has no start.
 pub(crate) fn param_start(space: &Space<'_>, p: &Param) -> TokenStream {
-    match spec_default(space, p) {
-        Some(e) => e,
-        None if p.ty.is_option() => quote!(None),
-        None => quote!(Default::default()),
-    }
+    spec_default(space, p).unwrap_or_else(|| quote!(None))
 }
 
 /// Returns `use super::types;` when `needed`: a module of `api` that names a generated type.

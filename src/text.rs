@@ -18,3 +18,12 @@ pub(crate) fn is_identifier(s: &str) -> bool {
     s.chars().next().is_some_and(|c| c.is_ascii_alphabetic() || c == '_')
         && s.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn an_identifier_starts_with_a_letter_or_an_underscore() {
+        assert!(super::is_identifier("_a1") && super::is_identifier("a_b"));
+        assert!(!super::is_identifier("1a") && !super::is_identifier("a-b") && !super::is_identifier(""));
+    }
+}
