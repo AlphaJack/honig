@@ -423,4 +423,27 @@ mod tests {
         assert_eq!(s["List"]["items"]["$ref"], "#/components/schemas/List/$defs/a");
         assert_eq!(s["Plain"]["$ref"], "#/components/schemas/Tree", "no `$id` above it: as written");
     }
+
+    /// A reference under an `$id` back into the document's `$self` becomes a local pointer. One to another document
+    /// resolves against the `$id`.
+    #[test]
+    fn a_reference_back_to_self_becomes_local() {
+        let schema = |r: &str| json!({"$id": "https://x.test/s/a.json", "$ref": r});
+        let mut doc = json!({"openapi": "3.2.0", "$self": "https://x.test/api.json", "components": {"schemas": {
+            "A": schema("https://x.test/api.json#/components/schemas/B"),
+            "C": schema("other.json#/x"),
+            "B": {},
+        }}});
+        rebase(&mut doc);
+        assert_eq!(doc["components"]["schemas"]["A"]["$ref"], "#/components/schemas/B");
+        assert_eq!(doc["components"]["schemas"]["C"]["$ref"], "https://x.test/s/other.json#/x");
+    }
+
+    /// The root of a schema file is a resource at its own address: `#id` in it finds its `$anchor`.
+    #[test]
+    fn an_anchor_of_a_read_schema_file_resolves() {
+        let mut doc = json!({"$defs": {"b": {"$anchor": "id"}, "c": {"$ref": "#id"}}});
+        rebase_fetched(&mut doc, "file:///d/defs.yaml");
+        assert_eq!(doc["$defs"]["c"]["$ref"], "#/$defs/b");
+    }
 }

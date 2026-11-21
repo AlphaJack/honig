@@ -375,6 +375,21 @@ mod tests {
         assert_eq!(doc["components"]["schemas"]["Page"]["properties"]["iterator"]["type"], "string");
     }
 
+    /// A `type` list repairs as a single `type` does: `file` becomes a binary string, unknown names go, and a list of
+    /// known names stays without a warning.
+    #[test]
+    fn a_type_list_is_repaired_like_one_type() {
+        let (doc, d) = up(json!({"openapi": "3.1.0", "components": {"schemas": {
+            "F": {"type": ["file", "null"]},
+            "K": {"type": ["string", "null"]},
+            "U": {"type": ["string", "application/json"]},
+        }}}));
+        let warned: Vec<&str> = d.iter().map(|x| x.pointer.as_str()).collect();
+        assert_eq!(warned, ["/components/schemas/F/type", "/components/schemas/U/type"]);
+        assert_eq!(doc["components"]["schemas"]["F"], json!({"type": ["string", "null"], "format": "binary"}));
+        assert_eq!(doc["components"]["schemas"]["U"], json!({"type": "string"}));
+    }
+
     #[test]
     fn registered_extensions_become_their_fields() {
         let (doc, d) = up(json!({
