@@ -273,15 +273,15 @@ impl<T: runtime::Transport> Client<T> {
                 Ok(ops::get_all_data::Response::Ok {
                     body: if runtime::media_matches(ct, "application/json") {
                         ops::get_all_data::OkBody::Json(
-                            runtime::json_decode(status, &body)?,
+                            runtime::json_decode(Some(status), &body)?,
                         )
                     } else if runtime::media_matches(ct, "application/xml") {
                         ops::get_all_data::OkBody::Xml(
-                            runtime::xml_decode(status, &body)?,
+                            runtime::xml_decode(Some(status), &body)?,
                         )
                     } else {
                         ops::get_all_data::OkBody::Json(
-                            runtime::json_decode(status, &body)?,
+                            runtime::json_decode(Some(status), &body)?,
                         )
                     },
                     x_request_id: runtime::from_param(
@@ -294,7 +294,7 @@ impl<T: runtime::Transport> Client<T> {
                             "/header/X-Request-ID",
                         )
                         .map_err(|e| runtime::ClientError::Decode {
-                            status,
+                            status: Some(status),
                             message: e.to_string(),
                             body: body.clone(),
                             pointer: String::new(),
@@ -309,7 +309,7 @@ impl<T: runtime::Transport> Client<T> {
                             "/header/X-Pagination-Total",
                         )
                         .map_err(|e| runtime::ClientError::Decode {
-                            status,
+                            status: Some(status),
                             message: e.to_string(),
                             body: body.clone(),
                             pointer: String::new(),
@@ -324,7 +324,7 @@ impl<T: runtime::Transport> Client<T> {
                             "/header/X-Pagination-Page",
                         )
                         .map_err(|e| runtime::ClientError::Decode {
-                            status,
+                            status: Some(status),
                             message: e.to_string(),
                             body: body.clone(),
                             pointer: String::new(),
@@ -342,7 +342,7 @@ impl<T: runtime::Transport> Client<T> {
                             "/header/X-Pagination-Per-Page",
                         )
                         .map_err(|e| runtime::ClientError::Decode {
-                            status,
+                            status: Some(status),
                             message: e.to_string(),
                             body: body.clone(),
                             pointer: String::new(),
@@ -357,7 +357,7 @@ impl<T: runtime::Transport> Client<T> {
                             "/header/X-Cache-Control",
                         )
                         .map_err(|e| runtime::ClientError::Decode {
-                            status,
+                            status: Some(status),
                             message: e.to_string(),
                             body: body.clone(),
                             pointer: String::new(),
@@ -427,11 +427,11 @@ impl<T: runtime::Transport> Client<T> {
                 Ok(ops::create_product::Response::Created {
                     body: Box::new(
                         if runtime::media_matches(ct, "application/json") {
-                            runtime::json_decode(status, &body)?
+                            runtime::json_decode(Some(status), &body)?
                         } else if runtime::media_matches(ct, "application/xml") {
-                            runtime::xml_decode(status, &body)?
+                            runtime::xml_decode(Some(status), &body)?
                         } else {
-                            runtime::json_decode(status, &body)?
+                            runtime::json_decode(Some(status), &body)?
                         },
                     ),
                     x_request_id: runtime::from_param(
@@ -444,7 +444,7 @@ impl<T: runtime::Transport> Client<T> {
                             "/header/X-Request-ID",
                         )
                         .map_err(|e| runtime::ClientError::Decode {
-                            status,
+                            status: Some(status),
                             message: e.to_string(),
                             body: body.clone(),
                             pointer: String::new(),
@@ -467,7 +467,7 @@ impl<T: runtime::Transport> Client<T> {
                             >::into_inner,
                         )
                         .map_err(|e| runtime::ClientError::Decode {
-                            status,
+                            status: Some(status),
                             message: e.to_string(),
                             body: body.clone(),
                             pointer: String::new(),
@@ -482,7 +482,7 @@ impl<T: runtime::Transport> Client<T> {
                             "/header/X-Processing-Time",
                         )
                         .map_err(|e| runtime::ClientError::Decode {
-                            status,
+                            status: Some(status),
                             message: e.to_string(),
                             body: body.clone(),
                             pointer: String::new(),
@@ -498,15 +498,15 @@ impl<T: runtime::Transport> Client<T> {
                 Ok(ops::create_product::Response::BadRequest {
                     body: if runtime::media_matches(ct, "application/json") {
                         ops::create_product::BadRequestBody::Json(
-                            runtime::json_decode(status, &body)?,
+                            runtime::json_decode(Some(status), &body)?,
                         )
                     } else if runtime::media_matches(ct, "application/xml") {
                         ops::create_product::BadRequestBody::Xml(
-                            runtime::xml_decode(status, &body)?,
+                            runtime::xml_decode(Some(status), &body)?,
                         )
                     } else {
                         ops::create_product::BadRequestBody::Json(
-                            runtime::json_decode(status, &body)?,
+                            runtime::json_decode(Some(status), &body)?,
                         )
                     },
                     x_request_id: runtime::from_param(
@@ -519,7 +519,7 @@ impl<T: runtime::Transport> Client<T> {
                             "/header/X-Request-ID",
                         )
                         .map_err(|e| runtime::ClientError::Decode {
-                            status,
+                            status: Some(status),
                             message: e.to_string(),
                             body: body.clone(),
                             pointer: String::new(),
@@ -536,15 +536,15 @@ impl<T: runtime::Transport> Client<T> {
                     ops::create_product::Response::Forbidden(
                         if runtime::media_matches(ct, "application/json") {
                             ops::create_product::ForbiddenBody::Json(
-                                runtime::json_decode(status, &body)?,
+                                runtime::json_decode(Some(status), &body)?,
                             )
                         } else if runtime::media_matches(ct, "application/xml") {
                             ops::create_product::ForbiddenBody::Xml(
-                                runtime::xml_decode(status, &body)?,
+                                runtime::xml_decode(Some(status), &body)?,
                             )
                         } else {
                             ops::create_product::ForbiddenBody::Json(
-                                runtime::json_decode(status, &body)?,
+                                runtime::json_decode(Some(status), &body)?,
                             )
                         },
                     ),
@@ -588,7 +588,7 @@ impl<T: runtime::Transport> Client<T> {
             200 => {
                 runtime::check_media_of(&head, &body, &["application/json"])?;
                 Ok(ops::query_products::Response::Ok {
-                    body: runtime::json_decode(status, &body)?,
+                    body: runtime::json_decode(Some(status), &body)?,
                     x_request_id: runtime::from_param(
                             runtime::decode_header(
                                 runtime::joined_header(&head.headers, "X-Request-ID")
@@ -599,7 +599,7 @@ impl<T: runtime::Transport> Client<T> {
                             "/header/X-Request-ID",
                         )
                         .map_err(|e| runtime::ClientError::Decode {
-                            status,
+                            status: Some(status),
                             message: e.to_string(),
                             body: body.clone(),
                             pointer: String::new(),
@@ -615,15 +615,15 @@ impl<T: runtime::Transport> Client<T> {
                 Ok(ops::query_products::Response::BadRequest {
                     body: if runtime::media_matches(ct, "application/json") {
                         ops::query_products::BadRequestBody::Json(
-                            runtime::json_decode(status, &body)?,
+                            runtime::json_decode(Some(status), &body)?,
                         )
                     } else if runtime::media_matches(ct, "application/xml") {
                         ops::query_products::BadRequestBody::Xml(
-                            runtime::xml_decode(status, &body)?,
+                            runtime::xml_decode(Some(status), &body)?,
                         )
                     } else {
                         ops::query_products::BadRequestBody::Json(
-                            runtime::json_decode(status, &body)?,
+                            runtime::json_decode(Some(status), &body)?,
                         )
                     },
                     x_request_id: runtime::from_param(
@@ -636,7 +636,7 @@ impl<T: runtime::Transport> Client<T> {
                             "/header/X-Request-ID",
                         )
                         .map_err(|e| runtime::ClientError::Decode {
-                            status,
+                            status: Some(status),
                             message: e.to_string(),
                             body: body.clone(),
                             pointer: String::new(),
@@ -672,7 +672,7 @@ impl<T: runtime::Transport> Client<T> {
             {
                 runtime::check_media_of(&head, &body, &["application/json"])?;
                 Ok(ops::search_products::Response::Ok {
-                    body: runtime::json_decode(status, &body)?,
+                    body: runtime::json_decode(Some(status), &body)?,
                     x_request_id: runtime::from_param(
                             runtime::decode_header(
                                 runtime::joined_header(&head.headers, "X-Request-ID")
@@ -683,7 +683,7 @@ impl<T: runtime::Transport> Client<T> {
                             "/header/X-Request-ID",
                         )
                         .map_err(|e| runtime::ClientError::Decode {
-                            status,
+                            status: Some(status),
                             message: e.to_string(),
                             body: body.clone(),
                             pointer: String::new(),
@@ -744,11 +744,11 @@ impl<T: runtime::Transport> Client<T> {
                 Ok(ops::get_product::Response::Ok {
                     body: Box::new(
                         if runtime::media_matches(ct, "application/json") {
-                            runtime::json_decode(status, &body)?
+                            runtime::json_decode(Some(status), &body)?
                         } else if runtime::media_matches(ct, "application/xml") {
-                            runtime::xml_decode(status, &body)?
+                            runtime::xml_decode(Some(status), &body)?
                         } else {
-                            runtime::json_decode(status, &body)?
+                            runtime::json_decode(Some(status), &body)?
                         },
                     ),
                     x_request_id: runtime::from_param(
@@ -761,7 +761,7 @@ impl<T: runtime::Transport> Client<T> {
                             "/header/X-Request-ID",
                         )
                         .map_err(|e| runtime::ClientError::Decode {
-                            status,
+                            status: Some(status),
                             message: e.to_string(),
                             body: body.clone(),
                             pointer: String::new(),
@@ -775,7 +775,7 @@ impl<T: runtime::Transport> Client<T> {
                             "/header/ETag",
                         )
                         .map_err(|e| runtime::ClientError::Decode {
-                            status,
+                            status: Some(status),
                             message: e.to_string(),
                             body: body.clone(),
                             pointer: String::new(),
@@ -790,7 +790,7 @@ impl<T: runtime::Transport> Client<T> {
                             "/header/Last-Modified",
                         )
                         .map_err(|e| runtime::ClientError::Decode {
-                            status,
+                            status: Some(status),
                             message: e.to_string(),
                             body: body.clone(),
                             pointer: String::new(),
@@ -805,7 +805,7 @@ impl<T: runtime::Transport> Client<T> {
                             "/header/X-Cache-Control",
                         )
                         .map_err(|e| runtime::ClientError::Decode {
-                            status,
+                            status: Some(status),
                             message: e.to_string(),
                             body: body.clone(),
                             pointer: String::new(),
@@ -822,15 +822,15 @@ impl<T: runtime::Transport> Client<T> {
                     ops::get_product::Response::NotFound(
                         if runtime::media_matches(ct, "application/json") {
                             ops::get_product::NotFoundBody::Json(
-                                runtime::json_decode(status, &body)?,
+                                runtime::json_decode(Some(status), &body)?,
                             )
                         } else if runtime::media_matches(ct, "application/xml") {
                             ops::get_product::NotFoundBody::Xml(
-                                runtime::xml_decode(status, &body)?,
+                                runtime::xml_decode(Some(status), &body)?,
                             )
                         } else {
                             ops::get_product::NotFoundBody::Json(
-                                runtime::json_decode(status, &body)?,
+                                runtime::json_decode(Some(status), &body)?,
                             )
                         },
                     ),
@@ -907,11 +907,11 @@ impl<T: runtime::Transport> Client<T> {
                     ops::update_product::Response::Ok(
                         Box::new(
                             if runtime::media_matches(ct, "application/json") {
-                                runtime::json_decode(status, &body)?
+                                runtime::json_decode(Some(status), &body)?
                             } else if runtime::media_matches(ct, "application/xml") {
-                                runtime::xml_decode(status, &body)?
+                                runtime::xml_decode(Some(status), &body)?
                             } else {
-                                runtime::json_decode(status, &body)?
+                                runtime::json_decode(Some(status), &body)?
                             },
                         ),
                     ),
@@ -926,15 +926,15 @@ impl<T: runtime::Transport> Client<T> {
                 Ok(ops::update_product::Response::BadRequest {
                     body: if runtime::media_matches(ct, "application/json") {
                         ops::update_product::BadRequestBody::Json(
-                            runtime::json_decode(status, &body)?,
+                            runtime::json_decode(Some(status), &body)?,
                         )
                     } else if runtime::media_matches(ct, "application/xml") {
                         ops::update_product::BadRequestBody::Xml(
-                            runtime::xml_decode(status, &body)?,
+                            runtime::xml_decode(Some(status), &body)?,
                         )
                     } else {
                         ops::update_product::BadRequestBody::Json(
-                            runtime::json_decode(status, &body)?,
+                            runtime::json_decode(Some(status), &body)?,
                         )
                     },
                     x_request_id: runtime::from_param(
@@ -947,7 +947,7 @@ impl<T: runtime::Transport> Client<T> {
                             "/header/X-Request-ID",
                         )
                         .map_err(|e| runtime::ClientError::Decode {
-                            status,
+                            status: Some(status),
                             message: e.to_string(),
                             body: body.clone(),
                             pointer: String::new(),
@@ -964,15 +964,15 @@ impl<T: runtime::Transport> Client<T> {
                     ops::update_product::Response::Forbidden(
                         if runtime::media_matches(ct, "application/json") {
                             ops::update_product::ForbiddenBody::Json(
-                                runtime::json_decode(status, &body)?,
+                                runtime::json_decode(Some(status), &body)?,
                             )
                         } else if runtime::media_matches(ct, "application/xml") {
                             ops::update_product::ForbiddenBody::Xml(
-                                runtime::xml_decode(status, &body)?,
+                                runtime::xml_decode(Some(status), &body)?,
                             )
                         } else {
                             ops::update_product::ForbiddenBody::Json(
-                                runtime::json_decode(status, &body)?,
+                                runtime::json_decode(Some(status), &body)?,
                             )
                         },
                     ),
@@ -988,15 +988,15 @@ impl<T: runtime::Transport> Client<T> {
                     ops::update_product::Response::NotFound(
                         if runtime::media_matches(ct, "application/json") {
                             ops::update_product::NotFoundBody::Json(
-                                runtime::json_decode(status, &body)?,
+                                runtime::json_decode(Some(status), &body)?,
                             )
                         } else if runtime::media_matches(ct, "application/xml") {
                             ops::update_product::NotFoundBody::Xml(
-                                runtime::xml_decode(status, &body)?,
+                                runtime::xml_decode(Some(status), &body)?,
                             )
                         } else {
                             ops::update_product::NotFoundBody::Json(
-                                runtime::json_decode(status, &body)?,
+                                runtime::json_decode(Some(status), &body)?,
                             )
                         },
                     ),
@@ -1047,15 +1047,15 @@ impl<T: runtime::Transport> Client<T> {
                     ops::delete_product::Response::NotFound(
                         if runtime::media_matches(ct, "application/json") {
                             ops::delete_product::NotFoundBody::Json(
-                                runtime::json_decode(status, &body)?,
+                                runtime::json_decode(Some(status), &body)?,
                             )
                         } else if runtime::media_matches(ct, "application/xml") {
                             ops::delete_product::NotFoundBody::Xml(
-                                runtime::xml_decode(status, &body)?,
+                                runtime::xml_decode(Some(status), &body)?,
                             )
                         } else {
                             ops::delete_product::NotFoundBody::Json(
-                                runtime::json_decode(status, &body)?,
+                                runtime::json_decode(Some(status), &body)?,
                             )
                         },
                     ),
@@ -1100,7 +1100,7 @@ impl<T: runtime::Transport> Client<T> {
             201 => {
                 runtime::check_media_of(&head, &body, &["application/json"])?;
                 Ok(ops::copy_product::Response::Created {
-                    body: Box::new(runtime::json_decode(status, &body)?),
+                    body: Box::new(runtime::json_decode(Some(status), &body)?),
                     location: runtime::from_param(
                             runtime::decode_header(
                                 runtime::joined_header(&head.headers, "Location")
@@ -1119,7 +1119,7 @@ impl<T: runtime::Transport> Client<T> {
                             >::into_inner,
                         )
                         .map_err(|e| runtime::ClientError::Decode {
-                            status,
+                            status: Some(status),
                             message: e.to_string(),
                             body: body.clone(),
                             pointer: String::new(),
@@ -1136,15 +1136,15 @@ impl<T: runtime::Transport> Client<T> {
                     ops::copy_product::Response::NotFound(
                         if runtime::media_matches(ct, "application/json") {
                             ops::copy_product::NotFoundBody::Json(
-                                runtime::json_decode(status, &body)?,
+                                runtime::json_decode(Some(status), &body)?,
                             )
                         } else if runtime::media_matches(ct, "application/xml") {
                             ops::copy_product::NotFoundBody::Xml(
-                                runtime::xml_decode(status, &body)?,
+                                runtime::xml_decode(Some(status), &body)?,
                             )
                         } else {
                             ops::copy_product::NotFoundBody::Json(
-                                runtime::json_decode(status, &body)?,
+                                runtime::json_decode(Some(status), &body)?,
                             )
                         },
                     ),
@@ -1204,15 +1204,15 @@ impl<T: runtime::Transport> Client<T> {
                 Ok(ops::upload_image::Response::Ok {
                     body: if runtime::media_matches(ct, "application/json") {
                         ops::upload_image::OkBody::Json(
-                            runtime::json_decode(status, &body)?,
+                            runtime::json_decode(Some(status), &body)?,
                         )
                     } else if runtime::media_matches(ct, "application/xml") {
                         ops::upload_image::OkBody::Xml(
-                            runtime::xml_decode(status, &body)?,
+                            runtime::xml_decode(Some(status), &body)?,
                         )
                     } else {
                         ops::upload_image::OkBody::Json(
-                            runtime::json_decode(status, &body)?,
+                            runtime::json_decode(Some(status), &body)?,
                         )
                     },
                     x_request_id: runtime::from_param(
@@ -1225,7 +1225,7 @@ impl<T: runtime::Transport> Client<T> {
                             "/header/X-Request-ID",
                         )
                         .map_err(|e| runtime::ClientError::Decode {
-                            status,
+                            status: Some(status),
                             message: e.to_string(),
                             body: body.clone(),
                             pointer: String::new(),
@@ -1240,7 +1240,7 @@ impl<T: runtime::Transport> Client<T> {
                             "/header/X-Cache-Control",
                         )
                         .map_err(|e| runtime::ClientError::Decode {
-                            status,
+                            status: Some(status),
                             message: e.to_string(),
                             body: body.clone(),
                             pointer: String::new(),
@@ -1256,15 +1256,15 @@ impl<T: runtime::Transport> Client<T> {
                 Ok(ops::upload_image::Response::BadRequest {
                     body: if runtime::media_matches(ct, "application/json") {
                         ops::upload_image::BadRequestBody::Json(
-                            runtime::json_decode(status, &body)?,
+                            runtime::json_decode(Some(status), &body)?,
                         )
                     } else if runtime::media_matches(ct, "application/xml") {
                         ops::upload_image::BadRequestBody::Xml(
-                            runtime::xml_decode(status, &body)?,
+                            runtime::xml_decode(Some(status), &body)?,
                         )
                     } else {
                         ops::upload_image::BadRequestBody::Json(
-                            runtime::json_decode(status, &body)?,
+                            runtime::json_decode(Some(status), &body)?,
                         )
                     },
                     x_request_id: runtime::from_param(
@@ -1277,7 +1277,7 @@ impl<T: runtime::Transport> Client<T> {
                             "/header/X-Request-ID",
                         )
                         .map_err(|e| runtime::ClientError::Decode {
-                            status,
+                            status: Some(status),
                             message: e.to_string(),
                             body: body.clone(),
                             pointer: String::new(),
@@ -1294,15 +1294,15 @@ impl<T: runtime::Transport> Client<T> {
                     ops::upload_image::Response::Forbidden(
                         if runtime::media_matches(ct, "application/json") {
                             ops::upload_image::ForbiddenBody::Json(
-                                runtime::json_decode(status, &body)?,
+                                runtime::json_decode(Some(status), &body)?,
                             )
                         } else if runtime::media_matches(ct, "application/xml") {
                             ops::upload_image::ForbiddenBody::Xml(
-                                runtime::xml_decode(status, &body)?,
+                                runtime::xml_decode(Some(status), &body)?,
                             )
                         } else {
                             ops::upload_image::ForbiddenBody::Json(
-                                runtime::json_decode(status, &body)?,
+                                runtime::json_decode(Some(status), &body)?,
                             )
                         },
                     ),
@@ -1318,15 +1318,15 @@ impl<T: runtime::Transport> Client<T> {
                     ops::upload_image::Response::NotFound(
                         if runtime::media_matches(ct, "application/json") {
                             ops::upload_image::NotFoundBody::Json(
-                                runtime::json_decode(status, &body)?,
+                                runtime::json_decode(Some(status), &body)?,
                             )
                         } else if runtime::media_matches(ct, "application/xml") {
                             ops::upload_image::NotFoundBody::Xml(
-                                runtime::xml_decode(status, &body)?,
+                                runtime::xml_decode(Some(status), &body)?,
                             )
                         } else {
                             ops::upload_image::NotFoundBody::Json(
-                                runtime::json_decode(status, &body)?,
+                                runtime::json_decode(Some(status), &body)?,
                             )
                         },
                     ),
@@ -1384,21 +1384,23 @@ impl<T: runtime::Transport> Client<T> {
                 Ok(ops::stream_product_events::Response::Ok {
                     body: if runtime::media_matches(ct, "text/event-stream") {
                         ops::stream_product_events::OkBody::EventStream(
-                            runtime::sse_decode(status, &body).map(runtime::Items::List)?,
+                            runtime::sse_decode(Some(status), &body)
+                                .map(runtime::Items::List)?,
                         )
                     } else if runtime::media_matches(ct, "application/jsonl") {
                         ops::stream_product_events::OkBody::Jsonl(
-                            runtime::jsonl_decode(status, &body)
+                            runtime::jsonl_decode(Some(status), &body)
                                 .map(runtime::Items::List)?,
                         )
                     } else if runtime::media_matches(ct, "application/json-seq") {
                         ops::stream_product_events::OkBody::JsonSeq(
-                            runtime::json_seq_decode(status, &body)
+                            runtime::json_seq_decode(Some(status), &body)
                                 .map(runtime::Items::List)?,
                         )
                     } else {
                         ops::stream_product_events::OkBody::EventStream(
-                            runtime::sse_decode(status, &body).map(runtime::Items::List)?,
+                            runtime::sse_decode(Some(status), &body)
+                                .map(runtime::Items::List)?,
                         )
                     },
                     x_request_id: runtime::from_param(
@@ -1411,7 +1413,7 @@ impl<T: runtime::Transport> Client<T> {
                             "/header/X-Request-ID",
                         )
                         .map_err(|e| runtime::ClientError::Decode {
-                            status,
+                            status: Some(status),
                             message: e.to_string(),
                             body: body.clone(),
                             pointer: String::new(),
@@ -1478,18 +1480,30 @@ impl<T: runtime::Transport> Client<T> {
             return Ok(
                 runtime::Streamed::Ok(
                     if runtime::media_matches(&ct, "text/event-stream") {
-                        runtime::ItemStream::new(status, body, runtime::Framing::Sse)
+                        runtime::ItemStream::new(
+                                Some(status),
+                                body,
+                                runtime::Framing::Sse,
+                            )
                             .reconnecting(self.transport.clone(), again)
                     } else if runtime::media_matches(&ct, "application/jsonl") {
                         runtime::ItemStream::new(
-                            status,
+                            Some(status),
                             body,
                             runtime::Framing::JsonLines,
                         )
                     } else if runtime::media_matches(&ct, "application/json-seq") {
-                        runtime::ItemStream::new(status, body, runtime::Framing::JsonSeq)
+                        runtime::ItemStream::new(
+                            Some(status),
+                            body,
+                            runtime::Framing::JsonSeq,
+                        )
                     } else {
-                        runtime::ItemStream::new(status, body, runtime::Framing::Sse)
+                        runtime::ItemStream::new(
+                                Some(status),
+                                body,
+                                runtime::Framing::Sse,
+                            )
                             .reconnecting(self.transport.clone(), again)
                     },
                 ),
@@ -1546,7 +1560,7 @@ impl<T: runtime::Transport> Client<T> {
             202 => {
                 runtime::check_media_of(&head, &body, &["application/json"])?;
                 Ok(ops::upload_photos::Response::Accepted {
-                    body: runtime::json_decode(status, &body)?,
+                    body: runtime::json_decode(Some(status), &body)?,
                     x_request_id: runtime::from_param(
                             runtime::decode_header(
                                 runtime::joined_header(&head.headers, "X-Request-ID")
@@ -1557,7 +1571,7 @@ impl<T: runtime::Transport> Client<T> {
                             "/header/X-Request-ID",
                         )
                         .map_err(|e| runtime::ClientError::Decode {
-                            status,
+                            status: Some(status),
                             message: e.to_string(),
                             body: body.clone(),
                             pointer: String::new(),
@@ -1573,15 +1587,15 @@ impl<T: runtime::Transport> Client<T> {
                 Ok(ops::upload_photos::Response::BadRequest {
                     body: if runtime::media_matches(ct, "application/json") {
                         ops::upload_photos::BadRequestBody::Json(
-                            runtime::json_decode(status, &body)?,
+                            runtime::json_decode(Some(status), &body)?,
                         )
                     } else if runtime::media_matches(ct, "application/xml") {
                         ops::upload_photos::BadRequestBody::Xml(
-                            runtime::xml_decode(status, &body)?,
+                            runtime::xml_decode(Some(status), &body)?,
                         )
                     } else {
                         ops::upload_photos::BadRequestBody::Json(
-                            runtime::json_decode(status, &body)?,
+                            runtime::json_decode(Some(status), &body)?,
                         )
                     },
                     x_request_id: runtime::from_param(
@@ -1594,7 +1608,7 @@ impl<T: runtime::Transport> Client<T> {
                             "/header/X-Request-ID",
                         )
                         .map_err(|e| runtime::ClientError::Decode {
-                            status,
+                            status: Some(status),
                             message: e.to_string(),
                             body: body.clone(),
                             pointer: String::new(),
@@ -1611,15 +1625,15 @@ impl<T: runtime::Transport> Client<T> {
                     ops::upload_photos::Response::NotFound(
                         if runtime::media_matches(ct, "application/json") {
                             ops::upload_photos::NotFoundBody::Json(
-                                runtime::json_decode(status, &body)?,
+                                runtime::json_decode(Some(status), &body)?,
                             )
                         } else if runtime::media_matches(ct, "application/xml") {
                             ops::upload_photos::NotFoundBody::Xml(
-                                runtime::xml_decode(status, &body)?,
+                                runtime::xml_decode(Some(status), &body)?,
                             )
                         } else {
                             ops::upload_photos::NotFoundBody::Json(
-                                runtime::json_decode(status, &body)?,
+                                runtime::json_decode(Some(status), &body)?,
                             )
                         },
                     ),
@@ -1657,7 +1671,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 201 {
             {
                 runtime::check_media_of(&head, &body, &["application/json"])?;
-                runtime::json_decode(status, &body)
+                runtime::json_decode(Some(status), &body)
                     .map(ops::create_item::Response::Created)
             }
         } else {
@@ -1720,11 +1734,11 @@ impl<T: runtime::Transport> Client<T> {
                 )?;
                 Ok(ops::create_user::Response::Created {
                     body: if runtime::media_matches(ct, "application/json") {
-                        runtime::json_decode(status, &body)?
+                        runtime::json_decode(Some(status), &body)?
                     } else if runtime::media_matches(ct, "application/xml") {
-                        runtime::xml_decode(status, &body)?
+                        runtime::xml_decode(Some(status), &body)?
                     } else {
-                        runtime::json_decode(status, &body)?
+                        runtime::json_decode(Some(status), &body)?
                     },
                     x_request_id: runtime::from_param(
                             runtime::decode_header(
@@ -1736,7 +1750,7 @@ impl<T: runtime::Transport> Client<T> {
                             "/header/X-Request-ID",
                         )
                         .map_err(|e| runtime::ClientError::Decode {
-                            status,
+                            status: Some(status),
                             message: e.to_string(),
                             body: body.clone(),
                             pointer: String::new(),
@@ -1759,7 +1773,7 @@ impl<T: runtime::Transport> Client<T> {
                             >::into_inner,
                         )
                         .map_err(|e| runtime::ClientError::Decode {
-                            status,
+                            status: Some(status),
                             message: e.to_string(),
                             body: body.clone(),
                             pointer: String::new(),
@@ -1774,7 +1788,7 @@ impl<T: runtime::Transport> Client<T> {
                             "/header/X-Processing-Time",
                         )
                         .map_err(|e| runtime::ClientError::Decode {
-                            status,
+                            status: Some(status),
                             message: e.to_string(),
                             body: body.clone(),
                             pointer: String::new(),
@@ -1790,15 +1804,15 @@ impl<T: runtime::Transport> Client<T> {
                 Ok(ops::create_user::Response::BadRequest {
                     body: if runtime::media_matches(ct, "application/json") {
                         ops::create_user::BadRequestBody::Json(
-                            runtime::json_decode(status, &body)?,
+                            runtime::json_decode(Some(status), &body)?,
                         )
                     } else if runtime::media_matches(ct, "application/xml") {
                         ops::create_user::BadRequestBody::Xml(
-                            runtime::xml_decode(status, &body)?,
+                            runtime::xml_decode(Some(status), &body)?,
                         )
                     } else {
                         ops::create_user::BadRequestBody::Json(
-                            runtime::json_decode(status, &body)?,
+                            runtime::json_decode(Some(status), &body)?,
                         )
                     },
                     x_request_id: runtime::from_param(
@@ -1811,7 +1825,7 @@ impl<T: runtime::Transport> Client<T> {
                             "/header/X-Request-ID",
                         )
                         .map_err(|e| runtime::ClientError::Decode {
-                            status,
+                            status: Some(status),
                             message: e.to_string(),
                             body: body.clone(),
                             pointer: String::new(),
@@ -1828,15 +1842,15 @@ impl<T: runtime::Transport> Client<T> {
                     ops::create_user::Response::Unauthorized(
                         if runtime::media_matches(ct, "application/json") {
                             ops::create_user::UnauthorizedBody::Json(
-                                runtime::json_decode(status, &body)?,
+                                runtime::json_decode(Some(status), &body)?,
                             )
                         } else if runtime::media_matches(ct, "application/xml") {
                             ops::create_user::UnauthorizedBody::Xml(
-                                runtime::xml_decode(status, &body)?,
+                                runtime::xml_decode(Some(status), &body)?,
                             )
                         } else {
                             ops::create_user::UnauthorizedBody::Json(
-                                runtime::json_decode(status, &body)?,
+                                runtime::json_decode(Some(status), &body)?,
                             )
                         },
                     ),
@@ -1852,15 +1866,15 @@ impl<T: runtime::Transport> Client<T> {
                     ops::create_user::Response::Forbidden(
                         if runtime::media_matches(ct, "application/json") {
                             ops::create_user::ForbiddenBody::Json(
-                                runtime::json_decode(status, &body)?,
+                                runtime::json_decode(Some(status), &body)?,
                             )
                         } else if runtime::media_matches(ct, "application/xml") {
                             ops::create_user::ForbiddenBody::Xml(
-                                runtime::xml_decode(status, &body)?,
+                                runtime::xml_decode(Some(status), &body)?,
                             )
                         } else {
                             ops::create_user::ForbiddenBody::Json(
-                                runtime::json_decode(status, &body)?,
+                                runtime::json_decode(Some(status), &body)?,
                             )
                         },
                     ),
@@ -1876,15 +1890,15 @@ impl<T: runtime::Transport> Client<T> {
                     ops::create_user::Response::Conflict(
                         if runtime::media_matches(ct, "application/json") {
                             ops::create_user::ConflictBody::Json(
-                                runtime::json_decode(status, &body)?,
+                                runtime::json_decode(Some(status), &body)?,
                             )
                         } else if runtime::media_matches(ct, "application/xml") {
                             ops::create_user::ConflictBody::Xml(
-                                runtime::xml_decode(status, &body)?,
+                                runtime::xml_decode(Some(status), &body)?,
                             )
                         } else {
                             ops::create_user::ConflictBody::Json(
-                                runtime::json_decode(status, &body)?,
+                                runtime::json_decode(Some(status), &body)?,
                             )
                         },
                     ),
@@ -1900,15 +1914,15 @@ impl<T: runtime::Transport> Client<T> {
                     ops::create_user::Response::UnprocessableEntity(
                         if runtime::media_matches(ct, "application/json") {
                             ops::create_user::UnprocessableEntityBody::Json(
-                                runtime::json_decode(status, &body)?,
+                                runtime::json_decode(Some(status), &body)?,
                             )
                         } else if runtime::media_matches(ct, "application/xml") {
                             ops::create_user::UnprocessableEntityBody::Xml(
-                                runtime::xml_decode(status, &body)?,
+                                runtime::xml_decode(Some(status), &body)?,
                             )
                         } else {
                             ops::create_user::UnprocessableEntityBody::Json(
-                                runtime::json_decode(status, &body)?,
+                                runtime::json_decode(Some(status), &body)?,
                             )
                         },
                     ),
@@ -1973,11 +1987,11 @@ impl<T: runtime::Transport> Client<T> {
                 )?;
                 Ok(ops::get_token::Response::Created {
                     body: if runtime::media_matches(ct, "application/json") {
-                        runtime::json_decode(status, &body)?
+                        runtime::json_decode(Some(status), &body)?
                     } else if runtime::media_matches(ct, "application/xml") {
-                        runtime::xml_decode(status, &body)?
+                        runtime::xml_decode(Some(status), &body)?
                     } else {
-                        runtime::json_decode(status, &body)?
+                        runtime::json_decode(Some(status), &body)?
                     },
                     x_request_id: runtime::from_param(
                             runtime::decode_header(
@@ -1989,7 +2003,7 @@ impl<T: runtime::Transport> Client<T> {
                             "/header/X-Request-ID",
                         )
                         .map_err(|e| runtime::ClientError::Decode {
-                            status,
+                            status: Some(status),
                             message: e.to_string(),
                             body: body.clone(),
                             pointer: String::new(),
@@ -2004,7 +2018,7 @@ impl<T: runtime::Transport> Client<T> {
                             "/header/X-RateLimit-Limit",
                         )
                         .map_err(|e| runtime::ClientError::Decode {
-                            status,
+                            status: Some(status),
                             message: e.to_string(),
                             body: body.clone(),
                             pointer: String::new(),
@@ -2022,7 +2036,7 @@ impl<T: runtime::Transport> Client<T> {
                             "/header/X-RateLimit-Remaining",
                         )
                         .map_err(|e| runtime::ClientError::Decode {
-                            status,
+                            status: Some(status),
                             message: e.to_string(),
                             body: body.clone(),
                             pointer: String::new(),
@@ -2037,7 +2051,7 @@ impl<T: runtime::Transport> Client<T> {
                             "/header/X-RateLimit-Reset",
                         )
                         .map_err(|e| runtime::ClientError::Decode {
-                            status,
+                            status: Some(status),
                             message: e.to_string(),
                             body: body.clone(),
                             pointer: String::new(),
@@ -2053,15 +2067,15 @@ impl<T: runtime::Transport> Client<T> {
                 Ok(ops::get_token::Response::BadRequest {
                     body: if runtime::media_matches(ct, "application/json") {
                         ops::get_token::BadRequestBody::Json(
-                            runtime::json_decode(status, &body)?,
+                            runtime::json_decode(Some(status), &body)?,
                         )
                     } else if runtime::media_matches(ct, "application/xml") {
                         ops::get_token::BadRequestBody::Xml(
-                            runtime::xml_decode(status, &body)?,
+                            runtime::xml_decode(Some(status), &body)?,
                         )
                     } else {
                         ops::get_token::BadRequestBody::Json(
-                            runtime::json_decode(status, &body)?,
+                            runtime::json_decode(Some(status), &body)?,
                         )
                     },
                     x_request_id: runtime::from_param(
@@ -2074,7 +2088,7 @@ impl<T: runtime::Transport> Client<T> {
                             "/header/X-Request-ID",
                         )
                         .map_err(|e| runtime::ClientError::Decode {
-                            status,
+                            status: Some(status),
                             message: e.to_string(),
                             body: body.clone(),
                             pointer: String::new(),
@@ -2091,15 +2105,15 @@ impl<T: runtime::Transport> Client<T> {
                     ops::get_token::Response::Unauthorized(
                         if runtime::media_matches(ct, "application/json") {
                             ops::get_token::UnauthorizedBody::Json(
-                                runtime::json_decode(status, &body)?,
+                                runtime::json_decode(Some(status), &body)?,
                             )
                         } else if runtime::media_matches(ct, "application/xml") {
                             ops::get_token::UnauthorizedBody::Xml(
-                                runtime::xml_decode(status, &body)?,
+                                runtime::xml_decode(Some(status), &body)?,
                             )
                         } else {
                             ops::get_token::UnauthorizedBody::Json(
-                                runtime::json_decode(status, &body)?,
+                                runtime::json_decode(Some(status), &body)?,
                             )
                         },
                     ),
@@ -2115,15 +2129,15 @@ impl<T: runtime::Transport> Client<T> {
                     ops::get_token::Response::Forbidden(
                         if runtime::media_matches(ct, "application/json") {
                             ops::get_token::ForbiddenBody::Json(
-                                runtime::json_decode(status, &body)?,
+                                runtime::json_decode(Some(status), &body)?,
                             )
                         } else if runtime::media_matches(ct, "application/xml") {
                             ops::get_token::ForbiddenBody::Xml(
-                                runtime::xml_decode(status, &body)?,
+                                runtime::xml_decode(Some(status), &body)?,
                             )
                         } else {
                             ops::get_token::ForbiddenBody::Json(
-                                runtime::json_decode(status, &body)?,
+                                runtime::json_decode(Some(status), &body)?,
                             )
                         },
                     ),
@@ -2138,15 +2152,15 @@ impl<T: runtime::Transport> Client<T> {
                 Ok(ops::get_token::Response::TooManyRequests {
                     body: if runtime::media_matches(ct, "application/json") {
                         ops::get_token::TooManyRequestsBody::Json(
-                            runtime::json_decode(status, &body)?,
+                            runtime::json_decode(Some(status), &body)?,
                         )
                     } else if runtime::media_matches(ct, "application/xml") {
                         ops::get_token::TooManyRequestsBody::Xml(
-                            runtime::xml_decode(status, &body)?,
+                            runtime::xml_decode(Some(status), &body)?,
                         )
                     } else {
                         ops::get_token::TooManyRequestsBody::Json(
-                            runtime::json_decode(status, &body)?,
+                            runtime::json_decode(Some(status), &body)?,
                         )
                     },
                     x_request_id: runtime::from_param(
@@ -2159,7 +2173,7 @@ impl<T: runtime::Transport> Client<T> {
                             "/header/X-Request-ID",
                         )
                         .map_err(|e| runtime::ClientError::Decode {
-                            status,
+                            status: Some(status),
                             message: e.to_string(),
                             body: body.clone(),
                             pointer: String::new(),
@@ -2174,7 +2188,7 @@ impl<T: runtime::Transport> Client<T> {
                             "/header/X-RateLimit-Limit",
                         )
                         .map_err(|e| runtime::ClientError::Decode {
-                            status,
+                            status: Some(status),
                             message: e.to_string(),
                             body: body.clone(),
                             pointer: String::new(),
@@ -2192,7 +2206,7 @@ impl<T: runtime::Transport> Client<T> {
                             "/header/X-RateLimit-Remaining",
                         )
                         .map_err(|e| runtime::ClientError::Decode {
-                            status,
+                            status: Some(status),
                             message: e.to_string(),
                             body: body.clone(),
                             pointer: String::new(),
@@ -2207,7 +2221,7 @@ impl<T: runtime::Transport> Client<T> {
                             "/header/X-RateLimit-Reset",
                         )
                         .map_err(|e| runtime::ClientError::Decode {
-                            status,
+                            status: Some(status),
                             message: e.to_string(),
                             body: body.clone(),
                             pointer: String::new(),
@@ -2222,7 +2236,7 @@ impl<T: runtime::Transport> Client<T> {
                             "/header/Retry-After",
                         )
                         .map_err(|e| runtime::ClientError::Decode {
-                            status,
+                            status: Some(status),
                             message: e.to_string(),
                             body: body.clone(),
                             pointer: String::new(),
@@ -2270,11 +2284,11 @@ impl<T: runtime::Transport> Client<T> {
                 )?;
                 Ok(ops::get_me::Response::Ok {
                     body: if runtime::media_matches(ct, "application/json") {
-                        runtime::json_decode(status, &body)?
+                        runtime::json_decode(Some(status), &body)?
                     } else if runtime::media_matches(ct, "application/xml") {
-                        runtime::xml_decode(status, &body)?
+                        runtime::xml_decode(Some(status), &body)?
                     } else {
-                        runtime::json_decode(status, &body)?
+                        runtime::json_decode(Some(status), &body)?
                     },
                     x_request_id: runtime::from_param(
                             runtime::decode_header(
@@ -2286,7 +2300,7 @@ impl<T: runtime::Transport> Client<T> {
                             "/header/X-Request-ID",
                         )
                         .map_err(|e| runtime::ClientError::Decode {
-                            status,
+                            status: Some(status),
                             message: e.to_string(),
                             body: body.clone(),
                             pointer: String::new(),
@@ -2300,7 +2314,7 @@ impl<T: runtime::Transport> Client<T> {
                             "/header/ETag",
                         )
                         .map_err(|e| runtime::ClientError::Decode {
-                            status,
+                            status: Some(status),
                             message: e.to_string(),
                             body: body.clone(),
                             pointer: String::new(),
@@ -2315,7 +2329,7 @@ impl<T: runtime::Transport> Client<T> {
                             "/header/Last-Modified",
                         )
                         .map_err(|e| runtime::ClientError::Decode {
-                            status,
+                            status: Some(status),
                             message: e.to_string(),
                             body: body.clone(),
                             pointer: String::new(),
@@ -2330,7 +2344,7 @@ impl<T: runtime::Transport> Client<T> {
                             "/header/X-Cache-Control",
                         )
                         .map_err(|e| runtime::ClientError::Decode {
-                            status,
+                            status: Some(status),
                             message: e.to_string(),
                             body: body.clone(),
                             pointer: String::new(),
@@ -2347,15 +2361,15 @@ impl<T: runtime::Transport> Client<T> {
                     ops::get_me::Response::Unauthorized(
                         if runtime::media_matches(ct, "application/json") {
                             ops::get_me::UnauthorizedBody::Json(
-                                runtime::json_decode(status, &body)?,
+                                runtime::json_decode(Some(status), &body)?,
                             )
                         } else if runtime::media_matches(ct, "application/xml") {
                             ops::get_me::UnauthorizedBody::Xml(
-                                runtime::xml_decode(status, &body)?,
+                                runtime::xml_decode(Some(status), &body)?,
                             )
                         } else {
                             ops::get_me::UnauthorizedBody::Json(
-                                runtime::json_decode(status, &body)?,
+                                runtime::json_decode(Some(status), &body)?,
                             )
                         },
                     ),
@@ -2371,15 +2385,15 @@ impl<T: runtime::Transport> Client<T> {
                     ops::get_me::Response::Forbidden(
                         if runtime::media_matches(ct, "application/json") {
                             ops::get_me::ForbiddenBody::Json(
-                                runtime::json_decode(status, &body)?,
+                                runtime::json_decode(Some(status), &body)?,
                             )
                         } else if runtime::media_matches(ct, "application/xml") {
                             ops::get_me::ForbiddenBody::Xml(
-                                runtime::xml_decode(status, &body)?,
+                                runtime::xml_decode(Some(status), &body)?,
                             )
                         } else {
                             ops::get_me::ForbiddenBody::Json(
-                                runtime::json_decode(status, &body)?,
+                                runtime::json_decode(Some(status), &body)?,
                             )
                         },
                     ),

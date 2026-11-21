@@ -323,7 +323,7 @@ fn create_product_params(
     let runtime::Incoming { request: req, body, .. } = incoming;
     runtime::check_media(runtime::Message::content_type(req), &["application/json"])?;
     Ok(ops::create_product::Params {
-        body: runtime::json_decode(0, &body)?,
+        body: runtime::json_decode(None, &body)?,
     })
 }
 fn create_product_encode(

@@ -183,7 +183,7 @@ struct Item {
 fn stream(body: &[u8], framing: runtime::Framing) -> usize {
     let pieces: Vec<_> = body.chunks(PIECE).map(|p| Ok(honig::Bytes::copy_from_slice(p))).collect();
     let pieces = honig::ByteStream::chunks(futures_util::stream::iter(pieces), None);
-    let mut items = runtime::ItemStream::<Value>::new(0, pieces, framing);
+    let mut items = runtime::ItemStream::<Value>::new(None, pieces, framing);
     let mut n = 0;
     while let Some(Ok(_)) = runtime::block_on(futures_util::StreamExt::next(&mut items)) {
         n += 1;
@@ -203,7 +203,7 @@ pub(crate) const PATHS: &[Path] = &[
         name: "json_decode",
         prepare: |size| {
             let body = built(runtime::json_encode(&order(size)));
-            (body.len(), on(body, |b| runtime::json_decode::<Order>(0, b)))
+            (body.len(), on(body, |b| runtime::json_decode::<Order>(None, b)))
         },
     },
     Path {
@@ -217,7 +217,7 @@ pub(crate) const PATHS: &[Path] = &[
         name: "xml_decode",
         prepare: |size| {
             let body = built(runtime::xml_encode(&order(size)));
-            (body.len(), on(body, |b| runtime::xml_decode::<Order>(0, b)))
+            (body.len(), on(body, |b| runtime::xml_decode::<Order>(None, b)))
         },
     },
     Path {
@@ -228,7 +228,7 @@ pub(crate) const PATHS: &[Path] = &[
             let order = String::from_utf8(built(runtime::xml_encode(&order(0)))).unwrap_or_default();
             let unknown: String = (0..size / UNKNOWN_BYTES).map(|i| format!("<u{i:08}/>")).collect();
             let body = order.replacen("</order>", &format!("{unknown}</order>"), 1).into_bytes();
-            (body.len(), on(body, |b| runtime::xml_decode::<Order>(0, b)))
+            (body.len(), on(body, |b| runtime::xml_decode::<Order>(None, b)))
         },
     },
     Path {
@@ -242,14 +242,14 @@ pub(crate) const PATHS: &[Path] = &[
         name: "multipart_decode",
         prepare: |size| {
             let (content_type, body) = built(runtime::multipart_encode(&upload(size), &[]));
-            (body.len(), on((content_type, body), |(ct, b)| runtime::multipart_decode::<Upload>(0, ct, b)))
+            (body.len(), on((content_type, body), |(ct, b)| runtime::multipart_decode::<Upload>(None, ct, b)))
         },
     },
     Path {
         name: "multipart_decode_foreign",
         prepare: |size| {
             let (content_type, body) = foreign_form(size);
-            (body.len(), on((content_type, body), |(ct, b)| runtime::multipart_decode::<Upload>(0, ct, b)))
+            (body.len(), on((content_type, body), |(ct, b)| runtime::multipart_decode::<Upload>(None, ct, b)))
         },
     },
     Path { name: "multipart_encode", prepare: |size| (size, on(upload(size), |u| runtime::multipart_encode(u, &[]))) },
@@ -257,7 +257,7 @@ pub(crate) const PATHS: &[Path] = &[
         name: "form_decode",
         prepare: |size| {
             let body = built(runtime::form_encode(&fields(size)));
-            (body.len(), on(body, |b| runtime::form_decode::<Value>(0, b)))
+            (body.len(), on(body, |b| runtime::form_decode::<Value>(None, b)))
         },
     },
     Path { name: "form_encode", prepare: |size| (size, on(fields(size), runtime::form_encode)) },
@@ -296,14 +296,14 @@ pub(crate) const PATHS: &[Path] = &[
         name: "jsonl_decode",
         prepare: |size| {
             let body = built(runtime::jsonl_encode(&items(size)));
-            (body.len(), on(body, |b| runtime::jsonl_decode::<Value>(0, b)))
+            (body.len(), on(body, |b| runtime::jsonl_decode::<Value>(None, b)))
         },
     },
     Path {
         name: "jsonl_decode_typed",
         prepare: |size| {
             let body = built(runtime::jsonl_encode(&items(size)));
-            (body.len(), on(body, |b| runtime::jsonl_decode::<Item>(0, b)))
+            (body.len(), on(body, |b| runtime::jsonl_decode::<Item>(None, b)))
         },
     },
     Path { name: "sse_encode", prepare: |size| (size, on(items(size), |i| runtime::sse_encode(i))) },
@@ -311,14 +311,14 @@ pub(crate) const PATHS: &[Path] = &[
         name: "sse_decode",
         prepare: |size| {
             let body = built(runtime::sse_encode(&items(size)));
-            (body.len(), on(body, |b| runtime::sse_decode::<Value>(0, b)))
+            (body.len(), on(body, |b| runtime::sse_decode::<Value>(None, b)))
         },
     },
     Path {
         name: "sse_decode_typed",
         prepare: |size| {
             let body = built(runtime::sse_encode(&items(size)));
-            (body.len(), on(body, |b| runtime::sse_decode::<Item>(0, b)))
+            (body.len(), on(body, |b| runtime::sse_decode::<Item>(None, b)))
         },
     },
     Path {
@@ -368,14 +368,14 @@ pub(crate) const PATHS: &[Path] = &[
         name: "mixed_decode",
         prepare: |size| {
             let (content_type, body) = built(runtime::mixed_encode(&items(size), "multipart/mixed", &[]));
-            (body.len(), on((content_type, body), |(ct, b)| runtime::mixed_decode::<Value>(0, ct, b, None)))
+            (body.len(), on((content_type, body), |(ct, b)| runtime::mixed_decode::<Value>(None, ct, b, None)))
         },
     },
     Path {
         name: "json_seq_decode",
         prepare: |size| {
             let body = built(runtime::json_seq_encode(&items(size)));
-            (body.len(), on(body, |b| runtime::json_seq_decode::<Value>(0, b)))
+            (body.len(), on(body, |b| runtime::json_seq_decode::<Value>(None, b)))
         },
     },
     Path { name: "json_seq_encode", prepare: |size| (size, on(items(size), |i| runtime::json_seq_encode(i))) },
@@ -397,7 +397,7 @@ pub(crate) const PATHS: &[Path] = &[
         name: "linkset_decode",
         prepare: |size| {
             let header = built(runtime::linkset_encode(&links(size)));
-            (header.len(), on(header, |h| runtime::linkset_decode::<Value>(0, h)))
+            (header.len(), on(header, |h| runtime::linkset_decode::<Value>(None, h)))
         },
     },
     Path { name: "linkset_encode", prepare: |size| (size, on(links(size), runtime::linkset_encode)) },

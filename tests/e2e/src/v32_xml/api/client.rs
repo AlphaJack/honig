@@ -53,11 +53,11 @@ impl<T: runtime::Transport> Client<T> {
                 Ok(
                     ops::add_book::Response::Created(
                         if runtime::media_matches(ct, "application/xml") {
-                            runtime::xml_decode(status, &body)?
+                            runtime::xml_decode(Some(status), &body)?
                         } else if runtime::media_matches(ct, "application/json") {
-                            runtime::json_decode(status, &body)?
+                            runtime::json_decode(Some(status), &body)?
                         } else {
-                            runtime::xml_decode(status, &body)?
+                            runtime::xml_decode(Some(status), &body)?
                         },
                     ),
                 )

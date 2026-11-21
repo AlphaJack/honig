@@ -167,7 +167,7 @@ fn put_stamp_params(
     let runtime::Incoming { request: req, body, .. } = incoming;
     runtime::check_media(runtime::Message::content_type(req), &["application/json"])?;
     Ok(ops::put_stamp::Params {
-        body: runtime::json_decode(0, &body)?,
+        body: runtime::json_decode(None, &body)?,
     })
 }
 fn put_stamp_encode(resp: &ops::put_stamp::Response) -> runtime::Response {

@@ -525,7 +525,7 @@ proptest::proptest! {
 /// every nested checked type on the way.
 #[test]
 fn an_error_inside_a_checked_value_keeps_its_pointer() {
-    let pointer = |body: &[u8]| match api::runtime::json_decode::<types::ProductRequest>(200, body) {
+    let pointer = |body: &[u8]| match api::runtime::json_decode::<types::ProductRequest>(Some(200), body) {
         Err(api::ClientError::Decode { pointer, .. }) => pointer,
         other => panic!("{other:?}"),
     };

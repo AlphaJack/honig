@@ -21,7 +21,7 @@ fn cdata_and_inline_nodes_on_the_wire() {
     let wire = String::from_utf8(api::runtime::xml_encode(&book).expect("encodes")).expect("utf-8");
     assert!(wire.contains("<blurb><![CDATA[<b>sand</b> ]]]]><![CDATA[> worms]]></blurb>"), "{wire}");
     assert!(wire.contains("<isbn>978</isbn><pages>412</pages>") && !wire.contains("<meta"), "inline: {wire}");
-    let back: types::Book = api::runtime::xml_decode(200, wire.as_bytes()).expect("decodes");
+    let back: types::Book = api::runtime::xml_decode(Some(200), wire.as_bytes()).expect("decodes");
     assert_eq!(back.blurb, book.blurb);
     assert_eq!(back.meta, book.meta);
 }

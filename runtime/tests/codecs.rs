@@ -97,13 +97,13 @@ impl XmlShape for Label {
 
 #[test]
 fn xml_text_fields_and_empty_elements_keep_their_text() {
-    assert_eq!(xml_decode::<Label>(0, b"<label>hi</label>").unwrap(), Label { value: Some("hi".into()) });
-    assert_eq!(xml_decode::<Label>(0, b"<label/>").unwrap(), Label { value: None }, "optional: absent");
-    assert_eq!(xml_decode::<Note>(0, b"<note><body></body></note>").unwrap(), Note { body: String::new() });
+    assert_eq!(xml_decode::<Label>(None, b"<label>hi</label>").unwrap(), Label { value: Some("hi".into()) });
+    assert_eq!(xml_decode::<Label>(None, b"<label/>").unwrap(), Label { value: None }, "optional: absent");
+    assert_eq!(xml_decode::<Note>(None, b"<note><body></body></note>").unwrap(), Note { body: String::new() });
 }
 
 fn xml(text: &str) -> Result<Any, honig::ClientError> {
-    xml_decode::<Any>(0, text.as_bytes())
+    xml_decode::<Any>(None, text.as_bytes())
 }
 
 #[test]
@@ -138,7 +138,7 @@ fn xml_attributes_unescape_and_nil_is_null() {
 fn xml_cdata_roundtrips_its_terminator() {
     let note = Note { body: "a ]]> b <c> & d".into() };
     let bytes = xml_encode(&note).unwrap();
-    assert_eq!(xml_decode::<Note>(0, &bytes).unwrap(), note);
+    assert_eq!(xml_decode::<Note>(None, &bytes).unwrap(), note);
 }
 
 const CT: &str = "multipart/form-data; boundary=b";
@@ -146,13 +146,13 @@ const CT: &str = "multipart/form-data; boundary=b";
 #[test]
 fn multipart_without_a_closing_boundary_is_an_error() {
     let body = "--b\r\nContent-Disposition: form-data; name=\"x\"\r\n\r\n1\r\n";
-    assert!(multipart_decode::<Value>(0, CT, body.as_bytes()).is_err());
+    assert!(multipart_decode::<Value>(None, CT, body.as_bytes()).is_err());
 }
 
 #[test]
 fn multipart_keeps_line_endings_and_dashes_inside_a_part() {
     let body = "--b\r\nContent-Disposition: form-data; name=\"x\"\r\n\r\nline\r\n\r\n-- b --\r\nend\r\n--b--\r\n";
-    let got: Value = multipart_decode(0, CT, body.as_bytes()).unwrap();
+    let got: Value = multipart_decode(None, CT, body.as_bytes()).unwrap();
     assert_eq!(got, json!({"x": "line\r\n\r\n-- b --\r\nend"}));
 }
 
@@ -160,14 +160,14 @@ fn multipart_keeps_line_endings_and_dashes_inside_a_part() {
 fn multipart_repeated_names_become_a_list() {
     let part = |v: &str| format!("--b\r\nContent-Disposition: form-data; name=\"x\"\r\n\r\n{v}\r\n");
     let body = format!("{}{}--b--\r\n", part("one"), part("two"));
-    let got: Value = multipart_decode(0, CT, body.as_bytes()).unwrap();
+    let got: Value = multipart_decode(None, CT, body.as_bytes()).unwrap();
     assert_eq!(got, json!({"x": ["one", "two"]}));
 }
 
 #[test]
 fn mixed_parts_without_headers_are_text() {
     let body = "--b\r\n\r\nfirst\r\n--b\r\nContent-Type: application/json\r\n\r\n{\"n\":1}\r\n--b--\r\n";
-    let got: Value = mixed_decode(0, "multipart/mixed; boundary=b", body.as_bytes(), None).unwrap();
+    let got: Value = mixed_decode(None, "multipart/mixed; boundary=b", body.as_bytes(), None).unwrap();
     assert_eq!(got, json!(["first", {"n": 1}]));
 }
 
@@ -189,7 +189,7 @@ fn form_decoding_reads_plus_as_space_and_bare_keys_as_empty() {
     let pairs: Vec<(String, String)> =
         parse_query("a+b=c%20d&e&&f=").into_iter().map(|(k, v)| (k.into_owned(), v.into_owned())).collect();
     assert_eq!(pairs, [("a b", "c d"), ("e", ""), ("f", "")].map(|(k, v)| (k.to_owned(), v.to_owned())));
-    let got: Value = form_decode(0, b"x=one&x=two").unwrap();
+    let got: Value = form_decode(None, b"x=one&x=two").unwrap();
     assert_eq!(got, json!({"x": ["one", "two"]}));
 }
 
@@ -228,7 +228,7 @@ fn byte_by_byte(body: &[u8]) -> ByteStream {
 }
 
 fn streamed(body: &[u8], framing: Framing) -> Vec<Value> {
-    let mut items = ItemStream::<Value>::new(200, byte_by_byte(body), framing);
+    let mut items = ItemStream::<Value>::new(Some(200), byte_by_byte(body), framing);
     let mut out = vec![];
     while let Some(item) = block_on(items.next()) {
         out.push(item.unwrap());
@@ -239,7 +239,7 @@ fn streamed(body: &[u8], framing: Framing) -> Vec<Value> {
 #[test]
 fn sse_split_at_every_byte_matches_the_whole_body() {
     let body = b"\xEF\xBB\xBFdata: 1\r\n\r\n: heartbeat\n\ndata: 2\r\rdata: 3\n\r\ndata: 4";
-    assert_eq!(streamed(body, Framing::Sse), sse_decode::<Value>(200, body).unwrap());
+    assert_eq!(streamed(body, Framing::Sse), sse_decode::<Value>(Some(200), body).unwrap());
     // The body ends inside the last event. That event is dropped.
     assert_eq!(streamed(body, Framing::Sse), [1, 2, 3].map(|n| json!({"data": n})));
 }
@@ -252,12 +252,12 @@ fn multipart_split_at_every_byte_matches_the_whole_body() {
     let body = b"preamble\r\n--b0und\r\nContent-Type: application/json\r\n\r\n{\"n\":1}\r\n--b0und\r\n\
                  Content-Type: text/plain\r\n\r\ntwo\r\n--b0und\r\nContent-Type: application/json\r\n\r\n[3]\r\n\
                  --b0und--\r\nepilogue";
-    let mut items = ItemStream::<Value>::multipart(200, byte_by_byte(body), ct);
+    let mut items = ItemStream::<Value>::multipart(Some(200), byte_by_byte(body), ct);
     let mut streamed = vec![];
     while let Some(item) = block_on(items.next()) {
         streamed.push(item.unwrap());
     }
-    assert_eq!(streamed, mixed_decode::<Vec<Value>>(200, ct, body, None).unwrap());
+    assert_eq!(streamed, mixed_decode::<Vec<Value>>(Some(200), ct, body, None).unwrap());
     assert_eq!(streamed, [json!({"n": 1}), json!("two"), json!([3])]);
 }
 
@@ -361,7 +361,7 @@ fn deeply_nested_json_is_an_error_on_a_worker_sized_stack() {
     let body = format!("{{\"a\":{}{}}}", "[".repeat(depth), "]".repeat(depth));
     let decoded = std::thread::Builder::new()
         .stack_size(WORKER_STACK)
-        .spawn(move || honig::__private::json_decode::<Holder>(0, body.as_bytes()).is_err())
+        .spawn(move || honig::__private::json_decode::<Holder>(None, body.as_bytes()).is_err())
         .unwrap()
         .join();
     assert!(decoded.unwrap(), "decoded, or overflowed the stack");
@@ -432,13 +432,13 @@ fn a_transfer_encoded_part_is_decoded_and_a_declared_one_encoded() {
     let body = b"--xyz\r\nContent-Disposition: form-data; name=\"note\"\r\nContent-Transfer-Encoding: quoted-printable\r\n\r\n\
                  caf=C3=A9 =\r\nau lait\r\n--xyz\r\nContent-Disposition: form-data; name=\"data\"\r\n\
                  Content-Transfer-Encoding: base64\r\n\r\naGVs\r\nbG8=\r\n--xyz--\r\n";
-    let got: Upload = multipart_decode(200, ct, body).unwrap();
+    let got: Upload = multipart_decode(Some(200), ct, body).unwrap();
     assert_eq!(got, Upload { note: "café au lait".into(), data: "hello".into() });
     let headers = [("data", "Content-Transfer-Encoding", "base64".to_owned())];
     let (sent_ct, sent) = multipart_encode_with(&got, &[], &headers).unwrap();
     let text = String::from_utf8_lossy(&sent);
     assert!(text.contains("Content-Transfer-Encoding: base64\r\n\r\naGVsbG8=\r\n"), "{text}");
-    assert_eq!(multipart_decode::<Upload>(200, &sent_ct, &sent).unwrap(), got);
+    assert_eq!(multipart_decode::<Upload>(Some(200), &sent_ct, &sent).unwrap(), got);
 }
 
 #[test]
@@ -502,7 +502,7 @@ fn an_event_whose_data_is_not_json_says_so() {
     }
     // The stream of OpenAI ends with `data: [DONE]`. No schema describes it.
     let body = b"data: {\"id\":\"a\",\"object\":\"chunk\"}\n\ndata: [DONE]\n\n";
-    let e = sse_decode::<Chunk>(200, body).unwrap_err();
+    let e = sse_decode::<Chunk>(Some(200), body).unwrap_err();
     assert!(e.to_string().contains("the event's data is not JSON: `[DONE]`"), "{e}");
 }
 
@@ -514,10 +514,10 @@ fn a_decimal_keeps_its_digits_in_a_form_and_a_multipart_part() {
         d: honig::Decimal,
     }
     const DIGITS: &str = "12345678901234567.89";
-    let form: Holder = form_decode(200, format!("d={DIGITS}").as_bytes()).unwrap();
+    let form: Holder = form_decode(Some(200), format!("d={DIGITS}").as_bytes()).unwrap();
     assert_eq!(form.d.as_str(), DIGITS);
     let body = format!("--b\r\nContent-Disposition: form-data; name=\"d\"\r\n\r\n{DIGITS}\r\n--b--\r\n");
-    let part: Holder = multipart_decode(200, "multipart/form-data; boundary=b", body.as_bytes()).unwrap();
+    let part: Holder = multipart_decode(Some(200), "multipart/form-data; boundary=b", body.as_bytes()).unwrap();
     assert_eq!(part.d.as_str(), DIGITS);
 }
 
@@ -536,7 +536,8 @@ const MIXED: &str = "--b\r\nContent-Type: application/json\r\n\r\n{\"a\":1}\r\n-
 #[test]
 fn multipart_items_split_byte_by_byte_arrive_whole() {
     let bytes: Vec<String> = MIXED.chars().map(String::from).collect();
-    let items: ItemStream<Value> = ItemStream::multipart(200, arriving(bytes, false), "multipart/mixed; boundary=b");
+    let items: ItemStream<Value> =
+        ItemStream::multipart(Some(200), arriving(bytes, false), "multipart/mixed; boundary=b");
     let got: Vec<Value> = block_on(items.map(Result::unwrap).collect());
     assert_eq!(got, [json!({"a": 1}), json!({"a": 2})]);
 }
@@ -546,7 +547,7 @@ fn a_multipart_item_arrives_before_the_body_ends() {
     use futures_util::FutureExt;
     let (first, _) = MIXED.split_at(MIXED.find("{\"a\":2}").unwrap());
     let mut items: ItemStream<Value> =
-        ItemStream::multipart(200, arriving(vec![first.to_owned()], true), "multipart/mixed; boundary=b");
+        ItemStream::multipart(Some(200), arriving(vec![first.to_owned()], true), "multipart/mixed; boundary=b");
     assert_eq!(items.next().now_or_never().map(|i| i.map(Result::unwrap)), Some(Some(json!({"a": 1}))));
     assert!(items.next().now_or_never().is_none(), "the second part has not arrived");
 }
@@ -566,8 +567,8 @@ fn a_form_field_that_does_not_decode_is_named() {
         let honig::ClientError::Decode { pointer, .. } = e else { panic!("not a decode error: {e}") };
         pointer
     };
-    let err = form_decode::<Member>(0, b"name=Ann&age=300").expect_err("300 is past u8");
+    let err = form_decode::<Member>(None, b"name=Ann&age=300").expect_err("300 is past u8");
     assert_eq!(pointer(err), "/age");
-    let err = form_decode_with::<Member>(0, b"name=Ann&age=300", &[], &[]).expect_err("300 is past u8");
+    let err = form_decode_with::<Member>(None, b"name=Ann&age=300", &[], &[]).expect_err("300 is past u8");
     assert_eq!(pointer(err), "/age");
 }

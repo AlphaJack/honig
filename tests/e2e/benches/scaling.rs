@@ -41,7 +41,7 @@ fn decode(body: &Value) -> (usize, Work) {
     let bytes = serde_json::to_vec(body).unwrap_or_default();
     let len = bytes.len();
     let work: Work = Box::new(move || {
-        std::hint::black_box(api::runtime::json_decode::<types::Tree>(200, &bytes).ok());
+        std::hint::black_box(api::runtime::json_decode::<types::Tree>(Some(200), &bytes).ok());
     });
     (len, work)
 }

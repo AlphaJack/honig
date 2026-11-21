@@ -45,6 +45,6 @@ fn mixed_multipart_sends_one_part_per_item() {
     assert!(text.contains(&serde_json::json!({"photographer": "Studio North"}).to_string()), "{text}");
     assert!(bytes.windows(3).any(|w| w == [0xff, 0xd8, 0x00]), "raw image bytes, not base64");
     let back: (types::PhotoBatchMeta, Vec<api::Binary>) =
-        api::runtime::mixed_decode(200, &ct, &bytes, Some(1)).unwrap_or_else(|e| panic!("{e}"));
+        api::runtime::mixed_decode(Some(200), &ct, &bytes, Some(1)).unwrap_or_else(|e| panic!("{e}"));
     assert_eq!(back, body);
 }

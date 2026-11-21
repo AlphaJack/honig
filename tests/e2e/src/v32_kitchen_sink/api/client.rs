@@ -308,7 +308,7 @@ impl<T: runtime::Transport> Client<T> {
                             "/header/X-Size",
                         )
                         .map_err(|e| runtime::ClientError::Decode {
-                            status,
+                            status: Some(status),
                             message: e.to_string(),
                             body: body.clone(),
                             pointer: String::new(),
@@ -320,7 +320,7 @@ impl<T: runtime::Transport> Client<T> {
                             "/header/X-Quota",
                         )
                         .map_err(|e| runtime::ClientError::Decode {
-                            status,
+                            status: Some(status),
                             message: e.to_string(),
                             body: body.clone(),
                             pointer: String::new(),
@@ -467,16 +467,16 @@ impl<T: runtime::Transport> Client<T> {
                 Ok(ops::list_products::Response::Ok {
                     body: if runtime::media_matches(ct, "application/json") {
                         ops::list_products::OkBody::Json(
-                            runtime::json_decode(status, &body)?,
+                            runtime::json_decode(Some(status), &body)?,
                         )
                     } else if runtime::media_matches(ct, "application/jsonl") {
                         ops::list_products::OkBody::Jsonl(
-                            runtime::jsonl_decode(status, &body)
+                            runtime::jsonl_decode(Some(status), &body)
                                 .map(runtime::Items::List)?,
                         )
                     } else {
                         ops::list_products::OkBody::Json(
-                            runtime::json_decode(status, &body)?,
+                            runtime::json_decode(Some(status), &body)?,
                         )
                     },
                     x_next: runtime::from_param(
@@ -488,7 +488,7 @@ impl<T: runtime::Transport> Client<T> {
                             "/header/X-Next",
                         )
                         .map_err(|e| runtime::ClientError::Decode {
-                            status,
+                            status: Some(status),
                             message: e.to_string(),
                             body: body.clone(),
                             pointer: String::new(),
@@ -502,7 +502,7 @@ impl<T: runtime::Transport> Client<T> {
                             "/header/X-Total",
                         )
                         .map_err(|e| runtime::ClientError::Decode {
-                            status,
+                            status: Some(status),
                             message: e.to_string(),
                             body: body.clone(),
                             pointer: String::new(),
@@ -518,7 +518,7 @@ impl<T: runtime::Transport> Client<T> {
                 runtime::check_media_of(&head, &body, &["application/problem+json"])?;
                 Ok(ops::list_products::Response::Default {
                     status: head.status,
-                    body: runtime::json_decode(status, &body)?,
+                    body: runtime::json_decode(Some(status), &body)?,
                 })
             }
         }
@@ -614,7 +614,11 @@ impl<T: runtime::Transport> Client<T> {
             let body = resp.into_body().into_stream();
             return Ok(
                 runtime::Streamed::Ok(
-                    runtime::ItemStream::new(status, body, runtime::Framing::JsonLines),
+                    runtime::ItemStream::new(
+                        Some(status),
+                        body,
+                        runtime::Framing::JsonLines,
+                    ),
                 ),
             );
         }
@@ -642,7 +646,7 @@ impl<T: runtime::Transport> Client<T> {
                     )?;
                     Ok(ops::list_products::Response::Default {
                         status: head.status,
-                        body: runtime::json_decode(status, &body)?,
+                        body: runtime::json_decode(Some(status), &body)?,
                     })
                 }
             }
@@ -753,7 +757,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 200 {
             {
                 runtime::check_media_of(&head, &body, &["application/json"])?;
-                runtime::json_decode(status, &body)
+                runtime::json_decode(Some(status), &body)
                     .map(ops::search_products::Response::Ok)
             }
         } else {
@@ -814,7 +818,8 @@ impl<T: runtime::Transport> Client<T> {
         if status == 200 {
             {
                 runtime::check_media_of(&head, &body, &["application/json"])?;
-                runtime::json_decode(status, &body).map(ops::get_product::Response::Ok)
+                runtime::json_decode(Some(status), &body)
+                    .map(ops::get_product::Response::Ok)
             }
         } else {
             Err(runtime::ClientError::UnexpectedStatus {
@@ -998,7 +1003,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 200 {
             {
                 runtime::check_media_of(&head, &body, &["text/event-stream"])?;
-                runtime::sse_decode(status, &body)
+                runtime::sse_decode(Some(status), &body)
                     .map(runtime::Items::List)
                     .map(ops::search::Response::Ok)
             }
@@ -1043,7 +1048,7 @@ impl<T: runtime::Transport> Client<T> {
             let body = resp.into_body().into_stream();
             return Ok(
                 runtime::Streamed::Ok(
-                    runtime::ItemStream::new(status, body, runtime::Framing::Sse)
+                    runtime::ItemStream::new(Some(status), body, runtime::Framing::Sse)
                         .reconnecting(self.transport.clone(), again),
                 ),
             );

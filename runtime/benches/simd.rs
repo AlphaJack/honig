@@ -50,7 +50,7 @@ fn raw(size: usize) -> Vec<u8> {
 #[divan::bench(args = SIZES)]
 fn json_decode(b: Bencher<'_, '_>, size: usize) {
     let body = order(size);
-    b.counter(BytesCount::of_slice(&body)).bench(|| runtime::json_decode::<Order>(0, divan::black_box(&body)));
+    b.counter(BytesCount::of_slice(&body)).bench(|| runtime::json_decode::<Order>(None, divan::black_box(&body)));
 }
 
 #[divan::bench(args = SIZES)]
@@ -97,7 +97,7 @@ fn multipart_decode(b: Bencher<'_, '_>, size: usize) {
     body.extend(format!("\r\n--{BOUNDARY}--\r\n").into_bytes());
     let content_type = format!("multipart/form-data; boundary={BOUNDARY}");
     b.counter(BytesCount::of_slice(&body))
-        .bench(|| runtime::multipart_decode::<Upload>(0, &content_type, divan::black_box(&body)).expect("a form"));
+        .bench(|| runtime::multipart_decode::<Upload>(None, &content_type, divan::black_box(&body)).expect("a form"));
 }
 
 #[derive(serde::Deserialize)]
@@ -116,5 +116,5 @@ fn multipart_text_decode(b: Bencher<'_, '_>, size: usize) {
     body.extend(format!("\r\n--{BOUNDARY}--\r\n").into_bytes());
     let content_type = format!("multipart/form-data; boundary={BOUNDARY}");
     b.counter(BytesCount::of_slice(&body))
-        .bench(|| runtime::multipart_decode::<Note>(0, &content_type, divan::black_box(&body)).expect("a form"));
+        .bench(|| runtime::multipart_decode::<Note>(None, &content_type, divan::black_box(&body)).expect("a form"));
 }

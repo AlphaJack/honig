@@ -9,7 +9,7 @@ use crate::{ClientError, Connecting, ItemStream, Message, Request, Transport};
 struct Resend<Tr> {
     transport: Tr,
     req: Request,
-    status: u16,
+    status: Option<u16>,
 }
 
 impl<Tr: Transport> Reconnect for Resend<Tr> {
@@ -37,8 +37,8 @@ impl<Tr: Transport> Reconnect for Resend<Tr> {
             let media = crate::check_response_media(s, resp.content_type(), None, &["text/event-stream"]);
             match (s, media) {
                 (s, _) if s == http::StatusCode::NO_CONTENT => Reconnected::Done,
-                (s, Ok(())) if s == status => Reconnected::Open(resp.into_body().into_stream()),
-                (s, Err(e)) if s == status => Reconnected::Fatal(e),
+                (s, Ok(())) if Some(s) == status => Reconnected::Open(resp.into_body().into_stream()),
+                (s, Err(e)) if Some(s) == status => Reconnected::Fatal(e),
                 (s, _) => {
                     let status = resp.status();
                     let body = resp.into_body().collect().await.unwrap_or_default();

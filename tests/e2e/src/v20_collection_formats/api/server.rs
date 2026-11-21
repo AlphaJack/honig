@@ -339,7 +339,11 @@ fn upload_params(
     let runtime::Incoming { request: req, body, .. } = incoming;
     runtime::check_media(runtime::Message::content_type(req), &["multipart/form-data"])?;
     Ok(ops::upload::Params {
-        body: runtime::multipart_decode(0, runtime::Message::content_type(req), &body)?,
+        body: runtime::multipart_decode(
+            None,
+            runtime::Message::content_type(req),
+            &body,
+        )?,
     })
 }
 fn upload_encode(resp: &ops::upload::Response) -> runtime::Response {

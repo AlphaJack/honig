@@ -385,7 +385,7 @@ fn create_order_params(
     let runtime::Incoming { request: req, body, .. } = incoming;
     runtime::check_media(runtime::Message::content_type(req), &["application/json"])?;
     Ok(ops::create_order::Params {
-        body: runtime::json_decode(0, &body)?,
+        body: runtime::json_decode(None, &body)?,
     })
 }
 fn create_order_encode(
@@ -514,7 +514,11 @@ fn upload_document_params(
     runtime::check_media(runtime::Message::content_type(req), &["multipart/form-data"])?;
     Ok(ops::upload_document::Params {
         order_id: runtime::path_param(caps, 0, runtime::Style::Simple, "/path/orderId")?,
-        body: runtime::multipart_decode(0, runtime::Message::content_type(req), &body)?,
+        body: runtime::multipart_decode(
+            None,
+            runtime::Message::content_type(req),
+            &body,
+        )?,
     })
 }
 fn upload_document_encode(resp: &ops::upload_document::Response) -> runtime::Response {

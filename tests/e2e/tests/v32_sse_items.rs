@@ -29,7 +29,7 @@ fn heartbeats_are_skipped_while_streaming() {
         b"\n",
         b"data: {\"tile\":\"b\",\"rows\":2}\n\n:heartbeat\n\n",
     ];
-    let mut stream = api::ItemStream::<types::TileEvent>::new(200, pieces(chunks), api::Framing::Sse);
+    let mut stream = api::ItemStream::<types::TileEvent>::new(Some(200), pieces(chunks), api::Framing::Sse);
     let mut got = vec![];
     while let Some(item) = api::block_on(stream.next()) {
         got.push(item.expect("every block left is an event"));
@@ -40,7 +40,7 @@ fn heartbeats_are_skipped_while_streaming() {
 #[test]
 fn heartbeats_are_skipped_in_a_buffered_body() {
     let body = b":heartbeat\n\ndata: {\"tile\":\"a\",\"rows\":1}\n\n:heartbeat\n\n";
-    let got: Vec<types::TileEvent> = api::runtime::sse_decode(200, body).expect("decodes");
+    let got: Vec<types::TileEvent> = api::runtime::sse_decode(Some(200), body).expect("decodes");
     assert_eq!(got, vec![tile("a", 1)]);
 }
 

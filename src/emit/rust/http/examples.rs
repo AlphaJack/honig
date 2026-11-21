@@ -146,11 +146,11 @@ fn xml_check_fn() -> TokenStream {
                     return;
                 }
             };
-            let decoded = runtime::xml_decode::<T>(0, text.as_bytes());
+            let decoded = runtime::xml_decode::<T>(None, text.as_bytes());
             if decoded.as_ref().ok() != Some(&want) {
                 bad.push(format!("{at}: the XML decodes to {decoded:?}, not {want:?}"));
             }
-            let back = runtime::xml_encode(&want).and_then(|b| runtime::xml_decode::<T>(0, &b));
+            let back = runtime::xml_encode(&want).and_then(|b| runtime::xml_decode::<T>(None, &b));
             if back.as_ref().ok() != Some(&want) {
                 bad.push(format!("{at}: encoded and decoded, it is {back:?}"));
             }

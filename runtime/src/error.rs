@@ -13,8 +13,8 @@ pub enum ClientError {
     Encode(String),
     /// A documented response does not fit its schema. `pointer` says where.
     Decode {
-        /// HTTP status code.
-        status: u16,
+        /// HTTP status code of the response, `None` for a request that a server decodes.
+        status: Option<u16>,
         /// What failed to decode.
         message: String,
         /// Raw response body.
@@ -76,9 +76,10 @@ impl fmt::Display for ClientError {
         match self {
             Self::Transport(m) => write!(f, "transport error: {m}"),
             Self::Encode(m) => write!(f, "cannot encode request: {m}"),
-            // Server-side request decoding uses status 0: there is no response yet.
-            Self::Decode { status: 0, message, .. } => write!(f, "cannot decode request: {message}"),
-            Self::Decode { status, message, .. } => write!(f, "cannot decode {status} response: {message}"),
+            Self::Decode { status: None, message, .. } => write!(f, "cannot decode request: {message}"),
+            Self::Decode { status: Some(status), message, .. } => {
+                write!(f, "cannot decode {status} response: {message}")
+            }
             Self::UnexpectedMedia { status, content_type, declared, .. } => {
                 let sent = if content_type.is_empty() { "no Content-Type" } else { content_type.as_str() };
                 write!(f, "unexpected media type in {status} response: {sent}, declared {declared}")

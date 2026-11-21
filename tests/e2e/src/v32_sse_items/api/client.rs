@@ -33,7 +33,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 200 {
             {
                 runtime::check_media_of(&head, &body, &["text/event-stream"])?;
-                runtime::sse_decode(status, &body)
+                runtime::sse_decode(Some(status), &body)
                     .map(runtime::Items::List)
                     .map(ops::tile_stream::Response::Ok)
             }
@@ -76,7 +76,7 @@ impl<T: runtime::Transport> Client<T> {
             let body = resp.into_body().into_stream();
             return Ok(
                 runtime::Streamed::Ok(
-                    runtime::ItemStream::new(status, body, runtime::Framing::Sse)
+                    runtime::ItemStream::new(Some(status), body, runtime::Framing::Sse)
                         .reconnecting(self.transport.clone(), again),
                 ),
             );
@@ -114,7 +114,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 200 {
             {
                 runtime::check_media_of(&head, &body, &["application/jsonl"])?;
-                runtime::jsonl_decode(status, &body)
+                runtime::jsonl_decode(Some(status), &body)
                     .map(runtime::Items::List)
                     .map(ops::tile_lines::Response::Ok)
             }
@@ -153,7 +153,11 @@ impl<T: runtime::Transport> Client<T> {
             let body = resp.into_body().into_stream();
             return Ok(
                 runtime::Streamed::Ok(
-                    runtime::ItemStream::new(status, body, runtime::Framing::JsonLines),
+                    runtime::ItemStream::new(
+                        Some(status),
+                        body,
+                        runtime::Framing::JsonLines,
+                    ),
                 ),
             );
         }
@@ -190,7 +194,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 200 {
             {
                 runtime::check_media_of(&head, &body, &["text/event-stream"])?;
-                runtime::sse_decode(status, &body)
+                runtime::sse_decode(Some(status), &body)
                     .map(runtime::Items::List)
                     .map(ops::tile_updates::Response::Ok)
             }
@@ -233,7 +237,7 @@ impl<T: runtime::Transport> Client<T> {
             let body = resp.into_body().into_stream();
             return Ok(
                 runtime::Streamed::Ok(
-                    runtime::ItemStream::new(status, body, runtime::Framing::Sse)
+                    runtime::ItemStream::new(Some(status), body, runtime::Framing::Sse)
                         .reconnecting(self.transport.clone(), again),
                 ),
             );
@@ -271,7 +275,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 200 {
             {
                 runtime::check_media_of(&head, &body, &["text/event-stream"])?;
-                runtime::sse_decode(status, &body)
+                runtime::sse_decode(Some(status), &body)
                     .map(runtime::Items::List)
                     .map(ops::chat_stream::Response::Ok)
             }
@@ -314,7 +318,7 @@ impl<T: runtime::Transport> Client<T> {
             let body = resp.into_body().into_stream();
             return Ok(
                 runtime::Streamed::Ok(
-                    runtime::ItemStream::new(status, body, runtime::Framing::Sse)
+                    runtime::ItemStream::new(Some(status), body, runtime::Framing::Sse)
                         .reconnecting(self.transport.clone(), again),
                 ),
             );
@@ -381,9 +385,9 @@ impl<T: runtime::Transport> Client<T> {
         if status == 200 {
             {
                 runtime::check_media_of(&head, &body, &["application/jsonl"])?;
-                runtime::jsonl_decode(status, &body)
+                runtime::jsonl_decode(Some(status), &body)
                     .and_then(|v| runtime::limit_items(
-                        status,
+                        Some(status),
                         v,
                         runtime::Limits {
                             min: None,
@@ -429,7 +433,11 @@ impl<T: runtime::Transport> Client<T> {
             let body = resp.into_body().into_stream();
             return Ok(
                 runtime::Streamed::Ok(
-                    (runtime::ItemStream::new(status, body, runtime::Framing::JsonLines))
+                    (runtime::ItemStream::new(
+                        Some(status),
+                        body,
+                        runtime::Framing::JsonLines,
+                    ))
                         .limited(runtime::Limits {
                             min: None,
                             max: Some(2),

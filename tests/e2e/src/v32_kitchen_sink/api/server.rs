@@ -698,7 +698,7 @@ fn submit_form_params(
     )?;
     Ok(ops::submit_form::Params {
         body: runtime::form_decode_styled(
-            0,
+            None,
             &body,
             &[
                 ("tags", runtime::Style::PipeDelimited, runtime::Shape::Array, false),
@@ -959,13 +959,17 @@ fn create_product_params(
             runtime::Message::content_type(req),
             "application/json",
         ) {
-            ops::create_product::Body::Json(runtime::json_decode(0, &body)?)
+            ops::create_product::Body::Json(runtime::json_decode(None, &body)?)
         } else if runtime::media_matches(
             runtime::Message::content_type(req),
             "multipart/form-data",
         ) {
             ops::create_product::Body::FormData(
-                runtime::multipart_decode(0, runtime::Message::content_type(req), &body)?,
+                runtime::multipart_decode(
+                    None,
+                    runtime::Message::content_type(req),
+                    &body,
+                )?,
             )
         } else if runtime::media_matches(
             runtime::Message::content_type(req),
@@ -973,14 +977,14 @@ fn create_product_params(
         ) {
             ops::create_product::Body::Mixed(
                 runtime::mixed_decode(
-                    0,
+                    None,
                     runtime::Message::content_type(req),
                     &body,
                     None,
                 )?,
             )
         } else {
-            ops::create_product::Body::Json(runtime::json_decode(0, &body)?)
+            ops::create_product::Body::Json(runtime::json_decode(None, &body)?)
         },
     })
 }
@@ -1028,7 +1032,7 @@ fn search_products_params(
         {
             None
         } else {
-            Some(runtime::json_decode(0, &body)?)
+            Some(runtime::json_decode(None, &body)?)
         },
     })
 }
@@ -1444,7 +1448,7 @@ fn new_product_post_params(
         {
             None
         } else {
-            Some(runtime::json_decode(0, &body)?)
+            Some(runtime::json_decode(None, &body)?)
         },
     })
 }
@@ -1487,7 +1491,7 @@ fn create_product_on_adopt_post_params(
         {
             None
         } else {
-            Some(runtime::json_decode(0, &body)?)
+            Some(runtime::json_decode(None, &body)?)
         },
     })
 }

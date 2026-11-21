@@ -850,14 +850,14 @@ fn create_product_params(
                     runtime::Message::content_type(req),
                     "application/json",
                 ) {
-                    ops::create_product::Body::Json(runtime::json_decode(0, &body)?)
+                    ops::create_product::Body::Json(runtime::json_decode(None, &body)?)
                 } else if runtime::media_matches(
                     runtime::Message::content_type(req),
                     "application/xml",
                 ) {
-                    ops::create_product::Body::Xml(runtime::xml_decode(0, &body)?)
+                    ops::create_product::Body::Xml(runtime::xml_decode(None, &body)?)
                 } else {
-                    ops::create_product::Body::Json(runtime::json_decode(0, &body)?)
+                    ops::create_product::Body::Json(runtime::json_decode(None, &body)?)
                 },
             )
         },
@@ -980,7 +980,7 @@ fn query_products_params(
     let runtime::Incoming { request: req, body, .. } = incoming;
     runtime::check_media(runtime::Message::content_type(req), &["application/json"])?;
     Ok(ops::query_products::Params {
-        body: runtime::json_decode(0, &body)?,
+        body: runtime::json_decode(None, &body)?,
     })
 }
 fn query_products_encode(
@@ -1242,14 +1242,14 @@ fn update_product_params(
                     runtime::Message::content_type(req),
                     "application/json",
                 ) {
-                    ops::update_product::Body::Json(runtime::json_decode(0, &body)?)
+                    ops::update_product::Body::Json(runtime::json_decode(None, &body)?)
                 } else if runtime::media_matches(
                     runtime::Message::content_type(req),
                     "application/xml",
                 ) {
-                    ops::update_product::Body::Xml(runtime::xml_decode(0, &body)?)
+                    ops::update_product::Body::Xml(runtime::xml_decode(None, &body)?)
                 } else {
-                    ops::update_product::Body::Json(runtime::json_decode(0, &body)?)
+                    ops::update_product::Body::Json(runtime::json_decode(None, &body)?)
                 },
             )
         },
@@ -1541,7 +1541,11 @@ fn upload_image_params(
             None
         } else {
             Some(
-                runtime::multipart_decode(0, runtime::Message::content_type(req), &body)?,
+                runtime::multipart_decode(
+                    None,
+                    runtime::Message::content_type(req),
+                    &body,
+                )?,
             )
         },
         media: ops::upload_image::Media::from_index(media),
@@ -1756,7 +1760,7 @@ fn upload_photos_params(
             "/path/productId",
         )?,
         body: runtime::mixed_decode(
-            0,
+            None,
             runtime::Message::content_type(req),
             &body,
             Some(1),
@@ -1856,7 +1860,7 @@ fn create_item_params(
     let runtime::Incoming { request: req, body, .. } = incoming;
     runtime::check_media(runtime::Message::content_type(req), &["application/json"])?;
     Ok(ops::create_item::Params {
-        body: runtime::json_decode(0, &body)?,
+        body: runtime::json_decode(None, &body)?,
     })
 }
 fn create_item_encode(
@@ -1908,14 +1912,14 @@ fn create_user_params(
                     runtime::Message::content_type(req),
                     "application/json",
                 ) {
-                    ops::create_user::Body::Json(runtime::json_decode(0, &body)?)
+                    ops::create_user::Body::Json(runtime::json_decode(None, &body)?)
                 } else if runtime::media_matches(
                     runtime::Message::content_type(req),
                     "application/xml",
                 ) {
-                    ops::create_user::Body::Xml(runtime::xml_decode(0, &body)?)
+                    ops::create_user::Body::Xml(runtime::xml_decode(None, &body)?)
                 } else {
-                    ops::create_user::Body::Json(runtime::json_decode(0, &body)?)
+                    ops::create_user::Body::Json(runtime::json_decode(None, &body)?)
                 },
             )
         },
@@ -2111,14 +2115,14 @@ fn get_token_params(
                     runtime::Message::content_type(req),
                     "application/json",
                 ) {
-                    ops::get_token::Body::Json(runtime::json_decode(0, &body)?)
+                    ops::get_token::Body::Json(runtime::json_decode(None, &body)?)
                 } else if runtime::media_matches(
                     runtime::Message::content_type(req),
                     "application/xml",
                 ) {
-                    ops::get_token::Body::Xml(runtime::xml_decode(0, &body)?)
+                    ops::get_token::Body::Xml(runtime::xml_decode(None, &body)?)
                 } else {
-                    ops::get_token::Body::Json(runtime::json_decode(0, &body)?)
+                    ops::get_token::Body::Json(runtime::json_decode(None, &body)?)
                 },
             )
         },
@@ -2435,7 +2439,7 @@ fn new_product_post_params(
         {
             None
         } else {
-            Some(runtime::json_decode(0, &body)?)
+            Some(runtime::json_decode(None, &body)?)
         },
     })
 }
@@ -2478,7 +2482,7 @@ fn create_product_product_created_post_params(
         {
             None
         } else {
-            Some(runtime::json_decode(0, &body)?)
+            Some(runtime::json_decode(None, &body)?)
         },
     })
 }
@@ -2529,7 +2533,7 @@ fn create_product_product_creation_failed_post_params(
         {
             None
         } else {
-            Some(runtime::json_decode(0, &body)?)
+            Some(runtime::json_decode(None, &body)?)
         },
     })
 }
@@ -2574,7 +2578,7 @@ fn create_product_product_discontinued_post_params(
         {
             None
         } else {
-            Some(runtime::json_decode(0, &body)?)
+            Some(runtime::json_decode(None, &body)?)
         },
     })
 }

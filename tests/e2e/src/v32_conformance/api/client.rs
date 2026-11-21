@@ -91,7 +91,7 @@ impl<T: runtime::Transport> Client<T> {
                 runtime::check_media_of(&head, &body, &["application/json"])?;
                 Ok(ops::get_item::Response::Success {
                     status: head.status,
-                    body: runtime::json_decode(status, &body)?,
+                    body: runtime::json_decode(Some(status), &body)?,
                 })
             }
         } else {
@@ -99,7 +99,7 @@ impl<T: runtime::Transport> Client<T> {
                 runtime::check_media_of(&head, &body, &["application/json"])?;
                 Ok(ops::get_item::Response::Default {
                     status: head.status,
-                    body: runtime::json_decode(status, &body)?,
+                    body: runtime::json_decode(Some(status), &body)?,
                 })
             }
         }
@@ -236,7 +236,7 @@ impl<T: runtime::Transport> Client<T> {
                             "/header/Set-Cookie",
                         )
                         .map_err(|e| runtime::ClientError::Decode {
-                            status,
+                            status: Some(status),
                             message: e.to_string(),
                             body: body.clone(),
                             pointer: String::new(),

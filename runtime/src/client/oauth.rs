@@ -320,7 +320,7 @@ pub async fn device_token<T: Transport>(
     let status = resp.status().as_u16();
     let body = resp.into_body();
     if http::StatusCode::from_u16(status).is_ok_and(|s| s.is_success()) {
-        return json_decode(status, body.bytes()).map(DevicePoll::Ready);
+        return json_decode(Some(status), body.bytes()).map(DevicePoll::Ready);
     }
     match serde_json::from_slice::<OAuthError>(body.bytes()).map(|e| e.error).as_deref() {
         Ok("authorization_pending") => Ok(DevicePoll::Pending),
@@ -346,7 +346,7 @@ fn answer<R: serde::de::DeserializeOwned>(resp: Response) -> Result<R, ClientErr
     if !status.is_success() {
         return Err(ClientError::UnexpectedStatus { status, body: resp.into_body().into_parts().0 });
     }
-    json_decode(status.as_u16(), resp.body().bytes())
+    json_decode(Some(status.as_u16()), resp.body().bytes())
 }
 
 #[cfg(test)]

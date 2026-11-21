@@ -341,8 +341,7 @@ pub fn check_media(actual: &str, declared: &[&str]) -> Result<(), Reason> {
 impl From<ClientError> for Reason {
     fn from(e: ClientError) -> Self {
         match e {
-            // A request body that does not decode: the server decodes requests with status 0.
-            ClientError::Decode { status: 0, pointer, message, .. } => {
+            ClientError::Decode { status: None, pointer, message, .. } => {
                 Self::Invalid(decode_violation(&pointer, &message))
             }
             ClientError::Transport(why) => Self::Unreadable(why),
@@ -495,10 +494,10 @@ mod tests {
         assert_eq!(r.headers().get("content-type").map(|v| v.to_str().unwrap()), Some("text/plain"));
     }
 
-    /// A request body that the server fails to decode, as `json_decode(0, body)` reports it.
+    /// A request body that the server fails to decode, as `json_decode(None, body)` reports it.
     fn undecoded(pointer: &str, message: &str) -> Reason {
         Reason::from(ClientError::Decode {
-            status: 0,
+            status: None,
             message: message.to_owned(),
             body: bytes::Bytes::new(),
             pointer: pointer.to_owned(),
