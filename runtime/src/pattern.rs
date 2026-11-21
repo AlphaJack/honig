@@ -25,11 +25,10 @@ pub fn pattern_matches(re: &Pattern, s: &str) -> bool {
     is_match(re.re.get_or_init(|| compile(re.text)).as_ref(), s)
 }
 
-/// Checks that `s` matches `re`, with the pattern in the message.
-pub fn check_pattern(out: &mut Vec<crate::Violation>, path: &crate::InstancePath<'_>, re: &Pattern, s: &str) {
-    if !pattern_matches(re, s) {
-        crate::checks::violation(out, path, format!("does not match `{}`", re.text));
-    }
+/// Returns the text of `re`.
+#[must_use]
+pub const fn pattern_text(re: &Pattern) -> &'static str {
+    re.text
 }
 
 /// Returns [`pattern_matches`] for patterns known only at run time (schema fragments and `patternProperties`). Each is
@@ -72,9 +71,6 @@ mod tests {
     fn a_pattern_matches_anywhere_and_one_that_does_not_compile_matches_nothing() {
         static RE: Pattern = Pattern::new("^[a-z]+$");
         assert!(pattern_matches(&RE, "abc") && !pattern_matches(&RE, "ABC"));
-        let mut out = Vec::new();
-        check_pattern(&mut out, &crate::InstancePath::Root, &RE, "ABC");
-        assert_eq!(out.first().map(|v| v.message.as_str()), Some("does not match `^[a-z]+$`"));
         assert!(pattern_matches_dyn(r"[\-\_]", "_"), "plain ECMA-262 when Unicode mode refuses it");
         assert!(!pattern_matches_dyn("(", "anything"));
     }

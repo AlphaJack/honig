@@ -289,6 +289,14 @@ impl<T> Bounds<T> {
     pub const NONE: Self = Self { min: None, max: None, exclusive_min: None, exclusive_max: None };
 }
 
+/// Checks that `s` matches `re`, with the pattern in the message.
+#[cfg(feature = "regress")]
+pub fn check_pattern(out: &mut Vec<Violation>, path: &InstancePath<'_>, re: &crate::pattern::Pattern, s: &str) {
+    if !crate::pattern::pattern_matches(re, s) {
+        violation(out, path, format!("does not match `{}`", crate::pattern::pattern_text(re)));
+    }
+}
+
 /// Checks `minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum`.
 pub fn check_range<T: PartialOrd + fmt::Display + Copy + JsonNumber>(
     out: &mut Vec<Violation>,
@@ -855,6 +863,15 @@ mod mail {
 
 #[cfg(test)]
 mod tests {
+    #[cfg(feature = "regress")]
+    #[test]
+    fn a_pattern_names_itself_in_its_message() {
+        static RE: crate::pattern::Pattern = crate::pattern::Pattern::new("^[a-z]+$");
+        let mut out = vec![];
+        super::check_pattern(&mut out, &super::InstancePath::Root, &RE, "ABC");
+        assert_eq!(out.first().map(|v| v.message.as_str()), Some("does not match `^[a-z]+$`"));
+    }
+
     #[test]
     fn nan_is_no_number_whatever_the_bounds() {
         let mut out = vec![];
