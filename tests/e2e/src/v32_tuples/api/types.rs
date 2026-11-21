@@ -6,28 +6,7 @@ pub type Point = (f64, f64, String);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct Open(pub(super) Vec<serde_json::Value>);
-impl<'de> serde::Deserialize<'de> for Open {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let (value, text) = runtime::read_once::<_, Vec<serde_json::Value>>(d)?;
-        match text {
-            Some(text) => {
-                let json = runtime::Content::parse(text)
-                    .map_err(serde::de::Error::custom)?;
-                Self::checked(value, &json)
-            }
-            None => Self::try_from(value),
-        }
-            .map_err(serde::de::Error::custom)
-    }
-}
-impl TryFrom<Vec<serde_json::Value>> for Open {
-    type Error = runtime::BuildError;
-    fn try_from(value: Vec<serde_json::Value>) -> Result<Self, runtime::BuildError> {
-        let json = runtime::to_value(&value)
-            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
-        Self::checked(value, &runtime::Content::of(&json))
-    }
-}
+runtime::checked_deserialize!(Open, Vec < serde_json::Value >, once);
 impl Open {
     fn checked(
         value: Vec<serde_json::Value>,
@@ -54,6 +33,7 @@ impl Open {
             .map_err(runtime::BuildError::value)
     }
 }
+runtime::checked_json!(Open, Vec < serde_json::Value >);
 runtime::checked_impls!(Open, Vec < serde_json::Value >);
 runtime::object! {
     #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]

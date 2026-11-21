@@ -67,28 +67,7 @@ impl<'de> serde::Deserialize<'de> for Status {
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct Delivery(pub(super) DeliveryVariants);
-impl<'de> serde::Deserialize<'de> for Delivery {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let (value, text) = runtime::read_once::<_, DeliveryVariants>(d)?;
-        match text {
-            Some(text) => {
-                let json = runtime::Content::parse(text)
-                    .map_err(serde::de::Error::custom)?;
-                Self::checked(value, &json)
-            }
-            None => Self::try_from(value),
-        }
-            .map_err(serde::de::Error::custom)
-    }
-}
-impl TryFrom<DeliveryVariants> for Delivery {
-    type Error = runtime::BuildError;
-    fn try_from(value: DeliveryVariants) -> Result<Self, runtime::BuildError> {
-        let json = runtime::to_value(&value)
-            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
-        Self::checked(value, &runtime::Content::of(&json))
-    }
-}
+runtime::checked_deserialize!(Delivery, DeliveryVariants, once);
 impl Delivery {
     fn checked(
         value: DeliveryVariants,
@@ -118,6 +97,7 @@ impl Delivery {
             .map_err(runtime::BuildError::value)
     }
 }
+runtime::checked_json!(Delivery, DeliveryVariants);
 runtime::checked_impls!(Delivery, DeliveryVariants);
 runtime::object! {
     #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
@@ -221,28 +201,7 @@ runtime::str_enum_impls!(StatusRequest);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct DeliveryRequest(pub(super) DeliveryRequestVariants);
-impl<'de> serde::Deserialize<'de> for DeliveryRequest {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let (value, text) = runtime::read_once::<_, DeliveryRequestVariants>(d)?;
-        match text {
-            Some(text) => {
-                let json = runtime::Content::parse(text)
-                    .map_err(serde::de::Error::custom)?;
-                Self::checked(value, &json)
-            }
-            None => Self::try_from(value),
-        }
-            .map_err(serde::de::Error::custom)
-    }
-}
-impl TryFrom<DeliveryRequestVariants> for DeliveryRequest {
-    type Error = runtime::BuildError;
-    fn try_from(value: DeliveryRequestVariants) -> Result<Self, runtime::BuildError> {
-        let json = runtime::to_value(&value)
-            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
-        Self::checked(value, &runtime::Content::of(&json))
-    }
-}
+runtime::checked_deserialize!(DeliveryRequest, DeliveryRequestVariants, once);
 impl DeliveryRequest {
     fn checked(
         value: DeliveryRequestVariants,
@@ -270,6 +229,7 @@ impl DeliveryRequest {
             .map_err(runtime::BuildError::value)
     }
 }
+runtime::checked_json!(DeliveryRequest, DeliveryRequestVariants);
 runtime::checked_impls!(DeliveryRequest, DeliveryRequestVariants);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum OrderPriorityRequest {
@@ -320,11 +280,7 @@ impl serde::Serialize for DeliveryVariants {
         }
     }
 }
-impl<'de> serde::Deserialize<'de> for DeliveryVariants {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        runtime::tagged::<D, Self>(d)
-    }
-}
+runtime::tagged_deserialize!(DeliveryVariants);
 impl<'de> runtime::TaggedUnion<'de> for DeliveryVariants {
     const TAG: &'static str = "kind";
     fn knows(tag: &str) -> bool {

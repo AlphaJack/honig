@@ -13,11 +13,7 @@ impl serde::Serialize for Product {
         }
     }
 }
-impl<'de> serde::Deserialize<'de> for Product {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        runtime::tagged::<D, Self>(d)
-    }
-}
+runtime::tagged_deserialize!(Product);
 impl<'de> runtime::TaggedUnion<'de> for Product {
     const TAG: &'static str = "kind";
     fn knows(tag: &str) -> bool {

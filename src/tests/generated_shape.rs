@@ -1689,8 +1689,8 @@ fn subschema_checks_read_one_buffer() {
     );
     let types =
         common::file(&common::generate("one-buffer", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
-    assert_eq!(types.matches("runtime::to_value(").count(), 1, "{types}");
-    assert!(types.contains("runtime::Content::of(") && !types.contains(".clone())"), "{types}");
+    assert_eq!(types.matches("runtime::checked_json!(").count(), 1, "{types}");
+    assert!(!types.contains("runtime::to_value(") && !types.contains(".clone())"), "{types}");
 }
 
 /// `contains` on a typed list counts the items of the buffer of the list: no item is written out as JSON again.
@@ -2080,7 +2080,7 @@ fn implied_keywords_read_the_decoded_text() {
     let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"S": s}}));
     let types =
         common::file(&common::generate("implied-text", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
-    assert!(types.contains("runtime::read_once::<") && types.contains("runtime::Content::Str(text)"), "{types}");
+    assert!(types.contains(", once);") && types.contains("runtime::Content::Str(text)"), "{types}");
     assert!(!types.contains("to_value(&value).unwrap_or_default()"), "{types}");
 }
 
@@ -2093,7 +2093,7 @@ fn a_checked_type_reads_json_text_once() {
     let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Item": item, "Holder": holder}}));
     let types =
         common::file(&common::generate("read-once", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
-    assert!(types.contains("runtime::read_once::<") && types.contains("runtime::Content::parse(text)"), "{types}");
+    assert!(types.contains("runtime::checked_deserialize!(") && types.contains(", once);"), "{types}");
 }
 
 /// The impls that every enum and checked newtype shares come from the runtime: a module calls them and contains no
@@ -2119,6 +2119,30 @@ fn shared_impls_are_runtime_macros_and_not_copies() {
         assert!(types.contains(call), "{call} in {types}");
     }
     assert!(types.contains("runtime::checked_num_impls!(Count, i64)"), "{types}");
+}
+
+/// A checked type with the base and keywords of an earlier one lets that one check: its `TryFrom` delegates. The impls
+/// of a checked type, a JSON text value and a tagged union come from runtime macros.
+#[test]
+fn twins_delegate_and_shared_impls_are_runtime_macros() {
+    let code = json!({"type": "string", "pattern": "^[A-Z]+$"});
+    let doc = common::spec(
+        "3.2.0",
+        &json!({}),
+        &json!({"schemas": {
+            "Code": code, "Other": code,
+            "Pick": {"oneOf": [{"$ref": "#/components/schemas/A"}, {"$ref": "#/components/schemas/B"}],
+                "discriminator": {"propertyName": "k"}},
+            "A": {"type": "object", "properties": {"k": {"type": "string"}, "a": {"type": "string"}}},
+            "B": {"type": "object", "properties": {"k": {"type": "string"}, "b": {"type": "integer"}}},
+            "Text": {"type": "string", "contentMediaType": "application/json", "contentSchema": {"type": "integer"}}
+        }}),
+    );
+    let types = common::file(&common::generate("twins", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
+    assert!(!types.contains("macro_rules!"), "{types}");
+    assert!(types.contains("runtime::checked_twin!(Other, Code, String)"), "{types}");
+    assert!(types.contains("runtime::tagged_deserialize!(PickVariants)"), "{types}");
+    assert!(types.contains("runtime::json_text_impls!(Text)"), "{types}");
 }
 
 /// Two constants and two operations with the same responses share their impls through runtime macros: no file

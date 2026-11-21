@@ -29,16 +29,6 @@ macro_rules! deserialize_impl {
         }
     };
 }
-macro_rules! deserialize_impl_2 {
-    ($t:ty) => {
-        impl<'de> serde::Deserialize<'de> for $t {
-            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-                let value = <serde_json::Value as serde::Deserialize>::deserialize(d)?;
-                Self::try_from(value).map_err(serde::de::Error::custom)
-            }
-        }
-    };
-}
 use super::runtime;
 runtime::object! {
     #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
@@ -56,28 +46,7 @@ runtime::object! {
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
 #[serde(transparent)]
 pub struct Note(pub(super) NoteVariants);
-impl<'de> serde::Deserialize<'de> for Note {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let (value, text) = runtime::read_once::<_, NoteVariants>(d)?;
-        match text {
-            Some(text) => {
-                let json = runtime::Content::parse(text)
-                    .map_err(serde::de::Error::custom)?;
-                Self::checked(value, &json)
-            }
-            None => Self::try_from(value),
-        }
-            .map_err(serde::de::Error::custom)
-    }
-}
-impl TryFrom<NoteVariants> for Note {
-    type Error = runtime::BuildError;
-    fn try_from(value: NoteVariants) -> Result<Self, runtime::BuildError> {
-        let json = runtime::to_value(&value)
-            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
-        Self::checked(value, &runtime::Content::of(&json))
-    }
-}
+runtime::checked_deserialize!(Note, NoteVariants, once);
 impl Note {
     fn checked(
         value: NoteVariants,
@@ -97,32 +66,12 @@ impl Note {
             .map_err(runtime::BuildError::value)
     }
 }
+runtime::checked_json!(Note, NoteVariants);
 runtime::checked_impls!(Note, NoteVariants);
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
 #[serde(transparent)]
 pub struct TextNote(pub(super) TextNoteFields);
-impl<'de> serde::Deserialize<'de> for TextNote {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let (value, text) = runtime::read_once::<_, TextNoteFields>(d)?;
-        match text {
-            Some(text) => {
-                let json = runtime::Content::parse(text)
-                    .map_err(serde::de::Error::custom)?;
-                Self::checked(value, &json)
-            }
-            None => Self::try_from(value),
-        }
-            .map_err(serde::de::Error::custom)
-    }
-}
-impl TryFrom<TextNoteFields> for TextNote {
-    type Error = runtime::BuildError;
-    fn try_from(value: TextNoteFields) -> Result<Self, runtime::BuildError> {
-        let json = runtime::to_value(&value)
-            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
-        Self::checked(value, &runtime::Content::of(&json))
-    }
-}
+runtime::checked_deserialize!(TextNote, TextNoteFields, once);
 impl TextNote {
     fn checked(
         value: TextNoteFields,
@@ -154,6 +103,7 @@ impl TextNote {
             .map_err(runtime::BuildError::value)
     }
 }
+runtime::checked_json!(TextNote, TextNoteFields);
 runtime::checked_impls!(TextNote, TextNoteFields);
 runtime::object! {
     #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -198,28 +148,7 @@ pub type Pixels = i64;
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct Crop(pub(super) CropVariants);
-impl<'de> serde::Deserialize<'de> for Crop {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let (value, text) = runtime::read_once::<_, CropVariants>(d)?;
-        match text {
-            Some(text) => {
-                let json = runtime::Content::parse(text)
-                    .map_err(serde::de::Error::custom)?;
-                Self::checked(value, &json)
-            }
-            None => Self::try_from(value),
-        }
-            .map_err(serde::de::Error::custom)
-    }
-}
-impl TryFrom<CropVariants> for Crop {
-    type Error = runtime::BuildError;
-    fn try_from(value: CropVariants) -> Result<Self, runtime::BuildError> {
-        let json = runtime::to_value(&value)
-            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
-        Self::checked(value, &runtime::Content::of(&json))
-    }
-}
+runtime::checked_deserialize!(Crop, CropVariants, once);
 impl Crop {
     fn checked(
         value: CropVariants,
@@ -247,33 +176,13 @@ impl Crop {
             .map_err(runtime::BuildError::value)
     }
 }
+runtime::checked_json!(Crop, CropVariants);
 runtime::checked_impls!(Crop, CropVariants);
 /// `TextNote`
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
 #[serde(transparent)]
 pub struct NoteTextNote(pub(super) NoteTextNoteFields);
-impl<'de> serde::Deserialize<'de> for NoteTextNote {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let (value, text) = runtime::read_once::<_, NoteTextNoteFields>(d)?;
-        match text {
-            Some(text) => {
-                let json = runtime::Content::parse(text)
-                    .map_err(serde::de::Error::custom)?;
-                Self::checked(value, &json)
-            }
-            None => Self::try_from(value),
-        }
-            .map_err(serde::de::Error::custom)
-    }
-}
-impl TryFrom<NoteTextNoteFields> for NoteTextNote {
-    type Error = runtime::BuildError;
-    fn try_from(value: NoteTextNoteFields) -> Result<Self, runtime::BuildError> {
-        let json = runtime::to_value(&value)
-            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
-        Self::checked(value, &runtime::Content::of(&json))
-    }
-}
+runtime::checked_deserialize!(NoteTextNote, NoteTextNoteFields, once);
 impl NoteTextNote {
     fn checked(
         value: NoteTextNoteFields,
@@ -305,6 +214,7 @@ impl NoteTextNote {
             .map_err(runtime::BuildError::value)
     }
 }
+runtime::checked_json!(NoteTextNote, NoteTextNoteFields);
 runtime::checked_impls!(NoteTextNote, NoteTextNoteFields);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 pub struct NoteTextNoteKind;
@@ -538,11 +448,7 @@ impl serde::Serialize for NoteVariants {
         }
     }
 }
-impl<'de> serde::Deserialize<'de> for NoteVariants {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        runtime::tagged::<D, Self>(d)
-    }
-}
+runtime::tagged_deserialize!(NoteVariants);
 impl<'de> runtime::TaggedUnion<'de> for NoteVariants {
     const TAG: &'static str = "kind";
     fn knows(tag: &str) -> bool {
@@ -684,7 +590,7 @@ impl NoteTextNoteFields {
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct NotObjectSize(pub(super) serde_json::Value);
-deserialize_impl_2!(NotObjectSize);
+runtime::checked_deserialize!(NotObjectSize, serde_json::Value);
 impl TryFrom<serde_json::Value> for NotObjectSize {
     type Error = runtime::BuildError;
     fn try_from(value: serde_json::Value) -> Result<Self, runtime::BuildError> {
@@ -713,7 +619,7 @@ runtime::checked_impls!(NotObjectSize, serde_json::Value);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct Not2ObjectText(pub(super) serde_json::Value);
-deserialize_impl_2!(Not2ObjectText);
+runtime::checked_deserialize!(Not2ObjectText, serde_json::Value);
 impl TryFrom<serde_json::Value> for Not2ObjectText {
     type Error = runtime::BuildError;
     fn try_from(value: serde_json::Value) -> Result<Self, runtime::BuildError> {
@@ -741,12 +647,7 @@ runtime::checked_impls!(Not2ObjectText, serde_json::Value);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct TextNoteRgb(pub(super) [u8; 3]);
-impl<'de> serde::Deserialize<'de> for TextNoteRgb {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <[u8; 3] as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
-    }
-}
+runtime::checked_deserialize!(TextNoteRgb, [u8; 3]);
 impl TryFrom<[u8; 3]> for TextNoteRgb {
     type Error = runtime::BuildError;
     fn try_from(value: [u8; 3]) -> Result<Self, runtime::BuildError> {
@@ -765,7 +666,7 @@ pub type NoteTextNoteRgb = TextNoteRgb;
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct NotChecked(pub(super) serde_json::Value);
-deserialize_impl_2!(NotChecked);
+runtime::checked_deserialize!(NotChecked, serde_json::Value);
 impl TryFrom<serde_json::Value> for NotChecked {
     type Error = runtime::BuildError;
     fn try_from(value: serde_json::Value) -> Result<Self, runtime::BuildError> {

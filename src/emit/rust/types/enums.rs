@@ -222,11 +222,7 @@ pub(super) fn union_deserialize_impl(
     let tag_arg = if all.is_empty() { quote!(_tag) } else { quote!(tag) };
     let d_arg = if all.is_empty() { quote!(_d) } else { quote!(d) };
     quote! {
-        impl<'de> serde::Deserialize<'de> for #n {
-            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-                runtime::tagged::<D, Self>(d)
-            }
-        }
+        runtime::tagged_deserialize!(#n);
         impl<'de> runtime::TaggedUnion<'de> for #n {
             const TAG: &'static str = #property;
             fn knows(tag: &str) -> bool {
