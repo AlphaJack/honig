@@ -788,6 +788,29 @@ fn not_is_a_check_against_the_type_of_its_schema() {
     assert!(types.contains(".matches::<") && !types.contains("check_schema"), "{types}");
 }
 
+/// A range check names each bound it has (`max: Some(100)`) and leaves the others to `Bounds::NONE`: no four
+/// positional options.
+#[test]
+fn a_range_check_names_its_bounds() {
+    let schema = |s: serde_json::Value| json!({"type": "object", "required": ["n"], "properties": {"n": s}});
+    let doc = common::spec(
+        "3.2.0",
+        &json!({}),
+        &json!({"schemas": {
+            "Int": schema(json!({"type": "integer", "maximum": 100})),
+            "Float": schema(json!({"type": "number", "minimum": 0.5, "maximum": 2, "exclusiveMinimum": 0, "exclusiveMaximum": 3})),
+        }}),
+    );
+    let types = common::file(&common::generate("named-bounds", &doc, &crate::emit::Options::default()), "types.rs")
+        .split_whitespace()
+        .collect::<String>();
+    assert!(types.contains("runtime::Bounds{max:Some(100),..runtime::Bounds::NONE}"), "{types}");
+    assert!(
+        types.contains("runtime::Bounds{min:Some(0.5),max:Some(2.0),exclusive_min:Some(0.0),exclusive_max:Some(3.0),}"),
+        "{types}"
+    );
+}
+
 /// `dependentSchemas` over properties that the struct declares is a check that the value decodes as the type of the
 /// schema when the property is present: no schema is checked whole.
 #[test]

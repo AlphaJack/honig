@@ -188,7 +188,10 @@ macro_rules! try_from_impl_4 {
                         out,
                         &runtime::InstancePath::Root,
                         value,
-                        [Some(0), None, None, None],
+                        runtime::Bounds {
+                            min: Some(0),
+                            ..runtime::Bounds::NONE
+                        },
                     );
                 }
                 runtime::first(violations)
@@ -2211,7 +2214,10 @@ impl TryFrom<runtime::Decimal> for ExactTenth {
                 out,
                 &runtime::InstancePath::Root,
                 value.as_str(),
-                [Some("0.1"), None, None, None],
+                runtime::Bounds {
+                    min: Some("0.1"),
+                    ..runtime::Bounds::NONE
+                },
             );
         }
         runtime::first(violations)
@@ -2351,7 +2357,11 @@ impl TryFrom<i64> for DegenerateHalf {
                 out,
                 &runtime::InstancePath::Root,
                 value,
-                [Some(1), None, None, Some(4)],
+                runtime::Bounds {
+                    min: Some(1),
+                    exclusive_max: Some(4),
+                    ..runtime::Bounds::NONE
+                },
             );
         }
         runtime::first(violations)
@@ -2754,7 +2764,11 @@ impl TryFrom<f64> for ShipmentInternationalPriority {
                 out,
                 &runtime::InstancePath::Root,
                 value,
-                [Some(0.0), Some(2.0), None, None],
+                runtime::Bounds {
+                    min: Some(0.0),
+                    max: Some(2.0),
+                    ..runtime::Bounds::NONE
+                },
             );
         }
         runtime::first(violations)
@@ -2776,7 +2790,10 @@ impl TryFrom<i64> for ShipmentInternationalWeight {
                 out,
                 &runtime::InstancePath::Root,
                 value,
-                [Some(256), None, None, None],
+                runtime::Bounds {
+                    min: Some(256),
+                    ..runtime::Bounds::NONE
+                },
             );
         }
         runtime::first(violations)
@@ -3115,7 +3132,11 @@ impl TryFrom<i64> for UserAge {
                 out,
                 &runtime::InstancePath::Root,
                 value,
-                [Some(0), None, None, Some(150)],
+                runtime::Bounds {
+                    min: Some(0),
+                    exclusive_max: Some(150),
+                    ..runtime::Bounds::NONE
+                },
             );
         }
         runtime::first(violations)
@@ -3212,7 +3233,11 @@ impl TryFrom<i64> for UserLoyaltyVariant1 {
                 out,
                 &runtime::InstancePath::Root,
                 value,
-                [Some(1), Some(10), None, None],
+                runtime::Bounds {
+                    min: Some(1),
+                    max: Some(10),
+                    ..runtime::Bounds::NONE
+                },
             );
         }
         runtime::first(violations)
@@ -3245,7 +3270,11 @@ impl TryFrom<i64> for CreateUserLimit {
                 out,
                 &runtime::InstancePath::Root,
                 value,
-                [Some(1), Some(100), None, None],
+                runtime::Bounds {
+                    min: Some(1),
+                    max: Some(100),
+                    ..runtime::Bounds::NONE
+                },
             );
         }
         runtime::first(violations)
@@ -5026,7 +5055,10 @@ impl TryFrom<serde_json::Value> for LooseV {
                         out,
                         &runtime::InstancePath::Root,
                         text.as_str(),
-                        [Some("1"), None, None, None],
+                        runtime::Bounds {
+                            min: Some("1"),
+                            ..runtime::Bounds::NONE
+                        },
                     );
                 }
                 serde_json::Value::Null
@@ -5115,7 +5147,10 @@ impl TryFrom<serde_json::Value> for Not9ObjectAmount {
                     out,
                     &runtime::InstancePath::Root,
                     text.as_str(),
-                    [None, Some("100"), None, None],
+                    runtime::Bounds {
+                        max: Some("100"),
+                        ..runtime::Bounds::NONE
+                    },
                 );
             }
         }
@@ -5142,7 +5177,10 @@ impl TryFrom<serde_json::Value> for ShipmentInternationalRating {
                     out,
                     &runtime::InstancePath::Root,
                     text.as_str(),
-                    [Some("1"), None, None, None],
+                    runtime::Bounds {
+                        min: Some("1"),
+                        ..runtime::Bounds::NONE
+                    },
                 );
             }
         }

@@ -744,7 +744,10 @@ impl TryFrom<serde_json::Value> for NotObjectSize {
                     out,
                     &runtime::InstancePath::Root,
                     text.as_str(),
-                    [None, Some("10"), None, None],
+                    runtime::Bounds {
+                        max: Some("10"),
+                        ..runtime::Bounds::NONE
+                    },
                 );
             }
         }

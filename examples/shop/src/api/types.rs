@@ -215,7 +215,10 @@ impl TryFrom<i32> for ListProductsLimit {
                 out,
                 &runtime::InstancePath::Root,
                 value,
-                [None, Some(100), None, None],
+                runtime::Bounds {
+                    max: Some(100),
+                    ..runtime::Bounds::NONE
+                },
             );
         }
         runtime::first(violations)

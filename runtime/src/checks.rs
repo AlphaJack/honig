@@ -271,14 +271,32 @@ json_number!(
     f64: |n: &f64| n.is_finite(), crate::exact::f64_is_multiple;
 );
 
+/// The bounds of a number: `minimum`, `maximum`, `exclusiveMinimum` and `exclusiveMaximum`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Bounds<T> {
+    /// `minimum`
+    pub min: Option<T>,
+    /// `maximum`
+    pub max: Option<T>,
+    /// `exclusiveMinimum`
+    pub exclusive_min: Option<T>,
+    /// `exclusiveMaximum`
+    pub exclusive_max: Option<T>,
+}
+
+impl<T> Bounds<T> {
+    /// No bound: the start of `Bounds { max: Some(9), ..Bounds::NONE }`.
+    pub const NONE: Self = Self { min: None, max: None, exclusive_min: None, exclusive_max: None };
+}
+
 /// Checks `minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum`.
 pub fn check_range<T: PartialOrd + fmt::Display + Copy + JsonNumber>(
     out: &mut Vec<Violation>,
     path: &InstancePath<'_>,
     v: T,
-    bounds: [Option<T>; 4],
+    bounds: Bounds<T>,
 ) {
-    let [min, max, xmin, xmax] = bounds;
+    let Bounds { min, max, exclusive_min: xmin, exclusive_max: xmax } = bounds;
     // `NaN` compares false with every bound. An infinity passes the bound on its own side.
     if !v.is_json_number() {
         violation(out, path, "is not a number");
@@ -358,9 +376,9 @@ pub fn check_multiple_text(out: &mut Vec<Violation>, path: &InstancePath<'_>, va
 
 /// Checks `minimum`, `maximum`, `exclusiveMinimum` and `exclusiveMaximum` of the decimal text `value` exactly: a
 /// decimal keeps more digits than an `f64` compares.
-pub fn check_decimal_range(out: &mut Vec<Violation>, path: &InstancePath<'_>, value: &str, bounds: [Option<&str>; 4]) {
+pub fn check_decimal_range(out: &mut Vec<Violation>, path: &InstancePath<'_>, value: &str, bounds: Bounds<&str>) {
     use std::cmp::Ordering::{Greater, Less};
-    let [min, max, xmin, xmax] = bounds;
+    let Bounds { min, max, exclusive_min: xmin, exclusive_max: xmax } = bounds;
     let cmp = |b: &str| crate::exact::compare(value, b);
     if let Some(m) = min.filter(|m| cmp(m) == Some(Less)) {
         violation(out, path, format!("{value} is less than the minimum {m}"));
@@ -840,9 +858,15 @@ mod tests {
     #[test]
     fn nan_is_no_number_whatever_the_bounds() {
         let mut out = vec![];
-        super::check_range(&mut out, &super::InstancePath::Root, f64::NAN, [Some(0.0), Some(1.0), None, None]);
-        super::check_range(&mut out, &super::InstancePath::Root, f32::INFINITY, [Some(0.0), None, None, None]);
-        super::check_range(&mut out, &super::InstancePath::Root, 5_u8, [Some(0), None, None, None]);
+        let root = &super::InstancePath::Root;
+        super::check_range(
+            &mut out,
+            root,
+            f64::NAN,
+            super::Bounds { min: Some(0.0), max: Some(1.0), ..super::Bounds::NONE },
+        );
+        super::check_range(&mut out, root, f32::INFINITY, super::Bounds { min: Some(0.0), ..super::Bounds::NONE });
+        super::check_range(&mut out, root, 5_u8, super::Bounds { min: Some(0), ..super::Bounds::NONE });
         let messages: Vec<&str> = out.iter().map(|v| v.message.as_str()).collect();
         assert_eq!(messages, ["is not a number", "is not a number"]);
     }

@@ -468,7 +468,11 @@ impl TryFrom<i32> for ListOrdersLimit {
                 out,
                 &runtime::InstancePath::Root,
                 value,
-                [Some(1), Some(100), None, None],
+                runtime::Bounds {
+                    min: Some(1),
+                    max: Some(100),
+                    ..runtime::Bounds::NONE
+                },
             );
         }
         runtime::first(violations)

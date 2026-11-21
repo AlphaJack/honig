@@ -5,10 +5,10 @@
 //! it on when the description has one.
 
 use proc_macro2::{Literal, TokenStream};
-use quote::quote;
+use quote::{ToTokens, quote};
 use serde_json::Number;
 
-use super::syntax::lit;
+use super::syntax::{ident, lit};
 use crate::emit::rust::space::Space;
 use crate::ir::types::{Constraints, Evaluated, EvaluatedItems, Kind, Leftover, Rest, Ty};
 
@@ -631,7 +631,7 @@ fn struct_name_checks(
         }
     });
     let extra = shape.additional.is_some().then(|| {
-        let field = super::syntax::ident(&super::syntax::extra_field(shape));
+        let field = ident(&super::syntax::extra_field(shape));
         name_checks(names, &quote!(#r.#field.keys()), path)
     });
     let patterns = (0..shape.patterns.len()).map(|i| {
@@ -664,10 +664,9 @@ fn struct_count_checks(
             quote!(usize::from(#r.#n.is_some()))
         }
     });
-    let maps =
-        (shape.additional.is_some().then(|| super::syntax::ident(&super::syntax::extra_field(shape))).into_iter())
-            .chain((0..shape.patterns.len()).map(|i| super::syntax::pattern_field(shape, i)))
-            .map(|field| quote!(#r.#field.len()));
+    let maps = (shape.additional.is_some().then(|| ident(&super::syntax::extra_field(shape))).into_iter())
+        .chain((0..shape.patterns.len()).map(|i| super::syntax::pattern_field(shape, i)))
+        .map(|field| quote!(#r.#field.len()));
     let terms: Vec<TokenStream> = (required > 0)
         .then(|| {
             let n = Literal::usize_unsuffixed(required);
@@ -763,7 +762,7 @@ pub(super) fn integer_checks(t: &Ty, c: &Constraints, value: &TokenStream, path:
         .find(|(k, ..)| k == t)
         .map_or_else(|| (i64::MIN.into(), i64::MAX.into()), |&(_, lo, hi)| (lo, hi));
     let mut none = None;
-    let mut bounds = [quote!(None), quote!(None), quote!(None), quote!(None)];
+    let mut bounds: [Option<TokenStream>; 4] = [None, None, None, None];
     let keywords = [
         ("minimum", c.minimum.as_ref(), Bound::AtLeast),
         ("maximum", c.maximum.as_ref(), Bound::AtMost),
@@ -780,8 +779,7 @@ pub(super) fn integer_checks(t: &Ty, c: &Constraints, value: &TokenStream, path:
                 });
             }
             Within::Some(whole) => {
-                let literal = Literal::i128_unsuffixed(whole);
-                *slot = quote!(Some(#literal));
+                *slot = Some(Literal::i128_unsuffixed(whole).into_token_stream());
             }
         }
     }
@@ -792,10 +790,10 @@ pub(super) fn integer_checks(t: &Ty, c: &Constraints, value: &TokenStream, path:
             runtime::violation(out, #path, format!(#msg));
         });
     }
-    let range = bounds
-        .iter()
-        .any(|b| b.to_string() != "None")
-        .then(|| quote!(runtime::check_range(out, #path, #val, [#(#bounds),*]);));
+    let range = bounds.iter().any(Option::is_some).then(|| {
+        let b = bounds_expr(bounds);
+        quote!(runtime::check_range(out, #path, #val, #b);)
+    });
     let multiple = c.multiple_of.as_ref().and_then(|m| {
         let msg = lit(&format!("is not a multiple of {m}"));
         match integer_modulus(m)? {
@@ -914,25 +912,35 @@ const fn whole(r: f64) -> i128 {
 
 pub(super) fn float_checks(c: &Constraints, value: &TokenStream, path: &TokenStream) -> TokenStream {
     let val = deref(value);
-    let bound = |n: Option<&Number>| match n.and_then(Number::as_f64).filter(|f| f.is_finite()) {
-        Some(f) => {
-            let l = Literal::f64_unsuffixed(f);
-            quote!(Some(#l))
-        }
-        None => quote!(None),
+    let bound = |n: &Option<Number>| {
+        n.as_ref()
+            .and_then(Number::as_f64)
+            .filter(|f| f.is_finite())
+            .map(|f| Literal::f64_unsuffixed(f).into_token_stream())
     };
-    let range =
-        [&c.minimum, &c.maximum, &c.exclusive_minimum, &c.exclusive_maximum].iter().any(|b| b.is_some()).then(|| {
-            let (min, max) = (bound(c.minimum.as_ref()), bound(c.maximum.as_ref()));
-            let (xmin, xmax) = (bound(c.exclusive_minimum.as_ref()), bound(c.exclusive_maximum.as_ref()));
-            quote!(runtime::check_range(out, #path, #val, [#min, #max, #xmin, #xmax]);)
-        });
+    let bounds = [&c.minimum, &c.maximum, &c.exclusive_minimum, &c.exclusive_maximum];
+    let range = bounds.iter().any(|b| b.is_some()).then(|| {
+        let b = bounds_expr(bounds.map(bound));
+        quote!(runtime::check_range(out, #path, #val, #b);)
+    });
     // Exact, through the decimal text of the value and of `multipleOf`: `0.07` is a multiple of `0.01`.
     let multiple = positive(c.multiple_of.as_ref()).map(|m| {
         let m = lit(&m.to_string());
         quote!(runtime::check_multiple(out, #path, #val, #m);)
     });
     quote!(#range #multiple)
+}
+
+/// Returns `runtime::Bounds` with the bounds given as `[minimum, maximum, exclusiveMinimum, exclusiveMaximum]`.
+fn bounds_expr(given: [Option<TokenStream>; 4]) -> TokenStream {
+    let all = given.iter().all(Option::is_some);
+    let set = ["min", "max", "exclusive_min", "exclusive_max"]
+        .into_iter()
+        .zip(given)
+        .filter_map(|(name, b)| b.map(|b| (ident(name), b)))
+        .map(|(name, b)| quote!(#name: Some(#b),));
+    let rest = (!all).then(|| quote!(..runtime::Bounds::NONE));
+    quote!(runtime::Bounds { #(#set)* #rest })
 }
 
 /// Returns a `multipleOf` that is a positive number. JSON Schema allows no other.
@@ -944,17 +952,10 @@ fn positive(m: Option<&Number>) -> Option<&Number> {
 /// and the limits of IEEE 754 decimal128 on them for `format: decimal128`.
 pub(super) fn decimal_checks(c: &Constraints, value: &TokenStream, path: &TokenStream) -> TokenStream {
     let r = receiver(value);
-    let bound = |n: Option<&Number>| match n {
-        Some(n) => {
-            let t = lit(&n.to_string());
-            quote!(Some(#t))
-        }
-        None => quote!(None),
-    };
     let bounds = [&c.minimum, &c.maximum, &c.exclusive_minimum, &c.exclusive_maximum];
     let range = bounds.iter().any(|b| b.is_some()).then(|| {
-        let [min, max, xmin, xmax] = bounds.map(|b| bound(b.as_ref()));
-        quote!(runtime::check_decimal_range(out, #path, #r.as_str(), [#min, #max, #xmin, #xmax]);)
+        let b = bounds_expr(bounds.map(|b| b.as_ref().map(|n| lit(&n.to_string()).into_token_stream())));
+        quote!(runtime::check_decimal_range(out, #path, #r.as_str(), #b);)
     });
     let multiple = positive(c.multiple_of.as_ref()).map(|m| {
         let m = lit(&m.to_string());

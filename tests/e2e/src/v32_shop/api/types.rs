@@ -53,7 +53,10 @@ macro_rules! try_from_impl_2 {
                         out,
                         &runtime::InstancePath::Root,
                         value,
-                        [None, None, Some(0.0), None],
+                        runtime::Bounds {
+                            exclusive_min: Some(0.0),
+                            ..runtime::Bounds::NONE
+                        },
                     );
                 }
                 runtime::first(violations)
@@ -2071,7 +2074,11 @@ impl TryFrom<f32> for ProductRating {
                 out,
                 &runtime::InstancePath::Root,
                 value,
-                [Some(0.0), Some(1.0), None, None],
+                runtime::Bounds {
+                    min: Some(0.0),
+                    max: Some(1.0),
+                    ..runtime::Bounds::NONE
+                },
             );
         }
         runtime::first(violations)
@@ -2366,7 +2373,10 @@ impl TryFrom<f32> for ProductMaterialsItemPercentage {
                 out,
                 &runtime::InstancePath::Root,
                 value,
-                [None, None, None, Some(100.0)],
+                runtime::Bounds {
+                    exclusive_max: Some(100.0),
+                    ..runtime::Bounds::NONE
+                },
             );
         }
         runtime::first(violations)
