@@ -1862,6 +1862,44 @@ fn a_response_summary_and_description_of_one_text_show_once() {
     assert_eq!(ops.matches("Found it").count(), 1, "{ops}");
 }
 
+/// Extra derives from the settings go on every type (`*`) or on one by its Rust name, once each, and never a derive
+/// that honig writes itself.
+#[test]
+fn extra_derives_go_where_the_settings_say() {
+    let obj = json!({"type": "object", "properties": {"a": {"type": "string"}}});
+    let doc = common::spec("3.1.0", &json!({}), &json!({"schemas": {"Item": obj, "Other": obj}}));
+    let derives = |list: Vec<(&str, Vec<&str>)>| {
+        let mut opts = crate::emit::Options::default();
+        opts.rust.derives =
+            list.into_iter().map(|(k, v)| (k.to_owned(), v.into_iter().map(str::to_owned).collect())).collect();
+        let types = common::file(&common::generate("shape-derives", &doc, &opts), "types.rs").to_owned();
+        let of = |n: &str| {
+            types
+                .split("runtime::object!")
+                .find(|b| b.contains(&format!("pub struct {n} {{")))
+                .unwrap_or_default()
+                .to_owned()
+        };
+        (of("Item"), of("Other"))
+    };
+    let (item, other) = derives(vec![("Item", vec!["x::Marker", "x::Marker", "Clone"])]);
+    assert_eq!((item.matches("x::Marker").count(), other.contains("x::Marker")), (1, false), "{item} {other}");
+    let (item, other) = derives(vec![("*", vec!["x::Marker"])]);
+    assert!(item.contains("x::Marker") && other.contains("x::Marker"), "{item} {other}");
+}
+
+/// A deprecated object type is deprecated as a struct: the attribute sits on the struct inside its macro.
+#[test]
+fn a_deprecated_object_type_is_a_deprecated_struct() {
+    let obj = json!({"type": "object", "deprecated": true, "properties": {"a": {"type": "string"}}});
+    let doc = common::spec("3.1.0", &json!({}), &json!({"schemas": {"Old": obj}}));
+    let types =
+        common::file(&common::generate("shape-deprecated-object", &doc, &crate::emit::Options::default()), "types.rs")
+            .split_whitespace()
+            .collect::<String>();
+    assert!(types.contains("#[deprecated]pubstructOld{"), "{types}");
+}
+
 /// A multipart part whose schema gives a `contentMediaType` is sent as that type when `encoding` gives none.
 #[test]
 fn a_part_takes_the_media_type_of_its_schema() {
