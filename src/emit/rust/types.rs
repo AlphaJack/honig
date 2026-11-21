@@ -1735,7 +1735,8 @@ fn union_deserialize(space: &Space<'_>, def: &TypeDef, u: &Union) -> TokenStream
     }
 }
 
-/// Tries each branch in order.
+/// Tries each branch in the order of the variant names. `anyOf` has no order, so a reorder of the branches in the
+/// description changes no decoded value.
 fn untagged(space: &Space<'_>, u: &Union) -> TokenStream {
     // What rules a branch out before it decodes: the JSON kind of the value and the fields of a struct. Each is
     // named `fit_<i>` and computed once.
@@ -1768,7 +1769,9 @@ fn untagged(space: &Space<'_>, u: &Union) -> TokenStream {
     // A closed `oneOf` counts its matches: exactly one must take the value. An open one has a branch that takes any
     // value, which its whole schema judges instead.
     let counts = u.exclusive && !u.open;
-    let tries = u.variants.iter().enumerate().map(|(i, v)| {
+    let mut order: Vec<(usize, &crate::ir::types::Variant)> = u.variants.iter().enumerate().collect();
+    order.sort_by_key(|(_, v)| pascal(&v.name));
+    let tries = order.into_iter().map(|(i, v)| {
         let (name, t) = (pascal_ident(&v.name), ty(space, &v.ty, false));
         // An open union always decodes because its `Other` takes anything. As a branch it matches only through one
         // of its own variants. So the branches after it still get their turn. A boxed one too.
