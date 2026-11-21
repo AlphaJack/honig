@@ -1126,9 +1126,9 @@ mod tests {
     /// `~~~` fences as `` ``` `` does, and `*` and `+` mark a list item as `-` does.
     #[test]
     fn tilde_fences_and_star_lists_are_markdown_too() {
-        assert_eq!(super::rustdoc("~~~rust\nlet a = 1;\n~~~"), "~~~text\nlet a = 1;\n~~~");
-        assert_eq!(super::rustdoc("* item\ncontinued"), "* item\n  continued");
-        assert_eq!(super::rustdoc("+ item\ncontinued"), "+ item\n  continued");
+        assert_eq!(rustdoc("~~~rust\nlet a = 1;\n~~~"), "~~~text\nlet a = 1;\n~~~");
+        assert_eq!(rustdoc("* item\ncontinued"), "* item\n  continued");
+        assert_eq!(rustdoc("+ item\ncontinued"), "+ item\n  continued");
     }
 
     /// A JSON object keeps its members as code; only an empty one is a bare `Map::new()`.
@@ -1142,13 +1142,13 @@ mod tests {
     #[test]
     fn arms_of_one_type_and_body_are_shared() {
         use crate::ir::types::Ty;
-        let arm = |p: &str, t: Option<Ty>, b: &str| (p.parse().unwrap(), t, b.parse().unwrap());
+        let f = quote::quote!(f(v));
         let shared = super::shared_arms(vec![
-            arm("Self::A(v)", Some(Ty::String), "f(v)"),
-            arm("Self::B(v)", Some(Ty::String), "f(v)"),
-            arm("Self::C(v)", Some(Ty::I64), "f(v)"),
-            arm("Self::D(v)", None, "f(v)"),
-            arm("Self::E(v)", None, "f(v)"),
+            (quote::quote!(Self::A(v)), Some(Ty::String), f.clone()),
+            (quote::quote!(Self::B(v)), Some(Ty::String), f.clone()),
+            (quote::quote!(Self::C(v)), Some(Ty::I64), f.clone()),
+            (quote::quote!(Self::D(v)), None, f.clone()),
+            (quote::quote!(Self::E(v)), None, f),
         ]);
         assert_eq!(shared.len(), 4, "{shared:?}");
         assert!(shared[0].to_string().starts_with("Self :: A (v) | Self :: B (v) =>"), "{shared:?}");
