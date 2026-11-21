@@ -56,12 +56,16 @@ pub(crate) fn dirs_in(dir: &Path) -> Result<Vec<std::path::PathBuf>, Error> {
     Ok(out)
 }
 
-/// Writes `text` to `path` and creates its folder.
+/// Writes `text` to `path` and creates its folder. A file that already holds `text` is left as it is, so Cargo does
+/// not rebuild it.
 ///
 /// # Errors
 /// The file or its folder cannot be written. The error has its path.
 #[expect(clippy::disallowed_methods, reason = "the edge writes files")]
 pub(crate) fn write(path: &Path, text: &str) -> Result<(), Error> {
+    if std::fs::read(path).is_ok_and(|old| old == text.as_bytes()) {
+        return Ok(());
+    }
     if let Some(dir) = path.parent() {
         std::fs::create_dir_all(dir).map_err(failed(path))?;
     }
@@ -121,4 +125,25 @@ pub(crate) fn cargo_metadata(path: &Path) -> Result<cargo_metadata::Metadata, Er
         .no_deps()
         .exec()
         .map_err(|e| Error::Metadata { path: path.to_path_buf(), problem: e.to_string() })
+}
+
+#[cfg(test)]
+mod tests {
+    #![expect(clippy::disallowed_methods, reason = "the test reads and dates a file")]
+
+    use std::time::{Duration, SystemTime};
+
+    /// A second `generate` with the same output leaves the file and its time alone: Cargo rebuilds nothing.
+    #[test]
+    fn writing_the_same_text_keeps_the_file_time() {
+        let path = std::env::temp_dir().join(format!("honig-same-text-{}.rs", std::process::id()));
+        super::write(&path, "x").unwrap();
+        let old = SystemTime::UNIX_EPOCH + Duration::from_secs(1_000_000);
+        std::fs::File::options().write(true).open(&path).unwrap().set_modified(old).unwrap();
+        super::write(&path, "x").unwrap();
+        assert_eq!(std::fs::metadata(&path).unwrap().modified().unwrap(), old);
+        super::write(&path, "y").unwrap();
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), "y");
+        std::fs::remove_file(&path).unwrap();
+    }
 }
