@@ -68,7 +68,7 @@ impl Ranges {
         match asked.map_or(Asked::Ignored, |r| byte_range(&r, len)) {
             Asked::Ignored => {}
             Asked::Unsatisfiable => {
-                let mut refused = crate::new_response(http::StatusCode::RANGE_NOT_SATISFIABLE.as_u16());
+                let mut refused = crate::message::new_response(http::StatusCode::RANGE_NOT_SATISFIABLE.as_u16());
                 content_range(&mut refused, format!("{BYTES} */{len}"));
                 return refused;
             }
@@ -146,7 +146,7 @@ mod tests {
             req = req.header(http::header::IF_RANGE, c);
         }
         let (head, ()) = req.body(()).unwrap().into_parts();
-        let mut resp = crate::body_response(OK, "application/octet-stream", body.into_body());
+        let mut resp = crate::message::body_response(OK, "application/octet-stream", body.into_body());
         resp.set_header("ETag", "\"v1\"").unwrap();
         Ranges::of(&head, true).answer(resp)
     }

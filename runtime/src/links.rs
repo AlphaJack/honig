@@ -3,7 +3,7 @@
 use serde::de::DeserializeOwned;
 use serde_json::Value;
 
-use crate::{Message, Request, Response, parse_query};
+use crate::{Message, Request, Response, params::parse_query};
 
 /// One finished HTTP exchange for the evaluation of `OpenAPI` runtime expressions in links and callbacks.
 ///
@@ -119,14 +119,14 @@ mod tests {
 
     fn request() -> Request {
         let query = vec!["url=https%3A%2F%2Fhook.example%2Fq".to_owned()];
-        let mut req = crate::new_request("POST", "/orders".to_owned(), query).unwrap();
+        let mut req = crate::message::new_request("POST", "/orders".to_owned(), query).unwrap();
         req.set_header("X-Trace", "t-1").unwrap();
         req.set_body("application/json", br#"{"callbackUrl":"https://cb.example/a","ids":[7]}"#.as_slice());
         req
     }
 
     fn response() -> Response {
-        let mut resp = crate::new_response(201);
+        let mut resp = crate::message::new_response(201);
         resp.set_header("Location", "/orders/7").unwrap();
         resp.set_body("application/json", br#"{"id":7}"#.as_slice());
         resp

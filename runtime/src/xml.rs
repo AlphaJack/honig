@@ -7,7 +7,7 @@ use serde::de::{DeserializeOwned, DeserializeSeed, Deserializer, MapAccess, SeqA
 
 use crate::coerce::CoerceError;
 use crate::text::decode_err;
-use crate::{ClientError, Coerce};
+use crate::{ClientError, coerce::Coerce};
 
 mod stream;
 

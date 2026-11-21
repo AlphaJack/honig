@@ -9,7 +9,7 @@ use http_body::Body as HttpBody;
 use tower_service::Service;
 
 use crate::transport::Pending;
-use crate::{Body, ByteStream, ClientError, MaybeSend, MaybeSync, Request, Response};
+use crate::{Body, ByteStream, ClientError, Request, Response, transport::MaybeSend, transport::MaybeSync};
 
 /// The error of a tower service or of an `http` body.
 type BoxError = Box<dyn std::error::Error + Send + Sync>;
@@ -29,7 +29,7 @@ pub struct TowerTransport<S> {
 impl<S> TowerTransport<S> {
     /// Creates a transport over `service` for this base URL.
     pub fn new(service: S, base_url: impl Into<String>) -> Self {
-        Self { service, base_url: crate::base_url(base_url) }
+        Self { service, base_url: crate::message::base_url(base_url) }
     }
 }
 
@@ -44,7 +44,7 @@ where
     /// Sends `req` and returns the response once its head is in. The body is still to read.
     fn start(&self, mut req: Request) -> impl Future<Output = Result<Response, ClientError>> + MaybeSend + use<S, B> {
         let mut service = self.service.clone();
-        let target = http::Uri::try_from(crate::target(&self.base_url, req.uri()));
+        let target = http::Uri::try_from(crate::message::target(&self.base_url, req.uri()));
         async move {
             *req.uri_mut() = target.map_err(ClientError::transport)?;
             std::future::poll_fn(|cx| service.poll_ready(cx)).await.map_err(failed)?;

@@ -8,8 +8,8 @@ use std::sync::Arc;
 
 use super::operation::{Op, Operation, ProblemSchemas};
 use crate::{
-    ApiError, BODY_LIMIT, Body, Context, Message, Query, Reason, Rejection, Request, RequestEvent, Requirement,
-    Response, SatisfiedSecurity, Scheme,
+    ApiError, Body, Context, Message, Reason, Rejection, Request, RequestEvent, Response, auth::Requirement,
+    auth::Scheme, params::Query, reject::BODY_LIMIT, server::auth::SatisfiedSecurity,
 };
 
 /// What the server does besides routing and your layers: the builder options of [`Server`](crate::Server). `Id` is
@@ -72,7 +72,7 @@ impl<Id: Operation> Config<Id> {
         let method = known_method(head.method.as_str());
         let event = RequestEvent::new(None, method);
         if let (true, Reason::MethodNotAllowed(allow)) = (head.method == http::Method::OPTIONS, &reason) {
-            let mut resp = crate::new_response(http::StatusCode::NO_CONTENT.as_u16());
+            let mut resp = crate::message::new_response(http::StatusCode::NO_CONTENT.as_u16());
             if let Ok(value) = http::HeaderValue::from_str(&crate::reject::allow_header(allow)) {
                 resp.headers_mut().insert(http::header::ALLOW, value);
             }
@@ -255,7 +255,7 @@ pub async fn serve<C, Id: Operation>(
     let media = if op.produces.is_empty() {
         0
     } else {
-        match crate::negotiate(request.header("accept").as_deref(), op.produces) {
+        match crate::media::negotiate(request.header("accept").as_deref(), op.produces) {
             Some(i) => i,
             None => {
                 return fail(request.headers().clone(), Reason::NotAcceptable(op.produces.to_vec()));

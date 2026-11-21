@@ -3,7 +3,7 @@
 use std::pin::Pin;
 use std::task::{Context, Poll, ready};
 
-use crate::{BodyError, BodySource, ClientError, ReadAll};
+use crate::{ClientError, source::BodyError, source::BodySource, source::ReadAll};
 
 /// Returns the `Content-Length` that a request declares. It sizes the buffer of its body.
 pub(crate) fn content_length(headers: &http::HeaderMap) -> Option<usize> {

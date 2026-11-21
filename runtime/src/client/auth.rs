@@ -4,8 +4,8 @@
 use crate::auth::add_cookie;
 use crate::auth::{Credentials, KeyIn, Requirement, Scheme};
 #[cfg(feature = "base64")]
-use crate::base64;
-use crate::{ClientError, Message, Request, pct};
+use crate::base64::base64;
+use crate::{ClientError, Message, Request, params::pct};
 
 /// Applies the first requirement whose schemes all have credentials.
 ///

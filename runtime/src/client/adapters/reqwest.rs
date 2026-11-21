@@ -4,7 +4,7 @@
 use std::future::Future;
 
 use crate::transport::Pending;
-use crate::{Body, ByteStream, ClientError, MaybeSend, MaybeSync, Request, Response};
+use crate::{Body, ByteStream, ClientError, Request, Response, transport::MaybeSend, transport::MaybeSync};
 
 /// A client that sends a built `reqwest` request: `reqwest::Client` or a `reqwest-middleware` stack.
 pub trait Execute: Clone + MaybeSend + MaybeSync + 'static {
@@ -44,7 +44,7 @@ impl ReqwestTransport {
 impl<C> ReqwestTransport<C> {
     /// Creates a transport over `client` for this base URL.
     pub fn with_client(client: C, base_url: impl Into<String>) -> Self {
-        Self { client, base_url: crate::base_url(base_url) }
+        Self { client, base_url: crate::message::base_url(base_url) }
     }
 }
 
@@ -62,7 +62,7 @@ impl<C: Execute> ReqwestTransport<C> {
     /// Sends `req` and returns the response once its head is in.
     fn start(&self, req: Request) -> impl Future<Output = Result<reqwest::Response, ClientError>> + MaybeSend + use<C> {
         let client = self.client.clone();
-        let target = crate::target(&self.base_url, req.uri());
+        let target = crate::message::target(&self.base_url, req.uri());
         async move {
             let (mut head, body) = req.into_parts();
             head.uri = http::Uri::try_from(target).map_err(ClientError::transport)?;

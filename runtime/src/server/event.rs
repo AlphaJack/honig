@@ -3,7 +3,7 @@
 use serde::Serialize;
 use serde_json::{Map, Value};
 
-use crate::{Operation, Reason, Request, Response, SatisfiedSecurity};
+use crate::{Operation, Reason, Request, Response, server::auth::SatisfiedSecurity};
 
 /// One wide event per request. It goes to the `on_event` of the server.
 ///
@@ -208,7 +208,7 @@ pub struct Context<'a, C = (), Id = ()> {
     pub request: &'a Request,
     /// Credentials of the satisfied security requirements with their scheme: read them with the generated
     /// `server::credentials` or with [`Secured::presented`](crate::Secured::presented).
-    pub(crate) auth: Vec<(crate::Scheme, String)>,
+    pub(crate) auth: Vec<(crate::auth::Scheme, String)>,
     /// The operation being served: one variant of the generated `Operation`.
     pub operation: Id,
     /// The request's wide event: add fields with [`RequestEvent::set`].

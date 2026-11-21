@@ -7,7 +7,7 @@ use std::task::{Context, Poll, ready};
 
 use futures_core::Stream;
 
-use crate::{ClientError, MaybeSend};
+use crate::{ClientError, transport::MaybeSend};
 
 /// A body produced piece by piece. It is polled in place as an `http_body::Body` is: a piece costs no allocation of
 /// its own.

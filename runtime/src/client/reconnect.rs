@@ -3,7 +3,7 @@
 use serde::de::DeserializeOwned;
 
 use crate::stream::{Reconnect, Reconnected};
-use crate::{ClientError, Connecting, ItemStream, Message, Request, Transport};
+use crate::{ClientError, ItemStream, Message, Request, Transport, stream::Connecting};
 
 /// Sends `req` again through `transport` and expects the `status` of the stream.
 struct Resend<Tr> {
@@ -34,7 +34,7 @@ impl<Tr: Transport> Reconnect for Resend<Tr> {
                 Err(e) => return Reconnected::Retry(e),
             };
             let s = resp.status().as_u16();
-            let media = crate::check_response_media(s, resp.content_type(), None, &["text/event-stream"]);
+            let media = crate::media::check_response_media(s, resp.content_type(), None, &["text/event-stream"]);
             match (s, media) {
                 (s, _) if s == http::StatusCode::NO_CONTENT => Reconnected::Done,
                 (s, Ok(())) if s == status => Reconnected::Open(resp.into_body().into_stream()),

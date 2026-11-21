@@ -15,7 +15,9 @@ use crate::media::is_xml_media;
 use crate::params::{encode_query_value, key_order, ordered};
 use crate::scalar::scalar;
 use crate::text::{decode_err, lossy};
-use crate::{ClientError, Coerce, Enc, Shape, Style, decode_query, parse_query};
+use crate::{
+    ClientError, coerce::Coerce, params::Enc, params::Shape, params::Style, params::decode_query, params::parse_query,
+};
 
 /// Returns the text of a form field in its `encoding.contentType`. That is XML elements or JSON or else
 /// [`form_scalar`].

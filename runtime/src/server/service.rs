@@ -28,8 +28,8 @@ use crate::server::range::Ranges;
 use crate::server::serve::{Call, Config, challenge, for_method};
 use crate::trace_context::Remote;
 use crate::{
-    ApiError, Body, Reason, Rejection, Request, RequestEvent, Requirement, Response, SatisfiedSecurity, Scheme,
-    Verified,
+    ApiError, Body, Reason, Rejection, Request, RequestEvent, Response, Verified, auth::Requirement, auth::Scheme,
+    server::auth::SatisfiedSecurity,
 };
 
 /// A boxed future the server's services return. It is the one `futures_util` names.
@@ -135,7 +135,7 @@ impl MatchedOperation {
 /// # Errors
 /// The body is larger than `max_body_bytes` (413) or cannot be read (400). Return the error from your layer.
 pub async fn read_body(req: &mut Request) -> Result<&[u8], ApiError> {
-    let limit = req.extensions().get::<MatchedOperation>().map_or(crate::BODY_LIMIT, |r| r.body_limit);
+    let limit = req.extensions().get::<MatchedOperation>().map_or(crate::reject::BODY_LIMIT, |r| r.body_limit);
     if let Some(unread) = req.body().chunks().take_source() {
         match unread.read_all(limit).await {
             Ok(bytes) => *req.body_mut() = Body::new(bytes),
@@ -434,7 +434,8 @@ where
         let op = crate::Operation::op(operation);
         let method = crate::server::serve::routed_method(head.method.as_str(), op);
         let raw_query = head.uri.query().unwrap_or_default();
-        let satisfied = crate::check_auth(&head.headers, &crate::parse_query(raw_query), op.security);
+        let satisfied =
+            crate::server::auth::check_auth(&head.headers, &crate::params::parse_query(raw_query), op.security);
         match satisfied {
             Some(satisfied) => (operation, op, satisfied, method),
             None => return refused(config, operation, method, Reason::Unauthorized, head.headers.clone(), started),

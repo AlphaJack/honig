@@ -1,11 +1,11 @@
 //! The server's side of security: which requirements a request's credentials satisfy.
 
-use crate::Query;
 use crate::auth::{KeyIn, Requirement, Scheme};
-#[cfg(feature = "cookie")]
-use crate::parse_cookies;
 #[cfg(feature = "base64")]
-use crate::unbase64;
+use crate::base64::unbase64;
+use crate::params::Query;
+#[cfg(feature = "cookie")]
+use crate::params::parse_cookies;
 
 /// What the satisfied security requirements presented and require.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -101,7 +101,7 @@ type Satisfied = (Vec<(Scheme, String)>, Vec<&'static str>);
 
 /// Returns each requirement whose credentials are all present.
 fn satisfied(headers: &http::HeaderMap, query: &Query<'_>, requirements: &[&[Requirement]]) -> Vec<Satisfied> {
-    let header = |name: &str| crate::first_header(headers, name);
+    let header = |name: &str| crate::message::first_header(headers, name);
     let auth = header("authorization").unwrap_or_default();
     let auth = auth.as_ref();
     let mut out = vec![];
@@ -158,7 +158,7 @@ mod tests {
     const KEY: Scheme = Scheme::ApiKey("key", KeyIn::Header, "X-Key");
 
     fn request(headers: &[(&'static str, &'static str)]) -> crate::Request {
-        let mut r = crate::new_request("GET", "/".to_owned(), vec![]).unwrap();
+        let mut r = crate::message::new_request("GET", "/".to_owned(), vec![]).unwrap();
         for (k, v) in headers {
             crate::Message::set_header(&mut r, k, *v).unwrap();
         }
@@ -199,7 +199,7 @@ mod tests {
         use crate::Secured as _;
         const BASIC: Scheme = Scheme::Basic("login");
         let alts: &[&[Requirement]] = &[&[(KEY, &[])], &[(BASIC, &[])]];
-        let basic = format!("Basic {}", crate::base64(b"ann:open sesame"));
+        let basic = format!("Basic {}", crate::base64::base64(b"ann:open sesame"));
         let mut req = request(&[("X-Key", "k1")]);
         crate::Message::set_header(&mut req, "Authorization", basic).unwrap();
         let g = check_auth(req.headers(), &[], alts).expect("both present");

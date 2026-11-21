@@ -256,7 +256,7 @@ macro_rules! leaf {
     )*};
 }
 
-/// A number leaf read from its text without a copy, as [`crate::Coerce`] reads text.
+/// A number leaf read from its text without a copy, as [`crate::coerce::Coerce`] reads text.
 macro_rules! number_leaf {
     ($method:ident, $visit:ident, $ty:ty, $format:literal, $ok:expr) => {
         fn $method<V: Visitor<'de>>(self, v: V) -> Result<V::Value> {

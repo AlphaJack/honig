@@ -7,7 +7,7 @@ use serde_json::Value;
 
 use crate::header::{header_text, header_value};
 use crate::scalar::scalar;
-use crate::{Body, ClientError, to_value};
+use crate::{Body, ClientError, json::to_value};
 
 /// An HTTP request. Its target is the path and query, or a whole URL for a webhook or a token endpoint.
 pub type Request = http::Request<Body>;

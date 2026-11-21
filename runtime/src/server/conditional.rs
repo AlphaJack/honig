@@ -9,7 +9,7 @@ use crate::http_date::{
     DAY_HOURS, DAY_SECONDS, HOUR_MINUTES, HOUR_SECONDS, MINUTE_SECONDS, MONTHS, YEAR_DIGITS, days_from_civil,
     two_digit_year,
 };
-use crate::{ApiError, Context, Message, Response, joined_header};
+use crate::{ApiError, Context, Message, Response, message::joined_header};
 
 /// The current validators of a resource as its response would carry them. [`Context::preconditions`] compares the
 /// conditions of the request with them.
@@ -215,7 +215,7 @@ pub(crate) fn http_date(text: &str) -> Option<i64> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{RequestEvent, SatisfiedSecurity};
+    use crate::{RequestEvent, server::auth::SatisfiedSecurity};
 
     #[test]
     fn the_three_date_forms_read_the_same_instant() {
@@ -263,7 +263,7 @@ mod tests {
     }
 
     fn ok(headers: &[(&'static str, &'static str)]) -> Response {
-        let mut r = crate::body_response(200, "application/json", b"{}".as_slice());
+        let mut r = crate::message::body_response(200, "application/json", b"{}".as_slice());
         for (k, v) in headers {
             r.set_header(k, *v).unwrap();
         }
@@ -315,7 +315,7 @@ mod tests {
         conditions: &[(&'static str, &'static str)],
         current: Option<CacheValidators<'_>>,
     ) -> Option<String> {
-        let mut request = crate::new_request(method, "/products/1".to_owned(), vec![]).unwrap();
+        let mut request = crate::message::new_request(method, "/products/1".to_owned(), vec![]).unwrap();
         for (k, v) in conditions {
             request.set_header(k, *v).unwrap();
         }

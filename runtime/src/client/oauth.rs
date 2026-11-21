@@ -6,7 +6,7 @@ use crate::base64::base64url;
 // `Pkce::new`: wasm32 has no OS randomness without configuration. A browser passes its own verifier.
 #[cfg(all(feature = "pkce", not(target_arch = "wasm32")))]
 mod random;
-use crate::{ClientError, Message, Request, Response, Transport, base64, json_decode, pct};
+use crate::{ClientError, Message, Request, Response, Transport, base64::base64, codec::json_decode, params::pct};
 
 /// An `OAuth2` access token from a token endpoint.
 #[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
@@ -208,7 +208,7 @@ pub struct AuthMetadata {
 /// Fetches authorization server metadata from `url` (an `openIdConnectUrl` or `oauth2MetadataUrl`).
 /// Errors: a transport failure or a non-2xx or undecodable response.
 pub async fn discover<T: Transport>(transport: &T, url: &str) -> Result<AuthMetadata, ClientError> {
-    let mut req = crate::new_request("GET", url.to_owned(), vec![])?;
+    let mut req = crate::message::new_request("GET", url.to_owned(), vec![])?;
     req.set_header("Accept", "application/json")?;
     let resp = crate::send(transport, req).await?;
     answer(resp)
@@ -334,7 +334,7 @@ pub async fn device_token<T: Transport>(
 
 /// Returns a form POST to a token endpoint that accepts JSON back.
 fn token_request(url: &str, form: &[String]) -> Result<Request, ClientError> {
-    let mut req = crate::new_request("POST", url.to_owned(), vec![])?;
+    let mut req = crate::message::new_request("POST", url.to_owned(), vec![])?;
     req.set_header("Accept", "application/json")?;
     req.set_body("application/x-www-form-urlencoded", form.join("&"));
     Ok(req)
@@ -395,7 +395,7 @@ mod tests {
                 ("GET", "https://id.example/.well-known/openid-configuration")
             );
             assert_eq!(req.header("accept").as_deref(), Some("application/json"));
-            let resp = crate::body_response(status, "application/json", body);
+            let resp = crate::message::body_response(status, "application/json", body);
             std::future::ready(Ok::<_, std::convert::Infallible>(resp))
         })
     }
