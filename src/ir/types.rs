@@ -484,8 +484,8 @@ pub(crate) struct Field {
     /// The own `example` and `examples` of the property as (JSON pointer, value).
     pub examples: Vec<(String, Value)>,
     /// An optional property whose `null` reads as absent. Every optional property of a Swagger 2.0 description is one.
-    /// 2.0 has no `nullable` to say that a property may be `null`. Still many 2.0 services send `null` for a property
-    /// that they leave unset (every gRPC-gateway service). Not tri-state, because 2.0 cannot tell `null` from absent.
+    /// 2.0 has no `nullable` to say that a property may be `null`, and many 2.0 services send `null` for a property
+    /// that they leave unset. Not tri-state, because 2.0 cannot tell `null` from absent.
     pub null_as_absent: bool,
 }
 
@@ -752,8 +752,7 @@ impl TypeSpace {
     /// required. The copy is the reverse. Returns the request type of each type.
     ///
     /// With `lenient` (`client = { strict = false }`) every enum, closed struct and tagged union splits too, and every
-    /// original is [`TypeDef::lenient`]: a response reads a value that the server added, and a request stays as
-    /// strict as before.
+    /// original is [`TypeDef::lenient`]: a response reads a value that the server added, and a request stays strict.
     pub(crate) fn split_directions(&mut self, lenient: bool) -> Vec<Option<TypeId>> {
         let n = self.defs.len();
         let mut split = vec![false; n];

@@ -194,9 +194,8 @@ impl<'de> Content<'de> {
 /// Whether an object can be a struct whose fields are `(name, present, kinds)`.
 ///
 /// Each field that must be present is, and each one present has one of its kinds (any kind when empty). An untagged
-/// union checks a branch with it before decoding the branch. A branch that cannot fit is skipped, and its nested values are not decoded only to fail at a
-/// field after them. That retry at every level of a recursive union made decoding exponential in its depth. A value
-/// that is not an object (raw text) is left to the decoder.
+/// union checks a branch with it before decoding the branch. A branch that cannot fit is skipped, and its nested values
+/// are not decoded only to fail at a field after them. A value that is not an object (raw text) is left to the decoder.
 #[must_use]
 pub fn fits(v: &Content<'_>, fields: &[(&str, bool, &[Kind])]) -> bool {
     let Content::Map(_) = v else { return true };

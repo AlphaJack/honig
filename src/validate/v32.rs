@@ -19,7 +19,7 @@ use crate::spec::{
     SecurityScheme, SecuritySchemeType, Server, from_value_as,
 };
 
-/// Checks the rules parsing cannot enforce; record every violation.
+/// Checks the rules parsing cannot enforce and records every violation.
 pub(crate) fn validate(doc: &OpenApi, resolved: &Doc, diags: &mut Diagnostics) {
     validate_as(doc, resolved, Version::V32, diags);
 }

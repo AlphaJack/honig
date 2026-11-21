@@ -309,7 +309,7 @@ pub(super) fn parts(body: &[u8], boundary: &str, form: bool) -> Result<Vec<Part>
     Ok(parts)
 }
 
-/// Returns a part sent with `Content-Transfer-Encoding: base64` or `quoted-printable` holds the decoded bytes. In 3.2
+/// Returns the bytes of a part sent with `Content-Transfer-Encoding: base64` or `quoted-printable`, decoded. In 3.2
 /// `contentEncoding` on a multipart field means that header. `7bit`, `8bit` and `binary` are as sent.
 fn transfer_decode(part: &mut Part) -> Result<(), String> {
     let Some(cte) = part.header("content-transfer-encoding").map(|v| v.trim().to_ascii_lowercase()) else {

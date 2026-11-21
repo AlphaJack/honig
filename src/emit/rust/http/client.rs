@@ -130,8 +130,6 @@ pub(crate) fn webhook_client(space: &Space<'_>, api: &Api, sec: &Securities) -> 
     })
 }
 
-/// Returns the path statements of the client (`path` ends up holding the request target).
-/// For webhooks and callbacks also the `url` argument.
 /// Returns `server: <op>::Server,`: the argument that names one of several servers of an operation.
 fn server_arg(op: &Operation, m: &TokenStream) -> Option<TokenStream> {
     (op.servers.len() > 1).then(|| quote!(server: #m::Server,))
@@ -257,8 +255,8 @@ pub(crate) fn client_op(space: &Space<'_>, api: &Api, sec: &Securities, op: &Ope
     }
 }
 
-/// Encodes query parameter `p` into `query`. A parameter at its `default` means the same left out. Some servers refuse
-/// it anyway (Meilisearch rejects `csvDelimiter` on JSON even at its default `,`), so it stays out.
+/// Encodes query parameter `p` into `query`. A parameter at its `default` means the same left out, and some servers
+/// refuse it anyway, so it stays out.
 fn query_param(space: &Space<'_>, p: &Param) -> TokenStream {
     let (wire, v, e) = (lit(&p.wire), value_expr(p), param_enc(p));
     let encode = quote!(runtime::encode_query(&mut query, #wire, &#v, #e)?;);
@@ -278,8 +276,6 @@ fn query_param(space: &Space<'_>, p: &Param) -> TokenStream {
     )
 }
 
-/// Returns the `Accept` header. It has every media type that the responses declare once each in the order of the
-/// description. A server that can answer in several (XML unless asked) then answers in one that the client decodes. `None` when no response has a body.
 /// The media types of the other responses of an operation (errors, redirects) that its success responses do not use.
 fn error_media(op: &Operation) -> Vec<&str> {
     let success: Vec<&str> = crate::emit::rust::http::shared::produces(op).into_iter().map(|(m, _)| m).collect();

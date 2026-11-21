@@ -89,9 +89,9 @@ fn rewrite(
     }
 }
 
-/// Returns `o` = `{$ref: generic, $defs: {.. $dynamicAnchor ..}}` becomes the body of the generic
-/// with dynamic references bound plus the own keywords of `o`. A `$dynamicAnchor` of `o` itself binds its name to `o`:
-/// `{$dynamicAnchor: node, $ref: tree}` makes the tree's nodes copies of `o`.
+/// Returns the body of the generic with its dynamic references bound and the own keywords of `o`, which is `{$ref:
+/// generic, $defs: {.. $dynamicAnchor ..}}`. A `$dynamicAnchor` of `o` itself binds its name to `o`: `{$dynamicAnchor:
+/// node, $ref: tree}` makes the tree's nodes copies of `o`.
 fn specialize_site(doc: &Doc, o: &Map<String, Value>, ptr: &str) -> Option<Map<String, Value>> {
     let r = o.get("$ref")?.as_str()?;
     let mut bindings: BTreeMap<String, String> = (o.get("$defs").and_then(Value::as_object).into_iter().flatten())

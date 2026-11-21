@@ -1,6 +1,5 @@
-//! Edge cases of the codecs that the runtime takes from crates (quick-xml, multer, percent-encoding,
-//! `form_urlencoded` and cookie). Also edge cases of the paths that were quadratic. Each test pins behaviour that a
-//! swap or a rewrite must keep.
+//! Edge cases of the codecs that the runtime takes from crates (quick-xml, multer, percent-encoding, `form_urlencoded`
+//! and cookie). Each test pins behaviour that a swap or a rewrite must keep.
 
 #![expect(clippy::unwrap_used, reason = "test code fails loudly")]
 

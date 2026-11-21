@@ -173,7 +173,7 @@ impl<S: Serializer> Serializer for UniqueKeys<S> {
     type SerializeStruct = S::SerializeStruct;
     type SerializeStructVariant = S::SerializeStructVariant;
 
-    /// Returns a struct with a flattened map encodes as a map.
+    /// A struct with a flattened map encodes as a map.
     fn serialize_map(self, len: Option<usize>) -> Result<Self::SerializeMap, S::Error> {
         let Self(inner) = self;
         Ok(Keys { map: inner.serialize_map(len)?, seen: Vec::new(), skip: false })

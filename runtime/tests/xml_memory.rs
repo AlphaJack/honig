@@ -97,7 +97,7 @@ impl XmlShape for Order {
     }
 }
 
-/// Peak heap past which decoding has regressed: some headroom over the 4.6x it takes.
+/// Peak heap past which decoding has regressed.
 const MAX_OVERHEAD: f64 = 5.5;
 
 /// Lines in the body: about 4 MiB of XML.

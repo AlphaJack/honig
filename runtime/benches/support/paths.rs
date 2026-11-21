@@ -90,7 +90,6 @@ impl XmlShape for Order {
     }
 }
 
-/// An order of about `size` bytes of XML.
 /// The bytes of one unknown element `<u00000000/>`.
 const UNKNOWN_BYTES: usize = 13;
 

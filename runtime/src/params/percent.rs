@@ -31,7 +31,7 @@ const RESERVED_KEPT: &AsciiSet = &COMPONENT
 /// NOT contain any unescaped generic syntax characters").
 const PATH_RESERVED_KEPT: &AsciiSet = &RESERVED_KEPT.add(b'/').add(b'?').add(b'#');
 
-/// Returns percent-encode. With `allow_reserved` the RFC 3986 reserved characters pass through.
+/// Returns `s` percent-encoded. With `allow_reserved` the RFC 3986 reserved characters pass through.
 pub fn pct(s: &str, allow_reserved: bool) -> String {
     utf8_percent_encode(s, if allow_reserved { RESERVED_KEPT } else { COMPONENT }).to_string()
 }

@@ -321,7 +321,6 @@ impl Cx<'_> {
         Some(rb)
     }
 
-    /// Returns non-body parameter to 3.0 parameter with `schema`.
     /// Each parameter of `ps` at `ptr/parameters/<i>` in 3.0 form.
     fn parameters(&mut self, ps: &[Value], ptr: &str) -> Vec<Value> {
         ps.iter().enumerate().map(|(i, p)| self.parameter(p, &format!("{ptr}/parameters/{i}"))).collect()
@@ -493,7 +492,7 @@ impl Cx<'_> {
     }
 }
 
-/// Returns a 2.0 body parameter to 3.0 Request Body.
+/// Returns a 2.0 body parameter as a 3.0 Request Body.
 fn body_request(p: &Value, consumes: &[String]) -> Value {
     let s = p.get("schema").map_or_else(|| json!({}), schema);
     let mut types: Vec<&String> = consumes.iter().filter(|c| !is_form(c)).collect();
@@ -519,7 +518,7 @@ fn is_form(media: &str) -> bool {
     media.starts_with("multipart/form-data") || media.starts_with("application/x-www-form-urlencoded")
 }
 
-/// Returns 2.0 Schema Object to 3.0 Schema Object (recursively).
+/// Returns a 2.0 Schema Object as a 3.0 Schema Object (recursively).
 fn schema(s: &Value) -> Value {
     match s {
         Value::Object(o) => {

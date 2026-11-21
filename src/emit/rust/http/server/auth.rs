@@ -13,8 +13,6 @@ use crate::ir::http::Operation;
 use crate::ir::names::Name;
 use crate::ir::security::{Requirement, SchemeKind, SecurityScheme as Scheme};
 
-/// Returns the scopes or roles of the scheme `scheme` in name order: the `OAuth2` scopes that it declares (with their
-/// description) and the roles that security requirements list for it (3.1+: any scheme type).
 /// Returns every requirement that `ops` declare.
 fn requirements<'a>(ops: impl Iterator<Item = &'a Operation>) -> impl Iterator<Item = &'a Requirement> {
     ops.flat_map(|o| o.security.iter().flatten())

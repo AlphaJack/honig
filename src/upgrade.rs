@@ -125,7 +125,7 @@ pub(crate) fn to_v32(value: Value, diags: &mut Diagnostics) -> Option<Value> {
     }
 }
 
-/// Returns JSON Schema 2019-09 `$recursiveRef: "#"` becomes a `$ref` to the schema that it
+/// Rewrites JSON Schema 2019-09 `$recursiveRef: "#"` as a `$ref` to the schema that it
 /// lands on. 2019-09 section 8.2.4.2: when the initial target sets
 /// `$recursiveAnchor: true` the reference lands on the *outermost* schema
 /// of the dynamic scope that also sets it. [`extend_recursive`] first copies

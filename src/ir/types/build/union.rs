@@ -149,12 +149,10 @@ impl Builder<'_> {
         Struct { fields, additional, closed, patterns, additional_constraints }
     }
 
-    /// Returns `allOf: [{oneOf: [A, B]}, C]` means `oneOf: [allOf: [A, C], allOf: [B, C]]`: each value is one branch
-    /// and also the rest (Garage's `NodeRoleChange` is a role or a removal, each with the node `id`). Merging the
-    /// members into one struct would lose the union. The union may sit in a nested `allOf` member (Meilisearch's
-    /// `SearchResultWithIndex` is its `SearchResult` and an index uid). Each branch is titled after its `$ref` or its
-    /// one property, so the variant keeps that name. A discriminator stays: [`branch_ref`] finds a branch's target
-    /// inside its `allOf`.
+    /// Returns the `oneOf` that `allOf: [{oneOf: [A, B]}, C]` means: `oneOf: [allOf: [A, C], allOf: [B, C]]`. Each
+    /// value is one branch and also the rest. Merging the members into one struct would lose the union. The union may
+    /// sit in a nested `allOf` member. Each branch is titled after its `$ref` or its one property, so the variant keeps
+    /// that name. A discriminator stays: [`branch_ref`] finds a branch's target inside its `allOf`.
     pub(super) fn distributed_all_of(&self, o: &serde_json::Map<String, Value>, _ptr: &str) -> Option<Value> {
         let members = self.flat_members(o.get("allOf").and_then(Value::as_array)?, 0);
         let (i, key, union) = members.iter().enumerate().find_map(|(i, m)| {
@@ -232,8 +230,9 @@ impl Builder<'_> {
         out
     }
 
-    /// Returns `{properties: {name}, required: [name], oneOf: [A, B]}` means `allOf: [{properties, required},
-    /// {oneOf}]`: the properties beside the union hold for each branch. Typing the union alone would lose them.
+    /// Returns the `allOf` that `{properties: {name}, required: [name], oneOf: [A, B]}` means: `allOf: [{properties,
+    /// required}, {oneOf}]`. The properties beside the union hold for each branch. Typing the union alone would lose
+    /// them.
     pub(super) fn sibling_union(&self, o: &serde_json::Map<String, Value>, ptr: &str) -> Option<Value> {
         let key = union_keyword(o)?;
         let own = own_object_keywords(Some(o))?;
@@ -822,7 +821,6 @@ pub(crate) fn has_ref_only(o: &serde_json::Map<String, Value>) -> bool {
     o.contains_key("$ref") && o.keys().all(|k| k == "$ref" || ANNOTATIONS.contains(&k.as_str()) || k.starts_with("x-"))
 }
 
-/// Returns the `type` names and whether `null` is allowed (also via `enum` / `const`).
 /// The value of a `type` keyword for these names. That is one string or a list.
 pub(super) fn types_value(types: &[String]) -> Value {
     match types {

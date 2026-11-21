@@ -984,13 +984,13 @@ fn response_headers(b: &mut Builder<'_>, r: &Value, rptr: &str, prefix: &Name) -
     out
 }
 
-/// Returns variant name of a status code: its RFC 9110 reason phrase (`NotFound`),
-/// or `Status{code}` for codes without a registered one.
+/// Returns the variant name of a status code: its RFC 9110 reason phrase (`NotFound`), or `Status{code}` for a code
+/// without one.
 fn status_name(c: u16) -> Name {
     Name::new(&runtime::__private::reason(c).map_or_else(|| format!("Status{c}"), str::to_owned))
 }
 
-/// Returns variant name of a `nXX` range: its class (`ClientError`).
+/// Returns the variant name of a `nXX` range: its class (`ClientError`).
 fn range_name(n: u16) -> Name {
     Name::new(&runtime::__private::class(n).map_or_else(|| format!("Status{n}XX"), str::to_owned))
 }
@@ -1171,7 +1171,7 @@ fn base64_parts(b: &Builder<'_>, media_obj: &Value, mptr: &str) -> Vec<String> {
         .collect()
 }
 
-/// Returns every media type of an `encoding.contentType` list is binary (not JSON, text or XML).
+/// Returns whether every media type of an `encoding.contentType` list is binary (not JSON, text or XML).
 fn all_binary(ct: &str) -> bool {
     ct.split(',').all(|m| crate::ir::types::binary_media(m.trim()))
 }
@@ -1211,8 +1211,8 @@ fn binary_parts(schema: &Value, media_obj: &Value) -> Option<Value> {
     changed.then_some(out)
 }
 
-/// Returns form fields, multipart parts and SSE events are always named values on the
-/// wire. Without a schema (`{}` or none) type them as a map. A bare JSON value cannot round-trip through them.
+/// Returns the type of form fields, multipart parts and SSE events, which are always named values on the wire. Without
+/// a schema (`{}` or none) they are a map: a bare JSON value cannot round-trip through them.
 fn fields_if_any(ty: Ty) -> Ty {
     if ty == Ty::Any { Ty::Map(Box::new(Ty::Any)) } else { ty }
 }

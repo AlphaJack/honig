@@ -1,12 +1,12 @@
-//! Several root documents as one, each a complete document with its own paths and servers. Each file is bundled against its own directory and upgraded to 3.2 alone. Then
-//! paths, webhooks, components and tags merge.
+//! Several root documents as one, each a complete document with its own paths and servers. Each file is bundled against
+//! its own directory and upgraded to 3.2 alone. Then paths, webhooks, components and tags merge.
 //!
 //! What a file says for all of its operations stays with them. Files whose one server differs only in its path
-//! (`/client/v3`, `/media/v1`) share the host: each file's base path moves into its path
-//! keys and the root server keeps the host. So the client's base URL serves every operation. Root `servers` that
-//! differ otherwise move onto the file's path items (3.2 section 4.9: a path item's `servers` override the root's). Root `security` that
-//! differs moves onto the file's operations that have none of their own. The same path and method in two files and
-//! two different components under one name are errors: the API holds one of each, and the description decides which.
+//! (`/client/v3`, `/media/v1`) share the host: each file's base path moves into its path keys and the root server keeps
+//! the host. So the client's base URL serves every operation. Root `servers` that differ otherwise move onto the file's
+//! path items (3.2 section 4.9: a path item's `servers` override the root's). Root `security` that differs moves onto
+//! the file's operations that have none of their own. The same path and method in two files and two different
+//! components under one name are errors: the API holds one of each, and the description decides which.
 
 use std::path::{Path, PathBuf};
 
@@ -118,7 +118,7 @@ fn one(path: &Path, diags: &mut Diagnostics) -> Option<Value> {
     upgrade::to_v32(value, diags)
 }
 
-/// Returns `diags` with the file that each came from: a pointer alone no longer says which file.
+/// Returns `diags` with the file that each came from: a pointer alone does not say which file.
 fn located(diags: Diagnostics, path: &Path) -> Diagnostics {
     Diagnostics(
         diags.0.into_iter().map(|d| Diagnostic { pointer: format!("{}#{}", path.display(), d.pointer), ..d }).collect(),

@@ -809,7 +809,7 @@ fn a_macro_body_reads_as_items() {
 
 /// A response of a union of unions: each layer holds the two before it, so 2^40 paths reach the bottom. Its size is
 /// found once per type and to the bottom: about 340 bytes for `U39` against about 100 for the struct of `201`, so `Ok`
-/// is boxed. Cut at 16 levels, `U39` read as about 180.
+/// is boxed.
 #[test]
 fn a_response_of_a_union_of_unions_is_sized_to_the_bottom() {
     let mut schemas = serde_json::Map::new();

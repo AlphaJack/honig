@@ -30,7 +30,7 @@ pub(crate) fn lossy(body: &[u8]) -> Cow<'_, str> {
     utf8(body).map_or_else(|| String::from_utf8_lossy(body), Cow::Borrowed)
 }
 
-/// Returns `bytes` as text when they are UTF-8. The `simd` feature checks valid text twice as fast.
+/// Returns `bytes` as text when they are UTF-8.
 pub(crate) fn utf8(bytes: &[u8]) -> Option<&str> {
     #[cfg(feature = "simd")]
     return simdutf8::basic::from_utf8(bytes).ok();

@@ -23,8 +23,8 @@ fn text(format: &str, value: &str) -> bool {
 /// How a value of a format is checked.
 type Check = fn(&str) -> bool;
 
-/// A format and how a value of it is checked. These are the text checks that the runtime had (`uuid` and `date-time`)
-/// and the ones that `url` and `ipnet` add. The types of mail addresses and host names (`idn`) are here too.
+/// A format and how a value of it is checked: the text checks of the runtime, those that `url` and `ipnet` add, and the
+/// types of mail addresses and host names (`idn`).
 const CASES: [(&str, Check); 8] = [
     ("uuid", |v| text("uuid", v)),
     ("date-time", |v| text("date-time", v)),

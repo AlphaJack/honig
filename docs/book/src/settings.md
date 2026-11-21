@@ -4,7 +4,7 @@
 
 ```toml
 [dependencies]
-honig = { version = "=0.0.1", features = ["simd"] }
+honig = { version = "=x.y.z", features = ["simd"] }
 
 [package.metadata.honig.api]
 spec = "openapi.yaml"
@@ -41,7 +41,7 @@ Some APIs describe themselves in many complete documents, one per area. List the
 
 ```toml
 [package.metadata.honig.api]
-spec = ["matrix/client-server/*.yaml"]
+spec = ["specs/*.yaml"]
 ```
 
 Each file is bundled against its own directory and upgraded to 3.2 alone. Then paths, webhooks, components and tags merge into one module.

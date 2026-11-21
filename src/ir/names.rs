@@ -220,7 +220,7 @@ mod tests {
         assert_eq!(of("+"), ["plus"]);
         assert_eq!(of("getAToB"), ["get", "a", "to", "b"]);
         assert_eq!(of("$ref"), ["ref"]);
-        assert_eq!(of("s3Bucket"), ["s3", "bucket"]);
+        assert_eq!(of("h2Stream"), ["h2", "stream"]);
         assert_eq!(of("KindVariant2Variant2"), ["kind", "variant2", "variant2"]);
         assert_eq!(of(""), ["empty"]);
         assert_eq!(of("$$"), ["value"]);

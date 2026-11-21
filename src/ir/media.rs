@@ -15,9 +15,9 @@ pub(crate) enum MediaKind {
     Multipart,
     /// Other `multipart/*` types (`mixed` or `related`) with one part per array item.
     MultipartMixed,
-    /// JSON and `+json` types.
+    /// JSON Lines (`application/jsonl`).
     JsonLines,
-    /// JSON and `+json` types.
+    /// JSON text sequences (`application/json-seq` and `+json-seq`).
     JsonSeq,
     /// Server-Sent Events (`text/event-stream`).
     Sse,

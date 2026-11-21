@@ -54,7 +54,7 @@ fn scope_field(scopes: &[&str]) -> Option<String> {
     (!scopes.is_empty()).then(|| format!("scope={}", pct(&scopes.join(" "), false)))
 }
 
-/// Returns `OAuth2` password grant (RFC 6749 section 4.3). OAuth 2.1 deprecates it.
+/// Returns a token from the `OAuth2` password grant (RFC 6749 section 4.3). OAuth 2.1 deprecates it.
 /// Errors: a transport failure or a non-2xx or undecodable token response.
 pub async fn password_grant<T: Transport>(
     transport: &T,
@@ -148,8 +148,8 @@ pub fn authorization_url(
     format!("{base}{}{}", if base.contains('?') { '&' } else { '?' }, q.join("&"))
 }
 
-/// Returns URL for the implicit grant (RFC 6749 section 4.2): the token comes back in the
-/// redirect's fragment. Deprecated by OAuth 2.1; prefer the code flow.
+/// Returns the URL of the implicit grant (RFC 6749 section 4.2): the token comes back in the fragment of the redirect.
+/// OAuth 2.1 deprecates it: prefer the code flow.
 pub fn implicit_url(base: &str, client_id: &str, redirect_uri: &str, scopes: &[&str], state: &str) -> String {
     let mut q = vec![
         "response_type=token".to_owned(),
@@ -221,7 +221,7 @@ fn sha256(data: &[u8]) -> [u8; 32] {
     sha2::Sha256::digest(data).into()
 }
 
-/// Returns `OAuth2` client credentials grant (RFC 6749 section 4.4) with HTTP basic auth.
+/// Returns a token from the `OAuth2` client credentials grant (RFC 6749 section 4.4) with HTTP basic auth.
 /// Errors: a transport failure or a non-2xx or undecodable token response.
 pub async fn client_credentials<T: Transport>(
     transport: &T,

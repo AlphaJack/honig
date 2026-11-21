@@ -117,9 +117,9 @@ pub(crate) fn aliases(space: &Space<'_>, extra: &[(String, Vec<String>)]) -> std
 }
 
 /// Returns a better name for the type that its twins alias: the longest ending of two words or more that most twins'
-/// names share. The 48 `<Operation>Ok` envelopes that each spell out `usage` alias `OkUsage` and not
-/// `ListShardKeysOkUsage`, the first one built. Bigger groups pick first. A name another type has is skipped for the
-/// next ending. When one twin is just those words it is the schema they all repeat, so the group keeps its name.
+/// names share. `<Operation>Ok` envelopes that each spell out `usage` alias `OkUsage` and not the name of the first one
+/// built. Bigger groups pick first. A name another type has is skipped for the next ending. When one twin is just those
+/// words it is the schema they all repeat, so the group keeps its name.
 pub(super) fn shared_names(
     space: &Space<'_>,
     aliases: &std::collections::BTreeMap<usize, usize>,
@@ -280,8 +280,7 @@ impl Base {
     }
 }
 
-/// Emits `x-rust-type` as `pub type Name = your::Type;`. Validation of its constraints
-/// is yours (a no-op `Validate`).
+/// Emits `x-rust-type` as `pub type Name = your::Type;`. Its constraints are yours to keep.
 fn external(items: &mut Vec<TokenStream>, def: &TypeDef, path: &str) {
     let name = pascal_ident(&def.name);
     let doc = doc_opt(def.doc.as_deref());
@@ -468,7 +467,6 @@ fn derives(space: &Space<'_>, id: TypeId, default: bool) -> TokenStream {
     quote!(#[derive(Debug, Clone, PartialEq, #eq #default serde::Serialize, serde::Deserialize)])
 }
 
-/// Returns a struct field with doc, serde attributes and declaration.
 /// Returns one field of `runtime::object!`: its kind, its name and its type, with the serde attributes that its kind
 /// does not imply (a rename, a spec default, a reader of a library format).
 fn field(space: &Space<'_>, f: &Field, owner: &str) -> TokenStream {

@@ -490,8 +490,7 @@ pub fn member_body() -> Bytes {
     Bytes::from_static(b"name=Alice&age=30&role=admin")
 }
 
-/// The sizes that both benches check every kind at. A kind keeps one budget across them. 2 KiB is about the median
-/// JSON body of real APIs; 256 B, 16 KiB and 1 MiB bracket it.
+/// The sizes that both benches check every kind at. A kind keeps one budget across them.
 #[allow(dead_code, reason = "the memory bench picks its own sizes")]
 pub const BENCH_SIZES: [usize; 4] = [256, 2 << 10, 16 << 10, 1 << 20];
 
@@ -823,8 +822,7 @@ pub struct Timing {
 
 /// Times `rounds` pairs of rounds: one of the generated side, then one of its baseline. A round takes about `length`
 /// for the baseline. The ratio is the median of the ratios of each pair: a stall of the machine slows the two rounds of
-/// a pair alike or one pair only, so it barely moves the median. A ratio of the two fastest rounds, each from a pair of
-/// its own, took one lucky round of a side as the whole truth and failed now and then on a busy CI runner.
+/// a pair alike or one pair only, so it barely moves the median.
 #[allow(dead_code, reason = "the allocation bench does not time")]
 pub async fn times(generated: &Router, baseline: &Router, path: &Path, rounds: usize, length: Duration) -> Timing {
     let head = async || {

@@ -8,8 +8,8 @@
 //!    name anchors (`#name` via `$anchor`) and absolute URIs that match `$self`
 //!    or a schema `$id`.
 //!
-//! Remote (http) refs are reported and not fetched. Fetching would add an HTTP
-//! dependency to the generator.
+//! Remote (`http(s)`) refs are fetched only when the generator is built with `remote-refs`. Otherwise they are
+//! reported.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
@@ -504,10 +504,9 @@ fn canonical_key(r: &str, base: Base<'_>) -> String {
 /// Component sections whose external entries are adopted as themselves.
 const ADOPTED: [&str; 5] = ["schemas", "parameters", "requestBodies", "responses", "headers"];
 
-/// Returns `components.schemas.X: {$ref: other.yaml}`: the schema of the file becomes X
-/// itself (not a new component plus an alias). The same goes for parameters, request
-/// bodies, responses and headers. It also goes for a whole section given as one file
-/// (`components.parameters: {$ref: parameters/_index.yml}`).
+/// Adopts `components.schemas.X: {$ref: other.yaml}`: the schema of the file becomes X itself (not a new component plus
+/// an alias). The same goes for parameters, request bodies, responses and headers, and for a whole section given as one
+/// file (`components.parameters: {$ref: parameters/_index.yml}`).
 fn adopt_component_files(
     root: &mut Value,
     layout: Layout,
