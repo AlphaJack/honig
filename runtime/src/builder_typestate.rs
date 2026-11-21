@@ -129,8 +129,10 @@ macro_rules! typestate_builder {
 
 #[cfg(test)]
 mod tests {
+    #![expect(unreachable_pub, reason = "`typestate_builder!` writes public items, here in a private module")]
+
     #[derive(Debug, PartialEq, Eq)]
-    struct Pair {
+    pub struct Pair {
         a: u8,
         b: u8,
         c: Option<u8>,
@@ -146,7 +148,7 @@ mod tests {
 
     #[test]
     fn required_values_go_by_name_in_any_order() {
-        let p = PairBuilder::new().b(2_i64).c(3_i64).a(1_i64).build();
+        let p = Pair::builder().b(2_i64).c(3_i64).a(1_i64).build();
         assert_eq!(p, Ok(Pair { a: 1, b: 2, c: Some(3), d: 7 }));
     }
 
