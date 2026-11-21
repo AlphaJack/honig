@@ -747,6 +747,33 @@ fn a_const_tag_serializes_without_a_value_tree() {
     assert!(!types.contains("serde_json::to_value(v)"), "{types}");
 }
 
+/// A union that is one of its own branches (`Loop` is `Loop` or `null`, `Ping` is `Pong` or a string and `Pong` is
+/// `Ping` or a number) generates: a `$ref` to it with a sibling keyword does not spread over its branches for ever, and
+/// every walk through its aliases stops.
+#[test]
+fn a_union_that_is_its_own_branch_generates() {
+    let r = |n: &str| json!({"$ref": format!("#/components/schemas/{n}")});
+    let doc = common::spec(
+        "3.1.0",
+        &json!({}),
+        &json!({"schemas": {
+            "Loop": {"anyOf": [r("Loop"), {"type": "null"}]},
+        "Solo": {"oneOf": [r("Solo")]},
+        "Many": {"anyOf": [r("Solo"), {"type": "string", "minLength": 3}]},
+            "Ping": {"anyOf": [r("Pong"), {"type": "string"}]},
+            "Pong": {"anyOf": [r("Ping"), {"type": "number"}]},
+            "Either": {"anyOf": [r("Loop"), {"type": "string", "minLength": 2}]},
+            "Holder": {"type": "object", "properties": {
+                "e": r("Either"),
+                "l": {"$ref": "#/components/schemas/Loop", "minLength": 1},
+                "p": {"$ref": "#/components/schemas/Ping", "minLength": 1},
+            }},
+        }}),
+    );
+    let files = common::generate("shape-union-loop", &doc, &crate::emit::Options::default());
+    assert!(common::file(&files, "types.rs").contains("pub struct Holder"));
+}
+
 /// An `anyOf` or `oneOf` whose branches share a type needs no check of the whole value: decoding checks every keyword
 /// of a branch. The first branch that decodes proves an `anyOf`. A `oneOf` decodes every branch and counts.
 #[test]
