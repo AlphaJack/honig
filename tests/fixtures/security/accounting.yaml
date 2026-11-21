@@ -1,0 +1,134 @@
+openapi: 3.0.3
+info:
+  title: accounting
+  version: "1"
+paths:
+  /op0:
+    get:
+      operationId: op0
+      responses:
+        "204":
+          description: done
+      security:
+        - OAuth2:
+            - accounting.settings
+  /op1:
+    get:
+      operationId: op1
+      responses:
+        "204":
+          description: done
+      security:
+        - OAuth2:
+            - accounting.attachments.read
+  /op2:
+    get:
+      operationId: op2
+      responses:
+        "204":
+          description: done
+      security:
+        - OAuth2:
+            - accounting.attachments
+  /op3:
+    get:
+      operationId: op3
+      responses:
+        "204":
+          description: done
+      security:
+        - OAuth2:
+            - accounting.transactions.read
+  /op4:
+    get:
+      operationId: op4
+      responses:
+        "204":
+          description: done
+      security:
+        - OAuth2:
+            - accounting.transactions
+  /op5:
+    get:
+      operationId: op5
+      responses:
+        "204":
+          description: done
+      security:
+        - OAuth2:
+            - accounting.settings.read
+  /op6:
+    get:
+      operationId: op6
+      responses:
+        "204":
+          description: done
+      security:
+        - OAuth2:
+            - paymentservices
+  /op7:
+    get:
+      operationId: op7
+      responses:
+        "204":
+          description: done
+      security:
+        - OAuth2:
+            - accounting.contacts.read
+  /op8:
+    get:
+      operationId: op8
+      responses:
+        "204":
+          description: done
+      security:
+        - OAuth2:
+            - accounting.contacts
+  /op9:
+    get:
+      operationId: op9
+      responses:
+        "204":
+          description: done
+      security:
+        - OAuth2:
+            - accounting.journals.read
+  /op10:
+    get:
+      operationId: op10
+      responses:
+        "204":
+          description: done
+      security:
+        - OAuth2:
+            - accounting.reports.read
+  /op11:
+    get:
+      operationId: op11
+      responses:
+        "204":
+          description: done
+      security:
+        - OAuth2:
+            - accounting.reports.tenninetynine.read
+components:
+  securitySchemes:
+    OAuth2:
+      flows:
+        authorizationCode:
+          authorizationUrl: https://auth.example.test/authorization
+          scopes:
+            accounting.attachments: ""
+            accounting.attachments.read: ""
+            accounting.contacts: ""
+            accounting.contacts.read: ""
+            accounting.journals.read: ""
+            accounting.reports.read: ""
+            accounting.reports.tenninetynine.read: ""
+            accounting.settings: ""
+            accounting.settings.read: ""
+            accounting.transactions: ""
+            accounting.transactions.read: ""
+            paymentservices: ""
+          tokenUrl: https://auth.example.test/token
+      type: oauth2

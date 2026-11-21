@@ -1,0 +1,204 @@
+openapi: 3.0.3
+info:
+  title: tracker
+  version: "1"
+paths:
+  /op0:
+    get:
+      operationId: op0
+      responses:
+        "204":
+          description: done
+      security:
+        - basicAuth: []
+        - OAuth2:
+            - manage:app-configuration
+  /op1:
+    get:
+      operationId: op1
+      responses:
+        "204":
+          description: done
+      security:
+        - basicAuth: []
+        - OAuth2: []
+  /op2:
+    get:
+      operationId: op2
+      responses:
+        "204":
+          description: done
+      security:
+        - basicAuth: []
+  /op3:
+    get:
+      operationId: op3
+      responses:
+        "204":
+          description: done
+      security:
+        - basicAuth: []
+        - OAuth2:
+            - read:app-work
+        - {}
+  /op4:
+    get:
+      operationId: op4
+      responses:
+        "204":
+          description: done
+      security:
+        - basicAuth: []
+        - OAuth2:
+            - write:app-work
+        - {}
+  /op5:
+    get:
+      operationId: op5
+      responses:
+        "204":
+          description: done
+      security:
+        - basicAuth: []
+        - OAuth2:
+            - manage:app-configuration
+        - {}
+  /op6:
+    get:
+      operationId: op6
+      responses:
+        "204":
+          description: done
+      security:
+        - basicAuth: []
+        - OAuth2:
+            - manage:app-project
+        - {}
+  /op7:
+    get:
+      operationId: op7
+      responses:
+        "204":
+          description: done
+      security:
+        - basicAuth: []
+        - OAuth2:
+            - read:app-user
+  /op8:
+    get:
+      operationId: op8
+      responses:
+        "204":
+          description: done
+      security:
+        - basicAuth: []
+        - OAuth2:
+            - read:app-work
+  /op9:
+    get:
+      operationId: op9
+      responses:
+        "204":
+          description: done
+      security:
+        - basicAuth: []
+        - OAuth2:
+            - write:app-work
+            - read:app-work
+  /op10:
+    get:
+      operationId: op10
+      responses:
+        "204":
+          description: done
+      security:
+        - basicAuth: []
+        - OAuth2:
+            - write:app-work
+  /op11:
+    get:
+      operationId: op11
+      responses:
+        "204":
+          description: done
+      security:
+        - basicAuth: []
+        - OAuth2:
+            - read:app-work
+            - read:app-user
+        - {}
+  /op12:
+    get:
+      operationId: op12
+      responses:
+        "204":
+          description: done
+      security:
+        - basicAuth: []
+        - OAuth2:
+            - read:app-user
+        - {}
+  /op13:
+    get:
+      operationId: op13
+      responses:
+        "204":
+          description: done
+      security:
+        - basicAuth: []
+        - OAuth2:
+            - manage:app-project
+  /op14:
+    get:
+      operationId: op14
+      responses:
+        "204":
+          description: done
+      security:
+        - basicAuth: []
+        - OAuth2: []
+        - {}
+  /op15:
+    get:
+      operationId: op15
+      responses:
+        "204":
+          description: done
+      security:
+        - basicAuth: []
+        - {}
+  /op16:
+    get:
+      operationId: op16
+      responses:
+        "204":
+          description: done
+      security:
+        - basicAuth: []
+        - OAuth2:
+            - read:app-work
+            - manage:app-webhook
+  /op17:
+    get:
+      operationId: op17
+      responses:
+        "204":
+          description: done
+components:
+  securitySchemes:
+    OAuth2:
+      flows:
+        authorizationCode:
+          authorizationUrl: https://auth.example.test/authorization
+          scopes:
+            manage:app-configuration: ""
+            manage:app-project: ""
+            manage:app-webhook: ""
+            read:app-user: ""
+            read:app-work: ""
+            write:app-work: ""
+          tokenUrl: https://auth.example.test/token
+      type: oauth2
+    basicAuth:
+      scheme: basic
+      type: http
