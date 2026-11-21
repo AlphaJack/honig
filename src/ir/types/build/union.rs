@@ -158,9 +158,10 @@ impl Builder<'_> {
     pub(super) fn distributed_all_of(&self, o: &serde_json::Map<String, Value>, _ptr: &str) -> Option<Value> {
         let members = self.flat_members(o.get("allOf").and_then(Value::as_array)?, 0);
         let (i, key, union) = members.iter().enumerate().find_map(|(i, m)| {
-            let (r, _) = self.deref(m)?;
+            let (r, at) = self.deref(m)?;
             let key = ["oneOf", "anyOf"].into_iter().find(|k| r.get(*k).is_some_and(Value::is_array))?;
-            Some((i, key, r))
+            // A union that is one of its own branches would spread without end: it stays an `allOf`.
+            (!self.branches_reach(&r, &at, 0)).then_some((i, key, r))
         })?;
         let mut rest: Vec<Value> =
             members.iter().enumerate().filter(|(j, _)| *j != i).map(|(_, m)| m.clone()).collect();
@@ -197,6 +198,16 @@ impl Builder<'_> {
             out.insert("discriminator".to_owned(), d.clone());
         }
         Some(Value::Object(out))
+    }
+
+    /// Does a branch of the union `u`, or a branch of a union that a branch is, lead back to the schema at `to`?
+    fn branches_reach(&self, u: &Value, to: &str, depth: usize) -> bool {
+        depth < super::keywords::MAX_ALIAS_HOPS
+            && ["oneOf", "anyOf"].iter().filter_map(|k| u.get(*k).and_then(Value::as_array)).flatten().any(|b| {
+                self.deref(b).is_some_and(|(target, at)| {
+                    !at.is_empty() && (at == to || self.branches_reach(&target, to, depth + 1))
+                })
+            })
     }
 
     /// Returns the members of an `allOf` with the members of a nested pure `allOf` lifted out. Such a member's own
