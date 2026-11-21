@@ -17,7 +17,7 @@ use crate::ir::types::Format;
 
 /// Every setting of a module as (key, default, what it does). A setting without a default is required. `--help` and
 /// the book show it.
-pub(crate) const SETTINGS: [(&str, Option<&str>, &str); 11] = [
+pub(crate) const SETTINGS: [(&str, Option<&str>, &str); 10] = [
     ("spec", None, "the description relative to Cargo.toml; a list [\"a.yaml\", \"api/*.yaml\"] merges several"),
     ("output", Some("\"src/<module>\""), "the module directory"),
     (
@@ -25,17 +25,17 @@ pub(crate) const SETTINGS: [(&str, Option<&str>, &str); 11] = [
         Some("the crate's clippy lints, else true"),
         "true writes the root of the module as `<output>/mod.rs`, false as `<output>.rs`",
     ),
-    ("client", Some("true"), "generate the client; a table sets its adapters = [\"reqwest\"] and strict = false"),
+    (
+        "client",
+        Some("true"),
+        "generate the client; a table sets its adapters = [\"reqwest\"] and operations = [\"getOrder\"]. With a list of \
+         operations on either side, the module holds those of both and only the types that they reach",
+    ),
     (
         "server",
         Some("true"),
-        "generate the server; a table sets its adapters = [\"axum\"] and allow_unimplemented = true",
-    ),
-    (
-        "operations",
-        Some("every one"),
-        "the only operations, by operationId, that the client calls and the server serves; the module holds only the \
-         types that they reach",
+        "generate the server; a table sets its adapters = [\"axum\"], allow_unimplemented = true and operations = \
+         [\"getOrder\"]",
     ),
     ("tests", Some("false"), "generate a test that the description's examples decode"),
     ("unknown_fields", Some("\"drop\""), "\"keep\": objects without additionalProperties keep unknown keys"),
@@ -105,9 +105,11 @@ pub(crate) struct Settings {
     pub strict_client: bool,
     /// The crate has no library target (no `[lib]` and no `src/lib.rs`). The module is visible to the crate only.
     pub binary: bool,
-    /// `operations = [...]`: the only operations that the client calls and the server serves, by `operationId`. `None`
-    /// for every one.
-    pub operations: Option<Vec<String>>,
+    /// `client = { operations = [...] }`: the only operations that the client calls by `operationId`. `None` for every
+    /// one.
+    pub client_operations: Option<Vec<String>>,
+    /// `server = { operations = [...] }`: the only operations that the server serves. `None` for every one.
+    pub server_operations: Option<Vec<String>>,
     /// `overlays`: Overlay files applied in order to the spec. They are relative to `root`.
     pub overlays: Vec<PathBuf>,
 }
@@ -489,13 +491,8 @@ pub(crate) fn settings<'a>(module: impl Into<Module<'a>>, path: &Path) -> Result
         None => manifest.linted_mod_rs().unwrap_or(true),
         Some(item) => item.as_bool().ok_or_else(|| setting(&name, "mod_rs", "true or false", shown(item)))?,
     };
-    let Halves { client, server, allow_unimplemented, adapters, strict_client } = halves(manifest, table, &name)?;
-    let operations = table
-        .get("operations")
-        .map(|item| {
-            string_array(Some(item)).ok_or_else(|| setting(&name, "operations", "a list of operationIds", shown(item)))
-        })
-        .transpose()?;
+    let Halves { client, server, client_operations, server_operations, allow_unimplemented, adapters, strict_client } =
+        halves(manifest, table, &name)?;
     Ok(Settings {
         table: name.clone(),
         root,
@@ -509,7 +506,8 @@ pub(crate) fn settings<'a>(module: impl Into<Module<'a>>, path: &Path) -> Result
         adapters,
         derives: derives(table, &name)?,
         binary,
-        operations,
+        client_operations,
+        server_operations,
         strict_client,
         overlays: match table.get("overlays") {
             None => vec![],
@@ -533,6 +531,8 @@ pub(crate) fn settings<'a>(module: impl Into<Module<'a>>, path: &Path) -> Result
 struct Halves {
     client: bool,
     server: bool,
+    client_operations: Option<Vec<String>>,
+    server_operations: Option<Vec<String>>,
     allow_unimplemented: bool,
     adapters: Vec<&'static str>,
     strict_client: bool,
@@ -540,14 +540,26 @@ struct Halves {
 
 /// Returns `client` and `server` of the module table `name`.
 fn halves(manifest: &Manifest, table: &dyn TableLike, name: &str) -> Result<Halves, Error> {
-    let (client, client_table) = half(table, name, "client", &["adapters", "strict"])?;
-    let (server, server_table) = half(table, name, "server", &["adapters", "allow_unimplemented"])?;
+    let (client, client_table) = half(table, name, "client", &["adapters", "operations", "strict"])?;
+    let (server, server_table) = half(table, name, "server", &["adapters", "allow_unimplemented", "operations"])?;
     let mut adapters = half_adapters(manifest, client_table, &format!("{name}.client"), Side::Client)?;
     for adapter in half_adapters(manifest, server_table, &format!("{name}.server"), Side::Server)? {
         if !adapters.contains(&adapter) {
             adapters.push(adapter);
         }
     }
+    let operations = |half_table: Option<&dyn TableLike>, side: &str| {
+        half_table
+            .and_then(|t| t.get("operations"))
+            .map(|item| {
+                string_array(Some(item)).ok_or_else(|| {
+                    setting(&format!("{name}.{side}"), "operations", "a list of operationIds", shown(item))
+                })
+            })
+            .transpose()
+    };
+    let client_operations = operations(client_table, "client")?;
+    let server_operations = operations(server_table, "server")?;
     let allow_unimplemented = match server_table.and_then(|t| t.get("allow_unimplemented")) {
         None => false,
         Some(item) => item
@@ -560,7 +572,7 @@ fn halves(manifest: &Manifest, table: &dyn TableLike, name: &str) -> Result<Halv
             item.as_bool().ok_or_else(|| setting(&format!("{name}.client"), "strict", "true or false", shown(item)))?
         }
     };
-    Ok(Halves { client, server, allow_unimplemented, adapters, strict_client })
+    Ok(Halves { client, server, client_operations, server_operations, allow_unimplemented, adapters, strict_client })
 }
 
 /// Returns the half `key` (`client` or `server`): whether it is generated and its table of settings. It is `true`,
@@ -1097,34 +1109,29 @@ mod tests {
     #[test]
     fn client_and_server_take_a_table_of_their_own() {
         let one = |module: &str| modules_of(&format!("[package.metadata.honig.api]\nspec = \"a.yaml\"\n{module}"));
-        let s = one("server = { allow_unimplemented = true }\n").unwrap();
-        assert_eq!((s[0].client, s[0].server, s[0].allow_unimplemented), (true, true, true));
+        let s = one("client = { operations = [\"getOrder\"] }\nserver = { allow_unimplemented = true }\n").unwrap();
+        assert_eq!(
+            (s[0].client, s[0].client_operations.clone(), s[0].server, s[0].allow_unimplemented),
+            (true, Some(vec!["getOrder".to_owned()]), true, true)
+        );
+        let s = one("server = { operations = [\"listOrders\"] }\n").unwrap();
+        assert_eq!(s[0].server_operations, Some(vec!["listOrders".to_owned()]));
         let s = one("client = false\n").unwrap();
-        assert_eq!((s[0].client, s[0].server, s[0].allow_unimplemented), (false, true, false));
+        assert_eq!(
+            (s[0].client, s[0].client_operations.clone(), s[0].server, s[0].allow_unimplemented),
+            (false, None, true, false)
+        );
         assert_eq!(
             one("server = { strict = false }\n").unwrap_err().to_string(),
-            "[package.metadata.honig.api.server] has no setting `strict`. The settings are adapters, allow_unimplemented"
+            "[package.metadata.honig.api.server] has no setting `strict`. The settings are adapters, allow_unimplemented, operations"
         );
         assert_eq!(
             one("client = \"yes\"\n").unwrap_err().to_string(),
-            "[package.metadata.honig.api] `client` must be true, false or a table with adapters, strict, found \"yes\""
+            "[package.metadata.honig.api] `client` must be true, false or a table with adapters, operations, strict, found \"yes\""
         );
         let strict = |client: &str| one(&format!("client = {client}\n")).unwrap()[0].strict_client;
         assert!(strict("true"), "strict unless set");
         assert!(!strict("{ strict = false }"));
-    }
-
-    /// One list of operations serves both halves. A list on a half is a setting that the half does not have.
-    #[test]
-    fn operations_are_one_list_for_both_halves() {
-        let one = |module: &str| modules_of(&format!("[package.metadata.honig.api]\nspec = \"a.yaml\"\n{module}"));
-        let s = one("operations = [\"getOrder\"]\n").unwrap();
-        assert_eq!(s[0].operations, Some(vec!["getOrder".to_owned()]));
-        assert_eq!(one("client = true\n").unwrap()[0].operations, None);
-        assert_eq!(
-            one("client = { operations = [\"getOrder\"] }\n").unwrap_err().to_string(),
-            "[package.metadata.honig.api.client] has no setting `operations`. The settings are adapters, strict"
-        );
     }
 
     #[test]

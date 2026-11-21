@@ -53,14 +53,9 @@ pub(super) fn emit(api: &crate::ir::Api, space: &Space<'_>, opts: &crate::emit::
             continue;
         }
         let first = items.len();
-        // Extra derives from the settings and `deprecated` go on the declaration of the type: inside the body of an
-        // object's macro, else on its first item.
-        let derive = extra_derives(def, extra);
-        let deprecated = def.deprecated.then(|| quote!(#[deprecated]));
-        let attrs = quote!(#derive #deprecated);
         match &def.kind {
             Kind::Struct(s) => {
-                structure(&mut items, space, id, s, &attrs);
+                structure(&mut items, space, id, s);
                 builders.push(builder(space, &name, &name, s));
                 builders_name_types |= names_types(space, s);
                 if xml {
@@ -89,10 +84,16 @@ pub(super) fn emit(api: &crate::ir::Api, space: &Space<'_>, opts: &crate::emit::
             }
             Kind::Pending => {}
         }
-        if !matches!(def.kind, Kind::Struct(_))
+        // Extra derives from the settings go on the declaration of the type, the first item.
+        if let Some(attr) = extra_derives(def, extra)
             && let Some(item) = items.get_mut(first)
         {
-            *item = quote!(#attrs #item);
+            *item = quote!(#attr #item);
+        }
+        if def.deprecated
+            && let Some(item) = items.get_mut(first)
+        {
+            *item = quote!(#[deprecated] #item);
         }
     }
     // A library exports the constructors. A binary may build a type only by decoding it.
@@ -629,7 +630,7 @@ fn extra_inits(s: &Struct, extra: &proc_macro2::Ident) -> Option<TokenStream> {
     Some(quote!(#(#maps: std::collections::BTreeMap::new(),)* #extra: #other,))
 }
 
-fn structure(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, s: &Struct, attrs: &TokenStream) {
+fn structure(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, s: &Struct) {
     let def = space.types.get(id);
     let name = pascal_ident(&def.name);
     let doc = doc_opt(def.doc.as_deref());
@@ -669,7 +670,6 @@ fn structure(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, s: &St
             #encode
             #doc
             #derive
-            #attrs
             #closed
             pub struct #name {
                 #(#fields)*
