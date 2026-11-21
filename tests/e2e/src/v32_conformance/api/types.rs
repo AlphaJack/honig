@@ -230,26 +230,8 @@ pub enum ProductVariants {
 impl serde::Serialize for ProductVariants {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         match self {
-            Self::Gadget(v) => {
-                let mut j = serde_json::to_value(v).map_err(serde::ser::Error::custom)?;
-                if let serde_json::Value::Object(m) = &mut j {
-                    m.insert(
-                        "kind".to_owned(),
-                        serde_json::Value::String("Gadget".to_owned()),
-                    );
-                }
-                serde::Serialize::serialize(&j, s)
-            }
-            Self::Book(v) => {
-                let mut j = serde_json::to_value(v).map_err(serde::ser::Error::custom)?;
-                if let serde_json::Value::Object(m) = &mut j {
-                    m.insert(
-                        "kind".to_owned(),
-                        serde_json::Value::String("Book".to_owned()),
-                    );
-                }
-                serde::Serialize::serialize(&j, s)
-            }
+            Self::Gadget(v) => serde::Serialize::serialize(v, s),
+            Self::Book(v) => serde::Serialize::serialize(v, s),
         }
     }
 }

@@ -277,26 +277,8 @@ pub enum EventPayment {
 impl serde::Serialize for EventPayment {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         match self {
-            Self::Card(v) => {
-                let mut j = serde_json::to_value(v).map_err(serde::ser::Error::custom)?;
-                if let serde_json::Value::Object(m) = &mut j {
-                    m.insert(
-                        "method".to_owned(),
-                        serde_json::Value::String("Card".to_owned()),
-                    );
-                }
-                serde::Serialize::serialize(&j, s)
-            }
-            Self::Transfer(v) => {
-                let mut j = serde_json::to_value(v).map_err(serde::ser::Error::custom)?;
-                if let serde_json::Value::Object(m) = &mut j {
-                    m.insert(
-                        "method".to_owned(),
-                        serde_json::Value::String("Transfer".to_owned()),
-                    );
-                }
-                serde::Serialize::serialize(&j, s)
-            }
+            Self::Card(v) => serde::Serialize::serialize(v, s),
+            Self::Transfer(v) => serde::Serialize::serialize(v, s),
         }
     }
 }

@@ -70,26 +70,8 @@ pub enum Discriminated {
 impl serde::Serialize for Discriminated {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         match self {
-            Self::EmailRequest(v) => {
-                let mut j = serde_json::to_value(v).map_err(serde::ser::Error::custom)?;
-                if let serde_json::Value::Object(m) = &mut j {
-                    m.insert(
-                        "type".to_owned(),
-                        serde_json::Value::String("email".to_owned()),
-                    );
-                }
-                serde::Serialize::serialize(&j, s)
-            }
-            Self::SmsRequest(v) => {
-                let mut j = serde_json::to_value(v).map_err(serde::ser::Error::custom)?;
-                if let serde_json::Value::Object(m) = &mut j {
-                    m.insert(
-                        "type".to_owned(),
-                        serde_json::Value::String("sms".to_owned()),
-                    );
-                }
-                serde::Serialize::serialize(&j, s)
-            }
+            Self::EmailRequest(v) => serde::Serialize::serialize(v, s),
+            Self::SmsRequest(v) => serde::Serialize::serialize(v, s),
         }
     }
 }
@@ -133,26 +115,8 @@ pub enum IfThen {
 impl serde::Serialize for IfThen {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         match self {
-            Self::Email(v) => {
-                let mut j = serde_json::to_value(v).map_err(serde::ser::Error::custom)?;
-                if let serde_json::Value::Object(m) = &mut j {
-                    m.insert(
-                        "type".to_owned(),
-                        serde_json::Value::String("email".to_owned()),
-                    );
-                }
-                serde::Serialize::serialize(&j, s)
-            }
-            Self::Sms(v) => {
-                let mut j = serde_json::to_value(v).map_err(serde::ser::Error::custom)?;
-                if let serde_json::Value::Object(m) = &mut j {
-                    m.insert(
-                        "type".to_owned(),
-                        serde_json::Value::String("sms".to_owned()),
-                    );
-                }
-                serde::Serialize::serialize(&j, s)
-            }
+            Self::Email(v) => serde::Serialize::serialize(v, s),
+            Self::Sms(v) => serde::Serialize::serialize(v, s),
             Self::Otherwise(v) => serde::Serialize::serialize(v, s),
         }
     }
@@ -193,26 +157,8 @@ pub enum ConstOneOf {
 impl serde::Serialize for ConstOneOf {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         match self {
-            Self::Email(v) => {
-                let mut j = serde_json::to_value(v).map_err(serde::ser::Error::custom)?;
-                if let serde_json::Value::Object(m) = &mut j {
-                    m.insert(
-                        "type".to_owned(),
-                        serde_json::Value::String("email".to_owned()),
-                    );
-                }
-                serde::Serialize::serialize(&j, s)
-            }
-            Self::Sms(v) => {
-                let mut j = serde_json::to_value(v).map_err(serde::ser::Error::custom)?;
-                if let serde_json::Value::Object(m) = &mut j {
-                    m.insert(
-                        "type".to_owned(),
-                        serde_json::Value::String("sms".to_owned()),
-                    );
-                }
-                serde::Serialize::serialize(&j, s)
-            }
+            Self::Email(v) => serde::Serialize::serialize(v, s),
+            Self::Sms(v) => serde::Serialize::serialize(v, s),
         }
     }
 }
@@ -388,16 +334,7 @@ pub enum Shipping {
 impl serde::Serialize for Shipping {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         match self {
-            Self::Us(v) => {
-                let mut j = serde_json::to_value(v).map_err(serde::ser::Error::custom)?;
-                if let serde_json::Value::Object(m) = &mut j {
-                    m.insert(
-                        "country".to_owned(),
-                        serde_json::Value::String("US".to_owned()),
-                    );
-                }
-                serde::Serialize::serialize(&j, s)
-            }
+            Self::Us(v) => serde::Serialize::serialize(v, s),
             Self::Otherwise(v) => serde::Serialize::serialize(v, s),
         }
     }
@@ -444,16 +381,7 @@ impl serde::Serialize for Contact {
                 }
                 serde::Serialize::serialize(&j, s)
             }
-            Self::Sms(v) => {
-                let mut j = serde_json::to_value(v).map_err(serde::ser::Error::custom)?;
-                if let serde_json::Value::Object(m) = &mut j {
-                    m.insert(
-                        "via".to_owned(),
-                        serde_json::Value::String("sms".to_owned()),
-                    );
-                }
-                serde::Serialize::serialize(&j, s)
-            }
+            Self::Sms(v) => serde::Serialize::serialize(v, s),
             Self::Otherwise(v) => serde::Serialize::serialize(v, s),
         }
     }

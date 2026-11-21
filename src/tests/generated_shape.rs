@@ -718,6 +718,22 @@ fn an_xml_field_names_only_what_differs() {
         "{types}"
     );
     assert!(types.contains(r#",runtime::XmlField::new("title"),"#), "{types}");
+/// A branch whose tag property is a `const` of its own tag writes itself: no `serde_json::Value` in between.
+#[test]
+fn a_const_tag_serializes_without_a_value_tree() {
+    let branch = |kind: &str| json!({"type": "object", "required": ["kind"], "properties": {"kind": {"const": kind}}});
+    let doc = common::spec(
+        "3.1.0",
+        &json!({}),
+        &json!({"schemas": {
+            "A": branch("a"), "B": branch("b"),
+            "Either": {"oneOf": [{"$ref": "#/components/schemas/A"}, {"$ref": "#/components/schemas/B"}],
+                "discriminator": {"propertyName": "kind", "mapping": {"a": "#/components/schemas/A", "b": "#/components/schemas/B"}}},
+        }}),
+    );
+    let types =
+        common::file(&common::generate("const-tag", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
+    assert!(!types.contains("serde_json::to_value(v)"), "{types}");
 }
 
 /// An `anyOf` or `oneOf` whose branches share a type needs no check of the whole value: decoding checks every keyword
