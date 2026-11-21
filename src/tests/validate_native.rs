@@ -21,6 +21,19 @@ fn newer_fields_are_errors_at_their_own_pointer() {
     assert!(out[1].contains("/paths/~1x/query"), "{out:#?}");
 }
 
+/// A local `$ref` that leads nowhere and a security scheme without a field that its type requires are errors.
+#[test]
+fn a_dangling_ref_and_an_incomplete_scheme_are_errors() {
+    let doc = common::spec(
+        "3.2.0",
+        &json!({"/a": {"get": {"responses": {"200": {"$ref": "#/components/responses/Missing"}}}}}),
+        &json!({"securitySchemes": {"key": {"type": "apiKey", "in": "header"}}}),
+    );
+    let out = check("native-dangling", &doc);
+    assert!(out.iter().any(|m| m.contains("`#/components/responses/Missing` does not resolve")), "{out:#?}");
+    assert!(out.iter().any(|m| m.contains("`name` is required for this security scheme type")), "{out:#?}");
+}
+
 #[test]
 fn version_features_are_not_upgrade_noise() {
     // `nullable` is valid 3.0: nothing to report.

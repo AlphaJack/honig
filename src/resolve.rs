@@ -692,6 +692,16 @@ fn components_mut<'d>(root: &'d mut Value, kind: &str) -> Option<&'d mut Map<Str
 mod tests {
     use super::*;
 
+    /// A reference by a scheme that the bundler does not fetch is an error, and the `$ref` is dropped.
+    #[test]
+    fn a_reference_by_another_scheme_is_an_error() {
+        let root = json!({"openapi": "3.2.0", "components": {"schemas": {"A": {"$ref": "ftp://example.com/a.json"}}}});
+        let mut d = Diagnostics::default();
+        let out = bundle(root, None, &mut d);
+        assert!(d.iter().any(|x| x.message.contains("remote reference `ftp://example.com/a.json`")), "{d:?}");
+        assert!(out["components"]["schemas"]["A"].get("$ref").is_none());
+    }
+
     #[test]
     fn bundles_external_files() {
         let dir = std::env::temp_dir().join(format!("honig-bundle-{}", std::process::id()));

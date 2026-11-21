@@ -309,6 +309,41 @@ mod tests {
     use super::*;
     use serde_json::json;
 
+    /// A schema inside a callback is upgraded as any other: 3.0 `nullable` becomes a `null` type.
+    #[test]
+    fn a_callback_schema_is_upgraded() {
+        let doc = json!({
+            "openapi": "3.0.3",
+            "info": {"title": "t", "version": "1"},
+            "paths": {"/a": {"post": {"responses": {"204": {"description": "ok"}}, "callbacks": {"done": {
+                "{$request.body#/url}": {"post": {
+                    "requestBody": {"content": {"application/json": {"schema": {"type": "string", "nullable": true}}}},
+                    "responses": {"204": {"description": "ok"}}
+                }}
+            }}}}}
+        });
+        let mut d = Diagnostics::default();
+        let up = to_v32(doc, &mut d).unwrap();
+        let op = &up["paths"]["/a"]["post"]["callbacks"]["done"]["{$request.body#/url}"]["post"];
+        assert_eq!(op["requestBody"]["content"]["application/json"]["schema"], json!({"type": ["string", "null"]}));
+    }
+
+    /// A 3.0 response header leaves the two Parameter Object fields that 3.1 has no more.
+    #[test]
+    fn a_header_drops_the_fields_of_a_parameter() {
+        let doc = json!({
+            "openapi": "3.0.3",
+            "info": {"title": "t", "version": "1"},
+            "paths": {"/a": {"get": {"responses": {"200": {"description": "ok", "headers": {
+                "X-A": {"schema": {"type": "string"}, "allowEmptyValue": true, "allowReserved": true}
+            }}}}}}
+        });
+        let mut d = Diagnostics::default();
+        let up = to_v32(doc, &mut d).unwrap();
+        let h = &up["paths"]["/a"]["get"]["responses"]["200"]["headers"]["X-A"];
+        assert_eq!(h, &json!({"schema": {"type": "string"}}));
+    }
+
     #[test]
     fn yaml_1_1_booleans_in_boolean_fields() {
         let doc = json!({

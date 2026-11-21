@@ -155,6 +155,126 @@ fn the_authorization_code_client_alone_turns_on_pkce() {
     assert!(!features("shape-pkce-none", &credentials, &both).contains(&crate::settings::PKCE));
 }
 
+/// A client of any `OAuth` 2.0 flow, or of discovery alone, turns on the runtime's `oauth` helpers.
+#[test]
+fn each_oauth_flow_alone_turns_on_oauth() {
+    let urls = json!({"tokenUrl": "https://shop.example/token", "authorizationUrl": "https://shop.example/auth",
+        "deviceAuthorizationUrl": "https://shop.example/device", "scopes": {}});
+    let schemes = ["clientCredentials", "password", "authorizationCode", "implicit", "deviceAuthorization"]
+        .map(|flow| json!({"type": "oauth2", "flows": {flow: urls}}))
+        .into_iter()
+        .chain([json!({"type": "openIdConnect", "openIdConnectUrl": "https://shop.example/.well-known/openid-configuration"})]);
+    for (i, scheme) in schemes.enumerate() {
+        let doc = common::spec("3.2.0", &json!({}), &json!({"securitySchemes": {"auth": scheme}}));
+        let g = crate::generate::generate(
+            &common::write(&format!("shape-oauth-{i}"), &doc, &[]),
+            &crate::emit::Options::default(),
+        )
+        .expect("generates");
+        assert!(g.runtime_features.contains(&crate::settings::OAUTH), "{scheme}: {:?}", g.runtime_features);
+    }
+}
+
+/// Any one deprecated item allows `deprecated` in the module: a schema, a scheme, an operation, a parameter or a
+/// response header.
+#[test]
+fn one_deprecated_item_allows_deprecated() {
+    let op = |op: serde_json::Value| json!({"/a": {"get": op}});
+    let ok = json!({"200": {"description": "ok"}});
+    let docs = [
+        common::spec(
+            "3.2.0",
+            &json!({}),
+            &json!({"securitySchemes": {"k": {"type": "apiKey", "in": "header", "name": "K", "deprecated": true}}}),
+        ),
+        common::spec("3.2.0", &op(json!({"operationId": "a", "deprecated": true, "responses": ok})), &json!({})),
+        common::spec(
+            "3.2.0",
+            &op(json!({"operationId": "a", "responses": ok,
+            "parameters": [{"name": "q", "in": "query", "deprecated": true, "schema": {"type": "string"}}]})),
+            &json!({}),
+        ),
+        common::spec(
+            "3.2.0",
+            &op(json!({"operationId": "a", "responses": {"200": {"description": "ok",
+            "headers": {"X-Old": {"deprecated": true, "schema": {"type": "string"}}}}}})),
+            &json!({}),
+        ),
+    ];
+    for (i, doc) in docs.iter().enumerate() {
+        let files = common::generate(&format!("shape-deprecated-{i}"), doc, &crate::emit::Options::default());
+        let root = common::file(&files, "mod.rs").split_whitespace().collect::<String>();
+        assert!(root.contains("#![allow(deprecated,"), "{i}: {root}");
+    }
+}
+
+/// An operation that sends `If-None-Match` and declares `304`, or the `3XX` range, decodes it as declared: the client
+/// adds no `NotModified` of its own.
+#[test]
+fn a_declared_not_modified_is_decoded_as_declared() {
+    for status in ["304", "3XX"] {
+        let doc = common::spec(
+            "3.1.0",
+            &json!({"/a": {"get": {"operationId": "a",
+                "parameters": [{"name": "If-None-Match", "in": "header", "schema": {"type": "string"}}],
+                "responses": {"200": {"description": "ok"}, status: {"description": "same"}}}}}),
+            &json!({}),
+        );
+        let files = common::generate(&format!("shape-304-{status}"), &doc, &crate::emit::Options::default());
+        let client = common::file(&files, "client.rs");
+        assert!(!client.contains("ClientError::NotModified"), "{status}: {client}");
+    }
+}
+
+/// A client or a server for some operations lists each by its `operationId` or by its generated name. Two ids that
+/// make one name (`getA`, `get_a`) give the second a number, and its id still lists it.
+#[test]
+fn an_operation_is_listed_by_its_id_or_its_name() {
+    let ok = json!({"204": {"description": "ok"}});
+    let doc = common::spec(
+        "3.1.0",
+        &json!({"/a": {"get": {"operationId": "getA", "responses": ok}},
+            "/b": {"get": {"operationId": "get_a", "responses": ok}},
+            "/c": {"get": {"responses": ok}}}),
+        &json!({}),
+    );
+    let listed = |names: &[&str]| {
+        let opts = crate::emit::Options {
+            client_operations: Some(names.iter().map(|n| (*n).to_owned()).collect()),
+            ..crate::emit::Options::default()
+        };
+        let files = common::generate(&format!("shape-listed-{}", names.join("-")), &doc, &opts);
+        let client = common::file(&files, "client.rs");
+        ["get_a(", "get_a2(", "get_c("].map(|f| client.contains(&format!("pub async fn {f}")))
+    };
+    assert_eq!(listed(&["getA"]), [true, false, false]);
+    assert_eq!(listed(&["get_c"]), [false, false, true]);
+    assert!(listed(&["get_a"])[1], "the id of the second");
+}
+
+/// A tag nested deeper than 16 parents is left out, and a parent shows only for a descendant that shows.
+#[test]
+fn a_tag_too_deep_is_left_out() {
+    let mut doc = common::spec(
+        "3.2.0",
+        &json!({"/a": {"get": {"operationId": "a", "tags": ["t20"], "responses": {"204": {"description": "ok"}}}}}),
+        &json!({}),
+    );
+    let tags: Vec<serde_json::Value> = (0..=20)
+        .map(|i| {
+            if i == 0 {
+                json!({"name": "t0"})
+            } else {
+                json!({"name": format!("t{i}"), "parent": format!("t{}", i - 1)})
+            }
+        })
+        .collect();
+    doc["tags"] = serde_json::Value::Array(tags);
+    let files = common::generate("shape-tag-depth", &doc, &crate::emit::Options::default());
+    let ops = common::file(&files, "operations.rs");
+    assert!(!ops.contains("pub mod tags"), "{ops}");
+}
+
 /// An `http` scheme other than basic or bearer keeps its spelling: a server may compare `Token` case-sensitively.
 #[test]
 fn another_http_scheme_keeps_its_spelling() {
@@ -1600,6 +1720,46 @@ fn a_response_arm_checks_its_media_in_one_call() {
         "{client}"
     );
     assert!(!client.contains("Some(&body)"), "{client}");
+}
+
+/// `*/*` is the least specific key: a response checks `image/*` first and takes `*/*` for anything else, whatever the
+/// order of the description.
+#[test]
+fn any_media_type_is_tried_last() {
+    let doc = common::spec(
+        "3.1.0",
+        &json!({"/a": {"get": {"operationId": "a", "responses": {"200": {"description": "ok", "content": {
+            "*/*": {"schema": {"type": "string"}},
+            "image/*": {"schema": {"type": "string", "format": "binary"}},
+        }}}}}}),
+        &json!({}),
+    );
+    let files = common::generate("shape-any-media-last", &doc, &crate::emit::Options::default());
+    let client = common::file(&files, "client.rs");
+    assert!(client.contains(r#"runtime::media_matches(ct, "image/*")"#), "{client}");
+    assert!(!client.contains(r#"runtime::media_matches(ct, "*/*")"#), "{client}");
+}
+
+/// A part's own `prefixEncoding` nests three deep at most: a deeper part keeps no media type of its own.
+#[test]
+fn a_part_encoding_nests_three_deep_at_most() {
+    let mut enc = json!({"contentType": "text/csv"});
+    for _ in 0..4 {
+        enc = json!({"contentType": "multipart/mixed", "prefixEncoding": [enc]});
+    }
+    let body = json!({"content": {"multipart/form-data": {
+        "schema": {"type": "object", "properties": {"f": {}}},
+        "encoding": {"f": enc},
+    }}});
+    let doc = common::spec(
+        "3.2.0",
+        &json!({"/a": {"post": {"operationId": "a", "requestBody": body, "responses": {"204": {"description": "ok"}}}}}),
+        &json!({}),
+    );
+    let files = common::generate("shape-encoding-depth", &doc, &crate::emit::Options::default());
+    let all: String = files.iter().map(|(_, t)| t.as_str()).collect();
+    assert!(all.contains("\"f/0/0/0\""), "{all}");
+    assert!(!all.contains("\"f/0/0/0/0\""), "{all}");
 }
 
 /// A multipart part whose schema gives a `contentMediaType` is sent as that type when `encoding` gives none.
