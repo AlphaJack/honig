@@ -131,14 +131,6 @@ fn value_of<T: Serialize + ?Sized>(v: &T) -> Result<Value> {
     crate::json::to_value(v).map_err(|e| Stop(Some(e)))
 }
 
-/// Returns the value inside a newtype through `s`. A raw JSON value is written from its `Value`.
-fn newtype<S: ser::Serializer<Error = Stop>, T: Serialize + ?Sized>(name: &str, v: &T, s: S) -> Result<S::Ok> {
-    if name == RAW_VALUE {
-        return other_way();
-    }
-    v.serialize(s)
-}
-
 /// Returns a number as `serde_json` writes it in a `Value`.
 fn float(out: &mut String, v: f64) -> Result {
     let n = serde_json::Number::from_f64(v).ok_or(Stop(None))?;
@@ -232,8 +224,8 @@ impl<'o, 'n> ser::Serializer for Element<'o, 'n> {
     fn serialize_unit_variant(self, _: &'static str, _: u32, variant: &'static str) -> Result {
         self.serialize_str(variant)
     }
-    fn serialize_newtype_struct<T: Serialize + ?Sized>(self, name: &'static str, v: &T) -> Result {
-        newtype(name, v, self)
+    fn serialize_newtype_struct<T: Serialize + ?Sized>(self, _: &'static str, v: &T) -> Result {
+        v.serialize(self)
     }
     fn serialize_newtype_variant<T: Serialize + ?Sized>(
         self,
@@ -671,8 +663,8 @@ impl<'o> ser::Serializer for Field<'o> {
     fn serialize_some<T: Serialize + ?Sized>(self, v: &T) -> Result {
         v.serialize(self)
     }
-    fn serialize_newtype_struct<T: Serialize + ?Sized>(self, name: &'static str, v: &T) -> Result {
-        newtype(name, v, self)
+    fn serialize_newtype_struct<T: Serialize + ?Sized>(self, _: &'static str, v: &T) -> Result {
+        v.serialize(self)
     }
     fn serialize_newtype_variant<T: Serialize + ?Sized>(
         self,
@@ -825,8 +817,8 @@ impl ser::Serializer for Scalar<'_> {
     fn serialize_unit_variant(self, _: &'static str, _: u32, variant: &'static str) -> Result<bool> {
         Ok(self.text(variant))
     }
-    fn serialize_newtype_struct<T: Serialize + ?Sized>(self, name: &'static str, v: &T) -> Result<bool> {
-        newtype(name, v, self)
+    fn serialize_newtype_struct<T: Serialize + ?Sized>(self, _: &'static str, v: &T) -> Result<bool> {
+        v.serialize(self)
     }
     fn serialize_newtype_variant<T: Serialize + ?Sized>(
         self,
@@ -1053,5 +1045,123 @@ mod tests {
         );
         assert_eq!(xml_fields(&v), fields);
         assert_eq!(xml_fields(&json!("plain <text>")), "plain &lt;text&gt;");
+    }
+
+    struct Bytes;
+    impl Serialize for Bytes {
+        fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+            s.serialize_bytes(b"ab")
+        }
+    }
+    #[derive(Serialize)]
+    struct Unit;
+    #[derive(Serialize)]
+    struct Wrap(i64);
+    #[derive(Serialize)]
+    enum Pick {
+        A,
+        B(i64),
+    }
+    #[derive(Serialize)]
+    struct Kinds {
+        flag: bool,
+        ratio: f32,
+        letter: char,
+        bytes: Bytes,
+        unit: (),
+        marker: Unit,
+        pick_a: Pick,
+        wrap: Wrap,
+        pick_b: Pick,
+        some: Option<i64>,
+        none: Option<i64>,
+        opts: Vec<Option<i64>>,
+        wraps: Vec<Wrap>,
+        picks: Vec<Pick>,
+    }
+
+    /// Each kind of the serde data model, as written fast, is written as its `Value` is: as elements and as
+    /// attributes, in the order of the shape and out of it.
+    #[test]
+    fn every_kind_writes_as_its_value() {
+        let kinds = Kinds {
+            flag: true,
+            ratio: 0.5,
+            letter: 'x',
+            bytes: Bytes,
+            unit: (),
+            marker: Unit,
+            pick_a: Pick::A,
+            wrap: Wrap(2),
+            pick_b: Pick::B(3),
+            some: Some(4),
+            none: None,
+            opts: vec![Some(5), None],
+            wraps: vec![Wrap(6)],
+            picks: vec![Pick::B(7)],
+        };
+        let value = serde_json::to_value(&kinds).unwrap();
+        let nil = r#"xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:nil="true"/>"#;
+        // Each field as an element and as an attribute: `null` writes no attribute.
+        let pieces: [(&str, String, &str); 14] = [
+            ("flag", "<flag>true</flag>".into(), r#" flag="true""#),
+            ("ratio", "<ratio>0.5</ratio>".into(), r#" ratio="0.5""#),
+            ("letter", "<letter>x</letter>".into(), r#" letter="x""#),
+            ("bytes", "<bytes>97</bytes><bytes>98</bytes>".into(), r#" bytes="[97,98]""#),
+            ("unit", format!("<unit {nil}"), ""),
+            ("marker", format!("<marker {nil}"), ""),
+            ("pick_a", "<pick_a>A</pick_a>".into(), r#" pick_a="A""#),
+            ("wrap", "<wrap>2</wrap>".into(), r#" wrap="2""#),
+            ("pick_b", "<pick_b><B>3</B></pick_b>".into(), r#" pick_b="{&quot;B&quot;:3}""#),
+            ("some", "<some>4</some>".into(), r#" some="4""#),
+            ("none", format!("<none {nil}"), ""),
+            ("opts", format!("<opts>5</opts><opts {nil}"), r#" opts="[5,null]""#),
+            ("wraps", "<wraps>6</wraps>".into(), r#" wraps="[6]""#),
+            ("picks", "<picks><B>7</B></picks>".into(), r#" picks="[{&quot;B&quot;:7}]""#),
+        ];
+        for attribute in [false, true] {
+            for reversed in [false, true] {
+                let mut fields: Vec<XmlField<XmlNode>> =
+                    pieces.iter().map(|p| XmlField { attribute, ..field(p.0) }).collect();
+                if reversed {
+                    fields.reverse();
+                }
+                let node: &'static XmlNode =
+                    Box::leak(Box::new(XmlNode { name: "k", namespace: "", prefix: "", fields: fields.leak() }));
+                let mut written: Vec<&(&str, String, &str)> = pieces.iter().collect();
+                if reversed {
+                    written.reverse();
+                }
+                let (start, inside): (String, String) = if attribute {
+                    (written.iter().map(|p| p.2).collect(), String::new())
+                } else {
+                    (String::new(), written.iter().map(|p| p.1.as_str()).collect())
+                };
+                let fast = super::body(&kinds, node).unwrap();
+                assert_eq!(fast, format!(r#"<?xml version="1.0" encoding="UTF-8"?><k{start}>{inside}</k>"#));
+                assert_eq!(fast, super::body(&value, node).unwrap(), "attribute {attribute}, reversed {reversed}");
+            }
+        }
+    }
+
+    /// A field that comes before one that the shape lists earlier, and an attribute after an element, stop the
+    /// streamed writing: the element is written again in the order of the shape.
+    #[test]
+    fn a_field_out_of_order_is_written_in_the_order_of_the_shape() {
+        #[derive(Serialize)]
+        struct Pair {
+            b: String,
+            a: i64,
+        }
+        let pair = Pair { b: "x".into(), a: 1 };
+        let written = |fields: Vec<XmlField<XmlNode>>| {
+            let node = XmlNode { name: "k", namespace: "", prefix: "", fields: fields.leak() };
+            let node: &'static XmlNode = Box::leak(Box::new(node));
+            super::body(&pair, node).unwrap()
+        };
+        let declared = r#"<?xml version="1.0" encoding="UTF-8"?>"#;
+        assert_eq!(written(vec![field("a"), field("b")]), format!("{declared}<k><a>1</a><b>x</b></k>"));
+        let attribute = vec![XmlField { attribute: true, ..field("a") }, field("b")];
+        assert_eq!(written(attribute), format!(r#"{declared}<k a="1"><b>x</b></k>"#));
     }
 }

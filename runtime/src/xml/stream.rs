@@ -752,4 +752,105 @@ mod tests {
         assert_eq!(streamed, Order { id: 2, lines: vec![], tags: vec![], note: None });
         assert_eq!(streamed, through_tree(text));
     }
+
+    /// Decodes `text` both ways. Where the stream decodes, it agrees with the tree. Returns what it decoded.
+    fn agreed<T: serde::de::DeserializeOwned + PartialEq + std::fmt::Debug>(
+        text: &str,
+        node: &'static XmlNode,
+    ) -> Option<T> {
+        let streamed = decode::<T>(text, node);
+        if let Some(v) = &streamed {
+            let tree = T::deserialize(XmlDe(parse(text, TreeRole::Shaped(node)).unwrap())).unwrap();
+            assert_eq!(v, &tree, "{text}");
+        }
+        streamed
+    }
+
+    /// The stream decodes what most bodies hold: `\r\n` text, an unknown element however deep before the known ones,
+    /// an attribute whose value is `true`, and nesting up to the deepest that the tree reads.
+    #[test]
+    fn the_stream_decodes_common_bodies_as_the_tree_does() {
+        let order = |inner: &str| format!("<order id=\"1\" flag=\"true\">{inner}<note>a&#13;\r\nb</note></order>");
+        let skipped = "<unknown><x><note>no</note><x/></x><note>no</note></unknown>";
+        let o: Order = agreed(&order(skipped), &ORDER).expect("streamed");
+        assert_eq!(o.note.as_deref(), Some("a\r\nb"));
+        let deep = |n: usize| order(&format!("{}{}", "<u>".repeat(n), "</u>".repeat(n)));
+        assert!(agreed::<Order>(&deep(super::MAX_DEPTH - 1), &ORDER).is_some(), "as deep as the tree reads");
+        assert_eq!(decode::<Order>(&deep(super::MAX_DEPTH), &ORDER), None, "deeper: the tree says why");
+    }
+
+    static ID: XmlNode =
+        XmlNode { name: "held", namespace: "", prefix: "", fields: &[XmlField { attribute: true, ..field("id") }] };
+    static X: XmlNode = XmlNode {
+        name: "held",
+        namespace: "",
+        prefix: "",
+        fields: &[field("x"), XmlField { list: true, item: "y", ..field("ys") }],
+    };
+    static HOLDS_ID: XmlNode = XmlNode { name: "h", namespace: "", prefix: "", fields: &[held(|| &ID), field("note")] };
+    static HOLDS_X: XmlNode = XmlNode { name: "h", namespace: "", prefix: "", fields: &[held(|| &X), field("note")] };
+    static DEEP: XmlNode = XmlNode { name: "h", namespace: "", prefix: "", fields: &[held(|| &HOLDS_ID)] };
+    static BOX: XmlNode = XmlNode {
+        name: "box",
+        namespace: "",
+        prefix: "",
+        fields: &[
+            XmlField { attribute: true, nullable: true, ..field("id") },
+            XmlField { list: true, item: "line", child: Some(line), required: true, ..field("lines") },
+        ],
+    };
+
+    static BAG: XmlNode = XmlNode { name: "m", namespace: "", prefix: "", fields: &[field("z"), field("a")] };
+
+    /// A `nodeType: none` field `held`.
+    const fn held(child: fn() -> &'static XmlNode) -> XmlField<XmlNode> {
+        XmlField { inline: true, child: Some(child), ..field("held") }
+    }
+
+    #[derive(Debug, PartialEq, Deserialize)]
+    struct Part {
+        id: Option<i64>,
+        x: Option<i64>,
+        #[serde(default)]
+        ys: Vec<i64>,
+        held: Option<Box<Self>>,
+    }
+
+    #[derive(Debug, PartialEq, Deserialize)]
+    struct Holder {
+        held: Option<Part>,
+        note: Option<String>,
+    }
+
+    /// A map keeps the last value of a name that repeats. The tree joins them, which no `String` holds.
+    type Bag = std::collections::BTreeMap<String, String>;
+
+    #[derive(Debug, PartialEq, Deserialize)]
+    struct Boxed {
+        id: serde_json::Value,
+        lines: Vec<Line>,
+    }
+
+    /// The stream gives up where only the tree reads a body right: a `nil` list, an object held in place that reads
+    /// the attributes of the element or its child elements, and a name that repeats. It fills in what the end of an element decides: an
+    /// omitted nullable attribute is `null` and a required list that did not come is empty.
+    #[test]
+    fn the_stream_gives_up_where_only_the_tree_reads_right() {
+        let nil = r#"xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance""#;
+        assert_eq!(agreed::<Order>(&format!(r#"<order id="1" {nil}><tags xsi:nil="true"/></order>"#), &ORDER), None);
+        for (body, node) in [
+            (r#"<h id="5"><note>n</note></h>"#, &HOLDS_ID),
+            ("<h><x>5</x><note>n</note></h>", &HOLDS_X),
+            ("<h><y>5</y><note>n</note></h>", &HOLDS_X),
+            (r#"<h id="5"/>"#, &DEEP),
+        ] {
+            assert_eq!(agreed::<Holder>(body, node), None, "{body}");
+        }
+        // A name that repeats, listed or not: the tree joins the two.
+        for body in ["<m><a>1</a><a>2</a></m>", "<m><b>1</b><b>2</b></m>"] {
+            assert_eq!(agreed::<Bag>(body, &BAG), None, "{body}");
+        }
+        let boxed: Boxed = agreed("<box/>", &BOX).expect("streamed");
+        assert_eq!(boxed, Boxed { id: serde_json::Value::Null, lines: vec![] });
+    }
 }

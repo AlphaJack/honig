@@ -70,4 +70,17 @@ exclude_re = [
   'runtime/src/scalar\.rs:\d+:\d+: replace <impl fmt::Display for NotScalar>::fmt ',
   # A leading comma on both sides: the text is still the same for equal values only.
   'runtime/src/checks\.rs:\d+:\d+: replace > with >= in canonical$',
+  # A field comes once: no two fields of a body have one index in the shape.
+  'runtime/src/xml_tree/encode\.rs:\d+:\d+: replace > with >= in after$',
+  # One text field per shape: the text is written in order or not streamed, with the same bytes.
+  'runtime/src/xml_tree/encode\.rs:421:42: delete ! in ',
+  # An object held in place writes neither its attributes nor the properties that its shape does not list.
+  'runtime/src/xml_tree/encode\.rs:\d+:\d+: replace match guard self\.inline( && f\.attribute)? with false in ',
+  # `Ok(())` already, and a stop that no caller writes out.
+  'runtime/src/xml_tree/encode\.rs:\d+:\d+: replace <impl SerializeSeq for Items<.*>::end -> Result with Ok\(Default',
+  'runtime/src/xml_tree/encode\.rs:\d+:\d+: replace <impl fmt::Display for Stop>::fmt ',
+  # CDATA without a `\r` has nothing to normalize: the owned copy holds the same text.
+  'runtime/src/xml/stream\.rs:\d+:\d+: replace match guard c\.contains\(.\\r.\) with true in ',
+  # A shape of 128 fields or more: none is that big.
+  'runtime/src/xml/stream\.rs:\d+:\d+: replace < with <= in Seen::bit$',
 ]
