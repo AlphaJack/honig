@@ -30,11 +30,6 @@ pub(crate) fn hook_name(op: &Operation) -> String {
     }
 }
 
-/// Does any body travel as XML?
-pub(crate) fn has_xml(api: &Api) -> bool {
-    api.http.operations.iter().flat_map(Operation::contents).any(|c| c.kind == MediaKind::Xml)
-}
-
 /// Does the API declare webhooks or callbacks?
 pub(crate) fn has_hooks(api: &Api) -> bool {
     api.http.operations.iter().any(|o| !is_path(o))

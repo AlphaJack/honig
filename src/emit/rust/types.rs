@@ -16,7 +16,14 @@ use crate::ir::types::{
 /// Returns `types.rs`. A type spelt out twice is declared once and the others are `pub type` aliases of it
 /// ([`aliases`]).
 pub(super) fn emit(api: &crate::ir::Api, space: &Space<'_>, opts: &crate::emit::Options) -> TokenStream {
-    let (xml, extra, binary) = (super::http::has_xml(api), opts.rust.derives.as_slice(), opts.rust.binary);
+    // Whether any body travels as XML.
+    let xml = api
+        .http
+        .operations
+        .iter()
+        .flat_map(crate::ir::http::Operation::contents)
+        .any(|c| c.kind == crate::ir::media::MediaKind::Xml);
+    let (extra, binary) = (opts.rust.derives.as_slice(), opts.rust.binary);
     // A type spelt out twice (one inline schema per operation) is declared once; the others alias it.
     let aliases = &aliases(space, extra);
     let mut items = vec![];
