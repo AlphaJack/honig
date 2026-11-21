@@ -183,7 +183,7 @@ fn twins(space: &Space<'_>) -> std::collections::BTreeMap<usize, usize> {
         let mut seen: std::collections::BTreeMap<u64, Vec<(String, usize)>> = std::collections::BTreeMap::new();
         let mut next = std::collections::BTreeMap::new();
         for (i, def) in space.types.defs.iter().enumerate() {
-            // A schema the description names is its own type: `Kind` and `Mode` may both be `enum: [0, 1]`.
+            // A schema of `components/schemas` is its own type: `Kind` and `Mode` may both be `enum: [0, 1]`.
             if def.component || def.rust_type.is_some() || matches!(def.kind, Kind::Pending | Kind::Alias(_)) {
                 continue;
             }

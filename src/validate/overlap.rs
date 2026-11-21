@@ -1,6 +1,6 @@
 //! A discriminated `oneOf` whose branches can all match one value. 3.2 says a discriminator "MUST NOT change the
 //! validation outcome": `oneOf` still means exactly one. Branches `Cat` and `Dog` that share every property both match
-//! `{"petType": "cat", "name": "Tom"}`, and the value is invalid. A branch that pins the discriminating property with
+//! `{"petType": "cat", "name": "Tom"}`, and the value is invalid. A branch that sets the discriminating property with
 //! `const` (or a one-value `enum`) cannot match another branch's tag. A warning lists the branches that do not.
 
 use serde_json::Value;
