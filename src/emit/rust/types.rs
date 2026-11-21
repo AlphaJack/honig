@@ -1021,7 +1021,7 @@ fn builder(space: &Space<'_>, name: &proc_macro2::Ident, shape: &proc_macro2::Id
     });
     let optional = s.fields.iter().filter(|f| !is_arg(space, f) && !is_unit(space, f)).map(|f| {
         let (n, set, wire) = (snake_ident(&f.name), setter(f), lit(&f.wire));
-        let (t, wrap, start) = if let Some(_) = field_default(space, f) {
+        let (t, wrap, start) = if field_default(space, f).is_some() {
             let fun = format_ident!("default_{}", snake(&f.name));
             (ty(space, &f.ty, true), quote!(value), quote!(super::#shape::#fun()))
         } else if f.required {

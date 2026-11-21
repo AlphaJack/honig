@@ -480,12 +480,8 @@ pub(crate) fn callbacks_mod(api: &Api, op: &Operation) -> Option<TokenStream> {
 /// has neither `Option` nor a usable spec `default`. Then a required body.
 /// Everything else starts at its default. With no arguments `Default` calls it.
 pub(crate) fn params_new(space: &Space<'_>, op: &Operation) -> TokenStream {
-    let is_arg = |p: &Param| p.location == Location::Path || (!p.ty.is_option() && spec_default(space, p).is_none());
-    let mut args: Vec<&Param> = op.params.iter().filter(|p| is_arg(p)).collect();
-    // A stable sort. Path parameters go by URL position and the rest in declaration order after them.
-    args.sort_by_key(|p| {
-        if p.location == Location::Path { op.path.find(&format!("{{{}}}", p.wire)).unwrap_or(0) } else { usize::MAX }
-    });
+    let is_arg = |p: &Param| is_required_param(space, p);
+    let args = new_args(space, op);
     let body = op.body.as_ref().filter(|b| b.required).map(|b| body_ty(space, &b.contents, "Body"));
     let count = args.len() + usize::from(body.is_some());
     let arg_list = args.iter().map(|p| {
@@ -588,13 +584,7 @@ pub(crate) fn params_builder(space: &Space<'_>, op: &Operation) -> Option<TokenS
         let (t, wrap, start) = if p.ty.is_option() {
             (ty(space, p.ty.non_null(), true), quote!(some), quote!(None))
         } else {
-            let init = param_init(space, p, &n);
-            let start: TokenStream = {
-                let text = init.to_string();
-                let expr = text.split_once(':').map_or(text.as_str(), |(_, e)| e).trim().trim_end_matches(',');
-                expr.parse().unwrap_or_else(|_| quote!(Default::default()))
-            };
-            (ty(space, &p.ty, true), quote!(value), start)
+            (ty(space, &p.ty, true), quote!(value), crate::emit::rust::http::shared::param_start(space, p))
         };
         optional.push(quote!(#n (#set): #t = #w => #wrap, #start));
     }
@@ -609,11 +599,7 @@ pub(crate) fn params_builder(space: &Space<'_>, op: &Operation) -> Option<TokenS
         fixed.push(quote!(media: super::Media::ALL[0]));
     }
     let text = quote!(#(#required)* #(#optional)* #(#fixed)*).to_string();
-    let types_import = text.contains("types ::").then(|| {
-        quote!(
-            use super::types;
-        )
-    });
+    let types_import = crate::emit::rust::http::shared::types_import(text.contains("types ::"));
     Some(quote! {
         pub mod builders {
             #types_import

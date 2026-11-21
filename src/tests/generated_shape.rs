@@ -233,15 +233,16 @@ fn a_binary_with_a_client_gets_the_constructors() {
 /// allows, one security requirement, and a type with more required properties than clippy allows and an example that
 /// `documented_examples.rs` decodes.
 fn wide_binary(test: &str, client: bool) -> Vec<(String, String)> {
+    // Each value an enum of its own: no two can swap, so `new` takes them all.
     let names = ["a", "b", "c", "d", "e", "f", "g", "h"];
     let params: Vec<serde_json::Value> = names
         .iter()
-        .map(|n| json!({"name": n, "in": "query", "required": true, "schema": {"type": "integer"}}))
+        .map(|n| json!({"name": n, "in": "query", "required": true, "schema": {"type": "string", "enum": ["x", "y"]}}))
         .collect();
     let properties: serde_json::Map<String, serde_json::Value> =
-        names.iter().map(|n| ((*n).to_owned(), json!({"type": "integer"}))).collect();
+        names.iter().map(|n| ((*n).to_owned(), json!({"type": "string", "enum": ["x", "y"]}))).collect();
     let example: serde_json::Map<String, serde_json::Value> =
-        names.iter().map(|n| ((*n).to_owned(), json!(1))).collect();
+        names.iter().map(|n| ((*n).to_owned(), json!("x"))).collect();
     let mut doc = common::spec(
         "3.1.0",
         &json!({"/wide": {"get": {
@@ -370,7 +371,7 @@ fn params_new_and_one_name_per_type() {
                 "operationId": "getRepo",
                 // Declared out of URL order on purpose.
                 "parameters": [
-                    {"name": "repo", "in": "path", "required": true, "schema": {"type": "string"}},
+                    {"name": "repo", "in": "path", "required": true, "schema": {"type": "integer"}},
                     {"name": "org", "in": "path", "required": true, "schema": {"type": "string"}},
                     {"name": "page", "in": "query", "schema": {"type": "integer"}},
                 ],
@@ -388,7 +389,7 @@ fn params_new_and_one_name_per_type() {
     );
     let files = common::generate("shape-new-aliases", &doc, &crate::emit::Options::default());
     let ops = common::file(&files, "operations.rs");
-    assert!(ops.contains("pub const fn new(org: String, repo: String) -> Self"), "{ops}");
+    assert!(ops.contains("pub const fn new(org: String, repo: i64) -> Self"), "{ops}");
     // A string default is built at run time (`to_owned`). So that `new` cannot be `const`.
     assert!(op_module(ops, "sorted").contains("    pub fn new() -> Self"), "{ops}");
     assert!(!ops.contains("Params as "), "no short aliases: {ops}");
@@ -649,10 +650,9 @@ fn a_ref_beside_an_extension_or_keyword_names_is_typed() {
     assert!(!all.contains("check_schema"), "{all}");
 }
 
-/// A builder gathers the `?` of each checked field into one. A struct without a checked field builds with `new` and
-/// struct update, with no `?`, so it gets no builder.
+/// Every struct gets a builder, with a checked field or without: the builder is the one way to set fields by name.
 #[test]
-fn only_a_struct_with_a_checked_field_gets_a_builder() {
+fn every_struct_gets_a_builder() {
     let doc = common::spec(
         "3.1.0",
         &json!({}),
@@ -668,9 +668,9 @@ fn only_a_struct_with_a_checked_field_gets_a_builder() {
     );
     let files = common::generate("shape-builders-where-they-pay", &doc, &crate::emit::Options::default());
     let types = common::file(&files, "types.rs");
-    assert!(!types.contains("impl super::Plain {"), "{types}");
-    assert!(types.contains("impl super::Coded {"), "{types}");
-    assert!(types.contains("impl super::Tagged {"), "{types}");
+    for name in ["Plain", "Coded", "Tagged"] {
+        assert!(types.contains(&format!("{name} => super::{name}")), "{name}: {types}");
+    }
 }
 
 /// An `anyOf` or `oneOf` whose branches share a type needs no check of the whole value: decoding checks every keyword

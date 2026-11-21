@@ -263,11 +263,26 @@ pub(crate) fn spec_default(space: &Space<'_>, p: &Param) -> Option<TokenStream> 
 
 /// Returns a field initializer for parameter `p` named `n`. Its spec `default` or else `None` or `Default::default()`.
 pub(crate) fn param_init(space: &Space<'_>, p: &Param, n: &proc_macro2::Ident) -> TokenStream {
+    let start = param_start(space, p);
+    quote!(#n: #start,)
+}
+
+/// Returns the value a parameter starts at: its spec `default`, else `None` or `Default::default()`.
+pub(crate) fn param_start(space: &Space<'_>, p: &Param) -> TokenStream {
     match spec_default(space, p) {
-        Some(e) => quote!(#n: #e,),
-        None if p.ty.is_option() => quote!(#n: None,),
-        None => quote!(#n: Default::default(),),
+        Some(e) => e,
+        None if p.ty.is_option() => quote!(None),
+        None => quote!(Default::default()),
     }
+}
+
+/// Returns `use super::types;` when `needed`: a module of `api` that names a generated type.
+pub(crate) fn types_import(needed: bool) -> Option<TokenStream> {
+    needed.then(|| {
+        quote!(
+            use super::types;
+        )
+    })
 }
 
 /// Returns the variables of a server as `runtime::ServerVar`s with (name, default, allowed values).
