@@ -104,12 +104,7 @@ impl<T: runtime::Transport> Client<T> {
         let status = head.status.as_u16();
         if (200..300).contains(&status) {
             {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
-                    &["application/json"],
-                )?;
+                runtime::check_media_of(&head, &body, &["application/json"])?;
                 Ok(ops::get_item::Response::Success {
                     status: head.status,
                     body: runtime::json_decode(status, &body)?,
@@ -117,12 +112,7 @@ impl<T: runtime::Transport> Client<T> {
             }
         } else {
             {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
-                    &["application/json"],
-                )?;
+                runtime::check_media_of(&head, &body, &["application/json"])?;
                 Ok(ops::get_item::Response::Default {
                     status: head.status,
                     body: runtime::json_decode(status, &body)?,

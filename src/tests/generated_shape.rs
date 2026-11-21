@@ -1505,6 +1505,18 @@ fn a_long_chain_of_generics_binds_each() {
     assert!(last.split('}').next().is_some_and(|body| body.contains("#[optional]\n        pub me: bool,")), "{types}");
 }
 
+/// A client response arm checks the media type of what it read whole in one call on its head and body.
+#[test]
+fn a_response_arm_checks_its_media_in_one_call() {
+    let files = wide_binary("shape-media-of", true);
+    let client = common::file(&files, "client.rs").split_whitespace().collect::<String>();
+    assert!(
+        client.contains(r#"runtime::check_media_of(&head,&body,&["application/json","application/xml"],)?;"#),
+        "{client}"
+    );
+    assert!(!client.contains("Some(&body)"), "{client}");
+}
+
 /// A multipart part whose schema gives a `contentMediaType` is sent as that type when `encoding` gives none.
 #[test]
 fn a_part_takes_the_media_type_of_its_schema() {

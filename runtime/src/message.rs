@@ -142,6 +142,14 @@ pub fn check_body_media(resp: &Response, declared: &[&str]) -> Result<(), Client
     crate::media::check_response_media(resp.status().as_u16(), resp.content_type(), body, declared)
 }
 
+/// Returns whether a response read whole, as its `head` and `body`, is one of the `declared` media types.
+///
+/// # Errors
+/// [`ClientError::UnexpectedMedia`] with what was sent and what is declared.
+pub fn check_media_of(head: &http::response::Parts, body: &[u8], declared: &[&str]) -> Result<(), ClientError> {
+    crate::media::check_response_media(head.status.as_u16(), content_type_of(&head.headers), Some(body), declared)
+}
+
 /// Returns the `Content-Type` in `headers`, or an empty string.
 pub fn content_type_of(headers: &http::HeaderMap) -> &str {
     headers.get(http::header::CONTENT_TYPE).and_then(|v| v.to_str().ok()).unwrap_or_default()

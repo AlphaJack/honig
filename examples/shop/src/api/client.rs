@@ -70,12 +70,7 @@ impl<T: runtime::Transport> Client<T> {
         let status = head.status.as_u16();
         if status == 200 {
             {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
-                    &["application/json"],
-                )?;
+                runtime::check_media_of(&head, &body, &["application/json"])?;
                 Ok(ops::list_products::Response::Ok {
                     body: runtime::json_decode(status, &body)?,
                     x_next: runtime::from_param(
@@ -96,12 +91,7 @@ impl<T: runtime::Transport> Client<T> {
             }
         } else {
             {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
-                    &["application/json"],
-                )?;
+                runtime::check_media_of(&head, &body, &["application/json"])?;
                 Ok(ops::list_products::Response::Default {
                     status: head.status,
                     body: runtime::json_decode(status, &body)?,
@@ -131,23 +121,13 @@ impl<T: runtime::Transport> Client<T> {
         let status = head.status.as_u16();
         if status == 201 {
             {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
-                    &["application/json"],
-                )?;
+                runtime::check_media_of(&head, &body, &["application/json"])?;
                 runtime::json_decode(status, &body)
                     .map(ops::create_product::Response::Created)
             }
         } else {
             {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
-                    &["application/json"],
-                )?;
+                runtime::check_media_of(&head, &body, &["application/json"])?;
                 Ok(ops::create_product::Response::Default {
                     status: head.status,
                     body: runtime::json_decode(status, &body)?,
@@ -175,21 +155,11 @@ impl<T: runtime::Transport> Client<T> {
         let status = head.status.as_u16();
         match status {
             200 => {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
-                    &["application/json"],
-                )?;
+                runtime::check_media_of(&head, &body, &["application/json"])?;
                 runtime::json_decode(status, &body).map(ops::get_product::Response::Ok)
             }
             404 => {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
-                    &["application/json"],
-                )?;
+                runtime::check_media_of(&head, &body, &["application/json"])?;
                 runtime::json_decode(status, &body)
                     .map(ops::get_product::Response::NotFound)
             }

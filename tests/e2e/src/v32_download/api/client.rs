@@ -49,12 +49,7 @@ impl<T: runtime::Transport> Client<T> {
         let status = head.status.as_u16();
         match status {
             200 => {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
-                    &["application/zip"],
-                )?;
+                runtime::check_media_of(&head, &body, &["application/zip"])?;
                 Ok(ops::get_export::Response::Ok(runtime::Blob::from(Vec::from(body))))
             }
             404 => Ok(ops::get_export::Response::NotFound),
@@ -132,12 +127,7 @@ impl<T: runtime::Transport> Client<T> {
         let ct = runtime::content_type_of(&head.headers);
         if status == 200 {
             {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
-                    &["image/*"],
-                )?;
+                runtime::check_media_of(&head, &body, &["image/*"])?;
                 Ok(
                     ops::get_thumbnail::Response::Ok(
                         runtime::Blob::from(Vec::from(body)).received_as(ct),
@@ -212,12 +202,7 @@ impl<T: runtime::Transport> Client<T> {
         let status = head.status.as_u16();
         match status {
             200 => {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
-                    &["application/json"],
-                )?;
+                runtime::check_media_of(&head, &body, &["application/json"])?;
                 Ok(ops::get_manifest::Response::Ok {
                     body: runtime::json_decode(status, &body)?,
                     e_tag: runtime::from_param(

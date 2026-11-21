@@ -61,10 +61,9 @@ impl<T: runtime::Transport> Client<T> {
         let ct = runtime::content_type_of(&head.headers);
         if status == 201 {
             {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
+                runtime::check_media_of(
+                    &head,
+                    &body,
                     &["application/xml", "application/json"],
                 )?;
                 Ok(

@@ -47,12 +47,7 @@ impl<T: runtime::Transport> Client<T> {
         let status = head.status.as_u16();
         if status == 200 {
             {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
-                    &["application/xml"],
-                )?;
+                runtime::check_media_of(&head, &body, &["application/xml"])?;
                 runtime::xml_decode(status, &body).map(ops::no_xml_object::Response::Ok)
             }
         } else {
@@ -78,12 +73,7 @@ impl<T: runtime::Transport> Client<T> {
         let status = head.status.as_u16();
         if status == 200 {
             {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
-                    &["application/xml"],
-                )?;
+                runtime::check_media_of(&head, &body, &["application/xml"])?;
                 runtime::xml_decode(status, &body)
                     .map(ops::no_xml_object_array::Response::Ok)
             }
@@ -143,12 +133,7 @@ impl<T: runtime::Transport> Client<T> {
         let status = head.status.as_u16();
         if status == 200 {
             {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
-                    &["application/xml"],
-                )?;
+                runtime::check_media_of(&head, &body, &["application/xml"])?;
                 runtime::xml_decode(status, &body)
                     .map(ops::xml_array_item_names::Response::Ok)
             }
@@ -175,12 +160,7 @@ impl<T: runtime::Transport> Client<T> {
         let status = head.status.as_u16();
         if status == 200 {
             {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
-                    &["application/xml"],
-                )?;
+                runtime::check_media_of(&head, &body, &["application/xml"])?;
                 runtime::xml_decode(status, &body)
                     .map(ops::xml_array_name_without_wrapper::Response::Ok)
             }
@@ -207,12 +187,7 @@ impl<T: runtime::Transport> Client<T> {
         let status = head.status.as_u16();
         if status == 200 {
             {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
-                    &["application/xml"],
-                )?;
+                runtime::check_media_of(&head, &body, &["application/xml"])?;
                 runtime::xml_decode(status, &body)
                     .map(ops::xml_array_wrapped::Response::Ok)
             }
@@ -239,12 +214,7 @@ impl<T: runtime::Transport> Client<T> {
         let status = head.status.as_u16();
         if status == 200 {
             {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
-                    &["application/xml"],
-                )?;
+                runtime::check_media_of(&head, &body, &["application/xml"])?;
                 runtime::xml_decode(status, &body)
                     .map(ops::xml_array_wrapped_item_names::Response::Ok)
             }
@@ -271,12 +241,7 @@ impl<T: runtime::Transport> Client<T> {
         let status = head.status.as_u16();
         if status == 200 {
             {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
-                    &["application/xml"],
-                )?;
+                runtime::check_media_of(&head, &body, &["application/xml"])?;
                 runtime::xml_decode(status, &body)
                     .map(ops::xml_array_wrapped_renamed::Response::Ok)
             }
@@ -303,12 +268,7 @@ impl<T: runtime::Transport> Client<T> {
         let status = head.status.as_u16();
         if status == 200 {
             {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
-                    &["application/xml"],
-                )?;
+                runtime::check_media_of(&head, &body, &["application/xml"])?;
                 Ok(
                     ops::elements_with_attributes_and_text::Response::Ok(
                         runtime::text_decode(&body),
@@ -338,12 +298,7 @@ impl<T: runtime::Transport> Client<T> {
         let status = head.status.as_u16();
         if status == 200 {
             {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
-                    &["application/xml"],
-                )?;
+                runtime::check_media_of(&head, &body, &["application/xml"])?;
                 runtime::xml_decode(status, &body)
                     .map(ops::referenced_element_with_cdata::Response::Ok)
             }
@@ -370,12 +325,7 @@ impl<T: runtime::Transport> Client<T> {
         let status = head.status.as_u16();
         if status == 200 {
             {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
-                    &["application/xml"],
-                )?;
+                runtime::check_media_of(&head, &body, &["application/xml"])?;
                 Ok(ops::ordered_elements::Response::Ok(runtime::text_decode(&body)))
             }
         } else {
@@ -401,12 +351,7 @@ impl<T: runtime::Transport> Client<T> {
         let status = head.status.as_u16();
         if status == 200 {
             {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
-                    &["application/xml"],
-                )?;
+                runtime::check_media_of(&head, &body, &["application/xml"])?;
                 Ok(
                     ops::ordered_elements_and_text::Response::Ok(
                         runtime::text_decode(&body),
@@ -436,12 +381,7 @@ impl<T: runtime::Transport> Client<T> {
         let status = head.status.as_u16();
         if status == 200 {
             {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
-                    &["application/xml"],
-                )?;
+                runtime::check_media_of(&head, &body, &["application/xml"])?;
                 runtime::xml_decode(status, &body)
                     .map(ops::xml_with_null_values::Response::Ok)
             }
