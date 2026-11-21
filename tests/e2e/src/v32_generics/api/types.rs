@@ -61,7 +61,7 @@ runtime::object! {
     pub struct Tree {
         pub value: serde_json::Value,
         #[optional]
-        pub children: Vec<Tree>,
+        pub children: Vec<Self>,
     }
 }
 impl Tree {
@@ -75,7 +75,7 @@ runtime::object! {
     pub struct StringTree {
         pub value: String,
         #[optional]
-        pub children: Vec<StringTree>,
+        pub children: Vec<Self>,
     }
 }
 impl StringTree {

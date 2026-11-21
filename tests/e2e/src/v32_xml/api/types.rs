@@ -31,7 +31,7 @@ runtime::object! {
         #[optional]
         pub price: Price,
         #[optional]
-        pub sequel: Box<Book>,
+        pub sequel: Box<Self>,
         #[optional]
         pub blurb: Blurb,
         #[optional]

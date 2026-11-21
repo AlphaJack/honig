@@ -586,18 +586,12 @@ fn a_body_of_your_own_type_is_left_to_it() {
 /// tokens.
 #[test]
 fn a_macro_body_reads_as_items() {
-    let object = json!({"type": "object", "properties": {"a": {"type": "string"}}});
-    let doc = common::spec(
-        "3.1.0",
-        &json!({}),
-        &json!({"schemas": {"A": object, "B": {"type": "object", "properties": {"b": {"type": "integer"}}}}}),
-    );
+    let union = json!({"oneOf": [{"type": "string"}, {"type": "integer"}]});
+    let doc = common::spec("3.1.0", &json!({}), &json!({"schemas": {"A": union, "B": union}}));
     let files = common::generate("shape-macro-body", &doc, &crate::emit::Options::default());
     let types = common::file(&files, "types.rs");
     assert!(
-        types.contains(
-            "macro_rules! deserialize_impl {\n    ($t:ty) => {\n        impl<'de> serde::Deserialize<'de> for $t {\n"
-        ),
+        types.contains("macro_rules! serialize_impl {\n    ($t:ty) => {\n        impl serde::Serialize for $t {\n"),
         "{types}"
     );
 }
@@ -836,7 +830,7 @@ fn a_field_of_a_type_that_checks_itself_takes_no_second_check() {
     let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Code": code, "Holder": holder}}));
     let types =
         common::file(&common::generate("held-not", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
-    assert!(types.contains("pub code: Option<Code>"), "{types}");
+    assert!(types.contains("#[optional]\n        pub code: Code"), "{types}");
 }
 
 /// `contains` on an array counts the items that decode as the type of its schema, held to `minContains` and
@@ -1080,7 +1074,7 @@ fn a_root_dynamic_anchor_binds_the_generic_to_its_site() {
     let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Tree": tree, "StrictTree": strict}}));
     let types =
         common::file(&common::generate("root-anchor", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
-    assert!(types.contains("Option<Vec<Self>>"), "{types}");
+    assert!(types.contains("#[optional]\n        pub children: Vec<Self>"), "{types}");
 }
 
 /// `propertyNames` of any schema decodes each name, as a JSON string, as its type: no schema is checked whole.
@@ -1278,7 +1272,7 @@ fn a_dependent_name_with_a_default_keeps_its_absence() {
     let types =
         common::file(&common::generate("dependent-default", &doc, &crate::emit::Options::default()), "types.rs")
             .to_owned();
-    assert!(types.contains("pub cvc: Option<String>") && types.contains("is required when"), "{types}");
+    assert!(types.contains("#[optional]\n        pub cvc: String") && types.contains("is required when"), "{types}");
     assert!(!types.contains("check_schema"), "{types}");
 }
 
@@ -1315,7 +1309,7 @@ fn a_nested_resource_reached_directly_keeps_its_anchor() {
     let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Main": root}}));
     let types = common::file(&common::generate("nested-resource", &doc, &crate::emit::Options::default()), "types.rs")
         .to_owned();
-    assert!(types.contains("pub content: Option<i64>"), "{types}");
+    assert!(types.contains("#[optional]\n        pub content: i64"), "{types}");
 }
 
 /// `dependentRequired` of a name that the struct does not declare: the struct keeps that name, and the rule is checked
@@ -1485,7 +1479,7 @@ fn a_long_chain_of_generics_binds_each() {
     let types =
         common::file(&common::generate("generic-chain", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
     let last = types.split("pub struct SiteG19 {").nth(1).unwrap_or_else(|| panic!("{types}"));
-    assert!(last.split('}').next().is_some_and(|body| body.contains("pub me: Option<bool>,")), "{types}");
+    assert!(last.split('}').next().is_some_and(|body| body.contains("#[optional]\n        pub me: bool,")), "{types}");
 }
 
 /// A multipart part whose schema gives a `contentMediaType` is sent as that type when `encoding` gives none.
@@ -1524,7 +1518,7 @@ fn a_list_component_with_keywords_is_a_checked_type() {
     let types =
         common::file(&common::generate("checked-alias", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
     assert!(types.contains("pub struct Tags(pub(super) Vec<String>);"), "{types}");
-    assert!(types.contains("pub tags: Option<Tags>,"), "{types}");
+    assert!(types.contains("#[optional]\n        pub tags: Tags,"), "{types}");
 }
 
 /// A `default` of the wrong type does not compile, with the reason: the description is wrong, and the crate says so.

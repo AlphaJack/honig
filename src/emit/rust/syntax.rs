@@ -565,6 +565,18 @@ impl syn::visit_mut::VisitMut for SelfInOwnFields {
             }
         }
     }
+
+    fn visit_item_macro_mut(&mut self, m: &mut syn::ItemMacro) {
+        let path = &m.mac.path;
+        if path.segments.len() == 2
+            && path.segments.first().is_some_and(|s| s.ident == "runtime")
+            && path.segments.last().is_some_and(|s| s.ident == "object")
+            && let Ok(mut s) = syn::parse2::<syn::ItemStruct>(m.mac.tokens.clone())
+        {
+            self.visit_item_struct_mut(&mut s);
+            m.mac.tokens = s.into_token_stream();
+        }
+    }
 }
 
 /// Turns the type `.0` written without arguments into `Self`.

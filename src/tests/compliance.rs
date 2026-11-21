@@ -334,7 +334,7 @@ fn draft_2019_09_recursive_ref_is_recursive() {
             "properties": {"kids": {"type": "array", "items": {"$recursiveRef": "#"}}}
         }}),
     );
-    assert!(types.contains("pubkids:Option<Vec<Self>>"), "{types}");
+    assert!(types.contains("#[optional]pubkids:Vec<Self>"), "{types}");
     assert!(warnings.is_empty(), "{warnings:#?}");
 }
 
@@ -365,9 +365,9 @@ fn draft_2019_09_recursive_ref_follows_the_extending_schema() {
         types.split(&format!("pubstruct{name}{{")).nth(1).and_then(|r| r.split_once('}')).map(|(b, _)| b.to_owned())
     };
     let tree = body("Tree").expect("Tree");
-    assert!(tree.contains("pubkids:Option<Vec<Self>>"), "{tree}");
+    assert!(tree.contains("#[optional]pubkids:Vec<Self>"), "{tree}");
     let labeled = body("LabeledTree").expect("LabeledTree");
-    assert!(labeled.contains("pubkids:Option<Vec<Self>>"), "an extension's children are extensions: {labeled}");
+    assert!(labeled.contains("#[optional]pubkids:Vec<Self>"), "an extension's children are extensions: {labeled}");
     assert!(labeled.contains("publabel:String"), "{labeled}");
     assert!(types.contains("pubtypeForest=Vec<Tree>;"), "no anchor outside: static: {types}");
 }
