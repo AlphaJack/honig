@@ -820,6 +820,17 @@ fn a_range_check_names_its_bounds() {
     );
 }
 
+/// A pattern check prints its pattern once, in its `static`: the runtime writes the message from it. A checked type
+/// also names it as `PATTERN`.
+#[test]
+fn a_pattern_is_printed_once_per_check() {
+    let doc =
+        common::spec("3.2.0", &json!({}), &json!({"schemas": {"Code": {"type": "string", "pattern": "^[A-Z]+$"}}}));
+    let types =
+        common::file(&common::generate("pattern-once", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
+    assert_eq!(types.matches("^[A-Z]+$").count(), 2, "{types}");
+}
+
 /// `dependentSchemas` over properties that the struct declares is a check that the value decodes as the type of the
 /// schema when the property is present: no schema is checked whole.
 #[test]
@@ -1222,7 +1233,7 @@ fn false_and_implied_shapes_are_checked_by_types() {
         .to_owned();
     assert!(types.contains("no value is allowed here") && !types.contains("check_schema"), "{types}");
     // The names of the object that `named` takes match its one pattern.
-    assert!(types.contains("does not match `^a`"), "{types}");
+    assert!(types.contains("runtime::check_pattern(") && types.contains(r#"runtime::Pattern::new("^a")"#), "{types}");
     // Each item of `list` and each value of `map` decodes as its schema: two item checks besides those of `pair`, and
     // one key check besides the pattern of `named`, whose names its pattern alone judges.
     assert_eq!(types.matches("InstancePath::Index").count(), 4, "{types}");

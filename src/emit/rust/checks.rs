@@ -67,15 +67,17 @@ fn receiver(value: &TokenStream) -> TokenStream {
     }
 }
 
+/// Returns `&RE`: the `static` pattern of one check site, compiled on first use.
+fn pattern_static(pattern: &str) -> TokenStream {
+    let p = lit(pattern);
+    quote!({ static RE: runtime::Pattern = runtime::Pattern::new(#p); &RE })
+}
+
 /// Returns the length and pattern checks of a `String` value.
 pub(super) fn string_checks(c: &Constraints, value: &TokenStream, path: &TokenStream) -> TokenStream {
     let pat = c.pattern.as_ref().map(|p| {
-        let msg = lit(&format!("does not match `{p}`"));
-        let p = lit(p);
-        quote!(runtime::check(out, #path, runtime::pattern_matches({
-            static RE: runtime::Pattern = runtime::Pattern::new();
-            &RE
-        }, #p, #value), #msg);)
+        let re = pattern_static(p);
+        quote!(runtime::check_pattern(out, #path, #re, #value);)
     });
     if c.min_length.is_none() && c.max_length.is_none() {
         return quote!(#pat);
@@ -239,8 +241,9 @@ fn pattern_checks(c: &Constraints, ty: &dyn Fn(usize) -> TokenStream, path: &Tok
     }
     let closed = c.closed_to.is_some();
     let patterns = c.pattern_properties.iter().map(|(pattern, n)| {
-        let (schema, pattern) = (ty(*n), lit(pattern));
-        let matches = quote!(runtime::pattern_matches({ static RE: runtime::Pattern = runtime::Pattern::new(); &RE }, #pattern, name));
+        let schema = ty(*n);
+        let re = pattern_static(pattern);
+        let matches = quote!(runtime::pattern_matches(#re, name));
         let refuse = quote!(runtime::violation(out, &runtime::InstancePath::Key(#path, name), e.to_string()););
         // Without `additionalProperties` nothing else happens on a match: one `if` holds both conditions.
         if closed {
@@ -445,10 +448,8 @@ fn evaluated_expr(
         parts.push(quote!(matches!(name, #(#names)|*)));
     }
     for p in &ev.patterns {
-        let p = lit(p);
-        parts.push(
-            quote!(runtime::pattern_matches({ static RE: runtime::Pattern = runtime::Pattern::new(); &RE }, #p, name)),
-        );
+        let re = pattern_static(p);
+        parts.push(quote!(runtime::pattern_matches(#re, name)));
     }
     for (n, decodes, branch) in &ev.branches {
         let Some(inner) = evaluated_expr(branch, ty, flags) else { continue };

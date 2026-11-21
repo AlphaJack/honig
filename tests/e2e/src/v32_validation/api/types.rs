@@ -59,18 +59,14 @@ macro_rules! try_from_impl {
                 let mut violations: Vec<runtime::Violation> = Vec::new();
                 {
                     let out = &mut violations;
-                    runtime::check(
+                    runtime::check_pattern(
                         out,
                         &runtime::InstancePath::Root,
-                        runtime::pattern_matches(
-                            {
-                                static RE: runtime::Pattern = runtime::Pattern::new();
-                                &RE
-                            },
-                            "^[a-z]+$",
-                            value.as_str(),
-                        ),
-                        "does not match `^[a-z]+$`",
+                        {
+                            static RE: runtime::Pattern = runtime::Pattern::new("^[a-z]+$");
+                            &RE
+                        },
+                        value.as_str(),
                     );
                 }
                 runtime::first(violations)
@@ -1438,18 +1434,16 @@ impl TryFrom<std::collections::BTreeMap<String, String>> for Labels {
                     "characters",
                 );
                 if n <= 8 {
-                    runtime::check(
+                    runtime::check_pattern(
                         out,
                         &runtime::InstancePath::Key(&runtime::InstancePath::Root, name),
-                        runtime::pattern_matches(
-                            {
-                                static RE: runtime::Pattern = runtime::Pattern::new();
-                                &RE
-                            },
-                            "^[a-z]+$",
-                            name,
-                        ),
-                        "does not match `^[a-z]+$`",
+                        {
+                            static RE: runtime::Pattern = runtime::Pattern::new(
+                                "^[a-z]+$",
+                            );
+                            &RE
+                        },
+                        name,
                     );
                 }
             }
@@ -1585,52 +1579,44 @@ impl TryFrom<ProfileFields> for Profile {
             if value.name.is_some() {
                 {
                     let name = "name";
-                    runtime::check(
+                    runtime::check_pattern(
                         out,
                         &runtime::InstancePath::Key(&runtime::InstancePath::Root, name),
-                        runtime::pattern_matches(
-                            {
-                                static RE: runtime::Pattern = runtime::Pattern::new();
-                                &RE
-                            },
-                            "^[a-z]+$",
-                            name,
-                        ),
-                        "does not match `^[a-z]+$`",
+                        {
+                            static RE: runtime::Pattern = runtime::Pattern::new(
+                                "^[a-z]+$",
+                            );
+                            &RE
+                        },
+                        name,
                     );
                 }
             }
             if value.nick_name.is_some() {
                 {
                     let name = "Nick-Name";
-                    runtime::check(
+                    runtime::check_pattern(
                         out,
                         &runtime::InstancePath::Key(&runtime::InstancePath::Root, name),
-                        runtime::pattern_matches(
-                            {
-                                static RE: runtime::Pattern = runtime::Pattern::new();
-                                &RE
-                            },
-                            "^[a-z]+$",
-                            name,
-                        ),
-                        "does not match `^[a-z]+$`",
+                        {
+                            static RE: runtime::Pattern = runtime::Pattern::new(
+                                "^[a-z]+$",
+                            );
+                            &RE
+                        },
+                        name,
                     );
                 }
             }
             for name in value.additional_properties.keys() {
-                runtime::check(
+                runtime::check_pattern(
                     out,
                     &runtime::InstancePath::Key(&runtime::InstancePath::Root, name),
-                    runtime::pattern_matches(
-                        {
-                            static RE: runtime::Pattern = runtime::Pattern::new();
-                            &RE
-                        },
-                        "^[a-z]+$",
-                        name,
-                    ),
-                    "does not match `^[a-z]+$`",
+                    {
+                        static RE: runtime::Pattern = runtime::Pattern::new("^[a-z]+$");
+                        &RE
+                    },
+                    name,
                 );
             }
         }
@@ -1702,18 +1688,14 @@ impl TryFrom<std::collections::BTreeMap<String, ScoresValue>> for Scores {
         {
             let out = &mut violations;
             for name in value.keys() {
-                runtime::check(
+                runtime::check_pattern(
                     out,
                     &runtime::InstancePath::Key(&runtime::InstancePath::Root, name),
-                    runtime::pattern_matches(
-                        {
-                            static RE: runtime::Pattern = runtime::Pattern::new();
-                            &RE
-                        },
-                        "^[a-z]+$",
-                        name,
-                    ),
-                    "does not match `^[a-z]+$`",
+                    {
+                        static RE: runtime::Pattern = runtime::Pattern::new("^[a-z]+$");
+                        &RE
+                    },
+                    name,
                 );
             }
         }
@@ -2802,33 +2784,25 @@ impl TryFrom<LabelsFields> for ShipmentInternationalLabels {
         {
             let out = &mut violations;
             for name in value.additional_properties.keys() {
-                runtime::check(
+                runtime::check_pattern(
                     out,
                     &runtime::InstancePath::Key(&runtime::InstancePath::Root, name),
-                    runtime::pattern_matches(
-                        {
-                            static RE: runtime::Pattern = runtime::Pattern::new();
-                            &RE
-                        },
-                        "^[a-z]+$",
-                        name,
-                    ),
-                    "does not match `^[a-z]+$`",
+                    {
+                        static RE: runtime::Pattern = runtime::Pattern::new("^[a-z]+$");
+                        &RE
+                    },
+                    name,
                 );
             }
             for name in value.pattern_1.keys() {
-                runtime::check(
+                runtime::check_pattern(
                     out,
                     &runtime::InstancePath::Key(&runtime::InstancePath::Root, name),
-                    runtime::pattern_matches(
-                        {
-                            static RE: runtime::Pattern = runtime::Pattern::new();
-                            &RE
-                        },
-                        "^[a-z]+$",
-                        name,
-                    ),
-                    "does not match `^[a-z]+$`",
+                    {
+                        static RE: runtime::Pattern = runtime::Pattern::new("^[a-z]+$");
+                        &RE
+                    },
+                    name,
                 );
             }
         }
@@ -2956,33 +2930,25 @@ impl TryFrom<ShipmentOtherwiseLabelsFields> for ShipmentOtherwiseLabels {
         {
             let out = &mut violations;
             for name in value.additional_properties.keys() {
-                runtime::check(
+                runtime::check_pattern(
                     out,
                     &runtime::InstancePath::Key(&runtime::InstancePath::Root, name),
-                    runtime::pattern_matches(
-                        {
-                            static RE: runtime::Pattern = runtime::Pattern::new();
-                            &RE
-                        },
-                        "^[a-z]+$",
-                        name,
-                    ),
-                    "does not match `^[a-z]+$`",
+                    {
+                        static RE: runtime::Pattern = runtime::Pattern::new("^[a-z]+$");
+                        &RE
+                    },
+                    name,
                 );
             }
             for name in value.pattern_1.keys() {
-                runtime::check(
+                runtime::check_pattern(
                     out,
                     &runtime::InstancePath::Key(&runtime::InstancePath::Root, name),
-                    runtime::pattern_matches(
-                        {
-                            static RE: runtime::Pattern = runtime::Pattern::new();
-                            &RE
-                        },
-                        "^[a-z]+$",
-                        name,
-                    ),
-                    "does not match `^[a-z]+$`",
+                    {
+                        static RE: runtime::Pattern = runtime::Pattern::new("^[a-z]+$");
+                        &RE
+                    },
+                    name,
                 );
             }
         }
@@ -3039,18 +3005,14 @@ impl TryFrom<String> for UserName {
                 "characters",
             );
             if n <= 10 {
-                runtime::check(
+                runtime::check_pattern(
                     out,
                     &runtime::InstancePath::Root,
-                    runtime::pattern_matches(
-                        {
-                            static RE: runtime::Pattern = runtime::Pattern::new();
-                            &RE
-                        },
-                        "^\\p{Lu}",
-                        value.as_str(),
-                    ),
-                    "does not match `^\\p{Lu}`",
+                    {
+                        static RE: runtime::Pattern = runtime::Pattern::new("^\\p{Lu}");
+                        &RE
+                    },
+                    value.as_str(),
                 );
             }
         }
@@ -3082,18 +3044,14 @@ impl TryFrom<String> for UserHandle {
                 "characters",
             );
             if n <= 20 {
-                runtime::check(
+                runtime::check_pattern(
                     out,
                     &runtime::InstancePath::Root,
-                    runtime::pattern_matches(
-                        {
-                            static RE: runtime::Pattern = runtime::Pattern::new();
-                            &RE
-                        },
-                        "^(a+)+$",
-                        value.as_str(),
-                    ),
-                    "does not match `^(a+)+$`",
+                    {
+                        static RE: runtime::Pattern = runtime::Pattern::new("^(a+)+$");
+                        &RE
+                    },
+                    value.as_str(),
                 );
             }
         }
@@ -5258,18 +5216,14 @@ for ShipmentInternationalScores {
         {
             let out = &mut violations;
             for name in value.keys() {
-                runtime::check(
+                runtime::check_pattern(
                     out,
                     &runtime::InstancePath::Key(&runtime::InstancePath::Root, name),
-                    runtime::pattern_matches(
-                        {
-                            static RE: runtime::Pattern = runtime::Pattern::new();
-                            &RE
-                        },
-                        "^[a-z]+$",
-                        name,
-                    ),
-                    "does not match `^[a-z]+$`",
+                    {
+                        static RE: runtime::Pattern = runtime::Pattern::new("^[a-z]+$");
+                        &RE
+                    },
+                    name,
                 );
             }
         }
@@ -5372,18 +5326,14 @@ for ShipmentOtherwiseScores {
         {
             let out = &mut violations;
             for name in value.keys() {
-                runtime::check(
+                runtime::check_pattern(
                     out,
                     &runtime::InstancePath::Key(&runtime::InstancePath::Root, name),
-                    runtime::pattern_matches(
-                        {
-                            static RE: runtime::Pattern = runtime::Pattern::new();
-                            &RE
-                        },
-                        "^[a-z]+$",
-                        name,
-                    ),
-                    "does not match `^[a-z]+$`",
+                    {
+                        static RE: runtime::Pattern = runtime::Pattern::new("^[a-z]+$");
+                        &RE
+                    },
+                    name,
                 );
             }
         }

@@ -7,18 +7,14 @@ macro_rules! try_from_impl {
                 let mut violations: Vec<runtime::Violation> = Vec::new();
                 {
                     let out = &mut violations;
-                    runtime::check(
+                    runtime::check_pattern(
                         out,
                         &runtime::InstancePath::Root,
-                        runtime::pattern_matches(
-                            {
-                                static RE: runtime::Pattern = runtime::Pattern::new();
-                                &RE
-                            },
-                            "1",
-                            value.as_str(),
-                        ),
-                        "does not match `1`",
+                        {
+                            static RE: runtime::Pattern = runtime::Pattern::new("1");
+                            &RE
+                        },
+                        value.as_str(),
                     );
                 }
                 runtime::first(violations)
@@ -90,18 +86,14 @@ macro_rules! try_from_impl_3 {
                 let mut violations: Vec<runtime::Violation> = Vec::new();
                 {
                     let out = &mut violations;
-                    runtime::check(
+                    runtime::check_pattern(
                         out,
                         &runtime::InstancePath::Root,
-                        runtime::pattern_matches(
-                            {
-                                static RE: runtime::Pattern = runtime::Pattern::new();
-                                &RE
-                            },
-                            "2",
-                            value.as_str(),
-                        ),
-                        "does not match `2`",
+                        {
+                            static RE: runtime::Pattern = runtime::Pattern::new("2");
+                            &RE
+                        },
+                        value.as_str(),
                     );
                 }
                 runtime::first(violations)
@@ -513,18 +505,14 @@ impl TryFrom<String> for MultipartFormWithEncodingObjectsBodyAliasString {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
-            runtime::check(
+            runtime::check_pattern(
                 out,
                 &runtime::InstancePath::Root,
-                runtime::pattern_matches(
-                    {
-                        static RE: runtime::Pattern = runtime::Pattern::new();
-                        &RE
-                    },
-                    "^[A-Z][a-z]*$",
-                    value.as_str(),
-                ),
-                "does not match `^[A-Z][a-z]*$`",
+                {
+                    static RE: runtime::Pattern = runtime::Pattern::new("^[A-Z][a-z]*$");
+                    &RE
+                },
+                value.as_str(),
             );
         }
         runtime::first(violations)

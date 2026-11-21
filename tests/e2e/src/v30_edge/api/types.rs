@@ -272,18 +272,14 @@ impl TryFrom<String> for MoneyCurrency {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
-            runtime::check(
+            runtime::check_pattern(
                 out,
                 &runtime::InstancePath::Root,
-                runtime::pattern_matches(
-                    {
-                        static RE: runtime::Pattern = runtime::Pattern::new();
-                        &RE
-                    },
-                    "^[A-Z]{3}$",
-                    value.as_str(),
-                ),
-                "does not match `^[A-Z]{3}$`",
+                {
+                    static RE: runtime::Pattern = runtime::Pattern::new("^[A-Z]{3}$");
+                    &RE
+                },
+                value.as_str(),
             );
         }
         runtime::first(violations)
@@ -508,18 +504,16 @@ impl TryFrom<String> for ListOrdersCursor {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
-            runtime::check(
+            runtime::check_pattern(
                 out,
                 &runtime::InstancePath::Root,
-                runtime::pattern_matches(
-                    {
-                        static RE: runtime::Pattern = runtime::Pattern::new();
-                        &RE
-                    },
-                    "^[A-Za-z0-9_-]+$",
-                    value.as_str(),
-                ),
-                "does not match `^[A-Za-z0-9_-]+$`",
+                {
+                    static RE: runtime::Pattern = runtime::Pattern::new(
+                        "^[A-Za-z0-9_-]+$",
+                    );
+                    &RE
+                },
+                value.as_str(),
             );
         }
         runtime::first(violations)
