@@ -44,7 +44,7 @@ fn a_default_next_to_a_ref_fills_the_field() {
 #[test]
 fn nested_one_of_variants_are_pascal_case() {
     let point: types::Crop = serde_json::from_value(json!({"x": 1, "y": 2})).unwrap();
-    let types::CropVariants::Variant2(types::CropVariant2::Variant2(inner)) = &*point else { panic!("{point:?}") };
+    let types::CropVariants::Variant1(types::CropVariant1::Variant2(inner)) = &*point else { panic!("{point:?}") };
     assert_eq!((inner.x, inner.y), (Some(1), Some(2)));
 }
 

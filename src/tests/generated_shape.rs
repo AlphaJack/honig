@@ -1773,3 +1773,41 @@ fn a_reorder_of_any_of_branches_decodes_the_same() {
     assert_eq!(first.len(), 4, "{first:?}");
     assert_eq!(first, tries(true));
 }
+
+/// Untitled inline branches and colliding variant names follow the sorted schema text of their branch, so a reorder of
+/// `anyOf` branches keeps every name on the same branch.
+#[test]
+fn a_reorder_of_union_branches_keeps_their_names() {
+    let items = |flip: bool| {
+        let mut branches = vec![
+            json!({"type": "object", "properties": {"a": {"type": "string"}}}),
+            json!({"type": "object", "properties": {"b": {"type": "string"}}}),
+            json!({"type": "string", "pattern": "^x"}),
+            json!({"type": "string", "pattern": "^y"}),
+        ];
+        if flip {
+            branches.reverse();
+        }
+        let doc = common::spec("3.1.0", &json!({}), &json!({"schemas": {"Any": {"anyOf": branches}}}));
+        let files = common::generate(if flip { "union-b" } else { "union-a" }, &doc, &crate::emit::Options::default());
+        // Each top-level item with its lines sorted: a name stays with what it holds, whatever the order. The guards
+        // `fit_<i>` of `Deserialize` are numbered by position and named nowhere else.
+        let mut items: Vec<Vec<String>> = Vec::new();
+        for l in common::file(&files, "types.rs").lines().filter(|l| !l.contains("fit_")) {
+            match items.last_mut() {
+                Some(item) if l.starts_with(' ') || l.starts_with('}') || l.starts_with(')') => {
+                    item.push(l.trim().to_owned());
+                }
+                _ => items.push(vec![l.to_owned()]),
+            }
+        }
+        for item in &mut items {
+            item.sort();
+        }
+        items.sort();
+        items
+    };
+    let first = items(false);
+    assert!(first.iter().flatten().any(|l| l.contains("Variant4")), "{first:#?}");
+    assert_eq!(first, items(true));
+}
