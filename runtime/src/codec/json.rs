@@ -47,10 +47,12 @@ pub fn json_decode<T: DeserializeOwned>(status: Option<u16>, body: &[u8]) -> Res
     }
     let mut de = serde_json::Deserializer::from_slice(body);
     let value = crate::path::deserialize(crate::integral::Ints(&mut de))
-        .and_then(|v| de.end().map(|()| v).map_err(|e| (String::new(), None, e)));
-    value.map_err(|(pointer, kind, e)| {
-        let (pointer, message) = crate::path::reported(pointer, kind, e.to_string());
-        ClientError::Decode { status, message, body: bytes::Bytes::copy_from_slice(body), pointer }
+        .and_then(|v| de.end().map(|()| v).map_err(|e| (String::new(), e)));
+    value.map_err(|(pointer, e)| ClientError::Decode {
+        status,
+        message: e.to_string(),
+        body: bytes::Bytes::copy_from_slice(body),
+        pointer,
     })
 }
 

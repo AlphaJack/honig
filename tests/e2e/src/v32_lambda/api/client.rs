@@ -33,6 +33,7 @@ impl<T: runtime::Transport> Client<T> {
         runtime::encode_cookie(&mut cookies, "session", &p.session, runtime::Enc::FORM)?;
         runtime::set_cookies(&mut req, cookies)?;
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
+        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -63,6 +64,7 @@ impl<T: runtime::Transport> Client<T> {
         runtime::Message::set_header(&mut req, "Accept", "application/octet-stream")?;
         runtime::set_blob(&mut req, "application/octet-stream", p.body);
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
+        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -95,6 +97,7 @@ impl<T: runtime::Transport> Client<T> {
         runtime::Message::set_header(&mut req, "Accept", "application/octet-stream")?;
         runtime::set_blob(&mut req, "application/octet-stream", p.body);
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
+        runtime::propagate_trace(&mut req);
         let resp = runtime::send_streaming(&self.transport, req).await?;
         if resp.status() == 200 {
             runtime::check_response_media(

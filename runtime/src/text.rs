@@ -6,7 +6,7 @@ use std::fmt;
 use crate::ClientError;
 
 /// Returns a body that does not decode as [`ClientError::Decode`].
-pub fn decode_err(status: Option<u16>, body: &[u8], e: impl fmt::Display) -> ClientError {
+pub(crate) fn decode_err(status: Option<u16>, body: &[u8], e: impl fmt::Display) -> ClientError {
     ClientError::Decode {
         status,
         message: e.to_string(),
