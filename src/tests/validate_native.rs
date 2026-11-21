@@ -58,6 +58,23 @@ fn swagger(paths: &Value, extra: &Value) -> Value {
     doc
 }
 
+/// One `body` parameter is the most a 2.0 operation has: one is fine and two are an error. An `x-` extension of a
+/// schema is kept by the upgrade.
+#[test]
+fn one_body_parameter_is_fine_in_v20() {
+    let body = |n: &str| json!({"name": n, "in": "body", "schema": {"type": "string"}});
+    let one = swagger(
+        &json!({"/a": {"post": {"parameters": [body("a")], "responses": {"200": {"description": "ok"}}}}}),
+        &json!({}),
+    );
+    assert_eq!(check("native-one-body", &one), Vec::<String>::new());
+    let two = swagger(
+        &json!({"/a": {"post": {"parameters": [body("a"), body("b")], "responses": {"200": {"description": "ok"}}}}}),
+        &json!({}),
+    );
+    assert!(check("native-two-bodies", &two).iter().any(|m| m.contains("at most one `body` parameter")));
+}
+
 /// A valid 2.0 document using most of 2.0: nothing to report.
 #[test]
 fn a_valid_v20_document_is_clean() {
