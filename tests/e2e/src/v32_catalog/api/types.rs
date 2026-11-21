@@ -15,25 +15,7 @@
     clippy::init_numbered_fields,
     reason = "a spec default builds its checked type as `Type { 0: value }`, which also works through the alias of a twin"
 )]
-macro_rules! deserialize_impl {
-    ($t:ty) => {
-        impl<'de> serde::Deserialize<'de> for $t {
-            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-                Self::deserialize(runtime::NoSeq(d))
-            }
-        }
-    };
-}
 macro_rules! serialize_impl {
-    ($t:ty) => {
-        impl serde::Serialize for $t {
-            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-                Self::serialize(self, s)
-            }
-        }
-    };
-}
-macro_rules! serialize_impl_2 {
     ($t:ty) => {
         impl serde::Serialize for $t {
             fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
@@ -108,27 +90,18 @@ impl<'de> runtime::TaggedUnion<'de> for Product {
         }
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct Physical {
-    pub kind: PhysicalKind,
-    pub name: String,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub fragile: Option<bool>,
-    /// Stock keeping unit
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub sku: Option<PhysicalSku>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct Physical {
+        pub kind: PhysicalKind,
+        pub name: String,
+        #[optional]
+        pub fragile: bool,
+        #[optional]
+        /// Stock keeping unit
+        pub sku: PhysicalSku,
+    }
 }
-deserialize_impl!(Physical);
-serialize_impl!(Physical);
 impl Physical {
     #[must_use]
     pub const fn new(name: String) -> Self {
@@ -140,16 +113,15 @@ impl Physical {
         }
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct Digital {
-    pub kind: DigitalKind,
-    pub name: String,
-    #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
-    pub downloads: runtime::Nullable<i32>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct Digital {
+        pub kind: DigitalKind,
+        pub name: String,
+        #[nullable]
+        pub downloads: i32,
+    }
 }
-deserialize_impl!(Digital);
-serialize_impl!(Digital);
 impl Digital {
     #[must_use]
     pub const fn new(name: String) -> Self {
@@ -160,14 +132,13 @@ impl Digital {
         }
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct Error {
-    pub code: i32,
-    pub message: String,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct Error {
+        pub code: i32,
+        pub message: String,
+    }
 }
-deserialize_impl!(Error);
-serialize_impl!(Error);
 impl Error {
     #[must_use]
     pub const fn new(code: i32, message: String) -> Self {
@@ -179,7 +150,7 @@ pub struct PhysicalKind;
 impl PhysicalKind {
     pub const VALUE: &'static str = "physical";
 }
-serialize_impl_2!(PhysicalKind);
+serialize_impl!(PhysicalKind);
 impl<'de> serde::Deserialize<'de> for PhysicalKind {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         runtime::expect_const(d, &serde_json::Value::String("physical".to_owned()))
@@ -224,7 +195,7 @@ pub struct DigitalKind;
 impl DigitalKind {
     pub const VALUE: &'static str = "digital";
 }
-serialize_impl_2!(DigitalKind);
+serialize_impl!(DigitalKind);
 impl<'de> serde::Deserialize<'de> for DigitalKind {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         runtime::expect_const(d, &serde_json::Value::String("digital".to_owned()))

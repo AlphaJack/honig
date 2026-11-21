@@ -15,24 +15,6 @@
     clippy::init_numbered_fields,
     reason = "a spec default builds its checked type as `Type { 0: value }`, which also works through the alias of a twin"
 )]
-macro_rules! deserialize_impl {
-    ($t:ty) => {
-        impl<'de> serde::Deserialize<'de> for $t {
-            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-                Self::deserialize(runtime::NoSeq(d))
-            }
-        }
-    };
-}
-macro_rules! serialize_impl {
-    ($t:ty) => {
-        impl serde::Serialize for $t {
-            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-                Self::serialize(self, s)
-            }
-        }
-    };
-}
 use super::runtime;
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
@@ -59,32 +41,19 @@ impl TryFrom<String> for UploadImageXChecksum {
     }
 }
 runtime::checked_str_impls!(UploadImageXChecksum);
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct UploadBody {
-    pub image: runtime::Binary,
-    pub meta: UploadBodyMeta,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub tags: Option<Vec<String>>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub bundle: Option<UploadBodyBundle>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub pages: Option<Vec<String>>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct UploadBody {
+        pub image: runtime::Binary,
+        pub meta: UploadBodyMeta,
+        #[optional]
+        pub tags: Vec<String>,
+        #[optional]
+        pub bundle: UploadBodyBundle,
+        #[optional]
+        pub pages: Vec<String>,
+    }
 }
-deserialize_impl!(UploadBody);
-serialize_impl!(UploadBody);
 impl UploadBody {
     #[must_use]
     pub const fn new(image: runtime::Binary, meta: UploadBodyMeta) -> Self {
@@ -97,81 +66,57 @@ impl UploadBody {
         }
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct UploadBodyMeta {
-    pub title: String,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub width: Option<i64>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct UploadBodyMeta {
+        pub title: String,
+        #[optional]
+        pub width: i64,
+    }
 }
-deserialize_impl!(UploadBodyMeta);
-serialize_impl!(UploadBodyMeta);
 impl UploadBodyMeta {
     #[must_use]
     pub const fn new(title: String) -> Self {
         Self { title, width: None }
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct UploadBodyBundle {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub note: Option<String>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub scan: Option<runtime::Binary>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct UploadBodyBundle {
+        #[optional]
+        pub note: String,
+        #[optional]
+        pub scan: runtime::Binary,
+    }
 }
-deserialize_impl!(UploadBodyBundle);
-serialize_impl!(UploadBodyBundle);
 impl UploadBodyBundle {
     #[must_use]
     pub const fn new() -> Self {
         Self { note: None, scan: None }
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct PutIconBody {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub name: Option<String>,
-    pub icon: runtime::Binary,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct PutIconBody {
+        #[optional]
+        pub name: String,
+        pub icon: runtime::Binary,
+    }
 }
-deserialize_impl!(PutIconBody);
-serialize_impl!(PutIconBody);
 impl PutIconBody {
     #[must_use]
     pub const fn new(icon: runtime::Binary) -> Self {
         Self { name: None, icon }
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct UploadScanBody {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub label: Option<String>,
-    pub scan: runtime::Binary,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct UploadScanBody {
+        #[optional]
+        pub label: String,
+        pub scan: runtime::Binary,
+    }
 }
-deserialize_impl!(UploadScanBody);
-serialize_impl!(UploadScanBody);
 impl UploadScanBody {
     #[must_use]
     pub const fn new(scan: runtime::Binary) -> Self {

@@ -15,57 +15,29 @@
     clippy::init_numbered_fields,
     reason = "a spec default builds its checked type as `Type { 0: value }`, which also works through the alias of a twin"
 )]
-macro_rules! deserialize_impl {
-    ($t:ty) => {
-        impl<'de> serde::Deserialize<'de> for $t {
-            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-                Self::deserialize(runtime::NoSeq(d))
-            }
-        }
-    };
-}
-macro_rules! serialize_impl {
-    ($t:ty) => {
-        impl serde::Serialize for $t {
-            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-                Self::serialize(self, s)
-            }
-        }
-    };
-}
 use super::runtime;
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct TileEvent {
-    pub tile: String,
-    pub rows: i64,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct TileEvent {
+        pub tile: String,
+        pub rows: i64,
+    }
 }
-deserialize_impl!(TileEvent);
-serialize_impl!(TileEvent);
 impl TileEvent {
     #[must_use]
     pub const fn new(tile: String, rows: i64) -> Self {
         Self { tile, rows }
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct TileUpdatesOkItem {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub id: Option<String>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub data: Option<std::collections::BTreeMap<String, serde_json::Value>>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct TileUpdatesOkItem {
+        #[optional]
+        pub id: String,
+        #[optional]
+        pub data: std::collections::BTreeMap<String, serde_json::Value>,
+    }
 }
-deserialize_impl!(TileUpdatesOkItem);
-serialize_impl!(TileUpdatesOkItem);
 impl TileUpdatesOkItem {
     #[must_use]
     pub const fn new() -> Self {

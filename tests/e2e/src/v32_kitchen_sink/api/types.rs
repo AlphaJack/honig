@@ -20,24 +20,6 @@ macro_rules! deserialize_impl {
     ($t:ty) => {
         impl<'de> serde::Deserialize<'de> for $t {
             fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-                Self::deserialize(runtime::NoSeq(d))
-            }
-        }
-    };
-}
-macro_rules! serialize_impl {
-    ($t:ty) => {
-        impl serde::Serialize for $t {
-            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-                Self::serialize(self, s)
-            }
-        }
-    };
-}
-macro_rules! deserialize_impl_2 {
-    ($t:ty) => {
-        impl<'de> serde::Deserialize<'de> for $t {
-            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
                 let value = <serde_json::Value as serde::Deserialize>::deserialize(d)?;
                 Self::try_from(value).map_err(serde::de::Error::custom)
             }
@@ -85,7 +67,7 @@ macro_rules! try_from_impl_2 {
         }
     };
 }
-macro_rules! serialize_impl_2 {
+macro_rules! serialize_impl {
     ($t:ty) => {
         impl serde::Serialize for $t {
             fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
@@ -95,7 +77,7 @@ macro_rules! serialize_impl_2 {
         }
     };
 }
-macro_rules! deserialize_impl_3 {
+macro_rules! deserialize_impl_2 {
     ($t:ty) => {
         impl<'de> serde::Deserialize<'de> for $t {
             fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
@@ -105,7 +87,7 @@ macro_rules! deserialize_impl_3 {
         }
     };
 }
-macro_rules! serialize_impl_3 {
+macro_rules! serialize_impl_2 {
     ($t:ty) => {
         impl serde::Serialize for $t {
             fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
@@ -114,16 +96,7 @@ macro_rules! serialize_impl_3 {
         }
     };
 }
-macro_rules! serialize_impl_4 {
-    ($t:ty) => {
-        impl serde::Serialize for $t {
-            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-                Self::serialize(self, runtime::UniqueKeys(s))
-            }
-        }
-    };
-}
-macro_rules! serialize_impl_5 {
+macro_rules! serialize_impl_3 {
     ($t:ty) => {
         impl serde::Serialize for $t {
             fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
@@ -418,24 +391,15 @@ impl Shape {
     }
 }
 runtime::checked_impls!(Shape, ShapeVariants);
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct Error {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub code: Option<i64>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub message: Option<String>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct Error {
+        #[optional]
+        pub code: i64,
+        #[optional]
+        pub message: String,
+    }
 }
-deserialize_impl!(Error);
-serialize_impl!(Error);
 impl Error {
     #[must_use]
     pub const fn new() -> Self {
@@ -446,7 +410,7 @@ pub type Anything = serde_json::Value;
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct Nothing(pub(super) serde_json::Value);
-deserialize_impl_2!(Nothing);
+deserialize_impl!(Nothing);
 try_from_impl!(Nothing);
 runtime::checked_impls!(Nothing, serde_json::Value);
 #[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
@@ -931,33 +895,20 @@ impl Gadget2Attrs {
 }
 runtime::checked_impls!(Gadget2Attrs, Gadget2AttrsFields);
 pub type Gadget2Weight = ProductWeight;
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct SubmitFormBody {
-    pub tags: Vec<String>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub filter: Option<SubmitFormBodyFilter>,
-    #[deprecated]
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub note: Option<String>,
-    pub priority: SubmitFormBodyPriority,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub blob: Option<runtime::Binary>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+    pub struct SubmitFormBody {
+        pub tags: Vec<String>,
+        #[optional]
+        pub filter: SubmitFormBodyFilter,
+        #[optional]
+        #[deprecated]
+        pub note: String,
+        pub priority: SubmitFormBodyPriority,
+        #[optional]
+        pub blob: runtime::Binary,
+    }
 }
-deserialize_impl!(SubmitFormBody);
-serialize_impl!(SubmitFormBody);
 impl SubmitFormBody {
     #[must_use]
     pub const fn new(tags: Vec<String>, priority: SubmitFormBodyPriority) -> Self {
@@ -970,19 +921,14 @@ impl SubmitFormBody {
         }
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct SubmitFormBodyFilter {
-    pub a: String,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub b: Option<String>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct SubmitFormBodyFilter {
+        pub a: String,
+        #[optional]
+        pub b: String,
+    }
 }
-deserialize_impl!(SubmitFormBodyFilter);
-serialize_impl!(SubmitFormBodyFilter);
 impl SubmitFormBodyFilter {
     #[must_use]
     pub const fn new(a: String) -> Self {
@@ -1023,19 +969,14 @@ impl TryFrom<i64> for SubmitFormBodyPriority {
     }
 }
 runtime::int_enum_impls!(SubmitFormBodyPriority);
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct PutBlobOkXQuota {
-    pub limit: i64,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub scope: Option<String>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct PutBlobOkXQuota {
+        pub limit: i64,
+        #[optional]
+        pub scope: String,
+    }
 }
-deserialize_impl!(PutBlobOkXQuota);
-serialize_impl!(PutBlobOkXQuota);
 impl PutBlobOkXQuota {
     #[must_use]
     pub const fn new(limit: i64) -> Self {
@@ -1064,54 +1005,32 @@ impl TryFrom<i32> for ListProductsLimit {
     }
 }
 runtime::checked_num_impls!(ListProductsLimit, i32);
-#[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct CreateProductBody {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub meta: Option<Product>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub photo: Option<runtime::Binary>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct CreateProductBody {
+        #[optional]
+        pub meta: Product,
+        #[optional]
+        pub photo: runtime::Binary,
+    }
 }
-deserialize_impl!(CreateProductBody);
-serialize_impl!(CreateProductBody);
 impl CreateProductBody {
     #[must_use]
     pub const fn new() -> Self {
         Self { meta: None, photo: None }
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct SearchQ {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub term: Option<String>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub page: Option<i64>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub filters: Option<std::collections::BTreeMap<String, serde_json::Value>>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct SearchQ {
+        #[optional]
+        pub term: String,
+        #[optional]
+        pub page: i64,
+        #[optional]
+        pub filters: std::collections::BTreeMap<String, serde_json::Value>,
+    }
 }
-deserialize_impl!(SearchQ);
-serialize_impl!(SearchQ);
 impl SearchQ {
     #[must_use]
     pub const fn new() -> Self {
@@ -1122,31 +1041,18 @@ impl SearchQ {
         }
     }
 }
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct SearchOkItem {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub event: Option<String>,
-    pub data: SearchOkItemData,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub id: Option<String>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub retry: Option<i64>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+    pub struct SearchOkItem {
+        #[optional]
+        pub event: String,
+        pub data: SearchOkItemData,
+        #[optional]
+        pub id: String,
+        #[optional]
+        pub retry: i64,
+    }
 }
-deserialize_impl!(SearchOkItem);
-serialize_impl!(SearchOkItem);
 impl SearchOkItem {
     #[must_use]
     pub const fn new(data: SearchOkItemData) -> Self {
@@ -1160,14 +1066,14 @@ impl SearchOkItem {
 }
 #[derive(Debug, Clone, PartialEq)]
 pub struct SearchOkItemData(pub Product);
-serialize_impl_2!(SearchOkItemData);
-deserialize_impl_3!(SearchOkItemData);
+serialize_impl!(SearchOkItemData);
+deserialize_impl_2!(SearchOkItemData);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 pub struct Not;
 impl Not {
     pub const VALUE: &'static str = "vip";
 }
-serialize_impl_3!(Not);
+serialize_impl_2!(Not);
 impl<'de> serde::Deserialize<'de> for Not {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         runtime::expect_const(d, &serde_json::Value::String("vip".to_owned()))
@@ -1201,20 +1107,16 @@ impl<'de> serde::Deserialize<'de> for Not2 {
         }
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct Not2Object {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub kind: Option<Not2ObjectKind>,
-    #[serde(flatten)]
-    pub additional_properties: std::collections::BTreeMap<String, serde_json::Value>,
+runtime::object! {
+    #[unique_keys]
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct Not2Object {
+        #[optional]
+        pub kind: Not2ObjectKind,
+        #[serde(flatten)]
+        pub additional_properties: std::collections::BTreeMap<String, serde_json::Value>,
+    }
 }
-deserialize_impl!(Not2Object);
-serialize_impl_4!(Not2Object);
 impl Not2Object {
     #[must_use]
     pub const fn new() -> Self {
@@ -1229,7 +1131,7 @@ pub struct Not2ObjectKind;
 impl Not2ObjectKind {
     pub const VALUE: &'static str = "gadget";
 }
-serialize_impl_3!(Not2ObjectKind);
+serialize_impl_2!(Not2ObjectKind);
 impl<'de> serde::Deserialize<'de> for Not2ObjectKind {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         runtime::expect_const(d, &serde_json::Value::String("gadget".to_owned()))
@@ -1520,55 +1422,33 @@ impl Gadget2Request {
     }
 }
 runtime::checked_impls!(Gadget2Request, Gadget2RequestFields);
-#[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct CreateProductBodyRequest {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub meta: Option<ProductRequest>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub photo: Option<runtime::Binary>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct CreateProductBodyRequest {
+        #[optional]
+        pub meta: ProductRequest,
+        #[optional]
+        pub photo: runtime::Binary,
+    }
 }
-deserialize_impl!(CreateProductBodyRequest);
-serialize_impl!(CreateProductBodyRequest);
 impl CreateProductBodyRequest {
     #[must_use]
     pub const fn new() -> Self {
         Self { meta: None, photo: None }
     }
 }
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct SearchOkItemRequest {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub event: Option<String>,
-    pub data: SearchOkItemDataRequest,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub id: Option<String>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub retry: Option<i64>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+    pub struct SearchOkItemRequest {
+        #[optional]
+        pub event: String,
+        pub data: SearchOkItemDataRequest,
+        #[optional]
+        pub id: String,
+        #[optional]
+        pub retry: i64,
+    }
 }
-deserialize_impl!(SearchOkItemRequest);
-serialize_impl!(SearchOkItemRequest);
 impl SearchOkItemRequest {
     #[must_use]
     pub const fn new(data: SearchOkItemDataRequest) -> Self {
@@ -1582,55 +1462,34 @@ impl SearchOkItemRequest {
 }
 #[derive(Debug, Clone, PartialEq)]
 pub struct SearchOkItemDataRequest(pub ProductRequest);
-serialize_impl_2!(SearchOkItemDataRequest);
-deserialize_impl_3!(SearchOkItemDataRequest);
-/// Product
-///
-/// A product
-///
-/// See also: <https://example.com/product>
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct ProductFields {
-    pub id: ProductId,
-    pub name: ProductName,
-    pub kind: ProductKind,
-    #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
-    pub nickname: runtime::Nullable<String>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub tags: Option<ProductTags>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub point: Option<ProductPoint>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub attrs: Option<ProductAttrs>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub weight: Option<ProductWeight>,
-    /// Overrides description
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub owner: Option<Owner>,
+serialize_impl!(SearchOkItemDataRequest);
+deserialize_impl_2!(SearchOkItemDataRequest);
+runtime::object! {
+    /// Product
+    ///
+    /// A product
+    ///
+    /// See also: <https://example.com/product>
+    #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+    pub struct ProductFields {
+        pub id: ProductId,
+        pub name: ProductName,
+        pub kind: ProductKind,
+        #[nullable]
+        pub nickname: String,
+        #[optional]
+        pub tags: ProductTags,
+        #[optional]
+        pub point: ProductPoint,
+        #[optional]
+        pub attrs: ProductAttrs,
+        #[optional]
+        pub weight: ProductWeight,
+        #[optional]
+        /// Overrides description
+        pub owner: Owner,
+    }
 }
-deserialize_impl!(ProductFields);
-serialize_impl!(ProductFields);
 impl ProductFields {
     #[must_use]
     pub const fn new(id: ProductId, name: ProductName, kind: ProductKind) -> Self {
@@ -1647,54 +1506,29 @@ impl ProductFields {
         }
     }
 }
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct BookFields {
-    pub id: BookId,
-    pub name: BookName,
-    pub kind: BookKind,
-    #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
-    pub nickname: runtime::Nullable<String>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub tags: Option<BookTags>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub point: Option<BookPoint>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub attrs: Option<BookAttrs>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub weight: Option<BookWeight>,
-    /// Overrides description
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub owner: Option<Owner>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub hardcover: Option<bool>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+    pub struct BookFields {
+        pub id: BookId,
+        pub name: BookName,
+        pub kind: BookKind,
+        #[nullable]
+        pub nickname: String,
+        #[optional]
+        pub tags: BookTags,
+        #[optional]
+        pub point: BookPoint,
+        #[optional]
+        pub attrs: BookAttrs,
+        #[optional]
+        pub weight: BookWeight,
+        #[optional]
+        /// Overrides description
+        pub owner: Owner,
+        #[optional]
+        pub hardcover: bool,
+    }
 }
-deserialize_impl!(BookFields);
-serialize_impl!(BookFields);
 impl BookFields {
     #[must_use]
     pub const fn new(id: BookId, name: BookName, kind: BookKind) -> Self {
@@ -1712,18 +1546,13 @@ impl BookFields {
         }
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct OwnerFields {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub children: Option<Vec<Owner>>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct OwnerFields {
+        #[optional]
+        pub children: Vec<Owner>,
+    }
 }
-deserialize_impl!(OwnerFields);
-serialize_impl!(OwnerFields);
 impl OwnerFields {
     #[must_use]
     pub const fn new() -> Self {
@@ -1735,7 +1564,7 @@ pub enum ShapeVariants {
     Book(Book),
     Gadget(Gadget),
 }
-serialize_impl_5!(ShapeVariants);
+serialize_impl_3!(ShapeVariants);
 impl<'de> serde::Deserialize<'de> for ShapeVariants {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         let v = <runtime::Content<'de> as serde::Deserialize>::deserialize(d)?;
@@ -1784,15 +1613,17 @@ impl<'de> serde::Deserialize<'de> for ShapeVariants {
         )
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct AttrsFields {
-    /// The undeclared names that `^x_` matches.
-    #[serde(flatten, deserialize_with = "AttrsFields::read_pattern_1")]
-    pub pattern_1: std::collections::BTreeMap<String, String>,
-    /// The undeclared names that no pattern matches.
-    #[serde(flatten, deserialize_with = "AttrsFields::read_additional_properties")]
-    pub additional_properties: std::collections::BTreeMap<String, serde_json::Value>,
+runtime::object! {
+    #[unique_keys]
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct AttrsFields {
+        /// The undeclared names that `^x_` matches.
+        #[serde(flatten, deserialize_with = "AttrsFields::read_pattern_1")]
+        pub pattern_1: std::collections::BTreeMap<String, String>,
+        /// The undeclared names that no pattern matches.
+        #[serde(flatten, deserialize_with = "AttrsFields::read_additional_properties")]
+        pub additional_properties: std::collections::BTreeMap<String, serde_json::Value>,
+    }
 }
 impl AttrsFields {
     #[doc(hidden)]
@@ -1808,8 +1639,6 @@ impl AttrsFields {
         runtime::other_entries(d, &["^x_"])
     }
 }
-deserialize_impl!(AttrsFields);
-serialize_impl_4!(AttrsFields);
 impl AttrsFields {
     #[must_use]
     pub const fn new() -> Self {
@@ -1820,48 +1649,27 @@ impl AttrsFields {
     }
 }
 pub type BookAttrsFields = AttrsFields;
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct Gadget2Fields {
-    pub id: Gadget2Id,
-    pub name: Gadget2Name,
-    pub kind: Gadget2Kind,
-    #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
-    pub nickname: runtime::Nullable<String>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub tags: Option<Gadget2Tags>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub point: Option<Gadget2Point>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub attrs: Option<Gadget2Attrs>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub weight: Option<Gadget2Weight>,
-    /// Overrides description
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub owner: Option<Owner>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+    pub struct Gadget2Fields {
+        pub id: Gadget2Id,
+        pub name: Gadget2Name,
+        pub kind: Gadget2Kind,
+        #[nullable]
+        pub nickname: String,
+        #[optional]
+        pub tags: Gadget2Tags,
+        #[optional]
+        pub point: Gadget2Point,
+        #[optional]
+        pub attrs: Gadget2Attrs,
+        #[optional]
+        pub weight: Gadget2Weight,
+        #[optional]
+        /// Overrides description
+        pub owner: Owner,
+    }
 }
-deserialize_impl!(Gadget2Fields);
-serialize_impl!(Gadget2Fields);
 impl Gadget2Fields {
     #[must_use]
     pub const fn new(id: Gadget2Id, name: Gadget2Name, kind: Gadget2Kind) -> Self {
@@ -1879,59 +1687,34 @@ impl Gadget2Fields {
     }
 }
 pub type Gadget2AttrsFields = AttrsFields;
-/// Product
-///
-/// A product
-///
-/// See also: <https://example.com/product>
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct ProductRequestFields {
-    pub name: ProductName,
-    pub kind: ProductKind,
-    #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
-    pub nickname: runtime::Nullable<String>,
-    #[deprecated]
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub secret: Option<String>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub tags: Option<ProductRequestTags>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub point: Option<ProductRequestPoint>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub attrs: Option<ProductAttrs>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub weight: Option<ProductWeight>,
-    /// Overrides description
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub owner: Option<Owner>,
+runtime::object! {
+    /// Product
+    ///
+    /// A product
+    ///
+    /// See also: <https://example.com/product>
+    #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+    pub struct ProductRequestFields {
+        pub name: ProductName,
+        pub kind: ProductKind,
+        #[nullable]
+        pub nickname: String,
+        #[optional]
+        #[deprecated]
+        pub secret: String,
+        #[optional]
+        pub tags: ProductRequestTags,
+        #[optional]
+        pub point: ProductRequestPoint,
+        #[optional]
+        pub attrs: ProductAttrs,
+        #[optional]
+        pub weight: ProductWeight,
+        #[optional]
+        /// Overrides description
+        pub owner: Owner,
+    }
 }
-deserialize_impl!(ProductRequestFields);
-serialize_impl!(ProductRequestFields);
 impl ProductRequestFields {
     #[must_use]
     pub const fn new(name: ProductName, kind: ProductKind) -> Self {
@@ -1948,60 +1731,31 @@ impl ProductRequestFields {
         }
     }
 }
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct BookRequestFields {
-    pub name: BookName,
-    pub kind: BookKind,
-    #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
-    pub nickname: runtime::Nullable<String>,
-    #[deprecated]
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub secret: Option<String>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub tags: Option<BookRequestTags>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub point: Option<BookRequestPoint>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub attrs: Option<BookAttrs>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub weight: Option<BookWeight>,
-    /// Overrides description
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub owner: Option<Owner>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub hardcover: Option<bool>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+    pub struct BookRequestFields {
+        pub name: BookName,
+        pub kind: BookKind,
+        #[nullable]
+        pub nickname: String,
+        #[optional]
+        #[deprecated]
+        pub secret: String,
+        #[optional]
+        pub tags: BookRequestTags,
+        #[optional]
+        pub point: BookRequestPoint,
+        #[optional]
+        pub attrs: BookAttrs,
+        #[optional]
+        pub weight: BookWeight,
+        #[optional]
+        /// Overrides description
+        pub owner: Owner,
+        #[optional]
+        pub hardcover: bool,
+    }
 }
-deserialize_impl!(BookRequestFields);
-serialize_impl!(BookRequestFields);
 impl BookRequestFields {
     #[must_use]
     pub const fn new(name: BookName, kind: BookKind) -> Self {
@@ -2024,7 +1778,7 @@ pub enum ShapeRequestVariants {
     Book(BookRequest),
     Gadget(GadgetRequest),
 }
-serialize_impl_5!(ShapeRequestVariants);
+serialize_impl_3!(ShapeRequestVariants);
 impl<'de> serde::Deserialize<'de> for ShapeRequestVariants {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         let v = <runtime::Content<'de> as serde::Deserialize>::deserialize(d)?;
@@ -2073,54 +1827,29 @@ impl<'de> serde::Deserialize<'de> for ShapeRequestVariants {
         )
     }
 }
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct Gadget2RequestFields {
-    pub name: Gadget2Name,
-    pub kind: Gadget2Kind,
-    #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
-    pub nickname: runtime::Nullable<String>,
-    #[deprecated]
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub secret: Option<String>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub tags: Option<Gadget2RequestTags>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub point: Option<Gadget2RequestPoint>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub attrs: Option<Gadget2Attrs>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub weight: Option<Gadget2Weight>,
-    /// Overrides description
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub owner: Option<Owner>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+    pub struct Gadget2RequestFields {
+        pub name: Gadget2Name,
+        pub kind: Gadget2Kind,
+        #[nullable]
+        pub nickname: String,
+        #[optional]
+        #[deprecated]
+        pub secret: String,
+        #[optional]
+        pub tags: Gadget2RequestTags,
+        #[optional]
+        pub point: Gadget2RequestPoint,
+        #[optional]
+        pub attrs: Gadget2Attrs,
+        #[optional]
+        pub weight: Gadget2Weight,
+        #[optional]
+        /// Overrides description
+        pub owner: Owner,
+    }
 }
-deserialize_impl!(Gadget2RequestFields);
-serialize_impl!(Gadget2RequestFields);
 impl Gadget2RequestFields {
     #[must_use]
     pub const fn new(name: Gadget2Name, kind: Gadget2Kind) -> Self {
@@ -2283,7 +2012,7 @@ pub type Gadget2RequestPoint = ProductPoint;
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct NotChecked(pub(super) serde_json::Value);
-deserialize_impl_2!(NotChecked);
+deserialize_impl!(NotChecked);
 impl TryFrom<serde_json::Value> for NotChecked {
     type Error = runtime::BuildError;
     fn try_from(value: serde_json::Value) -> Result<Self, runtime::BuildError> {
@@ -2308,7 +2037,7 @@ runtime::checked_impls!(NotChecked, serde_json::Value);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct NotChecked2(pub(super) serde_json::Value);
-deserialize_impl_2!(NotChecked2);
+deserialize_impl!(NotChecked2);
 impl TryFrom<serde_json::Value> for NotChecked2 {
     type Error = runtime::BuildError;
     fn try_from(value: serde_json::Value) -> Result<Self, runtime::BuildError> {
@@ -2333,7 +2062,7 @@ runtime::checked_impls!(NotChecked2, serde_json::Value);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct NotChecked3(pub(super) serde_json::Value);
-deserialize_impl_2!(NotChecked3);
+deserialize_impl!(NotChecked3);
 impl TryFrom<serde_json::Value> for NotChecked3 {
     type Error = runtime::BuildError;
     fn try_from(value: serde_json::Value) -> Result<Self, runtime::BuildError> {
@@ -2358,7 +2087,7 @@ runtime::checked_impls!(NotChecked3, serde_json::Value);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct NotChecked4(pub(super) serde_json::Value);
-deserialize_impl_2!(NotChecked4);
+deserialize_impl!(NotChecked4);
 try_from_impl!(NotChecked4);
 runtime::checked_impls!(NotChecked4, serde_json::Value);
 /// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of

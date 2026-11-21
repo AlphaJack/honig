@@ -16,24 +16,6 @@
     clippy::init_numbered_fields,
     reason = "a spec default builds its checked type as `Type { 0: value }`, which also works through the alias of a twin"
 )]
-macro_rules! deserialize_impl {
-    ($t:ty) => {
-        impl<'de> serde::Deserialize<'de> for $t {
-            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-                Self::deserialize(runtime::NoSeq(d))
-            }
-        }
-    };
-}
-macro_rules! serialize_impl {
-    ($t:ty) => {
-        impl serde::Serialize for $t {
-            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-                Self::serialize(self, s)
-            }
-        }
-    };
-}
 macro_rules! try_from_impl {
     ($t:ty) => {
         impl TryFrom<&str> for $t {
@@ -55,15 +37,6 @@ macro_rules! try_from_impl {
                         )
                     }
                 }
-            }
-        }
-    };
-}
-macro_rules! serialize_impl_2 {
-    ($t:ty) => {
-        impl serde::Serialize for $t {
-            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-                Self::serialize(self, runtime::UniqueKeys(s))
             }
         }
     };
@@ -90,7 +63,7 @@ macro_rules! try_from_impl_2 {
         }
     };
 }
-macro_rules! serialize_impl_3 {
+macro_rules! serialize_impl {
     ($t:ty) => {
         impl serde::Serialize for $t {
             fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
@@ -120,7 +93,7 @@ macro_rules! serialize_impl_3 {
         }
     };
 }
-macro_rules! deserialize_impl_2 {
+macro_rules! deserialize_impl {
     ($t:ty) => {
         impl<'de> serde::Deserialize<'de> for $t {
             fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
@@ -130,25 +103,16 @@ macro_rules! deserialize_impl_2 {
     };
 }
 use super::runtime;
-/// A user
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct User {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub id: Option<i64>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub name: Option<String>,
+runtime::object! {
+    /// A user
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct User {
+        #[optional]
+        pub id: i64,
+        #[optional]
+        pub name: String,
+    }
 }
-deserialize_impl!(User);
-serialize_impl!(User);
 impl User {
     #[must_use]
     pub const fn new() -> Self {
@@ -199,14 +163,13 @@ impl runtime::XmlShape for User {
         &NODE
     }
 }
-/// Credentials to authenticate a user
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct Credentials {
-    pub email: runtime::EmailText,
+runtime::object! {
+    /// Credentials to authenticate a user
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+    pub struct Credentials {
+        pub email: runtime::EmailText,
+    }
 }
-deserialize_impl!(Credentials);
-serialize_impl!(Credentials);
 impl Credentials {
     #[must_use]
     pub const fn new(email: runtime::EmailText) -> Self {
@@ -241,19 +204,14 @@ impl runtime::XmlShape for Credentials {
         &NODE
     }
 }
-/// A token to authenticate a user
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct Token {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub token: Option<String>,
+runtime::object! {
+    /// A token to authenticate a user
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct Token {
+        #[optional]
+        pub token: String,
+    }
 }
-deserialize_impl!(Token);
-serialize_impl!(Token);
 impl Token {
     #[must_use]
     pub const fn new() -> Self {
@@ -342,94 +300,57 @@ impl Item {
     }
 }
 runtime::checked_impls!(Item, ItemVariants);
-/// A product in the shop
-#[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct Product {
-    pub id: i64,
-    pub name: String,
-    #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
-    pub description: runtime::Nullable<String>,
-    #[serde(
-        rename = "type",
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub type_: Option<ProductType>,
-    /// A score from 0 to 1 indicating how customers rate it
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub rating: Option<ProductRating>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub dimensions: Option<ProductDimensions>,
-    /// Materials it is made of
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub materials: Option<Vec<ProductMaterialsItem>>,
-    #[serde(
-        rename = "listedAt",
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub listed_at: Option<runtime::DateTimeText>,
-    #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
-    pub image: runtime::Nullable<String>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub variants: Option<Vec<Variant>>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub creator: Option<User>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub tags: Option<Vec<String>>,
-    #[serde(
-        rename = "lastUpdated",
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub last_updated: Option<runtime::DateTimeText>,
-    /// URL which gets invoked upon a successful operation
-    #[serde(
-        rename = "successCallbackUrl",
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::formats::read::<_, _, runtime::formats::Present<runtime::formats::Text<runtime::formats::format::Uri>>>"
-    )]
-    pub success_callback_url: Option<url::Url>,
-    /// URL which gets invoked upon a failed operation
-    #[serde(
-        rename = "failureCallbackUrl",
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::formats::read::<_, _, runtime::formats::Present<runtime::formats::Text<runtime::formats::format::Uri>>>"
-    )]
-    pub failure_callback_url: Option<url::Url>,
+runtime::object! {
+    /// A product in the shop
+    #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct Product {
+        pub id: i64,
+        pub name: String,
+        #[nullable]
+        pub description: String,
+        #[optional]
+        #[serde(rename = "type")]
+        pub type_: ProductType,
+        #[optional]
+        /// A score from 0 to 1 indicating how customers rate it
+        pub rating: ProductRating,
+        #[optional]
+        pub dimensions: ProductDimensions,
+        #[optional]
+        /// Materials it is made of
+        pub materials: Vec<ProductMaterialsItem>,
+        #[optional]
+        #[serde(rename = "listedAt")]
+        pub listed_at: runtime::DateTimeText,
+        #[nullable]
+        pub image: String,
+        #[optional]
+        pub variants: Vec<Variant>,
+        #[optional]
+        pub creator: User,
+        #[optional]
+        pub tags: Vec<String>,
+        #[optional]
+        #[serde(rename = "lastUpdated")]
+        pub last_updated: runtime::DateTimeText,
+        /// URL which gets invoked upon a successful operation
+        #[serde(rename = "successCallbackUrl")]
+        #[serde(
+            default,
+            skip_serializing_if = "Option::is_none",
+            deserialize_with = "runtime::formats::read::<_, _, runtime::formats::Present<runtime::formats::Text<runtime::formats::format::Uri>>>"
+        )]
+        pub success_callback_url: Option<url::Url>,
+        /// URL which gets invoked upon a failed operation
+        #[serde(rename = "failureCallbackUrl")]
+        #[serde(
+            default,
+            skip_serializing_if = "Option::is_none",
+            deserialize_with = "runtime::formats::read::<_, _, runtime::formats::Present<runtime::formats::Text<runtime::formats::format::Uri>>>"
+        )]
+        pub failure_callback_url: Option<url::Url>,
+    }
 }
-deserialize_impl!(Product);
-serialize_impl!(Product);
 impl Product {
     #[must_use]
     pub const fn new(id: i64, name: String) -> Self {
@@ -704,42 +625,25 @@ impl runtime::XmlShape for Product {
         &NODE
     }
 }
-/// Every variant in the shop
-#[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct Variant {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub id: Option<i64>,
-    pub name: String,
-    #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
-    pub description: runtime::Nullable<String>,
-    /// Length in centimetres
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub length: Option<f32>,
-    #[serde(
-        rename = "type",
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub type_: Option<VariantType>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub shipping: Option<VariantShipping>,
+runtime::object! {
+    /// Every variant in the shop
+    #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct Variant {
+        #[optional]
+        pub id: i64,
+        pub name: String,
+        #[nullable]
+        pub description: String,
+        #[optional]
+        /// Length in centimetres
+        pub length: f32,
+        #[optional]
+        #[serde(rename = "type")]
+        pub type_: VariantType,
+        #[optional]
+        pub shipping: VariantShipping,
+    }
 }
-deserialize_impl!(Variant);
-serialize_impl!(Variant);
 impl Variant {
     #[must_use]
     pub const fn new(name: String) -> Self {
@@ -861,43 +765,26 @@ impl runtime::XmlShape for Variant {
         &NODE
     }
 }
-/// A structured query for the product catalog, sent either as the body of a QUERY request or as a `querystring` parameter.
-#[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct ProductQuery {
-    /// Match products whose name contains this text
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub name: Option<String>,
-    /// Restrict results to these product types
-    #[serde(
-        rename = "type",
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub type_: Option<Vec<ProductQueryTypeItem>>,
-    /// Only return products at or above this rating
-    #[serde(
-        rename = "minRating",
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub min_rating: Option<ProductQueryMinRating>,
-    /// Sort field; prefix with `-` for descending order
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub sort: Option<ProductQuerySort>,
+runtime::object! {
+    /// A structured query for the product catalog, sent either as the body of a QUERY request or as a `querystring` parameter.
+    #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct ProductQuery {
+        #[optional]
+        /// Match products whose name contains this text
+        pub name: String,
+        #[optional]
+        /// Restrict results to these product types
+        #[serde(rename = "type")]
+        pub type_: Vec<ProductQueryTypeItem>,
+        #[optional]
+        /// Only return products at or above this rating
+        #[serde(rename = "minRating")]
+        pub min_rating: ProductQueryMinRating,
+        #[optional]
+        /// Sort field; prefix with `-` for descending order
+        pub sort: ProductQuerySort,
+    }
 }
-deserialize_impl!(ProductQuery);
-serialize_impl!(ProductQuery);
 impl ProductQuery {
     #[must_use]
     pub const fn new() -> Self {
@@ -985,36 +872,23 @@ impl runtime::XmlShape for ProductQuery {
         &NODE
     }
 }
-/// A single event emitted on the product stream. Each item in a `text/event-stream`, `application/jsonl` or `application/json-seq` response validates against this schema.
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct ProductEvent {
-    /// Unique identifier for the event
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub id: Option<runtime::UuidText>,
-    /// The kind of change that occurred
-    pub event: ProductEventEvent,
-    pub product: Product,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub note: Option<ShopMessage>,
-    #[serde(
-        rename = "occurredAt",
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub occurred_at: Option<runtime::DateTimeText>,
+runtime::object! {
+    /// A single event emitted on the product stream. Each item in a `text/event-stream`, `application/jsonl` or `application/json-seq` response validates against this schema.
+    #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+    pub struct ProductEvent {
+        #[optional]
+        /// Unique identifier for the event
+        pub id: runtime::UuidText,
+        /// The kind of change that occurred
+        pub event: ProductEventEvent,
+        pub product: Product,
+        #[optional]
+        pub note: ShopMessage,
+        #[optional]
+        #[serde(rename = "occurredAt")]
+        pub occurred_at: runtime::DateTimeText,
+    }
 }
-deserialize_impl!(ProductEvent);
-serialize_impl!(ProductEvent);
 impl ProductEvent {
     #[must_use]
     pub const fn new(event: ProductEventEvent, product: Product) -> Self {
@@ -1119,27 +993,18 @@ impl runtime::XmlShape for ProductEvent {
         &NODE
     }
 }
-/// A short, localized message. Demonstrates the `OpenAPI` 3.2 XML `nodeType` values `attribute` and `text`, which serialize as `<message lang="en">A new product has appeared</message>`.
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct ShopMessage {
-    /// BCP 47 language tag
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub lang: Option<String>,
-    /// The message text, serialized as the element's text content
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub value: Option<String>,
+runtime::object! {
+    /// A short, localized message. Demonstrates the `OpenAPI` 3.2 XML `nodeType` values `attribute` and `text`, which serialize as `<message lang="en">A new product has appeared</message>`.
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct ShopMessage {
+        #[optional]
+        /// BCP 47 language tag
+        pub lang: String,
+        #[optional]
+        /// The message text, serialized as the element's text content
+        pub value: String,
+    }
 }
-deserialize_impl!(ShopMessage);
-serialize_impl!(ShopMessage);
 impl ShopMessage {
     #[must_use]
     pub const fn new() -> Self {
@@ -1190,29 +1055,20 @@ impl runtime::XmlShape for ShopMessage {
         &NODE
     }
 }
-/// Metadata describing a batch of uploaded photos
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct PhotoBatchMeta {
-    /// Who captured the photos
-    pub photographer: String,
-    #[serde(
-        rename = "takenAt",
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub taken_at: Option<runtime::DateTimeText>,
-    /// Number of image parts that follow this metadata part
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub count: Option<i64>,
+runtime::object! {
+    /// Metadata describing a batch of uploaded photos
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct PhotoBatchMeta {
+        /// Who captured the photos
+        pub photographer: String,
+        #[optional]
+        #[serde(rename = "takenAt")]
+        pub taken_at: runtime::DateTimeText,
+        #[optional]
+        /// Number of image parts that follow this metadata part
+        pub count: i64,
+    }
 }
-deserialize_impl!(PhotoBatchMeta);
-serialize_impl!(PhotoBatchMeta);
 impl PhotoBatchMeta {
     #[must_use]
     pub const fn new(photographer: String) -> Self {
@@ -1283,25 +1139,16 @@ impl runtime::XmlShape for PhotoBatchMeta {
         &NODE
     }
 }
-/// A generic paginated resource. Specializing schemas bind the item type by declaring a `$dynamicAnchor` named `itemType`, the JSON Schema 2020-12 way to express `PaginatedResource<T>`.
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct PaginatedResource {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub data: Option<PaginatedResourceData>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub meta: Option<PaginatedResourceMeta>,
+runtime::object! {
+    /// A generic paginated resource. Specializing schemas bind the item type by declaring a `$dynamicAnchor` named `itemType`, the JSON Schema 2020-12 way to express `PaginatedResource<T>`.
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct PaginatedResource {
+        #[optional]
+        pub data: PaginatedResourceData,
+        #[optional]
+        pub meta: PaginatedResourceMeta,
+    }
 }
-deserialize_impl!(PaginatedResource);
-serialize_impl!(PaginatedResource);
 impl PaginatedResource {
     #[must_use]
     pub const fn new() -> Self {
@@ -1352,51 +1199,30 @@ impl runtime::XmlShape for PaginatedResource {
         &NODE
     }
 }
-/// Message about an image upload
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct ImageUploadedMessage {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub message: Option<String>,
-    /// The URL where the uploaded image can be accessed
-    #[serde(
-        rename = "imageUrl",
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub image_url: Option<String>,
-    /// Timestamp when the image was uploaded
-    #[serde(
-        rename = "uploadedAt",
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub uploaded_at: Option<runtime::DateTimeText>,
-    /// Size of the uploaded image in bytes
-    #[serde(
-        rename = "fileSize",
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub file_size: Option<i64>,
-    /// The content type of the uploaded image
-    #[serde(
-        rename = "mimeType",
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub mime_type: Option<String>,
+runtime::object! {
+    /// Message about an image upload
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct ImageUploadedMessage {
+        #[optional]
+        pub message: String,
+        #[optional]
+        /// The URL where the uploaded image can be accessed
+        #[serde(rename = "imageUrl")]
+        pub image_url: String,
+        #[optional]
+        /// Timestamp when the image was uploaded
+        #[serde(rename = "uploadedAt")]
+        pub uploaded_at: runtime::DateTimeText,
+        #[optional]
+        /// Size of the uploaded image in bytes
+        #[serde(rename = "fileSize")]
+        pub file_size: i64,
+        #[optional]
+        /// The content type of the uploaded image
+        #[serde(rename = "mimeType")]
+        pub mime_type: String,
+    }
 }
-deserialize_impl!(ImageUploadedMessage);
-serialize_impl!(ImageUploadedMessage);
 impl ImageUploadedMessage {
     #[must_use]
     pub const fn new() -> Self {
@@ -1501,38 +1327,21 @@ impl runtime::XmlShape for ImageUploadedMessage {
         &NODE
     }
 }
-/// RFC 7807 (<https://datatracker.ietf.org/doc/html/rfc7807>)
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct BadRequestError {
-    #[serde(
-        rename = "type",
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub type_: Option<String>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub title: Option<String>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub status: Option<i64>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub detail: Option<String>,
+runtime::object! {
+    /// RFC 7807 (<https://datatracker.ietf.org/doc/html/rfc7807>)
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct BadRequestError {
+        #[optional]
+        #[serde(rename = "type")]
+        pub type_: String,
+        #[optional]
+        pub title: String,
+        #[optional]
+        pub status: i64,
+        #[optional]
+        pub detail: String,
+    }
 }
-deserialize_impl!(BadRequestError);
-serialize_impl!(BadRequestError);
 impl BadRequestError {
     #[must_use]
     pub const fn new() -> Self {
@@ -1620,38 +1429,21 @@ impl runtime::XmlShape for BadRequestError {
         &NODE
     }
 }
-/// Error response for forbidden access (RFC 7807). Returned when the user does not have permission to access the requested resource.
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct ForbiddenError {
-    #[serde(
-        rename = "type",
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub type_: Option<String>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub title: Option<String>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub status: Option<i64>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub detail: Option<String>,
+runtime::object! {
+    /// Error response for forbidden access (RFC 7807). Returned when the user does not have permission to access the requested resource.
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct ForbiddenError {
+        #[optional]
+        #[serde(rename = "type")]
+        pub type_: String,
+        #[optional]
+        pub title: String,
+        #[optional]
+        pub status: i64,
+        #[optional]
+        pub detail: String,
+    }
 }
-deserialize_impl!(ForbiddenError);
-serialize_impl!(ForbiddenError);
 impl ForbiddenError {
     #[must_use]
     pub const fn new() -> Self {
@@ -1739,38 +1531,21 @@ impl runtime::XmlShape for ForbiddenError {
         &NODE
     }
 }
-/// Error response for resource not found (RFC 7807). Returned when the requested resource does not exist.
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct NotFoundError {
-    #[serde(
-        rename = "type",
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub type_: Option<String>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub title: Option<String>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub status: Option<i64>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub detail: Option<String>,
+runtime::object! {
+    /// Error response for resource not found (RFC 7807). Returned when the requested resource does not exist.
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct NotFoundError {
+        #[optional]
+        #[serde(rename = "type")]
+        pub type_: String,
+        #[optional]
+        pub title: String,
+        #[optional]
+        pub status: i64,
+        #[optional]
+        pub detail: String,
+    }
 }
-deserialize_impl!(NotFoundError);
-serialize_impl!(NotFoundError);
 impl NotFoundError {
     #[must_use]
     pub const fn new() -> Self {
@@ -1858,38 +1633,21 @@ impl runtime::XmlShape for NotFoundError {
         &NODE
     }
 }
-/// Error response for unauthorized access (RFC 7807). Returned when authentication is required or has failed.
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct UnauthorizedError {
-    #[serde(
-        rename = "type",
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub type_: Option<String>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub title: Option<String>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub status: Option<i64>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub detail: Option<String>,
+runtime::object! {
+    /// Error response for unauthorized access (RFC 7807). Returned when authentication is required or has failed.
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct UnauthorizedError {
+        #[optional]
+        #[serde(rename = "type")]
+        pub type_: String,
+        #[optional]
+        pub title: String,
+        #[optional]
+        pub status: i64,
+        #[optional]
+        pub detail: String,
+    }
 }
-deserialize_impl!(UnauthorizedError);
-serialize_impl!(UnauthorizedError);
 impl UnauthorizedError {
     #[must_use]
     pub const fn new() -> Self {
@@ -1977,38 +1735,21 @@ impl runtime::XmlShape for UnauthorizedError {
         &NODE
     }
 }
-/// Error response for resource conflicts (RFC 7807). Returned when the request conflicts with the current state of the resource.
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct Conflict {
-    #[serde(
-        rename = "type",
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub type_: Option<String>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub title: Option<String>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub status: Option<i64>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub detail: Option<String>,
+runtime::object! {
+    /// Error response for resource conflicts (RFC 7807). Returned when the request conflicts with the current state of the resource.
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct Conflict {
+        #[optional]
+        #[serde(rename = "type")]
+        pub type_: String,
+        #[optional]
+        pub title: String,
+        #[optional]
+        pub status: i64,
+        #[optional]
+        pub detail: String,
+    }
 }
-deserialize_impl!(Conflict);
-serialize_impl!(Conflict);
 impl Conflict {
     #[must_use]
     pub const fn new() -> Self {
@@ -2096,38 +1837,21 @@ impl runtime::XmlShape for Conflict {
         &NODE
     }
 }
-/// Error response for unprocessable entity (RFC 7807). Returned when the request is well-formed but contains semantic errors.
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct UnprocessableEntity {
-    #[serde(
-        rename = "type",
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub type_: Option<String>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub title: Option<String>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub status: Option<i64>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub detail: Option<String>,
+runtime::object! {
+    /// Error response for unprocessable entity (RFC 7807). Returned when the request is well-formed but contains semantic errors.
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct UnprocessableEntity {
+        #[optional]
+        #[serde(rename = "type")]
+        pub type_: String,
+        #[optional]
+        pub title: String,
+        #[optional]
+        pub status: i64,
+        #[optional]
+        pub detail: String,
+    }
 }
-deserialize_impl!(UnprocessableEntity);
-serialize_impl!(UnprocessableEntity);
 impl UnprocessableEntity {
     #[must_use]
     pub const fn new() -> Self {
@@ -2215,38 +1939,21 @@ impl runtime::XmlShape for UnprocessableEntity {
         &NODE
     }
 }
-/// Error response for rate limiting (RFC 7807). Returned when the client has exceeded the rate limit for requests.
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct TooManyRequestsError {
-    #[serde(
-        rename = "type",
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub type_: Option<String>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub title: Option<String>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub status: Option<i64>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub detail: Option<String>,
+runtime::object! {
+    /// Error response for rate limiting (RFC 7807). Returned when the client has exceeded the rate limit for requests.
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct TooManyRequestsError {
+        #[optional]
+        #[serde(rename = "type")]
+        pub type_: String,
+        #[optional]
+        pub title: String,
+        #[optional]
+        pub status: i64,
+        #[optional]
+        pub detail: String,
+    }
 }
-deserialize_impl!(TooManyRequestsError);
-serialize_impl!(TooManyRequestsError);
 impl TooManyRequestsError {
     #[must_use]
     pub const fn new() -> Self {
@@ -2379,41 +2086,25 @@ impl TryFrom<f32> for ProductRating {
     }
 }
 runtime::checked_num_impls!(ProductRating, f32);
-#[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct ProductDimensions {
-    /// Weight in kilograms (must be greater than 0)
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub weight: Option<ProductDimensionsWeight>,
-    /// Width in centimetres (must be greater than 0)
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub width: Option<ProductDimensionsWidth>,
-    /// Height in centimetres
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub height: Option<f32>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub price: Option<ProductDimensionsPrice>,
-    #[serde(flatten)]
-    pub additional_properties: std::collections::BTreeMap<String, f32>,
+runtime::object! {
+    #[unique_keys]
+    #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct ProductDimensions {
+        #[optional]
+        /// Weight in kilograms (must be greater than 0)
+        pub weight: ProductDimensionsWeight,
+        #[optional]
+        /// Width in centimetres (must be greater than 0)
+        pub width: ProductDimensionsWidth,
+        #[optional]
+        /// Height in centimetres
+        pub height: f32,
+        #[optional]
+        pub price: ProductDimensionsPrice,
+        #[serde(flatten)]
+        pub additional_properties: std::collections::BTreeMap<String, f32>,
+    }
 }
-deserialize_impl!(ProductDimensions);
-serialize_impl_2!(ProductDimensions);
 impl ProductDimensions {
     #[must_use]
     pub const fn new() -> Self {
@@ -2514,35 +2205,23 @@ runtime::checked_num_impls!(ProductDimensionsWeight, f32);
 pub struct ProductDimensionsWidth(pub(super) f32);
 try_from_impl_2!(ProductDimensionsWidth);
 runtime::checked_num_impls!(ProductDimensionsWidth, f32);
-#[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct ProductDimensionsPrice {
-    /// Lowest price in euros
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub min: Option<f32>,
-    /// Highest price in euros
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub max: Option<f32>,
-    /// Average price in euros
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub average: Option<f32>,
-    #[serde(flatten)]
-    pub additional_properties: std::collections::BTreeMap<String, f32>,
+runtime::object! {
+    #[unique_keys]
+    #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct ProductDimensionsPrice {
+        #[optional]
+        /// Lowest price in euros
+        pub min: f32,
+        #[optional]
+        /// Highest price in euros
+        pub max: f32,
+        #[optional]
+        /// Average price in euros
+        pub average: f32,
+        #[serde(flatten)]
+        pub additional_properties: std::collections::BTreeMap<String, f32>,
+    }
 }
-deserialize_impl!(ProductDimensionsPrice);
-serialize_impl_2!(ProductDimensionsPrice);
 impl ProductDimensionsPrice {
     #[must_use]
     pub const fn new() -> Self {
@@ -2614,26 +2293,18 @@ impl runtime::XmlShape for ProductDimensionsPrice {
         &NODE
     }
 }
-#[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct ProductMaterialsItem {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub material: Option<String>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub percentage: Option<ProductMaterialsItemPercentage>,
-    #[serde(flatten)]
-    pub additional_properties: std::collections::BTreeMap<String, String>,
+runtime::object! {
+    #[unique_keys]
+    #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct ProductMaterialsItem {
+        #[optional]
+        pub material: String,
+        #[optional]
+        pub percentage: ProductMaterialsItemPercentage,
+        #[serde(flatten)]
+        pub additional_properties: std::collections::BTreeMap<String, String>,
+    }
 }
-deserialize_impl!(ProductMaterialsItem);
-serialize_impl_2!(ProductMaterialsItem);
 impl ProductMaterialsItem {
     #[must_use]
     pub const fn new() -> Self {
@@ -2744,33 +2415,20 @@ impl TryFrom<&str> for VariantType {
     }
 }
 runtime::str_enum_impls!(VariantType);
-#[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct VariantShipping {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub product: Option<Product>,
-    /// Delivery time in days
-    #[serde(
-        rename = "deliveryDays",
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub delivery_days: Option<f32>,
-    /// Average distance from the product in kilometers
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub distance: Option<f32>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct VariantShipping {
+        #[optional]
+        pub product: Product,
+        #[optional]
+        /// Delivery time in days
+        #[serde(rename = "deliveryDays")]
+        pub delivery_days: f32,
+        #[optional]
+        /// Average distance from the product in kilometers
+        pub distance: f32,
+    }
 }
-deserialize_impl!(VariantShipping);
-serialize_impl!(VariantShipping);
 impl VariantShipping {
     #[must_use]
     pub const fn new() -> Self {
@@ -2945,32 +2603,19 @@ impl TryFrom<&str> for ProductEventEvent {
     }
 }
 runtime::str_enum_impls!(ProductEventEvent);
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct PaginatedResourceMeta {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub limit: Option<i64>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub offset: Option<i64>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub total: Option<i64>,
-    #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
-    pub next: runtime::Nullable<String>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct PaginatedResourceMeta {
+        #[optional]
+        pub limit: i64,
+        #[optional]
+        pub offset: i64,
+        #[optional]
+        pub total: i64,
+        #[nullable]
+        pub next: String,
+    }
 }
-deserialize_impl!(PaginatedResourceMeta);
-serialize_impl!(PaginatedResourceMeta);
 impl PaginatedResourceMeta {
     #[must_use]
     pub const fn new() -> Self {
@@ -3058,25 +2703,16 @@ impl runtime::XmlShape for PaginatedResourceMeta {
         &NODE
     }
 }
-/// A generic paginated resource. Specializing schemas bind the item type by declaring a `$dynamicAnchor` named `itemType`, the JSON Schema 2020-12 way to express `PaginatedResource<T>`.
-#[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct GetAllDataOk {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub data: Option<Vec<Product>>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub meta: Option<GetAllDataOkMeta>,
+runtime::object! {
+    /// A generic paginated resource. Specializing schemas bind the item type by declaring a `$dynamicAnchor` named `itemType`, the JSON Schema 2020-12 way to express `PaginatedResource<T>`.
+    #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct GetAllDataOk {
+        #[optional]
+        pub data: Vec<Product>,
+        #[optional]
+        pub meta: GetAllDataOkMeta,
+    }
 }
-deserialize_impl!(GetAllDataOk);
-serialize_impl!(GetAllDataOk);
 impl GetAllDataOk {
     #[must_use]
     pub const fn new() -> Self {
@@ -3127,32 +2763,19 @@ impl runtime::XmlShape for GetAllDataOk {
         &NODE
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct GetAllDataOkMeta {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub limit: Option<i64>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub offset: Option<i64>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub total: Option<i64>,
-    #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
-    pub next: runtime::Nullable<String>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct GetAllDataOkMeta {
+        #[optional]
+        pub limit: i64,
+        #[optional]
+        pub offset: i64,
+        #[optional]
+        pub total: i64,
+        #[nullable]
+        pub next: String,
+    }
 }
-deserialize_impl!(GetAllDataOkMeta);
-serialize_impl!(GetAllDataOkMeta);
 impl GetAllDataOkMeta {
     #[must_use]
     pub const fn new() -> Self {
@@ -3240,25 +2863,16 @@ impl runtime::XmlShape for GetAllDataOkMeta {
         &NODE
     }
 }
-/// A generic paginated resource. Specializing schemas bind the item type by declaring a `$dynamicAnchor` named `itemType`, the JSON Schema 2020-12 way to express `PaginatedResource<T>`.
-#[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct GetAllDataOk2 {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub data: Option<Vec<Product>>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub meta: Option<GetAllDataOk2Meta>,
+runtime::object! {
+    /// A generic paginated resource. Specializing schemas bind the item type by declaring a `$dynamicAnchor` named `itemType`, the JSON Schema 2020-12 way to express `PaginatedResource<T>`.
+    #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct GetAllDataOk2 {
+        #[optional]
+        pub data: Vec<Product>,
+        #[optional]
+        pub meta: GetAllDataOk2Meta,
+    }
 }
-deserialize_impl!(GetAllDataOk2);
-serialize_impl!(GetAllDataOk2);
 impl GetAllDataOk2 {
     #[must_use]
     pub const fn new() -> Self {
@@ -3309,32 +2923,19 @@ impl runtime::XmlShape for GetAllDataOk2 {
         &NODE
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct GetAllDataOk2Meta {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub limit: Option<i64>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub offset: Option<i64>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub total: Option<i64>,
-    #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
-    pub next: runtime::Nullable<String>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct GetAllDataOk2Meta {
+        #[optional]
+        pub limit: i64,
+        #[optional]
+        pub offset: i64,
+        #[optional]
+        pub total: i64,
+        #[nullable]
+        pub next: String,
+    }
 }
-deserialize_impl!(GetAllDataOk2Meta);
-serialize_impl!(GetAllDataOk2Meta);
 impl GetAllDataOk2Meta {
     #[must_use]
     pub const fn new() -> Self {
@@ -3422,25 +3023,16 @@ impl runtime::XmlShape for GetAllDataOk2Meta {
         &NODE
     }
 }
-/// A generic paginated resource. Specializing schemas bind the item type by declaring a `$dynamicAnchor` named `itemType`, the JSON Schema 2020-12 way to express `PaginatedResource<T>`.
-#[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct QueryProductsOk {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub data: Option<Vec<Product>>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub meta: Option<QueryProductsOkMeta>,
+runtime::object! {
+    /// A generic paginated resource. Specializing schemas bind the item type by declaring a `$dynamicAnchor` named `itemType`, the JSON Schema 2020-12 way to express `PaginatedResource<T>`.
+    #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct QueryProductsOk {
+        #[optional]
+        pub data: Vec<Product>,
+        #[optional]
+        pub meta: QueryProductsOkMeta,
+    }
 }
-deserialize_impl!(QueryProductsOk);
-serialize_impl!(QueryProductsOk);
 impl QueryProductsOk {
     #[must_use]
     pub const fn new() -> Self {
@@ -3491,32 +3083,19 @@ impl runtime::XmlShape for QueryProductsOk {
         &NODE
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct QueryProductsOkMeta {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub limit: Option<i64>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub offset: Option<i64>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub total: Option<i64>,
-    #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
-    pub next: runtime::Nullable<String>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct QueryProductsOkMeta {
+        #[optional]
+        pub limit: i64,
+        #[optional]
+        pub offset: i64,
+        #[optional]
+        pub total: i64,
+        #[nullable]
+        pub next: String,
+    }
 }
-deserialize_impl!(QueryProductsOkMeta);
-serialize_impl!(QueryProductsOkMeta);
 impl QueryProductsOkMeta {
     #[must_use]
     pub const fn new() -> Self {
@@ -3604,25 +3183,16 @@ impl runtime::XmlShape for QueryProductsOkMeta {
         &NODE
     }
 }
-/// A generic paginated resource. Specializing schemas bind the item type by declaring a `$dynamicAnchor` named `itemType`, the JSON Schema 2020-12 way to express `PaginatedResource<T>`.
-#[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct SearchProductsOk {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub data: Option<Vec<Product>>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub meta: Option<SearchProductsOkMeta>,
+runtime::object! {
+    /// A generic paginated resource. Specializing schemas bind the item type by declaring a `$dynamicAnchor` named `itemType`, the JSON Schema 2020-12 way to express `PaginatedResource<T>`.
+    #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct SearchProductsOk {
+        #[optional]
+        pub data: Vec<Product>,
+        #[optional]
+        pub meta: SearchProductsOkMeta,
+    }
 }
-deserialize_impl!(SearchProductsOk);
-serialize_impl!(SearchProductsOk);
 impl SearchProductsOk {
     #[must_use]
     pub const fn new() -> Self {
@@ -3673,32 +3243,19 @@ impl runtime::XmlShape for SearchProductsOk {
         &NODE
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct SearchProductsOkMeta {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub limit: Option<i64>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub offset: Option<i64>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub total: Option<i64>,
-    #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
-    pub next: runtime::Nullable<String>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct SearchProductsOkMeta {
+        #[optional]
+        pub limit: i64,
+        #[optional]
+        pub offset: i64,
+        #[optional]
+        pub total: i64,
+        #[nullable]
+        pub next: String,
+    }
 }
-deserialize_impl!(SearchProductsOkMeta);
-serialize_impl!(SearchProductsOkMeta);
 impl SearchProductsOkMeta {
     #[must_use]
     pub const fn new() -> Self {
@@ -3786,19 +3343,14 @@ impl runtime::XmlShape for SearchProductsOkMeta {
         &NODE
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct UploadImageBody {
-    /// The image file to upload
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub image: Option<runtime::Binary>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct UploadImageBody {
+        #[optional]
+        /// The image file to upload
+        pub image: runtime::Binary,
+    }
 }
-deserialize_impl!(UploadImageBody);
-serialize_impl!(UploadImageBody);
 impl UploadImageBody {
     #[must_use]
     pub const fn new() -> Self {
@@ -3833,26 +3385,17 @@ impl runtime::XmlShape for UploadImageBody {
         &NODE
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct UploadPhotosAccepted {
-    /// Number of photo parts accepted
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub accepted: Option<i64>,
-    #[serde(
-        rename = "batchId",
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub batch_id: Option<runtime::UuidText>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct UploadPhotosAccepted {
+        #[optional]
+        /// Number of photo parts accepted
+        pub accepted: i64,
+        #[optional]
+        #[serde(rename = "batchId")]
+        pub batch_id: runtime::UuidText,
+    }
 }
-deserialize_impl!(UploadPhotosAccepted);
-serialize_impl!(UploadPhotosAccepted);
 impl UploadPhotosAccepted {
     #[must_use]
     pub const fn new() -> Self {
@@ -3906,25 +3449,16 @@ impl runtime::XmlShape for UploadPhotosAccepted {
         &NODE
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct CreateUserBody {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub id: Option<i64>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub name: Option<String>,
-    pub email: runtime::EmailText,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+    pub struct CreateUserBody {
+        #[optional]
+        pub id: i64,
+        #[optional]
+        pub name: String,
+        pub email: runtime::EmailText,
+    }
 }
-deserialize_impl!(CreateUserBody);
-serialize_impl!(CreateUserBody);
 impl CreateUserBody {
     #[must_use]
     pub const fn new(email: runtime::EmailText) -> Self {
@@ -3995,25 +3529,16 @@ impl runtime::XmlShape for CreateUserBody {
         &NODE
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct CreateUserBody2 {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub id: Option<i64>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub name: Option<String>,
-    pub email: runtime::EmailText,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+    pub struct CreateUserBody2 {
+        #[optional]
+        pub id: i64,
+        #[optional]
+        pub name: String,
+        pub email: runtime::EmailText,
+    }
 }
-deserialize_impl!(CreateUserBody2);
-serialize_impl!(CreateUserBody2);
 impl CreateUserBody2 {
     #[must_use]
     pub const fn new(email: runtime::EmailText) -> Self {
@@ -4084,19 +3609,14 @@ impl runtime::XmlShape for CreateUserBody2 {
         &NODE
     }
 }
-/// A user
-#[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct UserRequest {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub name: Option<String>,
+runtime::object! {
+    /// A user
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct UserRequest {
+        #[optional]
+        pub name: String,
+    }
 }
-deserialize_impl!(UserRequest);
-serialize_impl!(UserRequest);
 impl UserRequest {
     #[must_use]
     pub const fn new() -> Self {
@@ -4131,15 +3651,14 @@ impl runtime::XmlShape for UserRequest {
         &NODE
     }
 }
-/// Credentials to authenticate a user
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct CredentialsRequest {
-    pub email: runtime::EmailText,
-    pub password: String,
+runtime::object! {
+    /// Credentials to authenticate a user
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+    pub struct CredentialsRequest {
+        pub email: runtime::EmailText,
+        pub password: String,
+    }
 }
-deserialize_impl!(CredentialsRequest);
-serialize_impl!(CredentialsRequest);
 impl CredentialsRequest {
     #[must_use]
     pub const fn new(email: runtime::EmailText, password: String) -> Self {
@@ -4244,86 +3763,53 @@ impl ItemRequest {
     }
 }
 runtime::checked_impls!(ItemRequest, ItemRequestVariants);
-/// A product in the shop
-#[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct ProductRequest {
-    pub name: String,
-    #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
-    pub description: runtime::Nullable<String>,
-    #[serde(
-        rename = "type",
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub type_: Option<ProductType>,
-    /// A score from 0 to 1 indicating how customers rate it
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub rating: Option<ProductRating>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub dimensions: Option<ProductDimensions>,
-    /// Materials it is made of
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub materials: Option<Vec<ProductMaterialsItem>>,
-    #[serde(
-        rename = "listedAt",
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub listed_at: Option<runtime::DateTimeText>,
-    #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
-    pub image: runtime::Nullable<String>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub variants: Option<Vec<VariantRequest>>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub creator: Option<UserRequest>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub tags: Option<Vec<String>>,
-    /// URL which gets invoked upon a successful operation
-    #[serde(
-        rename = "successCallbackUrl",
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::formats::read::<_, _, runtime::formats::Present<runtime::formats::Text<runtime::formats::format::Uri>>>"
-    )]
-    pub success_callback_url: Option<url::Url>,
-    /// URL which gets invoked upon a failed operation
-    #[serde(
-        rename = "failureCallbackUrl",
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::formats::read::<_, _, runtime::formats::Present<runtime::formats::Text<runtime::formats::format::Uri>>>"
-    )]
-    pub failure_callback_url: Option<url::Url>,
+runtime::object! {
+    /// A product in the shop
+    #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct ProductRequest {
+        pub name: String,
+        #[nullable]
+        pub description: String,
+        #[optional]
+        #[serde(rename = "type")]
+        pub type_: ProductType,
+        #[optional]
+        /// A score from 0 to 1 indicating how customers rate it
+        pub rating: ProductRating,
+        #[optional]
+        pub dimensions: ProductDimensions,
+        #[optional]
+        /// Materials it is made of
+        pub materials: Vec<ProductMaterialsItem>,
+        #[optional]
+        #[serde(rename = "listedAt")]
+        pub listed_at: runtime::DateTimeText,
+        #[nullable]
+        pub image: String,
+        #[optional]
+        pub variants: Vec<VariantRequest>,
+        #[optional]
+        pub creator: UserRequest,
+        #[optional]
+        pub tags: Vec<String>,
+        /// URL which gets invoked upon a successful operation
+        #[serde(rename = "successCallbackUrl")]
+        #[serde(
+            default,
+            skip_serializing_if = "Option::is_none",
+            deserialize_with = "runtime::formats::read::<_, _, runtime::formats::Present<runtime::formats::Text<runtime::formats::format::Uri>>>"
+        )]
+        pub success_callback_url: Option<url::Url>,
+        /// URL which gets invoked upon a failed operation
+        #[serde(rename = "failureCallbackUrl")]
+        #[serde(
+            default,
+            skip_serializing_if = "Option::is_none",
+            deserialize_with = "runtime::formats::read::<_, _, runtime::formats::Present<runtime::formats::Text<runtime::formats::format::Uri>>>"
+        )]
+        pub failure_callback_url: Option<url::Url>,
+    }
 }
-deserialize_impl!(ProductRequest);
-serialize_impl!(ProductRequest);
 impl ProductRequest {
     #[must_use]
     pub const fn new(name: String) -> Self {
@@ -4564,36 +4050,23 @@ impl runtime::XmlShape for ProductRequest {
         &NODE
     }
 }
-/// Every variant in the shop
-#[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct VariantRequest {
-    pub name: String,
-    #[serde(default, skip_serializing_if = "runtime::Nullable::is_absent")]
-    pub description: runtime::Nullable<String>,
-    /// Length in centimetres
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub length: Option<f32>,
-    #[serde(
-        rename = "type",
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub type_: Option<VariantType>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub shipping: Option<VariantShippingRequest>,
+runtime::object! {
+    /// Every variant in the shop
+    #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct VariantRequest {
+        pub name: String,
+        #[nullable]
+        pub description: String,
+        #[optional]
+        /// Length in centimetres
+        pub length: f32,
+        #[optional]
+        #[serde(rename = "type")]
+        pub type_: VariantType,
+        #[optional]
+        pub shipping: VariantShippingRequest,
+    }
 }
-deserialize_impl!(VariantRequest);
-serialize_impl!(VariantRequest);
 impl VariantRequest {
     #[must_use]
     pub const fn new(name: String) -> Self {
@@ -4698,36 +4171,23 @@ impl runtime::XmlShape for VariantRequest {
         &NODE
     }
 }
-/// A single event emitted on the product stream. Each item in a `text/event-stream`, `application/jsonl` or `application/json-seq` response validates against this schema.
-#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct ProductEventRequest {
-    /// Unique identifier for the event
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub id: Option<runtime::UuidText>,
-    /// The kind of change that occurred
-    pub event: ProductEventEvent,
-    pub product: ProductRequest,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub note: Option<ShopMessage>,
-    #[serde(
-        rename = "occurredAt",
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub occurred_at: Option<runtime::DateTimeText>,
+runtime::object! {
+    /// A single event emitted on the product stream. Each item in a `text/event-stream`, `application/jsonl` or `application/json-seq` response validates against this schema.
+    #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+    pub struct ProductEventRequest {
+        #[optional]
+        /// Unique identifier for the event
+        pub id: runtime::UuidText,
+        /// The kind of change that occurred
+        pub event: ProductEventEvent,
+        pub product: ProductRequest,
+        #[optional]
+        pub note: ShopMessage,
+        #[optional]
+        #[serde(rename = "occurredAt")]
+        pub occurred_at: runtime::DateTimeText,
+    }
 }
-deserialize_impl!(ProductEventRequest);
-serialize_impl!(ProductEventRequest);
 impl ProductEventRequest {
     #[must_use]
     pub const fn new(event: ProductEventEvent, product: ProductRequest) -> Self {
@@ -4832,33 +4292,20 @@ impl runtime::XmlShape for ProductEventRequest {
         &NODE
     }
 }
-#[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct VariantShippingRequest {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub product: Option<ProductRequest>,
-    /// Delivery time in days
-    #[serde(
-        rename = "deliveryDays",
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub delivery_days: Option<f32>,
-    /// Average distance from the product in kilometers
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub distance: Option<f32>,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct VariantShippingRequest {
+        #[optional]
+        pub product: ProductRequest,
+        #[optional]
+        /// Delivery time in days
+        #[serde(rename = "deliveryDays")]
+        pub delivery_days: f32,
+        #[optional]
+        /// Average distance from the product in kilometers
+        pub distance: f32,
+    }
 }
-deserialize_impl!(VariantShippingRequest);
-serialize_impl!(VariantShippingRequest);
 impl VariantShippingRequest {
     #[must_use]
     pub const fn new() -> Self {
@@ -4929,25 +4376,16 @@ impl runtime::XmlShape for VariantShippingRequest {
         &NODE
     }
 }
-/// A generic paginated resource. Specializing schemas bind the item type by declaring a `$dynamicAnchor` named `itemType`, the JSON Schema 2020-12 way to express `PaginatedResource<T>`.
-#[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct GetAllDataOkRequest {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub data: Option<Vec<ProductRequest>>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub meta: Option<GetAllDataOkMeta>,
+runtime::object! {
+    /// A generic paginated resource. Specializing schemas bind the item type by declaring a `$dynamicAnchor` named `itemType`, the JSON Schema 2020-12 way to express `PaginatedResource<T>`.
+    #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct GetAllDataOkRequest {
+        #[optional]
+        pub data: Vec<ProductRequest>,
+        #[optional]
+        pub meta: GetAllDataOkMeta,
+    }
 }
-deserialize_impl!(GetAllDataOkRequest);
-serialize_impl!(GetAllDataOkRequest);
 impl GetAllDataOkRequest {
     #[must_use]
     pub const fn new() -> Self {
@@ -4998,25 +4436,16 @@ impl runtime::XmlShape for GetAllDataOkRequest {
         &NODE
     }
 }
-/// A generic paginated resource. Specializing schemas bind the item type by declaring a `$dynamicAnchor` named `itemType`, the JSON Schema 2020-12 way to express `PaginatedResource<T>`.
-#[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct GetAllDataOk2Request {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub data: Option<Vec<ProductRequest>>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub meta: Option<GetAllDataOk2Meta>,
+runtime::object! {
+    /// A generic paginated resource. Specializing schemas bind the item type by declaring a `$dynamicAnchor` named `itemType`, the JSON Schema 2020-12 way to express `PaginatedResource<T>`.
+    #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct GetAllDataOk2Request {
+        #[optional]
+        pub data: Vec<ProductRequest>,
+        #[optional]
+        pub meta: GetAllDataOk2Meta,
+    }
 }
-deserialize_impl!(GetAllDataOk2Request);
-serialize_impl!(GetAllDataOk2Request);
 impl GetAllDataOk2Request {
     #[must_use]
     pub const fn new() -> Self {
@@ -5067,25 +4496,16 @@ impl runtime::XmlShape for GetAllDataOk2Request {
         &NODE
     }
 }
-/// A generic paginated resource. Specializing schemas bind the item type by declaring a `$dynamicAnchor` named `itemType`, the JSON Schema 2020-12 way to express `PaginatedResource<T>`.
-#[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct QueryProductsOkRequest {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub data: Option<Vec<ProductRequest>>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub meta: Option<QueryProductsOkMeta>,
+runtime::object! {
+    /// A generic paginated resource. Specializing schemas bind the item type by declaring a `$dynamicAnchor` named `itemType`, the JSON Schema 2020-12 way to express `PaginatedResource<T>`.
+    #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct QueryProductsOkRequest {
+        #[optional]
+        pub data: Vec<ProductRequest>,
+        #[optional]
+        pub meta: QueryProductsOkMeta,
+    }
 }
-deserialize_impl!(QueryProductsOkRequest);
-serialize_impl!(QueryProductsOkRequest);
 impl QueryProductsOkRequest {
     #[must_use]
     pub const fn new() -> Self {
@@ -5136,25 +4556,16 @@ impl runtime::XmlShape for QueryProductsOkRequest {
         &NODE
     }
 }
-/// A generic paginated resource. Specializing schemas bind the item type by declaring a `$dynamicAnchor` named `itemType`, the JSON Schema 2020-12 way to express `PaginatedResource<T>`.
-#[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct SearchProductsOkRequest {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub data: Option<Vec<ProductRequest>>,
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub meta: Option<SearchProductsOkMeta>,
+runtime::object! {
+    /// A generic paginated resource. Specializing schemas bind the item type by declaring a `$dynamicAnchor` named `itemType`, the JSON Schema 2020-12 way to express `PaginatedResource<T>`.
+    #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct SearchProductsOkRequest {
+        #[optional]
+        pub data: Vec<ProductRequest>,
+        #[optional]
+        pub meta: SearchProductsOkMeta,
+    }
 }
-deserialize_impl!(SearchProductsOkRequest);
-serialize_impl!(SearchProductsOkRequest);
 impl SearchProductsOkRequest {
     #[must_use]
     pub const fn new() -> Self {
@@ -5205,20 +4616,15 @@ impl runtime::XmlShape for SearchProductsOkRequest {
         &NODE
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct CreateUserBodyRequest {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub name: Option<String>,
-    pub email: runtime::EmailText,
-    pub password: String,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+    pub struct CreateUserBodyRequest {
+        #[optional]
+        pub name: String,
+        pub email: runtime::EmailText,
+        pub password: String,
+    }
 }
-deserialize_impl!(CreateUserBodyRequest);
-serialize_impl!(CreateUserBodyRequest);
 impl CreateUserBodyRequest {
     #[must_use]
     pub const fn new(email: runtime::EmailText, password: String) -> Self {
@@ -5289,20 +4695,15 @@ impl runtime::XmlShape for CreateUserBodyRequest {
         &NODE
     }
 }
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct CreateUserBody2Request {
-    #[serde(
-        default,
-        skip_serializing_if = "Option::is_none",
-        deserialize_with = "runtime::not_null"
-    )]
-    pub name: Option<String>,
-    pub email: runtime::EmailText,
-    pub password: String,
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+    pub struct CreateUserBody2Request {
+        #[optional]
+        pub name: String,
+        pub email: runtime::EmailText,
+        pub password: String,
+    }
 }
-deserialize_impl!(CreateUserBody2Request);
-serialize_impl!(CreateUserBody2Request);
 impl CreateUserBody2Request {
     #[must_use]
     pub const fn new(email: runtime::EmailText, password: String) -> Self {
@@ -5379,8 +4780,8 @@ pub enum ItemVariants {
     Product(Product),
     Variant(Variant),
 }
-serialize_impl_3!(ItemVariants);
-deserialize_impl_2!(ItemVariants);
+serialize_impl!(ItemVariants);
+deserialize_impl!(ItemVariants);
 impl<'de> runtime::TaggedUnion<'de> for ItemVariants {
     const TAG: &'static str = "type";
     fn knows(tag: &str) -> bool {
@@ -5419,8 +4820,8 @@ pub enum ItemRequestVariants {
     Product(ProductRequest),
     Variant(VariantRequest),
 }
-serialize_impl_3!(ItemRequestVariants);
-deserialize_impl_2!(ItemRequestVariants);
+serialize_impl!(ItemRequestVariants);
+deserialize_impl!(ItemRequestVariants);
 impl<'de> runtime::TaggedUnion<'de> for ItemRequestVariants {
     const TAG: &'static str = "type";
     fn knows(tag: &str) -> bool {

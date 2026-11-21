@@ -16,22 +16,13 @@
     reason = "a spec default builds its checked type as `Type { 0: value }`, which also works through the alias of a twin"
 )]
 use super::runtime;
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-#[serde(remote = "Self")]
-pub struct Stamp {
-    #[serde(
-        deserialize_with = "runtime::formats::read::<_, _, runtime::formats::Text<runtime::formats::format::DateTime>>"
-    )]
-    pub at: String,
-}
-impl<'de> serde::Deserialize<'de> for Stamp {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        Self::deserialize(runtime::NoSeq(d))
-    }
-}
-impl serde::Serialize for Stamp {
-    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        Self::serialize(self, s)
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+    pub struct Stamp {
+        #[serde(
+            deserialize_with = "runtime::formats::read::<_, _, runtime::formats::Text<runtime::formats::format::DateTime>>"
+        )]
+        pub at: String,
     }
 }
 impl Stamp {
