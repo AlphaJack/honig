@@ -66,12 +66,7 @@ impl<T: runtime::Transport> Client<T> {
         match status {
             204 => Ok(ops::archive::Response::NoContent),
             409 => {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
-                    &["application/json"],
-                )?;
+                runtime::check_media_of(&head, &body, &["application/json"])?;
                 runtime::json_decode(status, &body).map(ops::archive::Response::Conflict)
             }
             _ => {
@@ -99,12 +94,7 @@ impl<T: runtime::Transport> Client<T> {
         match status {
             204 => Ok(ops::unarchive::Response::NoContent),
             409 => {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
-                    &["application/json"],
-                )?;
+                runtime::check_media_of(&head, &body, &["application/json"])?;
                 runtime::json_decode(status, &body)
                     .map(ops::unarchive::Response::Conflict)
             }
@@ -139,12 +129,7 @@ impl<T: runtime::Transport> Client<T> {
         let status = head.status.as_u16();
         if status == 201 {
             {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
-                    &["application/json"],
-                )?;
+                runtime::check_media_of(&head, &body, &["application/json"])?;
                 Ok(ops::add_note::Response::Created {
                     body: runtime::json_decode(status, &body)?,
                     x_tags: runtime::from_param(
@@ -195,12 +180,7 @@ impl<T: runtime::Transport> Client<T> {
         let status = head.status.as_u16();
         if status == 200 {
             {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
-                    &["application/json"],
-                )?;
+                runtime::check_media_of(&head, &body, &["application/json"])?;
                 runtime::json_decode(status, &body).map(ops::find_box::Response::Ok)
             }
         } else {

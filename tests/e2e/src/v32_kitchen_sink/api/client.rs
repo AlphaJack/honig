@@ -313,12 +313,7 @@ impl<T: runtime::Transport> Client<T> {
         let status = head.status.as_u16();
         if status == 200 {
             {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
-                    &["application/octet-stream"],
-                )?;
+                runtime::check_media_of(&head, &body, &["application/octet-stream"])?;
                 Ok(ops::put_blob::Response::Ok {
                     body: runtime::Blob::from(body.to_vec()),
                     x_size: runtime::from_param(
@@ -481,10 +476,9 @@ impl<T: runtime::Transport> Client<T> {
         let ct = runtime::content_type_of(&head.headers);
         match status {
             200 => {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
+                runtime::check_media_of(
+                    &head,
+                    &body,
                     &["application/json", "application/jsonl"],
                 )?;
                 Ok(ops::list_products::Response::Ok {
@@ -538,12 +532,7 @@ impl<T: runtime::Transport> Client<T> {
                 })
             }
             _ => {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
-                    &["application/problem+json"],
-                )?;
+                runtime::check_media_of(&head, &body, &["application/problem+json"])?;
                 Ok(ops::list_products::Response::Default {
                     status: head.status,
                     body: runtime::json_decode(status, &body)?,
@@ -663,10 +652,9 @@ impl<T: runtime::Transport> Client<T> {
                 }
             } else {
                 {
-                    runtime::check_response_media(
-                        status,
-                        runtime::content_type_of(&head.headers),
-                        Some(&body),
+                    runtime::check_media_of(
+                        &head,
+                        &body,
                         &["application/problem+json"],
                     )?;
                     Ok(ops::list_products::Response::Default {
@@ -781,12 +769,7 @@ impl<T: runtime::Transport> Client<T> {
         let status = head.status.as_u16();
         if status == 200 {
             {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
-                    &["application/json"],
-                )?;
+                runtime::check_media_of(&head, &body, &["application/json"])?;
                 runtime::json_decode(status, &body)
                     .map(ops::search_products::Response::Ok)
             }
@@ -847,12 +830,7 @@ impl<T: runtime::Transport> Client<T> {
         let status = head.status.as_u16();
         if status == 200 {
             {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
-                    &["application/json"],
-                )?;
+                runtime::check_media_of(&head, &body, &["application/json"])?;
                 runtime::json_decode(status, &body).map(ops::get_product::Response::Ok)
             }
         } else {
@@ -1036,12 +1014,7 @@ impl<T: runtime::Transport> Client<T> {
         let status = head.status.as_u16();
         if status == 200 {
             {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
-                    &["text/event-stream"],
-                )?;
+                runtime::check_media_of(&head, &body, &["text/event-stream"])?;
                 runtime::sse_decode(status, &body)
                     .map(runtime::Items::List)
                     .map(ops::search::Response::Ok)

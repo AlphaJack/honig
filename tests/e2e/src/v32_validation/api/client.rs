@@ -61,12 +61,7 @@ impl<T: runtime::Transport> Client<T> {
         let status = head.status.as_u16();
         match status {
             201 => {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
-                    &["application/json"],
-                )?;
+                runtime::check_media_of(&head, &body, &["application/json"])?;
                 Ok(
                     ops::create_user::Response::Created(
                         Box::new(runtime::json_decode(status, &body)?),
@@ -74,12 +69,7 @@ impl<T: runtime::Transport> Client<T> {
                 )
             }
             s if (400..500).contains(&s) => {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
-                    &["application/problem+json"],
-                )?;
+                runtime::check_media_of(&head, &body, &["application/problem+json"])?;
                 Ok(ops::create_user::Response::ClientError {
                     status: head.status,
                     body: runtime::json_decode(status, &body)?,
@@ -116,12 +106,7 @@ impl<T: runtime::Transport> Client<T> {
         match status {
             201 => Ok(ops::create_shipment::Response::Created),
             400 => {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
-                    &["application/problem+json"],
-                )?;
+                runtime::check_media_of(&head, &body, &["application/problem+json"])?;
                 runtime::json_decode(status, &body)
                     .map(ops::create_shipment::Response::BadRequest)
             }
@@ -155,12 +140,7 @@ impl<T: runtime::Transport> Client<T> {
         let status = head.status.as_u16();
         if status == 201 {
             {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
-                    &["application/json"],
-                )?;
+                runtime::check_media_of(&head, &body, &["application/json"])?;
                 runtime::json_decode(status, &body).map(ops::login::Response::Created)
             }
         } else {

@@ -282,10 +282,9 @@ impl<T: runtime::Transport> Client<T> {
         let ct = runtime::content_type_of(&head.headers);
         if status == 200 {
             {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
+                runtime::check_media_of(
+                    &head,
+                    &body,
                     &["application/json", "application/xml"],
                 )?;
                 Ok(ops::get_all_data::Response::Ok {
@@ -437,10 +436,9 @@ impl<T: runtime::Transport> Client<T> {
         let ct = runtime::content_type_of(&head.headers);
         match status {
             201 => {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
+                runtime::check_media_of(
+                    &head,
+                    &body,
                     &["application/json", "application/xml"],
                 )?;
                 Ok(ops::create_product::Response::Created {
@@ -509,10 +507,9 @@ impl<T: runtime::Transport> Client<T> {
                 })
             }
             400 => {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
+                runtime::check_media_of(
+                    &head,
+                    &body,
                     &["application/json", "application/xml"],
                 )?;
                 Ok(ops::create_product::Response::BadRequest {
@@ -547,10 +544,9 @@ impl<T: runtime::Transport> Client<T> {
                 })
             }
             403 => {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
+                runtime::check_media_of(
+                    &head,
+                    &body,
                     &["application/json", "application/xml"],
                 )?;
                 Ok(
@@ -607,12 +603,7 @@ impl<T: runtime::Transport> Client<T> {
         let ct = runtime::content_type_of(&head.headers);
         match status {
             200 => {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
-                    &["application/json"],
-                )?;
+                runtime::check_media_of(&head, &body, &["application/json"])?;
                 Ok(ops::query_products::Response::Ok {
                     body: runtime::json_decode(status, &body)?,
                     x_request_id: runtime::from_param(
@@ -633,10 +624,9 @@ impl<T: runtime::Transport> Client<T> {
                 })
             }
             400 => {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
+                runtime::check_media_of(
+                    &head,
+                    &body,
                     &["application/json", "application/xml"],
                 )?;
                 Ok(ops::query_products::Response::BadRequest {
@@ -697,12 +687,7 @@ impl<T: runtime::Transport> Client<T> {
         let status = head.status.as_u16();
         if status == 200 {
             {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
-                    &["application/json"],
-                )?;
+                runtime::check_media_of(&head, &body, &["application/json"])?;
                 Ok(ops::search_products::Response::Ok {
                     body: runtime::json_decode(status, &body)?,
                     x_request_id: runtime::from_param(
@@ -768,10 +753,9 @@ impl<T: runtime::Transport> Client<T> {
         let ct = runtime::content_type_of(&head.headers);
         match status {
             200 => {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
+                runtime::check_media_of(
+                    &head,
+                    &body,
                     &["application/json", "application/xml"],
                 )?;
                 Ok(ops::get_product::Response::Ok {
@@ -846,10 +830,9 @@ impl<T: runtime::Transport> Client<T> {
                 })
             }
             404 => {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
+                runtime::check_media_of(
+                    &head,
+                    &body,
                     &["application/json", "application/xml"],
                 )?;
                 Ok(
@@ -932,10 +915,9 @@ impl<T: runtime::Transport> Client<T> {
         let ct = runtime::content_type_of(&head.headers);
         match status {
             200 => {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
+                runtime::check_media_of(
+                    &head,
+                    &body,
                     &["application/json", "application/xml"],
                 )?;
                 Ok(
@@ -953,10 +935,9 @@ impl<T: runtime::Transport> Client<T> {
                 )
             }
             400 => {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
+                runtime::check_media_of(
+                    &head,
+                    &body,
                     &["application/json", "application/xml"],
                 )?;
                 Ok(ops::update_product::Response::BadRequest {
@@ -991,10 +972,9 @@ impl<T: runtime::Transport> Client<T> {
                 })
             }
             403 => {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
+                runtime::check_media_of(
+                    &head,
+                    &body,
                     &["application/json", "application/xml"],
                 )?;
                 Ok(
@@ -1016,10 +996,9 @@ impl<T: runtime::Transport> Client<T> {
                 )
             }
             404 => {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
+                runtime::check_media_of(
+                    &head,
+                    &body,
                     &["application/json", "application/xml"],
                 )?;
                 Ok(
@@ -1076,10 +1055,9 @@ impl<T: runtime::Transport> Client<T> {
         match status {
             204 => Ok(ops::delete_product::Response::NoContent),
             404 => {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
+                runtime::check_media_of(
+                    &head,
+                    &body,
                     &["application/json", "application/xml"],
                 )?;
                 Ok(
@@ -1137,12 +1115,7 @@ impl<T: runtime::Transport> Client<T> {
         let ct = runtime::content_type_of(&head.headers);
         match status {
             201 => {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
-                    &["application/json"],
-                )?;
+                runtime::check_media_of(&head, &body, &["application/json"])?;
                 Ok(ops::copy_product::Response::Created {
                     body: Box::new(runtime::json_decode(status, &body)?),
                     location: runtime::from_param(
@@ -1171,10 +1144,9 @@ impl<T: runtime::Transport> Client<T> {
                 })
             }
             404 => {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
+                runtime::check_media_of(
+                    &head,
+                    &body,
                     &["application/json", "application/xml"],
                 )?;
                 Ok(
@@ -1241,10 +1213,9 @@ impl<T: runtime::Transport> Client<T> {
         let ct = runtime::content_type_of(&head.headers);
         match status {
             200 => {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
+                runtime::check_media_of(
+                    &head,
+                    &body,
                     &["application/json", "application/xml"],
                 )?;
                 Ok(ops::upload_image::Response::Ok {
@@ -1294,10 +1265,9 @@ impl<T: runtime::Transport> Client<T> {
                 })
             }
             400 => {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
+                runtime::check_media_of(
+                    &head,
+                    &body,
                     &["application/json", "application/xml"],
                 )?;
                 Ok(ops::upload_image::Response::BadRequest {
@@ -1332,10 +1302,9 @@ impl<T: runtime::Transport> Client<T> {
                 })
             }
             403 => {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
+                runtime::check_media_of(
+                    &head,
+                    &body,
                     &["application/json", "application/xml"],
                 )?;
                 Ok(
@@ -1357,10 +1326,9 @@ impl<T: runtime::Transport> Client<T> {
                 )
             }
             404 => {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
+                runtime::check_media_of(
+                    &head,
+                    &body,
                     &["application/json", "application/xml"],
                 )?;
                 Ok(
@@ -1425,10 +1393,9 @@ impl<T: runtime::Transport> Client<T> {
         let ct = runtime::content_type_of(&head.headers);
         if status == 200 {
             {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
+                runtime::check_media_of(
+                    &head,
+                    &body,
                     &["text/event-stream", "application/jsonl", "application/json-seq"],
                 )?;
                 Ok(ops::stream_product_events::Response::Ok {
@@ -1594,12 +1561,7 @@ impl<T: runtime::Transport> Client<T> {
         let ct = runtime::content_type_of(&head.headers);
         match status {
             202 => {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
-                    &["application/json"],
-                )?;
+                runtime::check_media_of(&head, &body, &["application/json"])?;
                 Ok(ops::upload_photos::Response::Accepted {
                     body: runtime::json_decode(status, &body)?,
                     x_request_id: runtime::from_param(
@@ -1620,10 +1582,9 @@ impl<T: runtime::Transport> Client<T> {
                 })
             }
             400 => {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
+                runtime::check_media_of(
+                    &head,
+                    &body,
                     &["application/json", "application/xml"],
                 )?;
                 Ok(ops::upload_photos::Response::BadRequest {
@@ -1658,10 +1619,9 @@ impl<T: runtime::Transport> Client<T> {
                 })
             }
             404 => {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
+                runtime::check_media_of(
+                    &head,
+                    &body,
                     &["application/json", "application/xml"],
                 )?;
                 Ok(
@@ -1713,12 +1673,7 @@ impl<T: runtime::Transport> Client<T> {
         let status = head.status.as_u16();
         if status == 201 {
             {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
-                    &["application/json"],
-                )?;
+                runtime::check_media_of(&head, &body, &["application/json"])?;
                 runtime::json_decode(status, &body)
                     .map(ops::create_item::Response::Created)
             }
@@ -1775,10 +1730,9 @@ impl<T: runtime::Transport> Client<T> {
         let ct = runtime::content_type_of(&head.headers);
         match status {
             201 => {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
+                runtime::check_media_of(
+                    &head,
+                    &body,
                     &["application/json", "application/xml"],
                 )?;
                 Ok(ops::create_user::Response::Created {
@@ -1845,10 +1799,9 @@ impl<T: runtime::Transport> Client<T> {
                 })
             }
             400 => {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
+                runtime::check_media_of(
+                    &head,
+                    &body,
                     &["application/json", "application/xml"],
                 )?;
                 Ok(ops::create_user::Response::BadRequest {
@@ -1883,10 +1836,9 @@ impl<T: runtime::Transport> Client<T> {
                 })
             }
             401 => {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
+                runtime::check_media_of(
+                    &head,
+                    &body,
                     &["application/json", "application/xml"],
                 )?;
                 Ok(
@@ -1908,10 +1860,9 @@ impl<T: runtime::Transport> Client<T> {
                 )
             }
             403 => {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
+                runtime::check_media_of(
+                    &head,
+                    &body,
                     &["application/json", "application/xml"],
                 )?;
                 Ok(
@@ -1933,10 +1884,9 @@ impl<T: runtime::Transport> Client<T> {
                 )
             }
             409 => {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
+                runtime::check_media_of(
+                    &head,
+                    &body,
                     &["application/json", "application/xml"],
                 )?;
                 Ok(
@@ -1958,10 +1908,9 @@ impl<T: runtime::Transport> Client<T> {
                 )
             }
             422 => {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
+                runtime::check_media_of(
+                    &head,
+                    &body,
                     &["application/json", "application/xml"],
                 )?;
                 Ok(
@@ -2034,10 +1983,9 @@ impl<T: runtime::Transport> Client<T> {
         let ct = runtime::content_type_of(&head.headers);
         match status {
             201 => {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
+                runtime::check_media_of(
+                    &head,
+                    &body,
                     &["application/json", "application/xml"],
                 )?;
                 Ok(ops::get_token::Response::Created {
@@ -2114,10 +2062,9 @@ impl<T: runtime::Transport> Client<T> {
                 })
             }
             400 => {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
+                runtime::check_media_of(
+                    &head,
+                    &body,
                     &["application/json", "application/xml"],
                 )?;
                 Ok(ops::get_token::Response::BadRequest {
@@ -2152,10 +2099,9 @@ impl<T: runtime::Transport> Client<T> {
                 })
             }
             401 => {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
+                runtime::check_media_of(
+                    &head,
+                    &body,
                     &["application/json", "application/xml"],
                 )?;
                 Ok(
@@ -2177,10 +2123,9 @@ impl<T: runtime::Transport> Client<T> {
                 )
             }
             403 => {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
+                runtime::check_media_of(
+                    &head,
+                    &body,
                     &["application/json", "application/xml"],
                 )?;
                 Ok(
@@ -2202,10 +2147,9 @@ impl<T: runtime::Transport> Client<T> {
                 )
             }
             429 => {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
+                runtime::check_media_of(
+                    &head,
+                    &body,
                     &["application/json", "application/xml"],
                 )?;
                 Ok(ops::get_token::Response::TooManyRequests {
@@ -2336,10 +2280,9 @@ impl<T: runtime::Transport> Client<T> {
         let ct = runtime::content_type_of(&head.headers);
         match status {
             200 => {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
+                runtime::check_media_of(
+                    &head,
+                    &body,
                     &["application/json", "application/xml"],
                 )?;
                 Ok(ops::get_me::Response::Ok {
@@ -2412,10 +2355,9 @@ impl<T: runtime::Transport> Client<T> {
                 })
             }
             401 => {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
+                runtime::check_media_of(
+                    &head,
+                    &body,
                     &["application/json", "application/xml"],
                 )?;
                 Ok(
@@ -2437,10 +2379,9 @@ impl<T: runtime::Transport> Client<T> {
                 )
             }
             403 => {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
+                runtime::check_media_of(
+                    &head,
+                    &body,
                     &["application/json", "application/xml"],
                 )?;
                 Ok(

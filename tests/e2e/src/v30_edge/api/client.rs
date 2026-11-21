@@ -104,12 +104,7 @@ impl<T: runtime::Transport> Client<T> {
         let status = head.status.as_u16();
         match status {
             200 => {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
-                    &["application/json"],
-                )?;
+                runtime::check_media_of(&head, &body, &["application/json"])?;
                 Ok(ops::list_orders::Response::Ok {
                     body: runtime::json_decode(status, &body)?,
                     x_next_cursor: runtime::from_param(
@@ -130,12 +125,7 @@ impl<T: runtime::Transport> Client<T> {
                 })
             }
             s if (400..500).contains(&s) => {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
-                    &["application/problem+json"],
-                )?;
+                runtime::check_media_of(&head, &body, &["application/problem+json"])?;
                 Ok(ops::list_orders::Response::ClientError {
                     status: head.status,
                     body: runtime::json_decode(status, &body)?,
@@ -175,12 +165,7 @@ impl<T: runtime::Transport> Client<T> {
         let status = head.status.as_u16();
         match status {
             201 => {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
-                    &["application/json"],
-                )?;
+                runtime::check_media_of(&head, &body, &["application/json"])?;
                 Ok(
                     ops::create_order::Response::Created(
                         Box::new(runtime::json_decode(status, &body)?),
@@ -188,22 +173,12 @@ impl<T: runtime::Transport> Client<T> {
                 )
             }
             422 => {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
-                    &["application/problem+json"],
-                )?;
+                runtime::check_media_of(&head, &body, &["application/problem+json"])?;
                 runtime::json_decode(status, &body)
                     .map(ops::create_order::Response::UnprocessableEntity)
             }
             _ => {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
-                    &["application/problem+json"],
-                )?;
+                runtime::check_media_of(&head, &body, &["application/problem+json"])?;
                 Ok(ops::create_order::Response::Default {
                     status: head.status,
                     body: runtime::json_decode(status, &body)?,
@@ -235,12 +210,7 @@ impl<T: runtime::Transport> Client<T> {
         let status = head.status.as_u16();
         match status {
             200 => {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
-                    &["application/json"],
-                )?;
+                runtime::check_media_of(&head, &body, &["application/json"])?;
                 Ok(ops::get_order::Response::Ok {
                     body: Box::new(runtime::json_decode(status, &body)?),
                     x_request_id: runtime::from_param(
@@ -261,22 +231,12 @@ impl<T: runtime::Transport> Client<T> {
                 })
             }
             404 => {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
-                    &["application/problem+json"],
-                )?;
+                runtime::check_media_of(&head, &body, &["application/problem+json"])?;
                 runtime::json_decode(status, &body)
                     .map(ops::get_order::Response::NotFound)
             }
             _ => {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
-                    &["application/problem+json"],
-                )?;
+                runtime::check_media_of(&head, &body, &["application/problem+json"])?;
                 Ok(ops::get_order::Response::Default {
                     status: head.status,
                     body: runtime::json_decode(status, &body)?,

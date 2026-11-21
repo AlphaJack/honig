@@ -582,9 +582,7 @@ pub(crate) fn client_headers_and_body(op: &Operation, m: &TokenStream, bx: &Boxi
 /// Emits the check that a body decodes as a type its status declares: the response must say it is one.
 fn media_check(r: &Resp) -> Option<TokenStream> {
     let media = r.contents.iter().map(|c| lit(&c.media));
-    (!r.contents.is_empty()).then(|| {
-        quote!(runtime::check_response_media(status, runtime::content_type_of(&head.headers), Some(&body), &[#(#media),*])?;)
-    })
+    (!r.contents.is_empty()).then(|| quote!(runtime::check_media_of(&head, &body, &[#(#media),*])?;))
 }
 
 /// Matches the status and decode the documented response. The statuses in `skip` are left out: a `<op>_stream` method

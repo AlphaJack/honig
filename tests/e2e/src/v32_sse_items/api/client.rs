@@ -48,12 +48,7 @@ impl<T: runtime::Transport> Client<T> {
         let status = head.status.as_u16();
         if status == 200 {
             {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
-                    &["text/event-stream"],
-                )?;
+                runtime::check_media_of(&head, &body, &["text/event-stream"])?;
                 runtime::sse_decode(status, &body)
                     .map(runtime::Items::List)
                     .map(ops::tile_stream::Response::Ok)
@@ -134,12 +129,7 @@ impl<T: runtime::Transport> Client<T> {
         let status = head.status.as_u16();
         if status == 200 {
             {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
-                    &["application/jsonl"],
-                )?;
+                runtime::check_media_of(&head, &body, &["application/jsonl"])?;
                 runtime::jsonl_decode(status, &body)
                     .map(runtime::Items::List)
                     .map(ops::tile_lines::Response::Ok)
@@ -215,12 +205,7 @@ impl<T: runtime::Transport> Client<T> {
         let status = head.status.as_u16();
         if status == 200 {
             {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
-                    &["text/event-stream"],
-                )?;
+                runtime::check_media_of(&head, &body, &["text/event-stream"])?;
                 runtime::sse_decode(status, &body)
                     .map(runtime::Items::List)
                     .map(ops::tile_updates::Response::Ok)
@@ -301,12 +286,7 @@ impl<T: runtime::Transport> Client<T> {
         let status = head.status.as_u16();
         if status == 200 {
             {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
-                    &["text/event-stream"],
-                )?;
+                runtime::check_media_of(&head, &body, &["text/event-stream"])?;
                 runtime::sse_decode(status, &body)
                     .map(runtime::Items::List)
                     .map(ops::chat_stream::Response::Ok)
@@ -416,12 +396,7 @@ impl<T: runtime::Transport> Client<T> {
         let status = head.status.as_u16();
         if status == 200 {
             {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
-                    &["application/jsonl"],
-                )?;
+                runtime::check_media_of(&head, &body, &["application/jsonl"])?;
                 runtime::jsonl_decode(status, &body)
                     .and_then(|v| runtime::limit_items(
                         status,

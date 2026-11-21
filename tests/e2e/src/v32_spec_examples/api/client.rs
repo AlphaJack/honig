@@ -392,12 +392,7 @@ impl<T: runtime::Transport> Client<T> {
         let ct = runtime::content_type_of(&head.headers);
         if status == 200 {
             {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
-                    &["multipart/mixed"],
-                )?;
+                runtime::check_media_of(&head, &body, &["multipart/mixed"])?;
                 runtime::mixed_decode(status, ct, &body, None)
                     .map(ops::streaming_multipart::Response::Ok)
             }
@@ -474,12 +469,7 @@ impl<T: runtime::Transport> Client<T> {
         let ct = runtime::content_type_of(&head.headers);
         if status == 206 {
             {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
-                    &["multipart/byteranges"],
-                )?;
+                runtime::check_media_of(&head, &body, &["multipart/byteranges"])?;
                 runtime::mixed_decode(status, ct, &body, None)
                     .map(ops::streaming_byte_ranges::Response::PartialContent)
             }
@@ -579,12 +569,7 @@ impl<T: runtime::Transport> Client<T> {
         let status = head.status.as_u16();
         if status == 200 {
             {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
-                    &["application/json"],
-                )?;
+                runtime::check_media_of(&head, &body, &["application/json"])?;
                 Ok(ops::collection_with_links::Response::Ok {
                     body: runtime::json_decode(status, &body)?,
                     link: runtime::from_param(
@@ -624,12 +609,7 @@ impl<T: runtime::Transport> Client<T> {
         let status = head.status.as_u16();
         if status == 200 {
             {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
-                    &["application/linkset+json"],
-                )?;
+                runtime::check_media_of(&head, &body, &["application/linkset+json"])?;
                 runtime::json_decode(status, &body)
                     .map(ops::standalone_json_linkset::Response::Ok)
             }
@@ -656,12 +636,7 @@ impl<T: runtime::Transport> Client<T> {
         let status = head.status.as_u16();
         if status == 200 {
             {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
-                    &["application/linkset"],
-                )?;
+                runtime::check_media_of(&head, &body, &["application/linkset"])?;
                 runtime::linkset_decode(status, &String::from_utf8_lossy(&body))
                     .map(ops::linkset_body::Response::Ok)
             }
@@ -688,12 +663,7 @@ impl<T: runtime::Transport> Client<T> {
         let status = head.status.as_u16();
         if status == 200 {
             {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
-                    &["application/json"],
-                )?;
+                runtime::check_media_of(&head, &body, &["application/json"])?;
                 runtime::json_decode(status, &body)
                     .map(ops::media_type_json::Response::Ok)
             }
@@ -736,10 +706,9 @@ impl<T: runtime::Transport> Client<T> {
         let ct = runtime::content_type_of(&head.headers);
         if status == 200 {
             {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
+                runtime::check_media_of(
+                    &head,
+                    &body,
                     &[
                         "application/json-seq",
                         "application/jsonl",
@@ -887,10 +856,9 @@ impl<T: runtime::Transport> Client<T> {
         let ct = runtime::content_type_of(&head.headers);
         if status == 200 {
             {
-                runtime::check_response_media(
-                    status,
-                    runtime::content_type_of(&head.headers),
-                    Some(&body),
+                runtime::check_media_of(
+                    &head,
+                    &body,
                     &[
                         "application/json-seq",
                         "application/jsonl",
