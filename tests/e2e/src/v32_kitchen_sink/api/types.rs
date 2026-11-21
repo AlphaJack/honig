@@ -444,18 +444,16 @@ impl TryFrom<String> for ProductName {
                 "characters",
             );
             if n <= 64 {
-                runtime::check(
+                runtime::check_pattern(
                     out,
                     &runtime::InstancePath::Root,
-                    runtime::pattern_matches(
-                        {
-                            static RE: runtime::Pattern = runtime::Pattern::new();
-                            &RE
-                        },
-                        "^[A-Za-z ]+$",
-                        value.as_str(),
-                    ),
-                    "does not match `^[A-Za-z ]+$`",
+                    {
+                        static RE: runtime::Pattern = runtime::Pattern::new(
+                            "^[A-Za-z ]+$",
+                        );
+                        &RE
+                    },
+                    value.as_str(),
                 );
             }
         }
@@ -519,10 +517,9 @@ impl ProductAttrs {
                     for name in object.map(|(name, _)| name) {
                         if !(runtime::pattern_matches(
                             {
-                                static RE: runtime::Pattern = runtime::Pattern::new();
+                                static RE: runtime::Pattern = runtime::Pattern::new("^x_");
                                 &RE
                             },
-                            "^x_",
                             name,
                         )) {
                             runtime::violation(
@@ -538,33 +535,25 @@ impl ProductAttrs {
                 }
             }
             for name in value.additional_properties.keys() {
-                runtime::check(
+                runtime::check_pattern(
                     out,
                     &runtime::InstancePath::Key(&runtime::InstancePath::Root, name),
-                    runtime::pattern_matches(
-                        {
-                            static RE: runtime::Pattern = runtime::Pattern::new();
-                            &RE
-                        },
-                        "^[a-z_]+$",
-                        name,
-                    ),
-                    "does not match `^[a-z_]+$`",
+                    {
+                        static RE: runtime::Pattern = runtime::Pattern::new("^[a-z_]+$");
+                        &RE
+                    },
+                    name,
                 );
             }
             for name in value.pattern_1.keys() {
-                runtime::check(
+                runtime::check_pattern(
                     out,
                     &runtime::InstancePath::Key(&runtime::InstancePath::Root, name),
-                    runtime::pattern_matches(
-                        {
-                            static RE: runtime::Pattern = runtime::Pattern::new();
-                            &RE
-                        },
-                        "^[a-z_]+$",
-                        name,
-                    ),
-                    "does not match `^[a-z_]+$`",
+                    {
+                        static RE: runtime::Pattern = runtime::Pattern::new("^[a-z_]+$");
+                        &RE
+                    },
+                    name,
                 );
             }
             runtime::check_len(
@@ -649,10 +638,9 @@ impl BookAttrs {
                     for name in object.map(|(name, _)| name) {
                         if !(runtime::pattern_matches(
                             {
-                                static RE: runtime::Pattern = runtime::Pattern::new();
+                                static RE: runtime::Pattern = runtime::Pattern::new("^x_");
                                 &RE
                             },
-                            "^x_",
                             name,
                         )) {
                             runtime::violation(
@@ -668,33 +656,25 @@ impl BookAttrs {
                 }
             }
             for name in value.additional_properties.keys() {
-                runtime::check(
+                runtime::check_pattern(
                     out,
                     &runtime::InstancePath::Key(&runtime::InstancePath::Root, name),
-                    runtime::pattern_matches(
-                        {
-                            static RE: runtime::Pattern = runtime::Pattern::new();
-                            &RE
-                        },
-                        "^[a-z_]+$",
-                        name,
-                    ),
-                    "does not match `^[a-z_]+$`",
+                    {
+                        static RE: runtime::Pattern = runtime::Pattern::new("^[a-z_]+$");
+                        &RE
+                    },
+                    name,
                 );
             }
             for name in value.pattern_1.keys() {
-                runtime::check(
+                runtime::check_pattern(
                     out,
                     &runtime::InstancePath::Key(&runtime::InstancePath::Root, name),
-                    runtime::pattern_matches(
-                        {
-                            static RE: runtime::Pattern = runtime::Pattern::new();
-                            &RE
-                        },
-                        "^[a-z_]+$",
-                        name,
-                    ),
-                    "does not match `^[a-z_]+$`",
+                    {
+                        static RE: runtime::Pattern = runtime::Pattern::new("^[a-z_]+$");
+                        &RE
+                    },
+                    name,
                 );
             }
             runtime::check_len(
@@ -821,10 +801,9 @@ impl Gadget2Attrs {
                     for name in object.map(|(name, _)| name) {
                         if !(runtime::pattern_matches(
                             {
-                                static RE: runtime::Pattern = runtime::Pattern::new();
+                                static RE: runtime::Pattern = runtime::Pattern::new("^x_");
                                 &RE
                             },
-                            "^x_",
                             name,
                         )) {
                             runtime::violation(
@@ -840,33 +819,25 @@ impl Gadget2Attrs {
                 }
             }
             for name in value.additional_properties.keys() {
-                runtime::check(
+                runtime::check_pattern(
                     out,
                     &runtime::InstancePath::Key(&runtime::InstancePath::Root, name),
-                    runtime::pattern_matches(
-                        {
-                            static RE: runtime::Pattern = runtime::Pattern::new();
-                            &RE
-                        },
-                        "^[a-z_]+$",
-                        name,
-                    ),
-                    "does not match `^[a-z_]+$`",
+                    {
+                        static RE: runtime::Pattern = runtime::Pattern::new("^[a-z_]+$");
+                        &RE
+                    },
+                    name,
                 );
             }
             for name in value.pattern_1.keys() {
-                runtime::check(
+                runtime::check_pattern(
                     out,
                     &runtime::InstancePath::Key(&runtime::InstancePath::Root, name),
-                    runtime::pattern_matches(
-                        {
-                            static RE: runtime::Pattern = runtime::Pattern::new();
-                            &RE
-                        },
-                        "^[a-z_]+$",
-                        name,
-                    ),
-                    "does not match `^[a-z_]+$`",
+                    {
+                        static RE: runtime::Pattern = runtime::Pattern::new("^[a-z_]+$");
+                        &RE
+                    },
+                    name,
                 );
             }
             runtime::check_len(

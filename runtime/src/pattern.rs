@@ -4,22 +4,31 @@ use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::sync::OnceLock;
 
-/// The pattern of one check site. It is compiled on first use. Lookups after that take no lock.
-#[derive(Debug, Default)]
-pub struct Pattern(OnceLock<Option<regress::Regex>>);
+/// The pattern of one check site, with its text. It is compiled on first use. Lookups after that take no lock.
+#[derive(Debug)]
+pub struct Pattern {
+    text: &'static str,
+    re: OnceLock<Option<regress::Regex>>,
+}
 
 impl Pattern {
     /// Creates a pattern that compiles on first use, for a `static`.
     #[must_use]
-    pub const fn new() -> Self {
-        Self(OnceLock::new())
+    pub const fn new(text: &'static str) -> Self {
+        Self { text, re: OnceLock::new() }
     }
 }
 
-/// Does `s` match `pattern` compiled once into `re`? A pattern that `regress` cannot compile matches nothing.
+/// Does `s` match `re`? A pattern that `regress` cannot compile matches nothing.
 #[must_use]
-pub fn pattern_matches(re: &Pattern, pattern: &str, s: &str) -> bool {
-    is_match(re.0.get_or_init(|| compile(pattern)).as_ref(), s)
+pub fn pattern_matches(re: &Pattern, s: &str) -> bool {
+    is_match(re.re.get_or_init(|| compile(re.text)).as_ref(), s)
+}
+
+/// Returns the text of `re`.
+#[must_use]
+pub const fn pattern_text(re: &Pattern) -> &'static str {
+    re.text
 }
 
 /// Returns [`pattern_matches`] for patterns known only at run time (schema fragments and `patternProperties`). Each is
@@ -60,8 +69,8 @@ mod tests {
 
     #[test]
     fn a_pattern_matches_anywhere_and_one_that_does_not_compile_matches_nothing() {
-        static RE: Pattern = Pattern::new();
-        assert!(pattern_matches(&RE, "^[a-z]+$", "abc") && !pattern_matches(&RE, "^[a-z]+$", "ABC"));
+        static RE: Pattern = Pattern::new("^[a-z]+$");
+        assert!(pattern_matches(&RE, "abc") && !pattern_matches(&RE, "ABC"));
         assert!(pattern_matches_dyn(r"[\-\_]", "_"), "plain ECMA-262 when Unicode mode refuses it");
         assert!(!pattern_matches_dyn("(", "anything"));
     }

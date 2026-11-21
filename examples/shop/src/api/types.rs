@@ -154,18 +154,16 @@ impl TryFrom<String> for PhysicalSku {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
-            runtime::check(
+            runtime::check_pattern(
                 out,
                 &runtime::InstancePath::Root,
-                runtime::pattern_matches(
-                    {
-                        static RE: runtime::Pattern = runtime::Pattern::new();
-                        &RE
-                    },
-                    "^[A-Z]{3}-[0-9]{4}$",
-                    value.as_str(),
-                ),
-                "does not match `^[A-Z]{3}-[0-9]{4}$`",
+                {
+                    static RE: runtime::Pattern = runtime::Pattern::new(
+                        "^[A-Z]{3}-[0-9]{4}$",
+                    );
+                    &RE
+                },
+                value.as_str(),
             );
         }
         runtime::first(violations)
