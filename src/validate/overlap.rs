@@ -1,6 +1,6 @@
 //! A discriminated `oneOf` whose branches can all match one value. 3.2 says a discriminator "MUST NOT change the
 //! validation outcome": `oneOf` still means exactly one. Branches `Cat` and `Dog` that share every property both match
-//! `{"petType": "cat", "name": "Tom"}`, and the value is invalid. A branch that pins the discriminating property with
+//! `{"petType": "cat", "name": "Tom"}`, and the value is invalid. A branch that sets the discriminating property with
 //! `const` (or a one-value `enum`) cannot match another branch's tag. A warning lists the branches that do not.
 
 use serde_json::Value;
@@ -24,7 +24,7 @@ struct Found<'a> {
 }
 
 impl Found<'_> {
-    /// Returns whether the branch through `$ref`s and `allOf` members fixes `prop` to one value. `seen` holds the
+    /// Returns whether the branch through `$ref`s and `allOf` members fixes `prop` to one value. `seen` contains the
     /// `$ref`s on the way: one met again is a cycle, which fixes nothing more.
     fn pins(&self, branch: &Value, prop: &str, seen: &mut Vec<String>) -> bool {
         let branch = match branch.get("$ref").and_then(Value::as_str) {

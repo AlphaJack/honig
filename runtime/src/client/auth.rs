@@ -13,7 +13,7 @@ use crate::{ClientError, Message, Request, params::pct};
 /// credentials that you configured are sent.
 ///
 /// # Errors
-/// A credential that a header or the query cannot carry: it holds a line break or another control character.
+/// A credential that a header or the query cannot carry: it contains a line break or another control character.
 pub fn apply_auth(req: &mut Request, creds: &Credentials, requirements: &[&[Requirement]]) -> Result<(), ClientError> {
     let Some(alt) = requirements
         .iter()

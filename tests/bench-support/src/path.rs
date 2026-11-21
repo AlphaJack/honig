@@ -25,7 +25,7 @@ pub struct Phased {
 }
 
 /// Runs one phase of a [`Phased`] work and returns what it returns. callgrind counts each phase apart: each runs in
-/// `measured_phase`, whose exact name `--dump-after` takes (it takes no pattern).
+/// `measured_phase`, whose exact name `--dump-after` expects (it accepts no pattern).
 ///
 /// # Panics
 /// Never: `measured_phase` runs the phase once.
@@ -37,7 +37,7 @@ pub fn phase<T>(work: impl FnOnce() -> T) -> T {
 }
 
 /// The one function that every phase runs in. It is not generic, so callgrind knows it by one name and dumps a count as
-/// it ends. It holds a value across the call: as a tail call, `work` would end it unseen and callgrind would dump once.
+/// it ends. It keeps a value across the call: as a tail call, `work` would end it unseen and callgrind would dump once.
 #[inline(never)]
 fn measured_phase(work: &mut dyn FnMut()) -> u8 {
     let mark = std::hint::black_box(1);

@@ -1,7 +1,7 @@
-//! Formats whose library type reads more than the format allows. `jiff` reads `2024-06-19 08:30Z` as a `date-time`.
-//! `uuid` reads `{...}` and `url` reads a space. Generated code decodes such a value through [`read`]. The text is
-//! validated as [`check_format`](crate::checks::check_format) validates a string, then the library reads it. A
-//! server decoding a request and a client reading a response decode alike.
+//! Formats whose library type accepts more than the format allows. `jiff` accepts `2024-06-19 08:30Z` as a `date-time`.
+//! `uuid` accepts `{...}` and `url` accepts a space. Generated code decodes such a value through [`read`]. The text is
+//! validated as [`check_format`](crate::checks::check_format) validates a string, then the library parses it. A
+//! server decoding a request and a client decoding a response decode alike.
 //!
 //! [`Holds`] says where the text sits in the type: the value itself ([`Text`]) or the items of a list, the values of a
 //! map and so on. The types stay those of the library.
@@ -16,18 +16,18 @@ use serde::de::{self, DeserializeSeed, Deserializer, MapAccess, SeqAccess, Unexp
 
 use crate::nullable::Nullable;
 
-/// A string format that a library type holds.
+/// A string format that a library type represents.
 pub trait Format {
     /// Its name in `format`.
     const NAME: &'static str;
 
-    /// Returns the text that the library reads. It is `text` unless the library would refuse a valid one.
+    /// Returns the text that the library parses. It is `text` unless the library would refuse a valid one.
     fn text(text: &str) -> Cow<'_, str> {
         Cow::Borrowed(text)
     }
 }
 
-/// The digits of a fraction of a second that `jiff` reads: nanoseconds. RFC 3339 allows more.
+/// The digits of a fraction of a second that `jiff` parses: nanoseconds. RFC 3339 allows more.
 const NANO_DIGITS: usize = 9;
 
 /// Returns `text` with the fraction of its seconds cut to nanoseconds. `jiff` refuses more digits. `chrono` drops them.
@@ -42,7 +42,7 @@ fn nanoseconds(text: &str) -> Cow<'_, str> {
     Cow::Owned([text.get(..keep).unwrap_or(text), text.get(cut..).unwrap_or("")].concat())
 }
 
-/// The formats that a library type holds. Each states its `format`.
+/// The formats that a library type represents. Each states its `format`.
 pub mod format {
     use std::borrow::Cow;
 
@@ -123,7 +123,7 @@ pub mod format {
         "email"
     );
     marker!(
-        /// `idn-email`: an RFC 6531 mail address, an `email` that may hold UTF-8.
+        /// `idn-email`: an RFC 6531 mail address, an `email` that may contain UTF-8.
         IdnEmail,
         "idn-email"
     );
@@ -143,7 +143,7 @@ pub mod format {
         "decimal"
     );
     marker!(
-        /// `decimal128` on a string: a decimal number that IEEE 754 decimal128 holds exactly.
+        /// `decimal128` on a string: a decimal number that IEEE 754 decimal128 represents exactly.
         Decimal128,
         "decimal128"
     );
@@ -194,7 +194,7 @@ pub mod format {
     );
 }
 
-/// Where the formatted text sits in `T`, and how to read `T` with it checked.
+/// Where the formatted text sits in `T`, and how to decode `T` with it checked.
 pub trait Holds<'de, T> {
     /// Reads a `T`. Its text is checked first.
     ///
@@ -211,8 +211,8 @@ pub fn read<'de, D: Deserializer<'de>, T, S: Holds<'de, T>>(d: D) -> Result<T, D
     S::read(d)
 }
 
-/// `T` read through `H`: a branch of a union or a body that is a library type itself. Decode one and take the value
-/// with [`Validated::into_inner`].
+/// `T` decoded through `H`: a branch of a union or a body that is a library type itself. Decode one and unwrap the
+/// value with [`Validated::into_inner`].
 #[derive(Debug)]
 pub struct Validated<T, H>(T, PhantomData<H>);
 
@@ -229,7 +229,7 @@ impl<'de, T, H: Holds<'de, T>> Deserialize<'de> for Validated<T, H> {
     }
 }
 
-/// A value read as it is: a position of a tuple without a checked format.
+/// A value decoded as it is: a position of a tuple without a checked format.
 #[derive(Debug, Clone, Copy)]
 pub struct Plain;
 
@@ -331,7 +331,7 @@ impl<'de, S: Holds<'de, T>, T> Holds<'de, Nullable<T>> for OrNull<S> {
     }
 }
 
-/// `S` held by reference.
+/// `S` behind a reference.
 #[derive(Debug, Clone, Copy)]
 pub struct Boxed<S>(PhantomData<S>);
 
@@ -370,7 +370,7 @@ impl<'de, S: Holds<'de, T>, T> Visitor<'de> for SeqVisitor<S, T> {
     }
 }
 
-/// The most items a list reserves room for before it reads them. A size hint comes from the body.
+/// The most items a list reserves room for before it decodes them. A size hint comes from the body.
 const MAX_PREALLOCATED: usize = 4096;
 
 /// A list of exactly `N` of `S`.
@@ -423,7 +423,7 @@ impl<'de, S: Holds<'de, T>, T> Visitor<'de> for MapVisitor<S, T> {
     }
 }
 
-/// Tuples whose positions each have a shape: `(Text<format::Date>, Plain)` reads a `(jiff::civil::Date, u8)`.
+/// Tuples whose positions each have a shape: `(Text<format::Date>, Plain)` decodes a `(jiff::civil::Date, u8)`.
 macro_rules! tuple {
     ($($s:ident $t:ident),+) => {
         impl<'de, $($s: Holds<'de, $t>, $t),+> Holds<'de, ($($t,)+)> for ($($s,)+) {
@@ -478,12 +478,12 @@ mod tests {
 
     use super::{Exactly, Many, Maybe, Plain, Text, Values, format, nanoseconds};
 
-    /// A library type that reads any text: what the check lets through reaches it.
+    /// A library type that accepts any text: what the check lets through reaches it.
     #[derive(Debug, PartialEq, serde::Deserialize)]
     #[serde(transparent)]
     struct Lenient(String);
 
-    /// Reads `json` as a request or a response is read.
+    /// Decodes `json` as a request or a response is decoded.
     fn read<'de, T, S: super::Holds<'de, T>>(json: &'de str) -> Result<T, serde_json::Error> {
         super::read::<_, T, S>(&mut serde_json::Deserializer::from_str(json))
     }

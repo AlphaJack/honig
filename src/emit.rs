@@ -14,15 +14,15 @@ pub struct Options {
     pub tests: bool,
     /// Objects without `additionalProperties` keep unknown keys in `extra`.
     pub keep_unknown: bool,
-    /// `client = { strict = ... }`: `false` reads a response that holds an enum value, a property or a tagged union
-    /// member that the description does not list.
+    /// `client = { strict = ... }`: `false` accepts a response that contains an enum value, a property or a tagged
+    /// union member that the description does not list.
     pub strict_client: bool,
     /// Server operations may be left out: each defaults to `501 Not Implemented`. `false`: every one must be written.
     pub allow_unimplemented: bool,
     /// The only operations that the client calls and the server serves, by `operationId` (or their generated name).
-    /// `None` means every one. The module holds only those and the types that they reach.
+    /// `None` means every one. The module contains only those and the types that they reach.
     pub operations: Option<Vec<String>>,
-    /// Overlay files applied in order to the description before it is read.
+    /// Overlay files applied in order to the description before it is parsed.
     pub overlays: Vec<std::path::PathBuf>,
     /// What only Rust output needs: set from the crate's `Cargo.toml` by the command line.
     pub(crate) rust: rust::Options,

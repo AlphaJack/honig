@@ -3,10 +3,10 @@
 //! process through `oneshot`, so no socket or other process adds noise.
 //!
 //! - `tests/allocations.rs`: no kind allocates more than `max_allocs` times its baseline at any of [`BENCH_SIZES`].
-//! - `benches/time.rs`: no kind takes more than `max_time` times its baseline in a release build at any of them.
+//! - `benches/time.rs`: no kind needs more than `max_time` times its baseline in a release build at any of them.
 //! - `roundtrip.rs` with `benches/roundtrip.rs` and `tests/allocations.rs`: the same through the generated client
 //!   against a hand-rolled one.
-//! - `benches/memory.rs`: no kind holds more peak heap than its limit at 1 MiB and 32 MiB.
+//! - `benches/memory.rs`: no kind keeps more peak heap than its limit at 1 MiB and 32 MiB.
 
 use std::alloc::{GlobalAlloc, Layout, System};
 use std::cell::Cell;
@@ -40,7 +40,7 @@ pub const FRAME: usize = 64 << 10;
 const ITEM: usize = 32;
 /// About the bytes of one manifest entry in JSON.
 const ENTRY: usize = 26;
-/// The largest body either side reads: above the largest size.
+/// The largest body either side accepts: above the largest size.
 const LIMIT: usize = 64 << 20;
 /// MIME breaks base64 into lines of this many characters (RFC 2045 section 6.8).
 const MIME_LINE: usize = 76;
@@ -495,7 +495,7 @@ pub fn member_body() -> Bytes {
 pub const BENCH_SIZES: [usize; 4] = [256, 2 << 10, 16 << 10, 1 << 20];
 
 /// The table that a bench prints: per kind of path and size, what the generated side (`head`) and its baseline
-/// (`base`) measured, as wide as `sample`, their ratio, the budget of the kind and whether it holds.
+/// (`base`) measured, as wide as `sample`, their ratio, the budget of the kind and whether it passes.
 #[allow(dead_code, reason = "the memory bench prints a table of its own")]
 pub fn bench_table(head: &'static str, base: &'static str, sample: &str) -> Table {
     let sizes = BENCH_SIZES.map(table::kib);
@@ -524,7 +524,7 @@ pub struct Measured {
     pub max: f64,
 }
 
-/// How much more time the smallest size may take: one run there is a few microseconds, and the jitter of a shared
+/// How much more time the smallest size may need: one run there is a few microseconds, and the jitter of a shared
 /// runner is a larger share of it than of a large body.
 #[allow(dead_code, reason = "the memory bench and the allocation tests time nothing")]
 const SMALLEST_SLACK: f64 = 1.25;
@@ -574,9 +574,9 @@ pub fn print_rows(table: &Table, mut rows: Vec<Measured>, mut results: Option<&m
 
 /// One kind of path, the request that it gets at one size, and its budgets against its baseline. The allocation budget
 /// is the most that the kind makes at any of [`BENCH_SIZES`], rounded up to the next 0.05: counts are the same on every
-/// run, so it needs no margin. The time budget is the worst ratio of the kind in the CI runs so far and a tenth more, rounded up
-/// to the next 0.05: ratios differ between machines, so they come from the runner that enforces them. Lower a budget
-/// when a change makes the kind cheaper.
+/// run, so it needs no margin. The time budget is the worst ratio of the kind in the CI runs so far and a tenth more,
+/// rounded up to the next 0.05: ratios differ between machines, so they come from the runner that enforces them. Lower
+/// a budget when a change makes the kind cheaper.
 pub struct Path {
     pub name: &'static str,
     method: &'static str,
@@ -585,10 +585,10 @@ pub struct Path {
     accept: &'static str,
     body: Bytes,
     /// At most how many times the allocations of the baseline.
-    #[allow(dead_code, reason = "only the allocation bench reads it")]
+    #[allow(dead_code, reason = "only the allocation bench uses it")]
     pub max_allocs: f64,
     /// At most how many times the time of the baseline in a release build.
-    #[allow(dead_code, reason = "only the time bench reads it")]
+    #[allow(dead_code, reason = "only the time bench uses it")]
     pub max_time: f64,
 }
 
@@ -637,7 +637,7 @@ pub fn paths(size: usize) -> Vec<Path> {
     ]
 }
 
-/// The request with its body in frames, as a socket delivers it. One `Bytes` would cost the server nothing to read.
+/// The request with its body in frames, as a socket delivers it. One `Bytes` would cost the server nothing to receive.
 fn request(path: &Path) -> Request<Body> {
     let body = path.body.clone();
     let frames: Vec<_> = (0..body.len().div_ceil(FRAME))
@@ -652,7 +652,7 @@ fn request(path: &Path) -> Request<Body> {
     request.body(body).unwrap_or_default()
 }
 
-/// Serves one request and reads its whole response. Its status and the frames of its body.
+/// Serves one request and collects its whole response. Its status and the frames of its body.
 pub async fn serve(router: &Router, path: &Path) -> (u16, usize) {
     let Ok(resp) = router.clone().oneshot(request(path)).await;
     let status = resp.status().as_u16();
@@ -701,7 +701,7 @@ pub async fn same_answer(generated: &Router, baseline: &Router, path: &Path) -> 
     Ok(())
 }
 
-// The allocations of this thread, the bytes it holds and the most it held. Requests are served on one thread.
+// The allocations of this thread, the bytes it keeps and the most it kept. Requests are served on one thread.
 thread_local! {
     static ALLOCS: Cell<u64> = const { Cell::new(0) };
     static LIVE: Cell<isize> = const { Cell::new(0) };
@@ -816,11 +816,11 @@ async fn round(once: &impl AsyncFn(), n: u32) -> Duration {
 pub struct Timing {
     pub generated: Duration,
     pub baseline: Duration,
-    /// How many times the time of its baseline the generated path takes.
+    /// How many times the time of its baseline the generated path needs.
     pub ratio: f64,
 }
 
-/// Times `rounds` pairs of rounds: one of the generated side, then one of its baseline. A round takes about `length`
+/// Times `rounds` pairs of rounds: one of the generated side, then one of its baseline. A round lasts about `length`
 /// for the baseline. The ratio is the median of the ratios of each pair: a stall of the machine slows the two rounds of
 /// a pair alike or one pair only, so it barely moves the median.
 #[allow(dead_code, reason = "the allocation bench does not time")]

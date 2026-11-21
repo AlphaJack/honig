@@ -27,8 +27,8 @@ mod standard {
     use ::base64::engine::GeneralPurpose;
     use ::base64::engine::general_purpose::PAD_INDIFFERENT;
 
-    /// Writes padding and reads text with or without it. The bits a last character holds past the data are ignored, as
-    /// RFC 4648 section 3.5 allows a decoder.
+    /// Writes padding and decodes text with or without it. The bits a last character carries past the data are ignored,
+    /// as RFC 4648 section 3.5 allows a decoder.
     const ENGINE: GeneralPurpose =
         GeneralPurpose::new(&alphabet::STANDARD, PAD_INDIFFERENT.with_decode_allow_trailing_bits(true));
 

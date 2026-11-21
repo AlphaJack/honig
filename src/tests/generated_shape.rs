@@ -77,7 +77,7 @@ fn only_operations_with_their_own_servers_get_servers() {
     assert!(!op_module(&ops, "b").contains("SERVERS"), "{ops}");
 }
 
-/// Every `Params` has `new` taking what is required; `Default` only when that is nothing.
+/// Every `Params` has `new` accepting what is required; `Default` only when that is nothing.
 #[test]
 fn params_always_have_new_and_default_only_without_arguments() {
     let ops = operations("shape-default");
@@ -315,7 +315,7 @@ fn literal_path_variables_orphan_tags_and_relative_servers() {
     assert!(ops.contains("pub mod child"), "{ops}");
 }
 
-/// A header parameter other than `Range` leaves ranges to the server: only a `Range` parameter of its own takes them.
+/// A header parameter other than `Range` leaves ranges to the server: only a `Range` parameter of its own handles them.
 #[test]
 fn another_header_leaves_ranges_to_the_server() {
     let doc = common::spec(
@@ -408,7 +408,7 @@ fn a_binary_with_a_client_gets_the_constructors() {
 /// allows, one security requirement, and a type with more required properties than clippy allows and an example that
 /// `documented_examples.rs` decodes.
 fn wide_binary(test: &str, client: bool) -> Vec<(String, String)> {
-    // Each value an enum of its own: no two can swap, so `new` takes them all.
+    // Each value an enum of its own: no two can swap, so `new` accepts them all.
     let names = ["a", "b", "c", "d", "e", "f", "g", "h"];
     let params: Vec<serde_json::Value> = names
         .iter()
@@ -446,7 +446,7 @@ fn wide_binary(test: &str, client: bool) -> Vec<(String, String)> {
     files
 }
 
-/// The `#![allow]`s that every generated file needs sit once in `mod.rs` and hold for its children.
+/// The `#![allow]`s that every generated file needs sit once in `mod.rs` and apply to its children.
 #[test]
 fn the_module_allows_once() {
     let files = wide_binary("shape-allow-once", true);
@@ -472,7 +472,7 @@ fn a_request_decodes_without_a_status() {
     assert!(client.contains("runtime::json_decode(Some(status), &body)"), "{client}");
 }
 
-/// A crate that denies `clippy::allow_attributes` takes the generated code: every `#[allow]` is an inner `#![allow]`,
+/// A crate that denies `clippy::allow_attributes` accepts the generated code: every `#[allow]` is an inner `#![allow]`,
 /// which that lint leaves alone. `new` allows its many arguments inside its body, not with an `#[expect]` that a crate
 /// with a higher `too-many-arguments-threshold` would leave unfulfilled.
 #[test]
@@ -515,7 +515,7 @@ fn a_binary_without_halves_allows_dead_code_once() {
     assert!(ops.contains("reason = \"without a client or a server a binary refers to none"), "{ops}");
 }
 
-/// A `text/plain` string error body holds the detail: the server fills it for the requests it refuses itself and no
+/// A `text/plain` string error body contains the detail: the server fills it for the requests it refuses itself and no
 /// warning says otherwise.
 #[test]
 fn a_text_error_body_is_filled() {
@@ -560,7 +560,7 @@ fn operations_carry_their_otel_span_name() {
     assert!(!server.contains("tracing"), "{server}");
 }
 
-/// `Params::new` takes path parameters in URL order and a required body.
+/// `Params::new` accepts path parameters in URL order and a required body.
 /// `Params` and `Response` have one name each: the operation's module path.
 #[test]
 fn params_new_and_one_name_per_type() {
@@ -607,7 +607,7 @@ fn types_without_schemas_import_no_runtime() {
     assert!(!types.contains("use super::runtime;"), "{types}");
 }
 
-/// `new` takes exactly the required properties without a spec default; the rest start empty or at that default.
+/// `new` accepts exactly the required properties without a spec default; the rest start empty or at that default.
 #[test]
 fn structs_have_new_with_their_required_properties() {
     let doc = common::spec(
@@ -695,10 +695,10 @@ fn the_server_answers_ranges_only_for_binary_gets_that_leave_them_to_it() {
     }
 }
 
-/// Every schema the description names keeps its name, though another one has its shape: `PaymentMethod` and
-/// `DeliverySpeed` are both `enum: [0, 1]`, and so are the inline `status` and `priority` of `Order`. Inline twins
-/// in one role (`status` of two operations) still share one type, named for what they share (`OkStatus`). A component parameter's schema is named after its
-/// key, not after the first operation that uses it.
+/// Every schema the description declares keeps its name, though another one has its shape: `PaymentMethod` and
+/// `DeliverySpeed` are both `enum: [0, 1]`, and so are the inline `status` and `priority` of `Order`. Inline twins in
+/// one role (`status` of two operations) still share one type, named for what they share (`OkStatus`). A component
+/// parameter's schema is named after its key, not after the first operation that uses it.
 #[test]
 fn a_named_schema_keeps_its_name_beside_a_twin() {
     let flag = json!({"type": "integer", "enum": [0, 1]});
@@ -797,7 +797,7 @@ fn a_macro_body_reads_as_items() {
     );
 }
 
-/// A response of a union of unions: each layer holds the two before it, so 2^40 paths reach the bottom. Its size is
+/// A response of a union of unions: each layer contains the two before it, so 2^40 paths reach the bottom. Its size is
 /// found once per type and to the bottom: about 340 bytes for `U39` against about 100 for the struct of `201`, so `Ok`
 /// is boxed.
 #[test]
@@ -873,7 +873,7 @@ fn every_struct_gets_a_builder() {
     }
 }
 
-/// An XML field names only what differs from an element of its own name: the rest comes from `XmlField::new`.
+/// An XML field states only what differs from an element of its own name: the rest comes from `XmlField::new`.
 #[test]
 fn an_xml_field_names_only_what_differs() {
     let doc = common::spec(
@@ -894,7 +894,7 @@ fn an_xml_field_names_only_what_differs() {
     assert!(types.contains(r#",runtime::XmlField::new("title"),"#), "{types}");
 }
 
-/// A server operation names only what differs from `Op::new`: an operation without security, body or ranges is the
+/// A server operation states only what differs from `Op::new`: an operation without security, body or ranges is the
 /// call alone.
 #[test]
 fn a_server_operation_names_only_what_differs() {
@@ -970,7 +970,7 @@ fn an_any_of_is_judged_by_its_variants() {
 }
 
 /// `format: time` is the runtime's `FullTime` whatever the date library: neither date library has a time with an
-/// offset, and `FullTime` holds plain numbers.
+/// offset, and `FullTime` stores plain numbers.
 #[test]
 fn a_time_with_its_offset_is_a_full_time_with_any_date_library() {
     let doc = common::spec(
@@ -1008,7 +1008,7 @@ fn dependent_required_checks_the_fields() {
 }
 
 /// `propertyNames` of `pattern`, `minLength` and `maxLength` is a check of each name: no schema is checked whole. Any
-/// other schema of names is a type that each name decodes as. A map component holds it where it is used, as
+/// other schema of names is a type that each name decodes as. A map component enforces it where it is used, as
 /// `minProperties`.
 #[test]
 fn property_names_checks_each_name() {
@@ -1064,7 +1064,7 @@ fn not_is_a_check_against_the_type_of_its_schema() {
     assert!(types.contains(".matches::<") && !types.contains("check_schema"), "{types}");
 }
 
-/// A range check names each bound it has (`max: Some(100)`) and leaves the others to `Bounds::NONE`: no four
+/// A range check states each bound it has (`max: Some(100)`) and leaves the others to `Bounds::NONE`: no four
 /// positional options.
 #[test]
 fn a_range_check_names_its_bounds() {
@@ -1088,7 +1088,7 @@ fn a_range_check_names_its_bounds() {
 }
 
 /// A pattern check prints its pattern once, in its `static`: the runtime writes the message from it. A checked type
-/// also names it as `PATTERN`.
+/// also exposes it as `PATTERN`.
 #[test]
 fn a_pattern_is_printed_once_per_check() {
     let doc =
@@ -1132,7 +1132,7 @@ fn if_then_else_checks_against_the_types_of_its_schemas() {
     assert!(types.contains("`then`: ") && !types.contains("check_schema"), "{types}");
 }
 
-/// A named type checks its own `not`: a field of it takes no checked type of its own.
+/// A named type checks its own `not`: a field of it gets no checked type of its own.
 #[test]
 fn a_field_of_a_type_that_checks_itself_takes_no_second_check() {
     let code = json!({"type": "object", "properties": {"a": {"type": "string"}}, "not": {"required": ["a"]}});
@@ -1143,7 +1143,7 @@ fn a_field_of_a_type_that_checks_itself_takes_no_second_check() {
     assert!(types.contains("#[optional]\n        pub code: Code"), "{types}");
 }
 
-/// `contains` on an array counts the items that decode as the type of its schema, held to `minContains` and
+/// `contains` on an array counts the items that decode as the type of its schema, limited to `minContains` and
 /// `maxContains`: no schema is checked whole.
 #[test]
 fn contains_counts_the_items_of_its_type() {
@@ -1155,7 +1155,7 @@ fn contains_counts_the_items_of_its_type() {
     assert!(types.contains("matching items, more than allowed") && !types.contains("check_schema"), "{types}");
 }
 
-/// An `anyOf` with a branch that asserts nothing holds for every value: no schema is checked whole.
+/// An `anyOf` with a branch that asserts nothing is true for every value: no schema is checked whole.
 #[test]
 fn an_any_of_with_a_branch_of_any_value_is_typed() {
     let money = json!({"type": "object", "properties": {"amount": {"type": "integer"}}});
@@ -1195,7 +1195,7 @@ fn required_unique_and_format_without_a_type_check_their_kind() {
 }
 
 /// `patternProperties` beside declared properties is a map per pattern, of the type of its schema: each undeclared
-/// name decodes into the map of its pattern, and `additionalProperties: false` refuses the rest. No check reads the
+/// name decodes into the map of its pattern, and `additionalProperties: false` refuses the rest. No check inspects the
 /// names after decoding.
 #[test]
 fn pattern_properties_beside_properties_are_typed_maps() {
@@ -1228,8 +1228,8 @@ fn additional_properties_beside_patterns_types_the_other_names() {
     assert!(!types.contains("let mut matched = false;"), "{types}");
 }
 
-/// A tuple that no Rust tuple holds (`prefixItems` with fewer `minItems`, or open) checks each item against the type
-/// of its schema: no schema is checked whole.
+/// A tuple that no Rust tuple represents (`prefixItems` with fewer `minItems`, or open) checks each item against the
+/// type of its schema: no schema is checked whole.
 #[test]
 fn a_tuple_checks_each_item_against_its_schema() {
     let pair = json!({"type": "array", "prefixItems": [{"type": "string"}, {"type": "integer"}], "items": false});
@@ -1249,7 +1249,7 @@ fn a_map_checks_the_names_it_requires() {
     assert!(types.contains("runtime::check_required") && types.contains("\"foo\""), "{types}");
 }
 
-/// Keywords beside a `oneOf` hold for whichever branch matches: the value also decodes as their type. No schema is
+/// Keywords beside a `oneOf` apply to whichever branch matches: the value also decodes as their type. No schema is
 /// checked whole.
 #[test]
 fn keywords_beside_a_union_hold_for_each_branch() {
@@ -1263,8 +1263,8 @@ fn keywords_beside_a_union_hold_for_each_branch() {
     assert!(types.contains(".decode_ref::<") && !types.contains("check_schema"), "{types}");
 }
 
-/// An `allOf` whose members one merged type cannot hold (two `maxLength`) is that type, and the value also decodes as
-/// each member: no schema is checked whole.
+/// An `allOf` whose members one merged type cannot represent (two `maxLength`) is that type, and the value also decodes
+/// as each member: no schema is checked whole.
 #[test]
 fn an_all_of_that_loses_keywords_checks_each_member() {
     let code = json!({"allOf": [{"type": "string", "maxLength": 8}, {"type": "string", "maxLength": 4}]});
@@ -1276,8 +1276,8 @@ fn an_all_of_that_loses_keywords_checks_each_member() {
     assert!(types.contains(".decode_ref::<") && !types.contains("check_schema"), "{types}");
 }
 
-/// An `enum` or `const` of values that no scalar type holds (numbers with strings, objects) is a type of unit structs
-/// that each decode one value: nothing is compared as JSON after decoding.
+/// An `enum` or `const` of values that no scalar type represents (numbers with strings, objects) is a type of unit
+/// structs that each decode one value: nothing is compared as JSON after decoding.
 #[test]
 fn values_that_no_scalar_type_holds_are_unit_types() {
     let mixed = json!({"type": "object", "properties": {"size": {"enum": [1, "large", {"w": 2}]}, "unit": {"const": {"si": true}}}});
@@ -1447,7 +1447,7 @@ fn keywords_of_one_kind_without_a_type_are_checked() {
 }
 
 /// An `if` on one property's constant without `type: object` is no tagged union: its value may be of any kind. The
-/// generated code checks its `then` and `else`, so a value of the wrong branch is not taken without a word.
+/// generated code checks its `then` and `else`, so a value of the wrong branch is not accepted without a word.
 #[test]
 fn a_conditional_without_an_object_type_is_checked() {
     let v = json!({"if": {"properties": {"kind": {"const": "n"}}, "required": ["kind"]},
@@ -1485,7 +1485,7 @@ fn keywords_beside_an_implied_shape_are_checked() {
 }
 
 /// `false` refuses any value that is present, and `items`, `prefixItems` or `additionalProperties` without `type` are
-/// held by the union of their implied shape: no schema is checked whole.
+/// stored by the union of their implied shape: no schema is checked whole.
 #[test]
 fn false_and_implied_shapes_are_checked_by_types() {
     let holder = json!({"type": "object", "properties": {
@@ -1499,7 +1499,7 @@ fn false_and_implied_shapes_are_checked_by_types() {
     let types = common::file(&common::generate("false-and-shapes", &doc, &crate::emit::Options::default()), "types.rs")
         .to_owned();
     assert!(types.contains("no value is allowed here") && !types.contains("check_schema"), "{types}");
-    // The names of the object that `named` takes match its one pattern.
+    // The names of the object that `named` accepts match its one pattern.
     assert!(types.contains("runtime::check_pattern(") && types.contains(r#"runtime::Pattern::new("^a")"#), "{types}");
     // Each item of `list` and each value of `map` decodes as its schema: two item checks besides those of `pair`, and
     // one key check besides the pattern of `named`, whose names its pattern alone judges.
@@ -1537,8 +1537,8 @@ fn keywords_of_one_kind_beside_an_implied_shape_are_checked() {
     }
 }
 
-/// A `$ref` with keywords beside it is the `allOf` of the two: the merged type holds them, and a member that it cannot
-/// hold is checked on its own. No schema is checked whole.
+/// A `$ref` with keywords beside it is the `allOf` of the two: the merged type enforces them, and a member that it
+/// cannot enforce is checked on its own. No schema is checked whole.
 #[test]
 fn keywords_beside_a_ref_are_checked() {
     let doc = common::spec(
@@ -1572,7 +1572,7 @@ fn draft_7_dependencies_are_split() {
     assert!(types.contains("is required when") && types.contains("is present: "), "{types}");
 }
 
-/// A property that `dependentRequired` reads keeps its absence: its `default` is not filled in, so the check sees
+/// A property that `dependentRequired` uses keeps its absence: its `default` is not filled in, so the check sees
 /// whether it was sent. No schema is checked whole.
 #[test]
 fn a_dependent_name_with_a_default_keeps_its_absence() {
@@ -1675,7 +1675,7 @@ fn unevaluated_properties_see_dependent_schemas() {
     assert!(types.contains("is present: ") && types.contains("(matched_0 && (matches!(name, \"bar\")))"), "{types}");
 }
 
-/// Checks that decode the value as a schema's type (`not`, `oneOf`, `if`) read one buffer of it, with strings borrowed:
+/// Checks that decode the value as a schema's type (`not`, `oneOf`, `if`) use one buffer of it, with strings borrowed:
 /// none clones the value.
 #[test]
 fn subschema_checks_read_one_buffer() {
@@ -1705,8 +1705,8 @@ fn typed_contains_reads_the_buffer() {
     assert!(types.contains("item.matches::<") && !types.contains("runtime::to_value(item)"), "{types}");
 }
 
-/// A closed `prefixItems` tuple is a Rust tuple, which holds its items by their types: a field of it, or of a list of
-/// it, needs no wrapper that checks the items again.
+/// A closed `prefixItems` tuple is a Rust tuple, which enforces its items by their types: a field of it, or of a list
+/// of it, needs no wrapper that checks the items again.
 #[test]
 fn a_rust_tuple_is_checked_once() {
     let point = json!({"type": "array", "prefixItems": [{"type": "number"}, {"type": "string"}], "items": false,
@@ -1767,8 +1767,8 @@ fn a_deeply_nested_schema_is_typed() {
     assert!(types.contains("Some(2)") && !types.contains("serde_json::Value"), "{types}");
 }
 
-/// A site binds its anchor in every generic that it reaches, however long the chain: the 20th still reads the site's
-/// type, not the generic's own default.
+/// A site binds its anchor in every generic that it reaches, however long the chain: the 20th still resolves to the
+/// site's type, not the generic's own default.
 #[test]
 fn a_long_chain_of_generics_binds_each() {
     let n = 20;
@@ -1792,7 +1792,7 @@ fn a_long_chain_of_generics_binds_each() {
     assert!(last.split('}').next().is_some_and(|body| body.contains("#[optional]\n        pub me: bool,")), "{types}");
 }
 
-/// A client response arm checks the media type of what it read whole in one call on its head and body.
+/// A client response arm checks the media type of what it received whole in one call on its head and body.
 #[test]
 fn a_response_arm_checks_its_media_in_one_call() {
     let files = wide_binary("shape-media-of", true);
@@ -1804,7 +1804,7 @@ fn a_response_arm_checks_its_media_in_one_call() {
     assert!(!client.contains("Some(&body)"), "{client}");
 }
 
-/// `*/*` is the least specific key: a response checks `image/*` first and takes `*/*` for anything else, whatever the
+/// `*/*` is the least specific key: a response checks `image/*` first and uses `*/*` for anything else, whatever the
 /// order of the description.
 #[test]
 fn any_media_type_is_tried_last() {
@@ -1991,7 +1991,8 @@ fn a_struct_counts_its_properties() {
     assert!(flat.contains("usize::from(value.a.is_some())") && flat.contains("\"properties\""), "{types}");
 }
 
-/// A list component with keywords that `Vec` does not hold is a checked type of it, and a field of it needs no wrapper.
+/// A list component with keywords that `Vec` does not enforce is a checked type of it, and a field of it needs no
+/// wrapper.
 #[test]
 fn a_list_component_with_keywords_is_a_checked_type() {
     let tags = json!({"type": "array", "items": {"type": "string"}, "maxItems": 3});
@@ -2043,8 +2044,8 @@ fn every_example_is_decoded_from_its_text() {
     assert!(examples.contains("serde_json::from_str") && !examples.contains("serde_json::Value"), "{examples}");
 }
 
-/// The request copy of a type with `readOnly` fields lacks them: the examples, which may hold them, are checked
-/// against the type that reads responses only.
+/// The request copy of a type with `readOnly` fields lacks them: the examples, which may contain them, are checked
+/// against the type that decodes responses only.
 #[test]
 fn a_request_copy_takes_no_examples() {
     let s =
@@ -2071,7 +2072,8 @@ fn examples_are_judged_by_the_generated_types_only() {
     assert!(examples.contains("/properties/n/example"), "{examples}");
 }
 
-/// Keywords beside an implied shape read the JSON text that the value decoded from: the value is not written out again.
+/// Keywords beside an implied shape check the JSON text that the value decoded from: the value is not written out
+/// again.
 #[test]
 fn implied_keywords_read_the_decoded_text() {
     let s = json!({"properties": {"name": {"type": "string"}}, "required": ["name"], "minLength": 2});
@@ -2082,8 +2084,8 @@ fn implied_keywords_read_the_decoded_text() {
     assert!(!types.contains("to_value(&value).unwrap_or_default()"), "{types}");
 }
 
-/// A checked type whose checks read the value as JSON reads JSON text once: the value decodes from it and the checks
-/// read it, with no value written out again.
+/// A checked type whose checks see the value as JSON parses JSON text once: the value decodes from it and the checks
+/// use it, with no value written out again.
 #[test]
 fn a_checked_type_reads_json_text_once() {
     let item = json!({"type": "object", "properties": {"a": {"type": "string"}}, "not": {"required": ["b"]}});
@@ -2094,7 +2096,8 @@ fn a_checked_type_reads_json_text_once() {
     assert!(types.contains("runtime::read_once::<") && types.contains("runtime::Content::parse(text)"), "{types}");
 }
 
-/// The impls that every enum and checked newtype shares come from the runtime: a module calls them and holds no copy.
+/// The impls that every enum and checked newtype shares come from the runtime: a module calls them and contains no
+/// copy.
 #[test]
 fn shared_impls_are_runtime_macros_and_not_copies() {
     let doc = common::spec(
@@ -2198,9 +2201,9 @@ fn a_reorder_of_colliding_names_changes_nothing() {
         );
         common::generate(if flip { "reorder-b" } else { "reorder-a" }, &doc, &crate::emit::Options::default())
     };
-    // Every wire name with the Rust name that holds it: a `rename` and its field, a match arm, a query encoded from a
-    // field, and a header or query read into or written from the field named just before it. Builder entries
-    // (`field(setter) : Type = "wire"`) print wrapped and name the same fields as the struct.
+    // Every wire name with the Rust name that stores it: a `rename` and its field, a match arm, a query encoded from a
+    // field, and a header or query decoded into or encoded from the field named just before it. Builder entries
+    // (`field(setter) : Type = "wire"`) print wrapped and refer to the same fields as the struct.
     let pairs = |text: &str| {
         let mut out = Vec::new();
         let (mut field, mut renamed) = ("", None::<&str>);
@@ -2239,7 +2242,7 @@ fn a_reorder_of_colliding_names_changes_nothing() {
 }
 
 /// Two required values of the same type could swap in a positional `new`: such a type or `Params` has only its builder,
-/// which takes them by name. One whose required values all differ in type keeps `new`.
+/// which accepts them by name. One whose required values all differ in type keeps `new`.
 #[test]
 fn new_exists_only_where_no_two_required_values_can_swap() {
     let doc = common::spec(
@@ -2272,7 +2275,7 @@ fn new_exists_only_where_no_two_required_values_can_swap() {
     assert!(op_module(ops, "get_order").contains("fn new("), "one path parameter: {ops}");
 }
 
-/// `anyOf` has no order: a value that several branches take decodes as the same one whatever their order.
+/// `anyOf` has no order: a value that several branches accept decodes as the same one whatever their order.
 #[test]
 fn a_reorder_of_any_of_branches_decodes_the_same() {
     let tries = |flip: bool| {
@@ -2319,7 +2322,7 @@ fn a_reorder_of_union_branches_keeps_their_names() {
         }
         let doc = common::spec("3.1.0", &json!({}), &json!({"schemas": {"Any": {"anyOf": branches}}}));
         let files = common::generate(if flip { "union-b" } else { "union-a" }, &doc, &crate::emit::Options::default());
-        // Each top-level item with its lines sorted: a name stays with what it holds, whatever the order. The guards
+        // Each top-level item with its lines sorted: a name stays with what it contains, whatever the order. The guards
         // `fit_<i>` of `Deserialize` are numbered by position and named nowhere else.
         let mut items: Vec<Vec<String>> = Vec::new();
         for l in common::file(&files, "types.rs").lines().filter(|l| !l.contains("fit_")) {

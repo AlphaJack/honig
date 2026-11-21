@@ -44,7 +44,7 @@ pub mod list_products {
     /// The body and headers of the success, in order: what `Response::into_ok` gives.
     pub type Success = (Vec<types::Product>, Option<String>);
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<Success, Box<Self>> {
             match self {
                 Self::Ok { body, x_next } => Ok((body, x_next)),
@@ -88,7 +88,7 @@ pub mod create_product {
         .. } => format_args!("status {} (Default)", status.as_u16()), }
     );
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<types::Product, Box<Self>> {
             match self {
                 Self::Created(body) => Ok(body),
@@ -131,7 +131,7 @@ pub mod get_product {
         "status 404 (NotFound)", }
     );
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<types::Product, Box<Self>> {
             match self {
                 Self::Ok(body) => Ok(body),

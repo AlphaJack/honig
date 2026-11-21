@@ -6,15 +6,15 @@ use crate::ir::TypeSpace;
 use crate::ir::types::{JsonKind, Kind, Ty, TypeId, all_refs, def_types};
 use crate::settings::FormatLibs;
 
-/// The types of the IR, the libraries that the target crate provides for `Ty::Format` and which types hold a float.
+/// The types of the IR, the libraries that the target crate provides for `Ty::Format` and which types contain a float.
 pub(crate) struct Space<'a> {
     /// Every named type.
     pub types: &'a TypeSpace,
     /// Libraries the target crate provides for `Ty::Format`.
     pub libs: &'a FormatLibs,
-    /// Which definitions hold a float somewhere by `TypeId`.
+    /// Which definitions contain a float somewhere by `TypeId`.
     floats: Vec<bool>,
-    /// Which definitions hold a `Decimal` somewhere by `TypeId`.
+    /// Which definitions contain a `Decimal` somewhere by `TypeId`.
     decimals: Vec<bool>,
     /// The JSON kind of each definition by `TypeId`.
     kinds: Vec<JsonKind>,
@@ -67,7 +67,7 @@ impl<'a> Space<'a> {
         size_in(ty, &mut |id| self.sizes.get(id.0).copied().unwrap_or(WORD))
     }
 
-    /// Does `ty` hold a float anywhere (and so cannot derive `Eq`)? Your own type (`x-rust-type`) counts as one:
+    /// Does `ty` contain a float anywhere (and so cannot derive `Eq`)? Your own type (`x-rust-type`) counts as one:
     /// it may not implement `Eq`.
     pub(crate) fn has_float(&self, ty: &Ty) -> bool {
         let mut refs = vec![];
@@ -88,7 +88,8 @@ impl<'a> Space<'a> {
         self.types.kind_of(ty)
     }
 
-    /// Does `ty` hold a `Decimal` anywhere? A union that does decodes from the JSON text: a buffered number is an `f64`.
+    /// Does `ty` contain a `Decimal` anywhere? A union that does decodes from the JSON text: a buffered number is an
+    /// `f64`.
     pub(crate) fn has_decimal(&self, ty: &Ty) -> bool {
         let mut refs = vec![];
         all_refs(ty, &mut refs);
@@ -140,12 +141,12 @@ fn reaching(space: &TypeSpace, own: impl Fn(&crate::ir::types::TypeDef) -> bool)
     found
 }
 
-/// Returns whether `ty` holds a float itself. Named types that it refers to do not count.
+/// Returns whether `ty` contains a float itself. Named types that it refers to do not count.
 fn float_here(ty: &Ty) -> bool {
     matches!(ty, Ty::F32 | Ty::F64) || ty.children().iter().any(float_here)
 }
 
-/// Returns whether `ty` holds a `Decimal` itself. Named types that it refers to do not count.
+/// Returns whether `ty` contains a `Decimal` itself. Named types that it refers to do not count.
 fn decimal_here(ty: &Ty) -> bool {
     *ty == Ty::Decimal || ty.children().iter().any(decimal_here)
 }
@@ -182,7 +183,7 @@ fn def_sizes(types: &TypeSpace) -> Vec<usize> {
     (0..types.defs.len()).map(|i| named(types, &mut found, i)).collect()
 }
 
-/// Returns the size of a definition of kind `kind`, with the sizes of the definitions it names from `named`.
+/// Returns the size of a definition of kind `kind`, with the sizes of the definitions it refers to from `named`.
 fn def_size(kind: &Kind, named: &mut dyn FnMut(TypeId) -> usize) -> usize {
     match kind {
         Kind::Struct(s) => {
@@ -194,7 +195,7 @@ fn def_size(kind: &Kind, named: &mut dyn FnMut(TypeId) -> usize) -> usize {
                 + COLLECTION * s.patterns.len()
         }
         Kind::StrEnum(_) | Kind::IntEnum(_) => COLLECTION,
-        // A checked type holds its base.
+        // A checked type wraps its base.
         Kind::Checked(c) => size_in(&c.base, named),
         Kind::Const(_) => 0,
         Kind::Union(u) => u.variants.iter().map(|v| size_in(&v.ty, named)).max().unwrap_or(0).max(JSON_VALUE) + WORD,

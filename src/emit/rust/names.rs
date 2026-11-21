@@ -39,7 +39,7 @@ const PRELUDE: &[&str] = &[
     "Debug",
 ];
 
-/// What generated Rust keeps for itself. No type shadows the prelude. No module of an operation takes the name of
+/// What generated Rust keeps for itself. No type shadows the prelude. No module of an operation gets the name of
 /// one of the own modules of the generated module.
 pub(crate) const RESERVED: Reserved<'static> = Reserved {
     types: PRELUDE,

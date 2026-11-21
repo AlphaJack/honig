@@ -195,7 +195,7 @@ components:
             - {$ref: '#/components/schemas/Card'}
             - {$ref: '#/components/schemas/Sepa'}
         vehicle: {$ref: '#/components/schemas/Vehicle'}
-        # `Option<T>` as a pair of branches. The second branch takes any value, `null` too.
+        # `Option<T>` as a pair of branches. The second branch accepts any value, `null` too.
         discount:
           anyOf:
             - {$ref: '#/components/schemas/Money'}

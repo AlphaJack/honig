@@ -41,7 +41,7 @@ pub mod create_user {
         status, .. } => format_args!("status {} (ClientError)", status.as_u16()), }
     );
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<Box<types::User>, Box<Self>> {
             match self {
                 Self::Created(body) => Ok(body),
@@ -85,7 +85,7 @@ pub mod create_shipment {
         "status 400 (BadRequest)", }
     );
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<(), Box<Self>> {
             match self {
                 Self::Created => Ok(()),
@@ -124,7 +124,7 @@ pub mod login {
     }
     runtime::response_error!(Response { Self::Created(..) => "status 201 (Created)", });
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<types::Login, Box<Self>> {
             match self {
                 Self::Created(body) => Ok(body),
@@ -166,7 +166,7 @@ pub mod add_member {
     }
     runtime::response_error!(Response { Self::Created => "status 201 (Created)", });
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<(), Box<Self>> {
             match self {
                 Self::Created => Ok(()),
@@ -209,7 +209,7 @@ pub mod add_closed {
     }
     runtime::response_error!(Response { Self::Created => "status 201 (Created)", });
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<(), Box<Self>> {
             match self {
                 Self::Created => Ok(()),
@@ -252,7 +252,7 @@ pub mod add_badge {
     }
     runtime::response_error!(Response { Self::Created => "status 201 (Created)", });
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<(), Box<Self>> {
             match self {
                 Self::Created => Ok(()),

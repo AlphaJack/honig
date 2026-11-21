@@ -6,7 +6,7 @@
 //! the host. So the client's base URL serves every operation. Root `servers` that differ otherwise move onto the file's
 //! path items (3.2 section 4.9: a path item's `servers` override the root's). Root `security` that differs moves onto
 //! the file's operations that have none of their own. The same path and method in two files and two different
-//! components under one name are errors: the API holds one of each, and the description decides which.
+//! components under one name are errors: the API has one of each, and the description decides which.
 
 use std::path::{Path, PathBuf};
 
@@ -142,7 +142,7 @@ const ADDITIONAL: &str = "additionalOperations";
 /// Adds the path items of `from` to `into`. Two files may share a path but not a method of it.
 ///
 /// `servers`, `parameters` and the other fields that the files of a shared path do not agree on move from the path
-/// item onto the operations of the file that set them. So no file's operations take a field of another file.
+/// item onto the operations of the file that set them. So no file's operations get a field of another file.
 fn items(into: &mut Map<String, Value>, from: Value, key: &str, file: &str, diags: &mut Diagnostics) {
     let Value::Object(from) = from else { return };
     for (path, item) in from {

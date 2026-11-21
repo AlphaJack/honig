@@ -1,9 +1,9 @@
-//! Gives each value with checks that its type does not hold a checked type of its own.
+//! Gives each value with checks that its type does not enforce a checked type of its own.
 //!
-//! A field, a parameter, a body or a branch of a union can carry keywords that its type does not hold: `minItems` on a
-//! list, `uniqueItems`, `minProperties`, the length of a format, or keywords that no type expresses (`if`, `not`,
+//! A field, a parameter, a body or a branch of a union can carry keywords that its type does not enforce: `minItems` on
+//! a list, `uniqueItems`, `minProperties`, the length of a format, or keywords that no type expresses (`if`, `not`,
 //! `contains` and so on, as a whole schema). The value then becomes a [`Kind::Checked`] newtype of its own whose
-//! `try_from` and decoding run them. A named type already holds its own keywords, so a value of one needs nothing
+//! `try_from` and decoding run them. A named type already enforces its own keywords, so a value of one needs nothing
 //! more.
 
 use std::collections::{BTreeMap, BTreeSet};
@@ -12,11 +12,11 @@ use super::http::Http;
 use super::names::{Name, unique};
 use super::types::{Checked, Constraints, Kind, Ty, TypeDef, TypeId, TypeSpace, XmlHint};
 
-/// Wraps every value with checks that its type does not hold in a checked type of its own.
+/// Wraps every value with checks that its type does not enforce in a checked type of its own.
 pub(crate) fn wrap(types: &mut TypeSpace, http: &mut Http) {
     checked_aliases(types);
     let mut taken = types.name_keys();
-    // The shape of a split type takes the names of its fields' wrappers from the type itself: `ProductAttrs`, not
+    // The shape of a split type gets the names of its fields' wrappers from the type itself: `ProductAttrs`, not
     // `ProductFieldsAttrs`.
     let public = split_own_checks(types, &mut taken);
     let mut space = Wrapper { types, taken: &mut taken };
@@ -72,8 +72,8 @@ pub(crate) fn wrap(types: &mut TypeSpace, http: &mut Http) {
             let own =
                 if one { b.constraints.clone() } else { b.variant_constraints.get(i).cloned().unwrap_or_default() };
             let name = if one { body.clone() } else { body.and(&c.variant) };
-            // The items of a body read as it arrives are checked one at a time. Its `minItems`, `maxItems` and
-            // `uniqueItems` hold on the items as they arrive (`Content::item_limits`).
+            // The items of a body decoded as it arrives are checked one at a time. Its `minItems`, `maxItems` and
+            // `uniqueItems` apply to the items as they arrive (`Content::item_limits`).
             if c.streams() {
                 if let Ty::Vec(item) = &c.ty {
                     let item = space.wrap(item, &own.item_constraints(), &name.and(&Name::new("Item")));
@@ -81,14 +81,15 @@ pub(crate) fn wrap(types: &mut TypeSpace, http: &mut Http) {
                 }
                 continue;
             }
-            // An optional body is an `Option` of its content: the content type takes the checks.
+            // An optional body is an `Option` of its content: the content type gets the checks.
             c.ty = space.wrap(&c.ty, &own, &name);
         }
     }
 }
 
-/// Makes each component that refers to a type with keywords that the type does not hold (`Tags: {type: array, maxItems:
-/// 3}`) a checked type of it: a value of the component meets them however it is made, not only where a field uses it.
+/// Makes each component that refers to a type with keywords that the type does not enforce (`Tags: {type: array,
+/// maxItems: 3}`) a checked type of it: a value of the component meets them however it is made, not only where a field
+/// uses it.
 fn checked_aliases(types: &mut TypeSpace) {
     for i in 0..types.defs.len() {
         let def = &types.defs[i];
@@ -101,9 +102,10 @@ fn checked_aliases(types: &mut TypeSpace) {
     }
 }
 
-/// Splits each struct or union whose own schema has keywords that no type holds (`if`, `not`, the one match of a
-/// `oneOf`, ...) or that its fields hold together (`dependentRequired`, `propertyNames`). Its shape moves to a type of its own, `<Name>Fields` or `<Name>Variants`. Its name becomes a checked
-/// type of that shape. So every value of it is checked once, by its type, and no use of it needs a wrapper.
+/// Splits each struct or union whose own schema has keywords that no type enforces (`if`, `not`, the one match of a
+/// `oneOf`, ...) or that its fields share (`dependentRequired`, `propertyNames`). Its shape moves to a type of its own,
+/// `<Name>Fields` or `<Name>Variants`. Its name becomes a checked type of that shape. So every value of it is checked
+/// once, by its type, and no use of it needs a wrapper.
 ///
 /// Returns the name of the checked type of each shape, by the index of the shape.
 fn split_own_checks(types: &mut TypeSpace, taken: &mut BTreeSet<String>) -> BTreeMap<usize, Name> {
@@ -122,7 +124,7 @@ fn split_own_checks(types: &mut TypeSpace, taken: &mut BTreeSet<String>) -> BTre
             | Kind::Pending => continue,
         };
         let own = &def.own;
-        // The keywords that the struct or union holds as a whole, not each field or branch.
+        // The keywords that the struct or union enforces as a whole, not each field or branch.
         let constraints = Constraints {
             dependent_required: own.dependent_required.clone(),
             property_names: own.property_names.clone(),
@@ -166,7 +168,7 @@ fn split_own_checks(types: &mut TypeSpace, taken: &mut BTreeSet<String>) -> BTre
             json_string: false,
             component: false,
             own: Constraints::default(),
-            // The shape of a lenient response type reads what the server added, as the type did.
+            // The shape of a lenient response type accepts what the server added, as the type did.
             lenient: types.defs[i].lenient,
         };
         public.insert(raw.0, types.defs[i].name.clone());
@@ -183,7 +185,7 @@ struct Wrapper<'a> {
 
 impl Wrapper<'_> {
     /// Returns `t` with the value inside any `Option` in a checked type named `name` when `c` asks something that `t`
-    /// does not hold. Otherwise `t` as it is.
+    /// does not enforce. Otherwise `t` as it is.
     fn wrap(&mut self, t: &Ty, c: &Constraints, name: &Name) -> Ty {
         if let Ty::Option(x) = t {
             return Ty::Option(Box::new(self.wrap(x, c, name)));
@@ -284,13 +286,13 @@ pub(crate) fn json_held_by_type(types: &TypeSpace, t: &Ty, json: &Constraints, h
     }
 }
 
-/// Is `t` a Rust tuple, maybe through aliases? It holds the items of a `prefixItems` tuple by their types.
+/// Is `t` a Rust tuple, maybe through aliases? It enforces the items of a `prefixItems` tuple by their types.
 pub(crate) fn rust_tuple(types: &TypeSpace, t: &Ty, hops: usize) -> bool {
     let alias = |id: &TypeId| matches!(&types.get(*id).kind, Kind::Alias(x) if rust_tuple(types, x, hops + 1));
     matches!(t, Ty::Tuple(_)) || matches!(t, Ty::Named(id) if hops < MAX_ALIAS_HOPS && alias(id))
 }
 
-/// Does `c` hold a keyword of one kind that a `serde_json::Value` checks by its kind (`minimum`, `maxLength`,
+/// Does `c` contain a keyword of one kind that a `serde_json::Value` checks by its kind (`minimum`, `maxLength`,
 /// `required`, ...)?
 fn checked_by_kind(c: &Constraints) -> bool {
     [&c.minimum, &c.maximum, &c.exclusive_minimum, &c.exclusive_maximum, &c.multiple_of].iter().any(|b| b.is_some())
@@ -303,11 +305,11 @@ fn checked_by_kind(c: &Constraints) -> bool {
         || c.format.is_some()
 }
 
-/// Aliases followed before a value is taken to need no checks: a chain may loop.
+/// Aliases followed before a value is assumed to need no checks: a chain may loop.
 const MAX_ALIAS_HOPS: usize = 32;
 
-/// Does `c` ask something of a value of `t` that `t` does not hold? A named type holds its own keywords. A `pattern`
-/// on a format stays unchecked as on its library type.
+/// Does `c` ask something of a value of `t` that `t` does not enforce? A named type enforces its own keywords. A
+/// `pattern` on a format stays unchecked as on its library type.
 pub(crate) fn needs_checks(types: &TypeSpace, t: &Ty, c: &Constraints, hops: usize) -> bool {
     // A type of yours (`x-rust-type`) keeps its own invariants: nothing is checked for it.
     if yours(types, t) {
@@ -317,7 +319,7 @@ pub(crate) fn needs_checks(types: &TypeSpace, t: &Ty, c: &Constraints, hops: usi
         return true;
     }
     let mut json = c.json_checks();
-    // A Rust tuple holds its items by their types.
+    // A Rust tuple enforces its items by their types.
     if rust_tuple(types, t, hops) {
         json.tuple = None;
     }
@@ -357,7 +359,7 @@ pub(crate) fn needs_checks(types: &TypeSpace, t: &Ty, c: &Constraints, hops: usi
             Kind::Alias(x) if hops < MAX_ALIAS_HOPS => needs_checks(types, x, c, hops + 1),
             // The union of an implied shape (`Object` or `Array`, and `Other`): keywords of one kind beside the shape.
             Kind::Union(u) if u.rest => checked_by_kind(c),
-            // A checked type holds its own keywords: any other beside them is checked on its base.
+            // A checked type enforces its own keywords: any other beside them is checked on its base.
             Kind::Checked(own) if hops < MAX_ALIAS_HOPS && own.constraints != *c => {
                 needs_checks(types, &own.base, c, hops + 1)
             }

@@ -10,7 +10,7 @@ use std::path::Path;
 /// phase.
 const OWN: [&str; 4] = ["honig::", "cargo_honig::", "e2e::", "bench_support::"];
 
-/// Does `function` belong to one of the [`OWN`] crates? A trait method of one of their types reads `<honig::...>`.
+/// Does `function` belong to one of the [`OWN`] crates? A trait method of one of their types looks like `<honig::...>`.
 fn own(function: &str) -> bool {
     let name = function.strip_prefix('<').unwrap_or(function);
     OWN.iter().any(|c| name.starts_with(c))
@@ -39,13 +39,13 @@ pub(crate) struct Steep {
 }
 
 /// Reads the report at `path`: its total, and each function's own count.
-#[expect(clippy::disallowed_methods, reason = "reads a callgrind report")]
+#[expect(clippy::disallowed_methods, reason = "parses a callgrind report")]
 pub(crate) fn read(path: &Path) -> Option<Report> {
     let text = std::fs::read_to_string(path).ok()?;
     Some(Report { total: totals(&text)?, functions: own_costs(&text) })
 }
 
-/// Each function's own count in a callgrind report. `fn=` starts the lines of a function and `cfn=` names the one
+/// Each function's own count in a callgrind report. `fn=` starts the lines of a function and `cfn=` identifies the one
 /// it calls: both may give a name to an id, `fn=(7) name`, which later lines use alone, `fn=(7)`. A line of cost is a
 /// position and then the count. The line after `calls=` is the cost of that call, the callee's, and is left out.
 fn own_costs(text: &str) -> BTreeMap<String, u64> {
@@ -90,7 +90,7 @@ pub(crate) fn totals(report: &str) -> Option<u64> {
     report.lines().find_map(|l| l.strip_prefix("totals:"))?.split_whitespace().next()?.parse().ok()
 }
 
-/// The functions whose own cost grew faster than `limit` between two sizes in a row. `bytes` holds the input size of
+/// The functions whose own cost grew faster than `limit` between two sizes in a row. `bytes` contains the input size of
 /// each run and `reports` its reports, one per phase. Only a function with [`FLOOR`] of its phase at the largest size
 /// is judged, and only between sizes where it ran at all.
 pub(crate) fn steep(bytes: &[f64], reports: &[Vec<Report>], limit: f64) -> Vec<Steep> {

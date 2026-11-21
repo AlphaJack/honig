@@ -119,7 +119,7 @@ pub fn without_keys(v: Option<Value>, keys: &[&str]) -> Option<Value> {
 /// Parses a query parameter from decoded query pairs.
 ///
 /// # Errors
-/// A parameter that holds one value (a scalar or a delimited array or object) is sent more than once.
+/// A parameter that carries one value (a scalar or a delimited array or object) is sent more than once.
 pub fn decode_query(
     pairs: &Query<'_>,
     name: &'static str,
@@ -264,8 +264,8 @@ pub fn decode_cookie(header: Option<&str>, name: &str, style: Style, shape: Shap
 /// Creates [`from_param`] for a scalar parameter given as its decoded text. `at` is where the parameter is in the
 /// request (`/query/limit`): a violation points to it.
 ///
-/// Numbers and booleans parse straight from the text with no `Value` and no allocation. Every other target reads it as
-/// [`Coerce`] reads a JSON string.
+/// Numbers and booleans parse straight from the text with no `Value` and no allocation. Every other target decodes it
+/// as [`Coerce`] decodes a JSON string.
 pub fn from_text<T: DeserializeOwned>(v: Option<Cow<'_, str>>, at: &str) -> Result<T, Reason> {
     match v {
         None => from_param(None, at),
@@ -312,9 +312,9 @@ pub fn query_text<'q>(pairs: &'q Query<'_>, name: &str, at: &str) -> Result<Opti
     Ok(first.map(Cow::Borrowed))
 }
 
-/// Returns a parameter at `at` that holds one value but is sent more than once.
+/// Returns a parameter at `at` that carries one value but is sent more than once.
 fn repeated(at: &str) -> Reason {
-    Reason::invalid(at, "is sent more than once, but it holds one value")
+    Reason::invalid(at, "is sent more than once, but it carries one value")
 }
 
 /// Returns the trimmed text of a scalar header.
@@ -448,8 +448,8 @@ impl<'de> Deserializer<'de> for Text<'_> {
 
 /// Turns a parsed parameter into its typed value.
 ///
-/// Missing becomes `null`. That is fine for `Option` and an error for required parameters. A missing one is read
-/// strictly. The lenient [`Coerce`] would read `null` as an empty list. Then a required array would pass when it
+/// Missing becomes `null`. That is fine for `Option` and an error for required parameters. A missing one is decoded
+/// strictly. The lenient [`Coerce`] would decode `null` as an empty list. Then a required array would pass when it
 /// was not sent. `at` is where the parameter is in the request (`/query/limit`): a violation points to it.
 pub fn from_param<T: DeserializeOwned>(v: Option<Value>, at: &str) -> Result<T, Reason> {
     match v {

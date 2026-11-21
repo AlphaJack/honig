@@ -1,4 +1,4 @@
-//! A JSON object type that refuses an array. A derived serde struct reads an array too, field by field in order:
+//! A JSON object type that refuses an array. A derived serde struct decodes an array too, field by field in order:
 //! `[{}]` would become a struct whose first field is `{}`. JSON Schema's `type: object` allows no array. Generated
 //! structs decode through [`NoSeq`], which passes every call on and turns an array into an error.
 
@@ -146,7 +146,7 @@ mod tests {
     #[test]
     fn an_object_decodes_and_an_array_does_not() {
         assert_eq!(decode(r#"{"name":"lamp"}"#).unwrap(), Product { name: Some("lamp".to_owned()) });
-        // Derived serde alone reads `["lamp"]` as `name: "lamp"`.
+        // Derived serde alone decodes `["lamp"]` as `name: "lamp"`.
         assert!(serde_json::from_str::<Product>(r#"["lamp"]"#).is_ok());
         let err = decode(r#"["lamp"]"#).unwrap_err().to_string();
         assert!(err.contains("invalid type: sequence"), "{err}");

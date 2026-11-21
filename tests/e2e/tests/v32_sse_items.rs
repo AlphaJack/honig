@@ -83,7 +83,7 @@ impl api::Api for Tiles {
         p: ops::tile_batch::Params,
         _: &api::Context<'_>,
     ) -> Result<ops::tile_batch::Response, api::ApiError> {
-        // Each item is checked as it is read: a body past its limits ends in an `Err`.
+        // Each item is checked as it is decoded: a body past its limits ends in an `Err`.
         p.body.collect().await.map_err(|e| api::ApiError::new(api::http::StatusCode::BAD_REQUEST, e.to_string()))?;
         Ok(ops::tile_batch::Response::NoContent)
     }
@@ -97,8 +97,8 @@ impl api::Api for Tiles {
     }
 }
 
-/// `minItems`, `maxItems` and `uniqueItems` of a sequence hold on both sides: the server refuses a request body past
-/// them, and a client reading a response as it arrives gets an `Err` at the item past `maxItems`.
+/// `minItems`, `maxItems` and `uniqueItems` of a sequence apply on both sides: the server refuses a request body past
+/// them, and a client decoding a response as it arrives gets an `Err` at the item past `maxItems`.
 #[test]
 fn a_sequence_is_held_to_its_item_limits_on_both_sides() {
     let client = api::Client::new(api::Server::new(Tiles).into_service());
@@ -127,6 +127,7 @@ fn a_sequence_is_held_to_its_item_limits_on_both_sides() {
     assert_eq!(read.len(), 3, "{read:?}");
     assert_eq!(read[1], Ok(tile("b", 2)));
     assert!(read[2].as_ref().is_err_and(|e| e.contains("at most 2 items allowed")), "{read:?}");
-    let whole = api::block_on(client.tile_top(ops::tile_top::Params {})).expect_err("read whole, three is past two");
+    let whole =
+        api::block_on(client.tile_top(ops::tile_top::Params {})).expect_err("received whole, three is past two");
     assert!(whole.to_string().contains("at most 2 items allowed"), "{whole}");
 }

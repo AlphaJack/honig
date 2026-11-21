@@ -25,7 +25,7 @@ use super::names::{Name, unique};
 pub(crate) struct TypeId(pub usize);
 
 #[derive(Debug, Clone, PartialEq)]
-/// A type expression. It is what a value of a schema holds in terms that every target language can spell.
+/// A type expression. It is what a value of a schema contains in terms that every target language can spell.
 pub(crate) enum Ty {
     /// A boolean.
     Bool,
@@ -88,8 +88,8 @@ impl Ty {
         if matches!(self, Self::Option(_) | Self::Any | Self::Unit) { self } else { Self::Option(Box::new(self)) }
     }
 
-    /// Returns the types that this one holds directly. That is its item, value or positions or the type that it holds
-    /// by reference.
+    /// Returns the types that this one contains directly. That is its item, value or positions or the type that it
+    /// references by reference.
     pub(crate) fn children(&self) -> &[Self] {
         match self {
             Self::Vec(t) | Self::Array(t, _) | Self::Map(t) | Self::Option(t) | Self::Indirect(t) => {
@@ -147,8 +147,8 @@ impl Ty {
         }
     }
 
-    /// Does this hold its children on the heap? A `Vec`, a map and a type held by reference do. An `Option`, an
-    /// array and a tuple hold theirs by value. So a type inside one of those that contains it again needs a box.
+    /// Does this store its children on the heap? A `Vec`, a map and a type behind a reference do. An `Option`, an
+    /// array and a tuple store theirs by value. So a type inside one of those that contains it again needs a box.
     pub(crate) const fn allocates(&self) -> bool {
         matches!(self, Self::Vec(_) | Self::Map(_) | Self::Indirect(_))
     }
@@ -184,13 +184,13 @@ pub(crate) struct TypeDef {
     /// A `Newtype` carried as JSON text in a string (`contentMediaType:
     /// application/json` with `contentSchema`).
     pub json_string: bool,
-    /// A schema of `components/schemas`: one the description names. An identical one keeps its own type.
+    /// A schema of `components/schemas`: one the description declares. An identical one keeps its own type.
     pub component: bool,
     /// The keywords of the schema itself, as a value of the type meets them: with `$ref`s and `allOf` members
-    /// followed. Keywords that no type holds (`if`, `not`, `oneOf`'s one match) make it a checked type.
+    /// followed. Keywords that no type enforces (`if`, `not`, `oneOf`'s one match) make it a checked type.
     pub own: Constraints,
-    /// A response type of a lenient client (`client = { strict = false }`): an enum reads a value that it does not
-    /// list as `Other`, a closed struct reads a property that it does not declare, and a tagged union reads a tag
+    /// A response type of a lenient client (`client = { strict = false }`): an enum accepts a value that it does not
+    /// list as `Other`, a closed struct accepts a property that it does not declare, and a tagged union accepts a tag
     /// that matches no variant as `Other`. Its request copy is strict.
     pub lenient: bool,
 }
@@ -226,32 +226,33 @@ pub(crate) struct Constraints {
     pub min_properties: Option<u64>,
     /// `maxProperties`.
     pub max_properties: Option<u64>,
-    /// `{type: number, format: decimal128}`: the number is one that IEEE 754 decimal128 holds exactly.
+    /// `{type: number, format: decimal128}`: the number is one that IEEE 754 decimal128 represents exactly.
     pub decimal128: bool,
     /// Constraints of an array's items.
     pub items: Option<Box<Self>>,
-    /// `propertyNames` that a map or a struct holds: the string checks (`pattern`, `minLength`, `maxLength`) of each
+    /// `propertyNames` that a map or a struct enforces: the string checks (`pattern`, `minLength`, `maxLength`) of each
     /// name that the object has.
     pub property_names: Option<Box<Self>>,
-    /// `dependentRequired` that the struct holds: each property, by its name on the wire, with the properties that must
-    /// be present when it is. Every name is a field whose absence shows: required, or optional without a default.
+    /// `dependentRequired` that the struct enforces: each property, by its name on the wire, with the properties that
+    /// must be present when it is. Every name is a field whose absence shows: required, or optional without a default.
     pub dependent_required: Vec<(String, Vec<String>)>,
-    /// `required` of a value without `type`: the names that it must have when it is an object. A struct holds its own.
+    /// `required` of a value without `type`: the names that it must have when it is an object. A struct enforces its
+    /// own.
     pub required: Vec<String>,
-    /// `format` of a value without `type`: what it must be when it is a string. A typed string holds its own.
+    /// `format` of a value without `type`: what it must be when it is a string. A typed string enforces its own.
     pub format: Option<String>,
     /// `not` schemas that the value must fail to decode as: each an index into [`TypeSpace::subschemas`].
     pub not: Vec<usize>,
-    /// `dependentSchemas` that the struct holds: when a property is present, the value decodes as the type of its schema,
-    /// an index into [`TypeSpace::subschemas`]. Each name is a field whose absence shows.
+    /// `dependentSchemas` that the struct enforces: when a property is present, the value decodes as the type of its
+    /// schema, an index into [`TypeSpace::subschemas`]. Each name is a field whose absence shows.
     pub dependent_schemas: Vec<(String, usize)>,
-    /// `enum` whose values no Rust type holds: the value equals one of them, as JSON Schema compares values.
+    /// `enum` whose values no Rust type represents: the value equals one of them, as JSON Schema compares values.
     pub enum_values: Option<Vec<Value>>,
-    /// `const` whose value no Rust type holds.
+    /// `const` whose value no Rust type represents.
     pub const_value: Option<Value>,
-    /// `unevaluatedProperties`: what the schema evaluates of an object's names, and what the other names take.
+    /// `unevaluatedProperties`: what the schema evaluates of an object's names, and what the other names accept.
     pub unevaluated: Option<(Evaluated, Leftover)>,
-    /// `unevaluatedItems`: what the schema evaluates of a list's items, and what the other items take.
+    /// `unevaluatedItems`: what the schema evaluates of a list's items, and what the other items accept.
     pub unevaluated_items: Option<(EvaluatedItems, Leftover)>,
     /// `propertyNames` of any other schema than text checks: each name, as a JSON string, decodes as its type, an index
     /// into [`TypeSpace::subschemas`].
@@ -276,18 +277,19 @@ pub(crate) struct Constraints {
     /// `patternProperties` that generated code checks: each pattern with its schema, an index into
     /// [`TypeSpace::subschemas`]. A value of a name that the pattern matches decodes as the type of the schema.
     pub pattern_properties: Vec<(String, usize)>,
-    /// `additionalProperties` beside `patternProperties`: the declared names, and the schema that any other name that no
-    /// pattern matches decodes as, an index into [`TypeSpace::subschemas`]. `None` for `false`: such a name is refused.
+    /// `additionalProperties` beside `patternProperties`: the declared names, and the schema that any other name that
+    /// no pattern matches decodes as, an index into [`TypeSpace::subschemas`]. `None` for `false`: such a name is
+    /// refused.
     pub closed_to: Option<(Vec<String>, Option<usize>)>,
-    /// `prefixItems` and `items` of a list that no Rust tuple holds: the schema of each leading item, as an index into
-    /// [`TypeSpace::subschemas`], then what the rest take.
+    /// `prefixItems` and `items` of a list that no Rust tuple represents: the schema of each leading item, as an index
+    /// into [`TypeSpace::subschemas`], then what the rest accept.
     pub tuple: Option<(Vec<usize>, Rest)>,
-    /// Schemas that the value also decodes as, as indices into [`TypeSpace::subschemas`]: the keywords beside a
-    /// union, which hold for whichever branch matches, and the members of an `allOf` that one merged type cannot hold.
+    /// Schemas that the value also decodes as, as indices into [`TypeSpace::subschemas`]: the keywords beside a union,
+    /// which apply to whichever branch matches, and the members of an `allOf` that one merged type cannot represent.
     pub also: Vec<usize>,
 }
 
-/// What the items after `prefixItems` take: `items` beside them.
+/// What the items after `prefixItems` accept: `items` beside them.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Rest {
     /// Any value: no `items`, or `items: true`.
@@ -315,8 +317,8 @@ pub(crate) struct Evaluated {
     pub branches: Vec<(usize, bool, Self)>,
 }
 
-/// What a schema evaluates of a list's items (JSON Schema 2020-12 section 11.2): the leading ones of `prefixItems`, all of
-/// them for `items`, those that match `contains`, and those of a branch that the value matches.
+/// What a schema evaluates of a list's items (JSON Schema 2020-12 section 11.2): the leading ones of `prefixItems`, all
+/// of them for `items`, those that match `contains`, and those of a branch that the value matches.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub(crate) struct EvaluatedItems {
     /// How many leading items it evaluates.
@@ -329,7 +331,7 @@ pub(crate) struct EvaluatedItems {
     pub branches: Vec<(usize, bool, Self)>,
 }
 
-/// What the names that nothing evaluated take (`unevaluatedProperties`).
+/// What the names that nothing evaluated accept (`unevaluatedProperties`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Leftover {
     /// None at all: `false`.
@@ -377,7 +379,7 @@ impl XmlHint {
             cdata: node.as_deref() == Some("cdata"),
             inline: node.as_deref() == Some("none"),
             // `nodeType: element` on an array is its wrapper (3.2). The array may be reached through `allOf` or
-            // `$ref` and have no `items` here: only lists read `wrapped`.
+            // `$ref` and have no `items` here: only lists use `wrapped`.
             wrapped: b("wrapped") || node.as_deref() == Some("element"),
             item: schema
                 .get("items")
@@ -415,7 +417,7 @@ pub(crate) enum Kind {
 }
 
 #[derive(Debug, Clone)]
-/// A scalar that holds only the values its keywords allow.
+/// A scalar that accepts only the values its keywords allow.
 pub(crate) struct Checked {
     /// The type of the value: `String`, an integer, a float or `Decimal`.
     pub base: Ty,
@@ -445,11 +447,11 @@ pub(crate) struct Struct {
     /// `additionalProperties: false`: decoding rejects undeclared properties. Beside [`Self::patterns`], those that no
     /// pattern matches.
     pub closed: bool,
-    /// `patternProperties` that the struct holds: each pattern with the type of its schema and the keywords that the
-    /// type does not hold, as a field has them. An undeclared name goes to the map of the first pattern that matches
+    /// `patternProperties` that the struct enforces: each pattern with the type of its schema and the keywords that the
+    /// type does not enforce, as a field has them. An undeclared name goes to the map of the first pattern that matches
     /// it, and decodes as every pattern that does.
     pub patterns: Vec<(String, Ty, Constraints)>,
-    /// Beside [`Self::patterns`]: the keywords of `additionalProperties` that its type does not hold.
+    /// Beside [`Self::patterns`]: the keywords of `additionalProperties` that its type does not enforce.
     pub additional_constraints: Box<Constraints>,
 }
 
@@ -462,7 +464,7 @@ pub(crate) struct Field {
     pub wire: String,
     /// Type that is `Option` when nullable.
     pub ty: Ty,
-    /// In `required` and not read-only or write-only.
+    /// In `required` and neither `readOnly` nor `writeOnly`.
     pub required: bool,
     /// Title and description.
     pub doc: Option<String>,
@@ -483,9 +485,9 @@ pub(crate) struct Field {
     pub spec_required: bool,
     /// The own `example` and `examples` of the property as (JSON pointer, value).
     pub examples: Vec<(String, Value)>,
-    /// An optional property whose `null` reads as absent. Every optional property of a Swagger 2.0 description is one.
-    /// 2.0 has no `nullable` to say that a property may be `null`, and many 2.0 services send `null` for a property
-    /// that they leave unset. Not tri-state, because 2.0 cannot tell `null` from absent.
+    /// An optional property whose `null` decodes as absent. Every optional property of a Swagger 2.0 description is
+    /// one. 2.0 has no `nullable` to say that a property may be `null`, and many 2.0 services send `null` for a
+    /// property that they leave unset. Not tri-state, because 2.0 cannot tell `null` from absent.
     pub null_as_absent: bool,
 }
 
@@ -507,13 +509,13 @@ pub(crate) struct Union {
     pub variants: Vec<Variant>,
     /// How a value picks its variant.
     pub mode: UnionMode,
-    /// A branch takes any value (`{}` or 3.0 `{nullable: true}`). `Other` holds such a value, so it is no violation.
+    /// A branch accepts any value (`{}` or 3.0 `{nullable: true}`). `Other` stores such a value, so it is no violation.
     pub open: bool,
-    /// A value of a kind that no variant covers is valid and `Other` holds it (a schema of `properties` without
-    /// `type` takes any non-object). A value of a covered kind must fit its variant.
+    /// A value of a kind that no variant covers is valid and `Other` stores it (a schema of `properties` without
+    /// `type` accepts any non-object). A value of a covered kind must fit its variant.
     pub rest: bool,
-    /// `oneOf`: exactly one branch takes a value. An untagged union then decodes every branch and counts. `anyOf` takes
-    /// the first branch that decodes.
+    /// `oneOf`: exactly one branch accepts a value. An untagged union then decodes every branch and counts. `anyOf`
+    /// accepts the first branch that decodes.
     pub exclusive: bool,
 }
 
@@ -573,8 +575,8 @@ pub(crate) enum JsonKind {
 pub(crate) struct TypeSpace {
     /// Indexed by `TypeId`.
     pub defs: Vec<TypeDef>,
-    /// The type of each schema that a typed check decodes the value as (`not`, `dependentSchemas`), with its constraints
-    /// until `checked::wrap` makes it a type that checks them.
+    /// The type of each schema that a typed check decodes the value as (`not`, `dependentSchemas`), with its
+    /// constraints until `checked::wrap` makes it a type that checks them.
     pub subschemas: Vec<(Ty, Constraints)>,
 }
 
@@ -608,10 +610,10 @@ pub(crate) enum Format {
     /// `format: ipv6-cidr`.
     Ipv6Cidr,
     /// `{type: string, format: decimal}`: a `String` that keeps every digit and is checked as a decimal.
-    /// `rust_decimal` holds 28 significant digits and `decimal` has no limit. So no library type takes it.
+    /// `rust_decimal` stores 28 significant digits and `decimal` has no limit. So no library type fits it.
     Decimal,
-    /// `{type: string, format: decimal128}`: text checked as a decimal that IEEE 754 decimal128 holds exactly. That is
-    /// at most 34 significant digits within its exponent range.
+    /// `{type: string, format: decimal128}`: text checked as a decimal that IEEE 754 decimal128 represents exactly.
+    /// That is at most 34 significant digits within its exponent range.
     Decimal128,
     /// `format: email` (RFC 5321 Mailbox): `runtime::EmailText` (the runtime's `idn` feature).
     Email,
@@ -627,7 +629,7 @@ pub(crate) enum Format {
     Duration,
     /// `format: uri-reference` (RFC 3986): a URI or a relative reference.
     UriReference,
-    /// `format: iri` (RFC 3987): a URI that may hold non-ASCII characters.
+    /// `format: iri` (RFC 3987): a URI that may contain non-ASCII characters.
     Iri,
     /// `format: iri-reference` (RFC 3987).
     IriReference,
@@ -674,7 +676,7 @@ impl Format {
         Self::Decimal128,
     ];
 
-    /// Returns the marker in `runtime::formats::format` that checks its text. `None` for a format whose type reads
+    /// Returns the marker in `runtime::formats::format` that checks its text. `None` for a format whose type accepts
     /// only valid values: the standard library's addresses, a character, base64url bytes and `runtime::FullTime`.
     #[must_use]
     pub(crate) const fn marker(self) -> Option<&'static str> {
@@ -743,7 +745,7 @@ impl Format {
 }
 
 impl TypeSpace {
-    /// Splits request types for `readOnly` / `writeOnly` properties, and with `lenient` for what a response may hold
+    /// Splits request types for `readOnly` / `writeOnly` properties, and with `lenient` for what a response may contain
     /// past the description.
     ///
     /// Every struct with such a property and every type that reaches one
@@ -752,7 +754,7 @@ impl TypeSpace {
     /// required. The copy is the reverse. Returns the request type of each type.
     ///
     /// With `lenient` (`client = { strict = false }`) every enum, closed struct and tagged union splits too, and every
-    /// original is [`TypeDef::lenient`]: a response reads a value that the server added, and a request stays strict.
+    /// original is [`TypeDef::lenient`]: a response accepts a value that the server added, and a request stays strict.
     pub(crate) fn split_directions(&mut self, lenient: bool) -> Vec<Option<TypeId>> {
         let n = self.defs.len();
         let mut split = vec![false; n];
@@ -762,7 +764,7 @@ impl TypeSpace {
                     Kind::StrEnum(_) | Kind::IntEnum(_) => true,
                     Kind::Struct(s) => s.closed,
                     // A tag that matches no variant is a member that the server added. A union with a default variant
-                    // reads it already, and an untagged value that fits no branch may as well be broken.
+                    // decodes it already, and an untagged value that fits no branch may as well be broken.
                     Kind::Union(u) => matches!(u.mode, UnionMode::Tagged { default: None, .. }),
                     Kind::Alias(_) | Kind::Newtype(_) | Kind::Const(_) | Kind::Checked(_) | Kind::Pending => false,
                 };
@@ -868,7 +870,7 @@ impl TypeSpace {
     }
 }
 
-/// Returns the schema that the values left unevaluated take, an index into [`TypeSpace::subschemas`].
+/// Returns the schema that the values left unevaluated accept, an index into [`TypeSpace::subschemas`].
 fn leftover_schema<E>(leftover: Option<&(E, Leftover)>) -> Option<usize> {
     match leftover {
         Some((_, Leftover::Schema(i))) => Some(*i),

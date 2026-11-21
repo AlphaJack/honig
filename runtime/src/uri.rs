@@ -1,6 +1,6 @@
 //! `uri-reference`, `iri` and `iri-reference`: the grammars of RFC 3986 and RFC 3987.
 
-/// Which characters a reference may hold.
+/// Which characters a reference may contain.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Chars {
     /// ASCII only (RFC 3986).
@@ -11,9 +11,9 @@ pub(crate) enum Chars {
 
 /// `unreserved` and `sub-delims` without the letters and digits.
 const PLAIN: &str = "-._~!$&'()*+,;=";
-/// What a path holds besides `PLAIN`: `pchar`'s `:` and `@`, and the `/` between segments.
+/// What a path contains besides `PLAIN`: `pchar`'s `:` and `@`, and the `/` between segments.
 const PATH: &str = ":@/";
-/// What a query and a fragment hold besides `PLAIN`.
+/// What a query and a fragment contain besides `PLAIN`.
 const QUERY: &str = ":@/?";
 /// The digits of a percent-encoded octet.
 const PCT_DIGITS: usize = 2;
@@ -55,7 +55,7 @@ pub(crate) fn is_reference(text: &str, chars: Chars, absolute: bool) -> bool {
         let (authority, path) = after.find('/').map_or((after, ""), |end| after.split_at(end));
         return is_authority(authority, chars) && all(path, chars, PATH, false);
     }
-    // Without a scheme the first segment holds no `:`: it would read as one (`path-noscheme`).
+    // Without a scheme the first segment contains no `:`: it would parse as one (`path-noscheme`).
     let first_has_colon = rest.split('/').next().is_some_and(|s| s.contains(':'));
     (scheme.is_some() || !first_has_colon) && all(rest, chars, PATH, false)
 }
@@ -115,7 +115,7 @@ fn all(text: &str, chars: Chars, extra: &str, private: bool) -> bool {
     true
 }
 
-/// Returns a non-ASCII character that an IRI may hold anywhere.
+/// Returns a non-ASCII character that an IRI may contain anywhere.
 pub(crate) fn is_ucschar(c: char) -> bool {
     in_ranges(c, &UCSCHAR)
 }

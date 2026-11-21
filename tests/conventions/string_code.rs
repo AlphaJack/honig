@@ -1,7 +1,7 @@
 //! Generated code is built as syntax trees. Strings reach it only as escaped literals (`syntax::lit`) or
 //! validated identifiers (`syntax::ident`). They never come from parsing text into tokens. `clippy.toml` bans the `syn`
 //! and `FromStr` entry points. This test also catches `.parse::<TokenStream>()` and `parse_quote!`. clippy cannot
-//! name the first without banning every `str::parse`.
+//! ban the first without banning every `str::parse`.
 
 use syn::{
     ExprMethodCall, ExprPath, Macro,

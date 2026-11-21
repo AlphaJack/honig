@@ -3,7 +3,7 @@
 //! server for any operation, any set of credentials and any scopes, and a property test compares the two.
 //!
 //! The rules: requirements are OR of ANDs. An empty alternative (`{}`) lets an anonymous request in. A credential that
-//! the `Api` refuses is 401, also on an operation that takes anonymous requests. A missing scope is 403. An operation
+//! the `Api` refuses is 401, also on an operation that accepts anonymous requests. A missing scope is 403. An operation
 //! with `security: []` needs nothing.
 
 use std::sync::{Arc, Mutex};
@@ -63,7 +63,7 @@ enum Verdict {
 }
 
 /// The identity provider: the subject and scopes that each credential stands for. A token of one scheme is not valid
-/// for another, also when both read `Authorization: Bearer`.
+/// for another, also when both use `Authorization: Bearer`.
 ///
 /// - `bearer`: `b-<sub>`
 /// - `oauth`: `o-<scope>+<scope>`, for the client `app`

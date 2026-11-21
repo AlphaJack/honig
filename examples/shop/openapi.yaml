@@ -82,7 +82,7 @@ components:
         mapping:
           physical: '#/components/schemas/Physical'
           digital: '#/components/schemas/Digital'
-    # Each branch fixes its tag, so a value matches exactly one: `oneOf` holds whatever the discriminator says.
+    # Each branch fixes its tag, so a value matches exactly one: `oneOf` is satisfied whatever the discriminator says.
     Physical:
       type: object
       required: [kind, name]

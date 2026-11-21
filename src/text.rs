@@ -1,6 +1,6 @@
 //! Checks on text the passes share.
 
-/// Rust keywords, strict and reserved: no identifier takes one of them as it is.
+/// Rust keywords, strict and reserved: no identifier uses one of them as it is.
 pub(crate) const KEYWORDS: &[&str] = &[
     "as", "async", "await", "break", "const", "continue", "crate", "dyn", "else", "enum", "extern", "false", "fn",
     "for", "if", "impl", "in", "let", "loop", "match", "mod", "move", "mut", "pub", "ref", "return", "self", "Self",

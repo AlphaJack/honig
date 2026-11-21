@@ -52,7 +52,7 @@ impl<'de> Content<'de> {
     }
 
     /// Returns the string value of the object's member `property`: a tagged union's discriminator. From raw text it is
-    /// read without buffering the object.
+    /// parsed without buffering the object.
     #[must_use]
     pub fn tag(&self, property: &str) -> Option<Cow<'_, str>> {
         match self {
@@ -161,8 +161,8 @@ impl<'de> Content<'de> {
         }
     }
 
-    /// Returns the value as written when `d` is `serde_json` that reads a slice or a string. Otherwise it is buffered.
-    /// A union whose branches hold a `Decimal` decodes from it. So the decimal keeps its digits. Errors: `d` fails.
+    /// Returns the value as written when `d` is `serde_json` that parses a slice or a string. Otherwise it is buffered.
+    /// A union whose branches contain a `Decimal` decodes from it. So the decimal keeps its digits. Errors: `d` fails.
     pub fn exact<D: Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         d.deserialize_newtype_struct(crate::raw_value::RAW_VALUE, ExactVisitor)
     }
@@ -170,7 +170,7 @@ impl<'de> Content<'de> {
     /// Deserializes `T` from the buffered value.
     /// Errors: the value does not fit `T`.
     pub fn decode<T: Deserialize<'de>>(self) -> Result<T, serde_json::Error> {
-        // Raw text is read in place; a buffer hands its strings over.
+        // Raw text is parsed in place; a buffer hands its strings over.
         if matches!(self, Self::Raw(_)) { self.decode_ref() } else { T::deserialize(self) }
     }
 
@@ -329,7 +329,7 @@ impl<'de> Visitor<'de> for TagSeed<'_> {
 
     fn visit_map<A: MapAccess<'de>>(self, mut map: A) -> Result<Self::Value, A::Error> {
         let mut tag = None;
-        // Every member is read with the tag too. `serde_json` refuses an object left half read.
+        // Every member is decoded with the tag too. `serde_json` refuses an object left half decoded.
         while let Some(Key(k)) = map.next_key()? {
             if tag.is_none() && k == self.0 {
                 if let Content::Str(s) = map.next_value()? {
@@ -343,10 +343,11 @@ impl<'de> Visitor<'de> for TagSeed<'_> {
     }
 }
 
-/// Decodes `T` from `d`, with the JSON text that it was written as when `d` is `serde_json` reading a slice or a string.
+/// Decodes `T` from `d`, with the JSON text that it was written as when `d` is `serde_json` parsing a slice or a
+/// string.
 ///
-/// A checked type reads its checks from that text, without writing the value out for them. Any other deserializer (a
-/// form field, a multipart part, a `serde_json::Value`) reads `T` with its hints, and gives no text.
+/// A checked type runs its checks on that text, without writing the value out for them. Any other deserializer (a
+/// form field, a multipart part, a `serde_json::Value`) decodes `T` with its hints, and gives no text.
 ///
 /// # Errors
 /// The value does not decode as `T`.
@@ -358,7 +359,7 @@ pub fn read_once<'de, D: Deserializer<'de>, T: Deserialize<'de>>(d: D) -> Result
 struct ReadOnce<T>(PhantomData<T>);
 
 impl<'de, T: Deserialize<'de>> ReadOnce<T> {
-    /// Returns `T` read from `d` with no text.
+    /// Returns `T` decoded from `d` with no text.
     fn plain<D: Deserializer<'de>, E: de::Error>(d: D) -> Result<(T, Option<&'de str>), E> {
         T::deserialize(d).map(|t| (t, None)).map_err(E::custom)
     }
@@ -392,7 +393,7 @@ impl<'de, T: Deserialize<'de>> Visitor<'de> for ReadOnce<T> {
                         Err(de::Error::custom(at.map_or(message.as_str(), |(why, _)| why)))
                     }
                 },
-                // Text that `serde_json` had to copy (a reader) does not live long enough to read the checks from.
+                // Text that `serde_json` had to copy (a reader) does not live long enough to run the checks on.
                 Cow::Owned(text) => {
                     let value: Value = serde_json::from_str(&text).map_err(de::Error::custom)?;
                     Self::plain(value)
@@ -410,8 +411,8 @@ impl<'de, T: Deserialize<'de>> Visitor<'de> for ReadOnce<T> {
         T::deserialize(d).map(|t| (t, None))
     }
 
-    // A deserializer that answers the raw value with its text (a coerced form field) reads `T` from that text as it
-    // reads any value.
+    // A deserializer that answers the raw value with its text (a coerced form field) decodes `T` from that text as it
+    // decodes any value.
     fn visit_str<E: de::Error>(self, v: &str) -> Result<Self::Value, E> {
         Self::plain(crate::coerce::Coerce(Value::String(v.to_owned())))
     }
@@ -445,7 +446,7 @@ impl<'de, T: Deserialize<'de>> Visitor<'de> for ReadOnce<T> {
     }
 }
 
-/// [`Content::exact`]: `serde_json` asked for the raw text answers with a one-entry map that holds it. Any other
+/// [`Content::exact`]: `serde_json` asked for the raw text answers with a one-entry map that contains it. Any other
 /// deserializer gives the value buffered as usual.
 struct ExactVisitor;
 
@@ -618,7 +619,7 @@ impl<'de, U: TaggedUnion<'de>> Visitor<'de> for TagVisitor<U> {
     }
 }
 
-/// The rest of an object with the already-read discriminator replayed first.
+/// The rest of an object with the already-decoded discriminator replayed first.
 struct Replay<'de, A> {
     first: Option<(Cow<'de, str>, Cow<'de, str>)>,
     map: A,
@@ -910,7 +911,7 @@ impl<'de> Content<'de> {
     }
 }
 
-/// A borrowed buffer read with [`NoMatch`] errors ([`Content::matches`]).
+/// A borrowed buffer decoded with [`NoMatch`] errors ([`Content::matches`]).
 #[derive(Clone, Copy)]
 struct Probe<'a, 'de>(&'a Content<'de>);
 
@@ -983,7 +984,8 @@ impl<'de> de::IntoDeserializer<'de, NoMatch> for Probe<'_, 'de> {
     }
 }
 
-/// A buffered string, read with errors of type `E`. It is borrowed from the input when it was. Otherwise it is copied.
+/// A buffered string, decoded with errors of type `E`. It is borrowed from the input when it was. Otherwise it is
+/// copied.
 struct KeyRef<'a, 'de, E>(&'a Cow<'de, str>, PhantomData<E>);
 
 impl<'de, E: de::Error> Deserializer<'de> for KeyRef<'_, 'de, E> {
@@ -1070,7 +1072,7 @@ mod tests {
         assert_eq!((raw_kind("\"x\""), raw_kind("true"), raw_kind("null")), (Kind::String, Kind::Bool, Kind::Null));
     }
 
-    /// Which way a union was read.
+    /// Which way a union was decoded.
     #[derive(Debug, PartialEq)]
     enum Read {
         Streamed(String),

@@ -4,7 +4,7 @@
 //! `generate` writes the `features` of the `honig` dependency: the halves, the adapters that `client` and `server`
 //! list and the codecs that the descriptions call for. Only `simd` is yours to list there.
 //!
-//! Dependencies are read as cargo resolves them: a `workspace = true` entry adds the features of the workspace
+//! Dependencies come as cargo resolves them: a `workspace = true` entry adds the features of the workspace
 //! root's `[workspace.dependencies]` entry to its own.
 
 use std::collections::BTreeMap;
@@ -34,7 +34,7 @@ pub(crate) const SETTINGS: [(&str, Option<&str>, &str); 11] = [
     (
         "operations",
         Some("every one"),
-        "the only operations, by operationId, that the client calls and the server serves; the module holds only the \
+        "the only operations, by operationId, that the client calls and the server serves; the module contains only the \
          types that they reach",
     ),
     ("tests", Some("false"), "generate a test that the description's examples decode"),
@@ -77,7 +77,7 @@ pub(crate) fn init_features() -> Vec<&'static str> {
 pub(crate) struct Settings {
     /// The table as the manifest spells it, for messages: `package.metadata.honig.<module>`.
     pub table: String,
-    /// Directory holding Cargo.toml; other paths are relative to it.
+    /// Directory containing Cargo.toml; other paths are relative to it.
     pub root: PathBuf,
     /// Spec files relative to `root`: one document or several root documents to merge. A `*` in a file name
     /// matches files of that directory.
@@ -100,7 +100,7 @@ pub(crate) struct Settings {
     pub derives: Vec<(String, Vec<String>)>,
     /// `unknown_fields = "keep"`.
     pub keep_unknown: bool,
-    /// `client = { strict = false }`: response types read an enum value or a property that the description does not
+    /// `client = { strict = false }`: response types accept an enum value or a property that the description does not
     /// list. `true` unless set: requests are always strict.
     pub strict_client: bool,
     /// The crate has no library target (no `[lib]` and no `src/lib.rs`). The module is visible to the crate only.
@@ -116,7 +116,7 @@ impl Settings {
     /// Returns absolute paths of the spec files with each `*` pattern expanded in name order.
     ///
     /// # Errors
-    /// A pattern matches no file or its directory cannot be read.
+    /// A pattern matches no file or its directory cannot be listed.
     pub(crate) fn spec_paths(&self) -> Result<Vec<PathBuf>, Error> {
         let mut out = vec![];
         for spec in &self.spec {
@@ -158,7 +158,7 @@ impl Settings {
 }
 
 /// A crate's `Cargo.toml` as cargo resolves it (`cargo metadata`): its name, its dependencies with the features that
-/// `workspace = true` inherits, its targets and its workspace. Its `[package.metadata.honig.*]` tables are read as
+/// `workspace = true` inherits, its targets and its workspace. Its `[package.metadata.honig.*]` tables are parsed as
 /// written, so a message can point to the table and the key.
 #[derive(Debug, Clone, Default)]
 pub(crate) struct Manifest {
@@ -193,7 +193,7 @@ impl Manifest {
     /// Returns the manifest at `path`, as `cargo metadata` resolves it in its workspace.
     ///
     /// # Errors
-    /// The manifest cannot be read, is not valid TOML, or cargo rejects it.
+    /// The manifest cannot be opened, is not valid TOML, or cargo rejects it.
     pub(crate) fn load(path: &Path) -> Result<Self, Error> {
         let doc: DocumentMut = crate::disk::read(path)?.parse()?;
         let metadata = crate::disk::cargo_metadata(path)?;
@@ -236,7 +236,7 @@ impl Manifest {
     }
 
     /// Returns what the crate's clippy lints ask of the root of a module: `Some(false)` when `mod_module_files` is on,
-    /// `Some(true)` when `self_named_module_files` is on. The package's `[lints.clippy]` is read, or the
+    /// `Some(true)` when `self_named_module_files` is on. The package's `[lints.clippy]` is used, or the
     /// `[workspace.lints.clippy]` of the workspace root under `lints.workspace = true`.
     pub(crate) fn linted_mod_rs(&self) -> Option<bool> {
         let lints = self.doc.get("lints");
@@ -311,7 +311,8 @@ impl Manifest {
         self.deps.iter().find(|d| d.name == name)
     }
 
-    /// Returns the names of every dependency, as written and as its `package`: `x-rust-type` refers to a crate by package.
+    /// Returns the names of every dependency, as written and as its `package`: `x-rust-type` refers to a crate by
+    /// package.
     pub(crate) fn dependency_names(&self) -> Vec<String> {
         let mut out = vec![];
         for d in &self.deps {
@@ -343,10 +344,10 @@ fn matches_star(path: &Path, prefix: &str, suffix: &str) -> bool {
     })
 }
 
-/// The table that holds one table per module.
+/// The table that contains one table per module.
 const ROOT: &str = "package.metadata.honig";
 
-/// The module that `init` writes and that tests read: `[package.metadata.honig.api]`, generated into `src/api`.
+/// The module that `init` writes and that tests use: `[package.metadata.honig.api]`, generated into `src/api`.
 pub(crate) const DEFAULT_MODULE: &str = "api";
 
 /// One module: the table `[package.metadata.honig.<name>]`.
@@ -354,7 +355,7 @@ pub(crate) const DEFAULT_MODULE: &str = "api";
 pub(crate) struct Module<'a> {
     manifest: &'a Manifest,
     name: &'a str,
-    /// `None` when the manifest has no such table: every setting takes its default.
+    /// `None` when the manifest has no such table: every setting gets its default.
     table: Option<&'a dyn TableLike>,
 }
 
@@ -386,7 +387,7 @@ impl<'a> From<&'a Manifest> for Module<'a> {
 /// `[package.metadata.honig]`. A setting written there itself is an error that says where it goes.
 ///
 /// # Errors
-/// `path` has no `[package.metadata.honig]` or it holds no module. A key there is not a table. A module name is not a
+/// `path` has no `[package.metadata.honig]` or it has no module. A key there is not a table. A module name is not a
 /// Rust identifier or is a keyword.
 pub(crate) fn modules<'a>(manifest: &'a Manifest, path: &Path) -> Result<Vec<Module<'a>>, Error> {
     let table = manifest.table().ok_or_else(|| Error::NoTable(path.to_path_buf()))?;
@@ -415,7 +416,7 @@ pub(crate) fn modules<'a>(manifest: &'a Manifest, path: &Path) -> Result<Vec<Mod
         return Err(Error::Module { table: module.path(), problem });
     }
     if out.is_empty() {
-        let problem = format!("holds no module. Add [{ROOT}.{DEFAULT_MODULE}] with its `spec`");
+        let problem = format!("has no module. Add [{ROOT}.{DEFAULT_MODULE}] with its `spec`");
         return Err(Error::Module { table: ROOT.to_owned(), problem });
     }
     Ok(out)
@@ -440,7 +441,7 @@ fn shown(item: &Item) -> String {
     item.to_string().trim().to_owned()
 }
 
-/// Returns the strings of a TOML array. `None` when `item` is absent, not an array or holds anything but strings.
+/// Returns the strings of a TOML array. `None` when `item` is absent, not an array or contains anything but strings.
 fn string_array(item: Option<&Item>) -> Option<Vec<String>> {
     item?.as_array()?.iter().map(|v| v.as_str().map(str::to_owned)).collect()
 }
@@ -448,7 +449,7 @@ fn string_array(item: Option<&Item>) -> Option<Vec<String>> {
 /// Returns the settings of `module` in the manifest at `path`.
 ///
 /// # Errors
-/// It has no table or a setting holds the wrong kind of value.
+/// It has no table or a setting has the wrong kind of value.
 pub(crate) fn settings<'a>(module: impl Into<Module<'a>>, path: &Path) -> Result<Settings, Error> {
     let module = module.into();
     let root = path.parent().map(Path::to_path_buf).unwrap_or_default();
@@ -634,7 +635,7 @@ fn derives(table: &dyn TableLike, module: &str) -> Result<Vec<(String, Vec<Strin
     Ok(out)
 }
 
-/// Returns a setting of `table` holding something other than what it must.
+/// Returns a setting of `table` containing something other than what it must.
 fn setting(table: &str, key: &str, expected: impl Into<String>, found: String) -> Error {
     Error::Setting { table: table.to_owned(), key: key.to_owned(), expected: expected.into(), found }
 }
@@ -657,7 +658,7 @@ pub(crate) enum Trigger {
     Half(Side),
     /// `generate`: an adapter for the library of the same name, listed in the `adapters` of the half it serves.
     Library(Side),
-    /// `generate`: a codec or a check. The description has a body, parameter or scheme that it reads. Or it has a
+    /// `generate`: a codec or a check. The description has a body, parameter or scheme that it parses. Or it has a
     /// format that it checks and that the crate has no library type for.
     Description,
     /// You: `init` lists it.
@@ -746,7 +747,7 @@ pub(crate) enum DateLib {
     Jiff,
 }
 
-/// A type that the `formats` table names for a format: a path such as `time::OffsetDateTime`. Only a path of Rust
+/// A type that the `formats` table sets for a format: a path such as `time::OffsetDateTime`. Only a path of Rust
 /// identifiers is one.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct NamedType(String);
@@ -775,7 +776,7 @@ pub(crate) struct FormatLibs {
     pub ipnet: bool,
     /// Dates and timestamps.
     pub dates: Option<DateLib>,
-    /// The types that the table names for formats. Each wins over a library for its format.
+    /// The types that the table sets for formats. Each wins over a library for its format.
     pub named: BTreeMap<Format, NamedType>,
 }
 
@@ -783,12 +784,12 @@ const CHRONO: &str = "chrono";
 /// `jiff` (with its `serde` feature): the dates and times. Also the runtime feature of `runtime::FullTime`.
 pub(crate) const JIFF: &str = "jiff";
 
-/// Returns the library types that string formats take: the `formats` table says them. Each library that it names must
+/// Returns the library types that string formats get: the `formats` table says them. Each library that it lists must
 /// be a dependency with its `serde` feature. Without the table a dependency added for another reason would change the
 /// types of fields, so the table is required. The error prints the line that keeps what the dependencies give today.
 ///
 /// # Errors
-/// There is no table, it holds a value of the wrong kind or it refers to a library that the crate does not depend on with
+/// There is no table, it has a value of the wrong kind or it refers to a library that the crate does not depend on with
 /// `serde`.
 pub(crate) fn format_libs<'a>(module: impl Into<Module<'a>>) -> Result<FormatLibs, Error> {
     let module = module.into();
@@ -976,7 +977,7 @@ mod tests {
         assert!(error("formats = { uuid = \"not a type(\" }").contains("`uuid`"), "the error points to the key");
         assert!(error("formats = { date = 1 }").contains("the path of a type"));
         assert!(error("formats = { date = \"chrono::DateTime<chrono::Utc>\" }").contains("the path of a type"));
-        // `time` reads only valid values: no check to keep, so no type to name.
+        // `time` accepts only valid values: no check to keep, so no type to set.
         assert!(error("formats = { time = \"crate::T\" }").contains("an unknown setting"));
     }
 
@@ -999,7 +1000,7 @@ mod tests {
         assert_eq!(err("spec = \"a.yaml\""), "");
     }
 
-    /// A workspace as cargo reads it: a virtual root with `crates/*` and an excluded member. `shop` inherits `uuid`
+    /// A workspace as cargo resolves it: a virtual root with `crates/*` and an excluded member. `shop` inherits `uuid`
     /// with `serde` from the root, renames `jiff` and depends on `url` for one target only.
     #[test]
     fn cargo_resolves_the_workspace_and_its_dependencies() {
@@ -1166,7 +1167,7 @@ mod tests {
         );
         assert_eq!(
             modules_of("[package.metadata.honig]\n").unwrap_err().to_string(),
-            "[package.metadata.honig] holds no module. Add [package.metadata.honig.api] with its `spec`"
+            "[package.metadata.honig] has no module. Add [package.metadata.honig.api] with its `spec`"
         );
     }
 

@@ -107,7 +107,7 @@ const IPV6_PREFIX_DIGITS: usize = 3;
 
 /// Is `value` a CIDR block: an `address`, a `/` and a prefix length of at most `digits` ASCII digits and at most
 /// `bits`? The address is checked as `ipv4` and `ipv6` check one, which refuse a leading zero (`01.2.3.4`) and a `::`
-/// that stands for no group (`1:2:3:4:5:6:7::8`). The prefix reads as the networking libraries read it.
+/// that stands for no group (`1:2:3:4:5:6:7::8`). The prefix parses as the networking libraries parse it.
 fn cidr(value: &str, address: fn(&str) -> bool, bits: u8, digits: usize) -> bool {
     let Some((a, prefix)) = value.split_once('/') else { return false };
     address(a)
@@ -135,20 +135,20 @@ fn decimal(s: &str) -> bool {
     number(whole) && number(fraction)
 }
 
-/// The significant digits that IEEE 754 decimal128 holds.
+/// The significant digits that IEEE 754 decimal128 represents.
 const DECIMAL128_DIGITS: usize = 34;
-/// The smallest exponent of the last digit that decimal128 holds: its smallest value is `1e-6176`.
+/// The smallest exponent of the last digit that decimal128 represents: its smallest value is `1e-6176`.
 const DECIMAL128_MIN_EXPONENT: i64 = -6176;
-/// The largest exponent of the first digit that decimal128 holds: its largest values are below `1e6145`.
+/// The largest exponent of the first digit that decimal128 represents: its largest values are below `1e6145`.
 const DECIMAL128_MAX_EXPONENT: i64 = 6144;
 
-/// Checks that `s` is a decimal number that IEEE 754 decimal128 holds exactly: an optional `-`, digits with an
+/// Checks that `s` is a decimal number that IEEE 754 decimal128 represents exactly: an optional `-`, digits with an
 /// optional fraction and an optional exponent, at most 34 significant digits, within its exponent range. Zeros before
-/// the first and after the last nonzero digit are not significant: `1.50000` holds as `1.5`.
+/// the first and after the last nonzero digit are not significant: `1.50000` counts as `1.5`.
 ///
 /// # Errors
 ///
-/// Why it does not hold.
+/// Why it does not fit.
 pub(crate) fn decimal128(s: &str) -> Result<(), String> {
     let unsigned = s.strip_prefix('-').unwrap_or(s);
     let (mantissa, exponent) = unsigned.split_once(['e', 'E']).unwrap_or((unsigned, "0"));
@@ -189,7 +189,7 @@ pub(crate) fn decimal128(s: &str) -> Result<(), String> {
     Ok(())
 }
 
-/// Checks that the decimal number `text` is one that IEEE 754 decimal128 holds exactly (`format: decimal128`).
+/// Checks that the decimal number `text` is one that IEEE 754 decimal128 represents exactly (`format: decimal128`).
 pub fn check_decimal128(out: &mut Vec<Violation>, path: &InstancePath<'_>, text: &str) {
     if let Err(why) = decimal128(text) {
         violation(out, path, format!("`{text}` {why}"));
@@ -251,7 +251,7 @@ macro_rules! json_number {
     )*};
 }
 
-/// An integer as an `i128`, which holds every one.
+/// An integer as an `i128`, which fits every one.
 macro_rules! whole {
     ($t:ty) => {
         |n: $t, of: &str| crate::exact::int_is_multiple(i128::from(n), of)
@@ -324,7 +324,7 @@ pub fn check_range<T: PartialOrd + fmt::Display + Copy + JsonNumber>(
     }
 }
 
-/// Checks that the number `value` is a multiple of `of`, exactly: both are read as their decimal text.
+/// Checks that the number `value` is a multiple of `of`, exactly: both are parsed as their decimal text.
 ///
 /// An `f64` is its shortest text, the one that it decodes from. The text is in exponent form, so it fits on the stack:
 /// `1e300` is five bytes and not 301.
@@ -404,7 +404,8 @@ pub fn check_decimal_range(out: &mut Vec<Violation>, path: &InstancePath<'_>, va
 
 /// Whether two of `items` are equal as JSON Schema compares instances.
 ///
-/// The canonical JSON of each item is sorted. Then neighbours are compared. This is O(n log n). A comparison of every pair would let one request array cost O(n^2).
+/// The canonical JSON of each item is sorted. Then neighbours are compared. This is O(n log n). A comparison of every
+/// pair would let one request array cost O(n^2).
 pub fn has_duplicates<T: Serialize>(items: &[T]) -> bool {
     repeats(
         items
@@ -422,7 +423,7 @@ fn repeats(mut keys: Vec<String>) -> bool {
     keys.windows(2).any(|w| w.first() == w.last())
 }
 
-/// Returns the canonical JSON of `x`: equal for items that `uniqueItems` takes as equal. `None` when it does not
+/// Returns the canonical JSON of `x`: equal for items that `uniqueItems` treats as equal. `None` when it does not
 /// serialize.
 pub(crate) fn unique_key<T: Serialize>(x: &T) -> Option<String> {
     let v = serde_json::to_value(x).ok()?;
@@ -575,13 +576,13 @@ mod mail {
     const ADDRESS: usize = 254;
 
     /// Returns a host name with RFC 1123 labels (`hostname`) or IDNA2008 labels (`idn-hostname`). In ASCII each label
-    /// holds 1 to 63 octets of letters, digits and inner hyphens. The name holds 253 in all. A punycode label (`xn--`)
-    /// must decode to a valid one.
+    /// contains 1 to 63 octets of letters, digits and inner hyphens. The name contains 253 in all. A punycode label
+    /// (`xn--`) must decode to a valid one.
     fn hostname(value: &str, unicode: bool) -> bool {
         plain_name(value) || mapped_name(value, unicode)
     }
 
-    /// Returns a host name as [`hostname`] reads it, through UTS 46 mapping.
+    /// Returns a host name as [`hostname`] parses it, through UTS 46 mapping.
     fn mapped_name(value: &str, unicode: bool) -> bool {
         // The labels as UTS 46 maps them: `\u{3002}` separates two labels and a zero width space is dropped.
         let (mapped, mapping) = Uts46::new().to_unicode(value.as_bytes(), AsciiDenyList::STD3, Hyphens::Check);
@@ -597,9 +598,9 @@ mod mail {
     /// The most octets of a host name without its root dot.
     const NAME: usize = 253;
 
-    /// Returns a host name of plain ASCII labels that the full check accepts without reading it again: letters, digits
+    /// Returns a host name of plain ASCII labels that the full check accepts without parsing it again: letters, digits
     /// and inner hyphens, no label an A-label or with `--` where UTS 46 reserves it. UTS 46 maps such a name to itself
-    /// and lower case. Any other name takes the full check, so a `false` here refuses nothing.
+    /// and lower case. Any other name gets the full check, so a `false` here refuses nothing.
     fn plain_name(value: &str) -> bool {
         (1..=NAME).contains(&value.len())
             && value.split('.').all(|label| {
@@ -685,10 +686,10 @@ mod mail {
             )
     }
 
-    /// Returns an RFC 5321 Mailbox (`email`) or an RFC 6531 one that may hold UTF-8 (`idn-email`). It is a dot-atom or
-    /// a quoted local part, then `@`, then a host name or an address literal (`[192.0.2.1]` or `[IPv6:::1]`).
+    /// Returns an RFC 5321 Mailbox (`email`) or an RFC 6531 one that may contain UTF-8 (`idn-email`). It is a dot-atom
+    /// or a quoted local part, then `@`, then a host name or an address literal (`[192.0.2.1]` or `[IPv6:::1]`).
     fn email(value: &str, unicode: bool) -> bool {
-        // A quoted local part may hold `@`; the domain cannot.
+        // A quoted local part may contain `@`; the domain cannot.
         let Some((local, domain)) = value.rsplit_once('@') else { return false };
         (unicode || value.is_ascii())
             && local.len() <= LOCAL
@@ -795,8 +796,8 @@ mod mail {
             assert!(!email(&format!("{}@example.com", "a".repeat(65)), false), "a local part over 64 octets");
         }
 
-        /// Every name the plain path takes, the mapped path takes too: names of up to six octets of letters, digits,
-        /// hyphens and dots, and labels and names at their longest.
+        /// Every name the plain path accepts, the mapped path accepts too: names of up to six octets of letters,
+        /// digits, hyphens and dots, and labels and names at their longest.
         #[test]
         fn a_plain_name_is_one_that_mapping_takes() {
             const ALPHABET: [u8; 5] = *b"aZ0-.";
@@ -827,7 +828,7 @@ mod mail {
                     assert!(mapped_name(name, false) && mapped_name(name, true), "plain but not mapped: {name}");
                 }
             }
-            assert!(plain > 1000, "the plain path took {plain} names");
+            assert!(plain > 1000, "the plain path accepted {plain} names");
         }
 
         /// JSON Schema Test Suite, draft 2020-12, `optional/format/hostname.json` and `idn-hostname.json`.
@@ -870,7 +871,7 @@ mod mail {
             assert!(hostname("\u{30A2}\u{30FB}\u{30A2}", true) && !hostname("a\u{30FB}b", true));
         }
 
-        /// RFC 5892 section 2.1: a label holds letters, digits and marks. `xn--7a` is an inverted exclamation mark.
+        /// RFC 5892 section 2.1: a label contains letters, digits and marks. `xn--7a` is an inverted exclamation mark.
         #[test]
         fn an_idn_label_holds_letters_digits_and_marks() {
             assert!(!hostname("xn--7a", true) && !hostname("a\u{A1}b", true));
@@ -1036,13 +1037,13 @@ mod tests {
         };
         assert!(!wrong("192.168.0.0/24", "ipv4-cidr") && !wrong("0.0.0.0/0", "ipv4-cidr"));
         for octal in ["01.2.3.4/8", "192.168.000.0/24", "192.168.0.00/24"] {
-            assert!(wrong(octal, "ipv4-cidr"), "{octal}: a leading zero reads as octal in some parsers");
+            assert!(wrong(octal, "ipv4-cidr"), "{octal}: a leading zero parses as octal in some parsers");
         }
         assert!(!wrong("2001:db8::/32", "ipv6-cidr") && !wrong("::ffff:192.168.0.0/120", "ipv6-cidr"));
         for nine in ["1:2:3:4:5:6:7::8/64", "1:2:3:4::5:6:7:8/64", "::1:2:3:4:5:6:7:8/128"] {
             assert!(wrong(nine, "ipv6-cidr"), "{nine}: `::` stands for at least one group");
         }
-        // The prefix length: digits within the bits of the address, as the `ipnet` crate reads them.
+        // The prefix length: digits within the bits of the address, as the `ipnet` crate parses them.
         for (block, format, ok) in [
             ("10.0.0.0/8", "ipv4-cidr", true),
             ("10.0.0.1/8", "ipv4-cidr", true),

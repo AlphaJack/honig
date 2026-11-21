@@ -69,12 +69,12 @@ fn raw_store(part: Binary) -> String {
             parts.push(part);
             [RAW_MARK, itoa::Buffer::new().format(parts.len() - 1)].concat()
         }
-        // Outside a conversion no marker can be read back: the bytes as text.
+        // Outside a conversion no marker can be resolved back: the bytes as text.
         None => String::from_utf8_lossy(&part.bytes).into_owned(),
     })
 }
 
-/// Returns the part that a [`raw_mark`] marker names. It is a clone that shares its bytes. An untagged union may read
+/// Returns the part that a [`raw_mark`] marker names. It is a clone that shares its bytes. An untagged union may decode
 /// the same value more than once.
 pub(crate) fn raw_part(s: &str) -> Option<Binary> {
     let at: usize = s.strip_prefix(RAW_MARK)?.parse().ok()?;
@@ -278,7 +278,7 @@ mod tests {
         assert_eq!(read.bytes.as_ref(), b"hi");
     }
 
-    /// A marker read after its conversion ended refers to no part.
+    /// A marker resolved after its conversion ended refers to no part.
     #[cfg(feature = "multipart")]
     #[test]
     fn parts_are_dropped_when_the_conversion_ends() {

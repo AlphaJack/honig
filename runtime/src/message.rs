@@ -15,9 +15,9 @@ pub type Request = http::Request<Body>;
 /// An HTTP response.
 pub type Response = http::Response<Body>;
 
-/// What a request and a response share: headers read as text and a body set with its `Content-Type`.
+/// What a request and a response share: headers decoded as text and a body set with its `Content-Type`.
 pub trait Message {
-    /// Returns the first line of header `name` as text. Bytes that are not UTF-8 are read as ISO-8859-1.
+    /// Returns the first line of header `name` as text. Bytes that are not UTF-8 are decoded as ISO-8859-1.
     fn header(&self, name: &str) -> Option<Cow<'_, str>>;
 
     /// Returns the `Content-Type` header, or an empty string.
@@ -26,14 +26,14 @@ pub trait Message {
     /// Appends a header. Literal values are kept without a copy.
     ///
     /// # Errors
-    /// The name is not a header name or the value holds a line break or another control character.
+    /// The name is not a header name or the value contains a line break or another control character.
     fn set_header(&mut self, name: &str, value: impl Into<Cow<'static, str>>) -> Result<(), ClientError>;
 
     /// Sets the body and its `Content-Type`.
     fn set_body(&mut self, content_type: impl Into<Cow<'static, str>>, body: impl Into<Body>);
 }
 
-/// The head and body of a message as [`Message`] reads and writes them.
+/// The head and body of a message as [`Message`] gets and sets them.
 trait Parts {
     fn headers(&self) -> &http::HeaderMap;
     fn headers_mut(&mut self) -> &mut http::HeaderMap;
@@ -142,7 +142,7 @@ pub fn check_body_media(resp: &Response, declared: &[&str]) -> Result<(), Client
     crate::media::check_response_media(resp.status().as_u16(), resp.content_type(), body, declared)
 }
 
-/// Returns whether a response read whole, as its `head` and `body`, is one of the `declared` media types.
+/// Returns whether a response received whole, as its `head` and `body`, is one of the `declared` media types.
 ///
 /// # Errors
 /// [`ClientError::UnexpectedMedia`] with what was sent and what is declared.
@@ -155,7 +155,7 @@ pub fn content_type_of(headers: &http::HeaderMap) -> &str {
     headers.get(http::header::CONTENT_TYPE).and_then(|v| v.to_str().ok()).unwrap_or_default()
 }
 
-/// Returns the first line of header `name` as text. Bytes that are not UTF-8 are read as ISO-8859-1.
+/// Returns the first line of header `name` as text. Bytes that are not UTF-8 are decoded as ISO-8859-1.
 pub fn first_header<'h>(headers: &'h http::HeaderMap, name: &str) -> Option<Cow<'h, str>> {
     lines(headers, name).next()
 }
@@ -169,7 +169,7 @@ fn lines<'h>(headers: &'h http::HeaderMap, name: &str) -> impl Iterator<Item = C
 ///
 /// RFC 9110 section 5.3 makes
 /// `X: a` + `X: b` the same as `X: a,b` (3.2 Header Object "Representing the
-/// `Set-Cookie` Header"). So a list-valued header reads the same either way.
+/// `Set-Cookie` Header"). So a list-valued header decodes the same either way.
 /// Borrowed when there is one line. Not for `Set-Cookie` ([`header_lines`]).
 pub fn joined_header<'h>(headers: &'h http::HeaderMap, name: &str) -> Option<Cow<'h, str>> {
     let mut lines = lines(headers, name);
@@ -191,7 +191,7 @@ pub fn joined_header<'h>(headers: &'h http::HeaderMap, name: &str) -> Option<Cow
 ///
 /// `Set-Cookie` "can only use the
 /// one-value-per-line form" (RFC 9110 section 5.3 and 3.2 Header Object). The
-/// `Expires` of a cookie holds a comma. `None` when the header is absent. One
+/// `Expires` of a cookie contains a comma. `None` when the header is absent. One
 /// string for a single-valued schema. Otherwise an array.
 pub fn header_lines(headers: &http::HeaderMap, name: &str, array: bool) -> Option<Value> {
     let lines: Vec<Value> = lines(headers, name).map(|v| Value::String(v.into_owned())).collect();
@@ -217,7 +217,7 @@ pub fn base_url(url: impl Into<String>) -> String {
     url.into().trim_end_matches('/').to_owned()
 }
 
-/// Returns the path and query of `uri`: what the router reads.
+/// Returns the path and query of `uri`: what the router matches.
 pub fn path_and_query(uri: &http::Uri) -> &str {
     uri.path_and_query().map_or("/", http::uri::PathAndQuery::as_str)
 }

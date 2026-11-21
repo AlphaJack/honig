@@ -1,4 +1,4 @@
-//! The time bench of a pull request: no kind of path takes more than its `max_time` times the time of its
+//! The time bench of a pull request: no kind of path needs more than its `max_time` times the time of its
 //! hand-rolled baseline at any of `cost::BENCH_SIZES`. Both run in turn in one process, so the speed of the machine
 //! cancels out of the ratio. It needs a release build: `cargo bench -p e2e --bench time`. `tests/allocations.rs` counts
 //! allocations.
@@ -10,7 +10,7 @@ mod cost;
 
 /// Pairs of rounds, one of each side in turn. The median ratio of a pair counts: a stall moves it least.
 const ROUNDS: usize = 15;
-/// About how long one round of one side takes.
+/// About how long one round of one side lasts.
 const ROUND: Duration = Duration::from_millis(4);
 /// Measurements of a path before it fails.
 const ATTEMPTS: usize = 3;
@@ -57,7 +57,7 @@ fn main() -> std::process::ExitCode {
     failed.extend(cost::print_rows(&table, rows, Some(&mut results)));
     results.save();
     // stdout, after the table: on stderr a line lands inside it.
-    println!("took {:.1}s", started.elapsed().as_secs_f64());
+    println!("ran {:.1}s", started.elapsed().as_secs_f64());
     for f in &failed {
         println!("FAIL {f}");
     }

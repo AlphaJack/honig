@@ -40,7 +40,7 @@ pub mod upload {
     }
     runtime::response_error!(Response { Self::Created => "status 201 (Created)", });
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<(), Box<Self>> {
             match self {
                 Self::Created => Ok(()),
@@ -83,7 +83,7 @@ pub mod put_icon {
     }
     runtime::response_error!(Response { Self::NoContent => "status 204 (NoContent)", });
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<(), Box<Self>> {
             match self {
                 Self::NoContent => Ok(()),
@@ -122,7 +122,7 @@ pub mod upload_scan {
     }
     runtime::response_error!(Response { Self::NoContent => "status 204 (NoContent)", });
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<(), Box<Self>> {
             match self {
                 Self::NoContent => Ok(()),
@@ -161,7 +161,7 @@ pub mod deploy {
     }
     runtime::response_error!(Response { Self::NoContent => "status 204 (NoContent)", });
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<(), Box<Self>> {
             match self {
                 Self::NoContent => Ok(()),

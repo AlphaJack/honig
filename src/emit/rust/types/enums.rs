@@ -1,4 +1,4 @@
-//! Enums and unions: the types that hold one of several values.
+//! Enums and unions: the types that contain one of several values.
 
 use proc_macro2::TokenStream;
 use quote::quote;
@@ -53,12 +53,12 @@ pub(super) fn str_enum(items: &mut Vec<TokenStream>, def: &TypeDef, values: &[En
     });
 }
 
-/// The doc of the variant that a lenient client reads an unlisted value into.
+/// The doc of the variant that a lenient client decodes an unlisted value into.
 pub(super) const OTHER_DOC: &str =
     " A value that the description does not list: the server added it. It is sent back as it came.";
 
 /// Emits the string enum of a lenient client's response: a value that it does not list is `Other`, so a value that
-/// the server added reads instead of failing the response. Its request copy is closed.
+/// the server added decodes instead of failing the response. Its request copy is closed.
 pub(super) fn open_str_enum(items: &mut Vec<TokenStream>, def: &TypeDef, values: &[EnumValue]) {
     let n = pascal_ident(&def.name);
     let doc = doc_opt(def.doc.as_deref());
@@ -112,19 +112,20 @@ pub(super) fn open_str_enum(items: &mut Vec<TokenStream>, def: &TypeDef, values:
     });
 }
 
-/// Does the union have an `Other` variant? Only one that the schema leaves open does: a branch takes any value
+/// Does the union have an `Other` variant? Only one that the schema leaves open does: a branch accepts any value
 /// (`open`), or a kind that no variant covers is valid (`rest`).
 pub(super) const fn has_other(u: &Union) -> bool {
     u.open || u.rest
 }
 
-/// Does `Other` hold a member that the server added? Only the response type of a lenient client's tagged union does:
-/// its tag matches no variant. A union with a default variant reads an unknown tag as that variant already.
+/// Does `Other` contain a member that the server added? Only the response type of a lenient client's tagged union does:
+/// its tag matches no variant. A union with a default variant decodes an unknown tag as that variant already.
 pub(super) const fn reads_added(def: &TypeDef, u: &Union) -> bool {
     def.lenient && matches!(u.mode, UnionMode::Tagged { default: None, .. })
 }
 
-/// Returns the value that no variant of the union takes: `Other` holds it when the union has one. Else decoding fails.
+/// Returns the value that no variant of the union accepts: `Other` stores it when the union has one. Else decoding
+/// fails.
 pub(super) fn no_variant(u: &Union) -> TokenStream {
     if has_other(u) {
         quote!(Ok(Self::Other(v.into_value())))
@@ -149,8 +150,8 @@ pub(super) fn union(
     });
     let ser = union_serialize(space, aliases, u);
     let deserialize = union_deserialize_impl(space, &n, def, u);
-    // Only a union that the schema leaves open holds a value that no variant takes, or a lenient client's member that
-    // the server added. A closed one fails to decode it.
+    // Only a union that the schema leaves open stores a value that no variant accepts, or a lenient client's member
+    // that the server added. A closed one fails to decode it.
     let (other, other_ser) = if has_other(u) || reads_added(def, u) {
         (quote!(Other(serde_json::Value),), quote!(Self::Other(v) => serde::Serialize::serialize(v, s),))
     } else {
@@ -184,8 +185,8 @@ pub(super) fn union_deserialize_impl(
     u: &Union,
 ) -> TokenStream {
     let de = union_deserialize(space, def, u);
-    // A buffered number is an `f64`. So a union that holds a `Decimal` decodes from the JSON text instead. An
-    // untagged one pays one parse per branch that it tries. A tagged one reads its tag and then parses the one branch.
+    // A buffered number is an `f64`. So a union that contains a `Decimal` decodes from the JSON text instead. An
+    // untagged one pays one parse per branch that it tries. A tagged one parses its tag and then parses the one branch.
     let exact = u.variants.iter().any(|v| space.has_decimal(&v.ty));
     let property = match &u.mode {
         UnionMode::Tagged { property, .. } if !exact => property,
@@ -338,7 +339,7 @@ pub(super) fn union_deserialize(space: &Space<'_>, def: &TypeDef, u: &Union) -> 
                 None => no_variant(u),
             };
             let none = proc_macro2::Literal::usize_unsuffixed(tagged.len());
-            // A lenient client reads a tag that matches no variant as `Other`: the server added the member. A value
+            // A lenient client decodes a tag that matches no variant as `Other`: the server added the member. A value
             // without a tag still fails.
             let (added_pick, added_arm) = if reads_added(def, u) {
                 let added = proc_macro2::Literal::usize_unsuffixed(tagged.len() + 1);
@@ -373,7 +374,7 @@ pub(super) fn untagged(space: &Space<'_>, u: &Union) -> TokenStream {
         .variants
         .iter()
         .map(|v| {
-            // serde lets a struct read an array by position. So a branch of a known kind only sees values of
+            // serde lets a struct decode an array by position. So a branch of a known kind only sees values of
             // that kind.
             let kind = match space.kind_of(&v.ty) {
                 JsonKind::Object => Some(rtkind::K::Object.path()),
@@ -395,14 +396,14 @@ pub(super) fn untagged(space: &Space<'_>, u: &Union) -> TokenStream {
         let (name, g) = (fit(i), g.as_ref()?);
         Some(quote!(let #name = #g;))
     });
-    // A closed `oneOf` counts its matches: exactly one must take the value. An open one has a branch that takes any
+    // A closed `oneOf` counts its matches: exactly one must accept the value. An open one has a branch that accepts any
     // value, which its whole schema judges instead.
     let counts = u.exclusive && !u.open;
     let mut order: Vec<(usize, &crate::ir::types::Variant)> = u.variants.iter().enumerate().collect();
     order.sort_by_key(|(_, v)| pascal(&v.name));
     let tries = order.into_iter().map(|(i, v)| {
         let (name, t) = (pascal_ident(&v.name), ty(space, &v.ty, false));
-        // An open union always decodes because its `Other` takes anything. As a branch it matches only through one
+        // An open union always decodes because its `Other` accepts anything. As a branch it matches only through one
         // of its own variants. So the branches after it still get their turn. A boxed one too.
         let (inner, boxed) = if let Ty::Indirect(i) = &v.ty { (i.as_ref(), true) } else { (&v.ty, false) };
         let union = matches!(inner, Ty::Named(id) if {
@@ -443,7 +444,7 @@ pub(super) fn untagged(space: &Space<'_>, u: &Union) -> TokenStream {
             quote!({ #attempt })
         }
     });
-    // When none decodes, an open union has a branch that takes any value: `Other` holds it.
+    // When none decodes, an open union has a branch that accepts any value: `Other` stores it.
     let end = if u.open {
         quote!(Ok(Self::Other(v.into_value())))
     } else {
@@ -461,7 +462,7 @@ pub(super) fn untagged(space: &Space<'_>, u: &Union) -> TokenStream {
 }
 
 /// Returns what a `oneOf` that `counts` declares before its branches and decides after them: how many decoded and the
-/// first, which is the answer when it is the only one. Empty when it takes the first branch that decodes.
+/// first, which is the answer when it is the only one. Empty when it accepts the first branch that decodes.
 pub(super) fn counting(counts: bool) -> (TokenStream, TokenStream) {
     if !counts {
         return (TokenStream::new(), TokenStream::new());
@@ -479,7 +480,7 @@ pub(super) fn counting(counts: bool) -> (TokenStream, TokenStream) {
 }
 
 /// `runtime::fits(&v, ...)` for a struct branch: the fields that must be present and the kinds that each may have.
-/// It never refuses a value that the branch decodes: a kind that a type reads from more than one JSON kind (a
+/// It never refuses a value that the branch decodes: a kind that a type decodes from more than one JSON kind (a
 /// `Decimal`, an untyped value, an open union) is not checked, an integer may come as a number, and an optional or
 /// nullable field may be absent or `null`. `None` when there is nothing to check.
 pub(super) fn fits(space: &Space<'_>, t: &Ty) -> Option<TokenStream> {
@@ -514,8 +515,9 @@ pub(super) fn fits(space: &Space<'_>, t: &Ty) -> Option<TokenStream> {
     (!checks.is_empty()).then(|| quote!(runtime::fits(&v, &[#(#checks),*])))
 }
 
-/// Whether `t` decodes from more JSON kinds than [`TypeSpace::kind_of`](crate::ir::types::TypeSpace::kind_of) names: a `Decimal` reads a number or a string
-/// and bytes read an array or a string. Seen through options, boxes, aliases and newtypes.
+/// Whether `t` decodes from more JSON kinds than [`TypeSpace::kind_of`](crate::ir::types::TypeSpace::kind_of) names: a
+/// `Decimal` decodes from a number or a string and bytes decode from an array or a string. Seen through options, boxes,
+/// aliases and newtypes.
 pub(super) fn reads_several_kinds(space: &Space<'_>, t: &Ty, depth: usize) -> bool {
     const MAX_DEPTH: usize = 32;
     match t {
@@ -569,7 +571,7 @@ pub(super) fn by_kind(space: &Space<'_>, u: &Union) -> TokenStream {
             JsonKind::Null => vec![K::Null],
             JsonKind::Bool => vec![K::Bool],
             JsonKind::Integer => vec![K::Integer],
-            // A number variant also takes integers when no integer variant exists.
+            // A number variant also accepts integers when no integer variant exists.
             JsonKind::Number if has_integer => vec![K::Number],
             JsonKind::Number => vec![K::Integer, K::Number],
             JsonKind::String => vec![K::String],
@@ -584,8 +586,8 @@ pub(super) fn by_kind(space: &Space<'_>, u: &Union) -> TokenStream {
         covered.extend(&fresh);
         let pats = fresh.iter().map(|k| k.path());
         let c = if u.open {
-            // An open union has a branch that takes any value. A value of this kind that does not decode as the
-            // variant, which checks its keywords, is that branch's: `Other` holds it.
+            // An open union has a branch that accepts any value. A value of this kind that does not decode as the
+            // variant, which checks its keywords, is that branch's: `Other` stores it.
             let (vn, decoded) = (ident(&name), decode_ref(space, vty));
             quote!({
                 match #decoded {
@@ -643,8 +645,8 @@ pub(super) mod rtkind {
     }
 }
 
-/// Returns the message of a value that a closed enum does not list: `{other}` takes the value. Braces in the values are
-/// escaped.
+/// Returns the message of a value that a closed enum does not list: `{other}` receives the value. Braces in the values
+/// are escaped.
 pub(super) fn one_of(values: impl Iterator<Item = String>) -> String {
     let allowed = values.map(|v| format!("`{v}`")).collect::<Vec<_>>().join(", ");
     format!("`{{other}}` is not one of {}", allowed.replace('{', "{{").replace('}', "}}"))

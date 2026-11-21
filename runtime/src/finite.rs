@@ -1,4 +1,4 @@
-//! Writing numbers as JSON has them. A JSON number (RFC 8259 section 6) is finite. So an `OpenAPI` `number` holds no
+//! Writing numbers as JSON has them. A JSON number (RFC 8259 section 6) is finite. So an `OpenAPI` `number` has no
 //! `NaN` and no infinity. `serde_json` writes those as `null`, which a non-nullable field never is. Through
 //! [`Finite`] they are an error instead.
 
@@ -18,7 +18,7 @@ impl<T: Serialize + ?Sized> Serialize for Finite<'_, T> {
     }
 }
 
-/// Returns the error for a float JSON cannot hold.
+/// Returns the error for a float JSON cannot represent.
 fn not_finite<E: ser::Error>(v: impl Display) -> E {
     E::custom(format!("{v} is not a JSON number: OpenAPI numbers are finite"))
 }

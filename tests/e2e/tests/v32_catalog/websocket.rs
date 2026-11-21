@@ -11,7 +11,7 @@ use super::Catalog;
 
 // ANCHOR: websocket
 /// The API of the catalog and a WebSocket route that the description does not declare. It answers each message with
-/// how many products the catalog holds.
+/// how many products the catalog contains.
 fn with_live_updates() -> axum::Router {
     let catalog = Arc::new(Catalog::default());
     let live = {

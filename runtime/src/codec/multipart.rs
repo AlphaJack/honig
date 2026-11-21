@@ -1,4 +1,4 @@
-//! `multipart/form-data` bodies and reading the parts of any `multipart/*` body.
+//! `multipart/form-data` bodies and parsing the parts of any `multipart/*` body.
 
 use bytes::Bytes;
 use serde::Serialize;
@@ -17,7 +17,7 @@ use crate::{ClientError, base64::unbase64_mime, coerce::Coerce};
 
 pub(super) const BOUNDARY: &str = concat!(env!("CARGO_PKG_NAME"), "-boundary-7MA4YWxkTrZu0gW");
 
-/// Multipart bodies nested deeper than this are read as one part's bytes.
+/// Multipart bodies nested deeper than this are kept as one part's bytes.
 const MAX_NESTING: usize = 4;
 
 /// The media type that each multipart part goes out as when the description lists several (`encoding: {icon:
@@ -187,7 +187,7 @@ enum PartKind {
 }
 
 /// Returns the content type, bytes and [`PartKind`] of a part. A part declared
-/// `multipart/*` that holds an object or a list nests its own parts. They are
+/// `multipart/*` that contains an object or a list nests its own parts. They are
 /// named (`encoding`) or positional (`prefixEncoding` and `itemEncoding`).
 fn part_value(path: &str, x: &Value, types: &[(&str, &str)], depth: usize) -> (String, Vec<u8>, PartKind) {
     let declared = declared(types, path);
@@ -297,9 +297,9 @@ impl Part {
     }
 }
 
-/// Returns every part of a multipart body. `multer` reads `form-data` parts. Other `multipart/*` bodies are split here.
-/// Their parts may have no headers at all. Then they are `text/plain` (RFC 2046 section 5.1.1). `multer` would read the
-/// body of such a part as its headers. Errors: the body is not `form-data` with this boundary.
+/// Returns every part of a multipart body. `multer` parses `form-data` parts. Other `multipart/*` bodies are split
+/// here. Their parts may have no headers at all. Then they are `text/plain` (RFC 2046 section 5.1.1). `multer` would
+/// parse the body of such a part as its headers. Errors: the body is not `form-data` with this boundary.
 pub(super) fn parts(body: &[u8], boundary: &str, form: bool) -> Result<Vec<Part>, String> {
     let mut parts =
         if form { form_parts(body, boundary).map_err(|e| e.to_string())? } else { positional_parts(body, boundary) };
@@ -389,7 +389,7 @@ fn positional_parts(body: &[u8], boundary: &str) -> Vec<Part> {
     out
 }
 
-/// Returns the parts of a `multipart/form-data` body. `multer` reads them from a body already in memory.
+/// Returns the parts of a `multipart/form-data` body. `multer` parses them from a body already in memory.
 fn form_parts(body: &[u8], boundary: &str) -> Result<Vec<Part>, multer::Error> {
     let chunk = futures_util::stream::iter([Ok::<_, std::convert::Infallible>(Bytes::copy_from_slice(body))]);
     let mut form = multer::Multipart::new(chunk, boundary);

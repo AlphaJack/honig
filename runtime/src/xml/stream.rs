@@ -5,7 +5,7 @@
 //! Anything else makes it give up. [`super::xml_decode`] then decodes the body through those values. They also say
 //! what is wrong with a body that does not decode. Examples are an element that repeats apart from the first of its
 //! name, a `nodeType: none` object, a leaf with attributes or children and a `nil` where no `null` fits. So the two
-//! never disagree on a body. A leaf reads through the same [`XmlDe`] either way.
+//! never disagree on a body. A leaf decodes through the same [`XmlDe`] either way.
 
 use quick_xml::XmlVersion;
 use quick_xml::escape::resolve_predefined_entity;
@@ -42,7 +42,7 @@ pub(super) fn decode<T: DeserializeOwned>(text: &str, root: &'static XmlNode) ->
     }
 }
 
-/// Returns whether `name` is an element that a `nodeType: none` field of `node` holds in place, here or deeper. The
+/// Returns whether `name` is an element that a `nodeType: none` field of `node` inlines, here or deeper. The
 /// tree decodes those.
 fn inline_element(node: &XmlNode, name: &str) -> bool {
     node.fields.iter().filter(|f| f.inline).any(|f| {
@@ -54,8 +54,8 @@ fn inline_element(node: &XmlNode, name: &str) -> bool {
     })
 }
 
-/// Returns whether a `nodeType: none` field of `node` takes attributes or text of the element itself. Only the tree
-/// reads those.
+/// Returns whether a `nodeType: none` field of `node` gets attributes or text of the element itself. Only the tree
+/// decodes those.
 fn inline_takes_parent(node: &XmlNode) -> bool {
     node.fields
         .iter()
@@ -77,7 +77,7 @@ enum Ev<'a> {
     /// An element opens. `true` when it is empty (`<a/>`). Then no end follows.
     Start(BytesStart<'a>, bool),
     End,
-    /// Borrowed from the body when it holds no entity.
+    /// Borrowed from the body when it contains no entity.
     Text(Cow<'a, str>, bool),
     Eof,
 }
@@ -90,7 +90,7 @@ struct Stream<'a> {
 }
 
 impl<'a> Stream<'a> {
-    /// Returns the next event decoding reads. Comments, processing instructions, declarations and DOCTYPEs are skipped.
+    /// Returns the next event decoding uses. Comments, processing instructions, declarations and DOCTYPEs are skipped.
     fn next(&mut self) -> Result<Ev<'a>> {
         if let Some(e) = self.peeked.take() {
             return Ok(e);
@@ -211,7 +211,7 @@ fn item_role(f: &XmlField<XmlNode>) -> Role {
     f.child.map_or(Role::Text { object: false }, |c| Role::Shaped(c()))
 }
 
-/// One open element. It reads up to its end.
+/// One open element. It decodes up to its end.
 struct Element<'s, 'a> {
     s: &'s mut Stream<'a>,
     start: BytesStart<'a>,
@@ -220,7 +220,7 @@ struct Element<'s, 'a> {
 }
 
 impl<'a> Element<'_, 'a> {
-    /// Returns the text of a leaf without a copy, or the value that the tree holds for one that is not text: `null`
+    /// Returns the text of a leaf without a copy, or the value that the tree stores for one that is not text: `null`
     /// when `nil` and `{}` for the empty element of a free-form object. Attributes or children make it an object. The
     /// tree builds that.
     fn leaf_text(self, object: bool) -> Result<std::result::Result<Cow<'a, str>, Xml>> {
@@ -235,7 +235,7 @@ impl<'a> Element<'_, 'a> {
         Ok(if object && text.trim().is_empty() { Err(Xml::Obj(Vec::new())) } else { Ok(text) })
     }
 
-    /// Returns the value of a leaf as the tree would hold it.
+    /// Returns the value of a leaf as the tree would store it.
     fn leaf(self, object: bool) -> Result<Xml> {
         Ok(match self.leaf_text(object)? {
             Ok(text) => Xml::Text(text.into_owned()),
@@ -244,7 +244,7 @@ impl<'a> Element<'_, 'a> {
     }
 }
 
-/// A leaf method. The text goes through [`XmlDe`] as the tree reads it. The tree takes an element of another role.
+/// A leaf method. The text goes through [`XmlDe`] as the tree decodes it. The tree handles an element of another role.
 macro_rules! leaf {
     ($($method:ident),*) => {$(
         fn $method<V: Visitor<'de>>(self, v: V) -> Result<V::Value> {
@@ -256,7 +256,7 @@ macro_rules! leaf {
     )*};
 }
 
-/// A number leaf read from its text without a copy, as [`crate::coerce::Coerce`] reads text.
+/// A number leaf parsed from its text without a copy, as [`crate::coerce::Coerce`] parses text.
 macro_rules! number_leaf {
     ($method:ident, $visit:ident, $ty:ty, $format:literal, $ok:expr) => {
         fn $method<V: Visitor<'de>>(self, v: V) -> Result<V::Value> {
@@ -355,8 +355,8 @@ impl<'de> Deserializer<'de> for Element<'_, '_> {
         match self.role {
             Role::Shaped(node) => {
                 let (nil, attrs) = attributes(&self.start)?;
-                // The tree takes `nil` where no `null` fits, and a `nodeType: none` object that holds attributes or
-                // text of this element. Its child elements give up only where they appear: most bodies have none.
+                // The tree handles `nil` where no `null` fits, and a `nodeType: none` object that contains attributes
+                // or text of this element. Its child elements give up only where they appear: most bodies have none.
                 if nil || inline_takes_parent(node) {
                     return Err(give_up());
                 }
@@ -415,7 +415,7 @@ impl<'de> Deserializer<'de> for Element<'_, '_> {
     }
 }
 
-/// The value of a property still to read. That is one that the element held, a child element or the items of an
+/// The value of a property still to decode. That is one that the element carried, a child element or the items of an
 /// unwrapped list.
 enum Pending<'a> {
     Value(Xml),
@@ -424,13 +424,13 @@ enum Pending<'a> {
 }
 
 /// The properties of an element that its schema describes. First its attributes and then its children as they
-/// come. Then its text and the required lists that it did not hold.
+/// come. Then its text and the required lists that it did not contain.
 struct Fields<'s, 'a> {
     s: &'s mut Stream<'a>,
     node: &'static XmlNode,
     /// Properties known before the next child with the last one first.
     queue: Vec<(&'static str, Xml)>,
-    /// The element's end was read (or it was empty).
+    /// The element's end was parsed (or it was empty).
     done: bool,
     /// The properties its end decides were queued.
     ended: bool,
@@ -475,7 +475,7 @@ impl Seen {
 }
 
 impl<'a> Fields<'_, 'a> {
-    /// Returns the property that a child element is and how to read it.
+    /// Returns the property that a child element is and how to decode it.
     fn child(&self, start: BytesStart<'a>, empty: bool) -> (Cow<'static, str>, Pending<'a>) {
         let name = name_of(&start);
         for f in self.node.fields.iter().filter(|f| f.is_element()) {
@@ -495,7 +495,7 @@ impl<'a> Fields<'_, 'a> {
     }
 
     /// Queues what the end of the element decides. That is its text and the required unwrapped lists that it did not
-    /// hold.
+    /// contain.
     fn end(&mut self) {
         let mut text = Some(std::mem::take(&mut self.text));
         for f in self.node.fields {
@@ -766,8 +766,8 @@ mod tests {
         streamed
     }
 
-    /// The stream decodes what most bodies hold: `\r\n` text, an unknown element however deep before the known ones,
-    /// an attribute whose value is `true`, and nesting up to the deepest that the tree reads.
+    /// The stream decodes what most bodies contain: `\r\n` text, an unknown element however deep before the known ones,
+    /// an attribute whose value is `true`, and nesting up to the deepest that the tree decodes.
     #[test]
     fn the_stream_decodes_common_bodies_as_the_tree_does() {
         let order = |inner: &str| format!("<order id=\"1\" flag=\"true\">{inner}<note>a&#13;\r\nb</note></order>");
@@ -775,7 +775,7 @@ mod tests {
         let o: Order = agreed(&order(skipped), &ORDER).expect("streamed");
         assert_eq!(o.note.as_deref(), Some("a\r\nb"));
         let deep = |n: usize| order(&format!("{}{}", "<u>".repeat(n), "</u>".repeat(n)));
-        assert!(agreed::<Order>(&deep(super::MAX_DEPTH - 1), &ORDER).is_some(), "as deep as the tree reads");
+        assert!(agreed::<Order>(&deep(super::MAX_DEPTH - 1), &ORDER).is_some(), "as deep as the tree decodes");
         assert_eq!(decode::<Order>(&deep(super::MAX_DEPTH), &ORDER), None, "deeper: the tree says why");
     }
 
@@ -822,7 +822,7 @@ mod tests {
         note: Option<String>,
     }
 
-    /// A map keeps the last value of a name that repeats. The tree joins them, which no `String` holds.
+    /// A map keeps the last value of a name that repeats. The tree joins them, which no `String` stores.
     type Bag = std::collections::BTreeMap<String, String>;
 
     #[derive(Debug, PartialEq, Deserialize)]
@@ -831,9 +831,9 @@ mod tests {
         lines: Vec<Line>,
     }
 
-    /// The stream gives up where only the tree reads a body right: a `nil` list, an object held in place that reads
-    /// the attributes of the element or its child elements, and a name that repeats. It fills in what the end of an element decides: an
-    /// omitted nullable attribute is `null` and a required list that did not come is empty.
+    /// The stream gives up where only the tree decodes a body right: a `nil` list, an inline object that decodes the
+    /// attributes of the element or its child elements, and a name that repeats. It fills in what the end of an element
+    /// decides: an omitted nullable attribute is `null` and a required list that did not come is empty.
     #[test]
     fn the_stream_gives_up_where_only_the_tree_reads_right() {
         let nil = r#"xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance""#;

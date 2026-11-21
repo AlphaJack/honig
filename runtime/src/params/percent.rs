@@ -26,7 +26,7 @@ const RESERVED_KEPT: &AsciiSet = &COMPONENT
     .remove(b';')
     .remove(b'=');
 
-/// [`RESERVED_KEPT`] that still encodes `/`, `?` and `#`. A path value that holds
+/// [`RESERVED_KEPT`] that still encodes `/`, `?` and `#`. A path value that contains
 /// one would end its segment, its path or the URL (3.2 Path Templating: "MUST
 /// NOT contain any unescaped generic syntax characters").
 const PATH_RESERVED_KEPT: &AsciiSet = &RESERVED_KEPT.add(b'/').add(b'?').add(b'#');

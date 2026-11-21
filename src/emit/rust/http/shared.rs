@@ -149,7 +149,7 @@ pub(crate) fn wrap(b: bool, e: TokenStream) -> TokenStream {
     if b { quote!(Box::new(#e)) } else { e }
 }
 
-/// Which variants of the per-operation enums hold a `Box`.
+/// Which variants of the per-operation enums contain a `Box`.
 pub(crate) struct Boxing {
     /// Per response: is the body boxed.
     pub(crate) resp: Vec<bool>,
@@ -227,7 +227,7 @@ pub(crate) fn body_ty(space: &Space<'_>, contents: &[Content], enum_name: &str) 
     }
 }
 
-/// Does a success response hold one Rust type in every media type that it declares? Then it is that type. The server
+/// Does a success response carry one Rust type in every media type that it declares? Then it is that type. The server
 /// encodes it in the media type that `Accept` chose. Streamed and binary bodies keep a variant each. So does a
 /// response declared once in `components/responses`, whose enum the operations share.
 pub(crate) fn collapses(space: &Space<'_>, r: &Resp) -> bool {
@@ -266,7 +266,7 @@ pub(crate) fn param_start(space: &Space<'_>, p: &Param) -> TokenStream {
     spec_default(space, p).unwrap_or_else(|| quote!(None))
 }
 
-/// Returns `use super::types;` when `needed`: a module of `api` that names a generated type.
+/// Returns `use super::types;` when `needed`: a module of `api` that refers to a generated type.
 pub(crate) fn types_import(needed: bool) -> Option<TokenStream> {
     needed.then(|| {
         quote!(

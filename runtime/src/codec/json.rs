@@ -41,7 +41,7 @@ pub fn json_decode<T: DeserializeOwned>(status: Option<u16>, body: &[u8]) -> Res
     // An empty body decodes as `null` (valid for Option and unit types).
     let body = if body.iter().all(u8::is_ascii_whitespace) { b"null".as_slice() } else { body };
     // Tracking the pointer allocates per key. That doubles the cost of a large body. So only a body that fails
-    // to decode is read again with tracking to say where.
+    // to decode is decoded again with tracking to say where.
     if let Some(value) = crate::json::from_slice(body) {
         return Ok(value);
     }
@@ -70,7 +70,7 @@ pub fn expect_const<'de, D: Deserializer<'de>>(d: D, want: &Value) -> Result<(),
     if same_value(&got, want) || spelt { Ok(()) } else { Err(de::Error::custom(Mismatch { want, got: &got })) }
 }
 
-/// Is `got` the value `want` as JSON Schema compares them? Scalars compare as they are; only lists and objects take
+/// Is `got` the value `want` as JSON Schema compares them? Scalars compare as they are; only lists and objects need
 /// the canonical text of [`crate::checks::json_equal`].
 fn same_value(got: &Value, want: &Value) -> bool {
     match (got, want) {
@@ -88,7 +88,7 @@ fn same_value(got: &Value, want: &Value) -> bool {
     }
 }
 
-/// The message of a value that is not its `const`, written only when it is read: a check that asks whether a value
+/// The message of a value that is not its `const`, written only when it is used: a check that asks whether a value
 /// matches drops it unread.
 struct Mismatch<'a> {
     want: &'a Value,
@@ -111,7 +111,7 @@ pub fn json_text<T: DeserializeOwned>(text: &str) -> Result<T, serde_json::Error
 mod tests {
     use serde_json::{Value, json};
 
-    /// A `const` of a number takes the number or text that spells it. Other text is refused.
+    /// A `const` of a number accepts the number or text that spells it. Other text is refused.
     #[test]
     fn a_number_const_takes_its_spelling() {
         assert!(super::expect_const(Value::from("5"), &json!(5)).is_ok());

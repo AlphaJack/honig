@@ -1,5 +1,6 @@
-//! Builders that take every value by name: one type parameter per required value, so `build` exists once each is set.
-//! Each setter takes `impl TryInto` and keeps the first value that does not convert; `build` returns it, or the value.
+//! Builders that accept every value by name: one type parameter per required value, so `build` exists once each is set.
+//! Each setter accepts `impl TryInto` and keeps the first value that does not convert; `build` returns it, or the
+//! value.
 
 use std::fmt;
 
@@ -9,7 +10,7 @@ use crate::BuildError;
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Unset;
 
-/// A required value that a builder got. `None` when it did not convert: the builder holds the error.
+/// A required value that a builder got. `None` when it did not convert: the builder stores the error.
 #[derive(Debug, Clone)]
 pub struct Set<T>(pub Option<T>);
 
@@ -30,7 +31,7 @@ where
 }
 
 /// Writes a builder `$builder` of `$target`: one type parameter per required value, `Unset` until its setter runs.
-/// Each setter takes `impl TryInto` and keeps the first value that does not convert; `build` exists once every
+/// Each setter accepts `impl TryInto` and keeps the first value that does not convert; `build` exists once every
 /// required value is set and returns that error, or the value (through `TryFrom` into `$outer` when given, for the
 /// rules across fields).
 ///
@@ -63,7 +64,7 @@ macro_rules! typestate_builder {
         }
 
         impl $crate::typestate_builder!(@out [$($target)::+] $([$($outer)::+])?) {
-            /// Starts a builder that takes each value by name.
+            /// Starts a builder that accepts each value by name.
             pub fn builder() -> $builder {
                 $builder::new()
             }

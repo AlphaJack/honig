@@ -30,7 +30,7 @@ pub(crate) fn scalar_ref(v: &Value) -> std::borrow::Cow<'_, str> {
 }
 
 /// Returns a scalar parameter as wire text written straight from `Serialize`.
-/// `None` for null, arrays and objects. They take the `Value` path.
+/// `None` for null, arrays and objects. They use the `Value` path.
 pub(crate) fn scalar_text<T: Serialize + ?Sized>(v: &T) -> Option<String> {
     crate::finite::Finite(v).serialize(ScalarText).ok().flatten()
 }

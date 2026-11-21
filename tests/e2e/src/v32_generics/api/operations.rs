@@ -20,7 +20,7 @@ pub mod list_products {
     }
     runtime::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<types::ProductPage, Box<Self>> {
             match self {
                 Self::Ok(body) => Ok(body),
@@ -49,7 +49,7 @@ pub mod tag_tree {
     }
     runtime::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<types::StringTree, Box<Self>> {
             match self {
                 Self::Ok(body) => Ok(body),
@@ -78,7 +78,7 @@ pub mod any_page {
     }
     runtime::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<types::Page, Box<Self>> {
             match self {
                 Self::Ok(body) => Ok(body),

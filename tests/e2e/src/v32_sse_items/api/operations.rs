@@ -20,7 +20,7 @@ pub mod tile_stream {
     }
     runtime::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<runtime::Items<types::TileEvent>, Box<Self>> {
             match self {
                 Self::Ok(body) => Ok(body),
@@ -49,7 +49,7 @@ pub mod tile_lines {
     }
     runtime::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<runtime::Items<types::TileEvent>, Box<Self>> {
             match self {
                 Self::Ok(body) => Ok(body),
@@ -78,7 +78,7 @@ pub mod tile_updates {
     }
     runtime::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(
             self,
         ) -> Result<runtime::Items<types::TileUpdatesOkItem>, Box<Self>> {
@@ -108,7 +108,7 @@ pub mod chat_stream {
     }
     runtime::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(
             self,
         ) -> Result<
@@ -151,7 +151,7 @@ pub mod tile_batch {
     }
     runtime::response_error!(Response { Self::NoContent => "status 204 (NoContent)", });
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<(), Box<Self>> {
             match self {
                 Self::NoContent => Ok(()),
@@ -180,7 +180,7 @@ pub mod tile_top {
     }
     runtime::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<runtime::Items<types::TileEvent>, Box<Self>> {
             match self {
                 Self::Ok(body) => Ok(body),

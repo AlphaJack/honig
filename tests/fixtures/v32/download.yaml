@@ -29,7 +29,7 @@ paths:
       operationId: getManifest
       responses:
         "200":
-          description: The files the export holds.
+          description: The files the export contains.
           headers:
             ETag: {schema: {type: string}}
             Last-Modified: {schema: {type: string}}

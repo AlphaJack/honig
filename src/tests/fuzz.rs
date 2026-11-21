@@ -16,7 +16,7 @@
 //!   property, `unevaluatedProperties`, `const`, bounded and unique arrays, recursive unions, every format, and random
 //!   generator options
 //!
-//! The generator reads its choices from a list of numbers that proptest draws. A failing API shrinks with that list.
+//! The generator draws its choices from a list of numbers that proptest draws. A failing API shrinks with that list.
 //! Every choice moves toward zero, the smallest one (one schema, one operation, no option). `PROPTEST_CASES` runs more.
 
 use proptest::prelude::*;
@@ -355,7 +355,7 @@ fn gen_api(choices: &[u64], profile: Profile) -> Api {
     Api { schemas, ops, schemes, opts }
 }
 
-/// A JSON-like `anyOf` of text or an array of itself, and a `oneOf` tree whose branch holds its own children.
+/// A JSON-like `anyOf` of text or an array of itself, and a `oneOf` tree whose branch contains its own children.
 fn recursive_unions(r: &mut Rng<'_>, mut schemas: Vec<Named>) -> Vec<Named> {
     if r.chance(50) {
         let me = schemas.len();
@@ -1025,7 +1025,7 @@ fn check(choices: &[u64], profile: Profile) -> Result<(), String> {
     Ok(())
 }
 
-/// The most choices one API takes: more are never read.
+/// The most choices one API uses: more are never drawn.
 const CHOICES: usize = 1024;
 
 fn choices() -> impl Strategy<Value = Vec<u64>> {

@@ -1,7 +1,7 @@
 //! Conditional requests (RFC 9110 section 13).
 //!
 //! Some `GET` and `HEAD` requests get `304 Not Modified`. Their success response carries an `ETag` or a
-//! `Last-Modified`. The `If-None-Match` or `If-Modified-Since` of the request says that the client already holds it.
+//! `Last-Modified`. The `If-None-Match` or `If-Modified-Since` of the request says that the client already has it.
 //! A handler that will change a resource first checks `If-Match`, `If-Unmodified-Since` and `If-None-Match` with
 //! [`Context::preconditions`]. It refuses with `412 Precondition Failed`.
 
@@ -34,7 +34,7 @@ impl<C, Id> Context<'_, C, Id> {
     /// carries.
     ///
     /// # Errors
-    /// `412 Precondition Failed` in the error schema of the description when a condition does not hold.
+    /// `412 Precondition Failed` in the error schema of the description when a condition is false.
     pub fn preconditions(&self, current: Option<CacheValidators<'_>>) -> Result<(), ApiError> {
         let header = |name| joined_header(self.request.headers(), name);
         let etag = current.and_then(|c| c.etag);
@@ -83,7 +83,7 @@ impl Conditions {
         }
     }
 
-    /// Returns the response or `304 Not Modified` when it is a success that the client already holds.
+    /// Returns the response or `304 Not Modified` when it is a success that the client already has.
     pub(crate) fn answer(self, resp: Response) -> Response {
         if (self.if_none_match.is_none() && self.if_modified_since.is_none()) || !resp.status().is_success() {
             return resp;
@@ -104,8 +104,8 @@ impl Conditions {
 }
 
 /// Returns `304 Not Modified` for a response. It has the headers without the body and without the metadata that
-/// describes the body. A 304 must not send those (RFC 9110 section 15.4.5). `Content-Location` stays because it names
-/// the representation.
+/// describes the body. A 304 must not send those (RFC 9110 section 15.4.5). `Content-Location` stays because it
+/// identifies the representation.
 fn not_modified(resp: Response) -> Response {
     let (mut head, _) = resp.into_parts();
     let names: Vec<http::HeaderName> = head.headers.keys().cloned().collect();
@@ -156,8 +156,8 @@ fn weak(a: Tag<'_>, b: Tag<'_>) -> bool {
     a.opaque == b.opaque
 }
 
-/// Returns the entity tags of a comma-separated list up to the first malformed one. An opaque tag may hold a comma. So
-/// the list is read tag by tag and not split.
+/// Returns the entity tags of a comma-separated list up to the first malformed one. An opaque tag may contain a comma.
+/// So the list is parsed tag by tag and not split.
 fn tags(list: &str) -> impl Iterator<Item = Tag<'_>> {
     let mut rest = list;
     std::iter::from_fn(move || {
@@ -178,7 +178,7 @@ fn tags(list: &str) -> impl Iterator<Item = Tag<'_>> {
     })
 }
 
-/// The first byte of obs-text. An entity tag may hold it (RFC 9110 section 5.5).
+/// The first byte of obs-text. An entity tag may contain it (RFC 9110 section 5.5).
 const OBS_TEXT: u8 = 0x80;
 
 /// The last day of the longest month.

@@ -1,7 +1,7 @@
-# A test that hangs fails instead of holding up the run.
+# A test that hangs fails instead of blocking the run.
 [profile.default]
 slow-timeout = { period = "20s", terminate-after = 3 }
-# No test leaves a child process behind. On a busy machine the pipes of a test that has exited can still take more
+# No test leaves a child process behind. On a busy machine the pipes of a test that has exited can still need more
 # than the default 200ms to close. nextest then flags it as leaky.
 leak-timeout = "1s"
 

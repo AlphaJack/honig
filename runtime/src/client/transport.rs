@@ -13,10 +13,10 @@ type BoxError = Box<dyn std::error::Error + Send + Sync>;
 
 /// What a generated client sends through: any tower `Service` of `http` requests.
 ///
-/// It is a bound, not a trait to implement. Write a `Service`, or take `tower::service_fn`, a server's
+/// It is a bound, not a trait to implement. Write a `Service`, or use `tower::service_fn`, a server's
 /// `into_service()` or an adapter such as `ReqwestTransport`.
 ///
-/// The response body may stream. A client reads it whole when the operation does not stream. The service is cloned
+/// The response body may stream. A client collects it whole when the operation does not stream. The service is cloned
 /// for each request as tower's `oneshot` does. It is `Send` natively but not on `wasm32`.
 pub trait Transport:
     Service<Request, Response = Response, Error: Into<BoxError>, Future: MaybeSend>
@@ -55,7 +55,7 @@ pub fn send_streaming<T: Transport>(
     }
 }
 
-/// Sends `req` through a clone of `transport` and reads the response body whole.
+/// Sends `req` through a clone of `transport` and collects the response body whole.
 pub fn send<T: Transport>(
     transport: &T,
     req: Request,
@@ -70,7 +70,7 @@ pub fn send<T: Transport>(
 
 /// The parameters of a generated client method, owned or borrowed.
 ///
-/// `client.op(params)` moves them. `client.op(&params)` lends them. A borrowed body that the client only reads (JSON,
+/// `client.op(params)` moves them. `client.op(&params)` lends them. A borrowed body that the client only borrows (JSON,
 /// XML, a form or multipart) is encoded from the reference. A body that it sends as it is (bytes, text or a stream) is
 /// cloned as the caller would have done.
 pub trait IntoArg<'a, T: Clone> {

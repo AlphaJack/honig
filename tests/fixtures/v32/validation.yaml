@@ -124,17 +124,17 @@ components:
       allOf:
         - {$ref: '#/components/schemas/Stamp'}
         - {type: object, required: [at], properties: {at: {type: string, maxLength: 5}}}
-    # `oneOf` of two strings: exactly one branch may take a value.
+    # `oneOf` of two strings: exactly one branch may accept a value.
     Code:
       oneOf: [{type: string, maxLength: 3}, {type: string, pattern: '^[a-z]+$'}]
-    # A decimal keeps its digits: its range and `multipleOf` hold on them, past what an `f64` tells apart.
+    # A decimal keeps its digits: its range and `multipleOf` apply to them, past what an `f64` tells apart.
     Exact:
       type: object
       properties:
         tenth: {type: number, format: decimal, minimum: 0.1}
         cents: {type: number, format: decimal, multipleOf: 0.01}
     # Integer keywords checked exactly. A bound that no value of the type meets leaves none, and `multipleOf: 2.5`
-    # takes the integers that are multiples of 5.
+    # accepts the integers that are multiples of 5.
     Degenerate:
       type: object
       properties:
@@ -228,9 +228,9 @@ components:
         insured: {type: boolean}
         insurer: {type: string}
         options: {$ref: '#/components/schemas/NoOptions'}
-        # No `type`: `minimum` still holds for a number.
+        # No `type`: `minimum` still applies to a number.
         rating: {minimum: 1}
-        # No `type`: the properties hold for an object, and any other value is valid.
+        # No `type`: the properties apply to an object, and any other value is valid.
         meta: {properties: {count: {type: integer}}}
         # A default fills in a field left out. One that its own schema refused would fail the test of the examples.
         label: {type: string, minLength: 4, default: none}
@@ -285,7 +285,7 @@ components:
         card: [cvc, holder]
 
     # `propertyNames` that checks only text: a check of each name, with no schema checked whole. A map component is an
-    # alias: its keywords hold where it is used, as `minProperties` does.
+    # alias: its keywords apply where it is used, as `minProperties` does.
     Labelled:
       type: object
       properties:
@@ -336,7 +336,7 @@ components:
     Price:
       type: object
       properties:
-        # A multiple a binary float cannot hold exactly: 0.07 / 0.01 is 7.000000000000001.
+        # A multiple a binary float cannot represent exactly: 0.07 / 0.01 is 7.000000000000001.
         amount: {type: number, multipleOf: 0.01}
         # `null` alone: the only value it allows.
         retired: {type: 'null'}
@@ -362,12 +362,12 @@ components:
           type: object
           maxProperties: 2
           additionalProperties: {type: string}
-        # The bounds of a branch hold for the value that it takes: a loyalty level or a tier code.
+        # The bounds of a branch apply to the value that it accepts: a loyalty level or a tier code.
         loyalty:
           oneOf:
             - {type: integer, minimum: 1, maximum: 10}
             - {type: string, maxLength: 3}
-        # The bounds of the one branch beside `null` hold too.
+        # The bounds of the one branch beside `null` apply too.
         note:
           anyOf:
             - {type: string, maxLength: 5}

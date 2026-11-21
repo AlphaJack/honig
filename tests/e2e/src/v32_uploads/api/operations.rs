@@ -7,7 +7,7 @@ pub mod put_file {
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct Params {
         pub name: String,
-        /// Reaches the handler as it arrives, never held whole.
+        /// Reaches the handler as it arrives, never buffered whole.
         pub body: runtime::Blob,
     }
     impl Params {
@@ -30,7 +30,7 @@ pub mod put_file {
     }
     runtime::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<types::PutFileOk, Box<Self>> {
             match self {
                 Self::Ok(body) => Ok(body),

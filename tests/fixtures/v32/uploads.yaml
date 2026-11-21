@@ -7,7 +7,7 @@ paths:
       parameters:
         - {name: name, in: path, required: true, schema: {type: string}}
       requestBody:
-        description: Reaches the handler as it arrives, never held whole.
+        description: Reaches the handler as it arrives, never buffered whole.
         required: true
         content:
           application/octet-stream:

@@ -267,7 +267,7 @@ fn encode_cookie_value(out: &mut Vec<String>, name: &str, v: &Value, enc: Enc, o
 /// Sets the `Cookie` header from `name=value` pairs.
 ///
 /// # Errors
-/// A pair holds a line break or another control character.
+/// A pair contains a line break or another control character.
 pub fn set_cookies(req: &mut Request, pairs: Vec<String>) -> Result<(), ClientError> {
     let mut joined = String::new();
     for p in pairs {

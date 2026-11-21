@@ -65,9 +65,9 @@ pub struct XmlField<N: 'static> {
     pub cdata: bool,
     /// No element of its own: an object's fields sit in the parent (3.2 `nodeType: none`).
     pub inline: bool,
-    /// The property may be `null`: an omitted attribute reads as `null` (3.2 "Handling `null` Values").
+    /// The property may be `null`: an omitted attribute decodes as `null` (3.2 "Handling `null` Values").
     pub nullable: bool,
-    /// A free-form object (a map): an empty element reads as `{}`.
+    /// A free-form object (a map): an empty element decodes as `{}`.
     pub object: bool,
 }
 
@@ -118,7 +118,7 @@ pub(crate) fn xml_fields(v: &Value) -> String {
     encode::fields(v)
 }
 
-/// Returns a multipart part declared `application/xml` that holds an object or a list. An example is `addresses` as
+/// Returns a multipart part declared `application/xml` that contains an object or a list. An example is `addresses` as
 /// `application/xml; charset=utf-8` in 3.2 "Multipart Form with Encoding Objects". It is one document. Its root has
 /// the name of the part.
 #[cfg(feature = "multipart")]
@@ -137,7 +137,7 @@ pub(crate) fn xml_fields_value(text: &str) -> Result<Value, String> {
 }
 
 /// What an element becomes once it closes. The shape of its parent tells this when it opens. The decoder converts
-/// each element as it closes. So the body is never held as a tree of raw elements and as its value too.
+/// each element as it closes. So the body is never stored as a tree of raw elements and as its value too.
 #[derive(Clone, Copy)]
 pub(crate) enum Role {
     /// An element its schema describes.
@@ -148,7 +148,7 @@ pub(crate) enum Role {
     Wrapper(&'static XmlField<XmlNode>),
 }
 
-/// An element still open: what it has read so far. Names are local (prefixes dropped).
+/// An element still open: what it has parsed so far. Names are local (prefixes dropped).
 struct Open {
     name: String,
     role: Role,
@@ -163,7 +163,7 @@ struct Open {
 }
 
 /// Returns the role of a child named `name`. It comes from the shape of its parent and the children that it already
-/// holds. A field takes the first element of its name because fields go in document order. A second one is an element
+/// contains. A field gets the first element of its name because fields go in document order. A second one is an element
 /// that no schema describes.
 fn role_in(node: &'static XmlNode, name: &str, held: &[(String, Xml)]) -> Role {
     let shaped = |f: &XmlField<XmlNode>| f.child.map_or(Role::Unshaped, |c| Role::Shaped(c()));
@@ -244,7 +244,7 @@ fn element_value(v: Xml, f: &XmlField<XmlNode>) -> Xml {
 }
 
 /// Returns the JSON model of an element that its schema describes. It comes from its converted children. A child leaves
-/// the list when a field takes it. The ones left over are kept by name.
+/// the list when a field claims it. The ones left over are kept by name.
 fn shaped(
     node: &XmlNode,
     mut attrs: Vec<(String, String)>,
@@ -409,8 +409,8 @@ pub(crate) fn parse(text: &str, root: Role) -> Result<Xml, String> {
 }
 
 /// A decoded XML element before it becomes its type. It is much smaller than a `serde_json::Value`, where each object
-/// holds a map and every key is an allocation. Here the property names of a schema are borrowed and an object is a list
-/// of its properties.
+/// contains a map and every key is an allocation. Here the property names of a schema are borrowed and an object is a
+/// list of its properties.
 #[derive(Debug)]
 pub(crate) enum Xml {
     Null,
@@ -420,7 +420,7 @@ pub(crate) enum Xml {
 }
 
 impl Xml {
-    /// Returns the same value as a `serde_json::Value`: what a deserializer reads where `Xml` has no shortcut.
+    /// Returns the same value as a `serde_json::Value`: what a deserializer decodes where `Xml` has no shortcut.
     pub(crate) fn into_value(self) -> Value {
         match self {
             Self::Null => Value::Null,

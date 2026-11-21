@@ -71,7 +71,7 @@ pub enum KeyIn {
     Header,
     /// In the query string.
     Query,
-    /// In a cookie: the server reads it with the `cookie` feature.
+    /// In a cookie: the server parses it with the `cookie` feature.
     #[cfg(feature = "cookie")]
     Cookie,
 }
@@ -97,7 +97,7 @@ pub type Requirement = (Scheme, &'static [&'static str]);
 /// Adds `pair` to the `Cookie` header of `req`.
 ///
 /// # Errors
-/// The pair holds a line break or another control character.
+/// The pair contains a line break or another control character.
 pub(crate) fn add_cookie(req: &mut Request, pair: &str) -> Result<(), ClientError> {
     let headers = req.headers_mut();
     let value = match headers.get(http::header::COOKIE).and_then(|v| v.to_str().ok()) {

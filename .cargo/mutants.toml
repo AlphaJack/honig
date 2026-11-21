@@ -8,7 +8,7 @@ examine_globs = ["src/**", "runtime/src/**"]
 # Mutants go to the shards one by one. Then the shards finish together.
 sharding = "round-robin"
 
-# A mutant whose build takes three times the unmutated one is stopped. Such a build does not end: a loop in a
+# A mutant whose build lasts three times as long as the unmutated one is stopped. Such a build does not end: a loop in a
 # `const fn` that never stops runs at compile time.
 build_timeout_multiplier = 3.0
 
@@ -31,7 +31,7 @@ exclude_re = [
   '>::expecting -> ',
   # A hint: callers must work with any value.
   '::size_hint -> Option<usize>',
-  # Forwards to the wrapped serializer. No format of the runtime reads it.
+  # Forwards to the wrapped serializer. No format of the runtime uses it.
   'runtime/src/(finite|path|integral|no_seq)\.rs:.*is_human_readable',
   'runtime/src/path\.rs:\d+:\d+: replace <impl de::VariantAccess<.*>::unit_variant -> ',
   # Needs a server on the network. The build without `remote-refs` is not mutated.
@@ -46,7 +46,7 @@ exclude_re = [
   'runtime/src/stream\.rs:\d+:\d+: replace (/ with \*|> with <|> with >=) in Decoder<T>::poll_item$',
   # One more item in a piece of a streamed body. The bytes are the same.
   'runtime/src/stream\.rs:319:\d+: replace < with <= in ',
-  # Three bytes hold no whole event: waiting for a fourth changes nothing.
+  # Three bytes contain no whole event: waiting for a fourth changes nothing.
   'runtime/src/stream\.rs:872:\d+: replace < with <= in ',
   # `eol + 1` and `eol * 1`: past the line break either way.
   'runtime/src/stream\.rs:(930:34|948:37): replace \+ with \* in ',
@@ -74,12 +74,12 @@ exclude_re = [
   'runtime/src/xml_tree/encode\.rs:\d+:\d+: replace > with >= in after$',
   # One text field per shape: the text is written in order or not streamed, with the same bytes.
   'runtime/src/xml_tree/encode\.rs:421:42: delete ! in ',
-  # An object held in place writes neither its attributes nor the properties that its shape does not list.
+  # An inline object writes neither its attributes nor the properties that its shape does not list.
   'runtime/src/xml_tree/encode\.rs:\d+:\d+: replace match guard self\.inline( && f\.attribute)? with false in ',
   # `Ok(())` already, and a stop that no caller writes out.
   'runtime/src/xml_tree/encode\.rs:\d+:\d+: replace <impl SerializeSeq for Items<.*>::end -> Result with Ok\(Default',
   'runtime/src/xml_tree/encode\.rs:\d+:\d+: replace <impl fmt::Display for Stop>::fmt ',
-  # CDATA without a `\r` has nothing to normalize: the owned copy holds the same text.
+  # CDATA without a `\r` has nothing to normalize: the owned copy contains the same text.
   'runtime/src/xml/stream\.rs:\d+:\d+: replace match guard c\.contains\(.\\r.\) with true in ',
   # A shape of 128 fields or more: none is that big.
   'runtime/src/xml/stream\.rs:\d+:\d+: replace < with <= in Seen::bit$',

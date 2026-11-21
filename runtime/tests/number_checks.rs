@@ -62,7 +62,7 @@ fn a_decimal_range_allocates_nothing() {
     assert!(out.is_empty(), "{out:?}");
 }
 
-/// A value off by the last digit is still refused: the text that the check reads is the whole value.
+/// A value off by the last digit is still refused: the text that the check parses is the whole value.
 #[test]
 fn a_value_that_is_no_multiple_fails() {
     let mut out = Vec::new();

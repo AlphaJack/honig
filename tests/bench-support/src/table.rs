@@ -68,7 +68,7 @@ const UNITS: [&str; 4] = ["B", "KiB", "MiB", "GiB"];
 /// The step between two [`UNITS`].
 const STEP: usize = 1024;
 
-/// Returns `bytes` in the largest unit that holds it whole: `256B`, `16KiB`, `1MiB`.
+/// Returns `bytes` in the largest unit that fits it whole: `256B`, `16KiB`, `1MiB`.
 #[must_use]
 pub fn size(bytes: usize) -> String {
     let mut n = bytes;
@@ -82,7 +82,7 @@ pub fn size(bytes: usize) -> String {
     format!("{n}{name}")
 }
 
-/// Returns `bytes` in KiB, a number alone for a column whose header names the unit: `0.25`, `16`, `32768`.
+/// Returns `bytes` in KiB, a number alone for a column whose header states the unit: `0.25`, `16`, `32768`.
 #[must_use]
 pub fn kib(bytes: usize) -> String {
     let whole = bytes / STEP;

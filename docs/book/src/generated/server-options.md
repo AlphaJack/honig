@@ -10,21 +10,21 @@ too. Their `BoxError` becomes a `503`.
 
 ### `max_body_bytes`
 
-Sets the largest request body in bytes that the server reads. Larger ones get `413`. Default: 16 MiB.
+Sets the largest request body in bytes that the server buffers. Larger ones get `413`. Default: 16 MiB.
 
 The limit is a setting of the server and not a layer outside it, such as `RequestBodyLimitLayer` of
 tower-http:
 
-- The server reads the body itself to decode it. It holds the body in memory. So it needs a limit even with
+- The server buffers the body itself to decode it. It keeps the body in memory. So it needs a limit even with
   no layer around it.
-- A streamed `Blob` fails the chunk that goes past the limit. The handler gets that error, and `?`
-  answers `413` in the error schema of the description.
-- `read_body` in a layer reads up to the same limit. A layer that checks a signature over the body and the
+- A streamed `Blob` fails the chunk that goes past the limit. The handler gets that error, and
+  `?` answers `413` in the error schema of the description.
+- `read_body` in a layer buffers up to the same limit. A layer that checks a signature over the body and the
   operation that decodes it agree on one number.
 
-A layer outside can only lower the limit. It refuses a request early when its `Content-Length` is too large.
-Its answer then has its own body: map it through `ErrorResponses::response`. A body without `Content-Length` fails
-while the server reads it. The server sees a broken body and answers `400`, not `413`.
+A layer outside can only lower the limit. It refuses a request early when its `Content-Length` is too large. Its
+answer then has its own body: map it through `ErrorResponses::response`. A body without `Content-Length` fails
+while the server receives it. The server sees a broken body and answers `400`, not `413`.
 
 ### `error_response`
 

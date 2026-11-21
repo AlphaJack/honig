@@ -63,7 +63,7 @@ impl<'ast> Visit<'ast> for Systems {
         }
     }
 
-    /// `use wasm as imp;` names the file picked.
+    /// `use wasm as imp;` refers to the file picked.
     fn visit_item_use(&mut self, item: &'ast ItemUse) {
         if !matches!(item.tree, UseTree::Rename(_)) {
             visit::visit_item_use(self, item);

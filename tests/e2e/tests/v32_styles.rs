@@ -1,6 +1,6 @@
 //! OpenAPI 3.2 section 4.12.6 "Style Examples" row by row. The generated client
 //! writes exactly the serialization that the spec shows. The generated server
-//! reads that exact text back to the same value.
+//! decodes that exact text back to the same value.
 //!
 //! `color` is `"blue"`, `["blue", "black", "brown"]` or `{R: 100, G: 200, B: 150}`.
 

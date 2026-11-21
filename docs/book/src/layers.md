@@ -1,6 +1,6 @@
 # Layers
 
-Two places take tower layers. The rustdoc of `Server::operation_layer` compares them:
+Two places accept tower layers. The rustdoc of `Server::operation_layer` compares them:
 
 {{#include generated/operation-layer.md}}
 
@@ -14,7 +14,7 @@ Layers inside the server answer in the error schema. Timeouts, load shedding and
 
 ## Rate limits
 
-OpenAPI cannot express a rate limit. Enforce one with tower's `AsyncFilterLayer`. It runs before the body is read. The request's extensions hold the operation and the principal. An `ApiError` it returns goes out in the error schema:
+OpenAPI cannot express a rate limit. Enforce one with tower's `AsyncFilterLayer`. It runs before the body is consumed. The request's extensions contain the operation and the principal. An `ApiError` it returns goes out in the error schema:
 
 ```rust
 {{#include ../../../tests/e2e/tests/v32_catalog/layers.rs:rate-limit}}
@@ -28,7 +28,7 @@ OpenAPI cannot express a rate limit. Enforce one with tower's `AsyncFilterLayer`
 
 ## A layer for any API
 
-A plain tower `Layer` fits any honig server. Its service takes `honig::Request` and identifies the operation by the `MatchedOperation` in the extensions:
+A plain tower `Layer` fits any honig server. Its service accepts `honig::Request` and identifies the operation by the `MatchedOperation` in the extensions:
 
 ```rust
 {{#include ../../../tests/e2e/tests/v32_catalog/layers.rs:any-api}}

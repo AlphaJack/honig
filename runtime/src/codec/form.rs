@@ -110,7 +110,7 @@ pub fn form_encode_with<T: Serialize>(
     Ok(parts.join("&").into_bytes())
 }
 
-/// Decodes a form body. Styled fields (name, style, shape, explode) read like query parameters.
+/// Decodes a form body. Styled fields (name, style, shape, explode) decode like query parameters.
 /// Errors: the fields do not fit `T`.
 pub fn form_decode_styled<T: DeserializeOwned>(
     status: Option<u16>,
@@ -120,7 +120,7 @@ pub fn form_decode_styled<T: DeserializeOwned>(
     form_decode_with(status, body, styles, &[])
 }
 
-/// Returns [`form_decode_styled`] that reads fields whose `encoding.contentType` is XML or JSON in it.
+/// Returns [`form_decode_styled`] that decodes fields whose `encoding.contentType` is XML or JSON in it.
 /// Errors: a field is not in its type or the fields do not fit `T`.
 pub fn form_decode_with<T: DeserializeOwned>(
     status: Option<u16>,
@@ -130,7 +130,8 @@ pub fn form_decode_with<T: DeserializeOwned>(
 ) -> Result<T, ClientError> {
     let fields = form_fields(status, body, styles, types)?;
     T::deserialize(Coerce(Value::Object(fields))).map_err(|e| {
-        // Tracking the pointer allocates per key. So only a body that fails is read again with tracking to say where.
+        // Tracking the pointer allocates per key. So only a body that fails is decoded again with tracking to say
+        // where.
         let pointer = form_fields(status, body, styles, types)
             .ok()
             .and_then(|fields| crate::path::deserialize::<_, T>(Coerce(Value::Object(fields))).err())
@@ -140,7 +141,7 @@ pub fn form_decode_with<T: DeserializeOwned>(
     })
 }
 
-/// Returns the fields of a form body as an object: styled fields read like query parameters, typed ones in their
+/// Returns the fields of a form body as an object: styled fields decode like query parameters, typed ones in their
 /// media type. Errors: a styled field or a typed one does not decode.
 fn form_fields(
     status: Option<u16>,
@@ -200,12 +201,12 @@ fn sorted_pairs(text: &str) -> Vec<(Cow<'_, str>, Cow<'_, str>)> {
     pairs
 }
 
-/// The fields of a form sorted by name and read as their object. A field once is its text. A repeated one is the
+/// The fields of a form sorted by name and decoded as their object. A field once is its text. A repeated one is the
 /// list of its texts. Each goes through [`Coerce`] as a `Value` would but without the object or its keys.
 struct Form<'a>(Vec<(Cow<'a, str>, Cow<'a, str>)>);
 
 impl Form<'_> {
-    /// Returns the object of the fields for a type that reads the form as something else than an object.
+    /// Returns the object of the fields for a type that decodes the form as something else than an object.
     fn object(self) -> Coerce {
         let mut o = Map::new();
         for (k, v) in self.0 {
@@ -377,7 +378,7 @@ mod tests {
         assert!(form_encode(&N { x: f64::NAN }).is_err());
     }
 
-    /// The object of the fields of a form body, read by its own path.
+    /// The object of the fields of a form body, decoded by its own path.
     fn through_object<T: DeserializeOwned>(body: &[u8]) -> Result<T, String> {
         let text = lossy(body);
         let mut o = Map::new();
@@ -462,7 +463,7 @@ mod tests {
         );
     }
 
-    /// A field whose `encoding.contentType` is JSON is read as JSON. A text field stays text.
+    /// A field whose `encoding.contentType` is JSON is decoded as JSON. A text field stays text.
     #[test]
     fn a_json_field_is_read_as_json() {
         let styles = [("meta", Style::Form, Shape::Prim, true), ("note", Style::Form, Shape::Prim, true)];

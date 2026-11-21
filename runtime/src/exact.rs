@@ -1,12 +1,12 @@
 //! Exact arithmetic on decimal text: comparison and `multipleOf`. A JSON number is decimal, and `f64` rounds it:
 //! `0.07 / 0.01` is not a whole `f64`, and past about `1e15` every `f64` quotient looks whole. Read as text, a value
-//! keeps every digit, so `minimum` and `multipleOf` hold exactly.
+//! keeps every digit, so `minimum` and `multipleOf` apply exactly.
 
 use std::cmp::Ordering;
 
 /// The base of decimal text.
 const DECIMAL_BASE: u128 = 10;
-/// [`DECIMAL_BASE`] as a digit is held.
+/// [`DECIMAL_BASE`] as a digit is stored.
 const DIGIT_BASE: u8 = 10;
 
 /// Is `s` made of ASCII digits only? An empty `s` is.
@@ -20,7 +20,7 @@ pub(crate) fn signed(n: usize) -> i64 {
 }
 
 /// A decimal number as its significant digits and the power of ten they scale by: `-1.50e3` is `(true, "15", 2)`.
-/// The digits are `head` then `tail`, two slices of the text, so reading them copies nothing. Zero has no digits.
+/// The digits are `head` then `tail`, two slices of the text, so walking them copies nothing. Zero has no digits.
 struct Parts<'s> {
     negative: bool,
     head: &'s str,
@@ -106,7 +106,8 @@ pub(crate) fn compare(a: &str, b: &str) -> Option<Ordering> {
 /// Is `value` a multiple of `of`? Both are decimal text. `None` when either is not or when `of` is not positive.
 ///
 /// `value` is `a*10^e` and `of` is `b*10^f`, with `a` and `b` not ending in zeros. The quotient is `(a / b)*10^(e-f)`:
-/// a whole number when `a*10^(e-f)` is a multiple of `b`. With `e < f` it would need `a` to end in a zero, so it is not.
+/// a whole number when `a*10^(e-f)` is a multiple of `b`. With `e < f` it would need `a` to end in a zero, so it is
+/// not.
 #[must_use]
 pub fn is_multiple(value: &str, of: &str) -> Option<bool> {
     let (v, m) = (Parts::of(value)?, Parts::of(of)?);
@@ -125,7 +126,7 @@ pub fn is_multiple(value: &str, of: &str) -> Option<bool> {
     Some((a * power_of_ten_mod(shift.unsigned_abs(), b)).is_multiple_of(b))
 }
 
-/// How many powers of ten an `f64` holds exactly: `10^0` to `10^22`.
+/// How many powers of ten an `f64` represents exactly: `10^0` to `10^22`.
 const EXACT_POWERS: usize = 23;
 /// `10^0` to `10^22`, each exact.
 const POWERS: [f64; EXACT_POWERS] = {
@@ -138,7 +139,7 @@ const POWERS: [f64; EXACT_POWERS] = {
     powers
 };
 /// `2^52`: below it, the gap between two `f64`s near `n*10^-k` is less than `10^-k`. So at most one multiple of
-/// `10^-k` reads as a given `f64`, and the shortest text of that `f64` is it.
+/// `10^-k` parses as a given `f64`, and the shortest text of that `f64` is it.
 const UNIQUE: f64 = 4_503_599_627_370_496.0;
 
 /// Returns `of` as `c*10^e`: its significant digits as a `u64` and its exponent. `None` when `of` is not a positive
@@ -151,19 +152,19 @@ fn coefficient(of: &str) -> Option<(u64, i64)> {
     Some((m.coefficient()?, m.exponent))
 }
 
-/// Is the shortest text of `value` a multiple of `of`, as [`is_multiple`] reads them? Decided without that text when
+/// Is the shortest text of `value` a multiple of `of`, as [`is_multiple`] parses them? Decided without that text when
 /// `value` is `n*10^-k` for a whole `n` below [`UNIQUE`], where `10^-k` is the unit of the last digit of `of`. `None`
 /// otherwise: the text decides those.
 ///
-/// `n / 10^k` divides two exact `f64`s, so it rounds once, as reading the text `n*10^-k` does. When it gives `value`
-/// back, that text reads as `value`, and below [`UNIQUE`] no other multiple of `10^-k` does.
+/// `n / 10^k` divides two exact `f64`s, so it rounds once, as parsing the text `n*10^-k` does. When it gives `value`
+/// back, that text parses as `value`, and below [`UNIQUE`] no other multiple of `10^-k` does.
 #[must_use]
 #[expect(
     clippy::cast_possible_truncation,
     clippy::cast_sign_loss,
     reason = "`n` is a whole number below 2^52 by the check before the cast"
 )]
-#[expect(clippy::float_cmp, reason = "the same `f64` exactly, as reading the text gives it")]
+#[expect(clippy::float_cmp, reason = "the same `f64` exactly, as parsing the text gives it")]
 pub(crate) fn f64_is_multiple(value: f64, of: &str) -> Option<bool> {
     let (c, e) = coefficient(of)?;
     let k = usize::try_from(e.min(0).unsigned_abs()).ok()?;
@@ -196,7 +197,7 @@ pub(crate) fn int_is_multiple(value: i128, of: &str) -> Option<bool> {
 /// Does `b` divide `a*10^shift`? `a` and `b` are digits without leading zeros, `b` of any length. It is long
 /// division: one digit of the dividend at a time, the remainder kept below `b` by at most nine subtractions.
 ///
-/// Only the first `4*len(b)` factors of ten can matter: `b` holds fewer factors of 2, and of 5, than that. Past them a
+/// Only the first `4*len(b)` factors of ten can matter: `b` has fewer factors of 2, and of 5, than that. Past them a
 /// factor of ten is coprime to what is left of `b`, so the check ends however large `shift` is.
 fn divides_long(a: impl Iterator<Item = u8>, shift: u64, b: &[u8]) -> bool {
     let zeros = shift.min(FACTORS_PER_DIGIT.saturating_mul(u64::try_from(b.len()).unwrap_or(u64::MAX)));
@@ -288,12 +289,12 @@ mod tests {
         assert_eq!(is_multiple("1.23456789012345678901e30", of), Some(true), "a power of ten times it");
         assert_eq!(is_multiple("0.000000000000000000002", "0.000000000000000000001"), Some(true));
         assert_eq!(is_multiple("0.0000000000000000000025", "0.000000000000000000001"), Some(false));
-        // Factors of ten past what `of` holds of 2 and 5 change nothing: the check ends however large the exponent.
+        // Factors of ten past what `of` has of 2 and 5 change nothing: the check ends however large the exponent.
         assert_eq!(is_multiple("7e9000000000000000000", "1024000000000000000000001"), Some(false));
         assert_eq!(is_multiple("1e9000000000000000000", "2048000000000000000000000"), Some(true));
     }
 
-    /// The values the equivalence tests read: random bit patterns, decimals `m/10^k` with `m` up to `2^53`, the
+    /// The values the equivalence tests use: random bit patterns, decimals `m/10^k` with `m` up to `2^53`, the
     /// neighbours of `2^52/10^k` where the fast path stops, cents, ties and the edges of `f64`.
     #[expect(clippy::cast_precision_loss, reason = "53 bits fit an `f64` exactly")]
     fn values() -> Vec<f64> {
@@ -361,7 +362,7 @@ mod tests {
         }
     }
 
-    /// The values that an API sends most, prices and counts, take the fast path.
+    /// The values that an API sends most, prices and counts, use the fast path.
     #[test]
     fn a_price_is_decided_without_its_text() {
         assert_eq!(f64_is_multiple(19.99, "0.01"), Some(true));

@@ -1,6 +1,6 @@
 //! A description in several documents. Names used in a referenced document (security schemes, discriminator
 //! mappings, link `operationId`s) resolve from the entry document as 3.2 RECOMMENDS ("Resolving Implicit
-//! Connections"). This holds even when the referenced document declares the same names itself.
+//! Connections"). This applies even when the referenced document declares the same names itself.
 
 use assert_matches::assert_matches;
 
@@ -65,7 +65,8 @@ fn implicit_names_in_a_referenced_document_resolve_from_the_entry_document() {
     assert_eq!(list.security, [vec![crate::ir::security::Requirement { scheme: "key".into(), scopes: vec![] }]]);
     let key = api.schemes.iter().find(|s| s.name == "key").expect("the scheme");
     assert_matches!(&key.kind, SchemeKind::ApiKey { location, param } if location == "header" && param == "X-Key");
-    // `mapping: {gadget: Gadget}` refers to the `Gadget` object of the entry document and not the string of the referenced document.
+    // `mapping: {gadget: Gadget}` refers to the `Gadget` object of the entry document and not the string of the
+    // referenced document.
     let Ty::Named(body) = &list.responses[0].contents[0].ty else { panic!("a named union") };
     let Kind::Union(u) = &api.types.get(*body).kind else { panic!("a union") };
     let gadget = u.variants.iter().find(|v| v.tags == ["gadget"]).expect("the `gadget` tag");

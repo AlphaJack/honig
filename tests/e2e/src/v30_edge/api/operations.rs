@@ -61,7 +61,7 @@ pub mod list_orders {
     /// The body and headers of the success, in order: what `Response::into_ok` gives.
     pub type Success = (types::OrderPage, Option<String>);
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<Success, Box<Self>> {
             match self {
                 Self::Ok { body, x_next_cursor } => Ok((body, x_next_cursor)),
@@ -109,7 +109,7 @@ pub mod create_order {
         .as_u16()), }
     );
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<Box<types::Order>, Box<Self>> {
             match self {
                 Self::Created(body) => Ok(body),
@@ -159,7 +159,7 @@ pub mod get_order {
     /// The body and headers of the success, in order: what `Response::into_ok` gives.
     pub type Success = (Box<types::Order>, String);
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<Success, Box<Self>> {
             match self {
                 Self::Ok { body, x_request_id } => Ok((body, x_request_id)),
@@ -222,7 +222,7 @@ pub mod upload_document {
     }
     runtime::response_error!(Response { Self::NoContent => "status 204 (NoContent)", });
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<(), Box<Self>> {
             match self {
                 Self::NoContent => Ok(()),

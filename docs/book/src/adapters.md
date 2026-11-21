@@ -4,7 +4,7 @@ The cargo features of the runtime turn on its adapters and codecs. The table lis
 
 {{#include generated/features.md}}
 
-An adapter is compiled whenever its half lists it, also when its library is an optional dependency that is off. Depend on the major version that the table names. Otherwise cargo builds two copies whose types do not match.
+An adapter is compiled whenever its half lists it, also when its library is an optional dependency that is off. Depend on the major version that the table lists. Otherwise cargo builds two copies whose types do not match.
 
 ## axum
 

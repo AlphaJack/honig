@@ -1,5 +1,5 @@
 //! A `mutualTLS` requirement is satisfied only when `verify_cert` says so. Nothing in the request proves a client
-//! certificate. So the `Api` reads what the TLS terminator vouched for.
+//! certificate. So the `Api` checks what the TLS terminator vouched for.
 
 mod support;
 

@@ -11,18 +11,18 @@ use crate::{ApiError, ClientError, Message, Response, Violation};
 pub const BODY_LIMIT: usize = 16 * 1024 * 1024;
 
 /// Why the server answered with an error. Each reason has its own status. The [`Rejection`] that the server's
-/// `error_response` renders holds it (default: RFC 9457 `problem+json`).
+/// `error_response` renders contains it (default: RFC 9457 `problem+json`).
 ///
-/// A handler that reads a request body as it arrives gets it as the error of a chunk or an item. `?` turns it into
+/// A handler that consumes a request body as it arrives gets it as the error of a chunk or an item. `?` turns it into
 /// an [`ApiError`] with the same status.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum Reason {
     /// No route matches the path (404).
     NotFound,
-    /// The path exists but the method does not (405). It holds the allowed methods.
+    /// The path exists but the method does not (405). It lists the allowed methods.
     MethodNotAllowed(Vec<&'static str>),
-    /// `Accept` takes none of the response media types the operation offers (406): those types.
+    /// `Accept` matches none of the response media types the operation offers (406): those types.
     NotAcceptable(Vec<&'static str>),
     /// The request body exceeds the limit in bytes (413).
     PayloadTooLarge(usize),
@@ -30,9 +30,9 @@ pub enum Reason {
     UnsupportedMediaType(String, String),
     /// The body does not decode for a reason that points to no place in the request (400).
     Body(String),
-    /// The body could not be read. The connection broke or a read timeout of yours passed. It holds why (400).
+    /// The body did not arrive. The connection broke or a timeout of yours passed. It carries why (400).
     Unreadable(String),
-    /// What the request holds is wrong (400): a parameter or a value of the body that is missing, does not decode or
+    /// What the request carries is wrong (400): a parameter or a value of the body that is missing, does not decode or
     /// breaks a constraint. The violation says where (`/query/limit`, `/body/sku`) and why. A request is refused at its
     /// first violation, so there is one.
     Invalid(Violation),
@@ -90,7 +90,7 @@ impl Reason {
         r
     }
 
-    /// Returns the violations that the reason holds: one for [`Reason::Invalid`], none otherwise.
+    /// Returns the violations that the reason carries: one for [`Reason::Invalid`], none otherwise.
     pub(crate) fn violations(&self) -> &[Violation] {
         if let Self::Invalid(v) = self { std::slice::from_ref(v) } else { &[] }
     }
@@ -255,9 +255,9 @@ pub enum ProblemMember {
 pub struct ProblemSchema {
     /// Media type of the error response.
     pub media: &'static str,
-    /// (property, what it receives). None: a `text/*` string body that holds the detail and nothing else.
+    /// (property, what it receives). None: a `text/*` string body that contains the detail and nothing else.
     pub fields: &'static [(&'static str, ProblemMember)],
-    /// The schema takes properties it does not declare: validation details go in `violations` when no field
+    /// The schema accepts properties it does not declare: validation details go in `violations` when no field
     /// lists them.
     pub open: bool,
 }
@@ -284,7 +284,7 @@ impl Reason {
             };
             o.insert((*name).to_owned(), v);
         }
-        // An extension member of RFC 9457, where the body takes members that it does not declare.
+        // An extension member of RFC 9457, where the body accepts members that it does not declare.
         if schema.open && !violations.is_empty() {
             o.insert("errors".into(), errors_member(violations));
         }
@@ -316,7 +316,7 @@ fn errors_member(violations: &[Violation]) -> Value {
 }
 
 impl Reason {
-    /// Returns `413` past `limit`. `400` when the body could not be read.
+    /// Returns `413` past `limit`. `400` when the body did not arrive.
     #[must_use]
     pub fn unread_body(e: crate::source::BodyError, limit: usize) -> Self {
         match e {
@@ -356,7 +356,7 @@ impl From<ClientError> for Reason {
 }
 
 /// A body or an item still arriving that failed, with the status of its [`Reason`]. So `?` on a chunk or an item that
-/// a handler reads works.
+/// a handler consumes works.
 impl From<ClientError> for ApiError {
     fn from(e: ClientError) -> Self {
         Reason::from(e).into()
@@ -387,7 +387,7 @@ impl fmt::Display for Reason {
         match self {
             Self::NotFound => f.write_str("no route matches the path"),
             Self::MethodNotAllowed(allow) => write!(f, "method not allowed; allowed: {}", allow.join(", ")),
-            Self::NotAcceptable(offered) => write!(f, "`Accept` takes none of: {}", offered.join(", ")),
+            Self::NotAcceptable(offered) => write!(f, "`Accept` matches none of: {}", offered.join(", ")),
             Self::PayloadTooLarge(limit) => write!(f, "request body exceeds {limit} bytes"),
             Self::UnsupportedMediaType(sent, declared) => {
                 write!(f, "Content-Type `{sent}` is not one of: {declared}")
@@ -574,7 +574,7 @@ mod tests {
         assert_eq!(resp.body().bytes(), b"\"own\"", "the handler's own body goes out");
     }
 
-    /// A request is refused at its first violation: the reason holds that one, and the body lists it.
+    /// A request is refused at its first violation: the reason carries that one, and the body lists it.
     #[test]
     fn an_invalid_request_holds_its_one_violation() {
         let reason = Reason::invalid("/query/limit", "must be at most 100");

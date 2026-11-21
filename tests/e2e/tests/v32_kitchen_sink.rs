@@ -55,7 +55,7 @@ fn integer_enum_values_are_checked() {
     assert!(serde_json::from_str::<types::SubmitFormBodyPriority>("7").is_err());
 }
 
-/// Of several path servers the caller names one: a reorder in the description changes no request.
+/// Of several path servers the caller picks one: a reorder in the description changes no request.
 #[test]
 fn path_servers_expand_their_variables() {
     let path = |s: ops::put_blob::Server| api::runtime::operation_path(&[s.url()], "/blobs/1".to_owned());
@@ -73,7 +73,7 @@ fn api_servers_expand_their_variables() {
     assert!(eu.resolve(&[("region", "mars")]).is_err(), "not an allowed value");
 }
 
-/// The `createProduct` request a server received: the callback URLs read its body and its query.
+/// The `createProduct` request a server received: the callback URLs use its body and its query.
 fn received() -> api::Request {
     let mut req = api::runtime::new_request(
         "POST",
@@ -167,7 +167,7 @@ fn each_scheme_hands_the_operation_its_typed_credential() {
 }
 
 /// Answers every operation from what it received and keeps the last parameters that it decoded. A client to server
-/// round trip then shows that the server read the request that the client wrote.
+/// round trip then shows that the server decoded the request that the client wrote.
 #[derive(Default)]
 struct Products {
     seen: Mutex<Option<Box<dyn std::any::Any + Send>>>,
@@ -430,7 +430,7 @@ fn list_products_answers_in_the_media_type_asked_for() {
     }
 }
 
-/// `createProduct` takes JSON, `multipart/form-data` and `multipart/mixed` bodies.
+/// `createProduct` accepts JSON, `multipart/form-data` and `multipart/mixed` bodies.
 #[test]
 fn create_product_reads_each_body_media_type() {
     let products = std::sync::Arc::new(Products::default());
@@ -521,7 +521,7 @@ proptest::proptest! {
     }
 }
 
-/// A checked type reads its checks from the JSON text of the body, and an error inside it still says where, through
+/// A checked type runs its checks on the JSON text of the body, and an error inside it still says where, through
 /// every nested checked type on the way.
 #[test]
 fn an_error_inside_a_checked_value_keeps_its_pointer() {

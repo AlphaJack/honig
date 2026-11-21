@@ -2,7 +2,7 @@
 //! comes back decoded into a value. The generated client over the generated server (`head`) against a hand-rolled
 //! client over the hand-rolled baseline (`base`). Each client sends through the axum router of its server, in the
 //! process: no socket adds noise. The values that the clients send are built once, before any call, as business code
-//! holds them.
+//! keeps them.
 
 use axum::Router;
 use axum::body::{Body, Bytes};
@@ -35,10 +35,10 @@ pub enum Seen {
 pub struct Trip {
     pub name: &'static str,
     /// At most how many times the allocations of the baseline.
-    #[allow(dead_code, reason = "only the allocation bench reads it")]
+    #[allow(dead_code, reason = "only the allocation bench uses it")]
     pub max_allocs: f64,
     /// At most how many times the time of the baseline in a release build.
-    #[allow(dead_code, reason = "only the time bench reads it")]
+    #[allow(dead_code, reason = "only the time bench uses it")]
     pub max_time: f64,
 }
 
@@ -230,7 +230,7 @@ pub async fn head(c: &Head, trip: &str) -> Result<Seen, String> {
     })
 }
 
-/// Sends `request` to the baseline router and reads its whole body. Any status but `want` fails.
+/// Sends `request` to the baseline router and collects its whole body. Any status but `want` fails.
 async fn call(router: &Router, request: Request<Body>, want: u16) -> Result<Bytes, String> {
     let Ok(resp) = router.clone().oneshot(request).await;
     let status = resp.status().as_u16();

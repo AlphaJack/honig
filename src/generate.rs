@@ -24,7 +24,7 @@ pub struct Generated {
 
 /// Loads, validates, builds the IR and emits formatted files.
 ///
-/// Fails when the document cannot be parsed, or when generated code could not hold it: a `pattern` that does not
+/// Fails when the document cannot be parsed, or when generated code could not represent it: a `pattern` that does not
 /// compile, or a server whose security scheme does not resolve. Other validation errors are reported but not fatal.
 pub fn generate(spec: &Path, opts: &Options) -> Result<Generated, Diagnostics> {
     generate_all(&[spec.to_path_buf()], opts)
@@ -63,7 +63,7 @@ pub struct Ir {
 #[derive(Debug)]
 pub struct Trees(rust::Trees);
 
-/// Loads `specs` merged into one description, bundles their references and checks what generated code cannot hold.
+/// Loads `specs` merged into one description, bundles their references and checks what generated code cannot represent.
 ///
 /// # Errors
 /// As [`generate_all`].
@@ -86,7 +86,7 @@ pub fn load(specs: &[std::path::PathBuf], opts: &Options) -> Result<Loaded, Diag
         }
         return Err(diagnostics);
     }
-    // A `pattern` that does not compile cannot be checked: its type would take every value.
+    // A `pattern` that does not compile cannot be checked: its type would accept every value.
     if crate::validate::v32::has_uncompilable_pattern(&doc.root, "") {
         return Err(diagnostics);
     }
@@ -162,12 +162,12 @@ fn canonical(code: &str) -> String {
     };
     // The one place a string becomes a syntax tree: normalizing a file already
     // on disk for the stale check (and the bridge for user-edited files).
-    #[expect(clippy::disallowed_methods, reason = "reads existing files back; generation itself builds trees")]
+    #[expect(clippy::disallowed_methods, reason = "loads existing files back; generation itself builds trees")]
     let Ok(file) = syn::parse_file(body) else { return code.to_owned() };
     format!("{header}{}", rust::syntax::unparse(file))
 }
 
-/// Whether the file on disk holds the fresh `code`. Git on Windows can check it out with CRLF line endings.
+/// Whether the file on disk contains the fresh `code`. Git on Windows can check it out with CRLF line endings.
 fn same(existing: &str, code: &str) -> bool {
     let existing = existing.replace("\r\n", "\n");
     existing == code || canonical(&existing) == canonical(code)

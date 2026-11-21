@@ -21,7 +21,7 @@ async fn serve_with_hyper(listener: tokio::net::TcpListener) -> std::io::Result<
 // ANCHOR_END: hyper
 
 // ANCHOR: ureq
-/// The blocking client. `block_on` returns once the response is read with no async runtime.
+/// The blocking client. `block_on` returns once the response is received with no async runtime.
 fn list_products(base_url: &str) -> Result<ops::list_products::Response, api::ClientError> {
     let client = api::Client::new(api::UreqTransport::new(base_url)).with_api_key("secret");
     api::block_on(client.list_products(ops::list_products::Params::new()))

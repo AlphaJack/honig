@@ -402,7 +402,7 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
         '412':
-          description: The product changed since the client read it
+          description: The product changed since the client fetched it
     delete:
       tags:
         - Products
@@ -501,7 +501,7 @@ paths:
       parameters:
         - name: Last-Event-ID
           in: header
-          description: The `id` of the last event the client read, to resume after it when it reconnects.
+          description: The `id` of the last event the client received, to resume after it when it reconnects.
           schema:
             type: string
       responses:
@@ -852,7 +852,7 @@ components:
   parameters:
     ifNoneMatch:
       name: If-None-Match
-      description: The entity tags of the copies the client holds
+      description: The entity tags of the copies the client has
       in: header
       schema:
         type: string
@@ -950,7 +950,7 @@ components:
         format: uri
         example: https://shop.example.com/products/123
     X-Processing-Time:
-      description: The time taken to process the request in milliseconds
+      description: The time spent to process the request in milliseconds
       schema:
         type: integer
         example: 150

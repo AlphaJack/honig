@@ -26,12 +26,12 @@ Each table `[package.metadata.honig.<module>]` is one module and sets what is ge
 | `client = false` | no client | none for the client |
 | `client = true` | the client; you bring a transport of your own | `client` |
 | `client = { adapters = ["reqwest"] }` | the client and `ReqwestTransport` | `client`, `reqwest` |
-| `client = { strict = false }` | the client; a response reads what the server added: an enum value or a member of a tagged `oneOf` as `Other`, and a property of a closed object by ignoring it. Requests stay strict: each such type gets a `<Name>Request` copy that is closed | `client` |
+| `client = { strict = false }` | the client; a response accepts what the server added: an enum value or a member of a tagged `oneOf` as `Other`, and a property of a closed object by ignoring it. Requests stay strict: each such type gets a `<Name>Request` copy that is closed | `client` |
 | `server = { adapters = ["axum", "tracing"] }` | the server, `into_axum` and a span per request | `server`, `axum`, `tracing` |
 | `server = { allow_unimplemented = true }` | the server; a method you do not write answers 501 | `server` |
 
 `operations = ["getOrder"]` on the module table keeps only those operations, by `operationId`, for both halves: the
-client calls them, the server serves them, and the module holds only the types that they reach.
+client calls them, the server serves them, and the module contains only the types that they reach.
 
 An adapter serves one half, and `tracing-opentelemetry` serves both. Each adapter needs its library in `[dependencies]`. [Adapters](adapters.md) lists them all.
 
@@ -72,9 +72,9 @@ actions:
     update: {operationId: listProducts}
 ```
 
-honig reads Overlay 1.0 to 1.2 with every action. That is `update`, `remove`, `copy` and the reusable actions under `components.actions`. Targets are RFC 9535 JSONPath.
+honig supports Overlay 1.0 to 1.2 with every action. That is `update`, `remove`, `copy` and the reusable actions under `components.actions`. Targets are RFC 9535 JSONPath.
 
-honig reports a broken action with its index and skips it. The others still apply. `cargo honig check` reads the overlays too. A changed overlay makes the module stale.
+honig reports a broken action with its index and skips it. The others still apply. `cargo honig check` applies the overlays too. A changed overlay makes the module stale.
 
 ## Several APIs in one crate
 
@@ -96,9 +96,9 @@ Then declare each module: `mod api;` and `mod billing;`.
 - The table name is the module name. It must be a Rust identifier and not a keyword.
 - The generated code of a module depends only on its description and its table.
 - The runtime features are the union of what every module needs. One module with XML bodies turns on `xml` for the crate.
-- Each module holds its own types. Identical schemas in two descriptions are two types, so the APIs can change apart. Convert between them with `From` impls.
+- Each module has its own types. Identical schemas in two descriptions are two types, so the APIs can change apart. Convert between them with `From` impls.
 
-`cargo honig generate` writes every module. `cargo honig generate billing` writes one, and `Cargo.toml` keeps the features of all of them. `check` and `validate` take a module name the same way.
+`cargo honig generate` writes every module. `cargo honig generate billing` writes one, and `Cargo.toml` keeps the features of all of them. `check` and `validate` accept a module name the same way.
 
 ## Workspaces
 

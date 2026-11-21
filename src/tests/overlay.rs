@@ -1,6 +1,6 @@
 //! Overlays: the compliant sets of the Overlay Specification and the worked examples of the 1.2 text (`spec-*`). Each
 //! is in `tests/fixtures/overlay/<set>` as a description, an overlay and the description that it must become. Also the
-//! generator that reads a description through one.
+//! generator that loads a description through one.
 
 use crate::diag::Diagnostics;
 use crate::parse::load_file;

@@ -47,7 +47,7 @@ pub mod archive {
         "status 409 (Conflict)", }
     );
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<(), Box<Self>> {
             match self {
                 Self::NoContent => Ok(()),
@@ -82,7 +82,7 @@ pub mod unarchive {
         "status 409 (Conflict)", }
     );
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<(), Box<Self>> {
             match self {
                 Self::NoContent => Ok(()),
@@ -132,7 +132,7 @@ pub mod add_note {
     /// The body and headers of the success, in order: what `Response::into_ok` gives.
     pub type Success = (types::Note, Option<types::AddNoteCreatedXTags>);
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<Success, Box<Self>> {
             match self {
                 Self::Created { body, x_tags } => Ok((body, x_tags)),
@@ -172,7 +172,7 @@ pub mod find_box {
     }
     runtime::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<types::Box2, Box<Self>> {
             match self {
                 Self::Ok(body) => Ok(body),

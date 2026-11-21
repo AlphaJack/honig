@@ -28,7 +28,7 @@ pub mod open {
     }
     runtime::response_error!(Response { Self::NoContent => "status 204 (NoContent)", });
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<(), Box<Self>> {
             match self {
                 Self::NoContent => Ok(()),
@@ -56,7 +56,7 @@ pub mod inherits {
     }
     runtime::response_error!(Response { Self::NoContent => "status 204 (NoContent)", });
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<(), Box<Self>> {
             match self {
                 Self::NoContent => Ok(()),
@@ -102,7 +102,7 @@ pub mod get_item {
         format_args!("status {} (Default)", status.as_u16()), }
     );
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<String, Box<Self>> {
             match self {
                 Self::Success { body, .. } => Ok(body),
@@ -141,7 +141,7 @@ pub mod post_closed {
     }
     runtime::response_error!(Response { Self::NoContent => "status 204 (NoContent)", });
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<(), Box<Self>> {
             match self {
                 Self::NoContent => Ok(()),
@@ -179,7 +179,7 @@ pub mod optional_body {
     }
     runtime::response_error!(Response { Self::NoContent => "status 204 (NoContent)", });
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<(), Box<Self>> {
             match self {
                 Self::NoContent => Ok(()),
@@ -217,7 +217,7 @@ pub mod post_product {
     }
     runtime::response_error!(Response { Self::NoContent => "status 204 (NoContent)", });
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<(), Box<Self>> {
             match self {
                 Self::NoContent => Ok(()),
@@ -255,7 +255,7 @@ pub mod upload {
     }
     runtime::response_error!(Response { Self::NoContent => "status 204 (NoContent)", });
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<(), Box<Self>> {
             match self {
                 Self::NoContent => Ok(()),
@@ -285,7 +285,7 @@ pub mod cookies {
         Response { Self::NoContent { .. } => "status 204 (NoContent)", }
     );
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<Option<Vec<String>>, Box<Self>> {
             match self {
                 Self::NoContent { set_cookie, .. } => Ok(set_cookie),
@@ -326,7 +326,7 @@ pub mod filter {
     }
     runtime::response_error!(Response { Self::NoContent => "status 204 (NoContent)", });
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<(), Box<Self>> {
             match self {
                 Self::NoContent => Ok(()),

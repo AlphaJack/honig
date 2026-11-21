@@ -10,7 +10,7 @@ use crate::{Operation, Reason, Request, Response, server::auth::SatisfiedSecurit
 /// Layers and handlers add fields with `event.set(TENANT, id)`, where `const TENANT: EventKey =
 /// EventKey::new("tenant")`. `Id` is the generated `Operation` of the API.
 ///
-/// Clones share the event: the server puts one in the extensions of the request, so a layer reads it with
+/// Clones share the event: the server puts one in the extensions of the request, so a layer gets it with
 /// `req.extensions().get::<api::RequestEvent>()`.
 #[derive(Debug)]
 pub struct RequestEvent<Id = ()>(std::sync::Arc<std::sync::Mutex<RequestEventFields<Id>>>);
@@ -25,7 +25,7 @@ impl<Id> Clone for RequestEvent<Id> {
 #[derive(Debug, Clone)]
 #[non_exhaustive]
 pub struct RequestEventFields<Id = ()> {
-    /// The operation. `None` for a request that no operation takes (404 or 405).
+    /// The operation. `None` for a request that no operation matches (404 or 405).
     pub operation: Option<Id>,
     /// HTTP method in upper case.
     pub method: &'static str,
@@ -96,7 +96,7 @@ impl EventKey {
 }
 
 impl<Id: Operation> RequestEvent<Id> {
-    /// Creates a new event for `operation`, or for a request that no operation takes.
+    /// Creates a new event for `operation`, or for a request that no operation matches.
     pub fn new(operation: Option<Id>, method: &'static str) -> Self {
         Self(std::sync::Arc::new(std::sync::Mutex::new(RequestEventFields {
             operation,
@@ -126,7 +126,7 @@ impl<Id: Clone> RequestEvent<Id> {
         self.with(|f| f.extra.insert(key.0.to_owned(), value));
     }
 
-    /// Records why the request was refused, and how many violations it holds.
+    /// Records why the request was refused, and how many violations it carries.
     pub fn fail(&self, reason: &Reason) {
         self.with(|f| {
             f.violations = reason.violations().len();
@@ -142,7 +142,7 @@ impl<Id: Clone> RequestEvent<Id> {
         });
     }
 
-    /// Records the size of the request body the server read (a streamed one counts as 0).
+    /// Records the size of the request body the server received (a streamed one counts as 0).
     pub fn received(&self, request_bytes: usize) {
         self.with(|f| f.request_bytes = request_bytes);
     }
@@ -206,7 +206,7 @@ impl<Id: Operation> RequestEvent<Id> {
 pub struct Context<'a, C = (), Id = ()> {
     /// The request as received.
     pub request: &'a Request,
-    /// Credentials of the satisfied security requirements with their scheme: read them with the generated
+    /// Credentials of the satisfied security requirements with their scheme: get them with the generated
     /// `server::credentials` or with [`Secured::presented`](crate::Secured::presented).
     pub(crate) auth: Vec<(crate::auth::Scheme, String)>,
     /// The operation being served: one variant of the generated `Operation`.

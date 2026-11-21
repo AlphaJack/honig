@@ -223,7 +223,7 @@ fn node_mut<'d>(doc: &'d mut Value, path: &[Step]) -> Option<&'d mut Value> {
     })
 }
 
-/// Removes the node at `path` from the object or array holding it. The root stays.
+/// Removes the node at `path` from the object or array containing it. The root stays.
 fn remove(doc: &mut Value, path: &[Step]) {
     let Some((last, parent)) = path.split_last() else { return };
     match (node_mut(doc, parent), last) {
@@ -265,7 +265,7 @@ impl fmt::Display for Kind {
     }
 }
 
-/// Merges `value` into a selected node. An object merges. An array takes `value` (concatenated when it is an
+/// Merges `value` into a selected node. An object merges. An array gets `value` (concatenated when it is an
 /// array itself, from 1.1). A primitive is replaced by a primitive.
 fn merge_node(target: &mut Value, value: &Value, append_arrays: bool) -> Result<(), ActionError> {
     match (target, value) {

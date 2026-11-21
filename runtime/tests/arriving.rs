@@ -1,4 +1,4 @@
-//! Sequential request bodies that the server reads as they arrive. They are decoded an item at a time. An item type
+//! Sequential request bodies that the server consumes as they arrive. They are decoded an item at a time. An item type
 //! that checks its keywords checks each item as it decodes.
 
 #![expect(clippy::unwrap_used, reason = "test code fails loudly")]
@@ -91,8 +91,8 @@ fn an_arriving_body_passes_on_what_the_handler_has_not_read() {
     assert_eq!(block_on(body.collect()).unwrap(), b"{\"a\":2}\n{\"a\":-3}\n".as_slice());
 }
 
-/// `minItems`, `maxItems` and `uniqueItems` hold on a body as it arrives: the item past `maxItems` and an item met
-/// before are an `Err`, and so is the end of a body short of `minItems`. A body read whole is checked at once.
+/// `minItems`, `maxItems` and `uniqueItems` apply to a body as it arrives: the item past `maxItems` and an item met
+/// before are an `Err`, and so is the end of a body short of `minItems`. A body received whole is checked at once.
 #[test]
 fn an_arriving_body_is_held_to_its_item_limits() {
     let limited = |chunks: &[&[u8]], limits: Limits| read_all(arriving(chunks).limited(limits).unwrap());

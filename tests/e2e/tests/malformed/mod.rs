@@ -1,5 +1,5 @@
 //! Requests that break the description. They go through the tower `Service` that a framework calls. The server
-//! answers each one with a status below 500 and a body that reads to the end. A panic fails the test too.
+//! answers each one with a status below 500 and a body that streams to the end. A panic fails the test too.
 //!
 //! A fixture's test file lists its routes and the words its handlers know. Then it runs [`check`] on each [`case`]
 //! in a `proptest!` block. A failure shrinks to the smallest request that fails.
@@ -22,7 +22,7 @@ pub fn config() -> ProptestConfig {
 pub struct Fixture {
     /// Each operation as (method, path template).
     pub routes: &'static [(&'static str, &'static str)],
-    /// Path segments its handlers answer with a body, such as an id they hold.
+    /// Path segments its handlers answer with a body, such as an id they store.
     pub segments: &'static [&'static str],
     pub query_names: &'static [&'static str],
     pub header_names: &'static [&'static str],
@@ -59,7 +59,7 @@ const EDGES: &[&str] = &[
     "not-a-uuid",
 ];
 
-/// Headers that the runtime reads for every operation.
+/// Headers that the runtime parses for every operation.
 const HEADER_NAMES: &[&str] = &[
     "Accept",
     "Authorization",
@@ -245,7 +245,7 @@ pub fn case(fixture: &'static Fixture) -> impl Strategy<Value = Case> {
     )
 }
 
-/// `service` answers `case` with a status below 500 and a body that reads to the end. A case that no HTTP stack
+/// `service` answers `case` with a status below 500 and a body that streams to the end. A case that no HTTP stack
 /// would deliver passes.
 pub fn check<S, B>(mut service: S, case: &Case) -> Result<(), TestCaseError>
 where

@@ -5,12 +5,12 @@ use crate::ClientError;
 /// Is the `Content-Type` of a body one that the operation declares? A body that states none passes. Many clients
 /// leave it out. The body then decodes or not on its own.
 pub(crate) fn declared_media(actual: &str, declared: &[&str]) -> bool {
-    // Bodies are read as UTF-8: one that says it is not would be read wrong (JSON is UTF-8 by RFC 8259).
+    // Bodies are decoded as UTF-8: one that says it is not would be decoded wrong (JSON is UTF-8 by RFC 8259).
     if !utf8_charset(actual) {
         return false;
     }
     // A client with only a range (`image/*`) sends the bytes as `application/octet-stream`. The generated client
-    // does this too. No `Content-Type` may hold a wildcard.
+    // does this too. No `Content-Type` may contain a wildcard.
     let unnamed = media_essence(actual).eq_ignore_ascii_case("application/octet-stream")
         && declared.iter().any(|d| d.contains('*'));
     actual.trim().is_empty() || unnamed || declared.iter().any(|d| media_matches(actual, d))
@@ -19,10 +19,10 @@ pub(crate) fn declared_media(actual: &str, declared: &[&str]) -> bool {
 /// Is a response's `Content-Type` one the description declares for its status?
 ///
 /// A response should state its type when it has a body. A request need not. The client decodes by what was declared.
-/// A body of another type would be read as the wrong one. A body without a type is read as the one type declared
+/// A body of another type would be decoded as the wrong one. A body without a type is decoded as the one type declared
 /// for its status (RFC 9110 section 8.3 lets a recipient assume one). Small text answers often omit it: `OK` from a
 /// health check or `Not Found`. With several declared there is nothing to tell them apart. `body` is `None` for a
-/// stream because its body is not read yet.
+/// stream because its body has not arrived yet.
 ///
 /// # Errors
 /// [`crate::ClientError::UnexpectedMedia`] with what was sent and what is declared.
@@ -76,7 +76,7 @@ pub fn negotiate(accept: Option<&str>, offered: &[&str]) -> Option<usize> {
         let (kind, sub) = essence.split_once('/').unwrap_or((essence, ""));
         ranges()
             .filter(|(k, s, _)| {
-                // A range that the description offers (`image/*`) takes any type of it as `Accept` ranges do.
+                // A range that the description offers (`image/*`) accepts any type of it as `Accept` ranges do.
                 (*k == "*" || kind == "*" || k.eq_ignore_ascii_case(kind))
                     && (*s == "*" || sub == "*" || s.eq_ignore_ascii_case(sub))
             })
@@ -148,7 +148,7 @@ pub fn media_matches(actual: &str, declared: &str) -> bool {
     if d == "*/*" || a.eq_ignore_ascii_case(d) {
         return true;
     }
-    // `image/*` takes any `image/...`: the part before the `*` with its `/`.
+    // `image/*` accepts any `image/...`: the part before the `*` with its `/`.
     match d.strip_suffix('*') {
         Some(prefix) if prefix.ends_with('/') => {
             a.get(..prefix.len()).is_some_and(|start| start.eq_ignore_ascii_case(prefix))

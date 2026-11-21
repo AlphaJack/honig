@@ -18,7 +18,7 @@ pub(crate) struct Loaded {
     pub model: Option<OpenApi>,
     /// Every problem found in order.
     pub diagnostics: Diagnostics,
-    /// The text of each `externalValue` read at load time.
+    /// The text of each `externalValue` loaded with the document.
     pub externals: Externals,
     /// The version that the document was written in before its upgrade to 3.2.
     pub source: Option<crate::version::Version>,
@@ -99,7 +99,7 @@ pub(crate) fn load_paths_with(paths: &[PathBuf], overlays: &[PathBuf]) -> Loaded
     process(v, resolve::Base::new(paths.first().and_then(|p| p.parent())), diagnostics)
 }
 
-/// Applies the overlay `o`, read from `file`, to `doc`.
+/// Applies the overlay `o`, loaded from `file`, to `doc`.
 #[cfg(feature = "overlays")]
 fn apply_overlay(doc: &mut Value, o: &Value, file: &Path, diags: &mut Diagnostics) {
     crate::overlay::apply(doc, o, &file.display().to_string(), diags);

@@ -1,5 +1,5 @@
 //! The JSON engine behind `json_decode` and `json_encode`. It is `serde_json` or `sonic-rs` with the `simd` feature on
-//! the targets that it has SIMD for. A body that fails to decode is read again by `serde_json`. That says where.
+//! the targets that it has SIMD for. A body that fails to decode is decoded again by `serde_json`. That says where.
 
 #[cfg(not(all(feature = "simd", any(target_arch = "x86_64", target_arch = "aarch64"))))]
 mod plain;

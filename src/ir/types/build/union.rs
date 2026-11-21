@@ -1,4 +1,4 @@
-//! Objects, `allOf` and unions as the `Builder` reads them.
+//! Objects, `allOf` and unions as the `Builder` builds them.
 
 use std::cell::RefCell;
 use std::collections::{BTreeMap, BTreeSet};
@@ -42,7 +42,7 @@ impl Builder<'_> {
                 let read_only = prop.get("readOnly") == Some(&Value::Bool(true));
                 let write_only = prop.get("writeOnly") == Some(&Value::Bool(true));
                 let read_write = read_only || write_only;
-                // A literal default makes an optional field always present. Whether `ty` can hold it
+                // A literal default makes an optional field always present. Whether `ty` can represent it
                 // is known once every component is filled: `finish` drops the ones it cannot.
                 // A count of the properties sees the ones sent: a default filled in would count one that was not.
                 let counted = o.contains_key("minProperties") || o.contains_key("maxProperties");
@@ -80,12 +80,13 @@ impl Builder<'_> {
             f.name = n;
         }
         // Unknown keys of an open object land in `extra`. So a proxy or a
-        // read-modify-write keeps them.
+        // load-modify-store cycle keeps them.
         let additional = match o.get("additionalProperties") {
             // A name that `patternProperties` matches is not additional, so its value need not fit
-            // `additionalProperties`: the map holds any value and the run-time check judges each by its name.
+            // `additionalProperties`: the map stores any value and the run-time check judges each by its name.
             Some(Value::Object(m)) if !m.is_empty() && o.contains_key("patternProperties") => Some(Ty::Any),
-            // Beside `patternProperties`, the schema holds only for names that no pattern matches: the check judges them.
+            // Beside `patternProperties`, the schema applies only to names that no pattern matches: the check judges
+            // them.
             Some(ap @ Value::Object(m)) if !m.is_empty() && !o.contains_key("patternProperties") => {
                 Some(self.ty(ap, &join(ptr, "additionalProperties"), &name.and(&Name::new("Value"))))
             }
@@ -99,7 +100,7 @@ impl Builder<'_> {
         // declared even where its split type leaves it out. So such structs stay open too.
         // `patternProperties`, `unevaluatedProperties` and `propertyNames` judge the names a struct does not declare.
         // Their checks see the value as it re-serializes, so those names must survive decoding.
-        // A dependent keyword that reads a name the struct does not declare looks for that name. With
+        // A dependent keyword that uses a name the struct does not declare looks for that name. With
         // `additionalProperties: false` that name is refused anyway: the struct stays closed.
         let undeclared_dependent = o.get("additionalProperties") != Some(&Value::Bool(false))
             && dependent_names(o)
@@ -120,7 +121,7 @@ impl Builder<'_> {
         Struct { fields, additional, closed, patterns: vec![], additional_constraints: Box::default() }
     }
 
-    /// Returns the struct of `o` with `fields` that holds its `patternProperties` `held` ([`struct_patterns`]): a map
+    /// Returns the struct of `o` with `fields` that stores its `patternProperties` `held` ([`struct_patterns`]): a map
     /// per pattern, and the names that none matches as `additionalProperties` says.
     pub(super) fn patterned(
         &mut self,
@@ -163,7 +164,7 @@ impl Builder<'_> {
         })?;
         let mut rest: Vec<Value> =
             members.iter().enumerate().filter(|(j, _)| *j != i).map(|(_, m)| m.clone()).collect();
-        // The schema's own object keywords beside `allOf` hold for every branch too.
+        // The schema's own object keywords beside `allOf` apply to every branch too.
         rest.extend(own_object_keywords(Some(o)));
         let branches: Vec<Value> = union
             .get(key)
@@ -231,7 +232,7 @@ impl Builder<'_> {
     }
 
     /// Returns the `allOf` that `{properties: {name}, required: [name], oneOf: [A, B]}` means: `allOf: [{properties,
-    /// required}, {oneOf}]`. The properties beside the union hold for each branch. Typing the union alone would lose
+    /// required}, {oneOf}]`. The properties beside the union apply to each branch. Typing the union alone would lose
     /// them.
     pub(super) fn sibling_union(&self, o: &serde_json::Map<String, Value>, ptr: &str) -> Option<Value> {
         let key = union_keyword(o)?;
@@ -334,7 +335,7 @@ impl Builder<'_> {
             merged.insert("additionalProperties".into(), ap);
         }
         if judged {
-            // Kept for `object`: the struct holds undeclared names for the run-time check to judge.
+            // Kept for `object`: the struct stores undeclared names for the run-time check to judge.
             merged.insert("unevaluatedProperties".into(), Value::Bool(true));
         }
         Some(Kind::Struct(self.object(&merged, ptr, name)))
@@ -384,7 +385,7 @@ impl Builder<'_> {
         let mut named = vec![];
         for (i, (b, bptr)) in variants.iter().enumerate() {
             // `null` is the `Other` fallback of the union and not the payload of a variant.
-            // An inline branch with a `title` takes its type name from it. Others are numbered.
+            // An inline branch with a `title` gets its type name from it. Others are numbered.
             let branch =
                 b.get("title").and_then(Value::as_str).map_or_else(|| format!("Variant{}", rank(i)), str::to_owned);
             let ty = self.ty(b, bptr, &name.and(&Name::new(&branch))).non_null().clone();
@@ -409,7 +410,7 @@ impl Builder<'_> {
             let constraints = if matches!(ty, Ty::Named(_)) { Constraints::default() } else { self.constraints(b) };
             named.push((vname, ty, constraints, texts.get(i).cloned().unwrap_or_default()));
         }
-        // Several array branches are told apart by what they hold (`NumberArray`, `DocumentArray`) and not as
+        // Several array branches are told apart by what they contain (`NumberArray`, `DocumentArray`) and not as
         // `Array`, `Array2`. One alone stays `Array`.
         if named.iter().filter(|(n, ..)| n.is("array")).count() > 1 {
             for (n, ty, ..) in &mut named {
@@ -426,7 +427,7 @@ impl Builder<'_> {
             .map(|((_, ty, constraints, _), name)| Variant { name, ty, tags: vec![], constraints })
             .collect();
         // A branch that any value passes (`{$comment: ...}` or the RFC 2557 example of 3.2) is what `Other` already
-        // holds. Next to typed branches it would be a second catch-all that cannot be told apart.
+        // stores. Next to typed branches it would be a second catch-all that cannot be told apart.
         let open = out.iter().any(|v| v.ty != Ty::Any) && out.iter().any(|v| v.ty == Ty::Any);
         if open {
             (variants, out) = variants.into_iter().zip(out).filter(|(_, v)| v.ty != Ty::Any).unzip();
@@ -442,8 +443,8 @@ impl Builder<'_> {
         Some(Kind::Union(Union { variants: out, mode, open, rest: false, exclusive: key == "oneOf" }))
     }
 
-    /// Returns what an array branch holds as the name of its variant: `NumberArray` for numbers, `NumberArrayArray` for
-    /// arrays of them and `DocumentArray` for a named type.
+    /// Returns what an array branch contains as the name of its variant: `NumberArray` for numbers, `NumberArrayArray`
+    /// for arrays of them and `DocumentArray` for a named type.
     pub(super) fn array_name(&self, ty: &Ty) -> String {
         if let Ty::Vec(t) | Ty::Array(t, _) = ty {
             format!("{}_array", self.array_name(t))
@@ -603,7 +604,7 @@ impl Builder<'_> {
             let mut single = o.clone();
             single.insert("type".into(), Value::String(t.to_string()));
             let ty = self.ty(&Value::Object(single), &format!("{ptr}/type/{t}"), &name.and(&Name::new(t)));
-            // The keywords sit on the schema with the `type` list. Whatever holds that schema checks them.
+            // The keywords sit on the schema with the `type` list. Whatever contains that schema checks them.
             variants.push(Variant { name: Name::new(t), ty, tags: vec![], constraints: Constraints::default() });
         }
         // integer + number overlap: integer must be tried first (ByKind handles it).
@@ -641,7 +642,7 @@ pub(super) fn by_kind_when_known(defs: &mut [TypeDef]) {
     }
 }
 
-/// Most string values an inline branch's variant is named after (`OptimizingOrDone`). More read as a list.
+/// Most string values an inline branch's variant is named after (`OptimizingOrDone`). More look like a list.
 pub(super) const MAX_HINT_VALUES: usize = 3;
 
 /// Returns the `$ref` of a union branch, also when distributing an `allOf` wrapped it (`{allOf: [{$ref: X}, rest]}`).
@@ -730,7 +731,7 @@ pub(crate) fn strip_common_prefix(vs: &mut [Variant]) {
 }
 
 /// Returns a union tagged by one property with distinct constants in every branch
-/// (a conditional union's fallback branch takes every other value).
+/// (a conditional union's fallback branch accepts every other value).
 pub(crate) fn inferred_tag(
     branches: &[(Value, String)],
     resolved: &[Option<serde_json::Map<String, Value>>],
@@ -803,7 +804,8 @@ pub(crate) fn str_enum(values: &[&str]) -> Kind {
     Kind::StrEnum(vs)
 }
 
-/// Returns a schema that the description names: a component schema, or the schema of a component parameter or header.
+/// Returns a schema that the description declares: a component schema, or the schema of a component parameter or
+/// header.
 pub(super) fn named_by_description(ptr: &str) -> bool {
     let entry = |section: &str, tail: &str| {
         ptr.strip_prefix(section).and_then(|rest| rest.strip_suffix(tail)).is_some_and(|key| !key.contains('/'))
@@ -893,7 +895,7 @@ pub(crate) struct Kinds<'d> {
 /// Where finding the kind of a named type is.
 #[derive(Clone, Copy)]
 pub(super) enum Found {
-    /// Met again while it is found, the type is on a cycle and takes any value.
+    /// Met again while it is found, the type is on a cycle and accepts any value.
     Finding,
     Kind(JsonKind),
 }
@@ -903,7 +905,7 @@ impl<'d> Kinds<'d> {
         Self { defs, found: BTreeMap::new(), known: None, unsettled: false }
     }
 
-    /// [`Kinds::new`] that reads and keeps the final kinds in `known`.
+    /// [`Kinds::new`] that loads and keeps the final kinds in `known`.
     fn remembering(defs: &'d [TypeDef], known: &'d RefCell<Vec<Option<JsonKind>>>) -> Self {
         Self { known: Some(known), ..Self::new(defs) }
     }
@@ -944,7 +946,7 @@ impl<'d> Kinds<'d> {
             Kind::Checked(c) => self.of(&c.base),
             Kind::IntEnum(_) => JsonKind::Integer,
             Kind::Const(v) => value_kind(v),
-            // A closed union whose variants share a kind has that kind. An open one takes any value.
+            // A closed union whose variants share a kind has that kind. An open one accepts any value.
             Kind::Union(u) if !u.open => {
                 let mut kinds = u.variants.iter().map(|v| self.of(&v.ty));
                 let first = kinds.next().unwrap_or(JsonKind::Any);

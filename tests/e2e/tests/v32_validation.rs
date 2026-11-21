@@ -232,7 +232,7 @@ fn pattern_fields_are_checked_types() {
     assert!(types::UserName::try_from("A").is_err(), "at least 2 characters");
     assert!(types::UserName::try_from("Abcdefghijk").is_err(), "at most 10 characters");
     let name = types::UserName::try_from("Ann").unwrap();
-    assert_eq!(name.as_str(), "Ann", "reads as a `str`");
+    assert_eq!(name.as_str(), "Ann", "derefs to `str`");
     let r = send("limit=5", "core", &json!({"name": "ann", "role": "admin"}));
     assert_eq!(r.status().as_u16(), 400);
     assert!(
@@ -356,7 +356,7 @@ fn a_schema_without_type_still_checks_and_a_bad_default_is_not_filled_in() {
     assert_eq!(shipment(&base).status().as_u16(), 201, "no `label`: its bad default is not filled in");
     let mut low = base.clone();
     low["rating"] = json!(0);
-    assert_eq!(shipment(&low).status().as_u16(), 400, "`minimum: 1` holds for a number without `type`");
+    assert_eq!(shipment(&low).status().as_u16(), 400, "`minimum: 1` applies to a number without `type`");
     low["rating"] = json!("any text");
     assert_eq!(shipment(&low).status().as_u16(), 201, "`minimum` says nothing about a string");
 }
@@ -369,7 +369,7 @@ fn properties_without_type_hold_for_an_object_and_any_other_value_passes() {
     };
     assert_eq!(with(json!({"count": 2})), 201);
     assert_eq!(with(json!("free text")), 201, "not an object: `properties` says nothing about it");
-    assert_eq!(with(json!({"count": "two"})), 400, "an object takes the properties");
+    assert_eq!(with(json!({"count": "two"})), 400, "an object gets the properties");
 }
 
 #[test]
@@ -444,7 +444,7 @@ fn a_typed_error_is_sent_as_it_is() {
     assert_eq!(body, json!({"code": "TAKEN", "status": 409, "detail": "the name is taken"}));
 }
 
-/// `Problem` requires a `code` from a closed list and takes no other property. The runtime cannot fill it for a
+/// `Problem` requires a `code` from a closed list and accepts no other property. The runtime cannot fill it for a
 /// request that it refuses itself. So it answers RFC 9457 and not a body that breaks the schema. Nor does it borrow
 /// `Refusal`, which `createShipment` declares and the runtime can fill.
 #[test]
@@ -460,7 +460,7 @@ fn an_unfillable_error_schema_falls_back_to_rfc_9457() {
 }
 
 /// `email` and `idn-hostname` are types that only a valid value can be (`api::EmailText` and `api::IdnHostnameText`). A
-/// request that holds another value is refused while decoding.
+/// request that contains another value is refused while decoding.
 #[test]
 fn mail_addresses_and_host_names_are_types() {
     let ok = json!({"name": "Ann", "role": "user", "email": "ann@example.com", "site": "bücher.example"});
@@ -476,7 +476,7 @@ fn mail_addresses_and_host_names_are_types() {
     assert!(api::EmailText::try_from("x").is_err(), "nor can a handler build one");
 }
 
-/// `multipleOf` on a number divides and allows 1e-9: decimal multiples a binary float cannot hold exactly pass.
+/// `multipleOf` on a number divides and allows 1e-9: decimal multiples a binary float cannot represent exactly pass.
 #[test]
 fn a_decimal_multiple_passes_although_its_float_is_inexact() {
     let price = |p: f64| serde_json::from_value::<types::Price>(json!({"amount": p})).map_err(|e| e.to_string());
@@ -500,8 +500,8 @@ fn a_refusal_fills_the_declared_schema() {
     assert_eq!(body, json!({"detail": detail, "object": "error", "errors": errors}));
 }
 
-/// JSON Schema 2020-12 section 6.1.1: `type: null` allows only `null`. Absent, it is `None`. `null` is `Some(())`, which
-/// writes `null` again. Any other value is refused.
+/// JSON Schema 2020-12 section 6.1.1: `type: null` allows only `null`. Absent, it is `None`. `null` is `Some(())`,
+/// which writes `null` again. Any other value is refused.
 #[test]
 fn a_null_only_property_takes_only_null() {
     let decode = |body: serde_json::Value| {
@@ -514,9 +514,9 @@ fn a_null_only_property_takes_only_null() {
     assert_eq!(serde_json::to_value(&sent).unwrap(), json!({"retired": null}));
 }
 
-/// An `allOf` item whose members both declare `lines` holds both: the field is the `allOf` of the two schemas. Keywords
-/// deep inside keep their values: `type: [string, null]` still takes a string and `null`, `maxLength` still applies,
-/// and so does the `maxItems` of the second member.
+/// An `allOf` item whose members both declare `lines` enforces both: the field is the `allOf` of the two schemas.
+/// Keywords deep inside keep their values: `type: [string, null]` still accepts a string and `null`, `maxLength` still
+/// applies, and so does the `maxItems` of the second member.
 #[test]
 fn a_whole_checked_schema_keeps_its_deep_keywords() {
     let check = |lines: serde_json::Value| {
@@ -531,7 +531,7 @@ fn a_whole_checked_schema_keeps_its_deep_keywords() {
     assert!(many.contains("at most 2 items allowed, found 3"), "{many}");
 }
 
-/// `^(a+)+$` takes exponential time on a long value that almost matches. `handle` is a pattern type: past `maxLength`
+/// `^(a+)+$` needs exponential time on a long value that almost matches. `handle` is a pattern type: past `maxLength`
 /// it refuses the value before its pattern runs. Run, 30,001 characters would not finish.
 #[test]
 fn a_pattern_does_not_run_past_max_length() {
@@ -542,7 +542,7 @@ fn a_pattern_does_not_run_past_max_length() {
 }
 
 /// A recursive union whose branches differ in a field after the recursive one. A branch that cannot fit is skipped
-/// before decoding, so depth 40 decodes in steps linear in its depth, and the stack of a test thread holds it in a
+/// before decoding, so depth 40 decodes in steps linear in its depth, and the stack of a test thread fits it in a
 /// debug build.
 #[test]
 fn a_recursive_union_decodes_in_time_linear_in_its_depth() {
@@ -553,7 +553,7 @@ fn a_recursive_union_decodes_in_time_linear_in_its_depth() {
     assert!(serde_json::from_str::<types::Tree>(&json).is_ok());
 }
 
-/// A builder takes raw values for its fields and converts each one. `build` returns the first that did not convert,
+/// A builder accepts raw values for its fields and converts each one. `build` returns the first that did not convert,
 /// named as the description spells it. The required properties are the arguments of `builder`.
 #[test]
 fn a_builder_converts_each_field_and_returns_the_first_error() -> Result<(), Box<dyn std::error::Error>> {
@@ -593,7 +593,7 @@ fn decimal_keywords_are_exact() {
 }
 
 /// Integer keywords are checked exactly: a bound that no value of the type meets refuses every value, a fractional
-/// `multipleOf` takes the integers that are multiples of it, and one past the type takes only `0`.
+/// `multipleOf` accepts the integers that are multiples of it, and one past the type accepts only `0`.
 #[test]
 fn integer_keywords_are_exact() {
     let decodes = |v: serde_json::Value| serde_json::from_value::<types::Degenerate>(v).map_err(|e| e.to_string());
@@ -613,7 +613,7 @@ fn integer_keywords_are_exact() {
     }
 }
 
-/// `additionalProperties: false` holds in every media type of a body: a field that the schema does not declare is a
+/// `additionalProperties: false` applies in every media type of a body: a field that the schema does not declare is a
 /// bad request as JSON, as a form and as XML.
 #[test]
 fn a_closed_object_refuses_unknown_fields_in_every_media_type() {
@@ -635,8 +635,8 @@ fn a_closed_object_refuses_unknown_fields_in_every_media_type() {
     }
 }
 
-/// An `anyOf` decodes as its first branch that takes the value, keywords and all. A value that only the second branch
-/// takes decodes, and one that no branch takes does not.
+/// An `anyOf` decodes as its first branch that accepts the value, keywords and all. A value that only the second branch
+/// accepts decodes, and one that no branch accepts does not.
 #[test]
 fn an_any_of_takes_the_first_branch_that_decodes() {
     for ok in [r#""""#, r#""abc""#] {
@@ -645,7 +645,7 @@ fn an_any_of_takes_the_first_branch_that_decodes() {
     assert!(serde_json::from_str::<types::Slug>(r#""ABC""#).is_err());
 }
 
-/// A `oneOf` decodes every branch and takes a value that exactly one takes: `ab` fits both and is refused.
+/// A `oneOf` decodes every branch and accepts a value that exactly one accepts: `ab` fits both and is refused.
 #[test]
 fn a_one_of_takes_a_value_that_exactly_one_branch_takes() {
     for ok in [r#""AB""#, r#""abcd""#] {
@@ -665,10 +665,10 @@ fn a_one_value_enum_is_a_constant() {
 }
 
 /// A property that two `allOf` members declare must meet both: here a string of at most 5 characters, never `null`.
-/// The struct holds it as one typed field, with no check of the whole value.
+/// The struct stores it as one typed field, with no check of the whole value.
 #[test]
 fn a_property_of_two_all_of_members_meets_both() {
-    let ok: types::NarrowStamp = serde_json::from_str(r#"{"at":"12:00"}"#).expect("both hold");
+    let ok: types::NarrowStamp = serde_json::from_str(r#"{"at":"12:00"}"#).expect("both pass");
     assert_eq!(ok.at.as_str(), "12:00");
     // A plain struct: no checked type around its fields.
     let built = types::NarrowStamp { at: "12:00".try_into().expect("short") };
@@ -734,7 +734,7 @@ fn keywords_without_a_type_apply_to_their_kind() {
     assert!(loose(json!("abcd")).is_err(), "a string past its length");
 }
 
-/// Keywords of each kind beside an implied shape check the values of their kind, read from the text or built.
+/// Keywords of each kind beside an implied shape check the values of their kind, decoded from the text or built.
 #[test]
 fn keywords_beside_an_implied_shape_check_their_kind() {
     let from_text = |v: &serde_json::Value| serde_json::from_str::<types::Implied>(&v.to_string()).is_ok();
@@ -800,7 +800,7 @@ fn a_map_component_checks_a_value_built_in_code() {
 fn a_builder_checks_the_rules_across_fields() {
     let parcels =
         || -> types::ShipmentInternationalParcels { serde_json::from_value(json!([{"fragile": true}])).unwrap() };
-    types::ShipmentInternational::builder().customs("cn22").parcels(parcels()).build().expect("every rule holds");
+    types::ShipmentInternational::builder().customs("cn22").parcels(parcels()).build().expect("every rule passes");
     let insured_alone =
         types::ShipmentInternational::builder().customs("cn22").parcels(parcels()).insured(true).build();
     assert!(insured_alone.is_err(), "dependentRequired: insured needs insurer");

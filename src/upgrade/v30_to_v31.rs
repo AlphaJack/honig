@@ -66,7 +66,7 @@ impl Visit for Schemas<'_> {
     }
 
     fn header(&mut self, h: &mut Obj, _ptr: &str) {
-        // A 3.0 Header Object takes these two Parameter Object fields with no effect on a header. 3.1 has neither.
+        // A 3.0 Header Object accepts these two Parameter Object fields with no effect on a header. 3.1 has neither.
         h.remove("allowEmptyValue");
         h.remove("allowReserved");
     }

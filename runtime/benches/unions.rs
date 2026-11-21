@@ -2,11 +2,11 @@
 //!
 //! - `content`: a union without a `Decimal`. The value is buffered once in `runtime::Content`. Then each branch is
 //!   tried on the buffer. Numbers become `f64` there.
-//! - `raw`: a union holding a `Decimal` (`Content::exact`). The JSON text of the value is borrowed once. Then each branch is
+//! - `raw`: a union containing a `Decimal` (`Content::exact`). The JSON text of the value is borrowed once. Then each branch is
 //!   parsed from it. So the decimal keeps its digits.
 //!
 //! The matching branch is tried `first` or `last`. The two branches before it fail only at their missing id after
-//! they read every line.
+//! they parse every line.
 
 #![expect(clippy::expect_used, reason = "a bench fails loudly on input it built itself")]
 
@@ -51,7 +51,7 @@ struct Order {
     lines: Vec<Line>,
 }
 
-/// The branches of the union as generated code holds them.
+/// The branches of the union as generated code declares them.
 #[derive(Debug)]
 enum Union {
     Refund(Refund),

@@ -159,7 +159,7 @@ pub(super) fn struct_default(space: &Space<'_>, s: &Struct, seen: &mut Vec<TypeI
     s.fields.iter().filter(|f| is_arg(space, f)).all(|f| ty_default(space, &f.ty, seen))
 }
 
-/// Is `f` required with no spec default and more than one value? Then `new` takes it as an argument.
+/// Is `f` required with no spec default and more than one value? Then `new` accepts it as an argument.
 pub(super) fn is_arg(space: &Space<'_>, f: &Field) -> bool {
     f.required && field_default(space, f).is_none() && !is_unit(space, f)
 }
@@ -200,7 +200,7 @@ pub(super) fn ty_default(space: &Space<'_>, t: &Ty, seen: &mut Vec<TypeId>) -> b
         // have no value that every one of their kind could start from either. The uuid, chrono, jiff and ipnet format
         // types all implement it. So does `runtime::FullTime`.
         // Nor has the text of a format without its library: an empty one is not of the format.
-        // Nor has a type that the table names: honig cannot know.
+        // Nor has a type that the table sets: honig cannot know.
         return !(super::super::syntax::untyped(space.libs, *f)
             || space.libs.named.contains_key(f)
             || (*f == Format::Uri && space.libs.url)

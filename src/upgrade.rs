@@ -1,7 +1,7 @@
 //! In any version:
 //!
-//! - A field that must be a boolean, such as `required`, may hold a YAML 1.1 word: `yes`, `no`, `on`, `off`, `y` or
-//!   `n`. honig reads it as `true` or `false`.
+//! - A field that must be a boolean, such as `required`, may contain a YAML 1.1 word: `yes`, `no`, `on`, `off`, `y` or
+//!   `n`. honig decodes it as `true` or `false`.
 //! - An unknown `type` in a schema is ignored.
 //! - A `discriminator` whose property is optional and that has no `defaultMapping` gets a warning. A value without the
 //!   property decodes into an untyped variant.
@@ -82,7 +82,7 @@ fn yaml11_booleans(o: &mut serde_json::Map<String, Value>, ptr: &str, diags: &mu
             "no" | "n" | "off" => false,
             _ => continue,
         };
-        diags.warning(join(ptr, key), format!("`{s}` is a YAML 1.1 boolean; reading it as {b}"));
+        diags.warning(join(ptr, key), format!("`{s}` is a YAML 1.1 boolean; decoding it as {b}"));
         o.insert((*key).into(), Value::Bool(b));
     }
 }
@@ -217,7 +217,7 @@ fn extend_recursive(doc: &mut Value, diags: &mut Diagnostics) {
         }
     }
 
-    /// Does the schema at `ptr` (following `$ref`s) hold a `$recursiveRef`
+    /// Does the schema at `ptr` (following `$ref`s) contain a `$recursiveRef`
     /// whose own resource is anchored? Then it resolves dynamically.
     fn reaches(index: &Doc, ptr: &str, anchored: &[String], seen: &mut BTreeSet<String>) -> bool {
         fn go(index: &Doc, v: &Value, at: &str, anchored: &[String], seen: &mut BTreeSet<String>) -> bool {

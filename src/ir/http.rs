@@ -147,8 +147,8 @@ pub(crate) struct Content {
 }
 
 impl Content {
-    /// Returns a sequential body typed `runtime::Items<T>`. Items are streamed out. For a request they are read as they
-    /// arrive.
+    /// Returns a sequential body typed `runtime::Items<T>`. Items are streamed out. For a request they are decoded as
+    /// they arrive.
     pub(crate) fn streams(&self) -> bool {
         self.kind.is_sequence() && matches!(self.ty, Ty::Vec(_))
     }
@@ -251,7 +251,7 @@ pub(crate) enum LinkTarget {
 
 #[derive(Debug, Clone)]
 /// One operation: a method on a path.
-#[expect(clippy::struct_field_names, reason = "`operation_id` is the OpenAPI field it holds")]
+#[expect(clippy::struct_field_names, reason = "`operation_id` is the OpenAPI field it stores")]
 pub(crate) struct Operation {
     /// Name that is unique in the API.
     pub name: Name,
@@ -319,7 +319,7 @@ pub(crate) struct Http {
 }
 
 impl Http {
-    /// Builds every operation; `schemes` are the ones its `security` may name.
+    /// Builds every operation; `schemes` are the ones its `security` may refer to.
     pub(crate) fn build(b: &mut Builder<'_>, schemes: &[SecurityScheme]) -> Self {
         Self { operations: operations(b, schemes) }
     }
@@ -612,7 +612,7 @@ fn params(b: &mut Builder<'_>, site: &Site<'_>, prefix: &Name) -> Vec<Param> {
         {
             continue;
         }
-        // A parameter of `components/parameters` takes its type name as a component schema does: after its key and not
+        // A parameter of `components/parameters` gets its type name as a component schema does: after its key and not
         // after the first operation that uses it.
         let hint = match pptr.strip_prefix("/components/parameters/") {
             Some(key) if !key.contains('/') => Name::new(&json::unescape_token(key)),
@@ -749,7 +749,7 @@ pub(crate) fn examples_of(b: &mut Builder<'_>, obj: &Value, ptr: &str, json: boo
                 }
             } else if let Some(uri) = e.get("externalValue").and_then(Value::as_str).filter(|_| json) {
                 let at = join(&at, "externalValue");
-                let read = b.doc.externals.get(uri).cloned().unwrap_or_else(|| Err(format!("`{uri}` was not read")));
+                let read = b.doc.externals.get(uri).cloned().unwrap_or_else(|| Err(format!("`{uri}` was not loaded")));
                 let parsed =
                     read.and_then(|t| serde_json::from_str(&t).map_err(|err| format!("`{uri}` is not JSON: {err}")));
                 match parsed {
@@ -774,7 +774,7 @@ fn serialized_of(b: &Builder<'_>, obj: &Value, ptr: &str) -> Vec<(String, Value,
             if let Some(wire) = e.get("serializedValue").and_then(Value::as_str) {
                 return Some((join(&at, "serializedValue"), data, wire.to_owned()));
             }
-            // The serialized form in a file of its own (`./examples/orders.xml`). It was read when the document loaded.
+            // The serialized form in a file of its own (`./examples/orders.xml`). It was loaded with the document.
             let uri = e.get("externalValue")?.as_str()?;
             let text = b.doc.externals.get(uri)?.as_ref().ok()?.clone();
             Some((join(&at, "externalValue"), data, text))
@@ -838,7 +838,7 @@ fn body(b: &mut Builder<'_>, site: &Site<'_>, prefix: &Name) -> Option<Body> {
     if contents.is_empty() {
         return None;
     }
-    // The body's type checks every keyword of its schema where it decodes: the body holds no constraints of its own.
+    // The body's type checks every keyword of its schema where it decodes: the body has no constraints of its own.
     let constraints = crate::ir::types::Constraints::default();
     let variant_constraints = vec![];
     Some(Body {

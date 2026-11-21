@@ -15,14 +15,14 @@ pub trait BodySource: MaybeSend + 'static {
     /// Returns the next piece, or `Ready(None)` at the end of the body. Nothing follows an error.
     fn poll_piece(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Result<bytes::Bytes, ClientError>>>;
 
-    /// Returns the whole body when the source already holds it in one shared buffer. A transport sends that buffer as
+    /// Returns the whole body when the source already has it in one shared buffer. A transport sends that buffer as
     /// it is with its length. It does not copy it out piece by piece. `None` for every other source.
     fn shared(&self) -> Option<bytes::Bytes> {
         None
     }
 
     /// Returns the bytes still to come when the source knows them before it produces them. A transport then sends the
-    /// body with `Content-Length` and not chunked, for servers that read no chunked body. `None` for a source that
+    /// body with `Content-Length` and not chunked, for servers that accept no chunked body. `None` for a source that
     /// does not know.
     fn size(&self) -> Option<u64> {
         self.shared().map(|b| b.len() as u64)
@@ -39,7 +39,7 @@ pub trait BodySource: MaybeSend + 'static {
     fn cut(self: Pin<&mut Self>, _first: u64, _last: u64) {}
 
     /// Returns the rest of the body in one buffer or why not. The cause is more than `limit` bytes or a piece that
-    /// failed. A source that can read its body at once overrides this, such as a server adapter that reads into a
+    /// failed. A source that can load its body at once overrides this, such as a server adapter that loads into a
     /// buffer sized from `Content-Length`. This default joins the pieces. It keeps a lone piece as it is.
     fn read_all(mut self: Pin<Box<Self>>, limit: usize) -> ReadAll {
         Box::pin(async move {
@@ -74,10 +74,10 @@ pub async fn next_piece(source: &mut Pin<Box<dyn BodySource>>) -> Option<Result<
     std::future::poll_fn(|cx| source.as_mut().poll_piece(cx)).await
 }
 
-/// A whole body read by [`BodySource::read_all`].
+/// A whole body collected by [`BodySource::read_all`].
 pub type ReadAll = crate::transport::Pending<'static, Result<Vec<u8>, BodyError>>;
 
-/// Why a request body could not be read whole.
+/// Why a request body could not be collected whole.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum BodyError {
@@ -98,21 +98,21 @@ impl fmt::Display for BodyError {
 
 /// A body that arrives or leaves a chunk at a time.
 ///
-/// It is a request body that the server has not read, a response body that a client reads as it arrives, or chunks
-/// that your code produces. It is a `Stream` of chunks. Read it with `futures_util::StreamExt::next`. Nothing follows
-/// an error. Clones share it: what one reads the others do not.
+/// It is a request body that the server has not consumed, a response body that a client consumes as it arrives, or
+/// chunks that your code produces. It is a `Stream` of chunks. Read it with `futures_util::StreamExt::next`. Nothing
+/// follows an error. Clones share it: what one consumes the others do not.
 #[derive(Clone, Default)]
 pub struct ByteStream(Option<Slot<Pin<Box<dyn BodySource>>>>);
 
-/// A value shared by clones and taken once.
+/// A value shared by clones and moved out once.
 pub(crate) type Slot<T> = std::sync::Arc<std::sync::Mutex<Option<T>>>;
 
-/// Takes what `slot` holds; later calls get `None` until it is put back.
+/// Takes what `slot` contains; later calls get `None` until it is put back.
 pub(crate) fn take_slot<T>(slot: &std::sync::Mutex<Option<T>>) -> Option<T> {
     slot.lock().ok().and_then(|mut s| s.take())
 }
 
-/// Returns a slot that holds `value`.
+/// Returns a slot that contains `value`.
 pub(crate) fn shared<T>(value: T) -> Slot<T> {
     std::sync::Arc::new(std::sync::Mutex::new(Some(value)))
 }
@@ -125,18 +125,18 @@ pub(crate) fn put_slot<T>(slot: &std::sync::Mutex<Option<T>>, value: T) {
 }
 
 impl ByteStream {
-    /// Creates a body read from `source`.
+    /// Creates a body fed from `source`.
     #[doc(hidden)]
     pub fn new(source: impl BodySource) -> Self {
         Self::pinned(Box::pin(source))
     }
 
-    /// Returns a body read from `source`, already pinned.
+    /// Returns a body fed from `source`, already pinned.
     pub(crate) fn pinned(source: Pin<Box<dyn BodySource>>) -> Self {
         Self(Some(shared(source)))
     }
 
-    /// Returns a body read from the chunks of `chunks`. With `len` it goes out with `Content-Length` and not chunked.
+    /// Returns a body fed from the chunks of `chunks`. With `len` it goes out with `Content-Length` and not chunked.
     #[doc(hidden)]
     pub fn chunks<S>(chunks: S, len: Option<u64>) -> Self
     where
@@ -150,7 +150,7 @@ impl ByteStream {
         self.0.as_ref()?.lock().ok()?.as_ref()?.size()
     }
 
-    /// Is a body attached that nothing has taken?
+    /// Is a body attached that nothing has moved out?
     pub fn is_some(&self) -> bool {
         self.0.as_ref().is_some_and(|m| m.lock().is_ok_and(|s| s.is_some()))
     }
@@ -198,7 +198,7 @@ impl Stream for ByteStream {
 
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let Some(slot) = self.get_mut().0.as_mut() else { return Poll::Ready(None) };
-        // Usually no clone shares the body. Then it is read without the lock.
+        // Usually no clone shares the body. Then it is polled without the lock.
         let poll = |held: &mut Option<Pin<Box<dyn BodySource>>>, cx: &mut Context<'_>| {
             let Some(source) = held.as_mut() else { return Poll::Ready(None) };
             let piece = ready!(source.as_mut().poll_piece(cx));
@@ -240,8 +240,8 @@ pub(crate) type Feed<T> = Pin<Box<dyn Stream<Item = T> + Send>>;
 
 /// A binary body: every byte in memory or a body that arrives or leaves a chunk at a time.
 ///
-/// A large download or upload streams. Clients receive responses as `Bytes`. `<op>_stream` reads chunks as they
-/// arrive. Server handlers receive binary request bodies as `Stream`: an upload is never held whole. A `Blob` is a
+/// A large download or upload streams. Clients receive responses as `Bytes`. `<op>_stream` yields chunks as they
+/// arrive. Server handlers receive binary request bodies as `Stream`: an upload is never buffered whole. A `Blob` is a
 /// `Stream` of its chunks.
 ///
 /// It may carry its media type, as a browser `Blob` does. A body that the description declares as a range
@@ -257,7 +257,7 @@ pub struct Blob {
 enum BlobBody {
     /// Every byte in memory. Clones share the buffer. So the same `Params` given to a client again copies nothing.
     Bytes(bytes::Bytes),
-    /// Chunks still to come: a request body the server has not read or chunks that your code produces.
+    /// Chunks still to come: a request body the server has not consumed or chunks that your code produces.
     Stream(ByteStream),
 }
 
@@ -272,7 +272,7 @@ impl Blob {
     }
 
     /// Returns a body of chunks that add up to `len` bytes. It goes out with `Content-Length` and not chunked, so a
-    /// server that reads no chunked body takes it. Chunks that add up to another length fail the request.
+    /// server that accepts no chunked body accepts it. Chunks that add up to another length fail the request.
     pub fn sized<S, B>(len: u64, chunks: S) -> Self
     where
         S: Stream<Item = B> + Send + 'static,
@@ -287,7 +287,7 @@ impl Blob {
     /// Returns a body of `len` bytes that can start anywhere in it, such as a file. `open(first, last)` gives the
     /// chunks of bytes `first` to `last`, both included. The server calls it once, when it sends the body: for the
     /// whole body or for the one range that a `Range` request asks for. A download that broke off then resumes and a
-    /// player seeks without the bytes before them being read. Chunks that add up to another length fail the response.
+    /// player seeks without the bytes before them being loaded. Chunks that add up to another length fail the response.
     pub fn ranged<F, S, B>(len: u64, open: F) -> Self
     where
         F: FnOnce(u64, u64) -> S + Send + 'static,
@@ -323,7 +323,7 @@ impl Blob {
         if media.is_empty() { self } else { self.with_media(media.to_owned()) }
     }
 
-    /// Returns whether chunks are still to come. A request body that the server has not read has them.
+    /// Returns whether chunks are still to come. A request body that the server has not consumed has them.
     pub const fn is_streamed(&self) -> bool {
         matches!(self.body, BlobBody::Stream(_))
     }
@@ -483,8 +483,8 @@ impl BodySource for Ranged {
     }
 }
 
-/// A buffer that other clones of a [`Blob`] still hold. Transports that take a buffer send it as it is. Others send it
-/// as one piece.
+/// A buffer that other clones of a [`Blob`] still share. Transports that accept a buffer send it as it is. Others send
+/// it as one piece.
 pub(crate) struct Shared(pub(crate) Option<bytes::Bytes>);
 
 impl BodySource for Shared {
@@ -497,7 +497,7 @@ impl BodySource for Shared {
     }
 }
 
-/// What an arriving body holds unread and then the rest of it.
+/// What an arriving body has buffered and then the rest of it.
 pub(crate) struct Leftover(pub(crate) Option<bytes::Bytes>, pub(crate) Option<Pin<Box<dyn BodySource>>>);
 
 impl BodySource for Leftover {
@@ -512,8 +512,8 @@ impl BodySource for Leftover {
 
 /// The body of a [`Request`](crate::Request) or a [`Response`](crate::Response).
 ///
-/// It is the bytes held whole and then the chunks of a [`ByteStream`] still to come: an upload that a client streams,
-/// a request body that the server has not read, or a download that a handler produces. Clones share the stream.
+/// It is the bytes in memory and then the chunks of a [`ByteStream`] still to come: an upload that a client streams,
+/// a request body that the server has not consumed, or a download that a handler produces. Clones share the stream.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Body {
     bytes: bytes::Bytes,
@@ -531,17 +531,17 @@ impl Body {
         Self { bytes: bytes::Bytes::new(), stream }
     }
 
-    /// Returns the bytes held whole. A body that streams holds what came before its chunks.
+    /// Returns the bytes in memory. A body that streams keeps what came before its chunks.
     pub fn bytes(&self) -> &[u8] {
         &self.bytes
     }
 
-    /// Returns how many bytes are held whole.
+    /// Returns how many bytes are in memory.
     pub fn len(&self) -> usize {
         self.bytes.len()
     }
 
-    /// Returns whether no bytes are held whole. A body that streams may still have chunks to come.
+    /// Returns whether no bytes are in memory. A body that streams may still have chunks to come.
     pub fn is_empty(&self) -> bool {
         self.bytes.is_empty()
     }
@@ -556,12 +556,12 @@ impl Body {
         self.stream.is_some()
     }
 
-    /// Returns the bytes held whole and the chunks still to come.
+    /// Returns the bytes in memory and the chunks still to come.
     pub fn into_parts(self) -> (bytes::Bytes, ByteStream) {
         (self.bytes, self.stream)
     }
 
-    /// Returns the bytes held whole and then the chunks: one stream of the whole body.
+    /// Returns the bytes in memory and then the chunks: one stream of the whole body.
     pub fn into_stream(self) -> ByteStream {
         match (self.bytes.is_empty(), self.stream.is_some()) {
             (_, false) => ByteStream::new(Shared(Some(self.bytes))),
@@ -570,7 +570,7 @@ impl Body {
         }
     }
 
-    /// Returns every byte in one buffer. A body held whole is not copied.
+    /// Returns every byte in one buffer. A body in memory is not copied.
     ///
     /// # Errors
     /// A chunk still to come failed.
@@ -639,7 +639,7 @@ impl http_body::Body for Body {
         self.bytes.is_empty() && !self.stream.is_some()
     }
 
-    /// Returns an exact size for a body held whole or streamed from a source that knows its length. Such a body goes
+    /// Returns an exact size for a body in memory or streamed from a source that knows its length. Such a body goes
     /// out with `Content-Length` and not in chunks. At least the whole part when more is streamed after it.
     fn size_hint(&self) -> http_body::SizeHint {
         let whole = self.bytes.len() as u64;
@@ -718,7 +718,7 @@ mod tests {
         assert!(!Body::from("a").is_streamed());
     }
 
-    /// A buffer that clones still hold is sent whole with its length.
+    /// A buffer that clones still share is sent whole with its length.
     #[test]
     fn a_shared_buffer_knows_its_size() {
         use super::{BodySource, Shared};

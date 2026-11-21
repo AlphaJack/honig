@@ -14,7 +14,7 @@ use crate::ir::http::{Content, Operation};
 use crate::ir::names::Name;
 use crate::ir::types::Ty;
 
-/// Does any response variant hold a body or a header the encoder moves out? A status alone is copied.
+/// Does any response variant contain a body or a header the encoder moves out? A status alone is copied.
 pub(crate) fn carries_data(op: &Operation) -> bool {
     op.responses.iter().any(|r| !r.contents.is_empty() || !r.headers.is_empty())
 }
@@ -23,7 +23,7 @@ pub(crate) fn encode_fallible(op: &Operation) -> bool {
     op.responses.iter().any(|r| !r.headers.is_empty() || r.contents.iter().any(|c| fallible_encode(c.kind)))
 }
 
-/// Does the encoder take the media type `Accept` chose? When a response holds one type in several media types.
+/// Does the encoder receive the media type `Accept` chose? When a response carries one type in several media types.
 pub(crate) fn encodes_by_media(space: &Space<'_>, op: &Operation) -> bool {
     op.responses.iter().any(|r| collapses(space, r))
 }

@@ -496,7 +496,7 @@ mod tests {
         assert!(doc.get("x-tagGroups").is_some());
     }
 
-    /// A group that cannot become a parent leaves the tags as they are: it has a key of its own, it names an
+    /// A group that cannot become a parent leaves the tags as they are: it has a key of its own, it refers to an
     /// operation's tag, or a member has a parent already.
     #[test]
     fn unsafe_tag_groups_change_nothing() {

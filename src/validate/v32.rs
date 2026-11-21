@@ -712,7 +712,7 @@ impl V<'_> {
             o.pattern.iter().map(|p| (join(ptr, "pattern"), p)).chain(
                 o.pattern_properties.iter().flatten().map(|(p, _)| (join(&join(ptr, "patternProperties"), p), p)),
             );
-        // A type that claims a pattern it cannot check would take every value: `generate` refuses the document.
+        // A type that claims a pattern it cannot check would accept every value: `generate` refuses the document.
         for (at, p) in patterns {
             if let Some(e) = pattern_error(p) {
                 self.diags.error(at, format!("pattern `{p}` is not an ECMA-262 regular expression ({e})"));
@@ -772,7 +772,7 @@ pub(crate) fn pattern_error(pattern: &str) -> Option<String> {
     regress::Regex::with_flags(pattern, "u").or_else(|_| regress::Regex::new(pattern)).err().map(|e| e.to_string())
 }
 
-/// Does a schema of the document hold a `pattern` or a `patternProperties` key that does not compile? Generated code
+/// Does a schema of the document contain a `pattern` or a `patternProperties` key that does not compile? Generated code
 /// could not check it: a value of that schema would pass whatever it is. Data (examples, enums, defaults) does not
 /// count.
 pub(crate) fn has_uncompilable_pattern(v: &Value, parent: &str) -> bool {

@@ -1,8 +1,8 @@
-//! The JSON Schema Test Suite against generated types. Each case of `tests/fixtures/json-schema-test-suite` that applies
-//! to 2020-12 becomes the field `v` of an object of one description. Its type must decode every valid instance and refuse every invalid
-//! one. `json-schema-test-suite.known` lists the tests that do not hold today, each with its reason. The test fails on
-//! a test that does not hold and is not listed, and on a listed test that holds: the list stays true. It rewrites the
-//! list when it is stale.
+//! The JSON Schema Test Suite against generated types. Each case of `tests/fixtures/json-schema-test-suite` that
+//! applies to 2020-12 becomes the field `v` of an object of one description. Its type must decode every valid instance
+//! and refuse every invalid one. `json-schema-test-suite.known` lists the tests that do not pass today, each with its
+//! reason. The test fails on a test that does not pass and is not listed, and on a listed test that passes: the list
+//! stays true. It rewrites the list when it is stale.
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -51,8 +51,8 @@ fn generated_types_follow_the_json_schema_test_suite() {
         let text: String = found.iter().map(|(key, reason)| format!("{key}\t{reason}\n")).collect();
         std::fs::write(&path, text).unwrap();
     }
-    assert!(new.is_empty(), "tests that do not hold, now listed in {}: {new:#?}", path.display());
-    assert!(fixed.is_empty(), "listed tests that hold, now unlisted in {}: {fixed:#?}", path.display());
+    assert!(new.is_empty(), "tests that do not pass, now listed in {}: {new:#?}", path.display());
+    assert!(fixed.is_empty(), "listed tests that pass, now unlisted in {}: {fixed:#?}", path.display());
 }
 
 /// Every case of the suite that applies to 2020-12, in the order of its files.
@@ -139,7 +139,7 @@ fn component(i: usize, case: &Case) -> Value {
 /// Puts each document that a case retrieves into the `$defs` of its schema, with the URI that it is retrieved at as its
 /// `$id`, as the suite's README suggests. A document with an `$id` of its own keeps it: the URI becomes a `$ref` to it.
 fn embed(schema: &mut serde_json::Map<String, Value>, external: &serde_json::Map<String, Value>) {
-    // A metaschema that `$schema` names picks vocabularies, which honig does not read: it is no schema of the value.
+    // A metaschema that `$schema` names picks vocabularies, which honig does not use: it is no schema of the value.
     let meta = schema.get("$schema").and_then(Value::as_str).map(str::to_owned);
     for (n, (uri, document)) in
         external.iter().enumerate().filter(|(_, (uri, _))| meta.as_deref() != Some(uri.as_str()))
@@ -175,8 +175,8 @@ fn generable(i: usize, case: &Case) -> Result<(), String> {
     }
 }
 
-/// Does `schema` hold a reference to a document that no `$id` within it names? Each `$id` and reference resolves against
-/// the base of the resource around it.
+/// Does `schema` contain a reference to a document that no `$id` within it identifies? Each `$id` and reference
+/// resolves against the base of the resource around it.
 fn refers_outside(schema: &Value) -> bool {
     let mut ids = vec![];
     let mut refs = vec![];
@@ -210,7 +210,7 @@ fn collect(v: &Value, base: &str, ids: &mut Vec<String>, refs: &mut Vec<String>)
 }
 
 /// Builds one crate with the types of the cases in `decoded` and decodes every test of them. Returns each key with
-/// `None` when the test holds and its reason when it does not.
+/// `None` when the test passes and its reason when it does not.
 fn decode_all(cases: &[Case], decoded: &[usize]) -> Vec<(String, Option<String>)> {
     let schemas: serde_json::Map<String, Value> =
         decoded.iter().map(|&i| (format!("Case{i}"), component(i, &cases[i]))).collect();
@@ -284,7 +284,7 @@ fn decoder(decoded: &[usize]) -> String {
     DECODER.replace("ARMS", &arms)
 }
 
-/// The first line of `text`, cut to a length that a list line holds.
+/// The first line of `text`, cut to a length that a list line fits.
 fn one_line(text: &str) -> String {
     const LENGTH: usize = 120;
     text.lines().next().unwrap_or_default().chars().take(LENGTH).collect()

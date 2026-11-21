@@ -21,7 +21,7 @@ pub struct SatisfiedSecurity {
 /// The `Api` has one `verify_` method per security scheme that its operations use, and does not compile without it.
 /// The server checks that a request presents the credentials that its operation declares. It calls the method of each
 /// scheme of an alternative, at most once per request, and checks the scopes that the credentials grant. Each
-/// operation then takes what its `security` asks for:
+/// operation then gets what its `security` asks for:
 ///
 /// | The operation's `security` | `ctx.principal` | When no alternative passes |
 /// |---|---|---|
@@ -29,7 +29,7 @@ pub struct SatisfiedSecurity {
 /// | an empty alternative (`[{}, {apiKey: []}]`) | `Option<Principal>` | `None`; 401 when a method refused a credential |
 /// | credentials required | `Principal` | 401; 403 when only a scope is missing |
 ///
-/// The principal is the one of the first scheme of the alternative that passes. Layers read it from the request's
+/// The principal is the one of the first scheme of the alternative that passes. Layers get it from the request's
 /// extensions.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Verified<P> {
@@ -191,7 +191,7 @@ mod tests {
         assert_eq!(g.scopes, ["a", "b"]);
     }
 
-    /// A layer for any API reads each credential by the kind of its scheme, not by the scheme's name.
+    /// A layer for any API gets each credential by the kind of its scheme, not by the scheme's name.
     #[cfg(feature = "base64")]
     #[test]
     fn credentials_are_presented_by_kind() {

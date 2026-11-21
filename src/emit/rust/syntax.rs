@@ -133,7 +133,7 @@ fn text_ty(f: Format) -> TokenStream {
         Format::Uuid => "UuidText",
         Format::DateTime => "DateTimeText",
         Format::Date => "DateText",
-        // The runtime's `FullTime` holds a time with its offset with any date library (`library_ty`).
+        // The runtime's `FullTime` stores a time with its offset with any date library (`library_ty`).
         Format::Time => "FullTime",
         Format::DateTimeLocal => "DateTimeLocalText",
         Format::TimeLocal => "TimeLocalText",
@@ -170,7 +170,7 @@ pub(crate) fn untyped(libs: &FormatLibs, f: Format) -> bool {
     library_ty(libs, f).is_none()
 }
 
-/// Returns the type that a format takes from the standard library, the runtime or the library of the target crate.
+/// Returns the type that a format gets from the standard library, the runtime or the library of the target crate.
 /// `None` for its text.
 fn library_ty(libs: &FormatLibs, f: Format) -> Option<TokenStream> {
     if let Some(named) = libs.named.get(&f) {
@@ -192,8 +192,8 @@ fn library_ty(libs: &FormatLibs, f: Format) -> Option<TokenStream> {
         (Format::IdnEmail, ..) => Some(quote!(runtime::IdnEmailText)),
         (Format::Hostname, ..) => Some(quote!(runtime::HostnameText)),
         (Format::IdnHostname, ..) => Some(quote!(runtime::IdnHostnameText)),
-        // `time` has an offset: neither library has a type for it. The runtime holds it in `jiff` types.
-        // Neither date library has a time with an offset. The runtime's holds plain numbers, with any setting.
+        // `time` has an offset: neither library has a type for it. The runtime stores it in `jiff` types.
+        // Neither date library has a time with an offset. The runtime's stores plain numbers, with any setting.
         (Format::Time, ..) => Some(quote!(runtime::FullTime)),
         (Format::TimeLocal, _, Some(DateLib::Chrono)) => Some(quote!(chrono::NaiveTime)),
         (Format::TimeLocal, _, Some(DateLib::Jiff)) => Some(quote!(jiff::civil::Time)),
@@ -225,10 +225,10 @@ fn library_ty(libs: &FormatLibs, f: Format) -> Option<TokenStream> {
     }
 }
 
-/// Returns the marker in `runtime::formats::format` of a format whose library type reads more than the format allows.
-/// `jiff` reads `2024-06-19 08:30Z` as a `date-time` and `uuid` reads `{...}`. `None` for text, the standard library's
-/// addresses and the runtime's own types: those read only valid values. A type that the table names reads text that
-/// honig checked first.
+/// Returns the marker in `runtime::formats::format` of a format whose library type accepts more than the format allows.
+/// `jiff` accepts `2024-06-19 08:30Z` as a `date-time` and `uuid` accepts `{...}`. `None` for text, the standard
+/// library's addresses and the runtime's own types: those accept only valid values. A type that the table sets parses
+/// text that honig checked first.
 fn validated_format(libs: &FormatLibs, f: Format) -> Option<Ident> {
     let checked = libs.named.contains_key(&f)
         || (libs.dates.is_some()
@@ -239,8 +239,9 @@ fn validated_format(libs: &FormatLibs, f: Format) -> Option<Ident> {
     f.marker().filter(|_| checked).map(ident)
 }
 
-/// Returns how `t` holds the text of its checked formats: a `runtime::formats::Holds` that reads it with each text
-/// checked before its library reads it. `None` when `t` holds none. Aliases are followed. A named type checks its own.
+/// Returns how `t` stores the text of its checked formats: a `runtime::formats::Holds` that decodes it with each text
+/// checked before its library parses it. `None` when `t` contains none. Aliases are followed. A named type checks its
+/// own.
 pub(crate) fn holds(space: &Space<'_>, t: &Ty) -> Option<TokenStream> {
     let c = quote!(runtime::formats);
     match space.types.unalias(t) {
@@ -312,7 +313,7 @@ const METAVAR: &str = "__honig_";
 
 /// Returns `file` printed by `prettyplease`, with the body of each top-level `macro_rules!` printed as the items it
 /// expands to. `prettyplease` prints a macro body as raw tokens, one space between each: a body of trait impls would
-/// read as one long line. A body that is not items stays as raw tokens.
+/// look like one long line. A body that is not items stays as raw tokens.
 pub(crate) fn unparse(mut file: syn::File) -> String {
     let mut bodies = Vec::new();
     for item in &mut file.items {
@@ -398,9 +399,9 @@ fn macro_rules_text(m: &syn::ItemMacro) -> Option<String> {
     Some(format!("macro_rules! {name} {{\n    ({matcher}) => {{\n{body}    }};\n}}\n"))
 }
 
-/// Writes once a trait impl that several types share word for word, such as the `Serialize` of two unions with the
-/// same variants. A `macro_rules!` at the top of the file writes it for any type. Each type invokes it. Generated code holds no two
-/// identical function bodies.
+/// Writes once a trait impl that several types share word for word, such as the `Serialize` of two unions with the same
+/// variants. A `macro_rules!` at the top of the file writes it for any type. Each type invokes it. Generated code
+/// contains no two identical function bodies.
 fn share_identical_impls(file: &mut syn::File) {
     use syn::visit_mut::VisitMut;
     let mut count = CountImpls::default();
@@ -547,7 +548,7 @@ fn in_threes(digits: &str, head: usize) -> String {
     starts.zip(ends).map(|(a, b)| digits.get(a..b).unwrap_or_default()).collect::<Vec<_>>().join("_")
 }
 
-/// A struct or enum that holds itself names itself `Self` in its fields (`clippy::use_self`).
+/// A struct or enum that contains itself refers to itself as `Self` in its fields (`clippy::use_self`).
 struct SelfInOwnFields;
 
 impl syn::visit_mut::VisitMut for SelfInOwnFields {
@@ -830,7 +831,7 @@ pub(crate) fn rustdoc(text: &str) -> String {
     out.join("\n")
 }
 
-/// More arguments than this and clippy warns (`too_many_arguments`): a generated function says why it takes them.
+/// More arguments than this and clippy warns (`too_many_arguments`): a generated function says why it needs them.
 pub(crate) const MAX_ARGUMENTS: usize = 7;
 
 /// `CommonMark`: four spaces of indent make a code block. A fence is three or more backticks or tildes. The number
@@ -954,7 +955,7 @@ pub(crate) fn has_float(space: &Space<'_>, ty: &Ty) -> bool {
 const BOX_MARGIN: usize = 128;
 
 /// Returns which variants to box so that the largest variant is no more than about
-/// 128 bytes above the next one. `sizes` holds (unboxed size, boxable part size).
+/// 128 bytes above the next one. `sizes` contains (unboxed size, boxable part size).
 pub(crate) fn box_plan(sizes: &[(usize, Option<usize>)]) -> Vec<bool> {
     let mut boxed = vec![false; sizes.len()];
     if sizes.len() < 2 {
@@ -1023,7 +1024,7 @@ pub(crate) fn file_allow(deprecated: bool) -> TokenStream {
             reason = "generated from the OpenAPI description, which may leave items undescribed or deprecate them"
         )]
         #![allow(clippy::too_many_lines, reason = "as long as the description's schemas and operations")]
-        #![allow(clippy::missing_errors_doc, reason = "generated docs hold only the description's own prose")]
+        #![allow(clippy::missing_errors_doc, reason = "generated docs contain only the description's own prose")]
         #![allow(
             clippy::init_numbered_fields,
             reason = "a spec default builds its checked type as `Type { 0: value }`, which also works through the alias of a twin"
@@ -1068,7 +1069,7 @@ pub(crate) fn shared_arms(arms: Vec<(TokenStream, Option<Ty>, TokenStream)>) -> 
     groups.into_iter().map(|(_, patterns, body)| match_arm(&patterns, &body)).collect()
 }
 
-/// Returns the name of the field that holds the other properties of `s`.
+/// Returns the name of the field that stores the other properties of `s`.
 pub(crate) fn extra_field(s: &crate::ir::types::Struct) -> String {
     free_field(s, "additional_properties")
 }
@@ -1106,7 +1107,7 @@ mod tests {
         assert_eq!(grouped("1.5e10"), "1.5e10");
     }
 
-    /// A type names a generated type or a runtime one when anything it holds does.
+    /// A type refers to a generated type or a runtime one when anything it contains does.
     #[test]
     fn a_type_mentions_what_it_holds() {
         use crate::ir::types::{Ty, TypeId};
@@ -1117,7 +1118,7 @@ mod tests {
         assert_eq!(super::mentions(&Ty::Vec(Box::new(Ty::String))), (false, false));
     }
 
-    /// A shared impl takes the `cfg` of its uses when they all have it, and none when one does not.
+    /// A shared impl gets the `cfg` of its uses when they all have it, and none when one does not.
     #[test]
     fn a_shared_impl_has_the_cfg_of_all_its_uses() {
         let shared = |inside: proc_macro2::TokenStream| {

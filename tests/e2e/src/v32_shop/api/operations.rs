@@ -125,7 +125,7 @@ pub mod get_all_data {
         Option<String>,
     );
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<Success, Box<Self>> {
             match self {
                 Self::Ok {
@@ -257,7 +257,7 @@ pub mod create_product {
             x_request_id: Option<runtime::UuidText>,
             /// The URL of the newly created resource
             location: Option<url::Url>,
-            /// The time taken to process the request in milliseconds
+            /// The time spent to process the request in milliseconds
             x_processing_time: Option<i64>,
         },
         /// Bad Request
@@ -282,7 +282,7 @@ pub mod create_product {
         Option<i64>,
     );
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<Success, Box<Self>> {
             match self {
                 Self::Created { body, x_request_id, location, x_processing_time } => {
@@ -411,7 +411,7 @@ pub mod query_products {
     /// The body and headers of the success, in order: what `Response::into_ok` gives.
     pub type Success = (types::QueryProductsOk, Option<runtime::UuidText>);
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<Success, Box<Self>> {
             match self {
                 Self::Ok { body, x_request_id } => Ok((body, x_request_id)),
@@ -460,7 +460,7 @@ pub mod search_products {
     /// The body and headers of the success, in order: what `Response::into_ok` gives.
     pub type Success = (types::SearchProductsOk, Option<runtime::UuidText>);
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<Success, Box<Self>> {
             match self {
                 Self::Ok { body, x_request_id } => Ok((body, x_request_id)),
@@ -478,7 +478,7 @@ pub mod get_product {
     pub struct Params {
         /// The ID of the product to get
         pub product_id: i64,
-        /// The entity tags of the copies the client holds
+        /// The entity tags of the copies the client has
         pub if_none_match: Option<String>,
         pub media: Media,
     }
@@ -552,7 +552,7 @@ pub mod get_product {
         Option<String>,
     );
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<Success, Box<Self>> {
             match self {
                 Self::Ok {
@@ -665,7 +665,7 @@ pub mod update_product {
         Forbidden(ForbiddenBody),
         /// Not Found
         NotFound(NotFoundBody),
-        /// The product changed since the client read it
+        /// The product changed since the client fetched it
         PreconditionFailed,
     }
     runtime::response_error!(
@@ -675,7 +675,7 @@ pub mod update_product {
         "status 412 (PreconditionFailed)", }
     );
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<Box<types::Product>, Box<Self>> {
             match self {
                 Self::Ok(body) => Ok(body),
@@ -742,7 +742,7 @@ pub mod delete_product {
         "status 404 (NotFound)", }
     );
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<(), Box<Self>> {
             match self {
                 Self::NoContent => Ok(()),
@@ -800,7 +800,7 @@ pub mod copy_product {
     /// The body and headers of the success, in order: what `Response::into_ok` gives.
     pub type Success = (Box<types::Product>, Option<url::Url>);
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<Success, Box<Self>> {
             match self {
                 Self::Created { body, location } => Ok((body, location)),
@@ -911,7 +911,7 @@ pub mod upload_image {
     /// The body and headers of the success, in order: what `Response::into_ok` gives.
     pub type Success = (OkBody, Option<runtime::UuidText>, Option<String>);
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<Success, Box<Self>> {
             match self {
                 Self::Ok { body, x_request_id, x_cache_control } => {
@@ -936,7 +936,7 @@ pub mod stream_product_events {
     pub const PATH: &str = "/products/events";
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct Params {
-        /// The `id` of the last event the client read, to resume after it when it reconnects.
+        /// The `id` of the last event the client received, to resume after it when it reconnects.
         pub last_event_id: Option<String>,
         pub media: Media,
     }
@@ -996,7 +996,7 @@ pub mod stream_product_events {
     /// The body and headers of the success, in order: what `Response::into_ok` gives.
     pub type Success = (OkBody, Option<runtime::UuidText>);
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<Success, Box<Self>> {
             match self {
                 Self::Ok { body, x_request_id } => Ok((body, x_request_id)),
@@ -1065,7 +1065,7 @@ pub mod upload_photos {
     /// The body and headers of the success, in order: what `Response::into_ok` gives.
     pub type Success = (types::UploadPhotosAccepted, Option<runtime::UuidText>);
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<Success, Box<Self>> {
             match self {
                 Self::Accepted { body, x_request_id } => Ok((body, x_request_id)),
@@ -1110,7 +1110,7 @@ pub mod create_item {
     }
     runtime::response_error!(Response { Self::Created(..) => "status 201 (Created)", });
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<types::Item, Box<Self>> {
             match self {
                 Self::Created(body) => Ok(body),
@@ -1183,7 +1183,7 @@ pub mod create_user {
             x_request_id: Option<runtime::UuidText>,
             /// The URL of the newly created resource
             location: Option<url::Url>,
-            /// The time taken to process the request in milliseconds
+            /// The time spent to process the request in milliseconds
             x_processing_time: Option<i64>,
         },
         /// Bad Request
@@ -1216,7 +1216,7 @@ pub mod create_user {
         Option<i64>,
     );
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<Success, Box<Self>> {
             match self {
                 Self::Created { body, x_request_id, location, x_processing_time } => {
@@ -1346,7 +1346,7 @@ pub mod get_token {
         Option<i64>,
     );
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<Success, Box<Self>> {
             match self {
                 Self::Created {
@@ -1447,7 +1447,7 @@ pub mod get_me {
         Option<String>,
     );
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<Success, Box<Self>> {
             match self {
                 Self::Ok {
@@ -1498,7 +1498,7 @@ pub mod new_product_post {
     }
     runtime::response_error!(Response { Self::Ok => "status 200 (Ok)", });
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<(), Box<Self>> {
             match self {
                 Self::Ok => Ok(()),
@@ -1543,7 +1543,7 @@ pub mod create_product_product_created_post {
         "status 204 (NoContent)", }
     );
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<Self, Box<Self>> {
             match self {
                 success @ (Self::Ok | Self::NoContent) => Ok(success),
@@ -1583,7 +1583,7 @@ pub mod create_product_product_creation_failed_post {
     }
     runtime::response_error!(Response { Self::Ok => "status 200 (Ok)", });
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<(), Box<Self>> {
             match self {
                 Self::Ok => Ok(()),
@@ -1623,7 +1623,7 @@ pub mod create_product_product_discontinued_post {
     }
     runtime::response_error!(Response { Self::Ok => "status 200 (Ok)", });
     impl Response {
-        /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_ok(self) -> Result<(), Box<Self>> {
             match self {
                 Self::Ok => Ok(()),

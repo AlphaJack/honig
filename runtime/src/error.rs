@@ -34,7 +34,7 @@ pub enum ClientError {
         body: bytes::Bytes,
     },
     /// `304 Not Modified` to a request that sent `If-None-Match` or `If-Modified-Since`. The operation declares no
-    /// `304`. The representation that the client holds is still current.
+    /// `304`. The representation that the client has is still current.
     NotModified {
         /// The headers of the response: its `ETag`, `Last-Modified` and caching directives.
         headers: http::HeaderMap,
@@ -51,9 +51,9 @@ pub enum ClientError {
 }
 
 impl ClientError {
-    /// Returns a transport failure from the error of the HTTP client or from a message. The message holds the error and
-    /// each of its causes (`error sending request: connection closed before message completed`). The own message of an
-    /// HTTP client often says only which step failed.
+    /// Returns a transport failure from the error of the HTTP client or from a message. The message contains the error
+    /// and each of its causes (`error sending request: connection closed before message completed`). The own message of
+    /// an HTTP client often says only which step failed.
     pub fn transport<'e>(e: impl Into<Box<dyn std::error::Error + 'e>>) -> Self {
         let e = e.into();
         let mut message = e.to_string();

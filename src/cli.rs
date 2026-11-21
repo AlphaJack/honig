@@ -546,7 +546,7 @@ pub fn run(args: impl IntoIterator<Item = String>) -> ExitCode {
 }
 
 /// Returns the command's `--help`. Unwrapped: a dependency that turns on the `wrap_help` of clap would wrap it to the
-/// terminal, and the book holds it as written.
+/// terminal, and the book contains it as written.
 #[must_use]
 pub fn usage() -> String {
     Cli::command().term_width(0).render_help().to_string()

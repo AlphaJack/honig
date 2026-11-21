@@ -181,7 +181,7 @@ fn a_pattern_regress_cannot_compile_is_reported() {
     assert!(!w.iter().any(|m| m.contains("Good")), "a Unicode property escape is valid ECMA-262: {w:#?}");
 }
 
-/// A type whose `pattern` does not compile would take every value: generation refuses the document and points to it.
+/// A type whose `pattern` does not compile would accept every value: generation refuses the document and points to it.
 #[test]
 fn a_pattern_that_does_not_compile_fails_generation() {
     let doc = |pattern: &str| {
@@ -301,7 +301,7 @@ fn a_content_parameter_is_validated_by_its_media_type_schema() {
     assert_eq!(api.http.operations[0].params[0].constraints.max_length, Some(8));
 }
 
-// JSON Schema drafts the generator claims to read (06, 07, 2019-09).
+// JSON Schema drafts the generator claims to support (06, 07, 2019-09).
 
 fn types_of(test: &str, schemas: &Value) -> (String, Vec<String>) {
     let d = common::spec("3.1.0", &json!({}), &json!({"schemas": schemas}));
@@ -677,7 +677,7 @@ fn an_unfillable_error_body_requires_error_response() {
     );
 }
 
-/// `allOf: [$ref: Base, {type: object, properties: ...}]` merges into one struct that holds every member: its fields
+/// `allOf: [$ref: Base, {type: object, properties: ...}]` merges into one struct that contains every member: its fields
 /// are checked as typed and the body is never checked whole. Two members that both declare `name` merge too, and the
 /// body also decodes as each member: one struct would keep only one of their schemas.
 #[test]
@@ -728,7 +728,7 @@ fn a_problem_json_error_body_needs_no_error_response() {
     );
 }
 
-/// Two scheme names that differ only in case or separators name one Rust item. Numbering them would follow the
+/// Two scheme names that differ only in case or separators map to one Rust item. Numbering them would follow the
 /// document order, and a reorder would swap their validators: generation fails and names both.
 #[test]
 fn two_schemes_with_one_rust_name_are_an_error() {
@@ -740,12 +740,12 @@ fn two_schemes_with_one_rust_name_are_an_error() {
     );
     assert!(
         w.iter().any(|m| m.starts_with("/components/securitySchemes/api_key:")
-            && m.contains("`api-key` and `api_key` name the same item")),
+            && m.contains("`api-key` and `api_key` map to the same item")),
         "{w:#?}"
     );
 }
 
-/// The client names one of several operation servers. Without a distinct name each, it would pick by position, and a
+/// The client picks one of several operation servers. Without a distinct name each, it would pick by position, and a
 /// reorder would send requests to another environment: generation fails.
 #[test]
 fn several_operation_servers_need_a_name_each() {

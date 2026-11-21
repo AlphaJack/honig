@@ -1,5 +1,5 @@
 //! The roundtrip bench: business code calls the generated client, the generated server, the handler and back, against
-//! a hand-rolled client and server. No kind takes more than its `max_time` times its baseline at any of
+//! a hand-rolled client and server. No kind needs more than its `max_time` times its baseline at any of
 //! `cost::BENCH_SIZES`. It needs a release build: `cargo bench -p e2e --bench roundtrip`.
 
 use std::time::{Duration, Instant};
@@ -11,7 +11,7 @@ mod roundtrip;
 
 /// Pairs of rounds, one of each side in turn. The median ratio of a pair counts: a stall moves it least.
 const ROUNDS: usize = 15;
-/// About how long one round of one side takes.
+/// About how long one round of one side lasts.
 const ROUND: Duration = Duration::from_millis(4);
 
 fn main() -> std::process::ExitCode {
@@ -50,7 +50,7 @@ fn main() -> std::process::ExitCode {
     failed.extend(cost::print_rows(&table, rows, Some(&mut results)));
     results.save();
     // stdout, after the table: on stderr a line lands inside it.
-    println!("took {:.1}s", started.elapsed().as_secs_f64());
+    println!("ran {:.1}s", started.elapsed().as_secs_f64());
     for f in &failed {
         println!("FAIL {f}");
     }

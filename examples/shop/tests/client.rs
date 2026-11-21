@@ -1,4 +1,4 @@
-//! The generated client against the server of `main.rs`: it creates a product and reads it back.
+//! The generated client against the server of `main.rs`: it creates a product and fetches it back.
 
 use shop::Catalog;
 use shop::api::{self, operations as ops, types};
@@ -24,7 +24,7 @@ async fn the_client_creates_and_reads_a_product_from_the_server() {
     assert_eq!(create_and_read(&base_url, lamp.clone()).await.unwrap(), lamp);
 }
 
-/// The server takes only the shop's key: a request with another one is refused.
+/// The server accepts only the shop's key: a request with another one is refused.
 #[tokio::test]
 async fn a_wrong_key_is_refused() {
     let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();

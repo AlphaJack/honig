@@ -37,14 +37,14 @@ pub enum Streamed<S, R> {
 /// A sequential body (JSON Lines, `json-seq` or SSE): every item in memory or items that arrive or leave one at a
 /// time.
 ///
-/// Clients receive `List`. `<op>_stream` reads items as they arrive. Server handlers receive a sequential request
-/// body as `Stream`: an upload of events is never held whole. `Items` is a `Stream` of its items. Read them with
+/// Clients receive `List`. `<op>_stream` yields items as they arrive. Server handlers receive a sequential request
+/// body as `Stream`: an upload of events is never buffered whole. `Items` is a `Stream` of its items. Consume them with
 /// `futures_util::StreamExt::next`.
 #[derive(Debug, Clone)]
 pub enum Items<T> {
     /// Every item in memory.
     List(Vec<T>),
-    /// Items still to come: a request body the server has not read or items that your code produces.
+    /// Items still to come: a request body the server has not consumed or items that your code produces.
     Stream(ItemStream<T>),
     /// Items and comments that your code produces while the response is sent. A `text/event-stream` writes a comment
     /// as `: text` and clients skip it. This is a keep-alive on an idle stream. Other framings drop it.
@@ -91,7 +91,7 @@ impl<T: Send + 'static> Items<T> {
 }
 
 /// Each item of the list, each item that arrives or each item produced. An item that arrives may fail to decode or
-/// break a constraint and the next may still be read. A body that broke off or went past the `max_body_bytes` of the
+/// break a constraint and the next may still arrive. A body that broke off or went past the `max_body_bytes` of the
 /// server ends after its error. `?` in a handler turns either into an [`ApiError`](crate::ApiError) with its status.
 impl<T: DeserializeOwned + Send + 'static> Stream for Items<T> {
     type Item = Result<T, ClientError>;
@@ -134,7 +134,7 @@ impl<T: Serialize + DeserializeOwned + Send + 'static> Items<T> {
     }
 
     /// Returns the body as a request or a response carries it. It is encoded at once or as items framed as they are
-    /// produced. An arriving body is passed on as it arrives. That is the bytes not read yet and unchecked.
+    /// produced. An arriving body is passed on as it arrives. That is the bytes not consumed yet and unchecked.
     ///
     /// # Errors
     /// An item of a list does not serialize. Or `framing` is `Multipart`, which is only decoded.
@@ -234,7 +234,7 @@ impl<T: DeserializeOwned> Items<T> {
 /// The status a request body decodes with: there is no response yet.
 const REQUEST: Option<u16> = None;
 
-/// No item is pinned: each is read out of a list, a decoder or a boxed stream.
+/// No item is pinned: each is moved out of a list, a decoder or a boxed stream.
 impl<T> Unpin for Items<T> {}
 
 impl<T> From<Vec<T>> for Items<T> {
@@ -312,8 +312,8 @@ fn frame_record<T: Serialize>(record: &Sse<T>, framing: Framing, out: &mut Vec<u
 /// They do not get one piece (and one HTTP chunk) each.
 const BATCH: usize = 16 << 10;
 
-/// Encodes each item that your code produces with `frame` as the body is sent. A piece holds the items that are ready
-/// when it is cut up to [`BATCH`] bytes. An iterator fills whole pieces. A feed that waits for its next item
+/// Encodes each item that your code produces with `frame` as the body is sent. A piece contains the items that are
+/// ready when it is cut up to [`BATCH`] bytes. An iterator fills whole pieces. A feed that waits for its next item
 /// sends each item at once.
 struct Framed<T> {
     items: Feed<T>,
@@ -388,7 +388,7 @@ pub fn set_blob(message: &mut impl Message, content_type: impl Into<Cow<'static,
 /// Puts a binary body declared as a range (`image/*`, `*/*`) into a request or a response.
 ///
 /// It goes out as the media type of the blob when that fits the range. Otherwise as `application/octet-stream`: no
-/// `Content-Type` may hold a wildcard.
+/// `Content-Type` may contain a wildcard.
 pub fn set_blob_in(message: &mut impl Message, range: &str, blob: Blob) {
     let media: Cow<'static, str> = match blob.media() {
         Some(m) if crate::media::media_matches(m, range) && !m.contains('*') => m.to_owned().into(),
@@ -412,7 +412,7 @@ pub enum Framing {
     Multipart,
 }
 
-/// How long an event stream waits before it reconnects. This holds until the server sends a `retry` field.
+/// How long an event stream waits before it reconnects. This applies until the server sends a `retry` field.
 const RETRY: std::time::Duration = std::time::Duration::from_secs(3);
 
 /// The longest wait that [`backoff`] grows to. A longer `retry` wins.
@@ -452,7 +452,7 @@ impl fmt::Debug for Reconnected {
 /// A reconnection of an event stream under way.
 pub type Connecting = Pending<'static, Reconnected>;
 
-/// Sends the request of an event stream again. It resumes after the last event that it read.
+/// Sends the request of an event stream again. It resumes after the last event that it received.
 pub trait Reconnect: crate::transport::MaybeSend {
     /// Returns the request again with `Last-Event-ID` when `last_event_id` is not empty.
     fn connect(&mut self, last_event_id: &str) -> Connecting;
@@ -466,12 +466,12 @@ pub fn resendable(req: &Request) -> Option<Request> {
 
 /// Items of a sequential body that arrive or leave one at a time.
 ///
-/// They are a request body that the server has not read, a response body that a client reads as it arrives, or items
-/// that your code produces. It is a `Stream` of items. Read them with `futures_util::StreamExt::next`. Clones share
-/// it: what one reads the others do not.
+/// They are a request body that the server has not consumed, a response body that a client consumes as it arrives, or
+/// items that your code produces. It is a `Stream` of items. Read them with `futures_util::StreamExt::next`. Clones
+/// share it: what one consumes the others do not.
 ///
 /// An arriving item is decoded where it lies as bytes arrive. A `text/event-stream` keeps the last event ID and
-/// reconnection time of the stream from every block that it reads. The WHATWG `EventSource` does the same. A stream
+/// reconnection time of the stream from every block that it parses. The WHATWG `EventSource` does the same. A stream
 /// that a generated `<op>_stream` returns also reconnects.
 #[cfg_attr(feature = "client", doc = "See [`ItemStream::reconnecting`].")]
 pub struct ItemStream<T>(Slot<Inner<T>>);
@@ -479,7 +479,7 @@ pub struct ItemStream<T>(Slot<Inner<T>>);
 /// Reads the next item of an arriving body.
 type Decode<T> = fn(&mut Decoder<T>, &mut Context<'_>) -> Poll<Option<Result<T, ClientError>>>;
 
-/// What an [`ItemStream`] reads from.
+/// What an [`ItemStream`] pulls from.
 pub(crate) enum Inner<T> {
     /// Items decoded from a body as it arrives.
     Decoding(Box<Decoder<T>>),
@@ -487,7 +487,7 @@ pub(crate) enum Inner<T> {
     Produced(Feed<T>),
 }
 
-/// No item is pinned: each is decoded or read out of a boxed stream.
+/// No item is pinned: each is decoded or pulled out of a boxed stream.
 impl<T> Unpin for ItemStream<T> {}
 
 impl<T> Clone for ItemStream<T> {
@@ -524,7 +524,7 @@ impl<T> ItemStream<T> {
         std::sync::Arc::ptr_eq(&self.0, &other.0)
     }
 
-    /// Returns what the stream reads from. `None` once something else took it.
+    /// Returns what the stream pulls from. `None` once something else moved it out.
     pub(crate) fn take_inner(&self) -> Option<Inner<T>> {
         take_slot(&self.0)
     }
@@ -549,8 +549,8 @@ impl<T> ItemStream<T> {
         }
     }
 
-    /// Returns the `id` of the last event read from any block. A reconnection sends it as `Last-Event-ID`. It is empty
-    /// before the first one and after an `id` field with no value.
+    /// Returns the `id` of the last event parsed from any block. A reconnection sends it as `Last-Event-ID`. It is
+    /// empty before the first one and after an `id` field with no value.
     pub fn last_event_id(&self) -> String {
         self.decoder(|items| items.last_event_id.clone()).unwrap_or_default()
     }
@@ -592,8 +592,8 @@ impl<T> ItemStream<T> {
         });
     }
 
-    /// Polls what the stream reads from. `decode` reads an arriving body. Usually no clone shares the stream. Then it
-    /// is read without the lock.
+    /// Polls what the stream pulls from. `decode` decodes an arriving body. Usually no clone shares the stream. Then it
+    /// is polled without the lock.
     fn poll_with(&mut self, cx: &mut Context<'_>, decode: Decode<T>) -> Poll<Option<Result<T, ClientError>>> {
         let poll = |held: &mut Option<Inner<T>>, cx: &mut Context<'_>| match held.as_mut() {
             Some(Inner::Decoding(items)) => decode(items, cx),
@@ -681,7 +681,7 @@ pub struct Limits {
     pub unique: bool,
 }
 
-/// Returns `items` once they meet `limits`, as one sequence read whole.
+/// Returns `items` once they meet `limits`, as one sequence received whole.
 ///
 /// # Errors
 /// They do not: a decode error with this status.
@@ -703,11 +703,11 @@ fn limit_error(status: Option<u16>, message: String) -> ClientError {
     ClientError::Decode { status, message, body: bytes::Bytes::new(), pointer: String::new() }
 }
 
-/// What a sequence checked against its [`Limits`] has read so far.
+/// What a sequence checked against its [`Limits`] has seen so far.
 struct Counted<T> {
     limits: Limits,
     count: u64,
-    /// The canonical JSON of each item read: `uniqueItems` only.
+    /// The canonical JSON of each item seen: `uniqueItems` only.
     seen: std::collections::BTreeSet<String>,
     key: fn(&T) -> Option<String>,
     /// Whether the end short of `min` was reported: once.
@@ -742,7 +742,7 @@ pub(crate) struct Decoder<T> {
     /// Bytes received; those before `pos` are records already returned.
     buf: Vec<u8>,
     pos: usize,
-    /// Where the search for the next record's end resumes: the bytes from `pos` to here hold none.
+    /// Where the search for the next record's end resumes: the bytes from `pos` to here contain none.
     scanned: usize,
     framing: Framing,
     done: bool,
@@ -753,11 +753,12 @@ pub(crate) struct Decoder<T> {
     boundary: String,
     #[cfg(feature = "multipart")]
     closed: bool,
-    /// JSON Lines and `json-seq`: the frame being read and where in it the next record starts. Its records are decoded
-    /// where they lie. Only a record that spans two frames is joined in `buf`. `buf` then holds only that record.
+    /// JSON Lines and `json-seq`: the frame being parsed and where in it the next record starts. Its records are
+    /// decoded where they lie. Only a record that spans two frames is joined in `buf`. `buf` then contains only that
+    /// record.
     frame: bytes::Bytes,
     at: usize,
-    /// SSE: the last `id` read and the wait before a reconnection. A reconnection sends the `id` as `Last-Event-ID`.
+    /// SSE: the last `id` parsed and the wait before a reconnection. A reconnection sends the `id` as `Last-Event-ID`.
     last_event_id: String,
     retry: std::time::Duration,
     /// SSE: sends the request again when the stream ends or breaks off; `None` once it may not.
@@ -769,7 +770,7 @@ pub(crate) struct Decoder<T> {
     max_retries: Option<u32>,
     /// Reads one record as an item: as `T`, or with the text of its library formats checked first.
     item: ReadItem<T>,
-    /// The [`Limits`] of the sequence and what it has read: `None` without any.
+    /// The [`Limits`] of the sequence and what it has seen: `None` without any.
     counted: Option<Box<Counted<T>>>,
 }
 
@@ -786,7 +787,7 @@ pub(crate) struct Record<'a> {
     bytes: &'a [u8],
 }
 
-/// Returns `record` decoded as `U`: `T`, or `T` read through `runtime::formats`.
+/// Returns `record` decoded as `U`: `T`, or `T` decoded through `runtime::formats`.
 fn decode<U: DeserializeOwned>(record: &Record<'_>) -> Result<U, ClientError> {
     let (status, bytes) = (record.status, record.bytes);
     match record.framing {
@@ -807,7 +808,8 @@ fn decode<U: DeserializeOwned>(record: &Record<'_>) -> Result<U, ClientError> {
     }
 }
 
-/// Reads a record as `Validated<T, H>`: the text of each library format in `T` is checked before its library reads it.
+/// Decodes a record as `Validated<T, H>`: the text of each library format in `T` is checked before its library parses
+/// it.
 fn read_validated<T: DeserializeOwned, H: for<'de> crate::formats::Holds<'de, T>>(
     record: &Record<'_>,
 ) -> Result<T, ClientError> {
@@ -1012,8 +1014,8 @@ impl<T: DeserializeOwned> Decoder<T> {
             || (self.framing == Framing::Sse && sse_comment_only(&String::from_utf8_lossy(record)))
     }
 
-    /// Returns where the next complete SSE event or multipart part lies in the buffer if it holds one. It counts as
-    /// read.
+    /// Returns where the next complete SSE event or multipart part lies in the buffer if it contains one. It counts as
+    /// consumed.
     fn take_record(&mut self) -> Option<std::ops::Range<usize>> {
         #[cfg(feature = "multipart")]
         if self.framing == Framing::Multipart {

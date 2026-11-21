@@ -1,7 +1,7 @@
 //! JSON numbers with a zero fractional part are integers. JSON Schema 2020-12 says so ("1.0 is an integer"), and
-//! `OpenAPI` 3.1 and 3.2 use it. serde reads `3.0` as a float only, so `count: 3.0` would not decode into an integer
+//! `OpenAPI` 3.1 and 3.2 use it. serde decodes `3.0` as a float only, so `count: 3.0` would not decode into an integer
 //! field. [`Ints`] wraps a deserializer at every depth and hands such a number on as an integer. A float field still
-//! takes it, and a `serde_json::Value` holds `3`, the same number.
+//! accepts it, and a `serde_json::Value` stores `3`, the same number.
 
 use std::fmt;
 
@@ -361,7 +361,7 @@ mod tests {
         assert_eq!(decode::<u64>("18446744073709549568.0").unwrap(), 18_446_744_073_709_549_568);
     }
 
-    /// A newtype reads its integral float as an integer. A decimal keeps its text as written.
+    /// A newtype decodes its integral float as an integer. A decimal keeps its text as written.
     #[test]
     fn a_newtype_reads_integers_and_a_decimal_keeps_its_digits() {
         #[derive(Debug, PartialEq, serde::Deserialize)]

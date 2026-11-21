@@ -1,5 +1,5 @@
 //! How the cost of decoding into generated types grows with the body: a body of `n` bytes must not cost more than
-//! `n^1.3`. The runtime's scaling bench holds hand-written types only. Here the types are the ones the generator
+//! `n^1.3`. The runtime's scaling bench uses hand-written types only. Here the types are the ones the generator
 //! writes, so a union that tries each branch on every level of a recursive value shows. Counted by callgrind: see
 //! `tests/bench-support/src/callgrind.rs`.
 
@@ -9,7 +9,7 @@ use serde_json::{Value, json};
 
 /// Body sizes in bytes, each 4 times the one before.
 const SIZES: [usize; 3] = [16 << 10, 64 << 10, 256 << 10];
-/// About how many bytes of body one node of a tree takes.
+/// About how many bytes of body one node of a tree needs.
 const NODE_BYTES: usize = 20;
 
 /// A node of `validation.yaml`'s `Tree`: its children and an `x` that tells the two branches apart. Only the type of
@@ -36,7 +36,7 @@ fn wide(count: usize) -> Value {
     node((0..count).map(|i| node(vec![], i)).collect(), 0)
 }
 
-/// Decoding `body` into a `Tree` as a server reads a request.
+/// Decoding `body` into a `Tree` as a server decodes a request.
 fn decode(body: &Value) -> (usize, Work) {
     let bytes = serde_json::to_vec(body).unwrap_or_default();
     let len = bytes.len();

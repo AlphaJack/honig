@@ -7,7 +7,7 @@ use std::path::PathBuf;
 /// A failure outside the description.
 #[derive(Debug)]
 pub enum Error {
-    /// A file could not be read or written.
+    /// A file could not be opened or written.
     Io {
         /// The file.
         path: PathBuf,
@@ -55,15 +55,15 @@ pub enum Error {
         /// Why it is not set and what sets it.
         why: String,
     },
-    /// A setting holds the wrong kind of value.
+    /// A setting has the wrong kind of value.
     Setting {
         /// The table: `[package.metadata.<name>]` or its `derives`.
         table: String,
         /// The setting.
         key: String,
-        /// What it must hold.
+        /// What it must contain.
         expected: String,
-        /// What it holds.
+        /// What it contains.
         found: String,
     },
     /// A remote reference could not be fetched.

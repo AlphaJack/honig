@@ -1,5 +1,5 @@
-//! Edge cases of the codecs that the runtime takes from crates (quick-xml, multer, percent-encoding, `form_urlencoded`
-//! and cookie). Each test pins behaviour that a swap or a rewrite must keep.
+//! Edge cases of the codecs that the runtime uses from crates (quick-xml, multer, percent-encoding, `form_urlencoded`
+//! and cookie). Each test asserts behaviour that a swap or a rewrite must keep.
 
 #![expect(clippy::unwrap_used, reason = "test code fails loudly")]
 
@@ -446,11 +446,11 @@ fn a_one_value_query_parameter_sent_twice_is_refused() {
     use honig::Reason;
     let pairs = parse_query("a=1&a=2&tags=x&tags=y&f%5Bk%5D=1&f%5Bk%5D=2&d=x%20y&d=z");
     // Servers disagree on which value counts (first or last). So none is picked.
-    let twice = Reason::invalid("/query/a", "is sent more than once, but it holds one value");
+    let twice = Reason::invalid("/query/a", "is sent more than once, but it carries one value");
     assert_eq!(query_text(&pairs, "a", "/query/a").unwrap_err(), twice);
     assert_eq!(decode_query(&pairs, "a", "/query/a", Style::Form, Shape::Prim, true).unwrap_err(), twice);
     assert!(decode_query(&pairs, "d", "/query/d", Style::SpaceDelimited, Shape::Array, false).is_err());
-    // An exploded array and a deepObject key that holds a list are many values by design.
+    // An exploded array and a deepObject key that contains a list are many values by design.
     assert_eq!(
         decode_query(&pairs, "tags", "/query/tags", Style::Form, Shape::Array, true).unwrap(),
         Some(serde_json::json!(["x", "y"]))
@@ -481,7 +481,7 @@ fn a_response_of_an_undeclared_media_type_is_refused() {
     assert!(check_response_media(200, "", Some(b"{}"), &json).is_ok());
     assert!(check_response_media(200, "", Some(b"{}"), &["application/json", "application/xml"]).is_err());
     assert!(check_response_media(200, "", Some(b""), &["application/json", "application/xml"]).is_ok());
-    // A stream's body is unread. It is the one type declared or it must name its type.
+    // A stream's body is unread. It is the one type declared or it must state its type.
     assert!(check_response_media(200, "", None, &["text/event-stream"]).is_ok());
     assert!(check_response_media(200, "", None, &["text/event-stream", "application/jsonl"]).is_err());
     assert!(check_response_media(200, "image/png", None, &["image/*"]).is_ok());
@@ -491,9 +491,9 @@ fn a_response_of_an_undeclared_media_type_is_refused() {
 
 #[test]
 fn an_event_whose_data_is_not_json_says_so() {
-    // A chat chunk written whole as JSON in `data`. An `id` alone would read as a field of the event itself.
+    // A chat chunk written whole as JSON in `data`. An `id` alone would decode as a field of the event itself.
     #[derive(Debug, serde::Deserialize)]
-    #[expect(dead_code, reason = "decoded, not read")]
+    #[expect(dead_code, reason = "decoded, never used")]
     struct Chunk {
         id: String,
         object: String,
@@ -550,8 +550,8 @@ fn a_multipart_item_arrives_before_the_body_ends() {
     assert!(items.next().now_or_never().is_none(), "the second part has not arrived");
 }
 
-/// A form field that its type refuses is named by its pointer, as in a JSON body. Only the failing body is read again
-/// to find it.
+/// A form field that its type refuses is named by its pointer, as in a JSON body. Only the failing body is decoded
+/// again to find it.
 #[test]
 fn a_form_field_that_does_not_decode_is_named() {
     #[derive(Debug, Deserialize)]

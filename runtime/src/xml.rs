@@ -26,11 +26,11 @@ pub fn xml_decode<T: DeserializeOwned + XmlShape>(status: Option<u16>, body: &[u
     T::deserialize(XmlDe(value)).map_err(|e| decode_err(status, body, e))
 }
 
-/// Reads an [`Xml`] value into a type as [`Coerce`] reads a `Value`. Text goes through `Coerce` itself. So a number
-/// or a boolean in the text of an element reads the same. Objects and lists are read without a `Value`.
+/// Decodes an [`Xml`] value into a type as [`Coerce`] decodes a `Value`. Text goes through `Coerce` itself. So a number
+/// or a boolean in the text of an element decodes the same. Objects and lists are decoded without a `Value`.
 struct XmlDe(Xml);
 
-/// A method for which only the text of an element has a meaning. `Coerce` reads a leaf. An object or list goes
+/// A method for which only the text of an element has a meaning. `Coerce` decodes a leaf. An object or list goes
 /// through a `Value`. The `Value` reports why it does not fit.
 macro_rules! through_coerce {
     ($($method:ident),*) => {$(
@@ -165,7 +165,7 @@ impl<'de> MapAccess<'de> for XmlMap {
         match self.0.next() {
             Some((k, v)) => {
                 self.1 = Some(v);
-                // A name and never a value to coerce. The property name of a schema is read without a copy.
+                // A name and never a value to coerce. The property name of a schema is borrowed without a copy.
                 match k {
                     Cow::Borrowed(k) => seed.deserialize(StrDeserializer::<CoerceError>::new(k)).map(Some),
                     Cow::Owned(k) => seed.deserialize(StringDeserializer::<CoerceError>::new(k)).map(Some),

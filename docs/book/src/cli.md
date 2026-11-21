@@ -8,7 +8,7 @@ The command line has six commands. `cargo honig --help` lists them:
 
 ## Check a description
 
-`validate` reads a description under its own version and prints what is wrong. It exits with 1 on an error.
+`validate` checks a description against its own version and prints what is wrong. It exits with 1 on an error.
 
 ```sh
 $ cargo honig validate openapi.yaml
@@ -19,7 +19,7 @@ error: /info: missing field `version`
 
 Each diagnostic starts with a JSON pointer into the document.
 
-## See what honig reads
+## See what honig generates from
 
 `upgrade` prints the document as honig generates from it: OpenAPI 3.2 JSON.
 Run it to see what a Swagger 2.0 or 3.0 description becomes before you generate.
@@ -39,4 +39,4 @@ The version stays the one the description is written in.
 cargo honig bundle openapi.yaml > bundled.json
 ```
 
-A `$ref: order.yaml` becomes `$ref: '#/components/schemas/order'`. Component names and `$ref`s stay, so other tools such as TypeScript generators and API reference pages read the same document. `--format yaml` prints it as YAML.
+A `$ref: order.yaml` becomes `$ref: '#/components/schemas/order'`. Component names and `$ref`s stay, so other tools such as TypeScript generators and API reference pages load the same document. `--format yaml` prints it as YAML.

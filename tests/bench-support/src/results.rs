@@ -2,7 +2,7 @@
 //!
 //! Each bench keeps its numbers in
 //! `.bench-results/<bench>.tsv` at the root of the repository, one `key<TAB>value` per line. CI restores the file that
-//! the last run on `main` left and saves it again only on `main`: a pull request reads `main` and writes nothing back.
+//! the last run on `main` left and saves it again only on `main`: a pull request loads `main` and writes nothing back.
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -18,7 +18,7 @@ pub struct Results {
 impl Results {
     /// The results of the bench `name`: what `main` left there, if any.
     #[must_use]
-    #[expect(clippy::disallowed_methods, reason = "reads the results that main left")]
+    #[expect(clippy::disallowed_methods, reason = "loads the results that main left")]
     pub fn open(name: &str) -> Self {
         let path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("..")
@@ -45,7 +45,7 @@ impl Results {
         self.now.insert(key.to_owned(), value);
     }
 
-    /// Writes what this run measured, for the next run to read as `main` when CI saves it.
+    /// Writes what this run measured, for the next run to load as `main` when CI saves it.
     #[expect(clippy::disallowed_methods, reason = "writes the results of this run")]
     pub fn save(&self) {
         let text: String = self.now.iter().map(|(k, v)| format!("{k}\t{v}\n")).collect();

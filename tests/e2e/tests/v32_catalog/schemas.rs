@@ -50,7 +50,7 @@ fn an_email_is_checked_when_it_is_made() -> Result<(), Box<dyn std::error::Error
     assert!(e2e::v32_catalog::api::EmailText::try_from("ann").is_err());
     println!("{}", to.as_str());
     // ANCHOR_END: email
-    // It reads as a `str`, as every checked text does.
+    // It derefs to `str`, as every checked text does.
     assert_eq!(to.len(), "ann@example.com".len());
     assert_eq!(to, "ann@example.com");
     Ok(())

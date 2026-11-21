@@ -14,7 +14,7 @@ paths:
         - {name: session, in: cookie, schema: {type: string}}
       responses:
         '200':
-          description: Every parameter as the server read it, and the caller's address from API Gateway.
+          description: Every parameter as the server decoded it, and the caller's address from API Gateway.
           content:
             application/json:
               schema:

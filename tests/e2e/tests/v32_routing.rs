@@ -9,7 +9,7 @@ fn ok<T: Send>(r: T) -> impl Future<Output = Result<T, api::ApiError>> + Send {
     std::future::ready(Ok(r))
 }
 
-/// `heavy`: `search_orders` holds a large buffer across an `await` as the state of a real handler can.
+/// `heavy`: `search_orders` keeps a large buffer across an `await` as the state of a real handler can.
 struct Server {
     heavy: bool,
 }
@@ -141,7 +141,7 @@ fn an_options_lists_the_methods_of_the_path() {
 }
 
 /// RFC 9110 section 9.1: a server supports `HEAD` wherever it supports `GET`. A `HEAD` reaches the `GET` operation.
-/// Its answer has the headers without the body, and a body held whole keeps its length as `Content-Length`.
+/// Its answer has the headers without the body, and a body in memory keeps its length as `Content-Length`.
 #[test]
 fn a_head_reaches_the_get_operation_and_gets_no_body() {
     assert_eq!(send("HEAD", "/orders/search").status().as_u16(), 204);
@@ -200,7 +200,7 @@ fn a_literal_dead_end_falls_back_to_the_variable_beside_it() {
     assert_eq!(
         (r.status().as_u16(), r.body().bytes()),
         (200, &b"\"latest\""[..]),
-        "`latest` has no `raw`: `{{dir}}` takes it"
+        "`latest` has no `raw`: `{{dir}}` matches it"
     );
 }
 
@@ -264,7 +264,7 @@ mod axum_routes {
     fn base_paths_mixed_segments_and_dead_ends_route() {
         assert_eq!(status("GET", "/api/v2/orders/search"), 204);
         assert_eq!(status("GET", "/files/notes.txt"), 200);
-        assert_eq!(status("GET", "/files/latest/raw"), 200, "the literal `latest` dead-ends: `{{dir}}` takes it");
+        assert_eq!(status("GET", "/files/latest/raw"), 200, "the literal `latest` dead-ends: `{{dir}}` matches it");
         assert_eq!(status("GET", "/files/latest/meta"), 204);
     }
 }

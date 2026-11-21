@@ -1,9 +1,9 @@
-//! The memory bench of a pull request: the peak heap of a request, generated against its hand-rolled axum baseline at
-//! 1 MiB and 32 MiB, after both answer alike. A kind that streams its body must hold no more than [`STREAMED_PEAK`]
-//! whatever the size: a change that buffers the whole body shows here while its time may look fine. A kind read whole
-//! may hold up to [`WHOLE_RATIO`] times what its baseline holds, or any heap below that same limit. Allocations and the frames of the response body are
-//! shown beside the peak: `tests/allocations.rs` judges allocations, and the frames explain a streamed body (each is at
-//! least one write over a socket). `benches/time.rs` judges time.
+//! The memory bench of a pull request: the peak heap of a request, generated against its hand-rolled axum baseline at 1
+//! MiB and 32 MiB, after both answer alike. A kind that streams its body must keep no more than [`STREAMED_PEAK`]
+//! whatever the size: a change that buffers the whole body shows here while its time may look fine. A kind buffered
+//! whole may keep up to [`WHOLE_RATIO`] times what its baseline keeps, or any heap below that same limit. Allocations
+//! and the frames of the response body are shown beside the peak: `tests/allocations.rs` judges allocations, and the
+//! frames explain a streamed body (each is at least one write over a socket). `benches/time.rs` judges time.
 //!
 //! - `cargo bench -p e2e --bench memory`: both sizes, about 20 seconds.
 //! - `cargo bench -p e2e --bench memory -- 262144`: other sizes.
@@ -16,13 +16,13 @@ use bench_support::table::{self, Column, Table};
 #[path = "../cost/mod.rs"]
 mod cost;
 
-/// The sizes when none is given: 32 times apart, so a body held whole shows against one that streams.
+/// The sizes when none is given: 32 times apart, so a body buffered whole shows against one that streams.
 const SIZES: [usize; 2] = [1 << 20, 32 << 20];
-/// The kinds that stream their body: they hold about the same at any size.
+/// The kinds that stream their body: they keep about the same at any size.
 const STREAMED: [&str; 4] = ["upload", "download", "sse", "jsonl"];
-/// The most heap in KiB that a streamed kind may hold.
+/// The most heap in KiB that a streamed kind may keep.
 const STREAMED_PEAK: isize = 1024;
-/// How many times its baseline's peak a kind read whole may hold.
+/// How many times its baseline's peak a kind buffered whole may keep.
 const WHOLE_RATIO: f64 = 1.3;
 
 /// The table of the bench: per kind and size in KiB, the peak heap of both sides in KiB, then the allocations and the
@@ -56,7 +56,7 @@ struct Side {
     frames: usize,
 }
 
-/// The checks of a kind at one size that do not hold, by name, and its row of the table.
+/// The checks of a kind at one size that fail, by name, and its row of the table.
 /// The peak and the allocations stand beside those that `main` measured in `results`, and are kept there.
 fn judged(
     path: &cost::Path,
@@ -76,7 +76,7 @@ fn judged(
     let peak_ratio = ratio(kib(head.peak), kib(base.peak));
     let allocs_ratio = ratio(head.allocs, base.allocs);
     let mut failed = vec![];
-    // A peak below the cap always holds: a few KiB more than the baseline is a ratio, not a cost.
+    // A peak below the cap always passes: a few KiB more than the baseline is a ratio, not a cost.
     let peak_ok = head.peak <= STREAMED_PEAK || (!streamed && peak_ratio <= WHOLE_RATIO);
     if !peak_ok {
         failed.push("peak");
@@ -120,7 +120,7 @@ fn main() -> ExitCode {
     let sizes = if given.is_empty() { SIZES.to_vec() } else { given };
     let runtime = cost::runtime();
     println!(
-        "peak: streamed at most {STREAMED_PEAK} KiB, read whole at most {WHOLE_RATIO} times the baseline or \
+        "peak: streamed at most {STREAMED_PEAK} KiB, buffered whole at most {WHOLE_RATIO} times the baseline or \
          {STREAMED_PEAK} KiB; allocations: at most the kind's budget times the baseline; frames: streamed at most the \
          baseline's"
     );

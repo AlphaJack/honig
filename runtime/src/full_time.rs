@@ -23,8 +23,8 @@ pub(crate) fn is_full_time(text: &str) -> bool {
 
 /// `format: time`: an RFC 3339 `full-time` such as `08:30:06.5+01:00`. It keeps its offset and its leap second.
 ///
-/// It holds plain numbers, so no date library is part of it. With the feature `jiff`, [`FullTime::time`] and
-/// [`FullTime::offset`] read it as that library's types.
+/// It stores plain numbers, so no date library is part of it. With the feature `jiff`, [`FullTime::time`] and
+/// [`FullTime::offset`] return it as that library's types.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
 pub struct FullTime {
     /// 0 to 23.
@@ -104,7 +104,7 @@ impl<'de> serde::Deserialize<'de> for FullTime {
 
 #[cfg(feature = "jiff")]
 impl FullTime {
-    /// Returns the clock time as `jiff` holds one. A leap second is its second 59.
+    /// Returns the clock time as `jiff` represents one. A leap second is its second 59.
     #[must_use]
     pub fn time(&self) -> jiff::civil::Time {
         let narrow = |n: u8| i8::try_from(n).unwrap_or(i8::MAX);
@@ -113,7 +113,7 @@ impl FullTime {
             .unwrap_or_default()
     }
 
-    /// Returns the offset as `jiff` holds one.
+    /// Returns the offset as `jiff` represents one.
     #[must_use]
     pub fn offset(&self) -> jiff::tz::Offset {
         jiff::tz::Offset::from_seconds(self.offset_seconds).unwrap_or(jiff::tz::Offset::UTC)
@@ -241,7 +241,7 @@ mod tests {
         assert!(serde_json::from_str::<FullTime>("\"10:00:00\"").is_err());
     }
 
-    /// With `jiff`, the time and the offset read as its types and build one back.
+    /// With `jiff`, the time and the offset convert to its types and build one back.
     #[cfg(feature = "jiff")]
     #[test]
     fn a_full_time_reads_as_jiff() {

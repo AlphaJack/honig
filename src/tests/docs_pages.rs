@@ -220,7 +220,7 @@ fn module_files_page(dir: &Path) -> Result<String> {
     written.sort();
     let mut listed: Vec<String> = crate::emit::rust::FILES.iter().map(|(file, _)| (*file).to_owned()).collect();
     listed.sort();
-    anyhow::ensure!(written == listed, "`emit::rust::FILES` lists {listed:?} but a module holds {written:?}");
+    anyhow::ensure!(written == listed, "`emit::rust::FILES` lists {listed:?} but a module contains {written:?}");
     let mut page = "| File | Contents |\n|---|---|\n".to_owned();
     for (file, what) in crate::emit::rust::FILES {
         page.push_str(&format!("| `{file}` | {what} |\n"));

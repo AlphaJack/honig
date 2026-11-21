@@ -1,4 +1,4 @@
-//! A `pattern` gets no warning about how long matching takes: whoever writes it chooses its shape.
+//! A `pattern` gets no warning about how long matching lasts: whoever writes it chooses its shape.
 
 use super::common;
 

@@ -1,16 +1,16 @@
 //! A request goes through these steps. When a step refuses the request it answers in the error schema of the
 //! description:
 //!
-//! 1. **Routing**: an undeclared path is 404. An undeclared method is 405. A `HEAD` takes the `GET` of its path and
+//! 1. **Routing**: an undeclared path is 404. An undeclared method is 405. A `HEAD` uses the `GET` of its path and
 //!    gets its headers without the body.
 //! 2. **Credentials**: the `security` of the operation. If none of its requirements are present then the answer is
 //!    401. Otherwise the `verify_` method of the `Api` for each scheme checks its credential, and the server checks
 //!    the scopes that it grants (403). The principal goes in the extensions.
 //! 3. **Your layers** as an `http::Request<Body>` in the order that you add them. The first one is the outermost.
-//!    Its extensions hold the generated `Operation`, the `RequestEvent`, the credentials ([`Secured`]) and the
-//!    principal. The body is not read yet. So a refused request costs no body read. [`read_body`] reads it for a
-//!    layer that needs it.
-//! 4. **The body**: read whole up to `max_body_bytes` (413). An operation that streams its body skips this step.
+//!    Its extensions contain the generated `Operation`, the `RequestEvent`, the credentials ([`Secured`]) and the
+//!    principal. The body is not consumed yet. So a refused request never consumes its body. [`read_body`] buffers it
+//!    for a layer that needs it.
+//! 4. **The body**: buffered whole up to `max_body_bytes` (413). An operation that streams its body skips this step.
 //! 5. **Decoding and validation** (400 and 415). Then your handler runs and its response is encoded.
 
 use std::convert::Infallible;
@@ -49,10 +49,10 @@ pub trait Operations: Send + Sync + 'static {
     /// Returns the operation that a request reaches from its method and target (path and query). Otherwise 404 or 405.
     ///
     /// # Errors
-    /// No operation takes the request.
+    /// No operation matches the request.
     fn route(&self, method: &str, target: &str) -> Result<Self::Operation, Reason>;
 
-    /// Returns the error schemas that the description declares for a request that no operation takes.
+    /// Returns the error schemas that the description declares for a request that no operation matches.
     fn errors(&self) -> ProblemSchemas;
 
     /// Returns how the API answers a request that the server refuses: the `error_response` of the generated `Api`.
@@ -67,8 +67,8 @@ pub trait Operations: Send + Sync + 'static {
         request: &'r Request,
     ) -> BoxFuture<'r, Result<Option<Verified<Self::Principal>>, ApiError>>;
 
-    /// Serves a request that [`Operations::route`] found an operation for. `call` holds the principal that the
-    /// `verify_` methods found if there is one. Each operation takes what its `security` asks for.
+    /// Serves a request that [`Operations::route`] found an operation for. `call` carries the principal that the
+    /// `verify_` methods found if there is one. Each operation gets what its `security` asks for.
     fn call<'r>(
         &'r self,
         request: Request,
@@ -78,11 +78,11 @@ pub trait Operations: Send + Sync + 'static {
 
 /// The credentials a request presented.
 ///
-/// A request in your layers and a handler's [`Context`](crate::Context) both hold them. The generated
-/// `server::credentials` reads them typed.
+/// A request in your layers and a handler's [`Context`](crate::Context) both carry them. The generated
+/// `server::credentials` returns them typed.
 pub trait Secured {
     /// Returns credentials of every satisfied security requirement with their scheme. The generated
-    /// `server::credentials` reads them typed.
+    /// `server::credentials` returns them typed.
     #[doc(hidden)]
     fn credentials(&self) -> &[(Scheme, String)];
 
@@ -108,8 +108,8 @@ impl Secured for Request {
 
 /// What the server found out about a request before your layers, in its extensions.
 ///
-/// A layer for any API identifies the operation here, as axum's `MatchedPath`. A layer for one API reads the generated
-/// `Operation` instead. The credentials are read through [`Secured`].
+/// A layer for any API identifies the operation here, as axum's `MatchedPath`. A layer for one API uses the generated
+/// `Operation` instead. The credentials come through [`Secured`].
 #[derive(Debug, Clone)]
 pub struct MatchedOperation {
     name: &'static str,
@@ -125,14 +125,14 @@ impl MatchedOperation {
     }
 }
 
-/// Returns the body of a request in a layer, read whole on the first call.
+/// Returns the body of a request in a layer, buffered whole on the first call.
 ///
-/// It reads up to `max_body_bytes` and answers `413` past it. The operation then decodes the same bytes and reads
-/// nothing again. A layer that verifies a signature over the body (a webhook HMAC) reads it here. A layer that does
-/// not call it costs no body read.
+/// It buffers up to `max_body_bytes` and answers `413` past it. The operation then decodes the same bytes and buffers
+/// nothing again. A layer that verifies a signature over the body (a webhook HMAC) buffers it here. A layer that does
+/// not call it never consumes the body.
 ///
 /// # Errors
-/// The body is larger than `max_body_bytes` (413) or cannot be read (400). Return the error from your layer.
+/// The body is larger than `max_body_bytes` (413) or does not arrive (400). Return the error from your layer.
 pub async fn read_body(req: &mut Request) -> Result<&[u8], ApiError> {
     let limit = req.extensions().get::<MatchedOperation>().map_or(crate::reject::BODY_LIMIT, |r| r.body_limit);
     if let Some(unread) = req.body().chunks().take_source() {
@@ -171,7 +171,7 @@ impl<O: Operations, L> std::fmt::Debug for Server<O, L> {
 
 impl<O: Operations> Server<O> {
     /// Creates a server for `ops` without layers: requests reach each operation as they are routed. The generated
-    /// `api::Server::new` takes your `Arc<impl Api>` here.
+    /// `api::Server::new` passes your `Arc<impl Api>` here.
     pub fn new(ops: impl Into<O>) -> Self {
         let ops = ops.into();
         let config = Config { errors: Arc::new(ops.error_response()), ..Config::default() };
@@ -181,12 +181,12 @@ impl<O: Operations> Server<O> {
 
 impl<O: Operations, L> Server<O, L> {
     /// Adds a tower layer between routing and the operations. It goes inside the layers added before. The first one
-    /// added is the outermost as with the `ServiceBuilder` of tower. Pass one `ServiceBuilder` to read the order top
+    /// added is the outermost as with the `ServiceBuilder` of tower. Pass one `ServiceBuilder` to see the order top
     /// to bottom.
     ///
     /// A layer here and one on the axum `Router` that `into_axum` returns differ:
     ///
-    /// - An `operation_layer` runs once routing found the operation and its credentials passed. Its extensions hold
+    /// - An `operation_layer` runs once routing found the operation and its credentials passed. Its extensions contain
     ///   the operation, the credentials and the principal. Its errors go out in the error
     ///   schema of the description. It fits per-principal limits, permissions, signatures and timeouts.
     /// - An axum `Router::layer` runs on every request, also to unknown paths. It knows no operation yet, and its
@@ -196,21 +196,21 @@ impl<O: Operations, L> Server<O, L> {
         Server { ops, layer: Stack::new(layer, outer), config }
     }
 
-    /// Sets the largest request body in bytes that the server reads. Larger ones get `413`. Default: 16 MiB.
+    /// Sets the largest request body in bytes that the server buffers. Larger ones get `413`. Default: 16 MiB.
     ///
     /// The limit is a setting of the server and not a layer outside it, such as `RequestBodyLimitLayer` of
     /// tower-http:
     ///
-    /// - The server reads the body itself to decode it. It holds the body in memory. So it needs a limit even with
+    /// - The server buffers the body itself to decode it. It keeps the body in memory. So it needs a limit even with
     ///   no layer around it.
-    /// - A streamed [`Blob`](crate::Blob) fails the chunk that goes past the limit. The handler gets that error, and `?`
-    ///   answers `413` in the error schema of the description.
-    /// - [`read_body`] in a layer reads up to the same limit. A layer that checks a signature over the body and the
+    /// - A streamed [`Blob`](crate::Blob) fails the chunk that goes past the limit. The handler gets that error, and
+    ///   `?` answers `413` in the error schema of the description.
+    /// - [`read_body`] in a layer buffers up to the same limit. A layer that checks a signature over the body and the
     ///   operation that decodes it agree on one number.
     ///
-    /// A layer outside can only lower the limit. It refuses a request early when its `Content-Length` is too large.
-    /// Its answer then has its own body: map it through [`ErrorResponses::response`]. A body without `Content-Length` fails
-    /// while the server reads it. The server sees a broken body and answers `400`, not `413`.
+    /// A layer outside can only lower the limit. It refuses a request early when its `Content-Length` is too large. Its
+    /// answer then has its own body: map it through [`ErrorResponses::response`]. A body without `Content-Length` fails
+    /// while the server receives it. The server sees a broken body and answers `400`, not `413`.
     #[must_use]
     pub fn max_body_bytes(mut self, limit: usize) -> Self {
         self.config.max_body_bytes = limit;
@@ -282,8 +282,8 @@ impl<O: Operations, L> Server<O, L> {
 /// [`Server::errors`] returns this.
 ///
 /// A layer outside the server answers with a status and its own body. Examples are `TimeoutLayer` and
-/// `RequestBodyLimitLayer` of tower-http and `tower_governor`. Map such a response through [`ErrorResponses::response`].
-/// Clients then decode it as their typed error.
+/// `RequestBodyLimitLayer` of tower-http and `tower_governor`. Map such a response through
+/// [`ErrorResponses::response`]. Clients then decode it as their typed error.
 #[derive(Clone, Debug)]
 pub struct ErrorResponses<Id> {
     config: Config<Id>,
@@ -291,8 +291,8 @@ pub struct ErrorResponses<Id> {
 }
 
 impl<Id: crate::Operation> ErrorResponses<Id> {
-    /// Returns the response for `status` in the error schema of the description for a request that no operation took.
-    /// That is its `default` or `4XX` response. Otherwise it is RFC 9457 `problem+json`. It goes through your
+    /// Returns the response for `status` in the error schema of the description for a request that no operation
+    /// matched. That is its `default` or `4XX` response. Otherwise it is RFC 9457 `problem+json`. It goes through your
     /// `error_response` option.
     #[must_use]
     pub fn response(&self, status: http::StatusCode, detail: impl Into<String>) -> Response {
@@ -302,7 +302,7 @@ impl<Id: crate::Operation> ErrorResponses<Id> {
 
 /// The operation at the end of your layers.
 ///
-/// It reads the body, decodes, validates, runs your handler and encodes its response. It takes the principal that the
+/// It buffers the body, decodes, validates, runs your handler and encodes its response. It gets the principal that the
 /// server put in the request's extensions.
 pub struct Endpoint<O: Operations> {
     shared: Arc<Shared<O>>,

@@ -32,7 +32,7 @@ pub(crate) const FALLBACK: &str = "x-honig-fallback";
 /// Returns `if {P: const V} then {...} else {...}` on the schema itself or in
 /// `allOf` members that all test the same property. It becomes the equivalent `oneOf`.
 /// There is one branch per tested value set (base properties plus that `then` with `P`
-/// pinned to the values). An `Otherwise` branch takes every other value with
+/// pinned to the values). An `Otherwise` branch accepts every other value with
 /// the base properties plus the `else` of a lone conditional. `else: false`
 /// leaves no fallback. Conditions that cannot be typed stay with runtime
 /// validation.
