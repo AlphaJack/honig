@@ -132,12 +132,13 @@ pub fn form_decode_with<T: DeserializeOwned>(
     let fields = form_fields(status, body, styles, types)?;
     T::deserialize(Coerce(Value::Object(fields))).map_err(|e| {
         // Tracking the pointer allocates per key. So only a body that fails is read again with tracking to say where.
-        let pointer = form_fields(status, body, styles, types)
+        let (pointer, kind) = form_fields(status, body, styles, types)
             .ok()
             .and_then(|fields| crate::path::deserialize::<_, T>(Coerce(Value::Object(fields))).err())
-            .map(|(pointer, _)| pointer)
+            .map(|(pointer, kind, _)| (pointer, kind))
             .unwrap_or_default();
-        ClientError::Decode { status, message: e.to_string(), body: bytes::Bytes::copy_from_slice(body), pointer }
+        let (pointer, message) = crate::path::reported(pointer, kind, e.to_string());
+        ClientError::Decode { status, message, body: bytes::Bytes::copy_from_slice(body), pointer }
     })
 }
 
@@ -185,11 +186,12 @@ pub fn form_decode<T: DeserializeOwned>(status: Option<u16>, body: &[u8]) -> Res
     let text = lossy(body);
     T::deserialize(Form(sorted_pairs(&text))).map_err(|e| {
         // Read again with tracking only once it failed, to say where: tracking allocates per key.
-        let pointer = crate::path::deserialize::<_, T>(Form(sorted_pairs(&text)))
+        let (pointer, kind) = crate::path::deserialize::<_, T>(Form(sorted_pairs(&text)))
             .err()
-            .map(|(pointer, _)| pointer)
+            .map(|(pointer, kind, _)| (pointer, kind))
             .unwrap_or_default();
-        ClientError::Decode { status, message: e.to_string(), body: bytes::Bytes::copy_from_slice(body), pointer }
+        let (pointer, message) = crate::path::reported(pointer, kind, e.to_string());
+        ClientError::Decode { status, message, body: bytes::Bytes::copy_from_slice(body), pointer }
     })
 }
 

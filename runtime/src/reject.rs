@@ -294,19 +294,11 @@ impl Reason {
     }
 }
 
-/// Returns the violation of a request body that does not decode at `pointer`, which is relative to the body. A missing
-/// field is reported at its own path as `is required`, and an undeclared one under `additionalProperties: false` as
-/// `is not allowed`, as validation reports them. The decoder's `at line 1 column 42`
-/// is left out because the path says where.
+/// Returns the violation of a request body that does not decode at `pointer`, which is relative to the body. The
+/// decoder reports a missing or an undeclared field at its own pointer already. Its `at line 1 column 42` is left out
+/// because the path says where.
 fn decode_violation(pointer: &str, why: &str) -> Violation {
     let why = why.rsplit_once(" at line ").filter(|(_, at)| at.contains(" column ")).map_or(why, |(why, _)| why);
-    let at = |field: &str| format!("/body{pointer}/{}", field.replace('~', "~0").replace('/', "~1"));
-    if let Some(field) = why.strip_prefix("missing field `").and_then(|rest| rest.strip_suffix('`')) {
-        return Violation { path: at(field), message: "is required".to_owned() };
-    }
-    if let Some((field, _)) = why.strip_prefix("unknown field `").and_then(|rest| rest.split_once('`')) {
-        return Violation { path: at(field), message: "is not allowed (additionalProperties)".to_owned() };
-    }
     Violation { path: format!("/body{pointer}"), message: why.to_owned() }
 }
 
@@ -515,9 +507,26 @@ mod tests {
         );
     }
 
+    /// A missing field is reported at its own path as `is required`, and an undeclared one under
+    /// `additionalProperties: false` as `is not allowed`, as validation reports them: the decoder names both.
     #[test]
     fn a_missing_field_is_required_at_its_own_path() {
-        let r = undecoded("", "missing field `name` at line 1 column 18");
+        #[derive(Debug, serde::Deserialize)]
+        #[serde(deny_unknown_fields)]
+        #[expect(dead_code, reason = "decoded only to fail")]
+        struct Item {
+            id: u8,
+        }
+        #[derive(Debug, serde::Deserialize)]
+        #[expect(dead_code, reason = "decoded only to fail")]
+        struct Order {
+            name: String,
+            items: Vec<Item>,
+        }
+        let response = crate::codec::json_decode::<Order>(Some(200), br#"{"items": []}"#).unwrap_err();
+        assert_eq!(response.to_string(), "cannot decode 200 response at /name: is required");
+        let decoded = |body: &str| Reason::from(crate::codec::json_decode::<Order>(None, body.as_bytes()).unwrap_err());
+        let r = decoded(r#"{"items": []}"#);
         assert_eq!(r.to_string(), "/body/name: is required");
         let schema = ProblemSchema {
             media: "application/json",
@@ -526,10 +535,9 @@ mod tests {
         };
         let body: Value = serde_json::from_slice(r.in_schema(&schema).body().bytes()).unwrap();
         assert_eq!(body["errors"], serde_json::json!([{"detail": "is required", "pointer": "#/name"}]));
-        let nested = undecoded("/items/0", "missing field `id`");
-        assert_eq!(nested.violations()[0].path, "/body/items/0/id");
-        let unknown = undecoded("", "unknown field `b`, expected `a` at line 1 column 12");
-        assert_eq!(unknown.to_string(), "/body/b: is not allowed (additionalProperties)");
+        assert_eq!(decoded(r#"{"name": "a", "items": [{}]}"#).violations()[0].path, "/body/items/0/id");
+        let unknown = decoded(r#"{"name": "a", "items": [{"id": 1, "b": 2}]}"#);
+        assert_eq!(unknown.to_string(), "/body/items/0/b: is not allowed (additionalProperties)");
     }
 
     #[test]

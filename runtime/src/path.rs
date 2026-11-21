@@ -6,16 +6,21 @@ use std::fmt;
 
 use serde::de::{self, DeserializeSeed, Deserializer, Visitor};
 
-/// Deserializes `T` from `de`. On failure it also gives the pointer of the failing value (`""` for the root).
-pub(crate) fn deserialize<'de, D, T>(de: D) -> Result<T, (String, D::Error)>
+/// Deserializes `T` from `de`. On failure it also gives the pointer of the failing value (`""` for the root) and the
+/// [`Kind`] of the failure when serde names one.
+pub(crate) fn deserialize<'de, D, T>(de: D) -> Result<T, (String, Option<Kind>, D::Error)>
 where
     D: Deserializer<'de>,
     T: de::Deserialize<'de>,
 {
     NESTED.with_borrow_mut(|n| *n = None);
+    KIND.with_borrow_mut(|k| *k = None);
     let failed = RefCell::new(None);
     let tracked = Tracked { de, at: &Chain::Root, failed: &failed };
-    T::deserialize(tracked).map_err(|e| (failed.into_inner().unwrap_or_default(), e))
+    T::deserialize(tracked).map_err(|e| {
+        let (pointer, kind) = failed.into_inner().unwrap_or_default();
+        (pointer, kind, e)
+    })
 }
 
 /// The path to the value being read with the innermost last.
@@ -36,31 +41,93 @@ impl Chain<'_> {
     }
 }
 
-thread_local! {
-    /// Where a value decoded from its own text ([`crate::tagged::read_once`]) failed, relative to that value. The tracker
-    /// around the value adds it to the value's own pointer.
-    static NESTED: RefCell<Option<String>> = const { RefCell::new(None) };
+/// What a failure is when serde names it: a field that is absent, or a name that the object does not declare.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum Kind {
+    /// `missing_field`: the field is required.
+    Missing(String),
+    /// `unknown_field`: the object declares no such name.
+    Unknown(String),
 }
 
-/// Records where a value decoded from its own text failed, relative to it: `/parcels/0/fragile`.
-pub(crate) fn nested_failure(pointer: String) {
-    NESTED.with_borrow_mut(|n| *n = Some(pointer));
+/// Where a value failed and what serde named the failure.
+type Failure = (String, Option<Kind>);
+
+thread_local! {
+    /// The failure that serde named last. The innermost record takes it.
+    static KIND: RefCell<Option<Kind>> = const { RefCell::new(None) };
+}
+
+/// An error of the inner deserializer that records [`Kind`] when serde names a missing or an unknown field.
+#[derive(Debug)]
+struct Kinded<E>(E);
+
+impl<E: de::Error> fmt::Display for Kinded<E> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.0, f)
+    }
+}
+
+impl<E: de::Error> std::error::Error for Kinded<E> {}
+
+impl<E: de::Error> Kinded<E> {
+    fn named(e: E, kind: Kind) -> Self {
+        KIND.with_borrow_mut(|k| *k = Some(kind));
+        Self(e)
+    }
+}
+
+impl<E: de::Error> de::Error for Kinded<E> {
+    fn custom<T: fmt::Display>(msg: T) -> Self {
+        Self(E::custom(msg))
+    }
+
+    fn missing_field(field: &'static str) -> Self {
+        Self::named(E::missing_field(field), Kind::Missing(field.to_owned()))
+    }
+
+    fn unknown_field(field: &str, expected: &'static [&'static str]) -> Self {
+        Self::named(E::unknown_field(field, expected), Kind::Unknown(field.to_owned()))
+    }
+}
+
+thread_local! {
+    /// Where a value decoded from its own text ([`crate::tagged::read_once`]) failed, relative to that value, and what
+    /// serde named the failure. The tracker around the value adds it to the value's own pointer.
+    static NESTED: RefCell<Option<Failure>> = const { RefCell::new(None) };
+}
+
+/// Records where a value decoded from its own text failed, relative to it (`/parcels/0/fragile`), and its kind.
+pub(crate) fn nested_failure(pointer: String, kind: Option<Kind>) {
+    NESTED.with_borrow_mut(|n| *n = Some((pointer, kind)));
 }
 
 /// Keeps the innermost failure. That is the first one recorded because errors propagate outwards. A value decoded from
 /// its own text adds where inside it the decode failed.
-fn record(failed: &RefCell<Option<String>>, at: &Chain<'_>) {
-    let inside = NESTED.with_borrow_mut(Option::take).unwrap_or_default();
+fn record(failed: &RefCell<Option<Failure>>, at: &Chain<'_>) {
+    let (inside, nested_kind) = NESTED.with_borrow_mut(Option::take).unwrap_or_default();
+    let kind = KIND.with_borrow_mut(Option::take);
     let mut f = failed.borrow_mut();
     if f.is_none() {
-        *f = Some(at.pointer() + &inside);
+        *f = Some((at.pointer() + &inside, nested_kind.or(kind)));
+    }
+}
+
+/// Returns the pointer and the message of a failure: a field that serde names as missing or unknown is reported at its
+/// own pointer as validation reports it, any other at `pointer` with `message`.
+pub(crate) fn reported(pointer: String, kind: Option<Kind>, message: String) -> (String, String) {
+    let at = |field: &str| format!("{pointer}/{}", field.replace('~', "~0").replace('/', "~1"));
+    match kind {
+        Some(Kind::Missing(field)) => (at(&field), "is required".to_owned()),
+        Some(Kind::Unknown(field)) => (at(&field), "is not allowed (additionalProperties)".to_owned()),
+        None => (pointer, message),
     }
 }
 
 struct Tracked<'a, 'b, D> {
     de: D,
     at: &'a Chain<'a>,
-    failed: &'b RefCell<Option<String>>,
+    failed: &'b RefCell<Option<Failure>>,
 }
 
 /// Forwards each `deserialize_*` with the visitor wrapped. It records the path when it fails.
@@ -129,7 +196,7 @@ macro_rules! expecting {
 struct Wrap<'a, 'b, V> {
     inner: V,
     at: &'a Chain<'a>,
-    failed: &'b RefCell<Option<String>>,
+    failed: &'b RefCell<Option<Failure>>,
 }
 
 /// Forwards each scalar `visit_*` unchanged.
@@ -190,7 +257,7 @@ impl<'de, V: Visitor<'de>> Visitor<'de> for Wrap<'_, '_, V> {
     }
 
     fn visit_map<A: de::MapAccess<'de>>(self, map: A) -> Result<Self::Value, A::Error> {
-        self.inner.visit_map(Map { inner: map, at: self.at, failed: self.failed, key: None })
+        self.inner.visit_map(Map { inner: map, at: self.at, failed: self.failed, key: None }).map_err(|e| e.0)
     }
 
     fn visit_enum<A: de::EnumAccess<'de>>(self, data: A) -> Result<Self::Value, A::Error> {
@@ -202,7 +269,7 @@ impl<'de, V: Visitor<'de>> Visitor<'de> for Wrap<'_, '_, V> {
 struct Seed<'a, 'b, S> {
     inner: S,
     at: &'a Chain<'a>,
-    failed: &'b RefCell<Option<String>>,
+    failed: &'b RefCell<Option<Failure>>,
 }
 
 impl<'de, S: DeserializeSeed<'de>> DeserializeSeed<'de> for Seed<'_, '_, S> {
@@ -216,7 +283,7 @@ impl<'de, S: DeserializeSeed<'de>> DeserializeSeed<'de> for Seed<'_, '_, S> {
 struct Seq<'a, 'b, A> {
     inner: A,
     at: &'a Chain<'a>,
-    failed: &'b RefCell<Option<String>>,
+    failed: &'b RefCell<Option<Failure>>,
     index: usize,
 }
 
@@ -238,25 +305,28 @@ impl<'de, A: de::SeqAccess<'de>> de::SeqAccess<'de> for Seq<'_, '_, A> {
 struct Map<'a, 'b, A> {
     inner: A,
     at: &'a Chain<'a>,
-    failed: &'b RefCell<Option<String>>,
+    failed: &'b RefCell<Option<Failure>>,
     /// The key just read when it is text.
     key: Option<String>,
 }
 
 impl<'de, A: de::MapAccess<'de>> de::MapAccess<'de> for Map<'_, '_, A> {
-    type Error = A::Error;
+    type Error = Kinded<A::Error>;
 
-    fn next_key_seed<K: DeserializeSeed<'de>>(&mut self, seed: K) -> Result<Option<K::Value>, A::Error> {
+    fn next_key_seed<K: DeserializeSeed<'de>>(&mut self, seed: K) -> Result<Option<K::Value>, Self::Error> {
         let mut key = None;
         let found = self.inner.next_key_seed(KeySeed { inner: seed, key: &mut key });
         self.key = key;
-        found.inspect_err(|_| record(self.failed, self.at))
+        found.inspect_err(|_| record(self.failed, self.at)).map_err(Kinded)
     }
 
-    fn next_value_seed<V: DeserializeSeed<'de>>(&mut self, seed: V) -> Result<V::Value, A::Error> {
+    fn next_value_seed<V: DeserializeSeed<'de>>(&mut self, seed: V) -> Result<V::Value, Self::Error> {
         let at = Chain::Key(self.at, self.key.take().unwrap_or_default());
         let failed = self.failed;
-        self.inner.next_value_seed(Seed { inner: seed, at: &at, failed }).inspect_err(|_| record(failed, &at))
+        self.inner
+            .next_value_seed(Seed { inner: seed, at: &at, failed })
+            .inspect_err(|_| record(failed, &at))
+            .map_err(Kinded)
     }
 
     fn size_hint(&self) -> Option<usize> {
@@ -345,7 +415,7 @@ macro_rules! key_visit {
         $(
             fn $tmethod<E: de::Error>(self, v: $tty) -> Result<Self::Value, E> {
                 *self.key = Some(v.to_string());
-                self.inner.$tmethod(v)
+                self.inner.$tmethod::<Kinded<E>>(v).map_err(|e| e.0)
             }
         )*
         $(
@@ -375,7 +445,7 @@ impl<'de, V: Visitor<'de>> Visitor<'de> for KeyVisitor<'_, V> {
 struct Enum<'a, 'b, A> {
     inner: A,
     at: &'a Chain<'a>,
-    failed: &'b RefCell<Option<String>>,
+    failed: &'b RefCell<Option<Failure>>,
 }
 
 impl<'a, 'b, 'de, A: de::EnumAccess<'de>> de::EnumAccess<'de> for Enum<'a, 'b, A> {
@@ -392,7 +462,7 @@ impl<'a, 'b, 'de, A: de::EnumAccess<'de>> de::EnumAccess<'de> for Enum<'a, 'b, A
 struct Variant<'a, 'b, A> {
     inner: A,
     at: &'a Chain<'a>,
-    failed: &'b RefCell<Option<String>>,
+    failed: &'b RefCell<Option<Failure>>,
 }
 
 impl<'de, A: de::VariantAccess<'de>> de::VariantAccess<'de> for Variant<'_, '_, A> {
@@ -438,7 +508,7 @@ mod tests {
 
     fn pointer(json: &str) -> String {
         let mut de = serde_json::Deserializer::from_str(json);
-        deserialize::<_, Payload>(&mut de).err().map_or_else(|| "ok".to_owned(), |(p, _)| p)
+        deserialize::<_, Payload>(&mut de).err().map_or_else(|| "ok".to_owned(), |(p, _, _)| p)
     }
 
     #[test]
