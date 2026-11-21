@@ -280,7 +280,7 @@ fn decode_every_instance() {
 fn decoder(decoded: &[usize]) -> String {
     let arms: String = decoded
         .iter()
-        .map(|i| format!("        {i} => api::runtime::json_decode::<api::types::Case{i}>(200, &body).map(drop),\n"))
+        .map(|i| format!("        {i} => api::runtime::json_decode::<api::types::Case{i}>(None, &body).map(drop),\n"))
         .collect();
     DECODER.replace("ARMS", &arms)
 }
