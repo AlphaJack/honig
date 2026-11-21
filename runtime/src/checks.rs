@@ -843,10 +843,12 @@ mod mail {
             assert!(!email("\"a\tb\"@example.com", true));
         }
 
-        /// RFC 5892 appendix A: a middle dot stands between two `l`. A katakana middle dot needs Japanese in its label.
+        /// RFC 5892 appendix A: a middle dot stands between two `l`, a keraia before a Greek letter. A katakana middle
+        /// dot needs Japanese in its label.
         #[test]
         fn idn_hostname_follows_the_context_rules() {
-            assert!(hostname("l\u{B7}l", true) && !hostname("a\u{B7}b", true));
+            assert!(hostname("l\u{B7}l", true) && !hostname("a\u{B7}b", true) && !hostname("l\u{B7}a", true));
+            assert!(hostname("\u{3B1}\u{375}\u{3B2}", true) && !hostname("\u{3B1}\u{375}\u{375}\u{3B2}", true));
             assert!(hostname("\u{30A2}\u{30FB}\u{30A2}", true) && !hostname("a\u{30FB}b", true));
         }
 
@@ -883,9 +885,32 @@ mod tests {
             super::Bounds { min: Some(0.0), max: Some(1.0), ..super::Bounds::NONE },
         );
         super::check_range(&mut out, root, f32::INFINITY, super::Bounds { min: Some(0.0), ..super::Bounds::NONE });
-        super::check_range(&mut out, root, 5_u8, super::Bounds { min: Some(0), ..super::Bounds::NONE });
+        super::check_range(&mut out, root, 5_u8, super::Bounds { min: Some(0), max: Some(5), ..super::Bounds::NONE });
         let messages: Vec<&str> = out.iter().map(|v| v.message.as_str()).collect();
         assert_eq!(messages, ["is not a number", "is not a number"]);
+    }
+
+    /// A buffered value equals a JSON value as two JSON values do: items in order, members in any.
+    #[test]
+    fn a_buffered_value_equals_by_json_equality() {
+        use serde_json::json;
+        let equal = |text: &str, v: &serde_json::Value| {
+            let content: crate::tagged::Content<'_> = serde_json::from_str(text).unwrap();
+            super::content_equal(&content, v)
+        };
+        assert!(equal(r#"{"b": [1, 23], "a": -2.0}"#, &json!({"a": -2, "b": [1, 23]})));
+        assert!(!equal("[1, 23]", &json!([12, 3])) && !equal("[1, 2]", &json!([1])));
+        assert!(!equal(r#"{"a": 1}"#, &json!({"a": 2})));
+    }
+
+    /// Each missing name is a violation at its own pointer, escaped as JSON Pointer escapes it.
+    #[test]
+    fn each_missing_name_is_required_at_its_pointer() {
+        let mut out = vec![];
+        let at = super::InstancePath::Index(&super::InstancePath::Root, 3);
+        super::check_required(&mut out, &at, |n| n == "a", &["a", "b/c", "d~e"]);
+        let found: Vec<(&str, &str)> = out.iter().map(|v| (v.path.as_str(), v.message.as_str())).collect();
+        assert_eq!(found, [("/3/b~1c", "is required"), ("/3/d~0e", "is required")]);
     }
 
     #[test]
@@ -972,10 +997,14 @@ mod tests {
             !out.is_empty()
         };
         assert!(wrong("x", "ipv6") && !wrong("::1", "ipv6"));
+        assert!(wrong("1.2.3", "ipv4") && !wrong("1.2.3.4", "ipv4"));
         assert!(wrong("x", "uri") && !wrong("https://example.com", "uri"));
         assert!(wrong("::1", "ipv6-cidr") && !wrong("::1/128", "ipv6-cidr"));
         #[cfg(feature = "idn")]
-        assert!(!wrong("ann@example.com", "email"));
+        {
+            assert!(!wrong("ann@example.com", "email") && !wrong("\u{FC}@b\u{FC}cher.example", "idn-email"));
+            assert!(wrong("b\u{FC}cher.example", "hostname") && !wrong("b\u{FC}cher.example", "idn-hostname"));
+        }
     }
 
     /// The address of a CIDR block is checked as `ipv4` and `ipv6` check one, and its prefix length as digits within
