@@ -112,7 +112,7 @@ pub(crate) fn words(s: &str) -> Vec<String> {
         }
         if let Some(&prev) = cur.chars().last().as_ref() {
             let next = chars.get(i + 1).copied();
-            // A plural acronym keeps its `s`: `PIDs` is `pids` and not `pi` + `ds` (Matrix's `getAccount3PIDs`).
+            // A plural acronym keeps its `s`: `PIDs` is `pids` and not `pi` + `ds`.
             let plural = next == Some('s') && !chars.get(i + 2).copied().is_some_and(char::is_lowercase);
             let boundary = ((prev.is_lowercase() || prev.is_ascii_digit()) && c.is_uppercase())
                 || (prev.is_uppercase() && c.is_uppercase() && next.is_some_and(char::is_lowercase) && !plural);
@@ -220,7 +220,7 @@ mod tests {
         assert_eq!(of("+"), ["plus"]);
         assert_eq!(of("getAToB"), ["get", "a", "to", "b"]);
         assert_eq!(of("$ref"), ["ref"]);
-        assert_eq!(of("s3Bucket"), ["s3", "bucket"]);
+        assert_eq!(of("h2Stream"), ["h2", "stream"]);
         assert_eq!(of("KindVariant2Variant2"), ["kind", "variant2", "variant2"]);
         assert_eq!(of(""), ["empty"]);
         assert_eq!(of("$$"), ["value"]);

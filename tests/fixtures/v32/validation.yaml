@@ -102,6 +102,13 @@ components:
         - {properties: {label: {const: a}}, required: [label]}
         - {properties: {colour: {const: red}}, required: [colour]}
       unevaluatedProperties: false
+    # Keywords of each kind beside an implied shape: each checks the values of its kind.
+    Implied:
+      properties: {name: {type: string}}
+      required: [name]
+      minLength: 2
+      minimum: 1
+      uniqueItems: true
     # `anyOf` of two strings: the first branch that decodes, with its keywords, is the answer.
     Slug:
       anyOf: [{type: string, enum: [""]}, {type: string, pattern: '^[a-z]+$'}]
@@ -137,8 +144,7 @@ components:
         zero: {type: integer, format: uint8, multipleOf: 1000}
         half: {type: integer, minimum: 0.5, exclusiveMaximum: 3.5}
     # Branches told apart only by the type of a field after a recursive one. Each branch that cannot fit is skipped
-    # before its nested trees are decoded: tried in turn, decoding took twice as long per level. The check of
-    # `oneOf` follows the recursion through `$defs`: inlined, it doubled the generated code per level.
+    # before its nested trees are decoded. The check of `oneOf` follows the recursion through `$defs`.
     Tree:
       oneOf:
         - type: object
@@ -151,7 +157,7 @@ components:
           properties:
             items: {type: array, items: {$ref: '#/components/schemas/Tree'}}
             x: {type: integer}
-    # A list of `allOf` items with a nullable property nine levels down (Vaultwarden's `Sync.ciphers`). Both members
+    # A list of `allOf` items with a nullable property nine levels down. Both members
     # declare `lines`: one merged struct would keep one of them, so the item is checked whole at run time, and every
     # keyword is still there after the references are inlined.
     Ledger:
@@ -332,7 +338,7 @@ components:
       properties:
         # A multiple a binary float cannot hold exactly: 0.07 / 0.01 is 7.000000000000001.
         amount: {type: number, multipleOf: 0.01}
-        # `null` alone: the only value it allows (Bitwarden's `signatureKeyPair` of a legacy account).
+        # `null` alone: the only value it allows.
         retired: {type: 'null'}
 
     User:

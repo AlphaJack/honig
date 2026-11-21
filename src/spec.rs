@@ -43,7 +43,7 @@ pub(crate) fn from_value_as<T: DeserializeOwned>(value: Value) -> Result<T, Diag
     })
 }
 
-/// Serialize a model value back to JSON. Model types only hold string-keyed maps. Those always serialize.
+/// Serializes a model value back to JSON. Model types only hold string-keyed maps. Those always serialize.
 #[cfg(test)]
 pub(crate) fn to_value<T: Serialize>(model: &T) -> Value {
     serde_json::to_value(model).expect("model serialization is infallible")
@@ -85,7 +85,7 @@ fn split_nested(message: &str) -> (String, String) {
     (pointer, rest.to_owned())
 }
 
-/// Returns `deserialize_with` helper. A present key becomes `Some` even when it is `null`.
+/// A `deserialize_with` helper: a present key becomes `Some` even when it is `null`.
 pub(crate) fn present<'de, D: Deserializer<'de>>(d: D) -> Result<Option<Value>, D::Error> {
     Value::deserialize(d).map(Some)
 }

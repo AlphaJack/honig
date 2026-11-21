@@ -10,8 +10,8 @@ use crate::json::to_value;
 use crate::text::decode_err;
 use crate::{ClientError, coerce::Coerce};
 
-/// Returns server-Sent Events. The fields of each item (`event`, `data`, `id`, `retry`, ...)
-/// become SSE fields. Non-string values are written as JSON.
+/// Returns Server-Sent Events. The fields of each item (`event`, `data`, `id`, `retry`, ...) become SSE fields.
+/// Non-string values are written as JSON.
 pub fn sse_encode<T: Serialize>(items: &[T]) -> Result<Vec<u8>, ClientError> {
     let mut out = vec![];
     for i in items {
@@ -171,8 +171,8 @@ pub(crate) fn sse_comment_only(block: &str) -> bool {
     !sse_lines(block).any(|l| l.split_once(':').map_or(l, |(k, _)| k) == "data")
 }
 
-/// Returns lines of an event block split at `\r\n`, `\n` or `\r`. Empty lines are left out. It is one pass over the
-/// bytes. A `split("\r\n")` builds a substring searcher per block. That is the largest cost of decoding small events.
+/// Returns the lines of an event block split at `\r\n`, `\n` or `\r`, in one pass over the bytes. Empty lines are left
+/// out.
 fn sse_lines(block: &str) -> impl Iterator<Item = &str> {
     let mut rest = block;
     std::iter::from_fn(move || {

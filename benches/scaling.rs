@@ -14,8 +14,7 @@ use serde_json::{Map, Value, json};
 use bench_support::{Phased, Work, callgrind, phase};
 
 /// Description sizes in bytes, each 4 times the one before. Small: each function is judged on its own cost, which shows
-/// a quadratic one long before it outweighs the rest of its phase. At these sizes the O(n^3) walk of #132 read n^2.85 as
-/// a function while its phase read n^1.27.
+/// a quadratic one long before it outweighs the rest of its phase.
 const SIZES: [usize; 3] = [4 << 10, 16 << 10, 64 << 10];
 /// About how many bytes of description one schema and its operation take.
 const SCHEMA_BYTES: usize = 400;
@@ -49,7 +48,7 @@ fn ref_chain(count: usize) -> Value {
 
 /// A description of `count` products, each a union of the two before it and an object that refers to them, and an
 /// operation that returns it. Two branches of one type: the union is checked whole at run time. So a schema is reached
-/// by many paths, and a check reaches every schema before it, as in large real descriptions.
+/// by many paths, and a check reaches every schema before it.
 fn any_of_chain(count: usize) -> Value {
     let mut schemas = Map::new();
     let mut paths = Map::new();

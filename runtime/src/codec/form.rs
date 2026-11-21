@@ -215,7 +215,7 @@ impl Form<'_> {
     }
 }
 
-/// A method for which a form is no object. The object of its fields says why it does not fit as it did before.
+/// A method for which a form is no object. The object of its fields says why it does not fit.
 macro_rules! through_object {
     ($($method:ident),*) => {$(
         fn $method<V: Visitor<'de>>(self, v: V) -> Result<V::Value, CoerceError> {
@@ -377,7 +377,7 @@ mod tests {
         assert!(form_encode(&N { x: f64::NAN }).is_err());
     }
 
-    /// What `form_decode` read before it went field by field: the object of the fields.
+    /// The object of the fields of a form body, read by its own path.
     fn through_object<T: DeserializeOwned>(body: &[u8]) -> Result<T, String> {
         let text = lossy(body);
         let mut o = Map::new();

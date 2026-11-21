@@ -69,7 +69,7 @@ pub(crate) struct Server {
     pub doc: Option<String>,
 }
 
-/// Build the IR of a bundled 3.2 document.
+/// Builds the IR of a bundled 3.2 document.
 #[cfg(test)]
 pub(crate) fn build(doc: &Doc, diags: &mut Diagnostics) -> Api {
     build_with(doc, diags, false, false, Reserved::default(), &[], false)

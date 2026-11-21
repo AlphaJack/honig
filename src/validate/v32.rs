@@ -19,7 +19,7 @@ use crate::spec::{
     SecurityScheme, SecuritySchemeType, Server, from_value_as,
 };
 
-/// Checks the rules parsing cannot enforce; record every violation.
+/// Checks the rules parsing cannot enforce and records every violation.
 pub(crate) fn validate(doc: &OpenApi, resolved: &Doc, diags: &mut Diagnostics) {
     validate_as(doc, resolved, Version::V32, diags);
 }
@@ -405,8 +405,7 @@ impl V<'_> {
             let pptr = format!("{ptr}/{i}");
             self.ref_or(p, &pptr, Self::parameter);
             if let Some(p) = self.resolve_param(p) {
-                // Names are case sensitive (3.2 4.12.1) except a header's (RFC 9110): S3's query has `marker` and
-                // `Marker`.
+                // Names are case sensitive (3.2 4.12.1) except a header's (RFC 9110).
                 let name =
                     if p.location == ParameterLocation::Header { p.name.to_ascii_lowercase() } else { p.name.clone() };
                 let key = (name, p.location);

@@ -26,7 +26,7 @@ enum Chain<'a> {
 }
 
 impl Chain<'_> {
-    /// Returns RFC 6901: `~` and `/` in keys are escaped.
+    /// Returns the key escaped as RFC 6901 says: `~` and `/` become `~0` and `~1`.
     fn pointer(&self) -> String {
         match self {
             Self::Root => String::new(),

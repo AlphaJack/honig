@@ -50,7 +50,7 @@ fn out_dir() -> PathBuf {
 /// - `features.md`: the cargo features of the runtime from the `##` comments of its `Cargo.toml`
 /// - `server-steps.md`, `ranges.md`: the module docs of the server and of its range requests
 /// - `reconnect.md`: the rustdoc of `ItemStream::reconnecting`
-/// - `errors.md`, `error-fields.md`: the variants of the client's `Error` and of `ProblemMember` with their rustdoc
+/// - `errors.md`, `error-fields.md`: the variants of `ClientError` and of `ProblemMember` with their rustdoc
 /// - `error-rendering.md`: the rustdoc of `Rejection::response`
 /// - `settings.md`: every setting of a module from `SETTINGS`
 /// - `formats.md`: the Rust type of each string format as the generator picks it
@@ -238,8 +238,6 @@ fn doc_text<'a>(line: &'a str, marker: &str) -> Option<&'a str> {
     Some(rest.strip_prefix(' ').unwrap_or(rest))
 }
 
-/// The docs of the item that starts with `item`. Then one `###` section with docs per method of the block that
-/// starts with `block`.
 /// The rustdoc of `item` and then one section per method of `block`, except the methods in `elsewhere`: another page
 /// of the book shows those.
 fn methods_page(source: &str, item: &str, block: &str, elsewhere: &[&str]) -> Result<String> {

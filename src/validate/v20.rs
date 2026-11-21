@@ -421,8 +421,8 @@ impl V<'_> {
             let declared = json::object(o, "properties").is_some_and(|p| p.contains_key(d));
             let required =
                 o.get("required").and_then(Value::as_array).is_some_and(|r| r.iter().any(|x| x.as_str() == Some(d)));
-            // A MUST. But the official 2.0 schema cannot check it and a third of the
-            // discriminators in public descriptions break it (mostly not in `required`).
+            // A MUST. But the official 2.0 schema cannot check it and many documents break it (mostly not in
+            // `required`).
             if !declared || !required {
                 self.diags.warning(
                     join(ptr, "discriminator"),

@@ -117,9 +117,9 @@ pub(crate) fn aliases(space: &Space<'_>, extra: &[(String, Vec<String>)]) -> std
 }
 
 /// Returns a better name for the type that its twins alias: the longest ending of two words or more that most twins'
-/// names share. The 48 `<Operation>Ok` envelopes that each spell out `usage` alias `OkUsage` and not
-/// `ListShardKeysOkUsage`, the first one built. Bigger groups pick first. A name another type has is skipped for the
-/// next ending. When one twin is just those words it is the schema they all repeat, so the group keeps its name.
+/// names share. `<Operation>Ok` envelopes that each spell out `usage` alias `OkUsage` and not the name of the first one
+/// built. Bigger groups pick first. A name another type has is skipped for the next ending. When one twin is just those
+/// words it is the schema they all repeat, so the group keeps its name.
 pub(super) fn shared_names(
     space: &Space<'_>,
     aliases: &std::collections::BTreeMap<usize, usize>,
@@ -172,8 +172,8 @@ fn twins(space: &Space<'_>) -> std::collections::BTreeMap<usize, usize> {
     loop {
         let canon = |id: TypeId| TypeId(first.get(&id.0).copied().unwrap_or(id.0));
         // References to a twin read as references to its first.
-        // The last word of the name is the role (`type`, `usage`, `Ok`): twins with different roles stay apart, so a
-        // send's `type` does not read as a cipher's `reprompt` although both are `enum: [0, 1]`.
+        // The last word of the name is the role (`type`, `usage`, `Ok`): twins with different roles stay apart, so an
+        // order's `type` does not read as a user's `status` although both are `enum: [0, 1]`.
         let key = |def: &TypeDef| {
             let role = def.name.words().last().cloned().unwrap_or_default();
             format!("{:?}|{:?}|{}|{role}", canonical_kind(&def.kind, &canon), def.xml, def.json_string)
@@ -183,7 +183,7 @@ fn twins(space: &Space<'_>) -> std::collections::BTreeMap<usize, usize> {
         let mut seen: std::collections::BTreeMap<u64, Vec<(String, usize)>> = std::collections::BTreeMap::new();
         let mut next = std::collections::BTreeMap::new();
         for (i, def) in space.types.defs.iter().enumerate() {
-            // A schema the description names is its own type: `Kdf` and `FileUploadType` may both be `enum: [0, 1]`.
+            // A schema the description names is its own type: `Kind` and `Mode` may both be `enum: [0, 1]`.
             if def.component || def.rust_type.is_some() || matches!(def.kind, Kind::Pending | Kind::Alias(_)) {
                 continue;
             }
@@ -280,8 +280,7 @@ impl Base {
     }
 }
 
-/// Emits `x-rust-type` as `pub type Name = your::Type;`. Validation of its constraints
-/// is yours (a no-op `Validate`).
+/// Emits `x-rust-type` as `pub type Name = your::Type;`. Its constraints are yours to keep.
 fn external(items: &mut Vec<TokenStream>, def: &TypeDef, path: &str) {
     let name = pascal_ident(&def.name);
     let doc = doc_opt(def.doc.as_deref());
@@ -468,7 +467,6 @@ fn derives(space: &Space<'_>, id: TypeId, default: bool) -> TokenStream {
     quote!(#[derive(Debug, Clone, PartialEq, #eq #default serde::Serialize, serde::Deserialize)])
 }
 
-/// Returns a struct field with doc, serde attributes and declaration.
 /// Returns one field of `runtime::object!`: its kind, its name and its type, with the serde attributes that its kind
 /// does not imply (a rename, a spec default, a reader of a library format).
 fn field(space: &Space<'_>, f: &Field, owner: &str) -> TokenStream {

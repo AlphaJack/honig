@@ -73,8 +73,6 @@ pub(crate) struct Trees {
     files: Vec<(&'static str, TokenStream)>,
 }
 
-/// Returns every file of a generated module as a syntax tree, as (path relative to the module dir, tree). Each is
-/// printed by `prettyplease` ([`print()`]); the `runtime.rs` is a short hand-written template over the runtime crate.
 /// Returns `api` with only the listed `operations`, and every type that none of them reaches left out. `None` without a
 /// list: then every one stays.
 fn kept(api: &Api, opts: &super::Options) -> Option<Api> {

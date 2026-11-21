@@ -43,7 +43,6 @@ pub(crate) fn code(c: u16) -> Literal {
     Literal::u16_unsuffixed(c)
 }
 
-/// Returns the `runtime::Op` static of an operation.
 /// The variant of the generated `Operation` (or `WebhookOperation`) for `op`.
 pub(crate) fn operation_variant(op: &Operation) -> proc_macro2::Ident {
     pascal_ident(&op.name)
@@ -204,8 +203,7 @@ pub(crate) fn blob(c: &Content) -> bool {
     c.kind == MediaKind::Bytes && c.ty == Ty::Bytes
 }
 
-/// Returns rust type of one content: `runtime::Items<T>` for sequential bodies,
-/// `runtime::Blob` for binary bodies.
+/// Returns the Rust type of one content: `runtime::Items<T>` for sequential bodies, `runtime::Blob` for binary bodies.
 pub(crate) fn content_ty(space: &Space<'_>, c: &Content) -> TokenStream {
     if blob(c) {
         return quote!(runtime::Blob);
@@ -219,7 +217,7 @@ pub(crate) fn content_ty(space: &Space<'_>, c: &Content) -> TokenStream {
     ty(space, &c.ty, true)
 }
 
-/// Returns rust type of a body made of `contents` (single type or a per-op enum).
+/// Returns the Rust type of a body made of `contents`: one type or an enum per operation.
 pub(crate) fn body_ty(space: &Space<'_>, contents: &[Content], enum_name: &str) -> TokenStream {
     if let [c] = contents {
         content_ty(space, c)
@@ -277,7 +275,6 @@ pub(crate) fn types_import(needed: bool) -> Option<TokenStream> {
     })
 }
 
-/// Returns the variables of a server as `runtime::ServerVar`s with (name, default, allowed values).
 /// Returns `server` as a `runtime::ServerUrl`.
 pub(crate) fn server_url(server: &crate::ir::Server) -> TokenStream {
     let (template, vars) = (lit(&server.url), server_variables(server));

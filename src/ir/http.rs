@@ -984,13 +984,13 @@ fn response_headers(b: &mut Builder<'_>, r: &Value, rptr: &str, prefix: &Name) -
     out
 }
 
-/// Returns variant name of a status code: its RFC 9110 reason phrase (`NotFound`),
-/// or `Status{code}` for codes without a registered one.
+/// Returns the variant name of a status code: its RFC 9110 reason phrase (`NotFound`), or `Status{code}` for a code
+/// without one.
 fn status_name(c: u16) -> Name {
     Name::new(&runtime::__private::reason(c).map_or_else(|| format!("Status{c}"), str::to_owned))
 }
 
-/// Returns variant name of a `nXX` range: its class (`ClientError`).
+/// Returns the variant name of a `nXX` range: its class (`ClientError`).
 fn range_name(n: u16) -> Name {
     Name::new(&runtime::__private::class(n).map_or_else(|| format!("Status{n}XX"), str::to_owned))
 }
@@ -1088,8 +1088,7 @@ fn contents(b: &mut Builder<'_>, holder: &Value, ptr: &str, hint: &Name) -> Vec<
                 let item_ty = match (item_schema, schema.and_then(|s| s.get("items"))) {
                     (Some(item), _) => b.ty(item, &join(&mptr, "itemSchema"), &item_hint),
                     (None, Some(items)) => b.ty(items, &join(&join(&mptr, "schema"), "items"), &item_hint),
-                    // Before 3.2 (no `itemSchema`) generators such as utoipa put the
-                    // item type in `schema`. A non-array schema describes one item.
+                    // Before 3.2 (no `itemSchema`) the item type is in `schema`. A non-array schema describes one item.
                     (None, None) => match schema.map(|s| b.ty(s, &join(&mptr, "schema"), &item_hint)) {
                         Some(Ty::Vec(item)) => *item,
                         Some(item) => item,
@@ -1172,7 +1171,7 @@ fn base64_parts(b: &Builder<'_>, media_obj: &Value, mptr: &str) -> Vec<String> {
         .collect()
 }
 
-/// Returns every media type of an `encoding.contentType` list is binary (not JSON, text or XML).
+/// Returns whether every media type of an `encoding.contentType` list is binary (not JSON, text or XML).
 fn all_binary(ct: &str) -> bool {
     ct.split(',').all(|m| crate::ir::types::binary_media(m.trim()))
 }
@@ -1212,9 +1211,8 @@ fn binary_parts(schema: &Value, media_obj: &Value) -> Option<Value> {
     changed.then_some(out)
 }
 
-/// Returns form fields, multipart parts and SSE events are always named values on the
-/// wire. Without a schema (`{}` or none as utoipa emits for multipart) type
-/// them as a map. A bare JSON value cannot round-trip through them.
+/// Returns the type of form fields, multipart parts and SSE events, which are always named values on the wire. Without
+/// a schema (`{}` or none) they are a map: a bare JSON value cannot round-trip through them.
 fn fields_if_any(ty: Ty) -> Ty {
     if ty == Ty::Any { Ty::Map(Box::new(Ty::Any)) } else { ty }
 }

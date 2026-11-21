@@ -408,9 +408,9 @@ pub(crate) fn parse(text: &str, root: Role) -> Result<Xml, String> {
     }
 }
 
-/// A decoded XML element before it becomes its type. It is a much smaller value than a `serde_json::Value`. There
-/// each object holds a map and every key is an allocation. Here the property names of a schema are borrowed and an
-/// object is a list of its properties. A body of small elements takes a few times its size and not twenty.
+/// A decoded XML element before it becomes its type. It is much smaller than a `serde_json::Value`, where each object
+/// holds a map and every key is an allocation. Here the property names of a schema are borrowed and an object is a list
+/// of its properties.
 #[derive(Debug)]
 pub(crate) enum Xml {
     Null,

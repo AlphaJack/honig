@@ -106,8 +106,7 @@ impl<'de> serde::de::Visitor<'de> for UniqueVisitor {
     }
 }
 
-/// The YAML budget. It has room for the largest real descriptions (a 30 MB one is about 2 million nodes). It has no
-/// room for a small document that aliases its way past it.
+/// The YAML budget. It has room for large descriptions and none for a small document that aliases its way past it.
 const MAX_NODES: usize = 20_000_000;
 const MAX_EVENTS: usize = 40_000_000;
 const MAX_SCALAR_BYTES: usize = 512 * 1024 * 1024;
@@ -116,8 +115,7 @@ fn parse_yaml(text: &str) -> Result<Value, Diagnostic> {
     // YAML 1.2 booleans only. `y`, `n`, `on` and `off` are strings (a
     // parameter named `y` must stay a string).
     // The default size budgets of serde-saphyr fit configs and not large
-    // descriptions. Microsoft Graph (71 MB of YAML) breaches its 250k nodes.
-    // Raised: nodes, events and scalar bytes. They grow with the input.
+    // descriptions. Raised: nodes, events and scalar bytes. They grow with the input.
     // Kept: alias, anchor and depth budgets. They stop a small
     // input from expanding.
     let options = serde_saphyr::options! {
@@ -132,7 +130,7 @@ fn parse_yaml(text: &str) -> Result<Value, Diagnostic> {
         .map_err(|e| Diagnostic::error("", format!("invalid YAML: {e}")))
 }
 
-/// Reads and parse a JSON or YAML file.
+/// Reads and parses a JSON or YAML file.
 pub(crate) fn load_file(path: &Path) -> Result<(Value, Format), Diagnostic> {
     let text = crate::disk::read(path).map_err(|e| Diagnostic::error("", format!("cannot read {e}")))?;
     parse_str(&text)
@@ -199,7 +197,6 @@ mod tests {
 
     #[test]
     fn yaml_past_the_default_node_budget_parses() {
-        // serde-saphyr stops at 250k nodes by default; large descriptions pass it.
         let yaml: String = (0..300_000).map(|i| format!("- {i}\n")).collect();
         assert!(parse_str(&yaml).is_ok());
     }

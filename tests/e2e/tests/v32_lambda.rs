@@ -54,7 +54,7 @@ fn invoke(event: Value) -> Value {
     serde_json::to_value(api::block_on(adapter.call(event)).unwrap()).unwrap()
 }
 
-/// An HTTP API (payload 2.0) event on the `$default` stage. The `httpApi` of Serverless Framework deploys that one.
+/// An HTTP API (payload 2.0) event on the `$default` stage.
 fn v2(method: &str, path: &str, query: &str, body: Option<&str>) -> Value {
     json!({
         "version": "2.0",
@@ -79,7 +79,7 @@ fn v2(method: &str, path: &str, query: &str, body: Option<&str>) -> Value {
     })
 }
 
-/// A REST API (payload 1.0) event on the `prod` stage as the `http` events of Serverless Framework deploy.
+/// A REST API (payload 1.0) event on the `prod` stage.
 fn v1(method: &str, path: &str, tags: &[&str], body: Option<&str>) -> Value {
     json!({
         "resource": "/{proxy+}",

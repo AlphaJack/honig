@@ -377,7 +377,7 @@ impl XmlHint {
             cdata: node.as_deref() == Some("cdata"),
             inline: node.as_deref() == Some("none"),
             // `nodeType: element` on an array is its wrapper (3.2). The array may be reached through `allOf` or
-            // `$ref` (S3's `Buckets`) and have no `items` here: only lists read `wrapped`.
+            // `$ref` and have no `items` here: only lists read `wrapped`.
             wrapped: b("wrapped") || node.as_deref() == Some("element"),
             item: schema
                 .get("items")
@@ -484,8 +484,8 @@ pub(crate) struct Field {
     /// The own `example` and `examples` of the property as (JSON pointer, value).
     pub examples: Vec<(String, Value)>,
     /// An optional property whose `null` reads as absent. Every optional property of a Swagger 2.0 description is one.
-    /// 2.0 has no `nullable` to say that a property may be `null`. Still many 2.0 services send `null` for a property
-    /// that they leave unset (every gRPC-gateway service). Not tri-state, because 2.0 cannot tell `null` from absent.
+    /// 2.0 has no `nullable` to say that a property may be `null`, and many 2.0 services send `null` for a property
+    /// that they leave unset. Not tri-state, because 2.0 cannot tell `null` from absent.
     pub null_as_absent: bool,
 }
 
@@ -752,8 +752,7 @@ impl TypeSpace {
     /// required. The copy is the reverse. Returns the request type of each type.
     ///
     /// With `lenient` (`client = { strict = false }`) every enum, closed struct and tagged union splits too, and every
-    /// original is [`TypeDef::lenient`]: a response reads a value that the server added, and a request stays as
-    /// strict as before.
+    /// original is [`TypeDef::lenient`]: a response reads a value that the server added, and a request stays strict.
     pub(crate) fn split_directions(&mut self, lenient: bool) -> Vec<Option<TypeId>> {
         let n = self.defs.len();
         let mut split = vec![false; n];
@@ -915,7 +914,7 @@ impl Constraints {
 mod tests {
     #[test]
     fn an_element_node_type_wraps_an_array_reached_through_a_reference() {
-        // An upgraded `wrapped: true` beside `allOf: [{$ref: Buckets}]` (S3): no `items` of its own.
+        // An upgraded `wrapped: true` beside `allOf: [{$ref: ...}]`: no `items` of its own.
         let hint = super::XmlHint::of(&serde_json::json!({"allOf": [{"$ref": "#/x"}], "xml": {"nodeType": "element"}}));
         assert!(hint.wrapped);
     }

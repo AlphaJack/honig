@@ -1,6 +1,5 @@
-//! Edge cases of the codecs that the runtime takes from crates (quick-xml, multer, percent-encoding,
-//! `form_urlencoded` and cookie). Also edge cases of the paths that were quadratic. Each test pins behaviour that a
-//! swap or a rewrite must keep.
+//! Edge cases of the codecs that the runtime takes from crates (quick-xml, multer, percent-encoding, `form_urlencoded`
+//! and cookie). Each test pins behaviour that a swap or a rewrite must keep.
 
 #![expect(clippy::unwrap_used, reason = "test code fails loudly")]
 
@@ -457,7 +456,6 @@ fn a_one_value_query_parameter_sent_twice_is_refused() {
         Some(serde_json::json!(["x", "y"]))
     );
     assert!(decode_query(&pairs, "f", "/query/f", Style::DeepObject, Shape::Object, true).unwrap().is_some());
-    // Once is fine; absent is absent.
     let once = parse_query("a=1");
     assert_eq!(query_text(&once, "a", "/query/a").unwrap().as_deref(), Some("1"));
     assert_eq!(query_text(&once, "b", "/query/b").unwrap(), None);
@@ -469,7 +467,7 @@ fn a_response_of_an_undeclared_media_type_is_refused() {
     use honig::ClientError;
     let json = ["application/json"];
     assert!(check_response_media(200, "application/json; charset=utf-8", Some(b"{}"), &json).is_ok());
-    // The 404 of Ollama. That is the text of a Go `http.NotFound` under an operation that declares JSON.
+    // A plain-text 404 under an operation that declares JSON.
     let refused = check_response_media(404, "text/plain", Some(b"404 page not found"), &json).unwrap_err();
     assert!(
         matches!(&refused, ClientError::UnexpectedMedia { status: 404, content_type, declared, body }
@@ -500,7 +498,7 @@ fn an_event_whose_data_is_not_json_says_so() {
         id: String,
         object: String,
     }
-    // The stream of OpenAI ends with `data: [DONE]`. No schema describes it.
+    // An end marker that no schema describes.
     let body = b"data: {\"id\":\"a\",\"object\":\"chunk\"}\n\ndata: [DONE]\n\n";
     let e = sse_decode::<Chunk>(Some(200), body).unwrap_err();
     assert!(e.to_string().contains("the event's data is not JSON: `[DONE]`"), "{e}");

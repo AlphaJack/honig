@@ -138,8 +138,7 @@ fn array_index(token: &str) -> Option<usize> {
     (digits && (token == "0" || !token.starts_with('0'))).then(|| token.parse().ok()).flatten()
 }
 
-/// Percent-decodes a URI fragment (`#/paths/~1a%7Bb%7D`).
-/// Decode `%XX` escapes (URI fragments) as the runtime decodes paths and queries.
+/// Percent-decodes `%XX` escapes of a URI fragment (`#/paths/~1a%7Bb%7D`) as the runtime decodes paths and queries.
 pub(crate) fn percent_decode(s: &str) -> String {
     runtime::__private::pct_decode(s)
 }

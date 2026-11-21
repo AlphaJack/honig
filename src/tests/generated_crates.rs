@@ -13,7 +13,6 @@ use std::process::Command;
 fn wasm_client() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
     let out = root.join("target").join("gen-tests").join("wasm-client");
-    // A missing directory is fine: there is nothing to clean up.
     std::fs::remove_dir_all(&out).ok();
     let manifest = r#"[package]
 name = "wasm-client"
@@ -74,7 +73,6 @@ gloo-net = { version = "0.6", default-features = false, features = ["http"] }
 fn jiff_dates() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
     let out = root.join("target").join("gen-tests").join("jiff-dates");
-    // A missing directory is fine: there is nothing to clean up.
     std::fs::remove_dir_all(&out).ok();
     let manifest = r#"[package]
 name = "jiff-dates"
@@ -290,7 +288,6 @@ struct Crate<'a> {
 fn build_validated(name: &str, lib: &str, libs: crate::settings::FormatLibs, krate: &Crate<'_>) {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
     let out = root.join("target").join("gen-tests").join(name);
-    // A missing directory is fine: there is nothing to clean up.
     std::fs::remove_dir_all(&out).ok();
     let manifest = format!(
         "[package]\nname = \"{name}\"\nversion = \"0.1.0\"\nedition = \"2024\"\npublish = false\n\n[dependencies]\n\
@@ -519,7 +516,6 @@ fn the_client_reads_only_what_the_format_allows() {
 fn declared_security_needs_a_verify_method() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
     let out = root.join("target").join("gen-tests").join("declared-security");
-    // A missing directory is fine: there is nothing to clean up.
     std::fs::remove_dir_all(&out).ok();
     std::fs::create_dir_all(&out).unwrap();
     let doc = super::common::spec(
@@ -598,7 +594,6 @@ fn served_subset() -> serde_json::Value {
 fn a_server_for_some_operations_holds_the_types_they_reach() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
     let out = root.join("target").join("gen-tests").join("served-subset");
-    // A missing directory is fine: there is nothing to clean up.
     std::fs::remove_dir_all(&out).ok();
     std::fs::create_dir_all(&out).unwrap();
     let spec = out.join("openapi.json");
@@ -623,16 +618,14 @@ fn a_server_for_some_operations_holds_the_types_they_reach() {
     assert!(built.status.success(), "{}", String::from_utf8_lossy(&built.stderr));
 }
 
-/// The security sections of three public descriptions, with neutral names: an issue tracker (basic or `OAuth` 2.0 by
-/// scope, often also anonymous), an accounting service (`OAuth` 2.0 by scope) and a cloud host (one bearer scheme for
-/// every operation). Each generates a client and a server that compile without a warning.
+/// Three security sections: basic or `OAuth` 2.0 by scope with some operations anonymous, `OAuth` 2.0 by scope, and one
+/// bearer scheme for every operation. Each generates a client and a server that compile without a warning.
 #[test]
 #[ignore = "compiles generated crates"]
-fn public_security_shapes_compile() {
+fn security_shapes_compile() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR"));
     for name in ["tracker", "accounting", "compute"] {
         let out = root.join("target").join("gen-tests").join(format!("security-{name}"));
-        // A missing directory is fine: there is nothing to clean up.
         std::fs::remove_dir_all(&out).ok();
         std::fs::create_dir_all(&out).unwrap();
         let spec = out.join("openapi.yaml");

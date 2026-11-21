@@ -40,7 +40,7 @@ pub mod tile_stream {
     default_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
-        /// One event per tile update (utoipa style, no itemSchema).
+        /// One event per tile update (no itemSchema).
         Ok(runtime::Items<types::TileEvent>),
     }
     display_impl!(Response);
@@ -131,7 +131,7 @@ pub mod chat_stream {
     default_impl!(Params);
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
-        /// Untyped events (utoipa `schema: {}`).
+        /// Untyped events (`schema: {}`).
         Ok(runtime::Items<std::collections::BTreeMap<String, serde_json::Value>>),
     }
     display_impl!(Response);

@@ -1,5 +1,5 @@
 //! Base64, standard and URL-safe. The `base64` crate does the work. With the `simd` feature `base64-simd` does the
-//! standard alphabet: on NEON it encodes 1.5x and decodes 1.1x as fast as the SIMD engine of `base64`.
+//! standard alphabet.
 
 use ::base64::Engine as _;
 use ::base64::alphabet;

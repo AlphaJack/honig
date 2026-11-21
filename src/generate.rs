@@ -22,7 +22,7 @@ pub struct Generated {
     pub runtime_features: Vec<&'static str>,
 }
 
-/// Returns load, validate, build the IR and emit formatted files.
+/// Loads, validates, builds the IR and emits formatted files.
 ///
 /// Fails when the document cannot be parsed, or when generated code could not hold it: a `pattern` that does not
 /// compile, or a server whose security scheme does not resolve. Other validation errors are reported but not fatal.
@@ -86,8 +86,7 @@ pub fn load(specs: &[std::path::PathBuf], opts: &Options) -> Result<Loaded, Diag
         }
         return Err(diagnostics);
     }
-    // A `pattern` that does not compile cannot be checked: its type would take every value. Validation reported each
-    // as an error.
+    // A `pattern` that does not compile cannot be checked: its type would take every value.
     if crate::validate::v32::has_uncompilable_pattern(&doc.root, "") {
         return Err(diagnostics);
     }

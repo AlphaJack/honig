@@ -406,17 +406,16 @@ mod tests {
 
     #[test]
     fn a_base_path_in_a_variable_after_the_host_counts() {
-        // Matrix: `{protocol}://{hostname}{basePath}`. The template has no `/` after the host: only expanding shows
-        // the path.
+        // No `/` after the host: only expanding shows the path.
         let s = server(
             "{protocol}://{hostname}{basePath}",
             &[
                 ("protocol", "https", &["http", "https"]),
                 ("hostname", "localhost:8008", &[]),
-                ("basePath", "/_matrix/client/v3", &[]),
+                ("basePath", "/api/client/v3", &[]),
             ],
         );
-        assert_eq!(base_paths(&[s]), ["/_matrix/client/v3"]);
+        assert_eq!(base_paths(&[s]), ["/api/client/v3"]);
         assert_eq!(base_paths(&[server("https://api.example.com/v1/", &[])]), ["/v1"]);
     }
 }

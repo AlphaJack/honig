@@ -1,6 +1,6 @@
 openapi: 3.2.0
 info: {title: Security, version: "1"}
-# The shapes of security that real descriptions use, each on its own operation. The top-level requirement is the
+# The shapes of security, each on its own operation. The top-level requirement is the
 # default of every operation that declares none.
 security: [{bearer: []}]
 paths:

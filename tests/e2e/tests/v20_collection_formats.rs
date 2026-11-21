@@ -99,8 +99,8 @@ fn a_response_schema_is_the_typed_body() {
     assert_eq!(got.ok(), Some(ops::list_keys::Response::Ok(keys())));
 }
 
-/// Swagger 2.0 has no `nullable`. So an optional property that a service sends as `null` reads as absent. A
-/// gRPC-gateway service does this for an unset timestamp or message. A required one still refuses it.
+/// Swagger 2.0 has no `nullable`. So an optional property that a service sends as `null` reads as absent. A required
+/// one still refuses it.
 #[test]
 fn an_optional_property_sent_as_null_is_absent() {
     let key: api::types::Key =

@@ -119,6 +119,17 @@ impl<'de> Content<'de> {
         if let Self::Str(s) = self { Some(s) } else { None }
     }
 
+    /// Returns a number as `serde_json` writes it in a `Value`. Empty for any other value.
+    #[must_use]
+    pub fn number_text(&self) -> String {
+        match self {
+            Self::U64(u) => u.to_string(),
+            Self::I64(i) => i.to_string(),
+            Self::F64(f) => serde_json::Number::from_f64(*f).map(|n| n.to_string()).unwrap_or_default(),
+            Self::Null | Self::Bool(_) | Self::Str(_) | Self::Seq(_) | Self::Map(_) | Self::Raw(_) => String::new(),
+        }
+    }
+
     /// Returns the JSON kind for unions told apart by kind.
     #[must_use]
     pub fn kind(&self) -> Kind {
@@ -183,9 +194,8 @@ impl<'de> Content<'de> {
 /// Whether an object can be a struct whose fields are `(name, present, kinds)`.
 ///
 /// Each field that must be present is, and each one present has one of its kinds (any kind when empty). An untagged
-/// union checks a branch with it before decoding the branch. A branch that cannot fit is skipped, and its nested values are not decoded only to fail at a
-/// field after them. That retry at every level of a recursive union made decoding exponential in its depth. A value
-/// that is not an object (raw text) is left to the decoder.
+/// union checks a branch with it before decoding the branch. A branch that cannot fit is skipped, and its nested values
+/// are not decoded only to fail at a field after them. A value that is not an object (raw text) is left to the decoder.
 #[must_use]
 pub fn fits(v: &Content<'_>, fields: &[(&str, bool, &[Kind])]) -> bool {
     let Content::Map(_) = v else { return true };

@@ -256,7 +256,8 @@ impl<T: PartialEq> PartialEq for Items<T> {
 
 impl<T: Eq> Eq for Items<T> {}
 
-/// Returns `Framing::Multipart` only decodes. A server returns a multipart body whole from a list.
+/// Returns the error of a multipart body to encode: `Framing::Multipart` only decodes. A server returns a multipart
+/// body whole from a list.
 #[cfg(feature = "multipart")]
 fn not_encoded() -> ClientError {
     ClientError::Encode("a multipart body is written whole, not item by item".to_owned())

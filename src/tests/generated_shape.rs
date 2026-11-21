@@ -809,7 +809,7 @@ fn a_macro_body_reads_as_items() {
 
 /// A response of a union of unions: each layer holds the two before it, so 2^40 paths reach the bottom. Its size is
 /// found once per type and to the bottom: about 340 bytes for `U39` against about 100 for the struct of `201`, so `Ok`
-/// is boxed. Cut at 16 levels, `U39` read as about 180.
+/// is boxed.
 #[test]
 fn a_response_of_a_union_of_unions_is_sized_to_the_bottom() {
     let mut schemas = serde_json::Map::new();
@@ -2079,6 +2079,17 @@ fn examples_are_judged_by_the_generated_types_only() {
     assert!(generated.diagnostics.0.is_empty(), "{:?}", generated.diagnostics);
     let examples = common::file(&generated.files, "documented_examples.rs");
     assert!(examples.contains("/properties/n/example"), "{examples}");
+}
+
+/// Keywords beside an implied shape read the JSON text that the value decoded from: the value is not written out again.
+#[test]
+fn implied_keywords_read_the_decoded_text() {
+    let s = json!({"properties": {"name": {"type": "string"}}, "required": ["name"], "minLength": 2});
+    let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"S": s}}));
+    let types =
+        common::file(&common::generate("implied-text", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
+    assert!(types.contains("runtime::read_once::<") && types.contains("runtime::Content::Str(text)"), "{types}");
+    assert!(!types.contains("to_value(&value).unwrap_or_default()"), "{types}");
 }
 
 /// A checked type whose checks read the value as JSON reads JSON text once: the value decodes from it and the checks

@@ -734,6 +734,19 @@ fn keywords_without_a_type_apply_to_their_kind() {
     assert!(loose(json!("abcd")).is_err(), "a string past its length");
 }
 
+/// Keywords of each kind beside an implied shape check the values of their kind, read from the text or built.
+#[test]
+fn keywords_beside_an_implied_shape_check_their_kind() {
+    let from_text = |v: &serde_json::Value| serde_json::from_str::<types::Implied>(&v.to_string()).is_ok();
+    let built = |v: &serde_json::Value| serde_json::from_value::<types::Implied>(v.clone()).is_ok();
+    for ok in [json!({"name": "a"}), json!("ab"), json!(1.5), json!([1, 2]), json!(true)] {
+        assert!(from_text(&ok) && built(&ok), "{ok}");
+    }
+    for wrong in [json!({}), json!("a"), json!(0), json!([1, 1.0])] {
+        assert!(!from_text(&wrong) && !built(&wrong), "{wrong}");
+    }
+}
+
 /// `dependentSchemas` over declared properties: when the property is present, the value decodes as the type of its
 /// schema.
 #[test]

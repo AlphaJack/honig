@@ -97,7 +97,7 @@ impl XmlShape for Order {
     }
 }
 
-/// Peak heap past which decoding has regressed: some headroom over the 4.6x it takes.
+/// Peak heap past which decoding has regressed.
 const MAX_OVERHEAD: f64 = 5.5;
 
 /// Lines in the body: about 4 MiB of XML.
@@ -123,7 +123,5 @@ fn decoding_xml_takes_a_bounded_multiple_of_the_body() {
     let body = format!("<?xml version=\"1.0\"?><order id=\"o-1\">{lines}</order>").into_bytes();
     let ratio = overhead(&body);
     println!("xml_decode: {} bytes, peak {ratio:.2}x the body", body.len());
-    // 4.6x today: the decoded type itself is about 1.8x. Through a tree of elements and then a `serde_json::Value`
-    // it was 12.7x.
     assert!(ratio < MAX_OVERHEAD, "decoding takes {ratio:.2}x the body, past {MAX_OVERHEAD}x");
 }

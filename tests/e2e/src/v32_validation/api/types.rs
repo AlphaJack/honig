@@ -263,6 +263,94 @@ impl Tagged {
     }
 }
 runtime::checked_impls!(Tagged, TaggedVariants);
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
+pub struct Implied(pub(super) ImpliedVariants);
+impl<'de> serde::Deserialize<'de> for Implied {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let (value, text) = runtime::read_once::<_, ImpliedVariants>(d)?;
+        match text {
+            Some(text) => {
+                let json = runtime::Content::parse(text)
+                    .map_err(serde::de::Error::custom)?;
+                Self::checked(value, &json)
+            }
+            None => Self::try_from(value),
+        }
+            .map_err(serde::de::Error::custom)
+    }
+}
+impl TryFrom<ImpliedVariants> for Implied {
+    type Error = runtime::BuildError;
+    fn try_from(value: ImpliedVariants) -> Result<Self, runtime::BuildError> {
+        let json = runtime::to_value(&value)
+            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
+        Self::checked(value, &runtime::Content::of(&json))
+    }
+}
+impl Implied {
+    fn checked(
+        value: ImpliedVariants,
+        json: &runtime::Content<'_>,
+    ) -> Result<Self, runtime::BuildError> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            {
+                match json {
+                    runtime::Content::Str(text) => {
+                        let text: &str = text;
+                        let n = text.chars().count();
+                        runtime::check_len(
+                            out,
+                            &runtime::InstancePath::Root,
+                            n,
+                            Some(2),
+                            None,
+                            "characters",
+                        );
+                    }
+                    n @ (runtime::Content::U64(_)
+                    | runtime::Content::I64(_)
+                    | runtime::Content::F64(_)) => {
+                        let text = n.number_text();
+                        runtime::check_decimal_range(
+                            out,
+                            &runtime::InstancePath::Root,
+                            text.as_str(),
+                            runtime::Bounds {
+                                min: Some("1"),
+                                ..runtime::Bounds::NONE
+                            },
+                        );
+                    }
+                    runtime::Content::Seq(n) => {
+                        runtime::check_unique_content(
+                            out,
+                            &runtime::InstancePath::Root,
+                            n,
+                        );
+                    }
+                    runtime::Content::Map(n) => {
+                        runtime::check_required(
+                            out,
+                            &runtime::InstancePath::Root,
+                            |name| n.iter().any(|(k, _)| k == name),
+                            &["name"],
+                        );
+                    }
+                    runtime::Content::Null
+                    | runtime::Content::Bool(_)
+                    | runtime::Content::Raw(_) => {}
+                }
+            }
+        }
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
+    }
+}
+runtime::checked_impls!(Implied, ImpliedVariants);
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Slug {
     Empty(SlugEmpty),
@@ -1497,6 +1585,34 @@ impl<'de> serde::Deserialize<'de> for TaggedColourColour {
             .map(|()| Self)
     }
 }
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct ImpliedObject {
+        pub name: String,
+    }
+}
+impl ImpliedObject {
+    #[must_use]
+    pub const fn new(name: String) -> Self {
+        Self { name }
+    }
+}
+impl runtime::XmlShape for ImpliedObject {
+    fn xml() -> &'static runtime::XmlNode {
+        static NODE: runtime::XmlNode = runtime::XmlNode {
+            name: "ImpliedObject",
+            namespace: "",
+            prefix: "",
+            fields: &[
+                runtime::XmlField {
+                    required: true,
+                    ..runtime::XmlField::new("name")
+                },
+            ],
+        };
+        &NODE
+    }
+}
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 pub struct SlugEmpty;
 impl SlugEmpty {
@@ -2549,23 +2665,40 @@ impl runtime::XmlShape for Not {
 pub struct Not2(pub(super) Not2Variants);
 impl<'de> serde::Deserialize<'de> for Not2 {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <Not2Variants as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
+        let (value, text) = runtime::read_once::<_, Not2Variants>(d)?;
+        match text {
+            Some(text) => {
+                let json = runtime::Content::parse(text)
+                    .map_err(serde::de::Error::custom)?;
+                Self::checked(value, &json)
+            }
+            None => Self::try_from(value),
+        }
+            .map_err(serde::de::Error::custom)
     }
 }
 impl TryFrom<Not2Variants> for Not2 {
     type Error = runtime::BuildError;
     fn try_from(value: Not2Variants) -> Result<Self, runtime::BuildError> {
+        let json = runtime::to_value(&value)
+            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
+        Self::checked(value, &runtime::Content::of(&json))
+    }
+}
+impl Not2 {
+    fn checked(
+        value: Not2Variants,
+        json: &runtime::Content<'_>,
+    ) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
             {
-                let json = runtime::to_value(&value).unwrap_or_default();
-                if let serde_json::Value::Object(n) = &json {
+                if let runtime::Content::Map(n) = json {
                     runtime::check_required(
                         out,
                         &runtime::InstancePath::Root,
-                        |name| n.contains_key(name),
+                        |name| n.iter().any(|(k, _)| k == name),
                         &["label"],
                     );
                 }
@@ -2617,23 +2750,40 @@ pub use TaggedLabelLabel as Not2ObjectLabel;
 pub struct Not3(pub(super) Not3Variants);
 impl<'de> serde::Deserialize<'de> for Not3 {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <Not3Variants as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
+        let (value, text) = runtime::read_once::<_, Not3Variants>(d)?;
+        match text {
+            Some(text) => {
+                let json = runtime::Content::parse(text)
+                    .map_err(serde::de::Error::custom)?;
+                Self::checked(value, &json)
+            }
+            None => Self::try_from(value),
+        }
+            .map_err(serde::de::Error::custom)
     }
 }
 impl TryFrom<Not3Variants> for Not3 {
     type Error = runtime::BuildError;
     fn try_from(value: Not3Variants) -> Result<Self, runtime::BuildError> {
+        let json = runtime::to_value(&value)
+            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
+        Self::checked(value, &runtime::Content::of(&json))
+    }
+}
+impl Not3 {
+    fn checked(
+        value: Not3Variants,
+        json: &runtime::Content<'_>,
+    ) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
             {
-                let json = runtime::to_value(&value).unwrap_or_default();
-                if let serde_json::Value::Object(n) = &json {
+                if let runtime::Content::Map(n) = json {
                     runtime::check_required(
                         out,
                         &runtime::InstancePath::Root,
-                        |name| n.contains_key(name),
+                        |name| n.iter().any(|(k, _)| k == name),
                         &["colour"],
                     );
                 }
@@ -2697,23 +2847,40 @@ impl<'de> serde::Deserialize<'de> for Not4 {
 pub struct Not5(pub(super) Not5Variants);
 impl<'de> serde::Deserialize<'de> for Not5 {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <Not5Variants as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
+        let (value, text) = runtime::read_once::<_, Not5Variants>(d)?;
+        match text {
+            Some(text) => {
+                let json = runtime::Content::parse(text)
+                    .map_err(serde::de::Error::custom)?;
+                Self::checked(value, &json)
+            }
+            None => Self::try_from(value),
+        }
+            .map_err(serde::de::Error::custom)
     }
 }
 impl TryFrom<Not5Variants> for Not5 {
     type Error = runtime::BuildError;
     fn try_from(value: Not5Variants) -> Result<Self, runtime::BuildError> {
+        let json = runtime::to_value(&value)
+            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
+        Self::checked(value, &runtime::Content::of(&json))
+    }
+}
+impl Not5 {
+    fn checked(
+        value: Not5Variants,
+        json: &runtime::Content<'_>,
+    ) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
             {
-                let json = runtime::to_value(&value).unwrap_or_default();
-                if let serde_json::Value::Object(n) = &json {
+                if let runtime::Content::Map(n) = json {
                     runtime::check_required(
                         out,
                         &runtime::InstancePath::Root,
-                        |name| n.contains_key(name),
+                        |name| n.iter().any(|(k, _)| k == name),
                         &["fragile"],
                     );
                 }
@@ -2771,23 +2938,40 @@ deserialize_impl!(Not5ObjectFragile);
 pub struct Not6(pub(super) Not6Variants);
 impl<'de> serde::Deserialize<'de> for Not6 {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <Not6Variants as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
+        let (value, text) = runtime::read_once::<_, Not6Variants>(d)?;
+        match text {
+            Some(text) => {
+                let json = runtime::Content::parse(text)
+                    .map_err(serde::de::Error::custom)?;
+                Self::checked(value, &json)
+            }
+            None => Self::try_from(value),
+        }
+            .map_err(serde::de::Error::custom)
     }
 }
 impl TryFrom<Not6Variants> for Not6 {
     type Error = runtime::BuildError;
     fn try_from(value: Not6Variants) -> Result<Self, runtime::BuildError> {
+        let json = runtime::to_value(&value)
+            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
+        Self::checked(value, &runtime::Content::of(&json))
+    }
+}
+impl Not6 {
+    fn checked(
+        value: Not6Variants,
+        json: &runtime::Content<'_>,
+    ) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
             {
-                let json = runtime::to_value(&value).unwrap_or_default();
-                if let serde_json::Value::Object(n) = &json {
+                if let runtime::Content::Map(n) = json {
                     runtime::check_required(
                         out,
                         &runtime::InstancePath::Root,
-                        |name| n.contains_key(name),
+                        |name| n.iter().any(|(k, _)| k == name),
                         &["customs", "insurer"],
                     );
                 }
@@ -2850,23 +3034,40 @@ impl<'de> serde::Deserialize<'de> for ObjectCustoms {
 pub struct Not7(pub(super) Not7Variants);
 impl<'de> serde::Deserialize<'de> for Not7 {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <Not7Variants as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
+        let (value, text) = runtime::read_once::<_, Not7Variants>(d)?;
+        match text {
+            Some(text) => {
+                let json = runtime::Content::parse(text)
+                    .map_err(serde::de::Error::custom)?;
+                Self::checked(value, &json)
+            }
+            None => Self::try_from(value),
+        }
+            .map_err(serde::de::Error::custom)
     }
 }
 impl TryFrom<Not7Variants> for Not7 {
     type Error = runtime::BuildError;
     fn try_from(value: Not7Variants) -> Result<Self, runtime::BuildError> {
+        let json = runtime::to_value(&value)
+            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
+        Self::checked(value, &runtime::Content::of(&json))
+    }
+}
+impl Not7 {
+    fn checked(
+        value: Not7Variants,
+        json: &runtime::Content<'_>,
+    ) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
             {
-                let json = runtime::to_value(&value).unwrap_or_default();
-                if let serde_json::Value::Object(n) = &json {
+                if let runtime::Content::Map(n) = json {
                     runtime::check_required(
                         out,
                         &runtime::InstancePath::Root,
-                        |name| n.contains_key(name),
+                        |name| n.iter().any(|(k, _)| k == name),
                         &["customs", "insurer"],
                     );
                 }
@@ -2885,23 +3086,40 @@ pub use ObjectCustoms as Not7ObjectCustoms;
 pub struct Not8(pub(super) Not8Variants);
 impl<'de> serde::Deserialize<'de> for Not8 {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <Not8Variants as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
+        let (value, text) = runtime::read_once::<_, Not8Variants>(d)?;
+        match text {
+            Some(text) => {
+                let json = runtime::Content::parse(text)
+                    .map_err(serde::de::Error::custom)?;
+                Self::checked(value, &json)
+            }
+            None => Self::try_from(value),
+        }
+            .map_err(serde::de::Error::custom)
     }
 }
 impl TryFrom<Not8Variants> for Not8 {
     type Error = runtime::BuildError;
     fn try_from(value: Not8Variants) -> Result<Self, runtime::BuildError> {
+        let json = runtime::to_value(&value)
+            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
+        Self::checked(value, &runtime::Content::of(&json))
+    }
+}
+impl Not8 {
+    fn checked(
+        value: Not8Variants,
+        json: &runtime::Content<'_>,
+    ) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
             {
-                let json = runtime::to_value(&value).unwrap_or_default();
-                if let serde_json::Value::Object(n) = &json {
+                if let runtime::Content::Map(n) = json {
                     runtime::check_required(
                         out,
                         &runtime::InstancePath::Root,
-                        |name| n.contains_key(name),
+                        |name| n.iter().any(|(k, _)| k == name),
                         &["customs", "insurer"],
                     );
                 }
@@ -2920,23 +3138,40 @@ pub use ObjectCustoms as Not8ObjectCustoms;
 pub struct Not9(pub(super) Not9Variants);
 impl<'de> serde::Deserialize<'de> for Not9 {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <Not9Variants as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
+        let (value, text) = runtime::read_once::<_, Not9Variants>(d)?;
+        match text {
+            Some(text) => {
+                let json = runtime::Content::parse(text)
+                    .map_err(serde::de::Error::custom)?;
+                Self::checked(value, &json)
+            }
+            None => Self::try_from(value),
+        }
+            .map_err(serde::de::Error::custom)
     }
 }
 impl TryFrom<Not9Variants> for Not9 {
     type Error = runtime::BuildError;
     fn try_from(value: Not9Variants) -> Result<Self, runtime::BuildError> {
+        let json = runtime::to_value(&value)
+            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
+        Self::checked(value, &runtime::Content::of(&json))
+    }
+}
+impl Not9 {
+    fn checked(
+        value: Not9Variants,
+        json: &runtime::Content<'_>,
+    ) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
             {
-                let json = runtime::to_value(&value).unwrap_or_default();
-                if let serde_json::Value::Object(n) = &json {
+                if let runtime::Content::Map(n) = json {
                     runtime::check_required(
                         out,
                         &runtime::InstancePath::Root,
-                        |name| n.contains_key(name),
+                        |name| n.iter().any(|(k, _)| k == name),
                         &["amount"],
                     );
                 }
@@ -3099,6 +3334,13 @@ impl<'de> serde::Deserialize<'de> for TaggedVariants {
         )
     }
 }
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ImpliedVariants {
+    Object(ImpliedObject),
+    Other(serde_json::Value),
+}
+serialize_impl_4!(ImpliedVariants);
+deserialize_impl_3!(ImpliedVariants);
 #[derive(Debug, Clone, PartialEq)]
 pub enum ShipmentVariants {
     International(ShipmentInternational),
@@ -4130,6 +4372,10 @@ pub mod builders {
         TaggedColour => super::TaggedColour; required {} optional { size(size) : i64 =
         "size" => some, None } fixed { colour : types::TaggedColourColour {},
         additional_properties : std::collections::BTreeMap::new(), }
+    }
+    runtime::typestate_builder! {
+        ImpliedObject => super::ImpliedObject; required { name : R0 : String = "name" }
+        optional {} fixed {}
     }
     runtime::typestate_builder! {
         TreeVariant2 => super::TreeVariant2; required { items : R0 : Vec < types::Tree >

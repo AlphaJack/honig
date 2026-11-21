@@ -117,7 +117,7 @@ impl<'a> Builder<'a> {
         }
     }
 
-    /// Registers and convert every `components.schemas` entry and keep their names.
+    /// Registers and converts every `components.schemas` entry and keeps their names.
     pub(crate) fn components(&mut self) {
         let Some(Value::Object(schemas)) = pointer(&self.doc.root, "/components/schemas").cloned() else { return };
         let mut ids = vec![];
@@ -200,7 +200,7 @@ impl<'a> Builder<'a> {
         self.defs[id.0].deprecated = schema.get("deprecated") == Some(&Value::Bool(true));
         self.defs[id.0].json_string = matches!(self.defs[id.0].kind, Kind::Newtype(_))
             && schema.as_object().is_some_and(|o| json_string_schema(o).is_some());
-        // `x-rust-type: crate::domain::Money` reuses your type. So does typify's object form `{crate, version, path}`
+        // `x-rust-type: crate::domain::Money` reuses your type. So does the object form `{crate, version, path}`
         // when the crate is a dependency: `generate` checks that. An invalid path is ignored.
         let (path, krate) = match schema.get("x-rust-type") {
             Some(Value::String(p)) => (Some(p.as_str()), None),
@@ -1108,8 +1108,8 @@ impl<'a> Builder<'a> {
         None
     }
 
-    /// Returns finish. Resolve placeholders, drop defaults that the type of their field cannot hold and break cycles
-    /// with `Box`.
+    /// Finishes the space: resolves placeholders, drops defaults that the type of their field cannot hold and breaks
+    /// cycles with `Box`.
     pub(crate) fn finish(mut self) -> TypeSpace {
         self.fill_deferred();
         let subschemas = self.build_subschemas();

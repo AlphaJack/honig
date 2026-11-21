@@ -163,7 +163,7 @@ async fn layers_outside_answer_in_the_error_schema() {
 }
 
 // ANCHOR: signed-body
-/// A signature over the body, as webhooks (`X-Hub-Signature-256`) and Matrix (`X-Matrix`) send. Here the signature is
+/// A signature over the body, as webhooks send. Here the signature is
 /// the body's length, a stand-in for an HMAC. The filter owns the request, so it reads the body itself. The operation
 /// then decodes the same bytes and reads nothing again.
 async fn verify(mut req: api::Request) -> Result<api::Request, api::ApiError> {

@@ -6,7 +6,7 @@ paths:
       operationId: tileStream
       responses:
         "200":
-          description: One event per tile update (utoipa style, no itemSchema).
+          description: One event per tile update (no itemSchema).
           content:
             text/event-stream:
               schema: {$ref: "#/components/schemas/TileEvent"}
@@ -39,7 +39,7 @@ paths:
       operationId: chatStream
       responses:
         "200":
-          description: "Untyped events (utoipa `schema: {}`)."
+          description: "Untyped events (`schema: {}`)."
           content:
             text/event-stream:
               schema: {}

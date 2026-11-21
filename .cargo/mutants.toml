@@ -2,7 +2,7 @@
 test_workspace = true
 
 # Not the generated code of `tests/e2e` and `examples/shop`: an edit to it is stale, so `tests/regen.rs` catches
-# every mutant of it. That was a third of the run's time.
+# every mutant of it.
 examine_globs = ["src/**", "runtime/src/**"]
 
 # Mutants go to the shards one by one. Then the shards finish together.

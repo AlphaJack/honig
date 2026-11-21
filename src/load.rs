@@ -1,4 +1,4 @@
-//! Load a document from end to end: parse, bundle, upgrade, model and validate.
+//! Loading a document from end to end: parse, bundle, upgrade, model and validate.
 
 use std::path::{Path, PathBuf};
 
@@ -39,7 +39,7 @@ impl Loaded {
     }
 }
 
-/// Load a document from text. External refs resolve against the working directory.
+/// Loads a document from text. External refs resolve against the working directory.
 #[cfg(test)]
 pub(crate) fn load_str(text: &str) -> Loaded {
     let mut diagnostics = Diagnostics::default();

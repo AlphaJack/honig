@@ -1,4 +1,4 @@
-//! `sonic-rs`: 1.2x faster to decode and 1.3x faster to encode than `serde_json` without a copy of the input.
+//! `sonic-rs`: SIMD JSON that decodes without a copy of the input.
 
 use serde::Serialize;
 use serde::de::DeserializeOwned;

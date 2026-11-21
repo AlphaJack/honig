@@ -216,7 +216,6 @@ fn decode_all(cases: &[Case], decoded: &[usize]) -> Vec<(String, Option<String>)
         decoded.iter().map(|&i| (format!("Case{i}"), component(i, &cases[i]))).collect();
     let doc = super::common::spec("3.2.0", &json!({}), &json!({"schemas": schemas}));
     let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("target").join("gen-tests").join("schema-suite");
-    // A missing directory is fine: there is nothing to clean up.
     std::fs::remove_dir_all(&dir).ok();
     std::fs::create_dir_all(dir.join("src")).unwrap();
     let spec = dir.join("openapi.json");

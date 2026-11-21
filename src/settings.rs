@@ -665,7 +665,8 @@ pub(crate) enum Trigger {
 }
 
 impl Trigger {
-    /// Returns `generate` adds and removes the feature. Otherwise it is yours and `generate` leaves it as you list it.
+    /// Returns whether `generate` adds and removes the feature. Otherwise it is yours and `generate` leaves it as you
+    /// list it.
     pub(crate) fn generated(self) -> bool {
         self != Self::Chosen
     }

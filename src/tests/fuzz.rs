@@ -638,7 +638,7 @@ fn object(api: &Api, props: &[Prop], v: V) -> Value {
     o
 }
 
-/// Make a schema nullable in the version's own idiom.
+/// Makes a schema nullable in the version's own idiom.
 fn nullable(mut s: Value, v: V) -> Value {
     let is_ref = s.get("$ref").is_some();
     match v {
@@ -1083,7 +1083,7 @@ shards! {
     composition_across_v31_v32: Profile::Composition;
 }
 
-/// Compile the generated crates of a few APIs with their test of the documented examples and run it.
+/// Compiles the generated crates of a few APIs with their test of the documented examples and runs it.
 #[test]
 #[ignore = "compiles generated crates"]
 fn generated_crates_compile_and_pass_their_tests() {

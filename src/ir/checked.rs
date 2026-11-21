@@ -242,9 +242,6 @@ fn yours(types: &TypeSpace, t: &Ty) -> bool {
     }
 }
 
-/// Does the type of `t` hold `schema` whole? A checked type of a struct or union holds its own schema
-/// (`split_own_checks`). A `{const: physical}` without `type` is checked as a whole schema, and its unit struct holds it
-/// already. So does an enum type for its `enum`.
 /// Does the named type `t` check `json` (the checks of [`Constraints::json_checks`]) itself? A checked type of the same
 /// schema does: a value of it needs them checked no second time.
 pub(crate) fn json_held_by_type(types: &TypeSpace, t: &Ty, json: &Constraints, hops: usize) -> bool {

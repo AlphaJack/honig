@@ -15,8 +15,8 @@ pub(crate) fn spec(version: &str, paths: &Value, components: &Value) -> Value {
     })
 }
 
-/// Write `doc` as `openapi.json` and each extra file as JSON into a
-/// directory of its own. Return the path of the description.
+/// Writes `doc` as `openapi.json` and each extra file as JSON into a directory of its own. Returns the path of the
+/// description.
 pub(crate) fn write(test: &str, doc: &Value, files: &[(&str, &Value)]) -> PathBuf {
     let dir = std::env::temp_dir().join(format!("honig-{test}-{}", std::process::id()));
     std::fs::create_dir_all(&dir).expect("temp dir");

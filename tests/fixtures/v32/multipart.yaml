@@ -82,7 +82,7 @@ paths:
     post:
       operationId: deploy
       requestBody:
-        description: Schemaless multipart, as utoipa emits for a hand-parsed form.
+        description: Schemaless multipart for a hand-parsed form.
         content:
           multipart/form-data: {}
       responses:

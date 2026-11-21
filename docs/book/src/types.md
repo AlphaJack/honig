@@ -85,13 +85,13 @@ Money:
 
 `types::Money` becomes an alias of your type. It must serialize like the schema. It must implement `Debug`, `Clone`, `PartialEq` and the serde traits. It must also check the constraints of the schema: honig checks none of them, neither where the schema is declared nor where a body or a field uses it.
 
-A type from another crate takes typify's object form:
+A type from another crate takes the object form:
 
 ```yaml
-SledUuid:
+OrderId:
   type: string
   format: uuid
-  x-rust-type: {crate: omicron-uuid-kinds, version: "*", path: omicron_uuid_kinds::SledUuid}
+  x-rust-type: {crate: order-ids, version: "*", path: order_ids::OrderId}
 ```
 
 honig uses it only when your crate depends on that crate. Otherwise it warns and generates the type.

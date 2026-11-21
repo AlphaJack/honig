@@ -20,9 +20,9 @@ mod cost;
 const SIZES: [usize; 2] = [1 << 20, 32 << 20];
 /// The kinds that stream their body: they hold about the same at any size.
 const STREAMED: [&str; 4] = ["upload", "download", "sse", "jsonl"];
-/// The most heap in KiB that a streamed kind may hold. Today they hold 16 to 64 KiB.
+/// The most heap in KiB that a streamed kind may hold.
 const STREAMED_PEAK: isize = 1024;
-/// How many times its baseline's peak a kind read whole may hold. Today 0.55 to 1.23.
+/// How many times its baseline's peak a kind read whole may hold.
 const WHOLE_RATIO: f64 = 1.3;
 
 /// The table of the bench: per kind and size in KiB, the peak heap of both sides in KiB, then the allocations and the

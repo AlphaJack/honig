@@ -279,8 +279,7 @@ mod tests {
         assert_eq!(is_multiple("1", "-2"), None);
     }
 
-    /// A `multipleOf` of any length divides exactly: past 19 digits an `f64` fallback took values off by less than a
-    /// millionth.
+    /// A `multipleOf` of any length divides exactly.
     #[test]
     fn a_long_multiple_of_divides_exactly() {
         let of = "123456789012345678901"; // 21 significant digits

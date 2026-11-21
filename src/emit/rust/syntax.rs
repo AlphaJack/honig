@@ -62,7 +62,7 @@ pub(crate) fn doc_opt(d: Option<&str>) -> TokenStream {
     d.map(str::trim).filter(|d| !d.is_empty()).map(|d| docs(&rustdoc(d))).unwrap_or_default()
 }
 
-/// Returns rust type of `ty`; named types get `types::` when `qualify` is set.
+/// Returns the Rust type of `ty`. Named types get `types::` when `qualify` is set.
 pub(crate) fn ty(space: &Space<'_>, t: &Ty, qualify: bool) -> TokenStream {
     let named = |id: TypeId| {
         let n = pascal_ident(&space.types.get(id).name);
@@ -121,7 +121,7 @@ fn ty_with(space: &Space<'_>, t: &Ty, named: &dyn Fn(TypeId) -> TokenStream) -> 
     }
 }
 
-/// Returns rust type of a string format. That is the library of the target crate or `String`.
+/// Returns the Rust type of a string format: the library of the target crate or `String`.
 pub(crate) fn format_ty(libs: &FormatLibs, f: Format) -> TokenStream {
     library_ty(libs, f).unwrap_or_else(|| text_ty(f))
 }

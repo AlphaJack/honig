@@ -106,7 +106,7 @@ fn send(method: &'static str, path: &str) -> api::Response {
 }
 
 /// Each operation's future is boxed: the future `handle` returns stays small however large a handler's is (64 KiB
-/// here). One holding every operation inline overflowed a debug test thread's stack once handlers grew.
+/// here).
 #[test]
 fn a_large_handler_future_stays_off_the_stack() {
     let server = api::Server::new(Server { heavy: true }).into_service();
