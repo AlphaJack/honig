@@ -216,11 +216,26 @@ mod tests {
         assert_eq!(of("listURLsByHost"), ["list", "urls", "by", "host"]);
         assert_eq!(of("123abc"), ["n123abc"]);
         assert_eq!(of("+1"), ["plus1"]);
+        assert_eq!(of("-1"), ["minus1"]);
+        assert_eq!(of("+"), ["plus"]);
+        assert_eq!(of("getAToB"), ["get", "a", "to", "b"]);
         assert_eq!(of("$ref"), ["ref"]);
         assert_eq!(of("s3Bucket"), ["s3", "bucket"]);
         assert_eq!(of("KindVariant2Variant2"), ["kind", "variant2", "variant2"]);
         assert_eq!(of(""), ["empty"]);
         assert_eq!(of("$$"), ["value"]);
+    }
+
+    /// The words that every name starts with are cut, as long as each keeps one that does not start with a digit.
+    #[test]
+    fn names_lose_their_common_prefix() {
+        let cut = |names: &[&str]| {
+            let names: Vec<Name> = names.iter().map(|n| Name::new(n)).collect();
+            Name::without_common_prefix(&names.iter().collect::<Vec<_>>())
+                .map(|n| n.iter().map(Name::key).collect::<Vec<_>>())
+        };
+        assert_eq!(cut(&["petCat", "petDog"]), Some(vec!["Cat".to_owned(), "Dog".to_owned()]));
+        assert_eq!(cut(&["pet_1", "pet_2"]), None);
     }
 
     #[test]

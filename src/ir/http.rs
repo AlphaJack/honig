@@ -1277,7 +1277,6 @@ fn positional_encoding(media_obj: &Value, open_prefix: Option<usize>) -> Vec<(St
 fn media_variant(media: &str) -> String {
     let m = media.split(';').next().unwrap_or(media);
     match m {
-        "application/json" => "Json".into(),
         "*/*" => "Any".into(),
         _ => m.rsplit('/').next().unwrap_or(m).replace(['+', '.', '-', '*'], " "),
     }

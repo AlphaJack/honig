@@ -375,6 +375,26 @@ fn draft_2019_09_recursive_ref_follows_the_extending_schema() {
     assert!(types.contains("pubtypeForest=Vec<Tree>;"), "no anchor outside: static: {types}");
 }
 
+/// Only a schema whose `$recursiveRef` lands on an anchor resolves dynamically: a `$ref` from an anchored schema to
+/// any other stays a reference.
+#[test]
+fn draft_2019_09_a_static_target_stays_a_reference() {
+    let (types, _) = types_of(
+        "recursive-static",
+        &json!({
+            "Tree": {
+                "$schema": "https://json-schema.org/draft/2019-09/schema",
+                "$recursiveAnchor": true,
+                "type": "object",
+                "properties": {"meta": {"$ref": "#/components/schemas/Meta"}, "node": {"$ref": "#/components/schemas/Node"}}
+            },
+            "Meta": {"type": "object", "properties": {"at": {"type": "string"}}},
+            "Node": {"$id": "https://t.test/node", "type": "object", "properties": {"next": {"$recursiveRef": "#"}}}
+        }),
+    );
+    assert!(types.contains("pubmeta:Meta") && types.contains("pubnode:Node"), "{types}");
+}
+
 /// An extension that has an `allOf` of its own keeps it beside the copy of what it extends.
 #[test]
 fn draft_2019_09_recursive_extension_keeps_its_own_all_of() {

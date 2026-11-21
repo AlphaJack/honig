@@ -1830,28 +1830,37 @@ fn any_media_type_is_tried_last() {
     let client = common::file(&files, "client.rs");
     assert!(client.contains(r#"runtime::media_matches(ct, "image/*")"#), "{client}");
     assert!(!client.contains(r#"runtime::media_matches(ct, "*/*")"#), "{client}");
+    assert!(client.contains("Any("), "{client}");
 }
 
-/// A part's own `prefixEncoding` nests three deep at most: a deeper part keeps no media type of its own.
+/// A part's own `encoding`, `prefixEncoding` and `itemEncoding` nest three deep at most: a deeper part keeps no media
+/// type of its own.
 #[test]
 fn a_part_encoding_nests_three_deep_at_most() {
-    let mut enc = json!({"contentType": "text/csv"});
-    for _ in 0..4 {
-        enc = json!({"contentType": "multipart/mixed", "prefixEncoding": [enc]});
+    for seg in ["p", "0", "*"] {
+        let mut enc = json!({"contentType": "text/csv"});
+        for _ in 0..4 {
+            enc = match seg {
+                "p" => json!({"encoding": {"p": enc}}),
+                "0" => json!({"prefixEncoding": [enc]}),
+                _ => json!({"itemEncoding": enc}),
+            };
+            enc["contentType"] = json!("multipart/mixed");
+        }
+        let body = json!({"content": {"multipart/form-data": {
+            "schema": {"type": "object", "properties": {"f": {}}},
+            "encoding": {"f": enc},
+        }}});
+        let doc = common::spec(
+            "3.2.0",
+            &json!({"/a": {"post": {"operationId": "a", "requestBody": body, "responses": {"204": {"description": "ok"}}}}}),
+            &json!({}),
+        );
+        let files = common::generate("shape-encoding-depth", &doc, &crate::emit::Options::default());
+        let all: String = files.iter().map(|(_, t)| t.as_str()).collect();
+        assert!(all.contains(&format!("\"f/{seg}/{seg}/{seg}\"")), "{all}");
+        assert!(!all.contains(&format!("\"f/{seg}/{seg}/{seg}/{seg}\"")), "{all}");
     }
-    let body = json!({"content": {"multipart/form-data": {
-        "schema": {"type": "object", "properties": {"f": {}}},
-        "encoding": {"f": enc},
-    }}});
-    let doc = common::spec(
-        "3.2.0",
-        &json!({"/a": {"post": {"operationId": "a", "requestBody": body, "responses": {"204": {"description": "ok"}}}}}),
-        &json!({}),
-    );
-    let files = common::generate("shape-encoding-depth", &doc, &crate::emit::Options::default());
-    let all: String = files.iter().map(|(_, t)| t.as_str()).collect();
-    assert!(all.contains("\"f/0/0/0\""), "{all}");
-    assert!(!all.contains("\"f/0/0/0/0\""), "{all}");
 }
 
 /// Binary data in JSON is base64: a field of it turns on the runtime's `base64`, as does a list of it.

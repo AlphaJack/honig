@@ -680,6 +680,21 @@ mod tests {
         assert_eq!(props["example"]["$ref"], "#/components/schemas/JSON");
     }
 
+    /// A form with a file travels as `multipart/form-data`. Another form type beside it in `consumes` stays.
+    #[test]
+    fn a_form_with_a_file_is_multipart() {
+        let (url, multi) = ("application/x-www-form-urlencoded", "multipart/form-data");
+        for (consumes, want) in [(vec![url], vec![multi]), (vec![multi, url], vec![multi, url])] {
+            let out = up(json!({
+                "swagger": "2.0", "info": {"title": "t", "version": "1"},
+                "paths": {"/a": {"post": {"consumes": consumes, "parameters": [{"name": "f", "in": "formData", "type": "file"}],
+                    "responses": {"200": {"description": "ok"}}}}}
+            }));
+            let content = out["paths"]["/a"]["post"]["requestBody"]["content"].as_object().unwrap();
+            assert_eq!(content.keys().collect::<Vec<_>>(), want, "{consumes:?}");
+        }
+    }
+
     #[test]
     fn host_and_base_path_become_servers() {
         let out = up(json!({"swagger": "2.0", "host": "api.x.com", "basePath": "/v1", "schemes": ["https", "http"]}));
