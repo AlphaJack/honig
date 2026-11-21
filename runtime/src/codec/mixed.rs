@@ -71,7 +71,7 @@ fn mixed_encode_in<T: Serialize>(v: &T, media: &str, types: &[(&str, &str)]) -> 
 /// Decodes a positional multipart body (see [`mixed_encode`]). `prefix` groups the rest into a list.
 /// Errors: no boundary or the parts do not fit `T`.
 pub fn mixed_decode<T: DeserializeOwned>(
-    status: u16,
+    status: Option<u16>,
     content_type: &str,
     body: &[u8],
     prefix: Option<usize>,
@@ -81,7 +81,7 @@ pub fn mixed_decode<T: DeserializeOwned>(
 
 /// Returns [`mixed_decode`] inside its conversion.
 fn mixed_decode_in<T: DeserializeOwned>(
-    status: u16,
+    status: Option<u16>,
     content_type: &str,
     body: &[u8],
     prefix: Option<usize>,
@@ -116,7 +116,8 @@ mod tests {
     #[test]
     fn a_part_declared_json_that_does_not_parse_is_an_error() {
         let body = b"--b\r\ncontent-type: application/json\r\n\r\n{not json\r\n--b--\r\n";
-        let decoded = super::mixed_decode::<Vec<serde_json::Value>>(400, "multipart/mixed; boundary=b", body, None);
+        let decoded =
+            super::mixed_decode::<Vec<serde_json::Value>>(Some(400), "multipart/mixed; boundary=b", body, None);
         assert!(decoded.is_err(), "{decoded:?}");
     }
 

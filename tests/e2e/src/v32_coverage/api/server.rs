@@ -323,7 +323,7 @@ fn add_note_params(
     let runtime::Incoming { request: req, body, .. } = incoming;
     runtime::check_media(runtime::Message::content_type(req), &["application/json"])?;
     Ok(ops::add_note::Params {
-        body: runtime::json_decode(0, &body)?,
+        body: runtime::json_decode(None, &body)?,
     })
 }
 fn add_note_encode(

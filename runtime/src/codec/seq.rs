@@ -26,7 +26,7 @@ pub(crate) fn jsonl_write<T: Serialize>(out: &mut Vec<u8>, item: &T) -> Result<(
 }
 
 /// Decodes a JSON Lines body.
-pub fn jsonl_decode<T: DeserializeOwned>(status: u16, body: &[u8]) -> Result<Vec<T>, ClientError> {
+pub fn jsonl_decode<T: DeserializeOwned>(status: Option<u16>, body: &[u8]) -> Result<Vec<T>, ClientError> {
     body.split(|b| *b == b'\n').filter(|r| !blank_record(r)).map(|r| json_record(status, r)).collect()
 }
 
@@ -46,7 +46,7 @@ pub(crate) fn json_seq_write<T: Serialize>(out: &mut Vec<u8>, item: &T) -> Resul
 }
 
 /// Decodes an RFC 7464 JSON text sequence.
-pub fn json_seq_decode<T: DeserializeOwned>(status: u16, body: &[u8]) -> Result<Vec<T>, ClientError> {
+pub fn json_seq_decode<T: DeserializeOwned>(status: Option<u16>, body: &[u8]) -> Result<Vec<T>, ClientError> {
     body.split(|b| *b == RECORD_SEPARATOR).filter(|r| !blank_record(r)).map(|r| json_record(status, r)).collect()
 }
 
@@ -57,7 +57,7 @@ pub(crate) fn blank_record(record: &[u8]) -> bool {
 
 /// Returns one JSON Lines or `json-seq` record without its record separator. It is decoded as a JSON body is (with
 /// `simd` by sonic-rs).
-pub(crate) fn json_record<T: DeserializeOwned>(status: u16, record: &[u8]) -> Result<T, ClientError> {
+pub(crate) fn json_record<T: DeserializeOwned>(status: Option<u16>, record: &[u8]) -> Result<T, ClientError> {
     json_decode(status, record.strip_prefix(&[RECORD_SEPARATOR]).unwrap_or(record))
 }
 

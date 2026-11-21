@@ -107,7 +107,7 @@ const LINES: usize = 50_000;
 fn overhead(body: &[u8]) -> f64 {
     let before = LIVE.load(Ordering::Relaxed);
     PEAK.store(before, Ordering::Relaxed);
-    let order = xml_decode::<Order>(200, body).unwrap();
+    let order = xml_decode::<Order>(Some(200), body).unwrap();
     let peak = PEAK.load(Ordering::Relaxed) - before;
     drop(order);
     #[expect(clippy::cast_precision_loss, reason = "a ratio of sizes far below 2^52")]

@@ -223,7 +223,7 @@ pub(crate) fn server_params(
     });
     let body = op.body.as_ref().map(|b| {
         let d = Decode {
-            status: quote!(0),
+            status: quote!(None),
             ct: quote!(runtime::Message::content_type(req)),
             body: body_expr.clone(),
             q: quote!(?),

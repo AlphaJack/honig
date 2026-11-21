@@ -37,7 +37,7 @@ thread_local! {
 const KEEP_BUFFER: usize = 1 << 16;
 
 /// Decodes a JSON body of a response with this status.
-pub fn json_decode<T: DeserializeOwned>(status: u16, body: &[u8]) -> Result<T, ClientError> {
+pub fn json_decode<T: DeserializeOwned>(status: Option<u16>, body: &[u8]) -> Result<T, ClientError> {
     // An empty body decodes as `null` (valid for Option and unit types).
     let body = if body.iter().all(u8::is_ascii_whitespace) { b"null".as_slice() } else { body };
     // Tracking the pointer allocates per key. That doubles the cost of a large body. So only a body that fails

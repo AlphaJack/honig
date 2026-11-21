@@ -377,7 +377,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 200 {
             {
                 runtime::check_media_of(&head, &body, &["multipart/mixed"])?;
-                runtime::mixed_decode(status, ct, &body, None)
+                runtime::mixed_decode(Some(status), ct, &body, None)
                     .map(ops::streaming_multipart::Response::Ok)
             }
         } else {
@@ -416,7 +416,7 @@ impl<T: runtime::Transport> Client<T> {
             let body = resp.into_body().into_stream();
             return Ok(
                 runtime::Streamed::Ok(
-                    runtime::ItemStream::multipart(status, body, &media),
+                    runtime::ItemStream::multipart(Some(status), body, &media),
                 ),
             );
         }
@@ -454,7 +454,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 206 {
             {
                 runtime::check_media_of(&head, &body, &["multipart/byteranges"])?;
-                runtime::mixed_decode(status, ct, &body, None)
+                runtime::mixed_decode(Some(status), ct, &body, None)
                     .map(ops::streaming_byte_ranges::Response::PartialContent)
             }
         } else {
@@ -493,7 +493,7 @@ impl<T: runtime::Transport> Client<T> {
             let body = resp.into_body().into_stream();
             return Ok(
                 runtime::Streamed::Ok(
-                    runtime::ItemStream::multipart(status, body, &media),
+                    runtime::ItemStream::multipart(Some(status), body, &media),
                 ),
             );
         }
@@ -555,7 +555,7 @@ impl<T: runtime::Transport> Client<T> {
             {
                 runtime::check_media_of(&head, &body, &["application/json"])?;
                 Ok(ops::collection_with_links::Response::Ok {
-                    body: runtime::json_decode(status, &body)?,
+                    body: runtime::json_decode(Some(status), &body)?,
                     link: runtime::from_param(
                             runtime::linkset_header(
                                 runtime::joined_header(&head.headers, "Link").as_deref(),
@@ -563,7 +563,7 @@ impl<T: runtime::Transport> Client<T> {
                             "/header/Link",
                         )
                         .map_err(|e| runtime::ClientError::Decode {
-                            status,
+                            status: Some(status),
                             message: e.to_string(),
                             body: body.clone(),
                             pointer: String::new(),
@@ -594,7 +594,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 200 {
             {
                 runtime::check_media_of(&head, &body, &["application/linkset+json"])?;
-                runtime::json_decode(status, &body)
+                runtime::json_decode(Some(status), &body)
                     .map(ops::standalone_json_linkset::Response::Ok)
             }
         } else {
@@ -621,7 +621,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 200 {
             {
                 runtime::check_media_of(&head, &body, &["application/linkset"])?;
-                runtime::linkset_decode(status, &String::from_utf8_lossy(&body))
+                runtime::linkset_decode(Some(status), &String::from_utf8_lossy(&body))
                     .map(ops::linkset_body::Response::Ok)
             }
         } else {
@@ -648,7 +648,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 200 {
             {
                 runtime::check_media_of(&head, &body, &["application/json"])?;
-                runtime::json_decode(status, &body)
+                runtime::json_decode(Some(status), &body)
                     .map(ops::media_type_json::Response::Ok)
             }
         } else {
@@ -703,22 +703,22 @@ impl<T: runtime::Transport> Client<T> {
                     ops::log_stream::Response::Ok(
                         if runtime::media_matches(ct, "application/json-seq") {
                             ops::log_stream::OkBody::JsonSeq(
-                                runtime::json_seq_decode(status, &body)
+                                runtime::json_seq_decode(Some(status), &body)
                                     .map(runtime::Items::List)?,
                             )
                         } else if runtime::media_matches(ct, "application/jsonl") {
                             ops::log_stream::OkBody::Jsonl(
-                                runtime::jsonl_decode(status, &body)
+                                runtime::jsonl_decode(Some(status), &body)
                                     .map(runtime::Items::List)?,
                             )
                         } else if runtime::media_matches(ct, "application/x-ndjson") {
                             ops::log_stream::OkBody::XNdjson(
-                                runtime::jsonl_decode(status, &body)
+                                runtime::jsonl_decode(Some(status), &body)
                                     .map(runtime::Items::List)?,
                             )
                         } else {
                             ops::log_stream::OkBody::JsonSeq(
-                                runtime::json_seq_decode(status, &body)
+                                runtime::json_seq_decode(Some(status), &body)
                                     .map(runtime::Items::List)?,
                             )
                         },
@@ -777,17 +777,25 @@ impl<T: runtime::Transport> Client<T> {
             return Ok(
                 runtime::Streamed::Ok(
                     if runtime::media_matches(&ct, "application/json-seq") {
-                        runtime::ItemStream::new(status, body, runtime::Framing::JsonSeq)
+                        runtime::ItemStream::new(
+                            Some(status),
+                            body,
+                            runtime::Framing::JsonSeq,
+                        )
                     } else if runtime::media_matches(&ct, "application/jsonl")
                         || runtime::media_matches(&ct, "application/x-ndjson")
                     {
                         runtime::ItemStream::new(
-                            status,
+                            Some(status),
                             body,
                             runtime::Framing::JsonLines,
                         )
                     } else {
-                        runtime::ItemStream::new(status, body, runtime::Framing::JsonSeq)
+                        runtime::ItemStream::new(
+                            Some(status),
+                            body,
+                            runtime::Framing::JsonSeq,
+                        )
                     },
                 ),
             );
@@ -853,9 +861,9 @@ impl<T: runtime::Transport> Client<T> {
                     ops::log_excerpt::Response::Ok(
                         if runtime::media_matches(ct, "application/json-seq") {
                             ops::log_excerpt::OkBody::JsonSeq(
-                                runtime::json_seq_decode(status, &body)
+                                runtime::json_seq_decode(Some(status), &body)
                                     .and_then(|v| runtime::limit_items(
-                                        status,
+                                        Some(status),
                                         v,
                                         runtime::Limits {
                                             min: None,
@@ -867,9 +875,9 @@ impl<T: runtime::Transport> Client<T> {
                             )
                         } else if runtime::media_matches(ct, "application/jsonl") {
                             ops::log_excerpt::OkBody::Jsonl(
-                                runtime::jsonl_decode(status, &body)
+                                runtime::jsonl_decode(Some(status), &body)
                                     .and_then(|v| runtime::limit_items(
-                                        status,
+                                        Some(status),
                                         v,
                                         runtime::Limits {
                                             min: None,
@@ -881,9 +889,9 @@ impl<T: runtime::Transport> Client<T> {
                             )
                         } else if runtime::media_matches(ct, "application/x-ndjson") {
                             ops::log_excerpt::OkBody::XNdjson(
-                                runtime::jsonl_decode(status, &body)
+                                runtime::jsonl_decode(Some(status), &body)
                                     .and_then(|v| runtime::limit_items(
-                                        status,
+                                        Some(status),
                                         v,
                                         runtime::Limits {
                                             min: None,
@@ -895,9 +903,9 @@ impl<T: runtime::Transport> Client<T> {
                             )
                         } else {
                             ops::log_excerpt::OkBody::JsonSeq(
-                                runtime::json_seq_decode(status, &body)
+                                runtime::json_seq_decode(Some(status), &body)
                                     .and_then(|v| runtime::limit_items(
-                                        status,
+                                        Some(status),
                                         v,
                                         runtime::Limits {
                                             min: None,
@@ -960,17 +968,25 @@ impl<T: runtime::Transport> Client<T> {
             return Ok(
                 runtime::Streamed::Ok(
                     (if runtime::media_matches(&ct, "application/json-seq") {
-                        runtime::ItemStream::new(status, body, runtime::Framing::JsonSeq)
+                        runtime::ItemStream::new(
+                            Some(status),
+                            body,
+                            runtime::Framing::JsonSeq,
+                        )
                     } else if runtime::media_matches(&ct, "application/jsonl")
                         || runtime::media_matches(&ct, "application/x-ndjson")
                     {
                         runtime::ItemStream::new(
-                            status,
+                            Some(status),
                             body,
                             runtime::Framing::JsonLines,
                         )
                     } else {
-                        runtime::ItemStream::new(status, body, runtime::Framing::JsonSeq)
+                        runtime::ItemStream::new(
+                            Some(status),
+                            body,
+                            runtime::Framing::JsonSeq,
+                        )
                     })
                         .limited(runtime::Limits {
                             min: None,

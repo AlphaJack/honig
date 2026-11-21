@@ -233,7 +233,11 @@ fn upload_params(
             ),
             "/body/meta/X-Revision",
         )?,
-        body: runtime::multipart_decode(0, runtime::Message::content_type(req), &body)?,
+        body: runtime::multipart_decode(
+            None,
+            runtime::Message::content_type(req),
+            &body,
+        )?,
     })
 }
 fn upload_encode(resp: &ops::upload::Response) -> runtime::Response {
@@ -270,7 +274,11 @@ fn put_icon_params(
     let runtime::Incoming { request: req, body, .. } = incoming;
     runtime::check_media(runtime::Message::content_type(req), &["multipart/form-data"])?;
     Ok(ops::put_icon::Params {
-        body: runtime::multipart_decode(0, runtime::Message::content_type(req), &body)?,
+        body: runtime::multipart_decode(
+            None,
+            runtime::Message::content_type(req),
+            &body,
+        )?,
         part_types: runtime::PartTypes::new(),
     })
 }
@@ -308,7 +316,11 @@ fn upload_scan_params(
     let runtime::Incoming { request: req, body, .. } = incoming;
     runtime::check_media(runtime::Message::content_type(req), &["multipart/form-data"])?;
     Ok(ops::upload_scan::Params {
-        body: runtime::multipart_decode(0, runtime::Message::content_type(req), &body)?,
+        body: runtime::multipart_decode(
+            None,
+            runtime::Message::content_type(req),
+            &body,
+        )?,
     })
 }
 fn upload_scan_encode(resp: &ops::upload_scan::Response) -> runtime::Response {
@@ -351,7 +363,11 @@ fn deploy_params(
             None
         } else {
             Some(
-                runtime::multipart_decode(0, runtime::Message::content_type(req), &body)?,
+                runtime::multipart_decode(
+                    None,
+                    runtime::Message::content_type(req),
+                    &body,
+                )?,
             )
         },
     })

@@ -232,7 +232,7 @@ impl<T: DeserializeOwned> Items<T> {
 }
 
 /// The status a request body decodes with: there is no response yet.
-const REQUEST: u16 = 0;
+const REQUEST: Option<u16> = None;
 
 /// No item is pinned: each is read out of a list, a decoder or a boxed stream.
 impl<T> Unpin for Items<T> {}
@@ -559,9 +559,9 @@ impl<T> ItemStream<T> {
         self.decoder(|items| items.retry).unwrap_or(RETRY)
     }
 
-    /// Returns the HTTP status of the response. 0 for a request body and for items that your code produces.
-    pub fn status(&self) -> u16 {
-        self.decoder(|items| items.status).unwrap_or(REQUEST)
+    /// Returns the HTTP status of the response. `None` for a request body and for items that your code produces.
+    pub fn status(&self) -> Option<u16> {
+        self.decoder(|items| items.status).flatten()
     }
 
     /// Ends the stream after `n` reconnections in a row fail. Without this it tries for ever.
@@ -611,7 +611,7 @@ impl<T> ItemStream<T> {
 
 impl<T: DeserializeOwned> ItemStream<T> {
     /// Creates items of `body`. It is a response with this status.
-    pub fn new(status: u16, body: ByteStream, framing: Framing) -> Self {
+    pub fn new(status: Option<u16>, body: ByteStream, framing: Framing) -> Self {
         Self::with(Inner::Decoding(Box::new(Decoder::new(status, body, framing))))
     }
 
@@ -647,7 +647,7 @@ impl<T: DeserializeOwned> ItemStream<T> {
     /// decoded as they arrive.
     #[cfg(feature = "multipart")]
     #[must_use]
-    pub fn multipart(status: u16, body: ByteStream, content_type: &str) -> Self {
+    pub fn multipart(status: Option<u16>, body: ByteStream, content_type: &str) -> Self {
         let mut items = Decoder::new(status, body, Framing::Multipart);
         items.boundary = crate::codec::boundary_of(content_type).unwrap_or_default();
         Self::with(Inner::Decoding(Box::new(items)))
@@ -685,7 +685,7 @@ pub struct Limits {
 /// # Errors
 /// They do not: a decode error with this status.
 #[doc(hidden)]
-pub fn limit_items<T: Serialize>(status: u16, items: Vec<T>, limits: Limits) -> Result<Vec<T>, ClientError> {
+pub fn limit_items<T: Serialize>(status: Option<u16>, items: Vec<T>, limits: Limits) -> Result<Vec<T>, ClientError> {
     let mut out = vec![];
     crate::checks::check_len(&mut out, &InstancePath::Root, items.len(), limits.min, limits.max, "items");
     if limits.unique {
@@ -698,7 +698,7 @@ pub fn limit_items<T: Serialize>(status: u16, items: Vec<T>, limits: Limits) -> 
 }
 
 /// Returns the error of a sequence that breaks one of its [`Limits`].
-fn limit_error(status: u16, message: String) -> ClientError {
+fn limit_error(status: Option<u16>, message: String) -> ClientError {
     ClientError::Decode { status, message, body: bytes::Bytes::new(), pointer: String::new() }
 }
 
@@ -715,7 +715,7 @@ struct Counted<T> {
 
 impl<T> Counted<T> {
     /// Returns `item` once it keeps the sequence within its limits.
-    fn admit(&mut self, status: u16, item: T) -> Result<T, ClientError> {
+    fn admit(&mut self, status: Option<u16>, item: T) -> Result<T, ClientError> {
         self.count += 1;
         if let Some(max) = self.limits.max.filter(|max| self.count > *max) {
             return Err(limit_error(status, format!("at most {max} items allowed, found more")));
@@ -727,7 +727,7 @@ impl<T> Counted<T> {
     }
 
     /// Returns the error of a sequence that ended short of `min`, once.
-    fn at_end(&mut self, status: u16) -> Option<ClientError> {
+    fn at_end(&mut self, status: Option<u16>) -> Option<ClientError> {
         let min = self.limits.min.filter(|min| self.count < *min && !self.short)?;
         self.short = true;
         Some(limit_error(status, format!("at least {min} items required, found {}", self.count)))
@@ -736,7 +736,7 @@ impl<T> Counted<T> {
 
 /// Decodes the items of a body as its bytes arrive.
 pub(crate) struct Decoder<T> {
-    status: u16,
+    status: Option<u16>,
     body: ByteStream,
     /// Bytes received; those before `pos` are records already returned.
     buf: Vec<u8>,
@@ -777,7 +777,7 @@ type ReadItem<T> = fn(&Record<'_>) -> Result<T, ClientError>;
 
 /// One record of an arriving body and what decoding it needs.
 pub(crate) struct Record<'a> {
-    status: u16,
+    status: Option<u16>,
     framing: Framing,
     /// `Framing::Multipart`: the boundary of the body.
     #[cfg(feature = "multipart")]
@@ -814,7 +814,7 @@ fn read_validated<T: DeserializeOwned, H: for<'de> crate::formats::Holds<'de, T>
 }
 
 impl<T: DeserializeOwned> Decoder<T> {
-    fn new(status: u16, body: ByteStream, framing: Framing) -> Self {
+    fn new(status: Option<u16>, body: ByteStream, framing: Framing) -> Self {
         Self {
             status,
             body,
@@ -1120,8 +1120,8 @@ mod tests {
     fn items_are_equal_by_list_or_by_stream() {
         assert_eq!(Items::List(vec![1]), Items::List(vec![1]));
         assert_ne!(Items::List(vec![1]), Items::List(vec![2]));
-        let stream: ItemStream<i32> = ItemStream::new(200, body("1\n"), Framing::JsonLines);
-        let other: ItemStream<i32> = ItemStream::new(200, body("1\n"), Framing::JsonLines);
+        let stream: ItemStream<i32> = ItemStream::new(Some(200), body("1\n"), Framing::JsonLines);
+        let other: ItemStream<i32> = ItemStream::new(Some(200), body("1\n"), Framing::JsonLines);
         assert_eq!(Items::Stream(stream.clone()), Items::Stream(stream.clone()));
         assert_ne!(Items::Stream(stream.clone()), Items::Stream(other));
         assert_ne!(Items::Stream(stream), Items::List(vec![1]));
@@ -1130,7 +1130,7 @@ mod tests {
     /// Asking a decoding stream for the items of your code gives nothing and leaves the stream as it was.
     #[test]
     fn a_decoding_stream_is_no_feed_and_still_reads() {
-        let mut stream: ItemStream<i32> = ItemStream::new(200, body("1\n2\n"), Framing::JsonLines);
+        let mut stream: ItemStream<i32> = ItemStream::new(Some(200), body("1\n2\n"), Framing::JsonLines);
         assert!(stream.take_feed().is_none());
         let got: Vec<i32> = crate::block_on(stream.by_ref().map(Result::unwrap).collect());
         assert_eq!(got, [1, 2]);

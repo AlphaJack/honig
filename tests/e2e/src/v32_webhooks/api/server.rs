@@ -291,7 +291,7 @@ fn subscribe_params(
     let runtime::Incoming { request: req, body, .. } = incoming;
     runtime::check_media(runtime::Message::content_type(req), &["application/json"])?;
     Ok(ops::subscribe::Params {
-        body: runtime::json_decode(0, &body)?,
+        body: runtime::json_decode(None, &body)?,
     })
 }
 fn subscribe_encode(resp: &ops::subscribe::Response) -> runtime::Response {
@@ -328,7 +328,7 @@ fn new_product_params(
     let runtime::Incoming { request: req, body, .. } = incoming;
     runtime::check_media(runtime::Message::content_type(req), &["application/json"])?;
     Ok(ops::new_product::Params {
-        body: runtime::json_decode(0, &body)?,
+        body: runtime::json_decode(None, &body)?,
     })
 }
 fn new_product_encode(resp: &ops::new_product::Response) -> runtime::Response {
@@ -367,7 +367,7 @@ fn subscribe_on_event_post_params(
     let runtime::Incoming { request: req, body, .. } = incoming;
     runtime::check_media(runtime::Message::content_type(req), &["application/json"])?;
     Ok(ops::subscribe_on_event_post::Params {
-        body: runtime::json_decode(0, &body)?,
+        body: runtime::json_decode(None, &body)?,
     })
 }
 fn subscribe_on_event_post_encode(

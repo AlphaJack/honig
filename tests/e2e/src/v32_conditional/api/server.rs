@@ -190,7 +190,7 @@ fn a_params(incoming: runtime::Incoming<'_>) -> Result<ops::a::Params, runtime::
     let runtime::Incoming { request: req, body, .. } = incoming;
     runtime::check_media(runtime::Message::content_type(req), &["application/json"])?;
     Ok(ops::a::Params {
-        body: runtime::json_decode(0, &body)?,
+        body: runtime::json_decode(None, &body)?,
     })
 }
 fn a_encode(resp: &ops::a::Response) -> runtime::Response {
@@ -225,7 +225,7 @@ fn b_params(incoming: runtime::Incoming<'_>) -> Result<ops::b::Params, runtime::
     let runtime::Incoming { request: req, body, .. } = incoming;
     runtime::check_media(runtime::Message::content_type(req), &["application/json"])?;
     Ok(ops::b::Params {
-        body: runtime::json_decode(0, &body)?,
+        body: runtime::json_decode(None, &body)?,
     })
 }
 fn b_encode(resp: &ops::b::Response) -> runtime::Response {
@@ -260,7 +260,7 @@ fn c_params(incoming: runtime::Incoming<'_>) -> Result<ops::c::Params, runtime::
     let runtime::Incoming { request: req, body, .. } = incoming;
     runtime::check_media(runtime::Message::content_type(req), &["application/json"])?;
     Ok(ops::c::Params {
-        body: runtime::json_decode(0, &body)?,
+        body: runtime::json_decode(None, &body)?,
     })
 }
 fn c_encode(resp: &ops::c::Response) -> runtime::Response {

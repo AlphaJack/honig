@@ -447,7 +447,7 @@ fn post_closed_params(
     let runtime::Incoming { request: req, body, .. } = incoming;
     runtime::check_media(runtime::Message::content_type(req), &["application/json"])?;
     Ok(ops::post_closed::Params {
-        body: runtime::json_decode(0, &body)?,
+        body: runtime::json_decode(None, &body)?,
     })
 }
 fn post_closed_encode(resp: &ops::post_closed::Response) -> runtime::Response {
@@ -489,7 +489,7 @@ fn optional_body_params(
         {
             None
         } else {
-            Some(runtime::json_decode(0, &body)?)
+            Some(runtime::json_decode(None, &body)?)
         },
     })
 }
@@ -527,7 +527,7 @@ fn post_product_params(
     let runtime::Incoming { request: req, body, .. } = incoming;
     runtime::check_media(runtime::Message::content_type(req), &["application/json"])?;
     Ok(ops::post_product::Params {
-        body: runtime::json_decode(0, &body)?,
+        body: runtime::json_decode(None, &body)?,
     })
 }
 fn post_product_encode(resp: &ops::post_product::Response) -> runtime::Response {
@@ -564,7 +564,11 @@ fn upload_params(
     let runtime::Incoming { request: req, body, .. } = incoming;
     runtime::check_media(runtime::Message::content_type(req), &["multipart/form-data"])?;
     Ok(ops::upload::Params {
-        body: runtime::multipart_decode(0, runtime::Message::content_type(req), &body)?,
+        body: runtime::multipart_decode(
+            None,
+            runtime::Message::content_type(req),
+            &body,
+        )?,
     })
 }
 fn upload_encode(resp: &ops::upload::Response) -> runtime::Response {

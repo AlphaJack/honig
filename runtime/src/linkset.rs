@@ -48,7 +48,7 @@ pub fn linkset_encode<T: Serialize>(v: &T) -> Result<String, ClientError> {
 /// Decodes `Link` header text into a linkset (the `application/linkset+json` model). There is one link context per
 /// anchor in order. Each relation is a list of targets.
 /// Errors: the links do not fit `T`.
-pub fn linkset_decode<T: DeserializeOwned>(status: u16, text: &str) -> Result<T, ClientError> {
+pub fn linkset_decode<T: DeserializeOwned>(status: Option<u16>, text: &str) -> Result<T, ClientError> {
     let mut contexts: Vec<(Option<String>, Map<String, Value>)> = vec![];
     for link in split_outside_quotes(text, ',') {
         let link = link.trim();
@@ -89,7 +89,7 @@ pub fn linkset_decode<T: DeserializeOwned>(status: u16, text: &str) -> Result<T,
 /// Returns a header declared with `application/linkset` `content` (a `Link` header). Its linkset with every line
 /// joined.
 pub fn linkset_header(raw: Option<&str>) -> Option<Value> {
-    raw.and_then(|r| linkset_decode::<Value>(0, r).ok())
+    raw.and_then(|r| linkset_decode::<Value>(None, r).ok())
 }
 
 /// Returns a header declared with `application/linkset` `content`: the links as `Link` header text.
@@ -178,14 +178,14 @@ mod tests {
         assert!(header.contains(
             "</items?page=3>; rel=\"next\"; anchor=\"https://example.com/items\"; type=\"application/json\""
         ));
-        assert_eq!(linkset_decode::<Value>(200, &header).unwrap(), model);
+        assert_eq!(linkset_decode::<Value>(Some(200), &header).unwrap(), model);
     }
 
     #[test]
     fn header_syntax_variants_read_the_same() {
         let text =
             "<https://a.example/b,c>; rel=\"next prev\" , </x>;rel=up;title=\"a, \\\"b\\\"\";hreflang=en;hreflang=de";
-        let v: Value = linkset_decode(200, text).unwrap();
+        let v: Value = linkset_decode(Some(200), text).unwrap();
         let ctx = &v["linkset"][0];
         assert_eq!(ctx["next"][0]["href"], "https://a.example/b,c", "a comma inside <...> is not a separator");
         assert_eq!(ctx["prev"], ctx["next"], "one link, two relations");
@@ -196,7 +196,8 @@ mod tests {
     #[test]
     fn quotes_hide_separators() {
         let v: Value =
-            linkset_decode(200, r#"</b>; rel=next; title="<", </a>; rel=up; title="\"a, b\""; hreflang=en"#).unwrap();
+            linkset_decode(Some(200), r#"</b>; rel=next; title="<", </a>; rel=up; title="\"a, b\""; hreflang=en"#)
+                .unwrap();
         let ctx = &v["linkset"][0];
         assert_eq!(ctx["up"][0], json!({"href": "/a", "title": "\"a, b\"", "hreflang": ["en"]}));
         assert_eq!(ctx["next"][0], json!({"href": "/b", "title": "<"}));

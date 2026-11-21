@@ -48,7 +48,7 @@ fn open(script: &Arc<Script>) -> ItemStream<String> {
     let transport = Scripted(Arc::clone(script));
     let resp = honig::__private::block_on(honig::send_streaming(&transport, req)).unwrap();
     let status = resp.status().as_u16();
-    ItemStream::new(status, resp.into_body().into_stream(), Framing::Sse).reconnecting(transport, again)
+    ItemStream::new(Some(status), resp.into_body().into_stream(), Framing::Sse).reconnecting(transport, again)
 }
 
 /// Body pieces in order. `None` breaks the connection.
@@ -241,7 +241,7 @@ fn open_ended(pieces: &[&'static str]) -> ByteStream {
 fn an_event_arrives_before_the_body_ends() {
     use futures_util::FutureExt;
     let mut stream: ItemStream<String> =
-        ItemStream::new(200, open_ended(&["retry: 1500\ndata: \"a\"\n\n", "data: \"b"]), Framing::Sse);
+        ItemStream::new(Some(200), open_ended(&["retry: 1500\ndata: \"a\"\n\n", "data: \"b"]), Framing::Sse);
     assert_eq!(stream.retry(), Duration::from_secs(3), "until the server sends one");
     assert_matches!(stream.next().now_or_never(), Some(Some(Ok(a))) if a == "a");
     assert_eq!(stream.retry(), Duration::from_millis(1500));

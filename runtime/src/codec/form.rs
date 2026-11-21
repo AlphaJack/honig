@@ -112,7 +112,7 @@ pub fn form_encode_with<T: Serialize>(
 /// Decodes a form body. Styled fields (name, style, shape, explode) read like query parameters.
 /// Errors: the fields do not fit `T`.
 pub fn form_decode_styled<T: DeserializeOwned>(
-    status: u16,
+    status: Option<u16>,
     body: &[u8],
     styles: &[(&'static str, Style, Shape, bool)],
 ) -> Result<T, ClientError> {
@@ -122,7 +122,7 @@ pub fn form_decode_styled<T: DeserializeOwned>(
 /// Returns [`form_decode_styled`] that reads fields whose `encoding.contentType` is XML or JSON in it.
 /// Errors: a field is not in its type or the fields do not fit `T`.
 pub fn form_decode_with<T: DeserializeOwned>(
-    status: u16,
+    status: Option<u16>,
     body: &[u8],
     styles: &[(&'static str, Style, Shape, bool)],
     types: &[(&str, &str)],
@@ -142,7 +142,7 @@ pub fn form_decode_with<T: DeserializeOwned>(
 /// Returns the fields of a form body as an object: styled fields read like query parameters, typed ones in their
 /// media type. Errors: a styled field or a typed one does not decode.
 fn form_fields(
-    status: u16,
+    status: Option<u16>,
     body: &[u8],
     styles: &[(&'static str, Style, Shape, bool)],
     types: &[(&str, &str)],
@@ -173,13 +173,13 @@ fn form_fields(
 }
 
 /// Returns the error of the form field `name` that does not decode: it is at `/name` in the body.
-fn field_err(status: u16, body: &[u8], name: &str, e: &crate::Reason) -> ClientError {
+fn field_err(status: Option<u16>, body: &[u8], name: &str, e: &crate::Reason) -> ClientError {
     let message = e.violations().first().map_or_else(|| e.to_string(), |v| v.message.clone());
     ClientError::Decode { status, message, body: bytes::Bytes::copy_from_slice(body), pointer: format!("/{name}") }
 }
 
 /// Decodes an `application/x-www-form-urlencoded` body.
-pub fn form_decode<T: DeserializeOwned>(status: u16, body: &[u8]) -> Result<T, ClientError> {
+pub fn form_decode<T: DeserializeOwned>(status: Option<u16>, body: &[u8]) -> Result<T, ClientError> {
     let text = lossy(body);
     T::deserialize(Form(sorted_pairs(&text))).map_err(|e| {
         // Read again with tracking only once it failed, to say where: tracking allocates per key.
@@ -375,14 +375,14 @@ mod tests {
             done: bool,
         }
         let body = b"tags=b&id=7&done=true&tags=a&note=fragile%2C+keep+upright";
-        let order: Order = form_decode(200, body).unwrap();
+        let order: Order = form_decode(Some(200), body).unwrap();
         assert_eq!(order.tags, ["b", "a"], "a repeated field keeps its order");
         assert_eq!(Ok(order), through_object::<Order>(body));
-        let fields: std::collections::BTreeMap<String, String> = form_decode(200, b"b=2&a=1&c=%20").unwrap();
+        let fields: std::collections::BTreeMap<String, String> = form_decode(Some(200), b"b=2&a=1&c=%20").unwrap();
         assert_eq!(Ok(fields), through_object(b"b=2&a=1&c=%20"));
-        let one: Order = form_decode(200, b"id=1&tags=x&done=false").unwrap();
+        let one: Order = form_decode(Some(200), b"id=1&tags=x&done=false").unwrap();
         assert_eq!(one.tags, ["x"], "one value where a list is expected is a list of one");
-        assert!(form_decode::<Order>(200, b"id=x&tags=a&done=true").is_err());
+        assert!(form_decode::<Order>(Some(200), b"id=x&tags=a&done=true").is_err());
         assert!(through_object::<Order>(b"id=x&tags=a&done=true").is_err());
     }
 
@@ -403,12 +403,12 @@ mod tests {
         }
         let types = [("extra", "application/xml")];
         let spec = b"code=1234&count=42&extra=%3Cinfo%3Eabc%3C/info%3E";
-        let data: FormData = form_decode_with(200, spec, &[], &types).unwrap();
+        let data: FormData = form_decode_with(Some(200), spec, &[], &types).unwrap();
         let want = FormData { code: "1234".into(), count: 42, extra: Extra { info: "abc".into() } };
         assert_eq!(data, want);
         let body = form_encode_with(&data, &[], &types).unwrap();
         assert_eq!(String::from_utf8_lossy(&body), "code=1234&count=42&extra=%3Cinfo%3Eabc%3C%2Finfo%3E");
-        assert_eq!(form_decode_with::<FormData>(200, &body, &[], &types).unwrap(), want);
+        assert_eq!(form_decode_with::<FormData>(Some(200), &body, &[], &types).unwrap(), want);
     }
 
     #[test]
@@ -445,7 +445,7 @@ mod tests {
     fn a_json_field_is_read_as_json() {
         let styles = [("meta", Style::Form, Shape::Prim, true), ("note", Style::Form, Shape::Prim, true)];
         let types = [("meta", "application/json"), ("note", "text/plain")];
-        let got: Value = form_decode_with(0, b"meta=%7B%22a%22%3A1%7D&note=%7B%7D", &styles, &types).unwrap();
+        let got: Value = form_decode_with(None, b"meta=%7B%22a%22%3A1%7D&note=%7B%7D", &styles, &types).unwrap();
         assert_eq!(got, serde_json::json!({"meta": {"a": 1}, "note": "{}"}));
     }
 }

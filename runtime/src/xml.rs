@@ -15,7 +15,7 @@ use crate::xml_tree::{Role, Xml, XmlShape, parse};
 
 /// Decodes an XML body of a response with this status.
 /// Errors: the body is not well-formed XML or does not match the type.
-pub fn xml_decode<T: DeserializeOwned + XmlShape>(status: u16, body: &[u8]) -> Result<T, ClientError> {
+pub fn xml_decode<T: DeserializeOwned + XmlShape>(status: Option<u16>, body: &[u8]) -> Result<T, ClientError> {
     let text = String::from_utf8_lossy(body);
     // Most bodies decode straight from the events of the parser. The others go through the converted elements. So do
     // those that do not decode. The converted elements also say what is wrong.

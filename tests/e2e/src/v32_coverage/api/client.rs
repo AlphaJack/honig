@@ -50,7 +50,8 @@ impl<T: runtime::Transport> Client<T> {
             204 => Ok(ops::archive::Response::NoContent),
             409 => {
                 runtime::check_media_of(&head, &body, &["application/json"])?;
-                runtime::json_decode(status, &body).map(ops::archive::Response::Conflict)
+                runtime::json_decode(Some(status), &body)
+                    .map(ops::archive::Response::Conflict)
             }
             _ => {
                 Err(runtime::ClientError::UnexpectedStatus {
@@ -78,7 +79,7 @@ impl<T: runtime::Transport> Client<T> {
             204 => Ok(ops::unarchive::Response::NoContent),
             409 => {
                 runtime::check_media_of(&head, &body, &["application/json"])?;
-                runtime::json_decode(status, &body)
+                runtime::json_decode(Some(status), &body)
                     .map(ops::unarchive::Response::Conflict)
             }
             _ => {
@@ -114,7 +115,7 @@ impl<T: runtime::Transport> Client<T> {
             {
                 runtime::check_media_of(&head, &body, &["application/json"])?;
                 Ok(ops::add_note::Response::Created {
-                    body: runtime::json_decode(status, &body)?,
+                    body: runtime::json_decode(Some(status), &body)?,
                     x_tags: runtime::from_param(
                             runtime::decode_header(
                                 runtime::joined_header(&head.headers, "X-Tags").as_deref(),
@@ -124,7 +125,7 @@ impl<T: runtime::Transport> Client<T> {
                             "/header/X-Tags",
                         )
                         .map_err(|e| runtime::ClientError::Decode {
-                            status,
+                            status: Some(status),
                             message: e.to_string(),
                             body: body.clone(),
                             pointer: String::new(),
@@ -164,7 +165,8 @@ impl<T: runtime::Transport> Client<T> {
         if status == 200 {
             {
                 runtime::check_media_of(&head, &body, &["application/json"])?;
-                runtime::json_decode(status, &body).map(ops::find_box::Response::Ok)
+                runtime::json_decode(Some(status), &body)
+                    .map(ops::find_box::Response::Ok)
             }
         } else {
             Err(runtime::ClientError::UnexpectedStatus {

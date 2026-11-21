@@ -271,7 +271,7 @@ fn create_user_params(
             runtime::joined_header(req.headers(), "X-Team").map(runtime::trimmed_header),
             "/header/X-Team",
         )?,
-        body: runtime::json_decode(0, &body)?,
+        body: runtime::json_decode(None, &body)?,
     })
 }
 fn create_user_encode(
@@ -326,7 +326,7 @@ fn create_shipment_params(
     let runtime::Incoming { request: req, body, .. } = incoming;
     runtime::check_media(runtime::Message::content_type(req), &["application/json"])?;
     Ok(ops::create_shipment::Params {
-        body: runtime::json_decode(0, &body)?,
+        body: runtime::json_decode(None, &body)?,
     })
 }
 fn create_shipment_encode(
@@ -375,7 +375,7 @@ fn login_params(
     let runtime::Incoming { request: req, body, .. } = incoming;
     runtime::check_media(runtime::Message::content_type(req), &["application/json"])?;
     Ok(ops::login::Params {
-        body: runtime::json_decode(0, &body)?,
+        body: runtime::json_decode(None, &body)?,
     })
 }
 fn login_encode(
@@ -421,14 +421,14 @@ fn add_member_params(
             runtime::Message::content_type(req),
             "application/json",
         ) {
-            ops::add_member::Body::Json(runtime::json_decode(0, &body)?)
+            ops::add_member::Body::Json(runtime::json_decode(None, &body)?)
         } else if runtime::media_matches(
             runtime::Message::content_type(req),
             "application/x-www-form-urlencoded",
         ) {
-            ops::add_member::Body::XWwwFormUrlencoded(runtime::form_decode(0, &body)?)
+            ops::add_member::Body::XWwwFormUrlencoded(runtime::form_decode(None, &body)?)
         } else {
-            ops::add_member::Body::Json(runtime::json_decode(0, &body)?)
+            ops::add_member::Body::Json(runtime::json_decode(None, &body)?)
         },
     })
 }
@@ -473,19 +473,19 @@ fn add_closed_params(
             runtime::Message::content_type(req),
             "application/json",
         ) {
-            ops::add_closed::Body::Json(runtime::json_decode(0, &body)?)
+            ops::add_closed::Body::Json(runtime::json_decode(None, &body)?)
         } else if runtime::media_matches(
             runtime::Message::content_type(req),
             "application/x-www-form-urlencoded",
         ) {
-            ops::add_closed::Body::XWwwFormUrlencoded(runtime::form_decode(0, &body)?)
+            ops::add_closed::Body::XWwwFormUrlencoded(runtime::form_decode(None, &body)?)
         } else if runtime::media_matches(
             runtime::Message::content_type(req),
             "application/xml",
         ) {
-            ops::add_closed::Body::Xml(runtime::xml_decode(0, &body)?)
+            ops::add_closed::Body::Xml(runtime::xml_decode(None, &body)?)
         } else {
-            ops::add_closed::Body::Json(runtime::json_decode(0, &body)?)
+            ops::add_closed::Body::Json(runtime::json_decode(None, &body)?)
         },
     })
 }
@@ -536,16 +536,16 @@ fn add_badge_params(
                     runtime::Message::content_type(req),
                     "application/json",
                 ) {
-                    ops::add_badge::Body::Json(runtime::json_decode(0, &body)?)
+                    ops::add_badge::Body::Json(runtime::json_decode(None, &body)?)
                 } else if runtime::media_matches(
                     runtime::Message::content_type(req),
                     "application/x-www-form-urlencoded",
                 ) {
                     ops::add_badge::Body::XWwwFormUrlencoded(
-                        runtime::form_decode(0, &body)?,
+                        runtime::form_decode(None, &body)?,
                     )
                 } else {
-                    ops::add_badge::Body::Json(runtime::json_decode(0, &body)?)
+                    ops::add_badge::Body::Json(runtime::json_decode(None, &body)?)
                 },
             )
         },

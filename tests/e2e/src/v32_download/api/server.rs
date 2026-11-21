@@ -356,7 +356,7 @@ fn replace_manifest_params(
             "/header/If-Match",
         )?,
         id: runtime::path_param(caps, 0, runtime::Style::Simple, "/path/id")?,
-        body: runtime::json_decode(0, &body)?,
+        body: runtime::json_decode(None, &body)?,
     })
 }
 fn replace_manifest_encode(resp: &ops::replace_manifest::Response) -> runtime::Response {

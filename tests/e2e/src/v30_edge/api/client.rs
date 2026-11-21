@@ -90,7 +90,7 @@ impl<T: runtime::Transport> Client<T> {
             200 => {
                 runtime::check_media_of(&head, &body, &["application/json"])?;
                 Ok(ops::list_orders::Response::Ok {
-                    body: runtime::json_decode(status, &body)?,
+                    body: runtime::json_decode(Some(status), &body)?,
                     x_next_cursor: runtime::from_param(
                             runtime::decode_header(
                                 runtime::joined_header(&head.headers, "X-Next-Cursor")
@@ -101,7 +101,7 @@ impl<T: runtime::Transport> Client<T> {
                             "/header/X-Next-Cursor",
                         )
                         .map_err(|e| runtime::ClientError::Decode {
-                            status,
+                            status: Some(status),
                             message: e.to_string(),
                             body: body.clone(),
                             pointer: String::new(),
@@ -112,7 +112,7 @@ impl<T: runtime::Transport> Client<T> {
                 runtime::check_media_of(&head, &body, &["application/problem+json"])?;
                 Ok(ops::list_orders::Response::ClientError {
                     status: head.status,
-                    body: runtime::json_decode(status, &body)?,
+                    body: runtime::json_decode(Some(status), &body)?,
                 })
             }
             _ => {
@@ -152,20 +152,20 @@ impl<T: runtime::Transport> Client<T> {
                 runtime::check_media_of(&head, &body, &["application/json"])?;
                 Ok(
                     ops::create_order::Response::Created(
-                        Box::new(runtime::json_decode(status, &body)?),
+                        Box::new(runtime::json_decode(Some(status), &body)?),
                     ),
                 )
             }
             422 => {
                 runtime::check_media_of(&head, &body, &["application/problem+json"])?;
-                runtime::json_decode(status, &body)
+                runtime::json_decode(Some(status), &body)
                     .map(ops::create_order::Response::UnprocessableEntity)
             }
             _ => {
                 runtime::check_media_of(&head, &body, &["application/problem+json"])?;
                 Ok(ops::create_order::Response::Default {
                     status: head.status,
-                    body: runtime::json_decode(status, &body)?,
+                    body: runtime::json_decode(Some(status), &body)?,
                 })
             }
         }
@@ -196,7 +196,7 @@ impl<T: runtime::Transport> Client<T> {
             200 => {
                 runtime::check_media_of(&head, &body, &["application/json"])?;
                 Ok(ops::get_order::Response::Ok {
-                    body: Box::new(runtime::json_decode(status, &body)?),
+                    body: Box::new(runtime::json_decode(Some(status), &body)?),
                     x_request_id: runtime::from_param(
                             runtime::decode_header(
                                 runtime::joined_header(&head.headers, "X-Request-Id")
@@ -207,7 +207,7 @@ impl<T: runtime::Transport> Client<T> {
                             "/header/X-Request-Id",
                         )
                         .map_err(|e| runtime::ClientError::Decode {
-                            status,
+                            status: Some(status),
                             message: e.to_string(),
                             body: body.clone(),
                             pointer: String::new(),
@@ -216,14 +216,14 @@ impl<T: runtime::Transport> Client<T> {
             }
             404 => {
                 runtime::check_media_of(&head, &body, &["application/problem+json"])?;
-                runtime::json_decode(status, &body)
+                runtime::json_decode(Some(status), &body)
                     .map(ops::get_order::Response::NotFound)
             }
             _ => {
                 runtime::check_media_of(&head, &body, &["application/problem+json"])?;
                 Ok(ops::get_order::Response::Default {
                     status: head.status,
-                    body: runtime::json_decode(status, &body)?,
+                    body: runtime::json_decode(Some(status), &body)?,
                 })
             }
         }

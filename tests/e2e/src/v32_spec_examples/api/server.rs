@@ -504,7 +504,7 @@ fn form_with_xml_params(
         } else {
             Some(
                 runtime::form_decode_with(
-                    0,
+                    None,
                     &body,
                     &[],
                     &[("extra", "application/xml")],
@@ -735,7 +735,11 @@ fn basic_multipart_form_params(
             None
         } else {
             Some(
-                runtime::multipart_decode(0, runtime::Message::content_type(req), &body)?,
+                runtime::multipart_decode(
+                    None,
+                    runtime::Message::content_type(req),
+                    &body,
+                )?,
             )
         },
     })
@@ -796,7 +800,11 @@ fn multipart_form_with_encoding_objects_params(
             None
         } else {
             Some(
-                runtime::multipart_decode(0, runtime::Message::content_type(req), &body)?,
+                runtime::multipart_decode(
+                    None,
+                    runtime::Message::content_type(req),
+                    &body,
+                )?,
             )
         },
         part_types: runtime::PartTypes::new(),
@@ -844,7 +852,11 @@ fn multipart_form_with_multiple_files_params(
             None
         } else {
             Some(
-                runtime::multipart_decode(0, runtime::Message::content_type(req), &body)?,
+                runtime::multipart_decode(
+                    None,
+                    runtime::Message::content_type(req),
+                    &body,
+                )?,
             )
         },
     })
@@ -892,7 +904,7 @@ fn ordered_unnamed_multipart_params(
         } else {
             Some(
                 runtime::mixed_decode(
-                    0,
+                    None,
                     runtime::Message::content_type(req),
                     &body,
                     None,
@@ -947,7 +959,7 @@ fn ordered_multipart_with_required_header_params(
         } else {
             Some(
                 runtime::mixed_decode(
-                    0,
+                    None,
                     runtime::Message::content_type(req),
                     &body,
                     Some(1),
@@ -1000,7 +1012,7 @@ fn nested_multipart_mixed_params(
         } else {
             Some(
                 runtime::mixed_decode(
-                    0,
+                    None,
                     runtime::Message::content_type(req),
                     &body,
                     None,

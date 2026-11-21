@@ -100,7 +100,7 @@ pub(crate) fn text_lines(text: &str) -> impl Iterator<Item = &str> {
 
 /// Decodes a `text/event-stream` body into one item per event. The body may end inside an event with no blank line
 /// after it. That event is dropped as WHATWG says. The stream broke off before it was whole.
-pub fn sse_decode<T: DeserializeOwned>(status: u16, body: &[u8]) -> Result<Vec<T>, ClientError> {
+pub fn sse_decode<T: DeserializeOwned>(status: Option<u16>, body: &[u8]) -> Result<Vec<T>, ClientError> {
     let body = body.strip_prefix("\u{feff}".as_bytes()).unwrap_or(body);
     let mut items = vec![];
     let mut rest = body;
@@ -198,7 +198,7 @@ fn sse_lines(block: &str) -> impl Iterator<Item = &str> {
 /// Returns one event of a `text/event-stream` body parsed as WHATWG says (3.2 section 4.14.5).
 /// `data` lines join with `\n`. The last `event` and `id` win. `retry` is a
 /// number that is kept only when all digits. Other fields and comments are ignored.
-pub(crate) fn sse_item<T: DeserializeOwned>(status: u16, block: &str) -> Result<T, ClientError> {
+pub(crate) fn sse_item<T: DeserializeOwned>(status: Option<u16>, block: &str) -> Result<T, ClientError> {
     let mut o = Map::new();
     for line in sse_lines(block).filter(|l| !l.starts_with(':')) {
         let (k, v) = line.split_once(':').unwrap_or((line, ""));
@@ -507,7 +507,7 @@ mod tests {
     }
 
     fn events(body: &str) -> Vec<Frame> {
-        sse_decode(200, body.as_bytes()).expect("decodes")
+        sse_decode(Some(200), body.as_bytes()).expect("decodes")
     }
 
     #[test]
@@ -583,7 +583,7 @@ mod tests {
         let text = String::from_utf8(body.clone()).unwrap();
         let json = text.strip_prefix("data: ").and_then(|t| t.strip_suffix("\n\n")).expect("one data line");
         assert_eq!(serde_json::from_str::<Value>(json).unwrap(), serde_json::json!({"name": "x", "stock": 2}));
-        assert_eq!(sse_decode::<Product>(200, &body).unwrap(), [p]);
+        assert_eq!(sse_decode::<Product>(Some(200), &body).unwrap(), [p]);
         let e = serde_json::json!({"data": "hi", "event": "greet"});
         assert_eq!(String::from_utf8(sse_encode(&[e]).unwrap()).unwrap(), "data: hi\nevent: greet\n\n");
     }
@@ -603,7 +603,7 @@ mod tests {
         let data = serde_json::json!({"k": "v"}).as_object().cloned();
         for u in [Update { id: Some("s".into()), data: data.clone() }, Update { id: None, data }] {
             let body = sse_encode(std::slice::from_ref(&u)).unwrap();
-            assert_eq!(sse_decode::<Update>(200, &body).unwrap(), [u], "{}", String::from_utf8_lossy(&body));
+            assert_eq!(sse_decode::<Update>(Some(200), &body).unwrap(), [u], "{}", String::from_utf8_lossy(&body));
         }
     }
 
@@ -620,7 +620,7 @@ mod tests {
         let t = Tagged { data: serde_json::json!({"k": "v"}).as_object().cloned(), kind: None };
         let body = sse_encode(std::slice::from_ref(&t)).unwrap();
         assert_eq!(String::from_utf8_lossy(&body), "data: {\"data\":{\"k\":\"v\"}}\n\n");
-        assert_eq!(sse_decode::<Tagged>(200, &body).unwrap(), [t]);
+        assert_eq!(sse_decode::<Tagged>(Some(200), &body).unwrap(), [t]);
         assert_eq!(declared_fields::<Update>(), Some(&["id", "data"][..]));
         assert_eq!(declared_fields::<Value>(), None);
     }
@@ -637,12 +637,12 @@ mod tests {
     fn an_event_shaped_item_keeps_object_data_whole() {
         let inner = serde_json::json!({"data": {"k": "v"}}).as_object().cloned();
         let body = b"data: {\"data\": {\"k\": \"v\"}}\n\n";
-        assert_eq!(sse_decode::<Update>(200, body).unwrap(), [Update { id: None, data: inner }]);
+        assert_eq!(sse_decode::<Update>(Some(200), body).unwrap(), [Update { id: None, data: inner }]);
     }
 
     #[test]
     fn an_id_with_nul_is_ignored_and_an_option_is_its_value() {
-        let items = sse_decode::<Update>(200, b"id: a\0b\ndata: {}\n\n").unwrap();
+        let items = sse_decode::<Update>(Some(200), b"id: a\0b\ndata: {}\n\n").unwrap();
         assert_eq!(items[0].id, None);
         assert_eq!(String::from_utf8(sse_encode(&[Some(5)]).unwrap()).unwrap(), "data: 5\n\n");
     }

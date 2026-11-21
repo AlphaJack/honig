@@ -317,16 +317,16 @@ pub(crate) fn stream_target(op: &Operation) -> Option<StreamTarget<'_>> {
     for (ci, c) in r.contents.iter().enumerate() {
         let framing = match c.kind {
             MediaKind::JsonLines => {
-                quote!(runtime::ItemStream::new(status, body, runtime::Framing::JsonLines))
+                quote!(runtime::ItemStream::new(Some(status), body, runtime::Framing::JsonLines))
             }
-            MediaKind::JsonSeq => quote!(runtime::ItemStream::new(status, body, runtime::Framing::JsonSeq)),
+            MediaKind::JsonSeq => quote!(runtime::ItemStream::new(Some(status), body, runtime::Framing::JsonSeq)),
             MediaKind::Sse => quote!(
-                runtime::ItemStream::new(status, body, runtime::Framing::Sse)
+                runtime::ItemStream::new(Some(status), body, runtime::Framing::Sse)
                     .reconnecting(self.transport.clone(), again)
             ),
             // An `itemSchema` part list (3.2 "Streaming Multipart" and byte ranges). Its boundary is in `media`.
             MediaKind::MultipartMixed if c.positional_prefix.is_none() => {
-                quote!(runtime::ItemStream::multipart(status, body, &media))
+                quote!(runtime::ItemStream::multipart(Some(status), body, &media))
             }
             MediaKind::Json
             | MediaKind::Linkset
@@ -659,7 +659,7 @@ fn response_arm(
         quote!(#op_mod::#e)
     };
     let decode = Decode {
-        status: quote!(status),
+        status: quote!(Some(status)),
         ct: quote!(ct),
         body: quote!(body),
         q: quote!(?),
@@ -708,7 +708,7 @@ fn response_arm(
                 let checked = crate::emit::rust::http::codec::validated_map(space, &h.ty);
                 quote! {
                     #n: runtime::from_param(#raw, #at) #checked
-                        .map_err(|e| runtime::ClientError::Decode { status, message: e.to_string(), body: body.clone(), pointer: String::new() })?,
+                        .map_err(|e| runtime::ClientError::Decode { status: Some(status), message: e.to_string(), body: body.clone(), pointer: String::new() })?,
                 }
             });
             (pat, quote!({ #check Ok(#op_mod::Response::#variant { #status #body #(#headers)* }) }))

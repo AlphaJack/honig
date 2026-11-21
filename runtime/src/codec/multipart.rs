@@ -248,12 +248,20 @@ fn part_value(path: &str, x: &Value, types: &[(&str, &str)], depth: usize) -> (S
 }
 
 /// Decodes a `multipart/form-data` body; file parts reach [`Binary`](crate::Binary) fields unchanged.
-pub fn multipart_decode<T: DeserializeOwned>(status: u16, content_type: &str, body: &[u8]) -> Result<T, ClientError> {
+pub fn multipart_decode<T: DeserializeOwned>(
+    status: Option<u16>,
+    content_type: &str,
+    body: &[u8],
+) -> Result<T, ClientError> {
     raw_parts(|| multipart_decode_in(status, content_type, body))
 }
 
 /// Returns [`multipart_decode`] inside its conversion.
-fn multipart_decode_in<T: DeserializeOwned>(status: u16, content_type: &str, body: &[u8]) -> Result<T, ClientError> {
+fn multipart_decode_in<T: DeserializeOwned>(
+    status: Option<u16>,
+    content_type: &str,
+    body: &[u8],
+) -> Result<T, ClientError> {
     let boundary =
         boundary_of(content_type).ok_or_else(|| decode_err(status, body, "multipart body without boundary"))?;
     let value = parts_value(body, &boundary, true, 0).map_err(|e| decode_err(status, body, e))?;

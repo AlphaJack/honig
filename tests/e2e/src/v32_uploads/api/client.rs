@@ -35,7 +35,8 @@ impl<T: runtime::Transport> Client<T> {
         if status == 200 {
             {
                 runtime::check_media_of(&head, &body, &["application/json"])?;
-                runtime::json_decode(status, &body).map(ops::put_file::Response::Ok)
+                runtime::json_decode(Some(status), &body)
+                    .map(ops::put_file::Response::Ok)
             }
         } else {
             Err(runtime::ClientError::UnexpectedStatus {

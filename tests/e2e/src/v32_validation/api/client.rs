@@ -48,7 +48,7 @@ impl<T: runtime::Transport> Client<T> {
                 runtime::check_media_of(&head, &body, &["application/json"])?;
                 Ok(
                     ops::create_user::Response::Created(
-                        Box::new(runtime::json_decode(status, &body)?),
+                        Box::new(runtime::json_decode(Some(status), &body)?),
                     ),
                 )
             }
@@ -56,7 +56,7 @@ impl<T: runtime::Transport> Client<T> {
                 runtime::check_media_of(&head, &body, &["application/problem+json"])?;
                 Ok(ops::create_user::Response::ClientError {
                     status: head.status,
-                    body: runtime::json_decode(status, &body)?,
+                    body: runtime::json_decode(Some(status), &body)?,
                 })
             }
             _ => {
@@ -91,7 +91,7 @@ impl<T: runtime::Transport> Client<T> {
             201 => Ok(ops::create_shipment::Response::Created),
             400 => {
                 runtime::check_media_of(&head, &body, &["application/problem+json"])?;
-                runtime::json_decode(status, &body)
+                runtime::json_decode(Some(status), &body)
                     .map(ops::create_shipment::Response::BadRequest)
             }
             _ => {
@@ -125,7 +125,8 @@ impl<T: runtime::Transport> Client<T> {
         if status == 201 {
             {
                 runtime::check_media_of(&head, &body, &["application/json"])?;
-                runtime::json_decode(status, &body).map(ops::login::Response::Created)
+                runtime::json_decode(Some(status), &body)
+                    .map(ops::login::Response::Created)
             }
         } else {
             Err(runtime::ClientError::UnexpectedStatus {

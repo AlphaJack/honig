@@ -437,7 +437,7 @@ fn xml_attribute_prefix_and_namespace_params(
         {
             None
         } else {
-            Some(runtime::xml_decode(0, &body)?)
+            Some(runtime::xml_decode(None, &body)?)
         },
     })
 }

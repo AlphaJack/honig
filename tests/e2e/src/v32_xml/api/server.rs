@@ -165,7 +165,7 @@ fn add_book_params(
     let runtime::Incoming { request: req, body, media, .. } = incoming;
     runtime::check_media(runtime::Message::content_type(req), &["application/xml"])?;
     Ok(ops::add_book::Params {
-        body: runtime::xml_decode(0, &body)?,
+        body: runtime::xml_decode(None, &body)?,
         media: ops::add_book::Media::from_index(media),
     })
 }

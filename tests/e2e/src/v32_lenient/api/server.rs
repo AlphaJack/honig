@@ -218,7 +218,7 @@ fn put_order_params(
     let runtime::Incoming { request: req, body, .. } = incoming;
     runtime::check_media(runtime::Message::content_type(req), &["application/json"])?;
     Ok(ops::put_order::Params {
-        body: runtime::json_decode(0, &body)?,
+        body: runtime::json_decode(None, &body)?,
     })
 }
 fn put_order_encode(resp: &ops::put_order::Response) -> runtime::Response {

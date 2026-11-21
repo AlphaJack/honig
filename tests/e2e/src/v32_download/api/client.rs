@@ -188,7 +188,7 @@ impl<T: runtime::Transport> Client<T> {
             200 => {
                 runtime::check_media_of(&head, &body, &["application/json"])?;
                 Ok(ops::get_manifest::Response::Ok {
-                    body: runtime::json_decode(status, &body)?,
+                    body: runtime::json_decode(Some(status), &body)?,
                     e_tag: runtime::from_param(
                             runtime::decode_header(
                                 runtime::joined_header(&head.headers, "ETag").as_deref(),
@@ -198,7 +198,7 @@ impl<T: runtime::Transport> Client<T> {
                             "/header/ETag",
                         )
                         .map_err(|e| runtime::ClientError::Decode {
-                            status,
+                            status: Some(status),
                             message: e.to_string(),
                             body: body.clone(),
                             pointer: String::new(),
@@ -213,7 +213,7 @@ impl<T: runtime::Transport> Client<T> {
                             "/header/Last-Modified",
                         )
                         .map_err(|e| runtime::ClientError::Decode {
-                            status,
+                            status: Some(status),
                             message: e.to_string(),
                             body: body.clone(),
                             pointer: String::new(),

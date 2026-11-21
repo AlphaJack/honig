@@ -280,6 +280,23 @@ fn the_module_allows_once() {
     assert_eq!(holders, ["mod.rs"]);
 }
 
+/// A server decodes a request body with no status (`None`), a client a response with its status.
+#[test]
+fn a_request_decodes_without_a_status() {
+    let body = json!({"required": true, "content": {"application/json": {"schema": {"type": "object"}}}});
+    let doc = common::spec(
+        "3.1.0",
+        &json!({"/a": {"post": {"operationId": "a", "requestBody": body, "responses": {"200": {"description": "ok",
+            "content": {"application/json": {"schema": {"type": "object"}}}}}}}}),
+        &json!({}),
+    );
+    let files = common::generate("shape-request-status", &doc, &crate::emit::Options::default());
+    let server = common::file(&files, "server.rs");
+    assert!(server.contains("runtime::json_decode(None, &body)"), "{server}");
+    let client = common::file(&files, "client.rs");
+    assert!(client.contains("runtime::json_decode(Some(status), &body)"), "{client}");
+}
+
 /// A crate that denies `clippy::allow_attributes` takes the generated code: every `#[allow]` is an inner `#![allow]`,
 /// which that lint leaves alone. `new` allows its many arguments inside its body, not with an `#[expect]` that a crate
 /// with a higher `too-many-arguments-threshold` would leave unfulfilled.

@@ -56,7 +56,7 @@ impl<T: runtime::Transport> Client<T> {
             {
                 runtime::check_media_of(&head, &body, &["application/json"])?;
                 Ok(ops::list_products::Response::Ok {
-                    body: runtime::json_decode(status, &body)?,
+                    body: runtime::json_decode(Some(status), &body)?,
                     x_next: runtime::from_param(
                             runtime::decode_header(
                                 runtime::joined_header(&head.headers, "X-Next").as_deref(),
@@ -66,7 +66,7 @@ impl<T: runtime::Transport> Client<T> {
                             "/header/X-Next",
                         )
                         .map_err(|e| runtime::ClientError::Decode {
-                            status,
+                            status: Some(status),
                             message: e.to_string(),
                             body: body.clone(),
                             pointer: String::new(),
@@ -78,7 +78,7 @@ impl<T: runtime::Transport> Client<T> {
                 runtime::check_media_of(&head, &body, &["application/json"])?;
                 Ok(ops::list_products::Response::Default {
                     status: head.status,
-                    body: runtime::json_decode(status, &body)?,
+                    body: runtime::json_decode(Some(status), &body)?,
                 })
             }
         }
@@ -106,7 +106,7 @@ impl<T: runtime::Transport> Client<T> {
         if status == 201 {
             {
                 runtime::check_media_of(&head, &body, &["application/json"])?;
-                runtime::json_decode(status, &body)
+                runtime::json_decode(Some(status), &body)
                     .map(ops::create_product::Response::Created)
             }
         } else {
@@ -114,7 +114,7 @@ impl<T: runtime::Transport> Client<T> {
                 runtime::check_media_of(&head, &body, &["application/json"])?;
                 Ok(ops::create_product::Response::Default {
                     status: head.status,
-                    body: runtime::json_decode(status, &body)?,
+                    body: runtime::json_decode(Some(status), &body)?,
                 })
             }
         }
@@ -140,11 +140,12 @@ impl<T: runtime::Transport> Client<T> {
         match status {
             200 => {
                 runtime::check_media_of(&head, &body, &["application/json"])?;
-                runtime::json_decode(status, &body).map(ops::get_product::Response::Ok)
+                runtime::json_decode(Some(status), &body)
+                    .map(ops::get_product::Response::Ok)
             }
             404 => {
                 runtime::check_media_of(&head, &body, &["application/json"])?;
-                runtime::json_decode(status, &body)
+                runtime::json_decode(Some(status), &body)
                     .map(ops::get_product::Response::NotFound)
             }
             _ => {
