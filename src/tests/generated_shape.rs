@@ -2053,6 +2053,20 @@ fn every_example_is_decoded_from_its_text() {
     assert!(examples.contains("serde_json::from_str") && !examples.contains("serde_json::Value"), "{examples}");
 }
 
+/// The request copy of a type with `readOnly` fields lacks them: the examples, which may hold them, are checked
+/// against the type that reads responses only.
+#[test]
+fn a_request_copy_takes_no_examples() {
+    let s =
+        json!({"type": "object", "properties": {"id": {"type": "string", "readOnly": true}}, "example": {"id": "x"}});
+    let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"S": s}}));
+    let opts = crate::emit::Options { tests: true, ..crate::emit::Options::default() };
+    let files = common::generate("request-copy-examples", &doc, &opts);
+    assert!(common::file(&files, "types.rs").contains("pub struct SRequest"));
+    let examples = common::file(&files, "documented_examples.rs");
+    assert_eq!(examples.matches("/components/schemas/S/example\"").count(), 1, "{examples}");
+}
+
 /// One implementation of JSON Schema: the generated types. `generate` judges no example; the generated test decodes
 /// each through its type, which refuses one that breaks its schema.
 #[test]

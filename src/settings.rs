@@ -212,7 +212,7 @@ impl Manifest {
                 .into_iter()
                 .map(|p| p.manifest_path.clone().into_std_path_buf())
                 .collect();
-            return Ok(Self { doc, workspace_path, members: Some(members), workspace_doc, ..Self::default() });
+            return Ok(Self { members: Some(members), ..Self::default() });
         };
         let deps = package
             .dependencies
@@ -940,8 +940,8 @@ mod tests {
         );
         assert_eq!(libs("formats = {}", &all).unwrap(), FormatLibs::default(), "a dependency alone types nothing");
         assert_eq!(
-            libs("formats = { uuid = true, dates = \"jiff\" }", &all).unwrap(),
-            FormatLibs { uuid: true, dates: Some(DateLib::Jiff), ..FormatLibs::default() }
+            libs("formats = { uuid = true, ipnet = true, dates = \"jiff\" }", &all).unwrap(),
+            FormatLibs { uuid: true, ipnet: true, dates: Some(DateLib::Jiff), ..FormatLibs::default() }
         );
         assert_eq!(libs("formats = { dates = \"string\" }", &all).unwrap(), FormatLibs::default());
         let error = |formats: &str, deps: &str| libs(formats, deps).unwrap_err().to_string();

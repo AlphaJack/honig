@@ -68,6 +68,15 @@ pub(crate) fn owned_str(v: &Value) -> Option<String> {
     v.as_str().map(String::from)
 }
 
+/// Does `v` hold an object with the key `key`, itself or anywhere inside?
+pub(crate) fn mentions(v: &Value, key: &str) -> bool {
+    match v {
+        Value::Object(o) => o.contains_key(key) || o.values().any(|x| mentions(x, key)),
+        Value::Array(a) => a.iter().any(|x| mentions(x, key)),
+        Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_) => false,
+    }
+}
+
 /// Returns whether `v` is a string, number or bool.
 pub(crate) fn is_scalar(v: &Value) -> bool {
     v.is_string() || v.is_number() || v.is_boolean()

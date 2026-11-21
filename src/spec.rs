@@ -205,7 +205,7 @@ impl<T> Entries<T> {
 
 impl<T: Serialize> Serialize for Entries<T> {
     fn serialize<S: Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        let mut map = s.serialize_map(Some(self.entries.len() + self.extensions.len()))?;
+        let mut map = s.serialize_map(None)?;
         for (k, v) in &self.entries {
             map.serialize_entry(k, v)?;
         }

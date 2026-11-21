@@ -169,7 +169,7 @@ fn recursive_refs(mut doc: Value, diags: &mut Diagnostics) -> Value {
         }
     }
 
-    if !mentions_recursive_ref(&doc) {
+    if !crate::json::mentions(&doc, "$recursiveRef") {
         return doc;
     }
     extend_recursive(&mut doc, diags);
@@ -280,14 +280,6 @@ fn extend_recursive(doc: &mut Value, diags: &mut Diagnostics) {
         }
     }
     diags.warning("", "`$recursiveRef` extensions nest more than 8 deep: deeper ones resolve to the extended schema");
-}
-
-fn mentions_recursive_ref(v: &Value) -> bool {
-    match v {
-        Value::Object(o) => o.contains_key("$recursiveRef") || o.values().any(mentions_recursive_ref),
-        Value::Array(a) => a.iter().any(mentions_recursive_ref),
-        Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_) => false,
-    }
 }
 
 /// Returns a JSON pointer as a URI fragment: characters outside RFC 3986 `pchar`
