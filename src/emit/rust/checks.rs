@@ -1214,3 +1214,18 @@ fn branch_count_checks(c: &Constraints, ty: &dyn Fn(usize) -> TokenStream, path:
     };
     quote!(#one_of #any_of)
 }
+
+#[cfg(test)]
+mod tests {
+    use quote::quote;
+
+    /// A receiver drops a leading `&` (methods auto-borrow) and puts any other expression of several tokens in
+    /// parentheses.
+    #[test]
+    fn a_receiver_drops_its_borrow_and_groups_the_rest() {
+        assert_eq!(super::receiver(&quote!(&value)).to_string(), "value");
+        assert_eq!(super::receiver(&quote!(value)).to_string(), "value");
+        assert_eq!(super::receiver(&quote!(a.b())).to_string(), "(a . b ())");
+        assert_eq!(super::receiver(&quote!(*x)).to_string(), "(* x)");
+    }
+}

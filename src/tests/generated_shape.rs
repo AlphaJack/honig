@@ -1762,6 +1762,79 @@ fn a_part_encoding_nests_three_deep_at_most() {
     assert!(!all.contains("\"f/0/0/0/0\""), "{all}");
 }
 
+/// Binary data in JSON is base64: a field of it turns on the runtime's `base64`, as does a list of it.
+#[test]
+fn binary_data_turns_on_base64() {
+    for field in [
+        json!({"type": "string", "format": "byte"}),
+        json!({"type": "array", "items": {"type": "string", "format": "byte"}}),
+    ] {
+        let doc = common::spec(
+            "3.1.0",
+            &json!({}),
+            &json!({"schemas": {"Blob": {"type": "object", "properties": {"data": field}}}}),
+        );
+        let g = crate::generate::generate(&common::write("shape-base64", &doc, &[]), &crate::emit::Options::default())
+            .expect("generates");
+        assert!(g.runtime_features.contains(&crate::settings::BASE64), "{field}: {:?}", g.runtime_features);
+    }
+}
+
+/// Two unwrapped XML lists whose items share an element name cannot be told apart: each is wrapped. One alone is not.
+#[test]
+fn xml_lists_of_one_item_name_are_wrapped() {
+    let list = json!({"type": "array", "items": {"type": "string", "xml": {"name": "item"}}});
+    let fields = |props: serde_json::Value| {
+        let doc = common::spec(
+            "3.1.0",
+            &json!({"/b": {"get": {"operationId": "b", "responses": {"200": {"description": "ok",
+                "content": {"application/xml": {"schema": {"$ref": "#/components/schemas/Bag"}}}}}}}}),
+            &json!({"schemas": {"Bag": {"type": "object", "properties": props}}}),
+        );
+        let types =
+            common::file(&common::generate("shape-xml-wrap", &doc, &crate::emit::Options::default()), "types.rs")
+                .split_whitespace()
+                .collect::<String>();
+        types.matches("wrapped:true").count()
+    };
+    assert_eq!(fields(json!({"a": list, "b": list})), 2);
+    assert_eq!(fields(json!({"a": list})), 0);
+}
+
+/// `Content-Type`, `Accept` and `Authorization` headers belong to the runtime: such a header parameter is left out. A
+/// query parameter of that name is the description's own.
+#[test]
+fn only_header_parameters_of_runtime_names_are_left_out() {
+    let doc = common::spec(
+        "3.1.0",
+        &json!({"/a": {"get": {"operationId": "a", "parameters": [
+            {"name": "Authorization", "in": "header", "schema": {"type": "string"}},
+            {"name": "accept", "in": "query", "schema": {"type": "string"}},
+        ], "responses": {"204": {"description": "ok"}}}}}),
+        &json!({}),
+    );
+    let ops = common::file(
+        &common::generate("shape-runtime-headers", &doc, &crate::emit::Options::default()),
+        "operations.rs",
+    )
+    .to_owned();
+    assert!(ops.contains("pub accept: Option<String>") && !ops.contains("pub authorization"), "{ops}");
+}
+
+/// A response's `summary` leads its doc and its `description` follows, once: the same text is not repeated.
+#[test]
+fn a_response_summary_and_description_of_one_text_show_once() {
+    let doc = common::spec(
+        "3.2.0",
+        &json!({"/a": {"get": {"operationId": "a", "responses": {"200": {"summary": "Found it", "description": "Found it"}}}}}),
+        &json!({}),
+    );
+    let ops =
+        common::file(&common::generate("shape-response-doc", &doc, &crate::emit::Options::default()), "operations.rs")
+            .to_owned();
+    assert_eq!(ops.matches("Found it").count(), 1, "{ops}");
+}
+
 /// A multipart part whose schema gives a `contentMediaType` is sent as that type when `encoding` gives none.
 #[test]
 fn a_part_takes_the_media_type_of_its_schema() {

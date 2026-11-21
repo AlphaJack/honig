@@ -1106,6 +1106,17 @@ mod tests {
         assert_eq!(grouped("1.5e10"), "1.5e10");
     }
 
+    /// A type names a generated type or a runtime one when anything it holds does.
+    #[test]
+    fn a_type_mentions_what_it_holds() {
+        use crate::ir::types::{Ty, TypeId};
+        let named = Ty::Named(TypeId(0));
+        assert_eq!(super::mentions(&Ty::Vec(Box::new(named.clone()))), (true, false));
+        assert_eq!(super::mentions(&Ty::Vec(Box::new(Ty::Binary))), (false, true));
+        assert_eq!(super::mentions(&Ty::Tuple(vec![named, Ty::Binary])), (true, true));
+        assert_eq!(super::mentions(&Ty::Vec(Box::new(Ty::String))), (false, false));
+    }
+
     /// A shared impl takes the `cfg` of its uses when they all have it, and none when one does not.
     #[test]
     fn a_shared_impl_has_the_cfg_of_all_its_uses() {
@@ -1147,6 +1158,7 @@ mod tests {
         assert_eq!(rustdoc("text\n\n    code\n\nmore"), "text\n\n```text\ncode\n```\n\nmore");
         assert_eq!(rustdoc("- item\ncontinued"), "- item\n  continued");
         assert_eq!(rustdoc("12. item\ncontinued"), "12. item\n    continued");
+        assert_eq!(rustdoc("See a::b and c>d."), "See `a::b` and `c>d`.");
         assert_eq!(rustdoc(". no item\nnext"), ". no item\nnext");
         assert_eq!(rustdoc("GitHub is fine"), "GitHub is fine");
         assert_eq!(rustdoc("CamelCase's API"), "`CamelCase's` API");

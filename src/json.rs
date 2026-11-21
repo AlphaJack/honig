@@ -276,6 +276,7 @@ mod tests {
     fn a_count_is_a_whole_non_negative_number() {
         assert_eq!((count(&json!(2)), count(&json!(2.0))), (Some(2), Some(2)));
         assert_eq!((count(&json!(2.5)), count(&json!(-1.0))), (None, None));
+        assert_eq!(count(&json!(9_007_199_254_740_992.0)), None, "2^53 is past the exact floats");
     }
 
     #[test]

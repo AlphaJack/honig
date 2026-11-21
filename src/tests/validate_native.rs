@@ -32,6 +32,14 @@ fn a_dangling_ref_and_an_incomplete_scheme_are_errors() {
     let out = check("native-dangling", &doc);
     assert!(out.iter().any(|m| m.contains("`#/components/responses/Missing` does not resolve")), "{out:#?}");
     assert!(out.iter().any(|m| m.contains("`name` is required for this security scheme type")), "{out:#?}");
+    let doc = common::spec(
+        "3.2.0",
+        &json!({"/a/{id}": {"get": {"security": [{"nope": []}], "responses": {"200": {"description": "ok"}}}}}),
+        &json!({}),
+    );
+    let out = check("native-undeclared", &doc);
+    assert!(out.iter().any(|m| m.contains("security scheme `nope` is not defined")), "{out:#?}");
+    assert!(out.iter().any(|m| m.contains("path parameter `id` is not declared")), "{out:#?}");
 }
 
 #[test]

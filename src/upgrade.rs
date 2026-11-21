@@ -319,13 +319,17 @@ mod tests {
                 "{$request.body#/url}": {"post": {
                     "requestBody": {"content": {"application/json": {"schema": {"type": "string", "nullable": true}}}},
                     "responses": {"204": {"description": "ok"}}
-                }}
+                }},
+                "x-note": {"post": {"requestBody": {"content": {"application/json": {"schema": {"nullable": true}}}}}}
             }}}}}
         });
         let mut d = Diagnostics::default();
         let up = to_v32(doc, &mut d).unwrap();
         let op = &up["paths"]["/a"]["post"]["callbacks"]["done"]["{$request.body#/url}"]["post"];
         assert_eq!(op["requestBody"]["content"]["application/json"]["schema"], json!({"type": ["string", "null"]}));
+        let note = &up["paths"]["/a"]["post"]["callbacks"]["done"]["x-note"];
+        let kept = json!({"post": {"requestBody": {"content": {"application/json": {"schema": {"nullable": true}}}}}});
+        assert_eq!(note, &kept, "an extension is left alone");
     }
 
     /// A 3.0 response header leaves the two Parameter Object fields that 3.1 has no more.
