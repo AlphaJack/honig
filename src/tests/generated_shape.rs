@@ -379,9 +379,8 @@ fn operations_carry_their_otel_span_name() {
     );
     let server =
         common::file(&common::generate("shape-span", &doc, &crate::emit::Options::default()), "server.rs").to_owned();
-    for field in ["span: \"GET /products/{productId}\"", "route: \"/products/{productId}\"", "method: \"GET\""] {
-        assert!(server.contains(field), "{field} in {server}");
-    }
+    let squashed: String = server.split_whitespace().collect();
+    assert!(squashed.contains(r#""GET","/products/{productId}","GET/products/{productId}""#), "{server}");
     // The span itself is the runtime's `tracing` feature: generated code never refers to `tracing`.
     assert!(!server.contains("tracing"), "{server}");
 }
@@ -517,7 +516,7 @@ fn the_server_answers_ranges_only_for_binary_gets_that_leave_them_to_it() {
         let doc = common::spec("3.1.0", &json!({"/exports": item}), &json!({}));
         let files = common::generate(&format!("shape-ranges-{name}"), &doc, &crate::emit::Options::default());
         let server = common::file(&files, "server.rs");
-        assert!(server.contains(&format!("ranges: {ranges},")), "{name}: {server}");
+        assert_eq!(server.contains("ranges: true,"), ranges, "{name}: {server}");
     }
 }
 
@@ -718,6 +717,14 @@ fn an_xml_field_names_only_what_differs() {
         "{types}"
     );
     assert!(types.contains(r#",runtime::XmlField::new("title"),"#), "{types}");
+/// A server operation names only what differs from `Op::new`: an operation without security, body or ranges is the
+/// call alone.
+#[test]
+fn a_server_operation_names_only_what_differs() {
+    let files = wide_binary("op-defaults", false);
+    let server = common::file(&files, "server.rs").split_whitespace().collect::<String>();
+    assert!(server.contains("staticWIDE_OP:runtime::Op=runtime::Op{security:"), "{server}");
+    assert!(!server.contains("takes_body:false") && !server.contains("ranges:false"), "{server}");
 }
 
 /// A branch whose tag property is a `const` of its own tag writes itself: no `serde_json::Value` in between.

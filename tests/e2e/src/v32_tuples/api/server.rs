@@ -136,15 +136,8 @@ async fn dispatch<A: Api>(
     }
 }
 static PLAN_OP: runtime::Op = runtime::Op {
-    name: "plan",
-    method: "POST",
-    route: "/route",
-    span: "POST /route",
-    security: &[],
-    takes_body: false,
     produces: &["application/json"],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new("plan", "POST", "/route", "POST /route", error_schema)
 };
 async fn plan<A: Api>(
     api: &A,

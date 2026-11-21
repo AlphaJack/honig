@@ -342,15 +342,14 @@ async fn dispatch<A: Api>(
     }
 }
 static NO_XML_OBJECT_OP: runtime::Op = runtime::Op {
-    name: "no_xml_object",
-    method: "GET",
-    route: "/no-xml-object",
-    span: "GET /no-xml-object",
-    security: &[],
-    takes_body: false,
     produces: &["application/xml"],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new(
+        "no_xml_object",
+        "GET",
+        "/no-xml-object",
+        "GET /no-xml-object",
+        error_schema,
+    )
 };
 async fn no_xml_object<A: Api>(
     api: &A,
@@ -372,15 +371,14 @@ fn no_xml_object_encode(
     Ok(runtime::body_response(200, "application/xml", runtime::xml_encode(&body)?))
 }
 static NO_XML_OBJECT_ARRAY_OP: runtime::Op = runtime::Op {
-    name: "no_xml_object_array",
-    method: "GET",
-    route: "/no-xml-object/array",
-    span: "GET /no-xml-object/array",
-    security: &[],
-    takes_body: false,
     produces: &["application/xml"],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new(
+        "no_xml_object_array",
+        "GET",
+        "/no-xml-object/array",
+        "GET /no-xml-object/array",
+        error_schema,
+    )
 };
 async fn no_xml_object_array<A: Api>(
     api: &A,
@@ -402,17 +400,13 @@ fn no_xml_object_array_encode(
     let ops::no_xml_object_array::Response::Ok(body) = resp;
     Ok(runtime::body_response(200, "application/xml", runtime::xml_encode(&body)?))
 }
-static XML_ATTRIBUTE_PREFIX_AND_NAMESPACE_OP: runtime::Op = runtime::Op {
-    name: "xml_attribute_prefix_and_namespace",
-    method: "POST",
-    route: "/people",
-    span: "POST /people",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static XML_ATTRIBUTE_PREFIX_AND_NAMESPACE_OP: runtime::Op = runtime::Op::new(
+    "xml_attribute_prefix_and_namespace",
+    "POST",
+    "/people",
+    "POST /people",
+    error_schema,
+);
 async fn xml_attribute_prefix_and_namespace<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -448,15 +442,14 @@ fn xml_attribute_prefix_and_namespace_encode(
     runtime::new_response(204)
 }
 static XML_ARRAY_ITEM_NAMES_OP: runtime::Op = runtime::Op {
-    name: "xml_array_item_names",
-    method: "GET",
-    route: "/arrays/item-names",
-    span: "GET /arrays/item-names",
-    security: &[],
-    takes_body: false,
     produces: &["application/xml"],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new(
+        "xml_array_item_names",
+        "GET",
+        "/arrays/item-names",
+        "GET /arrays/item-names",
+        error_schema,
+    )
 };
 async fn xml_array_item_names<A: Api>(
     api: &A,
@@ -479,15 +472,14 @@ fn xml_array_item_names_encode(
     Ok(runtime::body_response(200, "application/xml", runtime::xml_encode(&body)?))
 }
 static XML_ARRAY_NAME_WITHOUT_WRAPPER_OP: runtime::Op = runtime::Op {
-    name: "xml_array_name_without_wrapper",
-    method: "GET",
-    route: "/arrays/unwrapped-name",
-    span: "GET /arrays/unwrapped-name",
-    security: &[],
-    takes_body: false,
     produces: &["application/xml"],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new(
+        "xml_array_name_without_wrapper",
+        "GET",
+        "/arrays/unwrapped-name",
+        "GET /arrays/unwrapped-name",
+        error_schema,
+    )
 };
 async fn xml_array_name_without_wrapper<A: Api>(
     api: &A,
@@ -510,15 +502,14 @@ fn xml_array_name_without_wrapper_encode(
     Ok(runtime::body_response(200, "application/xml", runtime::xml_encode(&body)?))
 }
 static XML_ARRAY_WRAPPED_OP: runtime::Op = runtime::Op {
-    name: "xml_array_wrapped",
-    method: "GET",
-    route: "/arrays/wrapped",
-    span: "GET /arrays/wrapped",
-    security: &[],
-    takes_body: false,
     produces: &["application/xml"],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new(
+        "xml_array_wrapped",
+        "GET",
+        "/arrays/wrapped",
+        "GET /arrays/wrapped",
+        error_schema,
+    )
 };
 async fn xml_array_wrapped<A: Api>(
     api: &A,
@@ -540,15 +531,14 @@ fn xml_array_wrapped_encode(
     Ok(runtime::body_response(200, "application/xml", runtime::xml_encode(&body)?))
 }
 static XML_ARRAY_WRAPPED_ITEM_NAMES_OP: runtime::Op = runtime::Op {
-    name: "xml_array_wrapped_item_names",
-    method: "GET",
-    route: "/arrays/wrapped-item-names",
-    span: "GET /arrays/wrapped-item-names",
-    security: &[],
-    takes_body: false,
     produces: &["application/xml"],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new(
+        "xml_array_wrapped_item_names",
+        "GET",
+        "/arrays/wrapped-item-names",
+        "GET /arrays/wrapped-item-names",
+        error_schema,
+    )
 };
 async fn xml_array_wrapped_item_names<A: Api>(
     api: &A,
@@ -571,15 +561,14 @@ fn xml_array_wrapped_item_names_encode(
     Ok(runtime::body_response(200, "application/xml", runtime::xml_encode(&body)?))
 }
 static XML_ARRAY_WRAPPED_RENAMED_OP: runtime::Op = runtime::Op {
-    name: "xml_array_wrapped_renamed",
-    method: "GET",
-    route: "/arrays/wrapped-renamed",
-    span: "GET /arrays/wrapped-renamed",
-    security: &[],
-    takes_body: false,
     produces: &["application/xml"],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new(
+        "xml_array_wrapped_renamed",
+        "GET",
+        "/arrays/wrapped-renamed",
+        "GET /arrays/wrapped-renamed",
+        error_schema,
+    )
 };
 async fn xml_array_wrapped_renamed<A: Api>(
     api: &A,
@@ -602,15 +591,14 @@ fn xml_array_wrapped_renamed_encode(
     Ok(runtime::body_response(200, "application/xml", runtime::xml_encode(&body)?))
 }
 static ELEMENTS_WITH_ATTRIBUTES_AND_TEXT_OP: runtime::Op = runtime::Op {
-    name: "elements_with_attributes_and_text",
-    method: "GET",
-    route: "/products",
-    span: "GET /products",
-    security: &[],
-    takes_body: false,
     produces: &["application/xml"],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new(
+        "elements_with_attributes_and_text",
+        "GET",
+        "/products",
+        "GET /products",
+        error_schema,
+    )
 };
 async fn elements_with_attributes_and_text<A: Api>(
     api: &A,
@@ -633,15 +621,14 @@ fn elements_with_attributes_and_text_encode(
     runtime::body_response(200, "application/xml", String::into_bytes(body))
 }
 static REFERENCED_ELEMENT_WITH_CDATA_OP: runtime::Op = runtime::Op {
-    name: "referenced_element_with_cdata",
-    method: "GET",
-    route: "/docs",
-    span: "GET /docs",
-    security: &[],
-    takes_body: false,
     produces: &["application/xml"],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new(
+        "referenced_element_with_cdata",
+        "GET",
+        "/docs",
+        "GET /docs",
+        error_schema,
+    )
 };
 async fn referenced_element_with_cdata<A: Api>(
     api: &A,
@@ -664,15 +651,14 @@ fn referenced_element_with_cdata_encode(
     Ok(runtime::body_response(200, "application/xml", runtime::xml_encode(&body)?))
 }
 static ORDERED_ELEMENTS_OP: runtime::Op = runtime::Op {
-    name: "ordered_elements",
-    method: "GET",
-    route: "/one-two-three",
-    span: "GET /one-two-three",
-    security: &[],
-    takes_body: false,
     produces: &["application/xml"],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new(
+        "ordered_elements",
+        "GET",
+        "/one-two-three",
+        "GET /one-two-three",
+        error_schema,
+    )
 };
 async fn ordered_elements<A: Api>(
     api: &A,
@@ -692,15 +678,14 @@ fn ordered_elements_encode(resp: ops::ordered_elements::Response) -> runtime::Re
     runtime::body_response(200, "application/xml", String::into_bytes(body))
 }
 static ORDERED_ELEMENTS_AND_TEXT_OP: runtime::Op = runtime::Op {
-    name: "ordered_elements_and_text",
-    method: "GET",
-    route: "/report",
-    span: "GET /report",
-    security: &[],
-    takes_body: false,
     produces: &["application/xml"],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new(
+        "ordered_elements_and_text",
+        "GET",
+        "/report",
+        "GET /report",
+        error_schema,
+    )
 };
 async fn ordered_elements_and_text<A: Api>(
     api: &A,
@@ -723,15 +708,14 @@ fn ordered_elements_and_text_encode(
     runtime::body_response(200, "application/xml", String::into_bytes(body))
 }
 static XML_WITH_NULL_VALUES_OP: runtime::Op = runtime::Op {
-    name: "xml_with_null_values",
-    method: "GET",
-    route: "/product",
-    span: "GET /product",
-    security: &[],
-    takes_body: false,
     produces: &["application/xml"],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new(
+        "xml_with_null_values",
+        "GET",
+        "/product",
+        "GET /product",
+        error_schema,
+    )
 };
 async fn xml_with_null_values<A: Api>(
     api: &A,

@@ -137,17 +137,13 @@ async fn dispatch<A: Api>(
         Op::O0 => Box::pin(put_stamp(api, routed, call)).await,
     }
 }
-static PUT_STAMP_OP: runtime::Op = runtime::Op {
-    name: "put_stamp",
-    method: "POST",
-    route: "/stamps",
-    span: "POST /stamps",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static PUT_STAMP_OP: runtime::Op = runtime::Op::new(
+    "put_stamp",
+    "POST",
+    "/stamps",
+    "POST /stamps",
+    error_schema,
+);
 async fn put_stamp<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,

@@ -337,17 +337,13 @@ async fn dispatch<A: Api>(
         Op::O9 => Box::pin(mix_var_tail(api, routed, call)).await,
     }
 }
-static SEARCH_ORDERS_OP: runtime::Op = runtime::Op {
-    name: "search_orders",
-    method: "GET",
-    route: "/orders/search",
-    span: "GET /orders/search",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static SEARCH_ORDERS_OP: runtime::Op = runtime::Op::new(
+    "search_orders",
+    "GET",
+    "/orders/search",
+    "GET /orders/search",
+    error_schema,
+);
 async fn search_orders<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -365,17 +361,13 @@ fn search_orders_encode(resp: &ops::search_orders::Response) -> runtime::Respons
     let ops::search_orders::Response::NoContent = resp;
     runtime::new_response(204)
 }
-static UPDATE_ORDER_OP: runtime::Op = runtime::Op {
-    name: "update_order",
-    method: "POST",
-    route: "/orders/{id}",
-    span: "POST /orders/{id}",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static UPDATE_ORDER_OP: runtime::Op = runtime::Op::new(
+    "update_order",
+    "POST",
+    "/orders/{id}",
+    "POST /orders/{id}",
+    error_schema,
+);
 async fn update_order<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -401,17 +393,13 @@ fn update_order_encode(resp: &ops::update_order::Response) -> runtime::Response 
     let ops::update_order::Response::NoContent = resp;
     runtime::new_response(204)
 }
-static STATUS_AT_OP: runtime::Op = runtime::Op {
-    name: "status_at",
-    method: "GET",
-    route: "/status/@",
-    span: "GET /status/@",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static STATUS_AT_OP: runtime::Op = runtime::Op::new(
+    "status_at",
+    "GET",
+    "/status/@",
+    "GET /status/@",
+    error_schema,
+);
 async fn status_at<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -430,15 +418,14 @@ fn status_at_encode(resp: &ops::status_at::Response) -> runtime::Response {
     runtime::new_response(204)
 }
 static STATUS_BY_KEY_OP: runtime::Op = runtime::Op {
-    name: "status_by_key",
-    method: "GET",
-    route: "/status/{key}",
-    span: "GET /status/{key}",
-    security: &[],
-    takes_body: false,
     produces: &["application/json"],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new(
+        "status_by_key",
+        "GET",
+        "/status/{key}",
+        "GET /status/{key}",
+        error_schema,
+    )
 };
 async fn status_by_key<A: Api>(
     api: &A,
@@ -467,17 +454,13 @@ fn status_by_key_encode(
     let ops::status_by_key::Response::Ok(body) = resp;
     Ok(runtime::body_response(200, "application/json", runtime::json_encode(&body)?))
 }
-static LATEST_META_OP: runtime::Op = runtime::Op {
-    name: "latest_meta",
-    method: "GET",
-    route: "/files/latest/meta",
-    span: "GET /files/latest/meta",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static LATEST_META_OP: runtime::Op = runtime::Op::new(
+    "latest_meta",
+    "GET",
+    "/files/latest/meta",
+    "GET /files/latest/meta",
+    error_schema,
+);
 async fn latest_meta<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -496,15 +479,14 @@ fn latest_meta_encode(resp: &ops::latest_meta::Response) -> runtime::Response {
     runtime::new_response(204)
 }
 static FILE_RAW_OP: runtime::Op = runtime::Op {
-    name: "file_raw",
-    method: "GET",
-    route: "/files/{dir}/raw",
-    span: "GET /files/{dir}/raw",
-    security: &[],
-    takes_body: false,
     produces: &["application/json"],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new(
+        "file_raw",
+        "GET",
+        "/files/{dir}/raw",
+        "GET /files/{dir}/raw",
+        error_schema,
+    )
 };
 async fn file_raw<A: Api>(
     api: &A,
@@ -534,15 +516,14 @@ fn file_raw_encode(
     Ok(runtime::body_response(200, "application/json", runtime::json_encode(&body)?))
 }
 static FILE_EXT_OP: runtime::Op = runtime::Op {
-    name: "file_ext",
-    method: "GET",
-    route: "/files/{name}.{ext}",
-    span: "GET /files/{name}.{ext}",
-    security: &[],
-    takes_body: false,
     produces: &["application/json"],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new(
+        "file_ext",
+        "GET",
+        "/files/{name}.{ext}",
+        "GET /files/{name}.{ext}",
+        error_schema,
+    )
 };
 async fn file_ext<A: Api>(
     api: &A,
@@ -572,17 +553,13 @@ fn file_ext_encode(
     let ops::file_ext::Response::Ok(body) = resp;
     Ok(runtime::body_response(200, "application/json", runtime::json_encode(&body)?))
 }
-static MIX_LITERAL_TAIL_OP: runtime::Op = runtime::Op {
-    name: "mix_literal_tail",
-    method: "GET",
-    route: "/m/{a}.json/x",
-    span: "GET /m/{a}.json/x",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static MIX_LITERAL_TAIL_OP: runtime::Op = runtime::Op::new(
+    "mix_literal_tail",
+    "GET",
+    "/m/{a}.json/x",
+    "GET /m/{a}.json/x",
+    error_schema,
+);
 async fn mix_literal_tail<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -609,15 +586,14 @@ fn mix_literal_tail_encode(resp: &ops::mix_literal_tail::Response) -> runtime::R
     runtime::new_response(204)
 }
 static MIX_MIXED_TAIL_OP: runtime::Op = runtime::Op {
-    name: "mix_mixed_tail",
-    method: "GET",
-    route: "/m/{a}.{b}/y-{c}",
-    span: "GET /m/{a}.{b}/y-{c}",
-    security: &[],
-    takes_body: false,
     produces: &["application/json"],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new(
+        "mix_mixed_tail",
+        "GET",
+        "/m/{a}.{b}/y-{c}",
+        "GET /m/{a}.{b}/y-{c}",
+        error_schema,
+    )
 };
 async fn mix_mixed_tail<A: Api>(
     api: &A,
@@ -648,17 +624,13 @@ fn mix_mixed_tail_encode(
     let ops::mix_mixed_tail::Response::Ok(body) = resp;
     Ok(runtime::body_response(200, "application/json", runtime::json_encode(&body)?))
 }
-static MIX_VAR_TAIL_OP: runtime::Op = runtime::Op {
-    name: "mix_var_tail",
-    method: "GET",
-    route: "/m/{a}.json/{c}",
-    span: "GET /m/{a}.json/{c}",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static MIX_VAR_TAIL_OP: runtime::Op = runtime::Op::new(
+    "mix_var_tail",
+    "GET",
+    "/m/{a}.json/{c}",
+    "GET /m/{a}.json/{c}",
+    error_schema,
+);
 async fn mix_var_tail<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,

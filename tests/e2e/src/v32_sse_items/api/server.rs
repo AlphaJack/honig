@@ -220,15 +220,14 @@ async fn dispatch<A: Api>(
     }
 }
 static TILE_STREAM_OP: runtime::Op = runtime::Op {
-    name: "tile_stream",
-    method: "GET",
-    route: "/tiles/stream",
-    span: "GET /tiles/stream",
-    security: &[],
-    takes_body: false,
     produces: &["text/event-stream"],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new(
+        "tile_stream",
+        "GET",
+        "/tiles/stream",
+        "GET /tiles/stream",
+        error_schema,
+    )
 };
 async fn tile_stream<A: Api>(
     api: &A,
@@ -254,15 +253,14 @@ fn tile_stream_encode(
     })
 }
 static TILE_LINES_OP: runtime::Op = runtime::Op {
-    name: "tile_lines",
-    method: "GET",
-    route: "/tiles/lines",
-    span: "GET /tiles/lines",
-    security: &[],
-    takes_body: false,
     produces: &["application/jsonl"],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new(
+        "tile_lines",
+        "GET",
+        "/tiles/lines",
+        "GET /tiles/lines",
+        error_schema,
+    )
 };
 async fn tile_lines<A: Api>(
     api: &A,
@@ -293,15 +291,14 @@ fn tile_lines_encode(
     })
 }
 static TILE_UPDATES_OP: runtime::Op = runtime::Op {
-    name: "tile_updates",
-    method: "GET",
-    route: "/tiles/updates",
-    span: "GET /tiles/updates",
-    security: &[],
-    takes_body: false,
     produces: &["text/event-stream"],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new(
+        "tile_updates",
+        "GET",
+        "/tiles/updates",
+        "GET /tiles/updates",
+        error_schema,
+    )
 };
 async fn tile_updates<A: Api>(
     api: &A,
@@ -327,15 +324,14 @@ fn tile_updates_encode(
     })
 }
 static CHAT_STREAM_OP: runtime::Op = runtime::Op {
-    name: "chat_stream",
-    method: "POST",
-    route: "/chat/stream",
-    span: "POST /chat/stream",
-    security: &[],
-    takes_body: false,
     produces: &["text/event-stream"],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new(
+        "chat_stream",
+        "POST",
+        "/chat/stream",
+        "POST /chat/stream",
+        error_schema,
+    )
 };
 async fn chat_stream<A: Api>(
     api: &A,
@@ -361,15 +357,14 @@ fn chat_stream_encode(
     })
 }
 static TILE_BATCH_OP: runtime::Op = runtime::Op {
-    name: "tile_batch",
-    method: "POST",
-    route: "/tiles/batch",
-    span: "POST /tiles/batch",
-    security: &[],
     takes_body: true,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new(
+        "tile_batch",
+        "POST",
+        "/tiles/batch",
+        "POST /tiles/batch",
+        error_schema,
+    )
 };
 async fn tile_batch<A: Api>(
     api: &A,
@@ -406,15 +401,8 @@ fn tile_batch_encode(resp: &ops::tile_batch::Response) -> runtime::Response {
     runtime::new_response(204)
 }
 static TILE_TOP_OP: runtime::Op = runtime::Op {
-    name: "tile_top",
-    method: "GET",
-    route: "/tiles/top",
-    span: "GET /tiles/top",
-    security: &[],
-    takes_body: false,
     produces: &["application/jsonl"],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new("tile_top", "GET", "/tiles/top", "GET /tiles/top", error_schema)
 };
 async fn tile_top<A: Api>(
     api: &A,

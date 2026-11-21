@@ -303,17 +303,13 @@ async fn dispatch<A: Api>(
         Op::O8 => Box::pin(filter(api, routed, call)).await,
     }
 }
-static OPEN_OP: runtime::Op = runtime::Op {
-    name: "open",
-    method: "GET",
-    route: "/public",
-    span: "GET /public",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static OPEN_OP: runtime::Op = runtime::Op::new(
+    "open",
+    "GET",
+    "/public",
+    "GET /public",
+    error_schema,
+);
 async fn open<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -332,15 +328,8 @@ fn open_encode(resp: &ops::open::Response) -> runtime::Response {
     runtime::new_response(204)
 }
 static INHERITS_OP: runtime::Op = runtime::Op {
-    name: "inherits",
-    method: "GET",
-    route: "/inherits",
-    span: "GET /inherits",
     security: ops::SECURITY_0,
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new("inherits", "GET", "/inherits", "GET /inherits", error_schema)
 };
 async fn inherits<A: Api>(
     api: &A,
@@ -360,15 +349,8 @@ fn inherits_encode(resp: &ops::inherits::Response) -> runtime::Response {
     runtime::new_response(204)
 }
 static GET_ITEM_OP: runtime::Op = runtime::Op {
-    name: "get_item",
-    method: "GET",
-    route: "/items/{id}",
-    span: "GET /items/{id}",
     security: ops::SECURITY_0,
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new("get_item", "GET", "/items/{id}", "GET /items/{id}", error_schema)
 };
 async fn get_item<A: Api>(
     api: &A,
@@ -418,15 +400,8 @@ fn get_item_encode(
     )
 }
 static POST_CLOSED_OP: runtime::Op = runtime::Op {
-    name: "post_closed",
-    method: "POST",
-    route: "/closed",
-    span: "POST /closed",
     security: ops::SECURITY_0,
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new("post_closed", "POST", "/closed", "POST /closed", error_schema)
 };
 async fn post_closed<A: Api>(
     api: &A,
@@ -455,15 +430,14 @@ fn post_closed_encode(resp: &ops::post_closed::Response) -> runtime::Response {
     runtime::new_response(204)
 }
 static OPTIONAL_BODY_OP: runtime::Op = runtime::Op {
-    name: "optional_body",
-    method: "POST",
-    route: "/optional-body",
-    span: "POST /optional-body",
     security: ops::SECURITY_0,
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new(
+        "optional_body",
+        "POST",
+        "/optional-body",
+        "POST /optional-body",
+        error_schema,
+    )
 };
 async fn optional_body<A: Api>(
     api: &A,
@@ -498,15 +472,14 @@ fn optional_body_encode(resp: &ops::optional_body::Response) -> runtime::Respons
     runtime::new_response(204)
 }
 static POST_PRODUCT_OP: runtime::Op = runtime::Op {
-    name: "post_product",
-    method: "POST",
-    route: "/products",
-    span: "POST /products",
     security: ops::SECURITY_0,
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new(
+        "post_product",
+        "POST",
+        "/products",
+        "POST /products",
+        error_schema,
+    )
 };
 async fn post_product<A: Api>(
     api: &A,
@@ -535,15 +508,8 @@ fn post_product_encode(resp: &ops::post_product::Response) -> runtime::Response 
     runtime::new_response(204)
 }
 static UPLOAD_OP: runtime::Op = runtime::Op {
-    name: "upload",
-    method: "POST",
-    route: "/upload",
-    span: "POST /upload",
     security: ops::SECURITY_0,
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new("upload", "POST", "/upload", "POST /upload", error_schema)
 };
 async fn upload<A: Api>(
     api: &A,
@@ -576,15 +542,8 @@ fn upload_encode(resp: &ops::upload::Response) -> runtime::Response {
     runtime::new_response(204)
 }
 static COOKIES_OP: runtime::Op = runtime::Op {
-    name: "cookies",
-    method: "GET",
-    route: "/cookies",
-    span: "GET /cookies",
     security: ops::SECURITY_1,
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new("cookies", "GET", "/cookies", "GET /cookies", error_schema)
 };
 async fn cookies<A: Api>(
     api: &A,
@@ -612,15 +571,8 @@ fn cookies_encode(
     })
 }
 static FILTER_OP: runtime::Op = runtime::Op {
-    name: "filter",
-    method: "GET",
-    route: "/filter",
-    span: "GET /filter",
     security: ops::SECURITY_0,
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new("filter", "GET", "/filter", "GET /filter", error_schema)
 };
 async fn filter<A: Api>(
     api: &A,

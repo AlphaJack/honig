@@ -175,17 +175,13 @@ async fn dispatch<A: Api>(
         Op::O3 => Box::pin(deploy(api, routed, call)).await,
     }
 }
-static UPLOAD_OP: runtime::Op = runtime::Op {
-    name: "upload",
-    method: "POST",
-    route: "/photos",
-    span: "POST /photos",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static UPLOAD_OP: runtime::Op = runtime::Op::new(
+    "upload",
+    "POST",
+    "/photos",
+    "POST /photos",
+    error_schema,
+);
 async fn upload<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -244,17 +240,13 @@ fn upload_encode(resp: &ops::upload::Response) -> runtime::Response {
     let ops::upload::Response::Created = resp;
     runtime::new_response(201)
 }
-static PUT_ICON_OP: runtime::Op = runtime::Op {
-    name: "put_icon",
-    method: "PUT",
-    route: "/icons",
-    span: "PUT /icons",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static PUT_ICON_OP: runtime::Op = runtime::Op::new(
+    "put_icon",
+    "PUT",
+    "/icons",
+    "PUT /icons",
+    error_schema,
+);
 async fn put_icon<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -286,17 +278,13 @@ fn put_icon_encode(resp: &ops::put_icon::Response) -> runtime::Response {
     let ops::put_icon::Response::NoContent = resp;
     runtime::new_response(204)
 }
-static UPLOAD_SCAN_OP: runtime::Op = runtime::Op {
-    name: "upload_scan",
-    method: "POST",
-    route: "/scans",
-    span: "POST /scans",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static UPLOAD_SCAN_OP: runtime::Op = runtime::Op::new(
+    "upload_scan",
+    "POST",
+    "/scans",
+    "POST /scans",
+    error_schema,
+);
 async fn upload_scan<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -327,17 +315,13 @@ fn upload_scan_encode(resp: &ops::upload_scan::Response) -> runtime::Response {
     let ops::upload_scan::Response::NoContent = resp;
     runtime::new_response(204)
 }
-static DEPLOY_OP: runtime::Op = runtime::Op {
-    name: "deploy",
-    method: "POST",
-    route: "/deploy",
-    span: "POST /deploy",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static DEPLOY_OP: runtime::Op = runtime::Op::new(
+    "deploy",
+    "POST",
+    "/deploy",
+    "POST /deploy",
+    error_schema,
+);
 async fn deploy<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,

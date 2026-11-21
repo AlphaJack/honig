@@ -137,15 +137,15 @@ async fn dispatch<A: Api>(
     }
 }
 static PUT_FILE_OP: runtime::Op = runtime::Op {
-    name: "put_file",
-    method: "PUT",
-    route: "/files/{name}",
-    span: "PUT /files/{name}",
-    security: &[],
     takes_body: true,
     produces: &["application/json"],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new(
+        "put_file",
+        "PUT",
+        "/files/{name}",
+        "PUT /files/{name}",
+        error_schema,
+    )
 };
 async fn put_file<A: Api>(
     api: &A,

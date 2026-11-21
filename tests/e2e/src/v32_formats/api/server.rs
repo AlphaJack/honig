@@ -139,15 +139,14 @@ async fn dispatch<A: Api>(
     }
 }
 static GET_EVENT_OP: runtime::Op = runtime::Op {
-    name: "get_event",
-    method: "GET",
-    route: "/events/{id}",
-    span: "GET /events/{id}",
-    security: &[],
-    takes_body: false,
     produces: &["application/json"],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new(
+        "get_event",
+        "GET",
+        "/events/{id}",
+        "GET /events/{id}",
+        error_schema,
+    )
 };
 async fn get_event<A: Api>(
     api: &A,

@@ -185,17 +185,13 @@ async fn dispatch<A: Api>(
         Op::O4 => Box::pin(find_box(api, routed, call)).await,
     }
 }
-static PING_OP: runtime::Op = runtime::Op {
-    name: "ping",
-    method: "GET",
-    route: "/ping",
-    span: "GET /ping",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static PING_OP: runtime::Op = runtime::Op::new(
+    "ping",
+    "GET",
+    "/ping",
+    "GET /ping",
+    error_schema,
+);
 async fn ping<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -213,17 +209,13 @@ fn ping_encode(resp: &ops::ping::Response) -> runtime::Response {
     let ops::ping::Response::Default { status } = resp;
     runtime::new_response(status.as_u16())
 }
-static ARCHIVE_OP: runtime::Op = runtime::Op {
-    name: "archive",
-    method: "POST",
-    route: "/archive",
-    span: "POST /archive",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static ARCHIVE_OP: runtime::Op = runtime::Op::new(
+    "archive",
+    "POST",
+    "/archive",
+    "POST /archive",
+    error_schema,
+);
 async fn archive<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -253,17 +245,13 @@ fn archive_encode(
         },
     )
 }
-static UNARCHIVE_OP: runtime::Op = runtime::Op {
-    name: "unarchive",
-    method: "DELETE",
-    route: "/archive",
-    span: "DELETE /archive",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static UNARCHIVE_OP: runtime::Op = runtime::Op::new(
+    "unarchive",
+    "DELETE",
+    "/archive",
+    "DELETE /archive",
+    error_schema,
+);
 async fn unarchive<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -294,15 +282,8 @@ fn unarchive_encode(
     )
 }
 static ADD_NOTE_OP: runtime::Op = runtime::Op {
-    name: "add_note",
-    method: "POST",
-    route: "/notes",
-    span: "POST /notes",
-    security: &[],
-    takes_body: false,
     produces: &["application/json"],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new("add_note", "POST", "/notes", "POST /notes", error_schema)
 };
 async fn add_note<A: Api>(
     api: &A,
@@ -344,15 +325,8 @@ fn add_note_encode(
     })
 }
 static FIND_BOX_OP: runtime::Op = runtime::Op {
-    name: "find_box",
-    method: "GET",
-    route: "/boxes",
-    span: "GET /boxes",
-    security: &[],
-    takes_body: false,
     produces: &["application/json"],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new("find_box", "GET", "/boxes", "GET /boxes", error_schema)
 };
 async fn find_box<A: Api>(
     api: &A,

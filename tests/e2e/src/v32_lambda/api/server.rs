@@ -148,15 +148,8 @@ async fn dispatch<A: Api>(
     }
 }
 static GET_ITEM_OP: runtime::Op = runtime::Op {
-    name: "get_item",
-    method: "GET",
-    route: "/items/{id}",
-    span: "GET /items/{id}",
-    security: &[],
-    takes_body: false,
     produces: &["application/json"],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new("get_item", "GET", "/items/{id}", "GET /items/{id}", error_schema)
 };
 async fn get_item<A: Api>(
     api: &A,
@@ -209,15 +202,15 @@ fn get_item_encode(
     Ok(runtime::body_response(200, "application/json", runtime::json_encode(&body)?))
 }
 static PUT_BLOB_OP: runtime::Op = runtime::Op {
-    name: "put_blob",
-    method: "PUT",
-    route: "/items/{id}/blob",
-    span: "PUT /items/{id}/blob",
-    security: &[],
     takes_body: true,
     produces: &["application/octet-stream"],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new(
+        "put_blob",
+        "PUT",
+        "/items/{id}/blob",
+        "PUT /items/{id}/blob",
+        error_schema,
+    )
 };
 async fn put_blob<A: Api>(
     api: &A,

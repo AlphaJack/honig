@@ -464,17 +464,13 @@ async fn dispatch<A: Api>(
         Op::O19 => Box::pin(server_sent_event_streams(api, routed, call)).await,
     }
 }
-static FORM_WITH_XML_OP: runtime::Op = runtime::Op {
-    name: "form_with_xml",
-    method: "POST",
-    route: "/form-with-xml",
-    span: "POST /form-with-xml",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static FORM_WITH_XML_OP: runtime::Op = runtime::Op::new(
+    "form_with_xml",
+    "POST",
+    "/form-with-xml",
+    "POST /form-with-xml",
+    error_schema,
+);
 async fn form_with_xml<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -517,17 +513,13 @@ fn form_with_xml_encode(resp: &ops::form_with_xml::Response) -> runtime::Respons
     let ops::form_with_xml::Response::NoContent = resp;
     runtime::new_response(204)
 }
-static PARAMETER_EXAMPLES_OP: runtime::Op = runtime::Op {
-    name: "parameter_examples",
-    method: "GET",
-    route: "/users/{username}",
-    span: "GET /users/{username}",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static PARAMETER_EXAMPLES_OP: runtime::Op = runtime::Op::new(
+    "parameter_examples",
+    "GET",
+    "/users/{username}",
+    "GET /users/{username}",
+    error_schema,
+);
 async fn parameter_examples<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -621,17 +613,13 @@ fn parameter_examples_encode(
     let ops::parameter_examples::Response::NoContent = resp;
     runtime::new_response(204)
 }
-static QUERYSTRING_FORM_OP: runtime::Op = runtime::Op {
-    name: "querystring_form",
-    method: "GET",
-    route: "/querystring/form",
-    span: "GET /querystring/form",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static QUERYSTRING_FORM_OP: runtime::Op = runtime::Op::new(
+    "querystring_form",
+    "GET",
+    "/querystring/form",
+    "GET /querystring/form",
+    error_schema,
+);
 async fn querystring_form<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -660,17 +648,13 @@ fn querystring_form_encode(resp: &ops::querystring_form::Response) -> runtime::R
     let ops::querystring_form::Response::NoContent = resp;
     runtime::new_response(204)
 }
-static QUERYSTRING_JSON_OP: runtime::Op = runtime::Op {
-    name: "querystring_json",
-    method: "GET",
-    route: "/querystring/json",
-    span: "GET /querystring/json",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static QUERYSTRING_JSON_OP: runtime::Op = runtime::Op::new(
+    "querystring_json",
+    "GET",
+    "/querystring/json",
+    "GET /querystring/json",
+    error_schema,
+);
 async fn querystring_json<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -699,17 +683,13 @@ fn querystring_json_encode(resp: &ops::querystring_json::Response) -> runtime::R
     let ops::querystring_json::Response::NoContent = resp;
     runtime::new_response(204)
 }
-static BASIC_MULTIPART_FORM_OP: runtime::Op = runtime::Op {
-    name: "basic_multipart_form",
-    method: "POST",
-    route: "/multipart/basic",
-    span: "POST /multipart/basic",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static BASIC_MULTIPART_FORM_OP: runtime::Op = runtime::Op::new(
+    "basic_multipart_form",
+    "POST",
+    "/multipart/basic",
+    "POST /multipart/basic",
+    error_schema,
+);
 async fn basic_multipart_form<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -750,17 +730,13 @@ fn basic_multipart_form_encode(
     let ops::basic_multipart_form::Response::NoContent = resp;
     runtime::new_response(204)
 }
-static MULTIPART_FORM_WITH_ENCODING_OBJECTS_OP: runtime::Op = runtime::Op {
-    name: "multipart_form_with_encoding_objects",
-    method: "POST",
-    route: "/multipart/encoding",
-    span: "POST /multipart/encoding",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static MULTIPART_FORM_WITH_ENCODING_OBJECTS_OP: runtime::Op = runtime::Op::new(
+    "multipart_form_with_encoding_objects",
+    "POST",
+    "/multipart/encoding",
+    "POST /multipart/encoding",
+    error_schema,
+);
 async fn multipart_form_with_encoding_objects<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -816,17 +792,13 @@ fn multipart_form_with_encoding_objects_encode(
     let ops::multipart_form_with_encoding_objects::Response::NoContent = resp;
     runtime::new_response(204)
 }
-static MULTIPART_FORM_WITH_MULTIPLE_FILES_OP: runtime::Op = runtime::Op {
-    name: "multipart_form_with_multiple_files",
-    method: "POST",
-    route: "/multipart/files",
-    span: "POST /multipart/files",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static MULTIPART_FORM_WITH_MULTIPLE_FILES_OP: runtime::Op = runtime::Op::new(
+    "multipart_form_with_multiple_files",
+    "POST",
+    "/multipart/files",
+    "POST /multipart/files",
+    error_schema,
+);
 async fn multipart_form_with_multiple_files<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -867,17 +839,13 @@ fn multipart_form_with_multiple_files_encode(
     let ops::multipart_form_with_multiple_files::Response::NoContent = resp;
     runtime::new_response(204)
 }
-static ORDERED_UNNAMED_MULTIPART_OP: runtime::Op = runtime::Op {
-    name: "ordered_unnamed_multipart",
-    method: "POST",
-    route: "/multipart/ordered",
-    span: "POST /multipart/ordered",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static ORDERED_UNNAMED_MULTIPART_OP: runtime::Op = runtime::Op::new(
+    "ordered_unnamed_multipart",
+    "POST",
+    "/multipart/ordered",
+    "POST /multipart/ordered",
+    error_schema,
+);
 async fn ordered_unnamed_multipart<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -919,17 +887,13 @@ fn ordered_unnamed_multipart_encode(
     let ops::ordered_unnamed_multipart::Response::NoContent = resp;
     runtime::new_response(204)
 }
-static ORDERED_MULTIPART_WITH_REQUIRED_HEADER_OP: runtime::Op = runtime::Op {
-    name: "ordered_multipart_with_required_header",
-    method: "POST",
-    route: "/multipart/related",
-    span: "POST /multipart/related",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static ORDERED_MULTIPART_WITH_REQUIRED_HEADER_OP: runtime::Op = runtime::Op::new(
+    "ordered_multipart_with_required_header",
+    "POST",
+    "/multipart/related",
+    "POST /multipart/related",
+    error_schema,
+);
 async fn ordered_multipart_with_required_header<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -975,17 +939,13 @@ fn ordered_multipart_with_required_header_encode(
     let ops::ordered_multipart_with_required_header::Response::NoContent = resp;
     runtime::new_response(204)
 }
-static NESTED_MULTIPART_MIXED_OP: runtime::Op = runtime::Op {
-    name: "nested_multipart_mixed",
-    method: "POST",
-    route: "/multipart/nested",
-    span: "POST /multipart/nested",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static NESTED_MULTIPART_MIXED_OP: runtime::Op = runtime::Op::new(
+    "nested_multipart_mixed",
+    "POST",
+    "/multipart/nested",
+    "POST /multipart/nested",
+    error_schema,
+);
 async fn nested_multipart_mixed<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -1028,15 +988,14 @@ fn nested_multipart_mixed_encode(
     runtime::new_response(204)
 }
 static STREAMING_MULTIPART_OP: runtime::Op = runtime::Op {
-    name: "streaming_multipart",
-    method: "GET",
-    route: "/multipart/streaming",
-    span: "GET /multipart/streaming",
-    security: &[],
-    takes_body: false,
     produces: &["multipart/mixed"],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new(
+        "streaming_multipart",
+        "GET",
+        "/multipart/streaming",
+        "GET /multipart/streaming",
+        error_schema,
+    )
 };
 async fn streaming_multipart<A: Api>(
     api: &A,
@@ -1068,15 +1027,14 @@ fn streaming_multipart_encode(
     })
 }
 static STREAMING_BYTE_RANGES_OP: runtime::Op = runtime::Op {
-    name: "streaming_byte_ranges",
-    method: "GET",
-    route: "/multipart/byteranges",
-    span: "GET /multipart/byteranges",
-    security: &[],
-    takes_body: false,
     produces: &["multipart/byteranges"],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new(
+        "streaming_byte_ranges",
+        "GET",
+        "/multipart/byteranges",
+        "GET /multipart/byteranges",
+        error_schema,
+    )
 };
 async fn streaming_byte_ranges<A: Api>(
     api: &A,
@@ -1107,17 +1065,13 @@ fn streaming_byte_ranges_encode(
         r
     })
 }
-static QUERYSTRING_JSONPATH_OP: runtime::Op = runtime::Op {
-    name: "querystring_jsonpath",
-    method: "GET",
-    route: "/querystring/jsonpath",
-    span: "GET /querystring/jsonpath",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static QUERYSTRING_JSONPATH_OP: runtime::Op = runtime::Op::new(
+    "querystring_jsonpath",
+    "GET",
+    "/querystring/jsonpath",
+    "GET /querystring/jsonpath",
+    error_schema,
+);
 async fn querystring_jsonpath<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -1149,15 +1103,14 @@ fn querystring_jsonpath_encode(
     runtime::new_response(204)
 }
 static COLLECTION_WITH_LINKS_OP: runtime::Op = runtime::Op {
-    name: "collection_with_links",
-    method: "GET",
-    route: "/collection",
-    span: "GET /collection",
-    security: &[],
-    takes_body: false,
     produces: &["application/json"],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new(
+        "collection_with_links",
+        "GET",
+        "/collection",
+        "GET /collection",
+        error_schema,
+    )
 };
 async fn collection_with_links<A: Api>(
     api: &A,
@@ -1191,15 +1144,14 @@ fn collection_with_links_encode(
     })
 }
 static STANDALONE_JSON_LINKSET_OP: runtime::Op = runtime::Op {
-    name: "standalone_json_linkset",
-    method: "GET",
-    route: "/collection/linkset-json",
-    span: "GET /collection/linkset-json",
-    security: &[],
-    takes_body: false,
     produces: &["application/linkset+json"],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new(
+        "standalone_json_linkset",
+        "GET",
+        "/collection/linkset-json",
+        "GET /collection/linkset-json",
+        error_schema,
+    )
 };
 async fn standalone_json_linkset<A: Api>(
     api: &A,
@@ -1228,15 +1180,14 @@ fn standalone_json_linkset_encode(
     )
 }
 static LINKSET_BODY_OP: runtime::Op = runtime::Op {
-    name: "linkset_body",
-    method: "GET",
-    route: "/collection/linkset",
-    span: "GET /collection/linkset",
-    security: &[],
-    takes_body: false,
     produces: &["application/linkset"],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new(
+        "linkset_body",
+        "GET",
+        "/collection/linkset",
+        "GET /collection/linkset",
+        error_schema,
+    )
 };
 async fn linkset_body<A: Api>(
     api: &A,
@@ -1264,15 +1215,14 @@ fn linkset_body_encode(
     )
 }
 static MEDIA_TYPE_JSON_OP: runtime::Op = runtime::Op {
-    name: "media_type_json",
-    method: "GET",
-    route: "/products",
-    span: "GET /products",
-    security: &[],
-    takes_body: false,
     produces: &["application/json"],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new(
+        "media_type_json",
+        "GET",
+        "/products",
+        "GET /products",
+        error_schema,
+    )
 };
 async fn media_type_json<A: Api>(
     api: &A,
@@ -1294,15 +1244,14 @@ fn media_type_json_encode(
     Ok(runtime::body_response(200, "application/json", runtime::json_encode(&body)?))
 }
 static LOG_STREAM_OP: runtime::Op = runtime::Op {
-    name: "log_stream",
-    method: "GET",
-    route: "/logs/stream",
-    span: "GET /logs/stream",
-    security: &[],
-    takes_body: false,
     produces: &["application/json-seq", "application/jsonl", "application/x-ndjson"],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new(
+        "log_stream",
+        "GET",
+        "/logs/stream",
+        "GET /logs/stream",
+        error_schema,
+    )
 };
 async fn log_stream<A: Api>(
     api: &A,
@@ -1359,15 +1308,14 @@ fn log_stream_encode(
     })
 }
 static LOG_EXCERPT_OP: runtime::Op = runtime::Op {
-    name: "log_excerpt",
-    method: "GET",
-    route: "/logs/excerpt",
-    span: "GET /logs/excerpt",
-    security: &[],
-    takes_body: false,
     produces: &["application/json-seq", "application/jsonl", "application/x-ndjson"],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new(
+        "log_excerpt",
+        "GET",
+        "/logs/excerpt",
+        "GET /logs/excerpt",
+        error_schema,
+    )
 };
 async fn log_excerpt<A: Api>(
     api: &A,
@@ -1426,15 +1374,14 @@ fn log_excerpt_encode(
     })
 }
 static SERVER_SENT_EVENT_STREAMS_OP: runtime::Op = runtime::Op {
-    name: "server_sent_event_streams",
-    method: "POST",
-    route: "/events",
-    span: "POST /events",
-    security: &[],
     takes_body: true,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new(
+        "server_sent_event_streams",
+        "POST",
+        "/events",
+        "POST /events",
+        error_schema,
+    )
 };
 async fn server_sent_event_streams<A: Api>(
     api: &A,
