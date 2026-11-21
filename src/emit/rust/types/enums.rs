@@ -249,10 +249,9 @@ pub(super) fn union_deserialize_impl(
 pub(super) fn declares_tag(space: &Space<'_>, t: &Ty, property: &str, tag: &str) -> bool {
     let t = if let Ty::Indirect(inner) = t { inner } else { t };
     let Ty::Named(id) = t else { return false };
-    let holds = |f: &Ty| match f {
-        Ty::String => true,
-        Ty::Named(c) => matches!(&space.types.get(*c).kind, Kind::Const(serde_json::Value::String(v)) if v == tag),
-        _ => false,
+    let holds = |f: &Ty| {
+        *f == Ty::String
+            || matches!(f, Ty::Named(c) if matches!(&space.types.get(*c).kind, Kind::Const(serde_json::Value::String(v)) if v == tag))
     };
     matches!(&space.types.get(*id).kind, Kind::Struct(s) if s.fields.iter().any(|f| f.wire == property && f.required && holds(&f.ty)))
 }
