@@ -43,11 +43,14 @@ pub(crate) fn failed(e: impl Into<BoxError>) -> ClientError {
 }
 
 /// Sends `req` through a clone of `transport` and returns once the head of the response is in. Its body may still be
-/// to come.
+/// to come. The request carries the trace context of the current span ([`propagate_trace`]).
+///
+/// [`propagate_trace`]: crate::__private::propagate_trace
 pub fn send_streaming<T: Transport>(
     transport: &T,
-    req: Request,
+    mut req: Request,
 ) -> impl Future<Output = Result<Response, ClientError>> + MaybeSend + use<T> {
+    crate::trace_context::propagate_trace(&mut req);
     let mut service = transport.clone();
     async move {
         std::future::poll_fn(|cx| service.poll_ready(cx)).await.map_err(failed)?;

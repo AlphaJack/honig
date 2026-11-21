@@ -257,7 +257,6 @@ impl<T: runtime::Transport> Client<T> {
             },
         )?;
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -293,12 +292,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Request-ID",
                         )
-                        .map_err(|e| runtime::ClientError::Decode {
-                            status: Some(status),
-                            message: e.to_string(),
-                            body: body.clone(),
-                            pointer: String::new(),
-                        })?,
+                        .map_err(|e| runtime::decode_err(Some(status), &body, e))?,
                     x_pagination_total: runtime::from_param(
                             runtime::decode_header(
                                 runtime::joined_header(&head.headers, "X-Pagination-Total")
@@ -308,12 +302,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Pagination-Total",
                         )
-                        .map_err(|e| runtime::ClientError::Decode {
-                            status: Some(status),
-                            message: e.to_string(),
-                            body: body.clone(),
-                            pointer: String::new(),
-                        })?,
+                        .map_err(|e| runtime::decode_err(Some(status), &body, e))?,
                     x_pagination_page: runtime::from_param(
                             runtime::decode_header(
                                 runtime::joined_header(&head.headers, "X-Pagination-Page")
@@ -323,12 +312,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Pagination-Page",
                         )
-                        .map_err(|e| runtime::ClientError::Decode {
-                            status: Some(status),
-                            message: e.to_string(),
-                            body: body.clone(),
-                            pointer: String::new(),
-                        })?,
+                        .map_err(|e| runtime::decode_err(Some(status), &body, e))?,
                     x_pagination_per_page: runtime::from_param(
                             runtime::decode_header(
                                 runtime::joined_header(
@@ -341,12 +325,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Pagination-Per-Page",
                         )
-                        .map_err(|e| runtime::ClientError::Decode {
-                            status: Some(status),
-                            message: e.to_string(),
-                            body: body.clone(),
-                            pointer: String::new(),
-                        })?,
+                        .map_err(|e| runtime::decode_err(Some(status), &body, e))?,
                     x_cache_control: runtime::from_param(
                             runtime::decode_header(
                                 runtime::joined_header(&head.headers, "X-Cache-Control")
@@ -356,12 +335,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Cache-Control",
                         )
-                        .map_err(|e| runtime::ClientError::Decode {
-                            status: Some(status),
-                            message: e.to_string(),
-                            body: body.clone(),
-                            pointer: String::new(),
-                        })?,
+                        .map_err(|e| runtime::decode_err(Some(status), &body, e))?,
                 })
             }
         } else {
@@ -411,7 +385,6 @@ impl<T: runtime::Transport> Client<T> {
             }
         }
         runtime::apply_auth(&mut req, &self.credentials, ops::SECURITY_0)?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -443,12 +416,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Request-ID",
                         )
-                        .map_err(|e| runtime::ClientError::Decode {
-                            status: Some(status),
-                            message: e.to_string(),
-                            body: body.clone(),
-                            pointer: String::new(),
-                        })?,
+                        .map_err(|e| runtime::decode_err(Some(status), &body, e))?,
                     location: runtime::from_param(
                             runtime::decode_header(
                                 runtime::joined_header(&head.headers, "Location")
@@ -466,12 +434,7 @@ impl<T: runtime::Transport> Client<T> {
                                 >,
                             >::into_inner,
                         )
-                        .map_err(|e| runtime::ClientError::Decode {
-                            status: Some(status),
-                            message: e.to_string(),
-                            body: body.clone(),
-                            pointer: String::new(),
-                        })?,
+                        .map_err(|e| runtime::decode_err(Some(status), &body, e))?,
                     x_processing_time: runtime::from_param(
                             runtime::decode_header(
                                 runtime::joined_header(&head.headers, "X-Processing-Time")
@@ -481,12 +444,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Processing-Time",
                         )
-                        .map_err(|e| runtime::ClientError::Decode {
-                            status: Some(status),
-                            message: e.to_string(),
-                            body: body.clone(),
-                            pointer: String::new(),
-                        })?,
+                        .map_err(|e| runtime::decode_err(Some(status), &body, e))?,
                 })
             }
             400 => {
@@ -518,12 +476,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Request-ID",
                         )
-                        .map_err(|e| runtime::ClientError::Decode {
-                            status: Some(status),
-                            message: e.to_string(),
-                            body: body.clone(),
-                            pointer: String::new(),
-                        })?,
+                        .map_err(|e| runtime::decode_err(Some(status), &body, e))?,
                 })
             }
             403 => {
@@ -578,7 +531,6 @@ impl<T: runtime::Transport> Client<T> {
             runtime::json_encode(&p.body)?,
         );
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -598,12 +550,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Request-ID",
                         )
-                        .map_err(|e| runtime::ClientError::Decode {
-                            status: Some(status),
-                            message: e.to_string(),
-                            body: body.clone(),
-                            pointer: String::new(),
-                        })?,
+                        .map_err(|e| runtime::decode_err(Some(status), &body, e))?,
                 })
             }
             400 => {
@@ -635,12 +582,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Request-ID",
                         )
-                        .map_err(|e| runtime::ClientError::Decode {
-                            status: Some(status),
-                            message: e.to_string(),
-                            body: body.clone(),
-                            pointer: String::new(),
-                        })?,
+                        .map_err(|e| runtime::decode_err(Some(status), &body, e))?,
                 })
             }
             _ => {
@@ -663,7 +605,6 @@ impl<T: runtime::Transport> Client<T> {
         let mut req = runtime::new_request("GET", path, query)?;
         runtime::Message::set_header(&mut req, "Accept", "application/json")?;
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -682,12 +623,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Request-ID",
                         )
-                        .map_err(|e| runtime::ClientError::Decode {
-                            status: Some(status),
-                            message: e.to_string(),
-                            body: body.clone(),
-                            pointer: String::new(),
-                        })?,
+                        .map_err(|e| runtime::decode_err(Some(status), &body, e))?,
                 })
             }
         } else {
@@ -723,7 +659,6 @@ impl<T: runtime::Transport> Client<T> {
             runtime::Message::set_header(&mut req, "If-None-Match", h)?;
         }
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -760,12 +695,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Request-ID",
                         )
-                        .map_err(|e| runtime::ClientError::Decode {
-                            status: Some(status),
-                            message: e.to_string(),
-                            body: body.clone(),
-                            pointer: String::new(),
-                        })?,
+                        .map_err(|e| runtime::decode_err(Some(status), &body, e))?,
                     e_tag: runtime::from_param(
                             runtime::decode_header(
                                 runtime::joined_header(&head.headers, "ETag").as_deref(),
@@ -774,12 +704,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/ETag",
                         )
-                        .map_err(|e| runtime::ClientError::Decode {
-                            status: Some(status),
-                            message: e.to_string(),
-                            body: body.clone(),
-                            pointer: String::new(),
-                        })?,
+                        .map_err(|e| runtime::decode_err(Some(status), &body, e))?,
                     last_modified: runtime::from_param(
                             runtime::decode_header(
                                 runtime::joined_header(&head.headers, "Last-Modified")
@@ -789,12 +714,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/Last-Modified",
                         )
-                        .map_err(|e| runtime::ClientError::Decode {
-                            status: Some(status),
-                            message: e.to_string(),
-                            body: body.clone(),
-                            pointer: String::new(),
-                        })?,
+                        .map_err(|e| runtime::decode_err(Some(status), &body, e))?,
                     x_cache_control: runtime::from_param(
                             runtime::decode_header(
                                 runtime::joined_header(&head.headers, "X-Cache-Control")
@@ -804,12 +724,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Cache-Control",
                         )
-                        .map_err(|e| runtime::ClientError::Decode {
-                            status: Some(status),
-                            message: e.to_string(),
-                            body: body.clone(),
-                            pointer: String::new(),
-                        })?,
+                        .map_err(|e| runtime::decode_err(Some(status), &body, e))?,
                 })
             }
             404 => {
@@ -890,7 +805,6 @@ impl<T: runtime::Transport> Client<T> {
             }
         }
         runtime::apply_auth(&mut req, &self.credentials, ops::SECURITY_0)?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -946,12 +860,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Request-ID",
                         )
-                        .map_err(|e| runtime::ClientError::Decode {
-                            status: Some(status),
-                            message: e.to_string(),
-                            body: body.clone(),
-                            pointer: String::new(),
-                        })?,
+                        .map_err(|e| runtime::decode_err(Some(status), &body, e))?,
                 })
             }
             403 => {
@@ -1029,7 +938,6 @@ impl<T: runtime::Transport> Client<T> {
             "application/json, application/xml",
         )?;
         runtime::apply_auth(&mut req, &self.credentials, ops::SECURITY_0)?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -1090,7 +998,6 @@ impl<T: runtime::Transport> Client<T> {
             runtime::Message::set_header(&mut req, "Destination", h)?;
         }
         runtime::apply_auth(&mut req, &self.credentials, ops::SECURITY_0)?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -1118,12 +1025,7 @@ impl<T: runtime::Transport> Client<T> {
                                 >,
                             >::into_inner,
                         )
-                        .map_err(|e| runtime::ClientError::Decode {
-                            status: Some(status),
-                            message: e.to_string(),
-                            body: body.clone(),
-                            pointer: String::new(),
-                        })?,
+                        .map_err(|e| runtime::decode_err(Some(status), &body, e))?,
                 })
             }
             404 => {
@@ -1188,7 +1090,6 @@ impl<T: runtime::Transport> Client<T> {
             runtime::Message::set_body(&mut req, ct, bytes);
         }
         runtime::apply_auth(&mut req, &self.credentials, ops::SECURITY_0)?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -1224,12 +1125,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Request-ID",
                         )
-                        .map_err(|e| runtime::ClientError::Decode {
-                            status: Some(status),
-                            message: e.to_string(),
-                            body: body.clone(),
-                            pointer: String::new(),
-                        })?,
+                        .map_err(|e| runtime::decode_err(Some(status), &body, e))?,
                     x_cache_control: runtime::from_param(
                             runtime::decode_header(
                                 runtime::joined_header(&head.headers, "X-Cache-Control")
@@ -1239,12 +1135,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Cache-Control",
                         )
-                        .map_err(|e| runtime::ClientError::Decode {
-                            status: Some(status),
-                            message: e.to_string(),
-                            body: body.clone(),
-                            pointer: String::new(),
-                        })?,
+                        .map_err(|e| runtime::decode_err(Some(status), &body, e))?,
                 })
             }
             400 => {
@@ -1276,12 +1167,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Request-ID",
                         )
-                        .map_err(|e| runtime::ClientError::Decode {
-                            status: Some(status),
-                            message: e.to_string(),
-                            body: body.clone(),
-                            pointer: String::new(),
-                        })?,
+                        .map_err(|e| runtime::decode_err(Some(status), &body, e))?,
                 })
             }
             403 => {
@@ -1368,7 +1254,6 @@ impl<T: runtime::Transport> Client<T> {
             runtime::Message::set_header(&mut req, "Last-Event-ID", h)?;
         }
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -1412,12 +1297,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Request-ID",
                         )
-                        .map_err(|e| runtime::ClientError::Decode {
-                            status: Some(status),
-                            message: e.to_string(),
-                            body: body.clone(),
-                            pointer: String::new(),
-                        })?,
+                        .map_err(|e| runtime::decode_err(Some(status), &body, e))?,
                 })
             }
         } else {
@@ -1464,7 +1344,6 @@ impl<T: runtime::Transport> Client<T> {
             runtime::Message::set_header(&mut req, "Last-Event-ID", h)?;
         }
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
-        runtime::propagate_trace(&mut req);
         let again = runtime::resendable(&req);
         let resp = runtime::send_streaming(&self.transport, req).await?;
         let status = resp.status().as_u16();
@@ -1550,7 +1429,6 @@ impl<T: runtime::Transport> Client<T> {
         )?;
         runtime::Message::set_body(&mut req, ct, bytes);
         runtime::apply_auth(&mut req, &self.credentials, ops::SECURITY_0)?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -1570,12 +1448,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Request-ID",
                         )
-                        .map_err(|e| runtime::ClientError::Decode {
-                            status: Some(status),
-                            message: e.to_string(),
-                            body: body.clone(),
-                            pointer: String::new(),
-                        })?,
+                        .map_err(|e| runtime::decode_err(Some(status), &body, e))?,
                 })
             }
             400 => {
@@ -1607,12 +1480,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Request-ID",
                         )
-                        .map_err(|e| runtime::ClientError::Decode {
-                            status: Some(status),
-                            message: e.to_string(),
-                            body: body.clone(),
-                            pointer: String::new(),
-                        })?,
+                        .map_err(|e| runtime::decode_err(Some(status), &body, e))?,
                 })
             }
             404 => {
@@ -1663,7 +1531,6 @@ impl<T: runtime::Transport> Client<T> {
             runtime::json_encode(&p.body)?,
         );
         runtime::apply_auth(&mut req, &self.credentials, ops::SECURITY_0)?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -1719,7 +1586,6 @@ impl<T: runtime::Transport> Client<T> {
             }
         }
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -1749,12 +1615,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Request-ID",
                         )
-                        .map_err(|e| runtime::ClientError::Decode {
-                            status: Some(status),
-                            message: e.to_string(),
-                            body: body.clone(),
-                            pointer: String::new(),
-                        })?,
+                        .map_err(|e| runtime::decode_err(Some(status), &body, e))?,
                     location: runtime::from_param(
                             runtime::decode_header(
                                 runtime::joined_header(&head.headers, "Location")
@@ -1772,12 +1633,7 @@ impl<T: runtime::Transport> Client<T> {
                                 >,
                             >::into_inner,
                         )
-                        .map_err(|e| runtime::ClientError::Decode {
-                            status: Some(status),
-                            message: e.to_string(),
-                            body: body.clone(),
-                            pointer: String::new(),
-                        })?,
+                        .map_err(|e| runtime::decode_err(Some(status), &body, e))?,
                     x_processing_time: runtime::from_param(
                             runtime::decode_header(
                                 runtime::joined_header(&head.headers, "X-Processing-Time")
@@ -1787,12 +1643,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Processing-Time",
                         )
-                        .map_err(|e| runtime::ClientError::Decode {
-                            status: Some(status),
-                            message: e.to_string(),
-                            body: body.clone(),
-                            pointer: String::new(),
-                        })?,
+                        .map_err(|e| runtime::decode_err(Some(status), &body, e))?,
                 })
             }
             400 => {
@@ -1824,12 +1675,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Request-ID",
                         )
-                        .map_err(|e| runtime::ClientError::Decode {
-                            status: Some(status),
-                            message: e.to_string(),
-                            body: body.clone(),
-                            pointer: String::new(),
-                        })?,
+                        .map_err(|e| runtime::decode_err(Some(status), &body, e))?,
                 })
             }
             401 => {
@@ -1972,7 +1818,6 @@ impl<T: runtime::Transport> Client<T> {
             }
         }
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -2002,12 +1847,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Request-ID",
                         )
-                        .map_err(|e| runtime::ClientError::Decode {
-                            status: Some(status),
-                            message: e.to_string(),
-                            body: body.clone(),
-                            pointer: String::new(),
-                        })?,
+                        .map_err(|e| runtime::decode_err(Some(status), &body, e))?,
                     x_rate_limit_limit: runtime::from_param(
                             runtime::decode_header(
                                 runtime::joined_header(&head.headers, "X-RateLimit-Limit")
@@ -2017,12 +1857,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-RateLimit-Limit",
                         )
-                        .map_err(|e| runtime::ClientError::Decode {
-                            status: Some(status),
-                            message: e.to_string(),
-                            body: body.clone(),
-                            pointer: String::new(),
-                        })?,
+                        .map_err(|e| runtime::decode_err(Some(status), &body, e))?,
                     x_rate_limit_remaining: runtime::from_param(
                             runtime::decode_header(
                                 runtime::joined_header(
@@ -2035,12 +1870,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-RateLimit-Remaining",
                         )
-                        .map_err(|e| runtime::ClientError::Decode {
-                            status: Some(status),
-                            message: e.to_string(),
-                            body: body.clone(),
-                            pointer: String::new(),
-                        })?,
+                        .map_err(|e| runtime::decode_err(Some(status), &body, e))?,
                     x_rate_limit_reset: runtime::from_param(
                             runtime::decode_header(
                                 runtime::joined_header(&head.headers, "X-RateLimit-Reset")
@@ -2050,12 +1880,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-RateLimit-Reset",
                         )
-                        .map_err(|e| runtime::ClientError::Decode {
-                            status: Some(status),
-                            message: e.to_string(),
-                            body: body.clone(),
-                            pointer: String::new(),
-                        })?,
+                        .map_err(|e| runtime::decode_err(Some(status), &body, e))?,
                 })
             }
             400 => {
@@ -2087,12 +1912,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Request-ID",
                         )
-                        .map_err(|e| runtime::ClientError::Decode {
-                            status: Some(status),
-                            message: e.to_string(),
-                            body: body.clone(),
-                            pointer: String::new(),
-                        })?,
+                        .map_err(|e| runtime::decode_err(Some(status), &body, e))?,
                 })
             }
             401 => {
@@ -2172,12 +1992,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Request-ID",
                         )
-                        .map_err(|e| runtime::ClientError::Decode {
-                            status: Some(status),
-                            message: e.to_string(),
-                            body: body.clone(),
-                            pointer: String::new(),
-                        })?,
+                        .map_err(|e| runtime::decode_err(Some(status), &body, e))?,
                     x_rate_limit_limit: runtime::from_param(
                             runtime::decode_header(
                                 runtime::joined_header(&head.headers, "X-RateLimit-Limit")
@@ -2187,12 +2002,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-RateLimit-Limit",
                         )
-                        .map_err(|e| runtime::ClientError::Decode {
-                            status: Some(status),
-                            message: e.to_string(),
-                            body: body.clone(),
-                            pointer: String::new(),
-                        })?,
+                        .map_err(|e| runtime::decode_err(Some(status), &body, e))?,
                     x_rate_limit_remaining: runtime::from_param(
                             runtime::decode_header(
                                 runtime::joined_header(
@@ -2205,12 +2015,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-RateLimit-Remaining",
                         )
-                        .map_err(|e| runtime::ClientError::Decode {
-                            status: Some(status),
-                            message: e.to_string(),
-                            body: body.clone(),
-                            pointer: String::new(),
-                        })?,
+                        .map_err(|e| runtime::decode_err(Some(status), &body, e))?,
                     x_rate_limit_reset: runtime::from_param(
                             runtime::decode_header(
                                 runtime::joined_header(&head.headers, "X-RateLimit-Reset")
@@ -2220,12 +2025,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-RateLimit-Reset",
                         )
-                        .map_err(|e| runtime::ClientError::Decode {
-                            status: Some(status),
-                            message: e.to_string(),
-                            body: body.clone(),
-                            pointer: String::new(),
-                        })?,
+                        .map_err(|e| runtime::decode_err(Some(status), &body, e))?,
                     retry_after: runtime::from_param(
                             runtime::decode_header(
                                 runtime::joined_header(&head.headers, "Retry-After")
@@ -2235,12 +2035,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/Retry-After",
                         )
-                        .map_err(|e| runtime::ClientError::Decode {
-                            status: Some(status),
-                            message: e.to_string(),
-                            body: body.clone(),
-                            pointer: String::new(),
-                        })?,
+                        .map_err(|e| runtime::decode_err(Some(status), &body, e))?,
                 })
             }
             _ => {
@@ -2269,7 +2064,6 @@ impl<T: runtime::Transport> Client<T> {
             },
         )?;
         runtime::apply_auth(&mut req, &self.credentials, ops::SECURITY_1)?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -2299,12 +2093,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Request-ID",
                         )
-                        .map_err(|e| runtime::ClientError::Decode {
-                            status: Some(status),
-                            message: e.to_string(),
-                            body: body.clone(),
-                            pointer: String::new(),
-                        })?,
+                        .map_err(|e| runtime::decode_err(Some(status), &body, e))?,
                     e_tag: runtime::from_param(
                             runtime::decode_header(
                                 runtime::joined_header(&head.headers, "ETag").as_deref(),
@@ -2313,12 +2102,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/ETag",
                         )
-                        .map_err(|e| runtime::ClientError::Decode {
-                            status: Some(status),
-                            message: e.to_string(),
-                            body: body.clone(),
-                            pointer: String::new(),
-                        })?,
+                        .map_err(|e| runtime::decode_err(Some(status), &body, e))?,
                     last_modified: runtime::from_param(
                             runtime::decode_header(
                                 runtime::joined_header(&head.headers, "Last-Modified")
@@ -2328,12 +2112,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/Last-Modified",
                         )
-                        .map_err(|e| runtime::ClientError::Decode {
-                            status: Some(status),
-                            message: e.to_string(),
-                            body: body.clone(),
-                            pointer: String::new(),
-                        })?,
+                        .map_err(|e| runtime::decode_err(Some(status), &body, e))?,
                     x_cache_control: runtime::from_param(
                             runtime::decode_header(
                                 runtime::joined_header(&head.headers, "X-Cache-Control")
@@ -2343,12 +2122,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Cache-Control",
                         )
-                        .map_err(|e| runtime::ClientError::Decode {
-                            status: Some(status),
-                            message: e.to_string(),
-                            body: body.clone(),
-                            pointer: String::new(),
-                        })?,
+                        .map_err(|e| runtime::decode_err(Some(status), &body, e))?,
                 })
             }
             401 => {
@@ -2482,7 +2256,6 @@ impl<T: runtime::Transport> WebhookClient<T> {
             );
         }
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -2516,7 +2289,6 @@ impl<T: runtime::Transport> WebhookClient<T> {
             );
         }
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -2555,7 +2327,6 @@ impl<T: runtime::Transport> WebhookClient<T> {
             );
         }
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -2592,7 +2363,6 @@ impl<T: runtime::Transport> WebhookClient<T> {
             );
         }
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();

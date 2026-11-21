@@ -1915,6 +1915,22 @@ fn unevaluated_items_bind_the_item_only_to_read_it() {
     assert!(types.contains("for (i, item) in items.iter().enumerate().skip(1)"), "{types}");
 }
 
+/// A client method leaves the trace context to `send`, and a response header that does not decode is one call.
+#[test]
+fn a_client_method_leaves_tracing_to_send() {
+    let doc = common::spec(
+        "3.1.0",
+        &json!({"/a": {"get": {"operationId": "a", "responses": {"200": {"description": "ok",
+            "headers": {"X-Count": {"required": true, "schema": {"type": "integer"}}}}}}}}),
+        &json!({}),
+    );
+    let client =
+        common::file(&common::generate("shape-client-send", &doc, &crate::emit::Options::default()), "client.rs")
+            .to_owned();
+    assert!(!client.contains("propagate_trace"), "{client}");
+    assert!(client.contains(".map_err(|e| runtime::decode_err(Some(status), &body, e))?"), "{client}");
+}
+
 /// A multipart part whose schema gives a `contentMediaType` is sent as that type when `encoding` gives none.
 #[test]
 fn a_part_takes_the_media_type_of_its_schema() {
