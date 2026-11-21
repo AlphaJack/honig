@@ -102,6 +102,13 @@ components:
         - {properties: {label: {const: a}}, required: [label]}
         - {properties: {colour: {const: red}}, required: [colour]}
       unevaluatedProperties: false
+    # Keywords of each kind beside an implied shape: each checks the values of its kind.
+    Implied:
+      properties: {name: {type: string}}
+      required: [name]
+      minLength: 2
+      minimum: 1
+      uniqueItems: true
     # `anyOf` of two strings: the first branch that decodes, with its keywords, is the answer.
     Slug:
       anyOf: [{type: string, enum: [""]}, {type: string, pattern: '^[a-z]+$'}]

@@ -119,6 +119,17 @@ impl<'de> Content<'de> {
         if let Self::Str(s) = self { Some(s) } else { None }
     }
 
+    /// Returns a number as `serde_json` writes it in a `Value`. Empty for any other value.
+    #[must_use]
+    pub fn number_text(&self) -> String {
+        match self {
+            Self::U64(u) => u.to_string(),
+            Self::I64(i) => i.to_string(),
+            Self::F64(f) => serde_json::Number::from_f64(*f).map(|n| n.to_string()).unwrap_or_default(),
+            Self::Null | Self::Bool(_) | Self::Str(_) | Self::Seq(_) | Self::Map(_) | Self::Raw(_) => String::new(),
+        }
+    }
+
     /// Returns the JSON kind for unions told apart by kind.
     #[must_use]
     pub fn kind(&self) -> Kind {

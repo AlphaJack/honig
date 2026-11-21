@@ -561,7 +561,7 @@ pub(super) fn checks(
             | Kind::Checked(_)
             | Kind::Pending => TokenStream::new(),
         },
-        Ty::Any => any_checks(c, value, path),
+        Ty::Any => any_checks(c, value, path, false),
         Ty::Bool | Ty::Bytes | Ty::Binary | Ty::Format(_) | Ty::Unit | Ty::Tuple(_) => TokenStream::new(),
     }
 }
@@ -572,19 +572,20 @@ fn name_check(names: &Constraints, path: &TokenStream) -> TokenStream {
 }
 
 /// Returns the keywords of one kind beside an implied shape (`required` beside `properties`, `minimum` beside
-/// `items`) and `propertyNames`, checked on the JSON value of the union by its kind.
+/// `items`) and `propertyNames`, checked on the buffer of the union by its kind.
 fn implied_checks(c: &Constraints, value: &TokenStream, path: &TokenStream) -> TokenStream {
-    let by_kind = any_checks(c, &quote!(&json), path);
+    let by_kind = any_checks(c, &quote!(json), path, true);
     let names = c.property_names.as_deref().map(|n| {
-        let names = name_checks(n, &quote!(object.keys()), path);
-        quote!(if let serde_json::Value::Object(object) = &json { #names })
+        let names = name_checks(n, &quote!(object.iter().map(|(k, _)| &**k)), path);
+        quote!(if let runtime::Content::Map(object) = json { #names })
     });
     if by_kind.is_empty() && names.is_none() {
         return TokenStream::new();
     }
+    let own = own_buffer(value);
     quote! {
         {
-            let json = runtime::to_value(#value).unwrap_or_default();
+            #own
             #by_kind
             #names
         }
@@ -967,43 +968,69 @@ pub(super) fn decimal_checks(c: &Constraints, value: &TokenStream, path: &TokenS
     quote!(#range #multiple #limits)
 }
 
-/// Checks of a `serde_json::Value` (`value` is a `&` of one): each keyword on values of its kind only, as JSON Schema
-/// applies `minimum` to numbers and `minLength` to strings.
-fn any_checks(c: &Constraints, value: &TokenStream, path: &TokenStream) -> TokenStream {
+/// Checks of a `serde_json::Value`, or of a `runtime::Content` buffer with `content` (`value` is a `&` of one): each
+/// keyword on values of its kind only, as JSON Schema applies `minimum` to numbers and `minLength` to strings.
+fn any_checks(c: &Constraints, value: &TokenStream, path: &TokenStream, content: bool) -> TokenStream {
     let format = c.format.as_deref().map(|f| {
         let f = lit(f);
         quote!(runtime::check_format(out, #path, text, #f);)
     });
-    let text = string_checks(c, &quote!(text.as_str()), path);
+    let text = string_checks(c, &if content { quote!(text) } else { quote!(text.as_str()) }, path);
     let text = quote!(#text #format);
-    let number = decimal_checks(c, &quote!(&text), path);
+    let number_checks = decimal_checks(c, &quote!(&text), path);
     let count = |min: Option<u64>, max: Option<u64>, unit: &str| {
         (min.is_some() || max.is_some()).then(|| {
             let (min, max) = (opt_u64(min), opt_u64(max));
             quote!(runtime::check_len(out, #path, n.len(), #min, #max, #unit);)
         })
     };
-    let unique = c.unique_items.then(|| quote!(runtime::check_unique(out, #path, n);));
+    let unique = c.unique_items.then(|| {
+        if content {
+            quote!(runtime::check_unique_content(out, #path, n);)
+        } else {
+            quote!(runtime::check_unique(out, #path, n);)
+        }
+    });
     let items = count(c.min_items, c.max_items, "items");
     let items = (items.is_some() || unique.is_some()).then(|| quote!(#items #unique));
-    let required = required_checks(c, &quote!(|name| n.contains_key(name)), path);
+    let has =
+        if content { quote!(|name| n.iter().any(|(k, _)| k == name)) } else { quote!(|name| n.contains_key(name)) };
+    let required = required_checks(c, &has, path);
     let properties = count(c.min_properties, c.max_properties, "properties");
     let properties = (properties.is_some() || !required.is_empty()).then(|| quote!(#properties #required));
     // Each kind as (its pattern, its checks): a kind without checks passes.
-    let kinds = [
-        (
-            quote!(serde_json::Value::String(text)),
-            quote!(serde_json::Value::String(_)),
-            (!text.is_empty()).then_some(text),
-        ),
-        (
-            quote!(serde_json::Value::Number(n)),
-            quote!(serde_json::Value::Number(_)),
-            (!number.is_empty()).then(|| quote!(let text = n.to_string(); #number)),
-        ),
-        (quote!(serde_json::Value::Array(n)), quote!(serde_json::Value::Array(_)), items),
-        (quote!(serde_json::Value::Object(n)), quote!(serde_json::Value::Object(_)), properties),
-    ];
+    let kinds = if content {
+        let number = quote!(runtime::Content::U64(_) | runtime::Content::I64(_) | runtime::Content::F64(_));
+        [
+            (
+                quote!(runtime::Content::Str(text)),
+                quote!(runtime::Content::Str(_)),
+                (!text.is_empty()).then(|| quote!(let text: &str = text; #text)),
+            ),
+            (
+                quote!(n @ (#number)),
+                number,
+                (!number_checks.is_empty()).then(|| quote!(let text = n.number_text(); #number_checks)),
+            ),
+            (quote!(runtime::Content::Seq(n)), quote!(runtime::Content::Seq(_)), items),
+            (quote!(runtime::Content::Map(n)), quote!(runtime::Content::Map(_)), properties),
+        ]
+    } else {
+        [
+            (
+                quote!(serde_json::Value::String(text)),
+                quote!(serde_json::Value::String(_)),
+                (!text.is_empty()).then_some(text),
+            ),
+            (
+                quote!(serde_json::Value::Number(n)),
+                quote!(serde_json::Value::Number(_)),
+                (!number_checks.is_empty()).then(|| quote!(let text = n.to_string(); #number_checks)),
+            ),
+            (quote!(serde_json::Value::Array(n)), quote!(serde_json::Value::Array(_)), items),
+            (quote!(serde_json::Value::Object(n)), quote!(serde_json::Value::Object(_)), properties),
+        ]
+    };
     let checked: Vec<(&TokenStream, &TokenStream)> =
         kinds.iter().filter_map(|(bound, _, checks)| checks.as_ref().map(|c| (bound, c))).collect();
     match checked.as_slice() {
@@ -1012,10 +1039,15 @@ fn any_checks(c: &Constraints, value: &TokenStream, path: &TokenStream) -> Token
         _ => {
             let arms = checked.iter().map(|(pattern, checks)| quote!(#pattern => { #checks }));
             let passed = kinds.iter().filter(|(_, _, checks)| checks.is_none()).map(|(_, unbound, _)| unbound);
+            let others = if content {
+                quote!(runtime::Content::Null | runtime::Content::Bool(_) | runtime::Content::Raw(_))
+            } else {
+                quote!(serde_json::Value::Null | serde_json::Value::Bool(_))
+            };
             quote! {
                 match #value {
                     #(#arms)*
-                    serde_json::Value::Null | serde_json::Value::Bool(_) #(| #passed)* => {}
+                    #others #(| #passed)* => {}
                 }
             }
         }

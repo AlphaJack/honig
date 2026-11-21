@@ -2081,6 +2081,17 @@ fn examples_are_judged_by_the_generated_types_only() {
     assert!(examples.contains("/properties/n/example"), "{examples}");
 }
 
+/// Keywords beside an implied shape read the JSON text that the value decoded from: the value is not written out again.
+#[test]
+fn implied_keywords_read_the_decoded_text() {
+    let s = json!({"properties": {"name": {"type": "string"}}, "required": ["name"], "minLength": 2});
+    let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"S": s}}));
+    let types =
+        common::file(&common::generate("implied-text", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
+    assert!(types.contains("runtime::read_once::<") && types.contains("runtime::Content::Str(text)"), "{types}");
+    assert!(!types.contains("to_value(&value).unwrap_or_default()"), "{types}");
+}
+
 /// A checked type whose checks read the value as JSON reads JSON text once: the value decodes from it and the checks
 /// read it, with no value written out again.
 #[test]

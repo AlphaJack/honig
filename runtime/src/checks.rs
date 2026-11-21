@@ -406,12 +406,18 @@ pub fn check_decimal_range(out: &mut Vec<Violation>, path: &InstancePath<'_>, va
 ///
 /// The canonical JSON of each item is sorted. Then neighbours are compared. This is O(n log n). A comparison of every pair would let one request array cost O(n^2).
 pub fn has_duplicates<T: Serialize>(items: &[T]) -> bool {
-    let mut keys: Vec<String> = items
-        .iter()
-        .enumerate()
-        // Never equal to another item: a key no JSON text starts with.
-        .map(|(i, x)| unique_key(x).unwrap_or_else(|| ["\u{0}", itoa::Buffer::new().format(i)].concat()))
-        .collect();
+    repeats(
+        items
+            .iter()
+            .enumerate()
+            // Never equal to another item: a key no JSON text starts with.
+            .map(|(i, x)| unique_key(x).unwrap_or_else(|| ["\u{0}", itoa::Buffer::new().format(i)].concat()))
+            .collect(),
+    )
+}
+
+/// Whether two of `keys` are equal: sorted, then neighbours compared.
+fn repeats(mut keys: Vec<String>) -> bool {
     keys.sort_unstable();
     keys.windows(2).any(|w| w.first() == w.last())
 }
@@ -532,6 +538,18 @@ fn canonical_content(v: &crate::tagged::Content<'_>, out: &mut String) {
 /// Checks `uniqueItems`.
 pub fn check_unique<T: Serialize>(out: &mut Vec<Violation>, path: &InstancePath<'_>, items: &[T]) {
     if has_duplicates(items) {
+        violation(out, path, "items must be unique");
+    }
+}
+
+/// Checks `uniqueItems` of the items of a buffered array, as [`check_unique`] does.
+pub fn check_unique_content(out: &mut Vec<Violation>, path: &InstancePath<'_>, items: &[crate::tagged::Content<'_>]) {
+    let keys = items.iter().map(|x| {
+        let mut key = String::new();
+        canonical_content(x, &mut key);
+        key
+    });
+    if repeats(keys.collect()) {
         violation(out, path, "items must be unique");
     }
 }
