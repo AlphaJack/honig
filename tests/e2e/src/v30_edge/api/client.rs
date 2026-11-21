@@ -81,6 +81,7 @@ impl<T: runtime::Transport> Client<T> {
             "application/json, application/problem+json",
         )?;
         runtime::apply_auth(&mut req, &self.credentials, ops::SECURITY_0)?;
+        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -99,7 +100,12 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Next-Cursor",
                         )
-                        .map_err(|e| runtime::decode_err(Some(status), &body, e))?,
+                        .map_err(|e| runtime::ClientError::Decode {
+                            status: Some(status),
+                            message: e.to_string(),
+                            body: body.clone(),
+                            pointer: String::new(),
+                        })?,
                 })
             }
             s if (400..500).contains(&s) => {
@@ -136,6 +142,7 @@ impl<T: runtime::Transport> Client<T> {
             runtime::json_encode(&p.body)?,
         );
         runtime::apply_auth(&mut req, &self.credentials, ops::SECURITY_0)?;
+        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -180,6 +187,7 @@ impl<T: runtime::Transport> Client<T> {
             "application/json, application/problem+json",
         )?;
         runtime::apply_auth(&mut req, &self.credentials, ops::SECURITY_0)?;
+        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -198,7 +206,12 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Request-Id",
                         )
-                        .map_err(|e| runtime::decode_err(Some(status), &body, e))?,
+                        .map_err(|e| runtime::ClientError::Decode {
+                            status: Some(status),
+                            message: e.to_string(),
+                            body: body.clone(),
+                            pointer: String::new(),
+                        })?,
                 })
             }
             404 => {
@@ -230,6 +243,7 @@ impl<T: runtime::Transport> Client<T> {
         let (ct, bytes) = runtime::multipart_encode(&p.body, &[])?;
         runtime::Message::set_body(&mut req, ct, bytes);
         runtime::apply_auth(&mut req, &self.credentials, ops::SECURITY_0)?;
+        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();

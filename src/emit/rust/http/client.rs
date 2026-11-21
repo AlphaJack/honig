@@ -243,6 +243,7 @@ pub(crate) fn client_op(space: &Space<'_>, api: &Api, sec: &Securities, op: &Ope
         #accept
         #headers_and_body
         runtime::apply_auth(&mut req, &self.credentials, #security)?;
+        runtime::propagate_trace(&mut req);
     };
     let stream = (!hook).then(|| stream_method(space, op, &p, &prelude, &respond)).flatten();
     quote! {
@@ -707,7 +708,7 @@ fn response_arm(
                 let checked = crate::emit::rust::http::codec::validated_map(space, &h.ty);
                 quote! {
                     #n: runtime::from_param(#raw, #at) #checked
-                        .map_err(|e| runtime::decode_err(Some(status), &body, e))?,
+                        .map_err(|e| runtime::ClientError::Decode { status: Some(status), message: e.to_string(), body: body.clone(), pointer: String::new() })?,
                 }
             });
             (pat, quote!({ #check Ok(#op_mod::Response::#variant { #status #body #(#headers)* }) }))

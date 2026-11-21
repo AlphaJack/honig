@@ -9,10 +9,9 @@ use serde_json::{Map, Value};
 
 use crate::coerce::CoerceError;
 use crate::json::push_multi;
-use crate::json::to_value;
 #[cfg(feature = "xml")]
 use crate::media::is_xml_media;
-use crate::params::{encode_query_value, key_order, ordered};
+use crate::params::encode_query_value;
 use crate::scalar::scalar;
 use crate::text::{decode_err, lossy};
 use crate::{
@@ -85,10 +84,10 @@ pub fn form_encode_with<T: Serialize>(
     styles: &[(&str, Enc)],
     types: &[(&str, &str)],
 ) -> Result<Vec<u8>, ClientError> {
-    let value = to_value(v)?;
     let mut parts = vec![];
-    if let Value::Object(o) = &value {
-        for (k, x) in ordered(o, &key_order(v)) {
+    // The members in field order, in one pass.
+    if let Some(members) = crate::params::members(v)? {
+        for (k, x) in &members {
             if let Some((_, enc)) = styles.iter().find(|(n, _)| n == k) {
                 encode_query_value(&mut parts, k, x, *enc, &[]);
                 continue;
@@ -132,13 +131,12 @@ pub fn form_decode_with<T: DeserializeOwned>(
     let fields = form_fields(status, body, styles, types)?;
     T::deserialize(Coerce(Value::Object(fields))).map_err(|e| {
         // Tracking the pointer allocates per key. So only a body that fails is read again with tracking to say where.
-        let (pointer, kind) = form_fields(status, body, styles, types)
+        let pointer = form_fields(status, body, styles, types)
             .ok()
             .and_then(|fields| crate::path::deserialize::<_, T>(Coerce(Value::Object(fields))).err())
-            .map(|(pointer, kind, _)| (pointer, kind))
+            .map(|(pointer, _)| pointer)
             .unwrap_or_default();
-        let (pointer, message) = crate::path::reported(pointer, kind, e.to_string());
-        ClientError::Decode { status, message, body: bytes::Bytes::copy_from_slice(body), pointer }
+        ClientError::Decode { status, message: e.to_string(), body: bytes::Bytes::copy_from_slice(body), pointer }
     })
 }
 
@@ -186,12 +184,11 @@ pub fn form_decode<T: DeserializeOwned>(status: Option<u16>, body: &[u8]) -> Res
     let text = lossy(body);
     T::deserialize(Form(sorted_pairs(&text))).map_err(|e| {
         // Read again with tracking only once it failed, to say where: tracking allocates per key.
-        let (pointer, kind) = crate::path::deserialize::<_, T>(Form(sorted_pairs(&text)))
+        let pointer = crate::path::deserialize::<_, T>(Form(sorted_pairs(&text)))
             .err()
-            .map(|(pointer, kind, _)| (pointer, kind))
+            .map(|(pointer, _)| pointer)
             .unwrap_or_default();
-        let (pointer, message) = crate::path::reported(pointer, kind, e.to_string());
-        ClientError::Decode { status, message, body: bytes::Bytes::copy_from_slice(body), pointer }
+        ClientError::Decode { status, message: e.to_string(), body: bytes::Bytes::copy_from_slice(body), pointer }
     })
 }
 
@@ -358,6 +355,27 @@ pub fn encode_querystring(out: &mut Vec<String>, v: &Value, form: bool) {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A form writes the fields in their order, a list as one pair per item, and leaves out a `None`. A value that does
+    /// not serialize is an error, not an empty form.
+    #[test]
+    fn a_form_writes_its_fields_in_order() {
+        #[derive(serde::Serialize)]
+        struct F {
+            zeta: u8,
+            alpha: Vec<&'static str>,
+            gone: Option<u8>,
+            nested: Value,
+        }
+        #[derive(serde::Serialize)]
+        struct N {
+            x: f64,
+        }
+        let f = F { zeta: 1, alpha: vec!["a b", "c"], gone: None, nested: serde_json::json!({"k": 1}) };
+        let body = String::from_utf8(form_encode(&f).unwrap()).unwrap();
+        assert_eq!(body, "zeta=1&alpha=a+b&alpha=c&nested=%7B%22k%22%3A1%7D");
+        assert!(form_encode(&N { x: f64::NAN }).is_err());
+    }
 
     /// What `form_decode` read before it went field by field: the object of the fields.
     fn through_object<T: DeserializeOwned>(body: &[u8]) -> Result<T, String> {

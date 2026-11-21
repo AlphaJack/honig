@@ -84,7 +84,7 @@ fn object_order<T: Serialize + ?Sized>(value: &Value, v: &T) -> Vec<String> {
     if value.is_object() { key_order(v) } else { Vec::new() }
 }
 
-pub(crate) use super::keys::key_order;
+pub(crate) use super::keys::{key_order, members};
 
 /// Returns the entries of an object in `order`. RFC 6570 expands an associative array in
 /// its own order. Keys that `order` lacks follow in sorted order.

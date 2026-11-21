@@ -373,9 +373,8 @@ impl<'de, T: Deserialize<'de>> Visitor<'de> for ReadOnce<T> {
                     // Read again to say where inside the value it failed. The tracker of the whole body adds that.
                     Err(e) => {
                         let mut d = serde_json::Deserializer::from_str(text);
-                        if let Err((pointer, kind, _)) = crate::path::deserialize::<_, T>(crate::integral::Ints(&mut d))
-                        {
-                            crate::path::nested_failure(pointer, kind);
+                        if let Err((pointer, _)) = crate::path::deserialize::<_, T>(crate::integral::Ints(&mut d)) {
+                            crate::path::nested_failure(pointer);
                         }
                         // The position in the value's own text says nothing: the reader of the body adds its own.
                         let message = e.to_string();

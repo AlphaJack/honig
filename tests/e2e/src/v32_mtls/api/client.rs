@@ -38,6 +38,7 @@ impl<T: runtime::Transport> Client<T> {
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
         runtime::apply_auth(&mut req, &self.credentials, ops::SECURITY_0)?;
+        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -59,6 +60,7 @@ impl<T: runtime::Transport> Client<T> {
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
         runtime::apply_auth(&mut req, &self.credentials, ops::SECURITY_1)?;
+        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -80,6 +82,7 @@ impl<T: runtime::Transport> Client<T> {
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
         runtime::apply_auth(&mut req, &self.credentials, ops::SECURITY_2)?;
+        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
