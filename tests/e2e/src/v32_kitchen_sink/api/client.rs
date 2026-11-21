@@ -293,12 +293,13 @@ impl<T: runtime::Transport> Client<T> {
     }
     pub async fn put_blob(
         &self,
+        server: ops::put_blob::Server,
         p: impl runtime::IntoArg<'_, ops::put_blob::Params>,
     ) -> Result<ops::put_blob::Response, runtime::ClientError> {
         let p = runtime::IntoArg::into_arg(p).into_owned();
         let mut path = String::from("/blobs/");
         path.push_str(&runtime::encode_path("id", &p.id, runtime::Enc::SIMPLE)?);
-        let path = runtime::operation_path(ops::put_blob::SERVERS, path);
+        let path = runtime::operation_path(&[server.url()], path);
         let mut query: Vec<String> = Vec::new();
         runtime::encode_query(&mut query, "legacy", &p.legacy, runtime::Enc::FORM)?;
         let mut req = runtime::new_request("PUT", path, query)?;
@@ -357,6 +358,7 @@ impl<T: runtime::Transport> Client<T> {
     }
     pub async fn put_blob_stream(
         &self,
+        server: ops::put_blob::Server,
         p: impl runtime::IntoArg<'_, ops::put_blob::Params>,
     ) -> Result<
         runtime::Streamed<runtime::Response, ops::put_blob::Response>,
@@ -365,7 +367,7 @@ impl<T: runtime::Transport> Client<T> {
         let p = runtime::IntoArg::into_arg(p).into_owned();
         let mut path = String::from("/blobs/");
         path.push_str(&runtime::encode_path("id", &p.id, runtime::Enc::SIMPLE)?);
-        let path = runtime::operation_path(ops::put_blob::SERVERS, path);
+        let path = runtime::operation_path(&[server.url()], path);
         let mut query: Vec<String> = Vec::new();
         runtime::encode_query(&mut query, "legacy", &p.legacy, runtime::Enc::FORM)?;
         let mut req = runtime::new_request("PUT", path, query)?;

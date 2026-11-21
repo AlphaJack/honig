@@ -642,6 +642,23 @@ pub(crate) fn params_struct(space: &Space<'_>, op: &Operation, conveniences: boo
             pub const SERVERS: &[runtime::ServerUrl] = &[#(#urls),*];
         }
     });
+    let server_enum = (op.servers.len() > 1).then(|| {
+        let names: Vec<_> =
+            op.servers.iter().map(|s| pascal_ident(&Name::new(s.name.as_deref().unwrap_or_default()))).collect();
+        let docs = op.servers.iter().map(|s| doc_opt(s.doc.as_deref()));
+        let urls = op.servers.iter().map(server_url);
+        quote! {
+            /// The server that a call goes to, by its name in the description.
+            #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+            pub enum Server { #(#docs #names,)* }
+            impl Server {
+                #[must_use]
+                pub const fn url(self) -> runtime::ServerUrl {
+                    match self { #(Self::#names => #urls,)* }
+                }
+            }
+        }
+    });
     let mut tys: Vec<&Ty> = op.params.iter().map(|p| &p.ty).collect();
     if let Some(body) = &op.body {
         tys.extend(body.contents.iter().map(|c| &c.ty));
@@ -668,6 +685,7 @@ pub(crate) fn params_struct(space: &Space<'_>, op: &Operation, conveniences: boo
     quote! {
         #consts
         #servers
+        #server_enum
         #[derive(Debug, Clone, PartialEq, #eq)]
         pub struct Params {
             #(#fields)*
