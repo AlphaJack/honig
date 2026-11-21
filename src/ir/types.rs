@@ -184,7 +184,7 @@ pub(crate) struct TypeDef {
     /// A `Newtype` carried as JSON text in a string (`contentMediaType:
     /// application/json` with `contentSchema`).
     pub json_string: bool,
-    /// A schema of `components/schemas`: one the description names. An identical one keeps its own type.
+    /// A schema of `components/schemas`: one the description declares. An identical one keeps its own type.
     pub component: bool,
     /// The keywords of the schema itself, as a value of the type meets them: with `$ref`s and `allOf` members
     /// followed. Keywords that no type holds (`if`, `not`, `oneOf`'s one match) make it a checked type.

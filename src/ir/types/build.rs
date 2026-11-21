@@ -1236,7 +1236,7 @@ mod tests {
         }
     }
 
-    /// An integer enum's variants are named by their values, or by `x-enum-varnames` when it names each.
+    /// An integer enum's variants are named by their values, or by `x-enum-varnames` when it lists one for each.
     #[test]
     fn integer_variants_are_named_by_value() {
         let s = build(

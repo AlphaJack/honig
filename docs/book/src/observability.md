@@ -22,7 +22,7 @@ With the `tracing` adapter each request runs in a span that wraps your layers an
 
 ## Trace context
 
-The `tracing-opentelemetry` adapter adds W3C Trace Context. The span of a request then continues the trace that its `traceparent` header names. The requests of the client carry the `traceparent` and `tracestate` of the current span. A request that already has a `traceparent` keeps it. Spans join only once a `tracing-opentelemetry` layer exports them:
+The `tracing-opentelemetry` adapter adds W3C Trace Context. The span of a request then continues the trace that its `traceparent` header identifies. The requests of the client carry the `traceparent` and `tracestate` of the current span. A request that already has a `traceparent` keeps it. Spans join only once a `tracing-opentelemetry` layer exports them:
 
 ```rust
 {{#include ../../../tests/e2e/tests/v32_catalog/observability.rs:trace-context}}

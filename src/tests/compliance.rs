@@ -728,7 +728,7 @@ fn a_problem_json_error_body_needs_no_error_response() {
     );
 }
 
-/// Two scheme names that differ only in case or separators name one Rust item. Numbering them would follow the
+/// Two scheme names that differ only in case or separators map to one Rust item. Numbering them would follow the
 /// document order, and a reorder would swap their validators: generation fails and names both.
 #[test]
 fn two_schemes_with_one_rust_name_are_an_error() {
@@ -740,12 +740,12 @@ fn two_schemes_with_one_rust_name_are_an_error() {
     );
     assert!(
         w.iter().any(|m| m.starts_with("/components/securitySchemes/api_key:")
-            && m.contains("`api-key` and `api_key` name the same item")),
+            && m.contains("`api-key` and `api_key` map to the same item")),
         "{w:#?}"
     );
 }
 
-/// The client names one of several operation servers. Without a distinct name each, it would pick by position, and a
+/// The client picks one of several operation servers. Without a distinct name each, it would pick by position, and a
 /// reorder would send requests to another environment: generation fails.
 #[test]
 fn several_operation_servers_need_a_name_each() {

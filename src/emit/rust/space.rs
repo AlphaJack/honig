@@ -182,7 +182,7 @@ fn def_sizes(types: &TypeSpace) -> Vec<usize> {
     (0..types.defs.len()).map(|i| named(types, &mut found, i)).collect()
 }
 
-/// Returns the size of a definition of kind `kind`, with the sizes of the definitions it names from `named`.
+/// Returns the size of a definition of kind `kind`, with the sizes of the definitions it refers to from `named`.
 fn def_size(kind: &Kind, named: &mut dyn FnMut(TypeId) -> usize) -> usize {
     match kind {
         Kind::Struct(s) => {

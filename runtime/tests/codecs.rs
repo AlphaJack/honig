@@ -481,7 +481,7 @@ fn a_response_of_an_undeclared_media_type_is_refused() {
     assert!(check_response_media(200, "", Some(b"{}"), &json).is_ok());
     assert!(check_response_media(200, "", Some(b"{}"), &["application/json", "application/xml"]).is_err());
     assert!(check_response_media(200, "", Some(b""), &["application/json", "application/xml"]).is_ok());
-    // A stream's body is unread. It is the one type declared or it must name its type.
+    // A stream's body is unread. It is the one type declared or it must state its type.
     assert!(check_response_media(200, "", None, &["text/event-stream"]).is_ok());
     assert!(check_response_media(200, "", None, &["text/event-stream", "application/jsonl"]).is_err());
     assert!(check_response_media(200, "image/png", None, &["image/*"]).is_ok());

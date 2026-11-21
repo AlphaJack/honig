@@ -319,7 +319,7 @@ pub(crate) struct Http {
 }
 
 impl Http {
-    /// Builds every operation; `schemes` are the ones its `security` may name.
+    /// Builds every operation; `schemes` are the ones its `security` may refer to.
     pub(crate) fn build(b: &mut Builder<'_>, schemes: &[SecurityScheme]) -> Self {
         Self { operations: operations(b, schemes) }
     }

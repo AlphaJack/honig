@@ -37,7 +37,7 @@ struct Target {
 /// Checks every path at every size. When callgrind runs it with `--measure` it runs one path at one size. Names on the
 /// command line (`cargo bench --bench scaling -- text_encode`) check only those paths.
 ///
-/// `bench` names its results, to compare with what `main` measured ([`Results`]).
+/// `bench` labels its results, to compare with what `main` measured ([`Results`]).
 pub fn main(bench: &str, paths: &[Path], sizes: &[usize]) -> ExitCode {
     let targets: Vec<Target> = paths.iter().map(|p| Target { name: p.name, phases: &[], prepare: p.prepare }).collect();
     run(bench, &targets, sizes)
@@ -77,7 +77,7 @@ fn measure(targets: &[Target], name: &str, size: &str) -> ExitCode {
     ExitCode::SUCCESS
 }
 
-/// The call callgrind counts: `--toggle-collect` names it.
+/// The call callgrind counts: `--toggle-collect` selects it.
 #[inline(never)]
 fn measured(work: &mut Work) {
     work();

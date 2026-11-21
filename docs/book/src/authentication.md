@@ -16,7 +16,7 @@ An `Api` without the method does not compile, so no credential reaches an operat
 
 {{#include generated/principals.md}}
 
-Every `401` of an operation carries `WWW-Authenticate` with a challenge for its `http` schemes (`Bearer`, `Basic`), also one that your handler returns. An `apiKey` or `mutualTLS` scheme has no HTTP authentication scheme to name in a challenge (RFC 9110 section 11.6.1), so a `401` for one carries none.
+Every `401` of an operation carries `WWW-Authenticate` with a challenge for its `http` schemes (`Bearer`, `Basic`), also one that your handler returns. An `apiKey` or `mutualTLS` scheme has no HTTP authentication scheme to put in a challenge (RFC 9110 section 11.6.1), so a `401` for one carries none.
 
 `server::credentials(req)` gives one `Credential` variant per security scheme that the operation matched. A scheme added to the description is then a compile error until you handle it.
 

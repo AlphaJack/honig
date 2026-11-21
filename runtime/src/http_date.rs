@@ -7,7 +7,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 pub(crate) const DAY_HOURS: i64 = 24;
 /// Minutes in an hour.
 pub(crate) const HOUR_MINUTES: i64 = 60;
-/// Seconds in a minute and the highest second that an HTTP date may name. A leap second is `60`.
+/// Seconds in a minute and the highest second that an HTTP date may hold. A leap second is `60`.
 pub(crate) const MINUTE_SECONDS: i64 = 60;
 /// Seconds in an hour.
 pub(crate) const HOUR_SECONDS: i64 = HOUR_MINUTES * MINUTE_SECONDS;

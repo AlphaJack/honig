@@ -104,8 +104,8 @@ impl Conditions {
 }
 
 /// Returns `304 Not Modified` for a response. It has the headers without the body and without the metadata that
-/// describes the body. A 304 must not send those (RFC 9110 section 15.4.5). `Content-Location` stays because it names
-/// the representation.
+/// describes the body. A 304 must not send those (RFC 9110 section 15.4.5). `Content-Location` stays because it
+/// identifies the representation.
 fn not_modified(resp: Response) -> Response {
     let (mut head, _) = resp.into_parts();
     let names: Vec<http::HeaderName> = head.headers.keys().cloned().collect();

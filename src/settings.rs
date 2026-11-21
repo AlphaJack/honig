@@ -746,7 +746,7 @@ pub(crate) enum DateLib {
     Jiff,
 }
 
-/// A type that the `formats` table names for a format: a path such as `time::OffsetDateTime`. Only a path of Rust
+/// A type that the `formats` table sets for a format: a path such as `time::OffsetDateTime`. Only a path of Rust
 /// identifiers is one.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct NamedType(String);
@@ -775,7 +775,7 @@ pub(crate) struct FormatLibs {
     pub ipnet: bool,
     /// Dates and timestamps.
     pub dates: Option<DateLib>,
-    /// The types that the table names for formats. Each wins over a library for its format.
+    /// The types that the table sets for formats. Each wins over a library for its format.
     pub named: BTreeMap<Format, NamedType>,
 }
 
@@ -783,7 +783,7 @@ const CHRONO: &str = "chrono";
 /// `jiff` (with its `serde` feature): the dates and times. Also the runtime feature of `runtime::FullTime`.
 pub(crate) const JIFF: &str = "jiff";
 
-/// Returns the library types that string formats take: the `formats` table says them. Each library that it names must
+/// Returns the library types that string formats take: the `formats` table says them. Each library that it lists must
 /// be a dependency with its `serde` feature. Without the table a dependency added for another reason would change the
 /// types of fields, so the table is required. The error prints the line that keeps what the dependencies give today.
 ///
@@ -976,7 +976,7 @@ mod tests {
         assert!(error("formats = { uuid = \"not a type(\" }").contains("`uuid`"), "the error points to the key");
         assert!(error("formats = { date = 1 }").contains("the path of a type"));
         assert!(error("formats = { date = \"chrono::DateTime<chrono::Utc>\" }").contains("the path of a type"));
-        // `time` reads only valid values: no check to keep, so no type to name.
+        // `time` reads only valid values: no check to keep, so no type to set.
         assert!(error("formats = { time = \"crate::T\" }").contains("an unknown setting"));
     }
 

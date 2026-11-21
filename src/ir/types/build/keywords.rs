@@ -262,9 +262,9 @@ pub(super) fn typed_pattern_map(s: &Value) -> Option<String> {
     (closed && !o.contains_key("properties")).then(|| patterns.keys().next().cloned()).flatten()
 }
 
-/// Returns `patternProperties` of `s` when its struct holds them ([`crate::ir::types::Struct::patterns`]): an object, with properties of
-/// its own or none, and `additionalProperties` absent, a bool or a schema. Every pattern compiles, so the
-/// generator can tell which declared names it matches.
+/// Returns `patternProperties` of `s` when its struct holds them ([`crate::ir::types::Struct::patterns`]): an object,
+/// with properties of its own or none, and `additionalProperties` absent, a bool or a schema. Every pattern compiles,
+/// so the generator can tell which declared names it matches.
 pub(super) fn struct_patterns(s: &Value) -> Option<&serde_json::Map<String, Value>> {
     let o = s.as_object().filter(|o| is_object(o))?;
     // A closed map of one pattern is a map of that pattern's type already ([`typed_pattern_map`]).
@@ -304,8 +304,8 @@ pub(super) fn typed_property_names(s: &Value) -> Option<Box<Constraints>> {
 /// `dependentRequired`: each name that triggers it, with the names that it requires then.
 pub(super) type Dependents = Vec<(String, Vec<String>)>;
 
-/// Returns `dependentRequired` of `s` when generated code checks it, and whether it names a property that `s` does not
-/// declare. Its struct keeps such a name, which is checked on the JSON object then. A map or a value without `type`
+/// Returns `dependentRequired` of `s` when generated code checks it, and whether it refers to a property that `s` does
+/// not declare. Its struct keeps such a name, which is checked on the JSON object then. A map or a value without `type`
 /// keeps every name. `None` leaves it to the run-time check of the whole schema.
 pub(super) fn typed_dependents(s: &Value) -> Option<(Dependents, bool)> {
     let deps = s.get("dependentRequired")?.as_object()?;
@@ -435,9 +435,9 @@ pub(super) fn typed_const(o: &serde_json::Map<String, Value>) -> Option<&Value> 
     (!shaped).then_some(c)
 }
 
-/// Returns an `enum` of objects, lists or values of several kinds as the `anyOf` of one `const` per value: each is a unit
-/// struct that decodes only its value, so the union decodes only a listed value. `null` is `{type: null}`. `None` when
-/// a `type` beside it would refuse a listed value, or another keyword beside it shapes the value.
+/// Returns an `enum` of objects, lists or values of several kinds as the `anyOf` of one `const` per value: each is a
+/// unit struct that decodes only its value, so the union decodes only a listed value. `null` is `{type: null}`. `None`
+/// when a `type` beside it would refuse a listed value, or another keyword beside it shapes the value.
 pub(super) fn values_union(o: &serde_json::Map<String, Value>) -> Option<serde_json::Map<String, Value>> {
     let values = o.get("enum")?.as_array().filter(|v| !v.is_empty())?;
     let (types, _) = type_set(o);
@@ -668,8 +668,8 @@ pub(super) fn untyped_value_checks(s: &Value, c: &mut Constraints) {
     }
 }
 
-/// What [`super::Builder::evaluation`] works out: the names ([`Evaluated`]) or the items ([`EvaluatedItems`]) that a schema
-/// evaluates.
+/// What [`super::Builder::evaluation`] works out: the names ([`Evaluated`]) or the items ([`EvaluatedItems`]) that a
+/// schema evaluates.
 pub(super) trait Evaluation: Default {
     /// What schema object `o` evaluates by its own keywords. `index` gives the type of a schema that it decodes as.
     fn own(o: &serde_json::Map<String, Value>, depth: usize, index: &dyn Fn(&Value) -> usize) -> Self;

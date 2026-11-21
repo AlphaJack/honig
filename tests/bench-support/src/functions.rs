@@ -45,7 +45,7 @@ pub(crate) fn read(path: &Path) -> Option<Report> {
     Some(Report { total: totals(&text)?, functions: own_costs(&text) })
 }
 
-/// Each function's own count in a callgrind report. `fn=` starts the lines of a function and `cfn=` names the one
+/// Each function's own count in a callgrind report. `fn=` starts the lines of a function and `cfn=` identifies the one
 /// it calls: both may give a name to an id, `fn=(7) name`, which later lines use alone, `fn=(7)`. A line of cost is a
 /// position and then the count. The line after `calls=` is the cost of that call, the callee's, and is left out.
 fn own_costs(text: &str) -> BTreeMap<String, u64> {

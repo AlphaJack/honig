@@ -130,7 +130,7 @@ pub(crate) fn webhook_client(space: &Space<'_>, api: &Api, sec: &Securities) -> 
     })
 }
 
-/// Returns `server: <op>::Server,`: the argument that names one of several servers of an operation.
+/// Returns `server: <op>::Server,`: the argument that picks one of several servers of an operation.
 fn server_arg(op: &Operation, m: &TokenStream) -> Option<TokenStream> {
     (op.servers.len() > 1).then(|| quote!(server: #m::Server,))
 }
@@ -171,7 +171,7 @@ pub(crate) fn client_path(op: &Operation, m: &TokenStream, hook: bool) -> (Optio
     if hook {
         (Some(quote!(url: &str,)), quote!(let path = url.to_owned();))
     } else {
-        // Operation or path-level `servers`: this operation goes there. Of several, the caller names one.
+        // Operation or path-level `servers`: this operation goes there. Of several, the caller picks one.
         let init = if path.is_empty() { quote!(let path = #start;) } else { quote!(let mut path = #start;) };
         match op.servers.len() {
             0 => (None, quote!(#init #(#path)*)),

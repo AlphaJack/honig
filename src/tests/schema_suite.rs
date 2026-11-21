@@ -1,8 +1,8 @@
-//! The JSON Schema Test Suite against generated types. Each case of `tests/fixtures/json-schema-test-suite` that applies
-//! to 2020-12 becomes the field `v` of an object of one description. Its type must decode every valid instance and refuse every invalid
-//! one. `json-schema-test-suite.known` lists the tests that do not hold today, each with its reason. The test fails on
-//! a test that does not hold and is not listed, and on a listed test that holds: the list stays true. It rewrites the
-//! list when it is stale.
+//! The JSON Schema Test Suite against generated types. Each case of `tests/fixtures/json-schema-test-suite` that
+//! applies to 2020-12 becomes the field `v` of an object of one description. Its type must decode every valid instance
+//! and refuse every invalid one. `json-schema-test-suite.known` lists the tests that do not hold today, each with its
+//! reason. The test fails on a test that does not hold and is not listed, and on a listed test that holds: the list
+//! stays true. It rewrites the list when it is stale.
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -175,8 +175,8 @@ fn generable(i: usize, case: &Case) -> Result<(), String> {
     }
 }
 
-/// Does `schema` hold a reference to a document that no `$id` within it names? Each `$id` and reference resolves against
-/// the base of the resource around it.
+/// Does `schema` hold a reference to a document that no `$id` within it identifies? Each `$id` and reference resolves
+/// against the base of the resource around it.
 fn refers_outside(schema: &Value) -> bool {
     let mut ids = vec![];
     let mut refs = vec![];

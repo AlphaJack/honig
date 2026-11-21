@@ -82,7 +82,7 @@ pub fn size(bytes: usize) -> String {
     format!("{n}{name}")
 }
 
-/// Returns `bytes` in KiB, a number alone for a column whose header names the unit: `0.25`, `16`, `32768`.
+/// Returns `bytes` in KiB, a number alone for a column whose header states the unit: `0.25`, `16`, `32768`.
 #[must_use]
 pub fn kib(bytes: usize) -> String {
     let whole = bytes / STEP;

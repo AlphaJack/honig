@@ -55,7 +55,7 @@ fn integer_enum_values_are_checked() {
     assert!(serde_json::from_str::<types::SubmitFormBodyPriority>("7").is_err());
 }
 
-/// Of several path servers the caller names one: a reorder in the description changes no request.
+/// Of several path servers the caller picks one: a reorder in the description changes no request.
 #[test]
 fn path_servers_expand_their_variables() {
     let path = |s: ops::put_blob::Server| api::runtime::operation_path(&[s.url()], "/blobs/1".to_owned());

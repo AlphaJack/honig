@@ -129,7 +129,7 @@ fn a_pattern_beside_a_typed_format_is_reported_unchecked() {
     assert!(at[0].contains("format: uuid"), "{at:?}");
 }
 
-/// A type that the `formats` table names takes the place of a library for its format. Its text is checked first, as a
+/// A type that the `formats` table sets takes the place of a library for its format. Its text is checked first, as a
 /// library's is: the type may read more than the format allows. It has no `Default` that honig could know of.
 #[test]
 fn a_named_type_holds_its_format_with_the_text_checked() {

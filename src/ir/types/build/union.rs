@@ -803,7 +803,8 @@ pub(crate) fn str_enum(values: &[&str]) -> Kind {
     Kind::StrEnum(vs)
 }
 
-/// Returns a schema that the description names: a component schema, or the schema of a component parameter or header.
+/// Returns a schema that the description declares: a component schema, or the schema of a component parameter or
+/// header.
 pub(super) fn named_by_description(ptr: &str) -> bool {
     let entry = |section: &str, tail: &str| {
         ptr.strip_prefix(section).and_then(|rest| rest.strip_suffix(tail)).is_some_and(|key| !key.contains('/'))

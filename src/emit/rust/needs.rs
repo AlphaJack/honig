@@ -73,7 +73,7 @@ fn format_checks(api: &Api, libs: &FormatLibs) -> Vec<&'static str> {
     for ty in every_ty(api) {
         formats_in(ty, &mut used);
     }
-    // A type that the table names reads text that the runtime checked first.
+    // A type that the table sets reads text that the runtime checked first.
     let checked = |formats: &[Format]| {
         formats.iter().any(|f| used.contains(f) && (untyped(libs, *f) || libs.named.contains_key(f)))
     };

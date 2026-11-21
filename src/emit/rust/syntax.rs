@@ -227,7 +227,7 @@ fn library_ty(libs: &FormatLibs, f: Format) -> Option<TokenStream> {
 
 /// Returns the marker in `runtime::formats::format` of a format whose library type reads more than the format allows.
 /// `jiff` reads `2024-06-19 08:30Z` as a `date-time` and `uuid` reads `{...}`. `None` for text, the standard library's
-/// addresses and the runtime's own types: those read only valid values. A type that the table names reads text that
+/// addresses and the runtime's own types: those read only valid values. A type that the table sets reads text that
 /// honig checked first.
 fn validated_format(libs: &FormatLibs, f: Format) -> Option<Ident> {
     let checked = libs.named.contains_key(&f)
@@ -547,7 +547,7 @@ fn in_threes(digits: &str, head: usize) -> String {
     starts.zip(ends).map(|(a, b)| digits.get(a..b).unwrap_or_default()).collect::<Vec<_>>().join("_")
 }
 
-/// A struct or enum that holds itself names itself `Self` in its fields (`clippy::use_self`).
+/// A struct or enum that holds itself refers to itself as `Self` in its fields (`clippy::use_self`).
 struct SelfInOwnFields;
 
 impl syn::visit_mut::VisitMut for SelfInOwnFields {
@@ -1106,7 +1106,7 @@ mod tests {
         assert_eq!(grouped("1.5e10"), "1.5e10");
     }
 
-    /// A type names a generated type or a runtime one when anything it holds does.
+    /// A type refers to a generated type or a runtime one when anything it holds does.
     #[test]
     fn a_type_mentions_what_it_holds() {
         use crate::ir::types::{Ty, TypeId};

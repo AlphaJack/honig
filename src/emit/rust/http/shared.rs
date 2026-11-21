@@ -266,7 +266,7 @@ pub(crate) fn param_start(space: &Space<'_>, p: &Param) -> TokenStream {
     spec_default(space, p).unwrap_or_else(|| quote!(None))
 }
 
-/// Returns `use super::types;` when `needed`: a module of `api` that names a generated type.
+/// Returns `use super::types;` when `needed`: a module of `api` that refers to a generated type.
 pub(crate) fn types_import(needed: bool) -> Option<TokenStream> {
     needed.then(|| {
         quote!(

@@ -91,7 +91,7 @@ anyhow = "1"
 bench-support = { path = "tests/bench-support" }
 # `src/tests/fuzz.rs`: random APIs. A failure shrinks to the smallest API that fails.
 proptest = { version = "1", default-features = false, features = ["std"] }
-# `tests/conventions`: where each item is. A failure names it.
+# `tests/conventions`: where each item is. A failure points to it.
 proc-macro2 = { version = "1", features = ["span-locations"] }
 syn = { version = "3", features = ["full", "visit"] }
 

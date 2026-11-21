@@ -705,7 +705,7 @@ fn the_server_answers_ranges_only_for_binary_gets_that_leave_them_to_it() {
     }
 }
 
-/// Every schema the description names keeps its name, though another one has its shape: `PaymentMethod` and
+/// Every schema the description declares keeps its name, though another one has its shape: `PaymentMethod` and
 /// `DeliverySpeed` are both `enum: [0, 1]`, and so are the inline `status` and `priority` of `Order`. Inline twins
 /// in one role (`status` of two operations) still share one type, named for what they share (`OkStatus`). A component parameter's schema is named after its
 /// key, not after the first operation that uses it.
@@ -883,7 +883,7 @@ fn every_struct_gets_a_builder() {
     }
 }
 
-/// An XML field names only what differs from an element of its own name: the rest comes from `XmlField::new`.
+/// An XML field states only what differs from an element of its own name: the rest comes from `XmlField::new`.
 #[test]
 fn an_xml_field_names_only_what_differs() {
     let doc = common::spec(
@@ -904,7 +904,7 @@ fn an_xml_field_names_only_what_differs() {
     assert!(types.contains(r#",runtime::XmlField::new("title"),"#), "{types}");
 }
 
-/// A server operation names only what differs from `Op::new`: an operation without security, body or ranges is the
+/// A server operation states only what differs from `Op::new`: an operation without security, body or ranges is the
 /// call alone.
 #[test]
 fn a_server_operation_names_only_what_differs() {
@@ -1074,7 +1074,7 @@ fn not_is_a_check_against_the_type_of_its_schema() {
     assert!(types.contains(".matches::<") && !types.contains("check_schema"), "{types}");
 }
 
-/// A range check names each bound it has (`max: Some(100)`) and leaves the others to `Bounds::NONE`: no four
+/// A range check states each bound it has (`max: Some(100)`) and leaves the others to `Bounds::NONE`: no four
 /// positional options.
 #[test]
 fn a_range_check_names_its_bounds() {
@@ -1098,7 +1098,7 @@ fn a_range_check_names_its_bounds() {
 }
 
 /// A pattern check prints its pattern once, in its `static`: the runtime writes the message from it. A checked type
-/// also names it as `PATTERN`.
+/// also exposes it as `PATTERN`.
 #[test]
 fn a_pattern_is_printed_once_per_check() {
     let doc =
@@ -2188,7 +2188,7 @@ fn a_reorder_of_colliding_names_changes_nothing() {
     };
     // Every wire name with the Rust name that holds it: a `rename` and its field, a match arm, a query encoded from a
     // field, and a header or query read into or written from the field named just before it. Builder entries
-    // (`field(setter) : Type = "wire"`) print wrapped and name the same fields as the struct.
+    // (`field(setter) : Type = "wire"`) print wrapped and refer to the same fields as the struct.
     let pairs = |text: &str| {
         let mut out = Vec::new();
         let (mut field, mut renamed) = ("", None::<&str>);

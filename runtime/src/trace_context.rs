@@ -35,7 +35,7 @@ pub fn propagate_trace(req: &mut Request) {
     let _ = req;
 }
 
-/// The span of the caller that a request names in its `traceparent`. It is kept while the request goes through the
+/// The span of the caller that a request identifies in its `traceparent`. It is kept while the request goes through the
 /// layers.
 #[cfg(feature = "server")]
 #[derive(Debug, Default)]

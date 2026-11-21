@@ -21,7 +21,7 @@ use crate::ir::types::{Kind, Ty};
 
 /// Returns `operations.rs`. `conveniences`: `METHOD`, `PATH`, `Params::new` and the `tags` modules for code that calls
 /// the API. A binary that only serves it (no client) never refers to them. So they are left out and not left unused.
-/// In a binary an item that nothing names is dead code, and a handler may build only some of the responses of its
+/// In a binary an item that nothing refers to is dead code, and a handler may build only some of the responses of its
 /// operation, or none when it is left to its `501` default.
 pub(crate) fn operations(api: &Api, space: &Space<'_>, opts: &crate::emit::Options) -> TokenStream {
     let (binary, serves) = (opts.rust.binary, opts.server);
