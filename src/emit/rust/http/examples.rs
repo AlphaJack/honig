@@ -221,9 +221,7 @@ pub(crate) fn tests(api: &Api, space: &Space<'_>) -> Option<TokenStream> {
             }
         }
     });
-    let allow = crate::emit::rust::syntax::file_allow(crate::emit::rust::syntax::has_deprecated(api));
     Some(quote! {
-        #allow
         #![allow(unused_imports, reason = "which of them the examples need depends on the description")]
         use super::{runtime, types};
 

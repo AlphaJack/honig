@@ -49,9 +49,7 @@ pub(crate) fn client(api: &Api, space: &Space<'_>, only: Option<&[String]>, bina
     let devices = device_methods(api);
     let (flows, flow_urls) = oauth_methods(api);
     let webhook_client = webhook_client(space, api, &sec);
-    let allow = crate::emit::rust::syntax::file_allow(crate::emit::rust::syntax::has_deprecated(api));
-    let part = binary.then(|| quote!(#![allow(dead_code, reason = "a binary calls part of the client: its server list and setters may go unused")]));
-    let header = quote!(#allow #part);
+    let header = binary.then(|| quote!(#![allow(dead_code, reason = "a binary calls part of the client: its server list and setters may go unused")]));
     // The operations read credentials. The setters and flows write them. Without any operation none are kept.
     let keeps = api.http.operations.iter().any(|op| called(&op))
         || [&setters, &tokens, &devices, &flows].iter().any(|methods| !methods.is_empty());

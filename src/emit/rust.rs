@@ -181,11 +181,7 @@ pub(crate) fn trees(api: &Api, opts: &super::Options) -> Trees {
     let mut trees = vec![("mod.rs", root(api, opts, examples.is_some()))];
     // A type spelt out twice (one inline schema per operation) is declared once; the others alias it.
     let aliases = types::aliases(space, &opts.rust.derives);
-    let deprecated = syntax::has_deprecated(api);
-    trees.push((
-        "types.rs",
-        types::emit(space, http::has_xml(api), &opts.rust.derives, &aliases, deprecated, opts.rust.binary),
-    ));
+    trees.push(("types.rs", types::emit(space, http::has_xml(api), &opts.rust.derives, &aliases, opts.rust.binary)));
     trees.push((
         "operations.rs",
         http::operations(api, space, !opts.rust.binary || opts.client, opts.rust.binary, opts.server),
@@ -277,13 +273,16 @@ fn root(api: &Api, opts: &super::Options, tests: bool) -> TokenStream {
     let unused = opts.rust.binary.then(
         || quote!(#![allow(unused_imports, reason = "a binary may refer to the runtime's items only through `runtime`, and the client or the server by its path")]),
     );
-    // Each file carries the `#![allow]`s of `syntax::file_allow`, each with its reason. Otherwise the code passes
-    // strict clippy and rustdoc lint sets.
-    // `rustfmt::skip`: prettyplease prints the files and its layout
-    // differs from that of rustfmt. So the `cargo fmt --check` of the crate leaves them alone.
+    // The `#![allow]`s of `syntax::file_allow`, each with its reason, hold for every file of the module. Otherwise the
+    // code passes strict clippy and rustdoc lint sets.
+    let allow = syntax::file_allow(syntax::has_deprecated(api));
+    // `rustfmt::skip`, on `mod.rs` and on each child: prettyplease prints the files and its layout differs from that
+    // of rustfmt. So the `cargo fmt --check` of the crate leaves them alone.
     quote! {
         #title
         #description
+        #![cfg_attr(rustfmt, rustfmt::skip)]
+        #allow
         #unused
         #[rustfmt::skip]
         pub mod operations;

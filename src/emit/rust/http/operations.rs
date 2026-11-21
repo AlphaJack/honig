@@ -25,7 +25,6 @@ use crate::ir::types::{Kind, Ty};
 /// build only some of the responses of its operation, or none when it is left to its `501` default.
 pub(crate) fn operations(api: &Api, space: &Space<'_>, conveniences: bool, binary: bool, serves: bool) -> TokenStream {
     let mods = api.http.operations.iter().map(|op| operation_mod(api, space, op, conveniences));
-    let allow = crate::emit::rust::syntax::file_allow(crate::emit::rust::syntax::has_deprecated(api));
     let dead_code = match (binary, serves, conveniences) {
         (false, ..) => None,
         (true, true, _) => Some("a handler may build only some of the responses of its operation"),
@@ -35,7 +34,7 @@ pub(crate) fn operations(api: &Api, space: &Space<'_>, conveniences: bool, binar
         (true, false, false) => Some("without a client or a server a binary refers to none of the operations"),
     };
     let defaults = dead_code.map(|reason| quote!(#![allow(dead_code, reason = #reason)]));
-    let header = quote!(#allow #defaults);
+    let header = quote!(#defaults);
     let tags = conveniences.then(|| tags_mod(api)).flatten();
     let responses = responses_mod(space, &api.http.operations);
     let security = super::security::Securities::new(api).consts();

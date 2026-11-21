@@ -271,6 +271,15 @@ fn wide_binary(test: &str, client: bool) -> Vec<(String, String)> {
     files
 }
 
+/// The `#![allow]`s that every generated file needs sit once in `mod.rs` and hold for its children.
+#[test]
+fn the_module_allows_once() {
+    let files = wide_binary("shape-allow-once", true);
+    let reason = "generated from the OpenAPI description";
+    let holders: Vec<&str> = files.iter().filter(|(_, t)| t.contains(reason)).map(|(f, _)| f.as_str()).collect();
+    assert_eq!(holders, ["mod.rs"]);
+}
+
 /// A crate that denies `clippy::allow_attributes` takes the generated code: every `#[allow]` is an inner `#![allow]`,
 /// which that lint leaves alone. `new` allows its many arguments inside its body, not with an `#[expect]` that a crate
 /// with a higher `too-many-arguments-threshold` would leave unfulfilled.

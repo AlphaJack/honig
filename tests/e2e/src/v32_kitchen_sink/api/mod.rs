@@ -10,6 +10,24 @@
 //! License: Apache 2.0, Apache-2.0
 //!
 //! See also: Docs (<https://example.com/docs>)
+#![cfg_attr(rustfmt, rustfmt::skip)]
+#![allow(
+    deprecated,
+    missing_docs,
+    reason = "generated from the OpenAPI description, which may leave items undescribed or deprecate them"
+)]
+#![allow(
+    clippy::too_many_lines,
+    reason = "as long as the description's schemas and operations"
+)]
+#![allow(
+    clippy::missing_errors_doc,
+    reason = "generated docs hold only the description's own prose"
+)]
+#![allow(
+    clippy::init_numbered_fields,
+    reason = "a spec default builds its checked type as `Type { 0: value }`, which also works through the alias of a twin"
+)]
 #[rustfmt::skip]
 pub mod operations;
 #[doc(hidden)]

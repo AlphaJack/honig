@@ -19,7 +19,6 @@ pub(super) fn emit(
     xml: bool,
     extra: &[(String, Vec<String>)],
     aliases: &std::collections::BTreeMap<usize, usize>,
-    deprecated: bool,
     binary: bool,
 ) -> TokenStream {
     let mut items = vec![];
@@ -87,10 +86,8 @@ pub(super) fn emit(
             *item = quote!(#[deprecated] #item);
         }
     }
-    let allow = super::syntax::file_allow(deprecated);
     // A library exports the constructors. A binary may build a type only by decoding it.
-    let unused = binary.then(|| quote!(#![allow(dead_code, reason = "a binary may build none of the types by hand")]));
-    let header = quote!(#allow #unused);
+    let header = binary.then(|| quote!(#![allow(dead_code, reason = "a binary may build none of the types by hand")]));
     // A description without schemas has no type to validate.
     let runtime_import = (!items.is_empty()).then(|| {
         quote!(
