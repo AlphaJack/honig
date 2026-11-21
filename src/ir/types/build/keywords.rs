@@ -799,8 +799,8 @@ pub(crate) fn int_enum_values(o: &serde_json::Map<String, Value>) -> Option<Vec<
     (!ints.is_empty()).then_some(ints)
 }
 
-/// Returns an integer enum. `x-enum-varnames` / `x-enumNames` (`openapi-generator` and `NSwag`)
-/// give the names of its variants when present. Otherwise they are `N1` and `Minus1`.
+/// Returns an integer enum. `x-enum-varnames`, `x-enumNames` or `x-enum-names` give the names of its variants when
+/// present. Otherwise they are `N0`, `N1` and `Minus1`.
 pub(crate) fn int_enum(o: &serde_json::Map<String, Value>, values: &[i64]) -> Kind {
     let names: Option<Vec<&str>> = ["x-enum-varnames", "x-enumNames", "x-enum-names"]
         .iter()

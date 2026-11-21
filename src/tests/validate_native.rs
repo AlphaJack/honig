@@ -12,13 +12,25 @@ fn check(test: &str, doc: &Value) -> Vec<String> {
 
 #[test]
 fn newer_fields_are_errors_at_their_own_pointer() {
-    let mut doc =
-        common::spec("3.1.0", &json!({"/x": {"query": {"responses": {"200": {"description": "ok"}}}}}), &json!({}));
+    let mut doc = common::spec(
+        "3.1.0",
+        &json!({"/x": {"query": {"responses": {"200": {"description": "ok"}}}}}),
+        &json!({"examples": {"e": {"dataValue": 1}},
+            "schemas": {"U": {"oneOf": [{}], "discriminator": {"propertyName": "k", "defaultMapping": "U"}}}}),
+    );
     doc["tags"] = json!([{"name": "a", "parent": "b"}]);
     let out = check("native-a31", &doc);
-    assert_eq!(out.len(), 2, "{out:#?}");
-    assert!(out[0].contains("/tags/0/parent") && out[0].contains("OpenAPI 3.2"), "{out:#?}");
-    assert!(out[1].contains("/paths/~1x/query"), "{out:#?}");
+    let at: Vec<&str> = out.iter().filter(|m| m.contains("OpenAPI 3.2")).filter_map(|m| m.split(':').next()).collect();
+    assert_eq!(
+        at,
+        [
+            "Error /tags/0/parent",
+            "Error /paths/~1x/query",
+            "Error /components/examples/e/dataValue",
+            "Error /components/schemas/U/discriminator/defaultMapping"
+        ],
+        "{out:#?}"
+    );
 }
 
 /// A local `$ref` that leads nowhere and a security scheme without a field that its type requires are errors.

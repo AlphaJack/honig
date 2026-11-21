@@ -1236,6 +1236,29 @@ mod tests {
         }
     }
 
+    /// An integer enum's variants are named by their values, or by `x-enum-varnames` when it names each.
+    #[test]
+    fn integer_variants_are_named_by_value() {
+        let s = build(
+            &json!({"E": {"type": "integer", "enum": [0, -1, 1]}, "F": {"type": "integer", "enum": [1, 2], "x-enum-varnames": ["One", "Two"]}}),
+        );
+        let names = |n: &str| {
+            let Kind::IntEnum(vs) = &by_name(&s, n).kind else { panic!("{n}: an integer enum") };
+            vs.iter().map(|(name, _)| name.key()).collect::<Vec<_>>()
+        };
+        assert_eq!(names("E"), ["N0", "Minus1", "N1"]);
+        assert_eq!(names("F"), ["One", "Two"]);
+    }
+
+    /// Two aliases that hold each other cannot be `type` aliases: each becomes a newtype.
+    #[test]
+    fn aliases_in_a_cycle_become_newtypes() {
+        let list = |of: &str| json!({"type": "array", "items": {"$ref": format!("#/components/schemas/{of}")}});
+        let s = build(&json!({"A": list("B"), "B": list("A")}));
+        assert_matches!(by_name(&s, "A").kind, Kind::Newtype(_));
+        assert_matches!(by_name(&s, "B").kind, Kind::Newtype(_));
+    }
+
     /// An `enum` without `type` has the type of each of its values. A list or an object among them is one too: the
     /// `enum` is not typed as its first scalar, which would refuse the list. Its type is a union of one constant per
     /// value.

@@ -23,7 +23,7 @@ use crate::json::{Doc, join, pointer};
 /// Returns the document with every bound generic specialized. `None` when it has
 /// no `$dynamicRef` to specialize.
 pub(crate) fn monomorphize(doc: &Doc) -> Option<Doc> {
-    if !mentions(&doc.root, "$dynamicRef") {
+    if !crate::json::mentions(&doc.root, "$dynamicRef") {
         return None;
     }
     let mut root = doc.root.clone();
@@ -266,14 +266,6 @@ fn uses_any(doc: &Doc, v: &Value, bindings: &BTreeMap<String, String>, seen: &mu
             o.values().any(|x| uses_any(doc, x, bindings, seen))
         }
         Value::Array(a) => a.iter().any(|x| uses_any(doc, x, bindings, seen)),
-        Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_) => false,
-    }
-}
-
-fn mentions(v: &Value, key: &str) -> bool {
-    match v {
-        Value::Object(o) => o.contains_key(key) || o.values().any(|x| mentions(x, key)),
-        Value::Array(a) => a.iter().any(|x| mentions(x, key)),
         Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_) => false,
     }
 }
