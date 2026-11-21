@@ -446,6 +446,22 @@ mod tests {
         assert_eq!(v["tags"], json!([{"name": "auth"}, {"name": "media"}]));
     }
 
+    /// Files with different top-level `security` keep it on their own operations: one file's requirement never
+    /// reaches another's.
+    #[test]
+    fn each_file_keeps_its_security() {
+        let dir = scratch("security");
+        let mut a = file("/login", "/v3", &json!({"type": "string"}));
+        a["security"] = json!([{"key": []}]);
+        let a = write(&dir, "a.json", &a);
+        let b = write(&dir, "b.json", &file("/media", "/v3", &json!({"type": "string"})));
+        let mut d = Diagnostics::default();
+        let v = merge(&[a, b], &mut d).unwrap();
+        assert!(v.get("security").is_none(), "{v:#}");
+        assert_eq!(v["paths"]["/login"]["get"]["security"], json!([{"key": []}]), "{:#}", v["paths"]);
+        assert!(v["paths"]["/media"]["get"].get("security").is_none(), "{:#}", v["paths"]);
+    }
+
     #[test]
     fn a_diagnostic_names_its_file() {
         let dir = scratch("located");

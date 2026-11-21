@@ -646,6 +646,20 @@ mod tests {
         upgrade(doc, &mut Diagnostics::default())
     }
 
+    /// A parameter keeps its `x-` extensions. `x-nullable` moves into its schema as `nullable`.
+    #[test]
+    fn a_parameter_keeps_its_extensions_but_x_nullable() {
+        let out = up(json!({
+            "swagger": "2.0", "info": {"title": "t", "version": "1"},
+            "paths": {"/a": {"get": {"parameters": [
+                {"name": "q", "in": "query", "type": "string", "x-nullable": true, "x-note": "n"}
+            ], "responses": {"200": {"description": "ok"}}}}}
+        }));
+        let p = &out["paths"]["/a"]["get"]["parameters"][0];
+        assert_eq!((p.get("x-note"), p.get("x-nullable")), (Some(&json!("n")), None), "{p:#}");
+        assert_eq!(p["schema"]["nullable"], json!(true), "{p:#}");
+    }
+
     /// A description may name properties `default`, `enum` and `example`. They hold schemas whose references move too.
     #[test]
     fn a_property_named_like_a_keyword_has_its_reference_rewritten() {

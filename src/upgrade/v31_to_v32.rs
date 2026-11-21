@@ -481,6 +481,41 @@ mod tests {
         assert!(doc.get("x-tagGroups").is_some());
     }
 
+    /// A group that cannot become a parent leaves the tags as they are: it has a key of its own, it names an
+    /// operation's tag, or a member has a parent already.
+    #[test]
+    fn unsafe_tag_groups_change_nothing() {
+        let cases = [
+            (json!([{"name": "gadgets"}]), json!([{"name": "A", "tags": ["gadgets"], "x-icon": "a"}])),
+            (json!([{"name": "gadgets"}]), json!([{"name": "used", "tags": ["gadgets"]}])),
+            (
+                json!([{"name": "gadgets", "parent": "misc"}, {"name": "misc"}]),
+                json!([{"name": "A", "tags": ["gadgets"]}]),
+            ),
+            (
+                json!([{"name": "a"}, {"name": "b"}]),
+                json!([{"name": "A", "tags": ["a"]}, {"name": "A", "tags": ["b"]}]),
+            ),
+            (json!([{"name": "a"}, {"name": "A"}]), json!([{"name": "A", "tags": ["a"]}])),
+        ];
+        for (tags, groups) in cases {
+            let input = json!({"openapi": "3.1.0", "tags": tags, "x-tagGroups": groups,
+                "paths": {"/c": {"get": {"tags": ["used"]}}}});
+            let (doc, _) = up(input.clone());
+            assert_eq!(doc["tags"], input["tags"], "{groups}");
+        }
+    }
+
+    /// `attribute` alone, or `wrapped` alone, is no conflict: only both together warn.
+    #[test]
+    fn one_of_attribute_and_wrapped_is_no_conflict() {
+        for xml in [json!({"attribute": true}), json!({"wrapped": true})] {
+            let (_, d) =
+                up(json!({"openapi": "3.1.0", "components": {"schemas": {"A": {"type": "string", "xml": xml}}}}));
+            assert!(d.is_empty(), "{xml}: {d:?}");
+        }
+    }
+
     #[test]
     fn ambiguous_tag_groups_change_nothing() {
         let input = json!({
