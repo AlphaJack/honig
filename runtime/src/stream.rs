@@ -16,7 +16,7 @@ use crate::source::{Blob, BodySource, ByteStream, Feed, Slot, Sse, put_slot, tak
 #[cfg(feature = "multipart")]
 use crate::text::decode_err;
 use crate::transport::Pending;
-use crate::{Body, ClientError, Request, json_seq_encode, jsonl_encode, sse_encode};
+use crate::{Body, ClientError, Request, codec::json_seq_encode, codec::jsonl_encode, codec::sse_encode};
 
 /// The byte order mark that an SSE stream may start with. It is not part of the first event.
 const BOM: &str = "\u{feff}";
@@ -179,9 +179,9 @@ impl<T: DeserializeOwned> Items<T> {
             return Ok(Self::Stream(ItemStream::new(REQUEST, ByteStream::pinned(source), framing)));
         }
         match framing {
-            Framing::JsonLines => crate::jsonl_decode(REQUEST, body),
-            Framing::JsonSeq => crate::json_seq_decode(REQUEST, body),
-            Framing::Sse => crate::sse_decode(REQUEST, body),
+            Framing::JsonLines => crate::codec::jsonl_decode(REQUEST, body),
+            Framing::JsonSeq => crate::codec::json_seq_decode(REQUEST, body),
+            Framing::Sse => crate::codec::sse_decode(REQUEST, body),
             #[cfg(feature = "multipart")]
             Framing::Multipart => Err(not_encoded()),
         }
@@ -221,9 +221,9 @@ impl<T: DeserializeOwned> Items<T> {
             return Ok(Self::Stream(items));
         }
         let items: Vec<Validated<T, H>> = match framing {
-            Framing::JsonLines => crate::jsonl_decode(REQUEST, body),
-            Framing::JsonSeq => crate::json_seq_decode(REQUEST, body),
-            Framing::Sse => crate::sse_decode(REQUEST, body),
+            Framing::JsonLines => crate::codec::jsonl_decode(REQUEST, body),
+            Framing::JsonSeq => crate::codec::json_seq_decode(REQUEST, body),
+            Framing::Sse => crate::codec::sse_decode(REQUEST, body),
             #[cfg(feature = "multipart")]
             Framing::Multipart => Err(not_encoded()),
         }?;

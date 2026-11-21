@@ -169,7 +169,7 @@ mod tests {
 
     #[test]
     fn a_request_without_a_current_span_gets_no_header() {
-        let mut req = crate::new_request("GET", "/products".to_owned(), vec![]).unwrap();
+        let mut req = crate::message::new_request("GET", "/products".to_owned(), vec![]).unwrap();
         propagate_trace(&mut req);
         assert_eq!(crate::Message::header(&req, "traceparent"), None);
     }

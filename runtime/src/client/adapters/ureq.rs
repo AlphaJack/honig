@@ -4,7 +4,7 @@ use std::io::Read;
 
 use ureq::{RequestExt, http};
 
-use crate::{Body, BodySource, ByteStream, ClientError, Request, Response};
+use crate::{Body, ByteStream, ClientError, Request, Response, source::BodySource};
 
 /// The most that a read of a streamed response takes at once. A read returns what has arrived up to this.
 const CHUNK: usize = 16 << 10;
@@ -28,7 +28,7 @@ impl UreqTransport {
 
     /// Creates a transport with your own agent for this base URL.
     pub fn with_agent(agent: ureq::Agent, base_url: impl Into<String>) -> Self {
-        Self { agent, base_url: crate::base_url(base_url) }
+        Self { agent, base_url: crate::message::base_url(base_url) }
     }
 
     /// Runs `req` on the agent. Error statuses come back as responses. So documented error bodies decode.
@@ -38,7 +38,8 @@ impl UreqTransport {
 
     /// Sends `req` and returns once the head of the response has arrived. Its body is still to read.
     fn start(&self, req: Request) -> Result<http::Response<ureq::Body>, ClientError> {
-        let target = http::Uri::try_from(crate::target(&self.base_url, req.uri())).map_err(ClientError::transport)?;
+        let target =
+            http::Uri::try_from(crate::message::target(&self.base_url, req.uri())).map_err(ClientError::transport)?;
         let (mut head, body) = req.into_parts();
         head.uri = target;
         let (bytes, stream) = body.into_parts();

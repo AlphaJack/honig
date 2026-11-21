@@ -118,10 +118,6 @@ pub use stream::{Framing, ItemStream, Items, Streamed};
 pub use tower_service::Service;
 pub use transport::block_on;
 
-// The hidden items that the modules use to refer to each other from the root.
-#[cfg_attr(not(test), expect(clippy::wildcard_imports, reason = "which items each feature set uses differs"))]
-use __private::*;
-
 /// What generated code calls: codecs, parameter styles, routing, validation checks and `serve`. It is not for your
 /// code. It changes with the generator. The version of the runtime is pinned to the version of the generator.
 #[doc(hidden)]

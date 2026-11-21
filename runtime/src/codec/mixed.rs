@@ -9,7 +9,7 @@ use crate::binary::{raw_mark, raw_part, raw_parts};
 use crate::json::to_value;
 use crate::media::json_type;
 use crate::text::{decode_err, utf8};
-use crate::{ClientError, Coerce};
+use crate::{ClientError, coerce::Coerce};
 
 /// Encodes positional multipart: one part per array item.
 ///

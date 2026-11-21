@@ -64,7 +64,7 @@ mod tests {
     #![expect(unreachable_pub, reason = "`object!` writes public items, here in a private module")]
 
     mod runtime {
-        pub use crate::*;
+        pub use crate::{__private::*, *};
     }
 
     crate::object! {

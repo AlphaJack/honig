@@ -8,7 +8,7 @@ use serde_json::{Map, Value};
 
 use crate::json::to_value;
 use crate::text::decode_err;
-use crate::{ClientError, Coerce};
+use crate::{ClientError, coerce::Coerce};
 
 /// Returns server-Sent Events. The fields of each item (`event`, `data`, `id`, `retry`, ...)
 /// become SSE fields. Non-string values are written as JSON.

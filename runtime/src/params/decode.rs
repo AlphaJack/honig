@@ -10,7 +10,7 @@ use serde_json::{Map, Value};
 use super::cookie_pairs;
 use super::{Query, Shape, Style, parse_query, pct_decode};
 use crate::json::push_multi;
-use crate::{ClientError, Coerce, CoerceError, Reason, to_value};
+use crate::{ClientError, Reason, coerce::Coerce, coerce::CoerceError, json::to_value};
 
 fn split_value(raw: &str, shape: Shape, explode: bool, sep: char) -> Value {
     match shape {

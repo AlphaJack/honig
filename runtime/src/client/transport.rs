@@ -6,7 +6,7 @@ use std::future::Future;
 use tower_service::Service;
 
 use crate::{Body, ClientError, Request, Response};
-use crate::{MaybeSend, MaybeSync};
+use crate::{transport::MaybeSend, transport::MaybeSync};
 
 /// The error of a tower service.
 type BoxError = Box<dyn std::error::Error + Send + Sync>;

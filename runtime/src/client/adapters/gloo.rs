@@ -32,7 +32,7 @@ impl std::fmt::Debug for GlooTransport {
 impl GlooTransport {
     /// Creates a transport for this base URL.
     pub fn new(base_url: impl Into<String>) -> Self {
-        Self { base_url: crate::base_url(base_url), prepare: None }
+        Self { base_url: crate::message::base_url(base_url), prepare: None }
     }
 
     /// Changes every request before it is sent, such as credentials, mode, cache or an
@@ -48,7 +48,7 @@ impl GlooTransport {
     }
 
     fn build(&self, req: &http::request::Parts, body: bytes::Bytes) -> Result<gloo_net::http::Request, ClientError> {
-        let url = crate::target(&self.base_url, &req.uri);
+        let url = crate::message::target(&self.base_url, &req.uri);
         let method =
             gloo_net::http::Method::from_bytes(req.method.as_str().as_bytes()).map_err(ClientError::transport)?;
         // `append` keeps repeated headers; the builder's `header` would replace them.
@@ -83,7 +83,7 @@ impl GlooTransport {
         let built = self.build(&head, body);
         // Network and CORS failures surface as one opaque `TypeError`.
         let resp = built?.send().await.map_err(ClientError::transport)?;
-        let mut out = crate::new_response(resp.status());
+        let mut out = crate::message::new_response(resp.status());
         for (k, v) in resp.headers().entries() {
             if let (Ok(k), Ok(v)) = (http::HeaderName::try_from(k), http::HeaderValue::try_from(v)) {
                 out.headers_mut().append(k, v);

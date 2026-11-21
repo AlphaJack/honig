@@ -109,7 +109,7 @@ fn element<T: Serialize + ?Sized>(
             Err(Stop(None)) => out.truncate(mark),
         }
     }
-    let value = crate::to_value(v)?;
+    let value = crate::json::to_value(v)?;
     value.serialize(Element { out, tag, node, extra, mode: Mode::Ordered }).map_err(written)
 }
 
@@ -128,7 +128,7 @@ fn written(stop: Stop) -> ClientError {
 
 /// Returns the `Value` of `v` for a part that is not written as it serializes.
 fn value_of<T: Serialize + ?Sized>(v: &T) -> Result<Value> {
-    crate::to_value(v).map_err(|e| Stop(Some(e)))
+    crate::json::to_value(v).map_err(|e| Stop(Some(e)))
 }
 
 /// Returns the value inside a newtype through `s`. A raw JSON value is written from its `Value`.

@@ -23,7 +23,7 @@ where
     if error.is_some() {
         return (None, error);
     }
-    match crate::field(wire, value) {
+    match crate::builder::field(wire, value) {
         Ok(v) => (Some(v), None),
         Err(e) => (None, Some(e)),
     }

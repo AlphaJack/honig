@@ -5,6 +5,7 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 use serde_json::{Map, Value};
 
+use crate::base64::base64;
 use crate::binary::{raw_mark, raw_part, raw_parts};
 use crate::json::push_multi;
 use crate::json::to_value;
@@ -12,7 +13,7 @@ use crate::json::to_value;
 use crate::media::is_xml_media;
 use crate::params::{key_order, ordered};
 use crate::text::{decode_err, push_all};
-use crate::{ClientError, Coerce, base64, unbase64_mime};
+use crate::{ClientError, base64::unbase64_mime, coerce::Coerce};
 
 pub(super) const BOUNDARY: &str = concat!(env!("CARGO_PKG_NAME"), "-boundary-7MA4YWxkTrZu0gW");
 

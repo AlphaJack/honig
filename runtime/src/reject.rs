@@ -71,7 +71,7 @@ impl Reason {
     /// Returns a response with the status and the headers that the reason carries. That is `Allow` for 405 and the
     /// headers of the [`ApiError`] that a layer or your handler returned.
     pub fn head(&self) -> Response {
-        let mut r = crate::new_response(self.status().as_u16());
+        let mut r = crate::message::new_response(self.status().as_u16());
         match self {
             Self::MethodNotAllowed(allow) => add_header(&mut r, "Allow", allow_header(allow).into()),
             Self::Denied(e) | Self::Handler(e) => {
@@ -226,7 +226,7 @@ impl Problem {
     /// Returns the response: the status, the headers and the problem as `application/problem+json`.
     #[must_use]
     pub fn into_response(self) -> Response {
-        let mut r = crate::new_response(self.status);
+        let mut r = crate::message::new_response(self.status);
         let body = serde_json::to_vec(&self).unwrap_or_default();
         *r.headers_mut() = self.headers;
         r.set_body("application/problem+json", body);
@@ -318,10 +318,10 @@ fn errors_member(violations: &[Violation]) -> Value {
 impl Reason {
     /// Returns `413` past `limit`. `400` when the body could not be read.
     #[must_use]
-    pub fn unread_body(e: crate::BodyError, limit: usize) -> Self {
+    pub fn unread_body(e: crate::source::BodyError, limit: usize) -> Self {
         match e {
-            crate::BodyError::TooLarge => Self::PayloadTooLarge(limit),
-            crate::BodyError::Unreadable(why) => Self::Unreadable(why),
+            crate::source::BodyError::TooLarge => Self::PayloadTooLarge(limit),
+            crate::source::BodyError::Unreadable(why) => Self::Unreadable(why),
         }
     }
 }

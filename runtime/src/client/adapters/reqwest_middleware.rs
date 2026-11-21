@@ -2,7 +2,7 @@
 
 use std::future::Future;
 
-use crate::{ClientError, Execute, MaybeSend, ReqwestTransport};
+use crate::{ClientError, Execute, ReqwestTransport, transport::MaybeSend};
 
 /// `reqwest-middleware` transport: `Client::new(api::ReqwestMiddlewareTransport::with_client(stack, "https://api.example.com"))`.
 ///

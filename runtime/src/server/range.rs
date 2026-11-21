@@ -18,7 +18,7 @@
 //! These go out whole with no `Accept-Ranges`, as RFC 9110 allows: a [`crate::Blob::stream`] of unknown length, JSON
 //! and other structured bodies, several ranges in one request and a `Range` that does not parse. An operation that
 //! declares a `206` (or `2XX`) or a `Range` parameter of its own answers ranges in its handler
-//! ([`Op::ranges`](crate::Op::ranges)). The server leaves it alone.
+//! ([`Op::ranges`](crate::server::operation::Op::ranges)). The server leaves it alone.
 
 use crate::server::conditional::if_range_holds;
 use crate::{Body, Response};
@@ -68,7 +68,7 @@ impl Ranges {
         match asked.map_or(Asked::Ignored, |r| byte_range(&r, len)) {
             Asked::Ignored => {}
             Asked::Unsatisfiable => {
-                let mut refused = crate::new_response(http::StatusCode::RANGE_NOT_SATISFIABLE.as_u16());
+                let mut refused = crate::message::new_response(http::StatusCode::RANGE_NOT_SATISFIABLE.as_u16());
                 content_range(&mut refused, format!("{BYTES} */{len}"));
                 return refused;
             }
@@ -146,7 +146,7 @@ mod tests {
             req = req.header(http::header::IF_RANGE, c);
         }
         let (head, ()) = req.body(()).unwrap().into_parts();
-        let mut resp = crate::body_response(OK, "application/octet-stream", body.into_body());
+        let mut resp = crate::message::body_response(OK, "application/octet-stream", body.into_body());
         resp.set_header("ETag", "\"v1\"").unwrap();
         Ranges::of(&head, true).answer(resp)
     }

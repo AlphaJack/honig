@@ -1,7 +1,7 @@
 //! The operations of a generated API as the server routes and serves them. The wide event and the steps of serving
 //! both refer to them.
 
-use crate::{ProblemSchema, Requirement};
+use crate::{ProblemSchema, auth::Requirement};
 
 /// An operation of a generated API.
 ///

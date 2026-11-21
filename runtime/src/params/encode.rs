@@ -6,7 +6,7 @@ use serde_json::{Map, Value};
 use super::{Enc, Style, pct, pct_path};
 use crate::auth::add_cookie;
 use crate::scalar::{scalar, scalar_text};
-use crate::{ClientError, Request, to_value};
+use crate::{ClientError, Request, json::to_value};
 
 /// Encodes a path parameter. Returns the percent-encoded segment text.
 /// Errors: the value does not serialize.
