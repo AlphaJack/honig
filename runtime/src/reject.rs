@@ -22,7 +22,7 @@ pub enum Reason {
     NotFound,
     /// The path exists but the method does not (405). It lists the allowed methods.
     MethodNotAllowed(Vec<&'static str>),
-    /// `Accept` accepts none of the response media types the operation offers (406): those types.
+    /// `Accept` matches none of the response media types the operation offers (406): those types.
     NotAcceptable(Vec<&'static str>),
     /// The request body exceeds the limit in bytes (413).
     PayloadTooLarge(usize),
@@ -387,7 +387,7 @@ impl fmt::Display for Reason {
         match self {
             Self::NotFound => f.write_str("no route matches the path"),
             Self::MethodNotAllowed(allow) => write!(f, "method not allowed; allowed: {}", allow.join(", ")),
-            Self::NotAcceptable(offered) => write!(f, "`Accept` accepts none of: {}", offered.join(", ")),
+            Self::NotAcceptable(offered) => write!(f, "`Accept` matches none of: {}", offered.join(", ")),
             Self::PayloadTooLarge(limit) => write!(f, "request body exceeds {limit} bytes"),
             Self::UnsupportedMediaType(sent, declared) => {
                 write!(f, "Content-Type `{sent}` is not one of: {declared}")

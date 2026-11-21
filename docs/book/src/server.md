@@ -29,7 +29,7 @@ A body whose `Content-Type` the operation does not declare gets `415`.
 
 ## Content negotiation
 
-An operation may answer in several media types. It answers in the one that the `Accept` of the request prefers (RFC 9110 section 12.5.1). If `Accept` accepts none of them then it answers `406`. When every media type carries the same type the handler returns that type. The server then picks the encoding. When they carry different types `Params` carries the choice as a typed `media`.
+An operation may answer in several media types. It answers in the one that the `Accept` of the request prefers (RFC 9110 section 12.5.1). If `Accept` matches none of them then it answers `406`. When every media type carries the same type the handler returns that type. The server then picks the encoding. When they carry different types `Params` carries the choice as a typed `media`.
 
 ## Streams
 
