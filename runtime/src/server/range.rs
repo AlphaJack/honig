@@ -18,7 +18,7 @@
 //! These go out whole with no `Accept-Ranges`, as RFC 9110 allows: a [`crate::Blob::stream`] of unknown length, JSON
 //! and other structured bodies, several ranges in one request and a `Range` that does not parse. An operation that
 //! declares a `206` (or `2XX`) or a `Range` parameter of its own answers ranges in its handler
-//! ([`Op::ranges`](crate::Op::ranges)). The server leaves it alone.
+//! ([`Op::ranges`](crate::server::operation::Op::ranges)). The server leaves it alone.
 
 use crate::server::conditional::if_range_holds;
 use crate::{Body, Response};
