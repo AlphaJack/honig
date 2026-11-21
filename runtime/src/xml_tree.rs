@@ -72,6 +72,28 @@ pub struct XmlField<N: 'static> {
 }
 
 impl<N> XmlField<N> {
+    /// Returns the property `wire` as an element of that name with every other choice off: the start of
+    /// `XmlField { attribute: true, ..XmlField::new("id") }`.
+    #[must_use]
+    pub const fn new(wire: &'static str) -> Self {
+        Self {
+            wire,
+            name: wire,
+            prefix: "",
+            attribute: false,
+            text: false,
+            list: false,
+            wrapped: false,
+            required: false,
+            item: wire,
+            child: None,
+            cdata: false,
+            inline: false,
+            nullable: false,
+            object: false,
+        }
+    }
+
     /// Returns a child element of its own or the items of one. It is not an attribute and not the text of the parent.
     pub(crate) const fn is_element(&self) -> bool {
         !self.attribute && !self.text

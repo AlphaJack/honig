@@ -351,8 +351,7 @@ fn xml_shape(space: &Space<'_>, def: &TypeDef, s: &Struct) -> TokenStream {
     let fields = s.fields.iter().map(|f| {
         let (inner, list) = xml_inner(space, &f.ty);
         let elem = f.xml.name.as_deref().unwrap_or(&f.wire);
-        let (wire, name, prefix) = (lit(&f.wire), lit(elem), lit(f.xml.prefix.as_deref().unwrap_or("")));
-        let item = lit(f.xml.item.as_deref().unwrap_or(elem));
+        let item = f.xml.item.as_deref().unwrap_or(elem);
         let wrapped = list && (f.xml.wrapped || ambiguous(f));
         let (attribute, text, required) = (f.xml.attribute, f.xml.text, f.required);
         // `nodeType: none` on an array means no wrapper (an unwrapped list):
@@ -366,16 +365,39 @@ fn xml_shape(space: &Space<'_>, def: &TypeDef, s: &Struct) -> TokenStream {
             && matches!(space.types.get(*id).kind, Kind::Struct(_))
         {
             let c = pascal_ident(&space.types.get(*id).name);
-            quote!(Some(<#c as runtime::XmlShape>::xml))
+            Some(quote!(child: Some(<#c as runtime::XmlShape>::xml),))
         } else {
-            quote!(None)
+            None
         };
-        quote! {
-            runtime::XmlField {
-                wire: #wire, name: #name, prefix: #prefix, attribute: #attribute, text: #text,
-                list: #list, wrapped: #wrapped, required: #required, item: #item, child: #child,
-                cdata: #cdata, inline: #inline, nullable: #nullable, object: #object,
-            }
+        // Only what differs from `XmlField::new(wire)`.
+        let text_of = |field: &str, v: &str, default: &str| (v != default).then(|| (ident(field), lit(v)));
+        let texts = [
+            text_of("name", elem, &f.wire),
+            text_of("prefix", f.xml.prefix.as_deref().unwrap_or(""), ""),
+            text_of("item", item, &f.wire),
+        ];
+        let texts = texts.into_iter().flatten().map(|(k, v)| quote!(#k: #v,));
+        let flags = [
+            ("attribute", attribute),
+            ("text", text),
+            ("list", list),
+            ("wrapped", wrapped),
+            ("required", required),
+            ("cdata", cdata),
+            ("inline", inline),
+            ("nullable", nullable),
+            ("object", object),
+        ];
+        let flags = flags.into_iter().filter(|(_, on)| *on).map(|(k, _)| {
+            let k = ident(k);
+            quote!(#k: true,)
+        });
+        let set: Vec<TokenStream> = texts.chain(flags).chain(child).collect();
+        let wire = lit(&f.wire);
+        if set.is_empty() {
+            quote!(runtime::XmlField::new(#wire))
+        } else {
+            quote!(runtime::XmlField { #(#set)* ..runtime::XmlField::new(#wire) })
         }
     });
     quote! {

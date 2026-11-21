@@ -699,6 +699,27 @@ fn every_struct_gets_a_builder() {
     }
 }
 
+/// An XML field names only what differs from an element of its own name: the rest comes from `XmlField::new`.
+#[test]
+fn an_xml_field_names_only_what_differs() {
+    let doc = common::spec(
+        "3.1.0",
+        &json!({"/b": {"get": {"operationId": "b", "responses": {"200": {"description": "ok",
+            "content": {"application/xml": {"schema": {"$ref": "#/components/schemas/Book"}}}}}}}}),
+        &json!({"schemas": {"Book": {"type": "object", "required": ["id"], "properties": {
+            "id": {"type": "string", "xml": {"attribute": true}}, "title": {"type": "string"},
+        }}}}),
+    );
+    let types = common::file(&common::generate("xml-defaults", &doc, &crate::emit::Options::default()), "types.rs")
+        .split_whitespace()
+        .collect::<String>();
+    assert!(
+        types.contains(r#"runtime::XmlField{attribute:true,required:true,..runtime::XmlField::new("id")}"#),
+        "{types}"
+    );
+    assert!(types.contains(r#",runtime::XmlField::new("title"),"#), "{types}");
+}
+
 /// An `anyOf` or `oneOf` whose branches share a type needs no check of the whole value: decoding checks every keyword
 /// of a branch. The first branch that decodes proves an `anyOf`. A `oneOf` decodes every branch and counts.
 #[test]
