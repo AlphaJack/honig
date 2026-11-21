@@ -9,7 +9,7 @@
 use std::alloc::{GlobalAlloc, Layout, System};
 use std::cell::Cell;
 
-use honig::__private::{InstancePath, check_decimal_range, check_multiple, check_multiple_text};
+use honig::__private::{Bounds, InstancePath, check_decimal_range, check_multiple, check_multiple_text};
 
 /// Allocations of this thread. The test harness allocates on threads of its own.
 struct Counting;
@@ -57,7 +57,7 @@ fn a_multiple_allocates_nothing() {
 #[test]
 fn a_decimal_range_allocates_nothing() {
     let mut out = Vec::new();
-    let bounds = [Some("0.01"), Some("1e6"), None, Some("1000000.5")];
+    let bounds = Bounds { min: Some("0.01"), max: Some("1e6"), exclusive_max: Some("1000000.5"), ..Bounds::NONE };
     assert_eq!(allocations(|| check_decimal_range(&mut out, &InstancePath::Root, "12345.678", bounds)), 0);
     assert!(out.is_empty(), "{out:?}");
 }

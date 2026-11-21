@@ -426,7 +426,11 @@ impl TryFrom<i64> for ProductId {
                 out,
                 &runtime::InstancePath::Root,
                 value,
-                [Some(0), None, None, Some(9_007_199_254_740_991)],
+                runtime::Bounds {
+                    min: Some(0),
+                    exclusive_max: Some(9_007_199_254_740_991),
+                    ..runtime::Bounds::NONE
+                },
             );
         }
         runtime::first(violations)
@@ -608,7 +612,10 @@ impl TryFrom<f64> for ProductWeight {
                 out,
                 &runtime::InstancePath::Root,
                 value,
-                [None, None, Some(0.0), None],
+                runtime::Bounds {
+                    exclusive_min: Some(0.0),
+                    ..runtime::Bounds::NONE
+                },
             );
             runtime::check_multiple(out, &runtime::InstancePath::Root, value, "0.01");
         }
@@ -996,7 +1003,11 @@ impl TryFrom<i32> for ListProductsLimit {
                 out,
                 &runtime::InstancePath::Root,
                 value,
-                [Some(1), Some(100), None, None],
+                runtime::Bounds {
+                    min: Some(1),
+                    max: Some(100),
+                    ..runtime::Bounds::NONE
+                },
             );
         }
         runtime::first(violations)

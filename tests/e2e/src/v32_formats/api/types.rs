@@ -144,7 +144,10 @@ impl TryFrom<u16> for EventPort {
                 out,
                 &runtime::InstancePath::Root,
                 value,
-                [Some(1024), None, None, None],
+                runtime::Bounds {
+                    min: Some(1024),
+                    ..runtime::Bounds::NONE
+                },
             );
         }
         runtime::first(violations)
@@ -166,7 +169,10 @@ impl TryFrom<runtime::Decimal> for EventAmount {
                 out,
                 &runtime::InstancePath::Root,
                 value.as_str(),
-                [Some("0"), None, None, None],
+                runtime::Bounds {
+                    min: Some("0"),
+                    ..runtime::Bounds::NONE
+                },
             );
         }
         runtime::first(violations)

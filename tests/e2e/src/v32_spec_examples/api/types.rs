@@ -56,7 +56,10 @@ macro_rules! try_from_impl_2 {
                         out,
                         &runtime::InstancePath::Root,
                         value,
-                        [Some(0), None, None, None],
+                        runtime::Bounds {
+                            min: Some(0),
+                            ..runtime::Bounds::NONE
+                        },
                     );
                 }
                 runtime::first(violations)
@@ -846,7 +849,10 @@ impl TryFrom<f64> for Not2Number {
                 out,
                 &runtime::InstancePath::Root,
                 value,
-                [Some(0.0), None, None, None],
+                runtime::Bounds {
+                    min: Some(0.0),
+                    ..runtime::Bounds::NONE
+                },
             );
         }
         runtime::first(violations)
