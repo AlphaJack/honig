@@ -233,8 +233,7 @@ impl Builder<'_> {
     }
 
     /// Returns `{properties: {name}, required: [name], oneOf: [A, B]}` means `allOf: [{properties, required},
-    /// {oneOf}]`: the properties beside the union hold for each branch (Svix's `IngestSourceIn` has a `name` whatever
-    /// its `type`). Typing the union alone would lose them.
+    /// {oneOf}]`: the properties beside the union hold for each branch. Typing the union alone would lose them.
     pub(super) fn sibling_union(&self, o: &serde_json::Map<String, Value>, ptr: &str) -> Option<Value> {
         let key = union_keyword(o)?;
         let own = own_object_keywords(Some(o))?;

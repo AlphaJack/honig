@@ -377,7 +377,7 @@ impl XmlHint {
             cdata: node.as_deref() == Some("cdata"),
             inline: node.as_deref() == Some("none"),
             // `nodeType: element` on an array is its wrapper (3.2). The array may be reached through `allOf` or
-            // `$ref` (S3's `Buckets`) and have no `items` here: only lists read `wrapped`.
+            // `$ref` and have no `items` here: only lists read `wrapped`.
             wrapped: b("wrapped") || node.as_deref() == Some("element"),
             item: schema
                 .get("items")
@@ -915,7 +915,7 @@ impl Constraints {
 mod tests {
     #[test]
     fn an_element_node_type_wraps_an_array_reached_through_a_reference() {
-        // An upgraded `wrapped: true` beside `allOf: [{$ref: Buckets}]` (S3): no `items` of its own.
+        // An upgraded `wrapped: true` beside `allOf: [{$ref: ...}]`: no `items` of its own.
         let hint = super::XmlHint::of(&serde_json::json!({"allOf": [{"$ref": "#/x"}], "xml": {"nodeType": "element"}}));
         assert!(hint.wrapped);
     }

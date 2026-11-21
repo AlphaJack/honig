@@ -1,9 +1,8 @@
-//! Several root documents as one. Matrix describes its client-server API in 74 files, each a complete document
-//! with its own paths and servers. Each file is bundled against its own directory and upgraded to 3.2 alone. Then
+//! Several root documents as one, each a complete document with its own paths and servers. Each file is bundled against its own directory and upgraded to 3.2 alone. Then
 //! paths, webhooks, components and tags merge.
 //!
 //! What a file says for all of its operations stays with them. Files whose one server differs only in its path
-//! (Matrix: `/_matrix/client/v3`, `/_matrix/media/v1`) share the host: each file's base path moves into its path
+//! (`/client/v3`, `/media/v1`) share the host: each file's base path moves into its path
 //! keys and the root server keeps the host. So the client's base URL serves every operation. Root `servers` that
 //! differ otherwise move onto the file's path items (3.2 section 4.9: a path item's `servers` override the root's). Root `security` that
 //! differs moves onto the file's operations that have none of their own. The same path and method in two files and
@@ -282,15 +281,15 @@ mod tests {
     fn each_file_keeps_its_servers_and_shared_components_merge() {
         let dir = scratch("servers");
         let id = json!({"type": "string", "pattern": "^@"});
-        let a = write(&dir, "a.json", &file("/login", "/_matrix/client/v3", &id));
-        let b = write(&dir, "b.json", &file("/media", "/_matrix/media/v1", &id));
+        let a = write(&dir, "a.json", &file("/login", "/api/client/v3", &id));
+        let b = write(&dir, "b.json", &file("/media", "/api/media/v1", &id));
         let mut d = Diagnostics::default();
         let v = merge(&[a, b], &mut d).unwrap();
         assert!(!d.has_errors(), "{d:?}");
         // One host and two base paths: each base path moves into its file's paths.
         assert_eq!(v["servers"], json!([{"url": "https://localhost"}]));
-        assert!(v["paths"]["/_matrix/client/v3/login"]["get"].is_object(), "{:#}", v["paths"]);
-        assert!(v["paths"]["/_matrix/media/v1/media"]["get"].is_object());
+        assert!(v["paths"]["/api/client/v3/login"]["get"].is_object(), "{:#}", v["paths"]);
+        assert!(v["paths"]["/api/media/v1/media"]["get"].is_object());
         assert_eq!(v["components"]["schemas"]["Id"]["pattern"], "^@");
     }
 

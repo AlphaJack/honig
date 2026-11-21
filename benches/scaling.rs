@@ -49,7 +49,7 @@ fn ref_chain(count: usize) -> Value {
 
 /// A description of `count` products, each a union of the two before it and an object that refers to them, and an
 /// operation that returns it. Two branches of one type: the union is checked whole at run time. So a schema is reached
-/// by many paths, and a check reaches every schema before it, as in large real descriptions.
+/// by many paths, and a check reaches every schema before it.
 fn any_of_chain(count: usize) -> Value {
     let mut schemas = Map::new();
     let mut paths = Map::new();

@@ -34,7 +34,7 @@ paths:
       responses:
         "200": {description: ok, schema: {type: array, items: {$ref: "#/definitions/Key"}}}
 definitions:
-  # As a gRPC-gateway service writes it: optional properties it sends as `null` when unset.
+  # Optional properties it sends as `null` when unset.
   Key:
     type: object
     required: [id]

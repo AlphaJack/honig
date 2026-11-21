@@ -172,8 +172,8 @@ fn twins(space: &Space<'_>) -> std::collections::BTreeMap<usize, usize> {
     loop {
         let canon = |id: TypeId| TypeId(first.get(&id.0).copied().unwrap_or(id.0));
         // References to a twin read as references to its first.
-        // The last word of the name is the role (`type`, `usage`, `Ok`): twins with different roles stay apart, so a
-        // send's `type` does not read as a cipher's `reprompt` although both are `enum: [0, 1]`.
+        // The last word of the name is the role (`type`, `usage`, `Ok`): twins with different roles stay apart, so an
+        // order's `type` does not read as a user's `status` although both are `enum: [0, 1]`.
         let key = |def: &TypeDef| {
             let role = def.name.words().last().cloned().unwrap_or_default();
             format!("{:?}|{:?}|{}|{role}", canonical_kind(&def.kind, &canon), def.xml, def.json_string)
@@ -183,7 +183,7 @@ fn twins(space: &Space<'_>) -> std::collections::BTreeMap<usize, usize> {
         let mut seen: std::collections::BTreeMap<u64, Vec<(String, usize)>> = std::collections::BTreeMap::new();
         let mut next = std::collections::BTreeMap::new();
         for (i, def) in space.types.defs.iter().enumerate() {
-            // A schema the description names is its own type: `Kdf` and `FileUploadType` may both be `enum: [0, 1]`.
+            // A schema the description names is its own type: `Kind` and `Mode` may both be `enum: [0, 1]`.
             if def.component || def.rust_type.is_some() || matches!(def.kind, Kind::Pending | Kind::Alias(_)) {
                 continue;
             }

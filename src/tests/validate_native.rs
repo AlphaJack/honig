@@ -360,8 +360,7 @@ fn v20_reference_and_security_rules_are_checked() {
     ]);
 }
 
-/// A MUST that real documents break widely (a third of the discriminators of APIs.guru).
-/// It is reported but not as an error.
+/// A MUST that documents break widely. It is reported but not as an error.
 #[test]
 fn a_v20_discriminator_outside_required_is_a_warning() {
     let doc = swagger(
@@ -428,7 +427,7 @@ fn query_parameter_names_are_case_sensitive_and_header_names_are_not() {
             "responses": {"200": {"description": "ok"}}}}}});
         crate::load::load_str(&d.to_string()).diagnostics.iter().any(|x| x.message.contains("duplicate parameter"))
     };
-    // S3's `marker` and `Marker` are two query parameters.
+    // `marker` and `Marker` are two query parameters.
     assert!(!doc("marker", "Marker", "query"));
     assert!(doc("X-Trace", "x-trace", "header"));
 }

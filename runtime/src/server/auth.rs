@@ -121,8 +121,7 @@ fn satisfied(headers: &http::HeaderMap, query: &Query<'_>, requirements: &[&[Req
                     .map(|(_, v)| v),
                 #[cfg(feature = "base64")]
                 Scheme::Basic(_) => {
-                    // UTF-8 or else ISO-8859-1. The `requests` of Python and OkHttp encode Basic credentials in
-                    // Latin-1.
+                    // UTF-8 or else ISO-8859-1: some clients encode Basic credentials in Latin-1.
                     strip_scheme(auth, "basic")
                         .and_then(unbase64)
                         .map(|b| String::from_utf8(b).unwrap_or_else(|e| crate::header::latin1(e.as_bytes())))

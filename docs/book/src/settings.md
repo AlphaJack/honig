@@ -37,7 +37,7 @@ An adapter serves one half, and `tracing-opentelemetry` serves both. Each adapte
 
 ## Several root documents
 
-Some APIs describe themselves in many complete documents. Matrix has one per area. List them, with `*` for the files of a directory:
+Some APIs describe themselves in many complete documents, one per area. List them, with `*` for the files of a directory:
 
 ```toml
 [package.metadata.honig.api]
@@ -46,7 +46,7 @@ spec = ["matrix/client-server/*.yaml"]
 
 Each file is bundled against its own directory and upgraded to 3.2 alone. Then paths, webhooks, components and tags merge into one module.
 
-- Files whose one server differs only in its path share the host. Each file's base path moves into its paths (`/login` under `/_matrix/client/v3` is `/_matrix/client/v3/login`). The client's base URL then serves every operation.
+- Files whose one server differs only in its path share the host. Each file's base path moves into its paths (`/login` under `/api/client/v3` is `/api/client/v3/login`). The client's base URL then serves every operation.
 - Files on different hosts keep their servers on their path items.
 - One method of one path in two files is an error. So is one component name with two different values.
 

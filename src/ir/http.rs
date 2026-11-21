@@ -1088,8 +1088,7 @@ fn contents(b: &mut Builder<'_>, holder: &Value, ptr: &str, hint: &Name) -> Vec<
                 let item_ty = match (item_schema, schema.and_then(|s| s.get("items"))) {
                     (Some(item), _) => b.ty(item, &join(&mptr, "itemSchema"), &item_hint),
                     (None, Some(items)) => b.ty(items, &join(&join(&mptr, "schema"), "items"), &item_hint),
-                    // Before 3.2 (no `itemSchema`) generators such as utoipa put the
-                    // item type in `schema`. A non-array schema describes one item.
+                    // Before 3.2 (no `itemSchema`) the item type is in `schema`. A non-array schema describes one item.
                     (None, None) => match schema.map(|s| b.ty(s, &join(&mptr, "schema"), &item_hint)) {
                         Some(Ty::Vec(item)) => *item,
                         Some(item) => item,
@@ -1213,8 +1212,7 @@ fn binary_parts(schema: &Value, media_obj: &Value) -> Option<Value> {
 }
 
 /// Returns form fields, multipart parts and SSE events are always named values on the
-/// wire. Without a schema (`{}` or none as utoipa emits for multipart) type
-/// them as a map. A bare JSON value cannot round-trip through them.
+/// wire. Without a schema (`{}` or none) type them as a map. A bare JSON value cannot round-trip through them.
 fn fields_if_any(ty: Ty) -> Ty {
     if ty == Ty::Any { Ty::Map(Box::new(Ty::Any)) } else { ty }
 }

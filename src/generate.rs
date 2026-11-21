@@ -86,8 +86,7 @@ pub fn load(specs: &[std::path::PathBuf], opts: &Options) -> Result<Loaded, Diag
         }
         return Err(diagnostics);
     }
-    // A `pattern` that does not compile cannot be checked: its type would take every value. Validation reported each
-    // as an error.
+    // A `pattern` that does not compile cannot be checked: its type would take every value.
     if crate::validate::v32::has_uncompilable_pattern(&doc.root, "") {
         return Err(diagnostics);
     }

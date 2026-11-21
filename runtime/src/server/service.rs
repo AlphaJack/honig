@@ -128,9 +128,8 @@ impl MatchedOperation {
 /// Returns the body of a request in a layer, read whole on the first call.
 ///
 /// It reads up to `max_body_bytes` and answers `413` past it. The operation then decodes the same bytes and reads
-/// nothing again. A layer that verifies a signature over the body
-/// (Matrix's `X-Matrix`, webhook HMACs such as `X-Hub-Signature-256`) reads it here. A layer that does not call it
-/// costs no body read.
+/// nothing again. A layer that verifies a signature over the body (a webhook HMAC) reads it here. A layer that does
+/// not call it costs no body read.
 ///
 /// # Errors
 /// The body is larger than `max_body_bytes` (413) or cannot be read (400). Return the error from your layer.

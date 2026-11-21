@@ -22,8 +22,8 @@ pub trait BodySource: MaybeSend + 'static {
     }
 
     /// Returns the bytes still to come when the source knows them before it produces them. A transport then sends the
-    /// body with `Content-Length` and not chunked. Some servers need this, such as an S3 presigned `PUT` and many
-    /// embedded ones. `None` for a source that does not know.
+    /// body with `Content-Length` and not chunked, for servers that read no chunked body. `None` for a source that
+    /// does not know.
     fn size(&self) -> Option<u64> {
         self.shared().map(|b| b.len() as u64)
     }
@@ -271,9 +271,8 @@ impl Blob {
         Self::of(BlobBody::Stream(ByteStream::chunks(futures_util::StreamExt::map(chunks, |b| Ok(b.into())), None)))
     }
 
-    /// Returns a body of chunks that add up to `len` bytes. It goes out with `Content-Length` and not chunked. A server
-    /// that reads no chunked body takes it, such as some embedded ones and an S3 presigned `PUT`. Chunks that add up to
-    /// another length fail the request.
+    /// Returns a body of chunks that add up to `len` bytes. It goes out with `Content-Length` and not chunked, so a
+    /// server that reads no chunked body takes it. Chunks that add up to another length fail the request.
     pub fn sized<S, B>(len: u64, chunks: S) -> Self
     where
         S: Stream<Item = B> + Send + 'static,

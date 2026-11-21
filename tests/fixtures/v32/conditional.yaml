@@ -23,7 +23,7 @@ components:
       oneOf:
         - {type: object, required: [type, email], properties: {type: {type: string, enum: [email]}, email: {type: string}}}
         - {type: object, required: [type, phone], properties: {type: {type: string, enum: [sms]}, phone: {type: string}}}
-    # `allOf` with a `oneOf` member: each value is one branch and has the order too (Garage's `NodeRoleChange`).
+    # `allOf` with a `oneOf` member: each value is one branch and has the order too.
     Delivery:
       allOf:
         - {$ref: '#/components/schemas/DeliveryMethod'}

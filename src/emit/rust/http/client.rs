@@ -279,8 +279,7 @@ fn query_param(space: &Space<'_>, p: &Param) -> TokenStream {
 }
 
 /// Returns the `Accept` header. It has every media type that the responses declare once each in the order of the
-/// description. A server that can answer in several (the OCS of Nextcloud: XML unless asked) then answers in one
-/// that the client decodes. `None` when no response has a body.
+/// description. A server that can answer in several (XML unless asked) then answers in one that the client decodes. `None` when no response has a body.
 /// The media types of the other responses of an operation (errors, redirects) that its success responses do not use.
 fn error_media(op: &Operation) -> Vec<&str> {
     let success: Vec<&str> = crate::emit::rust::http::shared::produces(op).into_iter().map(|(m, _)| m).collect();

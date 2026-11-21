@@ -160,7 +160,7 @@ const KNOWN_TYPES: &[&str] = &["null", "boolean", "object", "array", "number", "
 
 fn repair(s: &mut Obj, ptr: &str, diags: &mut Diagnostics) {
     // `nullable` is OpenAPI 3.0 only. In 3.1 and later it is an unknown keyword: `null` is not allowed. Generators
-    // that emit 3.1 keep writing it (Svix 119 times), so the generated type rejecting `null` comes as a surprise.
+    // that emit 3.1 keep writing it, so the generated type rejecting `null` comes as a surprise.
     if s.get("nullable") == Some(&Value::Bool(true)) {
         diags.warning(
             join(ptr, "nullable"),

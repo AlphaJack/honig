@@ -128,7 +128,7 @@ fn the_client_leaves_out_a_parameter_at_its_default() {
         };
         drop(api::block_on(client.list_orders(params)));
     }
-    // An enum default too (Matrix's `kind=user` on `/register`).
+    // An enum default too.
     let params =
         ops::list_orders::Params { sort: types::ListOrdersSort::Oldest, ..ops::list_orders::Params::default() };
     drop(api::block_on(client.list_orders(params)));

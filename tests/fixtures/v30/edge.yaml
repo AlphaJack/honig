@@ -195,7 +195,7 @@ components:
             - {$ref: '#/components/schemas/Card'}
             - {$ref: '#/components/schemas/Sepa'}
         vehicle: {$ref: '#/components/schemas/Vehicle'}
-        # schemars writes `Option<T>` as this pair. The second branch takes any value, `null` too.
+        # `Option<T>` as a pair of branches. The second branch takes any value, `null` too.
         discount:
           anyOf:
             - {$ref: '#/components/schemas/Money'}

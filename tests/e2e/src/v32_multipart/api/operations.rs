@@ -161,7 +161,7 @@ pub mod deploy {
     pub const PATH: &str = "/deploy";
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct Params {
-        /// Schemaless multipart, as utoipa emits for a hand-parsed form.
+        /// Schemaless multipart for a hand-parsed form.
         pub body: Option<std::collections::BTreeMap<String, serde_json::Value>>,
     }
     impl Params {
