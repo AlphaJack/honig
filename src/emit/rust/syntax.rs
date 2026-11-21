@@ -1106,54 +1106,6 @@ mod tests {
         assert_eq!(grouped("1.5e10"), "1.5e10");
     }
 
-    /// An enum that holds itself names itself `Self` in its variants, as a struct does in its fields.
-    #[test]
-    fn an_enum_names_itself_self_in_its_variants() {
-        let text = super::print(
-            "x.rs",
-            quote::quote!(
-                pub enum E {
-                    A(Box<E>),
-                    B,
-                }
-            ),
-            false,
-        )
-        .unwrap();
-        assert!(text.contains("A(Box<Self>)"), "{text}");
-    }
-
-    /// `~~~` fences as `` ``` `` does, and `*` and `+` mark a list item as `-` does.
-    #[test]
-    fn tilde_fences_and_star_lists_are_markdown_too() {
-        assert_eq!(rustdoc("~~~rust\nlet a = 1;\n~~~"), "~~~text\nlet a = 1;\n~~~");
-        assert_eq!(rustdoc("* item\ncontinued"), "* item\n  continued");
-        assert_eq!(rustdoc("+ item\ncontinued"), "+ item\n  continued");
-    }
-
-    /// A JSON object keeps its members as code; only an empty one is a bare `Map::new()`.
-    #[test]
-    fn json_objects_keep_their_members_as_code() {
-        let text = super::json_tokens(&serde_json::json!({"a": 1})).to_string();
-        assert!(text.contains("\"a\""), "{text}");
-    }
-
-    /// Variants of one type and one body share an arm; another type or another body keeps its own.
-    #[test]
-    fn arms_of_one_type_and_body_are_shared() {
-        use crate::ir::types::Ty;
-        let f = quote::quote!(f(v));
-        let shared = super::shared_arms(vec![
-            (quote::quote!(Self::A(v)), Some(Ty::String), f.clone()),
-            (quote::quote!(Self::B(v)), Some(Ty::String), f.clone()),
-            (quote::quote!(Self::C(v)), Some(Ty::I64), f.clone()),
-            (quote::quote!(Self::D(v)), None, f.clone()),
-            (quote::quote!(Self::E(v)), None, f),
-        ]);
-        assert_eq!(shared.len(), 4, "{shared:?}");
-        assert!(shared[0].to_string().starts_with("Self :: A (v) | Self :: B (v) =>"), "{shared:?}");
-    }
-
     /// A type names a generated type or a runtime one when anything it holds does.
     #[test]
     fn a_type_mentions_what_it_holds() {

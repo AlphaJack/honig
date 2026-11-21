@@ -606,7 +606,7 @@ fn a_server_for_some_operations_holds_the_types_they_reach() {
     let opts = crate::emit::Options {
         client: false,
         allow_unimplemented: true,
-        server_operations: Some(vec!["createOrder".to_owned()]),
+        operations: Some(vec!["createOrder".to_owned()]),
         ..crate::emit::Options::default()
     };
     super::common::new_crate(&spec, &out, "served-subset", &opts);
