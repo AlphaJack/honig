@@ -11,94 +11,6 @@ macro_rules! serialize_impl {
         }
     };
 }
-macro_rules! deserialize_impl {
-    ($t:ty) => {
-        impl<'de> serde::Deserialize<'de> for $t {
-            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-                let value = <std::collections::BTreeMap<
-                    String,
-                    String,
-                > as serde::Deserialize>::deserialize(d)?;
-                Self::try_from(value).map_err(serde::de::Error::custom)
-            }
-        }
-    };
-}
-macro_rules! try_from_impl {
-    ($t:ty) => {
-        impl TryFrom<String> for $t {
-            type Error = runtime::BuildError;
-            fn try_from(value: String) -> Result<Self, runtime::BuildError> {
-                let mut violations: Vec<runtime::Violation> = Vec::new();
-                {
-                    let out = &mut violations;
-                    runtime::check_pattern(
-                        out,
-                        &runtime::InstancePath::Root,
-                        {
-                            static RE: runtime::Pattern = runtime::Pattern::new("^[a-z]+$");
-                            &RE
-                        },
-                        value.as_str(),
-                    );
-                }
-                runtime::first(violations)
-                    .map(|()| Self(value))
-                    .map_err(runtime::BuildError::value)
-            }
-        }
-    };
-}
-macro_rules! try_from_impl_2 {
-    ($t:ty) => {
-        impl TryFrom<String> for $t {
-            type Error = runtime::BuildError;
-            fn try_from(value: String) -> Result<Self, runtime::BuildError> {
-                let mut violations: Vec<runtime::Violation> = Vec::new();
-                {
-                    let out = &mut violations;
-                    let n = (value.as_str()).chars().count();
-                    runtime::check_len(
-                        out,
-                        &runtime::InstancePath::Root,
-                        n,
-                        None,
-                        Some(5),
-                        "characters",
-                    );
-                }
-                runtime::first(violations)
-                    .map(|()| Self(value))
-                    .map_err(runtime::BuildError::value)
-            }
-        }
-    };
-}
-macro_rules! try_from_impl_3 {
-    ($t:ty) => {
-        impl TryFrom<String> for $t {
-            type Error = runtime::BuildError;
-            fn try_from(value: String) -> Result<Self, runtime::BuildError> {
-                let mut violations: Vec<runtime::Violation> = Vec::new();
-                {
-                    let out = &mut violations;
-                    let n = (value.as_str()).chars().count();
-                    runtime::check_len(
-                        out,
-                        &runtime::InstancePath::Root,
-                        n,
-                        None,
-                        Some(3),
-                        "characters",
-                    );
-                }
-                runtime::first(violations)
-                    .map(|()| Self(value))
-                    .map_err(runtime::BuildError::value)
-            }
-        }
-    };
-}
 macro_rules! serialize_impl_2 {
     ($t:ty) => {
         impl serde::Serialize for $t {
@@ -111,7 +23,7 @@ macro_rules! serialize_impl_2 {
         }
     };
 }
-macro_rules! deserialize_impl_2 {
+macro_rules! deserialize_impl {
     ($t:ty) => {
         impl<'de> serde::Deserialize<'de> for $t {
             fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
@@ -129,67 +41,11 @@ macro_rules! deserialize_impl_2 {
         }
     };
 }
-macro_rules! try_from_impl_4 {
-    ($t:ty) => {
-        impl TryFrom<i64> for $t {
-            type Error = runtime::BuildError;
-            fn try_from(value: i64) -> Result<Self, runtime::BuildError> {
-                let mut violations: Vec<runtime::Violation> = Vec::new();
-                {
-                    let out = &mut violations;
-                    runtime::check_range(
-                        out,
-                        &runtime::InstancePath::Root,
-                        value,
-                        runtime::Bounds {
-                            min: Some(0),
-                            ..runtime::Bounds::NONE
-                        },
-                    );
-                }
-                runtime::first(violations)
-                    .map(|()| Self(value))
-                    .map_err(runtime::BuildError::value)
-            }
-        }
-    };
-}
-macro_rules! deserialize_impl_3 {
-    ($t:ty) => {
-        impl<'de> serde::Deserialize<'de> for $t {
-            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-                let value = <serde_json::Value as serde::Deserialize>::deserialize(d)?;
-                Self::try_from(value).map_err(serde::de::Error::custom)
-            }
-        }
-    };
-}
 use super::runtime;
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct Tagged(pub(super) TaggedVariants);
-impl<'de> serde::Deserialize<'de> for Tagged {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let (value, text) = runtime::read_once::<_, TaggedVariants>(d)?;
-        match text {
-            Some(text) => {
-                let json = runtime::Content::parse(text)
-                    .map_err(serde::de::Error::custom)?;
-                Self::checked(value, &json)
-            }
-            None => Self::try_from(value),
-        }
-            .map_err(serde::de::Error::custom)
-    }
-}
-impl TryFrom<TaggedVariants> for Tagged {
-    type Error = runtime::BuildError;
-    fn try_from(value: TaggedVariants) -> Result<Self, runtime::BuildError> {
-        let json = runtime::to_value(&value)
-            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
-        Self::checked(value, &runtime::Content::of(&json))
-    }
-}
+runtime::checked_deserialize!(Tagged, TaggedVariants, once);
 impl Tagged {
     fn checked(
         value: TaggedVariants,
@@ -235,32 +91,12 @@ impl Tagged {
             .map_err(runtime::BuildError::value)
     }
 }
+runtime::checked_json!(Tagged, TaggedVariants);
 runtime::checked_impls!(Tagged, TaggedVariants);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct Implied(pub(super) ImpliedVariants);
-impl<'de> serde::Deserialize<'de> for Implied {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let (value, text) = runtime::read_once::<_, ImpliedVariants>(d)?;
-        match text {
-            Some(text) => {
-                let json = runtime::Content::parse(text)
-                    .map_err(serde::de::Error::custom)?;
-                Self::checked(value, &json)
-            }
-            None => Self::try_from(value),
-        }
-            .map_err(serde::de::Error::custom)
-    }
-}
-impl TryFrom<ImpliedVariants> for Implied {
-    type Error = runtime::BuildError;
-    fn try_from(value: ImpliedVariants) -> Result<Self, runtime::BuildError> {
-        let json = runtime::to_value(&value)
-            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
-        Self::checked(value, &runtime::Content::of(&json))
-    }
-}
+runtime::checked_deserialize!(Implied, ImpliedVariants, once);
 impl Implied {
     fn checked(
         value: ImpliedVariants,
@@ -323,6 +159,7 @@ impl Implied {
             .map_err(runtime::BuildError::value)
     }
 }
+runtime::checked_json!(Implied, ImpliedVariants);
 runtime::checked_impls!(Implied, ImpliedVariants);
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Slug {
@@ -929,28 +766,7 @@ impl runtime::XmlShape for Login {
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
 #[serde(transparent)]
 pub struct Shipment(pub(super) ShipmentVariants);
-impl<'de> serde::Deserialize<'de> for Shipment {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let (value, text) = runtime::read_once::<_, ShipmentVariants>(d)?;
-        match text {
-            Some(text) => {
-                let json = runtime::Content::parse(text)
-                    .map_err(serde::de::Error::custom)?;
-                Self::checked(value, &json)
-            }
-            None => Self::try_from(value),
-        }
-            .map_err(serde::de::Error::custom)
-    }
-}
-impl TryFrom<ShipmentVariants> for Shipment {
-    type Error = runtime::BuildError;
-    fn try_from(value: ShipmentVariants) -> Result<Self, runtime::BuildError> {
-        let json = runtime::to_value(&value)
-            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
-        Self::checked(value, &runtime::Content::of(&json))
-    }
-}
+runtime::checked_deserialize!(Shipment, ShipmentVariants, once);
 impl Shipment {
     fn checked(
         value: ShipmentVariants,
@@ -974,6 +790,7 @@ impl Shipment {
             .map_err(runtime::BuildError::value)
     }
 }
+runtime::checked_json!(Shipment, ShipmentVariants);
 runtime::checked_impls!(Shipment, ShipmentVariants);
 runtime::object! {
     #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
@@ -1002,28 +819,7 @@ impl runtime::XmlShape for Loose {
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct Voucher(pub(super) VoucherFields);
-impl<'de> serde::Deserialize<'de> for Voucher {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let (value, text) = runtime::read_once::<_, VoucherFields>(d)?;
-        match text {
-            Some(text) => {
-                let json = runtime::Content::parse(text)
-                    .map_err(serde::de::Error::custom)?;
-                Self::checked(value, &json)
-            }
-            None => Self::try_from(value),
-        }
-            .map_err(serde::de::Error::custom)
-    }
-}
-impl TryFrom<VoucherFields> for Voucher {
-    type Error = runtime::BuildError;
-    fn try_from(value: VoucherFields) -> Result<Self, runtime::BuildError> {
-        let json = runtime::to_value(&value)
-            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
-        Self::checked(value, &runtime::Content::of(&json))
-    }
-}
+runtime::checked_deserialize!(Voucher, VoucherFields, once);
 impl Voucher {
     fn checked(
         value: VoucherFields,
@@ -1047,16 +843,12 @@ impl Voucher {
             .map_err(runtime::BuildError::value)
     }
 }
+runtime::checked_json!(Voucher, VoucherFields);
 runtime::checked_impls!(Voucher, VoucherFields);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct Payment(pub(super) PaymentFields);
-impl<'de> serde::Deserialize<'de> for Payment {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <PaymentFields as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
-    }
-}
+runtime::checked_deserialize!(Payment, PaymentFields);
 impl TryFrom<PaymentFields> for Payment {
     type Error = runtime::BuildError;
     fn try_from(value: PaymentFields) -> Result<Self, runtime::BuildError> {
@@ -1109,7 +901,7 @@ impl runtime::XmlShape for Labelled {
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct Labels(pub(super) std::collections::BTreeMap<String, String>);
-deserialize_impl!(Labels);
+runtime::checked_deserialize!(Labels, std::collections::BTreeMap < String, String >);
 impl TryFrom<std::collections::BTreeMap<String, String>> for Labels {
     type Error = runtime::BuildError;
     fn try_from(
@@ -1152,12 +944,7 @@ runtime::checked_impls!(Labels, std::collections::BTreeMap < String, String >);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct Pair(pub(super) PairFields);
-impl<'de> serde::Deserialize<'de> for Pair {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <PairFields as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
-    }
-}
+runtime::checked_deserialize!(Pair, PairFields);
 impl TryFrom<PairFields> for Pair {
     type Error = runtime::BuildError;
     fn try_from(value: PairFields) -> Result<Self, runtime::BuildError> {
@@ -1242,12 +1029,7 @@ impl runtime::XmlShape for Settings {
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct Profile(pub(super) ProfileFields);
-impl<'de> serde::Deserialize<'de> for Profile {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <ProfileFields as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
-    }
-}
+runtime::checked_deserialize!(Profile, ProfileFields);
 impl TryFrom<ProfileFields> for Profile {
     type Error = runtime::BuildError;
     fn try_from(value: ProfileFields) -> Result<Self, runtime::BuildError> {
@@ -1331,15 +1113,9 @@ impl runtime::XmlShape for Scored {
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct Scores(pub(super) std::collections::BTreeMap<String, ScoresValue>);
-impl<'de> serde::Deserialize<'de> for Scores {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <std::collections::BTreeMap<
-            String,
-            ScoresValue,
-        > as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
-    }
-}
+runtime::checked_deserialize!(
+    Scores, std::collections::BTreeMap < String, ScoresValue >
+);
 impl TryFrom<std::collections::BTreeMap<String, ScoresValue>> for Scores {
     type Error = runtime::BuildError;
     fn try_from(
@@ -1585,17 +1361,77 @@ pub struct SlugVariant2(pub(super) String);
 impl SlugVariant2 {
     pub const PATTERN: &'static str = "^[a-z]+$";
 }
-try_from_impl!(SlugVariant2);
+impl TryFrom<String> for SlugVariant2 {
+    type Error = runtime::BuildError;
+    fn try_from(value: String) -> Result<Self, runtime::BuildError> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            runtime::check_pattern(
+                out,
+                &runtime::InstancePath::Root,
+                {
+                    static RE: runtime::Pattern = runtime::Pattern::new("^[a-z]+$");
+                    &RE
+                },
+                value.as_str(),
+            );
+        }
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
+    }
+}
 runtime::checked_str_impls!(SlugVariant2);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct NarrowStampAt(pub(super) String);
-try_from_impl_2!(NarrowStampAt);
+impl TryFrom<String> for NarrowStampAt {
+    type Error = runtime::BuildError;
+    fn try_from(value: String) -> Result<Self, runtime::BuildError> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            let n = (value.as_str()).chars().count();
+            runtime::check_len(
+                out,
+                &runtime::InstancePath::Root,
+                n,
+                None,
+                Some(5),
+                "characters",
+            );
+        }
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
+    }
+}
 runtime::checked_str_impls!(NarrowStampAt);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct CodeVariant1(pub(super) String);
-try_from_impl_3!(CodeVariant1);
+impl TryFrom<String> for CodeVariant1 {
+    type Error = runtime::BuildError;
+    fn try_from(value: String) -> Result<Self, runtime::BuildError> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            let n = (value.as_str()).chars().count();
+            runtime::check_len(
+                out,
+                &runtime::InstancePath::Root,
+                n,
+                None,
+                Some(3),
+                "characters",
+            );
+        }
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
+    }
+}
 runtime::checked_str_impls!(CodeVariant1);
 pub type CodeVariant2 = SlugVariant2;
 #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize)]
@@ -1839,7 +1675,7 @@ pub type EntryLines = Vec<Line>;
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct LineNote(pub(super) String);
-try_from_impl_3!(LineNote);
+runtime::checked_twin!(LineNote, CodeVariant1, String);
 runtime::checked_str_impls!(LineNote);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 pub struct RefusalObject;
@@ -1881,7 +1717,7 @@ runtime::str_enum_impls!(ProblemCode);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct BadgeLabel(pub(super) String);
-try_from_impl_2!(BadgeLabel);
+runtime::checked_twin!(BadgeLabel, NarrowStampAt, String);
 runtime::checked_str_impls!(BadgeLabel);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
@@ -1911,30 +1747,7 @@ runtime::checked_str_impls!(LoginPassword);
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
 #[serde(transparent)]
 pub struct ShipmentInternational(pub(super) ShipmentInternationalFields);
-impl<'de> serde::Deserialize<'de> for ShipmentInternational {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let (value, text) = runtime::read_once::<_, ShipmentInternationalFields>(d)?;
-        match text {
-            Some(text) => {
-                let json = runtime::Content::parse(text)
-                    .map_err(serde::de::Error::custom)?;
-                Self::checked(value, &json)
-            }
-            None => Self::try_from(value),
-        }
-            .map_err(serde::de::Error::custom)
-    }
-}
-impl TryFrom<ShipmentInternationalFields> for ShipmentInternational {
-    type Error = runtime::BuildError;
-    fn try_from(
-        value: ShipmentInternationalFields,
-    ) -> Result<Self, runtime::BuildError> {
-        let json = runtime::to_value(&value)
-            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
-        Self::checked(value, &runtime::Content::of(&json))
-    }
-}
+runtime::checked_deserialize!(ShipmentInternational, ShipmentInternationalFields, once);
 impl ShipmentInternational {
     fn checked(
         value: ShipmentInternationalFields,
@@ -1964,6 +1777,7 @@ impl ShipmentInternational {
             .map_err(runtime::BuildError::value)
     }
 }
+runtime::checked_json!(ShipmentInternational, ShipmentInternationalFields);
 runtime::checked_impls!(ShipmentInternational, ShipmentInternationalFields);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 pub struct ShipmentInternationalKind;
@@ -1977,7 +1791,7 @@ pub enum ShipmentInternationalMeta {
     Other(serde_json::Value),
 }
 serialize_impl_2!(ShipmentInternationalMeta);
-deserialize_impl_2!(ShipmentInternationalMeta);
+deserialize_impl!(ShipmentInternationalMeta);
 runtime::object! {
     #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
     pub struct MetaObject {
@@ -2054,7 +1868,27 @@ impl runtime::XmlShape for ParcelsItem {
 #[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct ShipmentInternationalScoresValue(pub(super) i64);
-try_from_impl_4!(ShipmentInternationalScoresValue);
+impl TryFrom<i64> for ShipmentInternationalScoresValue {
+    type Error = runtime::BuildError;
+    fn try_from(value: i64) -> Result<Self, runtime::BuildError> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            runtime::check_range(
+                out,
+                &runtime::InstancePath::Root,
+                value,
+                runtime::Bounds {
+                    min: Some(0),
+                    ..runtime::Bounds::NONE
+                },
+            );
+        }
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
+    }
+}
 runtime::checked_num_impls!(ShipmentInternationalScoresValue, i64);
 #[derive(Debug, Clone, PartialEq, Copy, PartialOrd, serde::Serialize)]
 #[serde(transparent)]
@@ -2110,12 +1944,7 @@ runtime::checked_num_impls!(ShipmentInternationalWeight, i64);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct ShipmentInternationalLabels(pub(super) LabelsFields);
-impl<'de> serde::Deserialize<'de> for ShipmentInternationalLabels {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <LabelsFields as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
-    }
-}
+runtime::checked_deserialize!(ShipmentInternationalLabels, LabelsFields);
 impl TryFrom<LabelsFields> for ShipmentInternationalLabels {
     type Error = runtime::BuildError;
     fn try_from(value: LabelsFields) -> Result<Self, runtime::BuildError> {
@@ -2154,33 +1983,12 @@ runtime::checked_impls!(ShipmentInternationalLabels, LabelsFields);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct LabelsPattern1(pub(super) String);
-try_from_impl_3!(LabelsPattern1);
+runtime::checked_twin!(LabelsPattern1, CodeVariant1, String);
 runtime::checked_str_impls!(LabelsPattern1);
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
 #[serde(transparent)]
 pub struct ShipmentOtherwise(pub(super) ShipmentOtherwiseFields);
-impl<'de> serde::Deserialize<'de> for ShipmentOtherwise {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let (value, text) = runtime::read_once::<_, ShipmentOtherwiseFields>(d)?;
-        match text {
-            Some(text) => {
-                let json = runtime::Content::parse(text)
-                    .map_err(serde::de::Error::custom)?;
-                Self::checked(value, &json)
-            }
-            None => Self::try_from(value),
-        }
-            .map_err(serde::de::Error::custom)
-    }
-}
-impl TryFrom<ShipmentOtherwiseFields> for ShipmentOtherwise {
-    type Error = runtime::BuildError;
-    fn try_from(value: ShipmentOtherwiseFields) -> Result<Self, runtime::BuildError> {
-        let json = runtime::to_value(&value)
-            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
-        Self::checked(value, &runtime::Content::of(&json))
-    }
-}
+runtime::checked_deserialize!(ShipmentOtherwise, ShipmentOtherwiseFields, once);
 impl ShipmentOtherwise {
     fn checked(
         value: ShipmentOtherwiseFields,
@@ -2210,6 +2018,7 @@ impl ShipmentOtherwise {
             .map_err(runtime::BuildError::value)
     }
 }
+runtime::checked_json!(ShipmentOtherwise, ShipmentOtherwiseFields);
 runtime::checked_impls!(ShipmentOtherwise, ShipmentOtherwiseFields);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum ShipmentOtherwiseKind {
@@ -2252,14 +2061,7 @@ pub type ShipmentOtherwiseWeight = ShipmentInternationalWeight;
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct ShipmentOtherwiseLabels(pub(super) ShipmentOtherwiseLabelsFields);
-impl<'de> serde::Deserialize<'de> for ShipmentOtherwiseLabels {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <ShipmentOtherwiseLabelsFields as serde::Deserialize>::deserialize(
-            d,
-        )?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
-    }
-}
+runtime::checked_deserialize!(ShipmentOtherwiseLabels, ShipmentOtherwiseLabelsFields);
 impl TryFrom<ShipmentOtherwiseLabelsFields> for ShipmentOtherwiseLabels {
     type Error = runtime::BuildError;
     fn try_from(
@@ -2302,7 +2104,7 @@ pub type SettingsPattern1 = LabelsPattern1;
 #[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct SettingsPattern2(pub(super) i64);
-try_from_impl_4!(SettingsPattern2);
+runtime::checked_twin!(SettingsPattern2, ShipmentInternationalScoresValue, i64);
 runtime::checked_num_impls!(SettingsPattern2, i64);
 pub type ScoresValue = ShipmentInternationalScoresValue;
 #[derive(Debug, Clone, PartialEq, Copy, PartialOrd, serde::Serialize)]
@@ -2446,7 +2248,7 @@ runtime::checked_num_impls!(UserScore, f64);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct UserTagsItem(pub(super) String);
-try_from_impl_3!(UserTagsItem);
+runtime::checked_twin!(UserTagsItem, CodeVariant1, String);
 runtime::checked_str_impls!(UserTagsItem);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum UserRole {
@@ -2530,13 +2332,13 @@ runtime::checked_num_impls!(UserLoyaltyVariant1, i64);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct UserLoyaltyVariant2(pub(super) String);
-try_from_impl_3!(UserLoyaltyVariant2);
+runtime::checked_twin!(UserLoyaltyVariant2, CodeVariant1, String);
 runtime::checked_str_impls!(UserLoyaltyVariant2);
 pub type UserNote = UserNote2;
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct UserNote2(pub(super) String);
-try_from_impl_2!(UserNote2);
+runtime::checked_twin!(UserNote2, NarrowStampAt, String);
 runtime::checked_str_impls!(UserNote2);
 #[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
@@ -2570,7 +2372,7 @@ pub struct CreateUserXTeam(pub(super) String);
 impl CreateUserXTeam {
     pub const PATTERN: &'static str = "^[a-z]+$";
 }
-try_from_impl!(CreateUserXTeam);
+runtime::checked_twin!(CreateUserXTeam, SlugVariant2, String);
 runtime::checked_str_impls!(CreateUserXTeam);
 runtime::object! {
     #[unique_keys]
@@ -2605,28 +2407,7 @@ impl runtime::XmlShape for Not {
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct Not2(pub(super) Not2Variants);
-impl<'de> serde::Deserialize<'de> for Not2 {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let (value, text) = runtime::read_once::<_, Not2Variants>(d)?;
-        match text {
-            Some(text) => {
-                let json = runtime::Content::parse(text)
-                    .map_err(serde::de::Error::custom)?;
-                Self::checked(value, &json)
-            }
-            None => Self::try_from(value),
-        }
-            .map_err(serde::de::Error::custom)
-    }
-}
-impl TryFrom<Not2Variants> for Not2 {
-    type Error = runtime::BuildError;
-    fn try_from(value: Not2Variants) -> Result<Self, runtime::BuildError> {
-        let json = runtime::to_value(&value)
-            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
-        Self::checked(value, &runtime::Content::of(&json))
-    }
-}
+runtime::checked_deserialize!(Not2, Not2Variants, once);
 impl Not2 {
     fn checked(
         value: Not2Variants,
@@ -2651,6 +2432,7 @@ impl Not2 {
             .map_err(runtime::BuildError::value)
     }
 }
+runtime::checked_json!(Not2, Not2Variants);
 runtime::checked_impls!(Not2, Not2Variants);
 runtime::object! {
     #[unique_keys]
@@ -2690,28 +2472,7 @@ pub use TaggedLabelLabel as Not2ObjectLabel;
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct Not3(pub(super) Not3Variants);
-impl<'de> serde::Deserialize<'de> for Not3 {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let (value, text) = runtime::read_once::<_, Not3Variants>(d)?;
-        match text {
-            Some(text) => {
-                let json = runtime::Content::parse(text)
-                    .map_err(serde::de::Error::custom)?;
-                Self::checked(value, &json)
-            }
-            None => Self::try_from(value),
-        }
-            .map_err(serde::de::Error::custom)
-    }
-}
-impl TryFrom<Not3Variants> for Not3 {
-    type Error = runtime::BuildError;
-    fn try_from(value: Not3Variants) -> Result<Self, runtime::BuildError> {
-        let json = runtime::to_value(&value)
-            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
-        Self::checked(value, &runtime::Content::of(&json))
-    }
-}
+runtime::checked_deserialize!(Not3, Not3Variants, once);
 impl Not3 {
     fn checked(
         value: Not3Variants,
@@ -2736,6 +2497,7 @@ impl Not3 {
             .map_err(runtime::BuildError::value)
     }
 }
+runtime::checked_json!(Not3, Not3Variants);
 runtime::checked_impls!(Not3, Not3Variants);
 runtime::object! {
     #[unique_keys]
@@ -2781,28 +2543,7 @@ runtime::const_impls!(Not4, VALUE);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct Not5(pub(super) Not5Variants);
-impl<'de> serde::Deserialize<'de> for Not5 {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let (value, text) = runtime::read_once::<_, Not5Variants>(d)?;
-        match text {
-            Some(text) => {
-                let json = runtime::Content::parse(text)
-                    .map_err(serde::de::Error::custom)?;
-                Self::checked(value, &json)
-            }
-            None => Self::try_from(value),
-        }
-            .map_err(serde::de::Error::custom)
-    }
-}
-impl TryFrom<Not5Variants> for Not5 {
-    type Error = runtime::BuildError;
-    fn try_from(value: Not5Variants) -> Result<Self, runtime::BuildError> {
-        let json = runtime::to_value(&value)
-            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
-        Self::checked(value, &runtime::Content::of(&json))
-    }
-}
+runtime::checked_deserialize!(Not5, Not5Variants, once);
 impl Not5 {
     fn checked(
         value: Not5Variants,
@@ -2827,6 +2568,7 @@ impl Not5 {
             .map_err(runtime::BuildError::value)
     }
 }
+runtime::checked_json!(Not5, Not5Variants);
 runtime::checked_impls!(Not5, Not5Variants);
 runtime::object! {
     #[unique_keys]
@@ -2871,28 +2613,7 @@ runtime::const_impls!(Not5ObjectFragile, VALUE);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct Not6(pub(super) Not6Variants);
-impl<'de> serde::Deserialize<'de> for Not6 {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let (value, text) = runtime::read_once::<_, Not6Variants>(d)?;
-        match text {
-            Some(text) => {
-                let json = runtime::Content::parse(text)
-                    .map_err(serde::de::Error::custom)?;
-                Self::checked(value, &json)
-            }
-            None => Self::try_from(value),
-        }
-            .map_err(serde::de::Error::custom)
-    }
-}
-impl TryFrom<Not6Variants> for Not6 {
-    type Error = runtime::BuildError;
-    fn try_from(value: Not6Variants) -> Result<Self, runtime::BuildError> {
-        let json = runtime::to_value(&value)
-            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
-        Self::checked(value, &runtime::Content::of(&json))
-    }
-}
+runtime::checked_deserialize!(Not6, Not6Variants, once);
 impl Not6 {
     fn checked(
         value: Not6Variants,
@@ -2917,6 +2638,7 @@ impl Not6 {
             .map_err(runtime::BuildError::value)
     }
 }
+runtime::checked_json!(Not6, Not6Variants);
 runtime::checked_impls!(Not6, Not6Variants);
 runtime::object! {
     #[unique_keys]
@@ -2961,28 +2683,7 @@ runtime::const_impls!(ObjectCustoms, VALUE);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct Not7(pub(super) Not7Variants);
-impl<'de> serde::Deserialize<'de> for Not7 {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let (value, text) = runtime::read_once::<_, Not7Variants>(d)?;
-        match text {
-            Some(text) => {
-                let json = runtime::Content::parse(text)
-                    .map_err(serde::de::Error::custom)?;
-                Self::checked(value, &json)
-            }
-            None => Self::try_from(value),
-        }
-            .map_err(serde::de::Error::custom)
-    }
-}
-impl TryFrom<Not7Variants> for Not7 {
-    type Error = runtime::BuildError;
-    fn try_from(value: Not7Variants) -> Result<Self, runtime::BuildError> {
-        let json = runtime::to_value(&value)
-            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
-        Self::checked(value, &runtime::Content::of(&json))
-    }
-}
+runtime::checked_deserialize!(Not7, Not7Variants, once);
 impl Not7 {
     fn checked(
         value: Not7Variants,
@@ -3007,34 +2708,14 @@ impl Not7 {
             .map_err(runtime::BuildError::value)
     }
 }
+runtime::checked_json!(Not7, Not7Variants);
 runtime::checked_impls!(Not7, Not7Variants);
 pub type Not7Object = Not6Object;
 pub use ObjectCustoms as Not7ObjectCustoms;
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct Not8(pub(super) Not8Variants);
-impl<'de> serde::Deserialize<'de> for Not8 {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let (value, text) = runtime::read_once::<_, Not8Variants>(d)?;
-        match text {
-            Some(text) => {
-                let json = runtime::Content::parse(text)
-                    .map_err(serde::de::Error::custom)?;
-                Self::checked(value, &json)
-            }
-            None => Self::try_from(value),
-        }
-            .map_err(serde::de::Error::custom)
-    }
-}
-impl TryFrom<Not8Variants> for Not8 {
-    type Error = runtime::BuildError;
-    fn try_from(value: Not8Variants) -> Result<Self, runtime::BuildError> {
-        let json = runtime::to_value(&value)
-            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
-        Self::checked(value, &runtime::Content::of(&json))
-    }
-}
+runtime::checked_deserialize!(Not8, Not8Variants, once);
 impl Not8 {
     fn checked(
         value: Not8Variants,
@@ -3059,34 +2740,14 @@ impl Not8 {
             .map_err(runtime::BuildError::value)
     }
 }
+runtime::checked_json!(Not8, Not8Variants);
 runtime::checked_impls!(Not8, Not8Variants);
 pub type Not8Object = Not6Object;
 pub use ObjectCustoms as Not8ObjectCustoms;
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct Not9(pub(super) Not9Variants);
-impl<'de> serde::Deserialize<'de> for Not9 {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let (value, text) = runtime::read_once::<_, Not9Variants>(d)?;
-        match text {
-            Some(text) => {
-                let json = runtime::Content::parse(text)
-                    .map_err(serde::de::Error::custom)?;
-                Self::checked(value, &json)
-            }
-            None => Self::try_from(value),
-        }
-            .map_err(serde::de::Error::custom)
-    }
-}
-impl TryFrom<Not9Variants> for Not9 {
-    type Error = runtime::BuildError;
-    fn try_from(value: Not9Variants) -> Result<Self, runtime::BuildError> {
-        let json = runtime::to_value(&value)
-            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
-        Self::checked(value, &runtime::Content::of(&json))
-    }
-}
+runtime::checked_deserialize!(Not9, Not9Variants, once);
 impl Not9 {
     fn checked(
         value: Not9Variants,
@@ -3111,6 +2772,7 @@ impl Not9 {
             .map_err(runtime::BuildError::value)
     }
 }
+runtime::checked_json!(Not9, Not9Variants);
 runtime::checked_impls!(Not9, Not9Variants);
 runtime::object! {
     #[unique_keys]
@@ -3269,7 +2931,7 @@ pub enum ImpliedVariants {
     Other(serde_json::Value),
 }
 serialize_impl_2!(ImpliedVariants);
-deserialize_impl_2!(ImpliedVariants);
+deserialize_impl!(ImpliedVariants);
 #[derive(Debug, Clone, PartialEq)]
 pub enum ShipmentVariants {
     International(ShipmentInternational),
@@ -3292,11 +2954,7 @@ impl serde::Serialize for ShipmentVariants {
         }
     }
 }
-impl<'de> serde::Deserialize<'de> for ShipmentVariants {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        runtime::tagged::<D, Self>(d)
-    }
-}
+runtime::tagged_deserialize!(ShipmentVariants);
 impl<'de> runtime::TaggedUnion<'de> for ShipmentVariants {
     const TAG: &'static str = "kind";
     fn knows(tag: &str) -> bool {
@@ -3678,28 +3336,28 @@ pub enum Not2Variants {
     Other(serde_json::Value),
 }
 serialize_impl_2!(Not2Variants);
-deserialize_impl_2!(Not2Variants);
+deserialize_impl!(Not2Variants);
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Not3Variants {
     Object(Not3Object),
     Other(serde_json::Value),
 }
 serialize_impl_2!(Not3Variants);
-deserialize_impl_2!(Not3Variants);
+deserialize_impl!(Not3Variants);
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Not5Variants {
     Object(Not5Object),
     Other(serde_json::Value),
 }
 serialize_impl_2!(Not5Variants);
-deserialize_impl_2!(Not5Variants);
+deserialize_impl!(Not5Variants);
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Not6Variants {
     Object(Not6Object),
     Other(serde_json::Value),
 }
 serialize_impl_2!(Not6Variants);
-deserialize_impl_2!(Not6Variants);
+deserialize_impl!(Not6Variants);
 pub type Not7Variants = Not6Variants;
 pub type Not8Variants = Not6Variants;
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -3708,16 +3366,11 @@ pub enum Not9Variants {
     Other(serde_json::Value),
 }
 serialize_impl_2!(Not9Variants);
-deserialize_impl_2!(Not9Variants);
+deserialize_impl!(Not9Variants);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct EntryLinesChecked(pub(super) EntryLines);
-impl<'de> serde::Deserialize<'de> for EntryLinesChecked {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <EntryLines as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
-    }
-}
+runtime::checked_deserialize!(EntryLinesChecked, EntryLines);
 impl TryFrom<EntryLines> for EntryLinesChecked {
     type Error = runtime::BuildError;
     fn try_from(value: EntryLines) -> Result<Self, runtime::BuildError> {
@@ -3742,28 +3395,7 @@ runtime::checked_impls!(EntryLinesChecked, EntryLines);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct BadgeHolders(pub(super) Vec<String>);
-impl<'de> serde::Deserialize<'de> for BadgeHolders {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let (value, text) = runtime::read_once::<_, Vec<String>>(d)?;
-        match text {
-            Some(text) => {
-                let json = runtime::Content::parse(text)
-                    .map_err(serde::de::Error::custom)?;
-                Self::checked(value, &json)
-            }
-            None => Self::try_from(value),
-        }
-            .map_err(serde::de::Error::custom)
-    }
-}
-impl TryFrom<Vec<String>> for BadgeHolders {
-    type Error = runtime::BuildError;
-    fn try_from(value: Vec<String>) -> Result<Self, runtime::BuildError> {
-        let json = runtime::to_value(&value)
-            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
-        Self::checked(value, &runtime::Content::of(&json))
-    }
-}
+runtime::checked_deserialize!(BadgeHolders, Vec < String >, once);
 impl BadgeHolders {
     fn checked(
         value: Vec<String>,
@@ -3791,11 +3423,12 @@ impl BadgeHolders {
             .map_err(runtime::BuildError::value)
     }
 }
+runtime::checked_json!(BadgeHolders, Vec < String >);
 runtime::checked_impls!(BadgeHolders, Vec < String >);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct LooseV(pub(super) serde_json::Value);
-deserialize_impl_3!(LooseV);
+runtime::checked_deserialize!(LooseV, serde_json::Value);
 impl TryFrom<serde_json::Value> for LooseV {
     type Error = runtime::BuildError;
     fn try_from(value: serde_json::Value) -> Result<Self, runtime::BuildError> {
@@ -3841,12 +3474,7 @@ runtime::checked_impls!(LooseV, serde_json::Value);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct UserTags(pub(super) Vec<UserTagsItem>);
-impl<'de> serde::Deserialize<'de> for UserTags {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <Vec<UserTagsItem> as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
-    }
-}
+runtime::checked_deserialize!(UserTags, Vec < UserTagsItem >);
 impl TryFrom<Vec<UserTagsItem>> for UserTags {
     type Error = runtime::BuildError;
     fn try_from(value: Vec<UserTagsItem>) -> Result<Self, runtime::BuildError> {
@@ -3872,7 +3500,7 @@ runtime::checked_impls!(UserTags, Vec < UserTagsItem >);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct UserMeta(pub(super) std::collections::BTreeMap<String, String>);
-deserialize_impl!(UserMeta);
+runtime::checked_deserialize!(UserMeta, std::collections::BTreeMap < String, String >);
 impl TryFrom<std::collections::BTreeMap<String, String>> for UserMeta {
     type Error = runtime::BuildError;
     fn try_from(
@@ -3899,7 +3527,7 @@ runtime::checked_impls!(UserMeta, std::collections::BTreeMap < String, String >)
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct Not9ObjectAmount(pub(super) serde_json::Value);
-deserialize_impl_3!(Not9ObjectAmount);
+runtime::checked_deserialize!(Not9ObjectAmount, serde_json::Value);
 impl TryFrom<serde_json::Value> for Not9ObjectAmount {
     type Error = runtime::BuildError;
     fn try_from(value: serde_json::Value) -> Result<Self, runtime::BuildError> {
@@ -3929,7 +3557,7 @@ pub type BadgeRequestHolders = BadgeHolders;
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct ShipmentInternationalRating(pub(super) serde_json::Value);
-deserialize_impl_3!(ShipmentInternationalRating);
+runtime::checked_deserialize!(ShipmentInternationalRating, serde_json::Value);
 impl TryFrom<serde_json::Value> for ShipmentInternationalRating {
     type Error = runtime::BuildError;
     fn try_from(value: serde_json::Value) -> Result<Self, runtime::BuildError> {
@@ -3958,28 +3586,7 @@ runtime::checked_impls!(ShipmentInternationalRating, serde_json::Value);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct ShipmentInternationalParcels(pub(super) Vec<ParcelsItem>);
-impl<'de> serde::Deserialize<'de> for ShipmentInternationalParcels {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let (value, text) = runtime::read_once::<_, Vec<ParcelsItem>>(d)?;
-        match text {
-            Some(text) => {
-                let json = runtime::Content::parse(text)
-                    .map_err(serde::de::Error::custom)?;
-                Self::checked(value, &json)
-            }
-            None => Self::try_from(value),
-        }
-            .map_err(serde::de::Error::custom)
-    }
-}
-impl TryFrom<Vec<ParcelsItem>> for ShipmentInternationalParcels {
-    type Error = runtime::BuildError;
-    fn try_from(value: Vec<ParcelsItem>) -> Result<Self, runtime::BuildError> {
-        let json = runtime::to_value(&value)
-            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
-        Self::checked(value, &runtime::Content::of(&json))
-    }
-}
+runtime::checked_deserialize!(ShipmentInternationalParcels, Vec < ParcelsItem >, once);
 impl ShipmentInternationalParcels {
     fn checked(
         value: Vec<ParcelsItem>,
@@ -4014,21 +3621,17 @@ impl ShipmentInternationalParcels {
             .map_err(runtime::BuildError::value)
     }
 }
+runtime::checked_json!(ShipmentInternationalParcels, Vec < ParcelsItem >);
 runtime::checked_impls!(ShipmentInternationalParcels, Vec < ParcelsItem >);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct ShipmentInternationalScores(
     pub(super) std::collections::BTreeMap<String, ShipmentInternationalScoresValue>,
 );
-impl<'de> serde::Deserialize<'de> for ShipmentInternationalScores {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <std::collections::BTreeMap<
-            String,
-            ShipmentInternationalScoresValue,
-        > as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
-    }
-}
+runtime::checked_deserialize!(
+    ShipmentInternationalScores, std::collections::BTreeMap < String,
+    ShipmentInternationalScoresValue >
+);
 impl TryFrom<std::collections::BTreeMap<String, ShipmentInternationalScoresValue>>
 for ShipmentInternationalScores {
     type Error = runtime::BuildError;
@@ -4063,33 +3666,9 @@ pub type ShipmentOtherwiseRating = ShipmentInternationalRating;
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct ShipmentOtherwiseParcels(pub(super) Vec<ShipmentOtherwiseParcelsItem>);
-impl<'de> serde::Deserialize<'de> for ShipmentOtherwiseParcels {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let (value, text) = runtime::read_once::<
-            _,
-            Vec<ShipmentOtherwiseParcelsItem>,
-        >(d)?;
-        match text {
-            Some(text) => {
-                let json = runtime::Content::parse(text)
-                    .map_err(serde::de::Error::custom)?;
-                Self::checked(value, &json)
-            }
-            None => Self::try_from(value),
-        }
-            .map_err(serde::de::Error::custom)
-    }
-}
-impl TryFrom<Vec<ShipmentOtherwiseParcelsItem>> for ShipmentOtherwiseParcels {
-    type Error = runtime::BuildError;
-    fn try_from(
-        value: Vec<ShipmentOtherwiseParcelsItem>,
-    ) -> Result<Self, runtime::BuildError> {
-        let json = runtime::to_value(&value)
-            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
-        Self::checked(value, &runtime::Content::of(&json))
-    }
-}
+runtime::checked_deserialize!(
+    ShipmentOtherwiseParcels, Vec < ShipmentOtherwiseParcelsItem >, once
+);
 impl ShipmentOtherwiseParcels {
     fn checked(
         value: Vec<ShipmentOtherwiseParcelsItem>,
@@ -4124,21 +3703,17 @@ impl ShipmentOtherwiseParcels {
             .map_err(runtime::BuildError::value)
     }
 }
+runtime::checked_json!(ShipmentOtherwiseParcels, Vec < ShipmentOtherwiseParcelsItem >);
 runtime::checked_impls!(ShipmentOtherwiseParcels, Vec < ShipmentOtherwiseParcelsItem >);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct ShipmentOtherwiseScores(
     pub(super) std::collections::BTreeMap<String, ShipmentOtherwiseScoresValue>,
 );
-impl<'de> serde::Deserialize<'de> for ShipmentOtherwiseScores {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <std::collections::BTreeMap<
-            String,
-            ShipmentOtherwiseScoresValue,
-        > as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
-    }
-}
+runtime::checked_deserialize!(
+    ShipmentOtherwiseScores, std::collections::BTreeMap < String,
+    ShipmentOtherwiseScoresValue >
+);
 impl TryFrom<std::collections::BTreeMap<String, ShipmentOtherwiseScoresValue>>
 for ShipmentOtherwiseScores {
     type Error = runtime::BuildError;

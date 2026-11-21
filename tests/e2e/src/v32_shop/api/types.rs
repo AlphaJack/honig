@@ -24,31 +24,6 @@ macro_rules! try_from_impl {
         }
     };
 }
-macro_rules! try_from_impl_2 {
-    ($t:ty) => {
-        impl TryFrom<f32> for $t {
-            type Error = runtime::BuildError;
-            fn try_from(value: f32) -> Result<Self, runtime::BuildError> {
-                let mut violations: Vec<runtime::Violation> = Vec::new();
-                {
-                    let out = &mut violations;
-                    runtime::check_range(
-                        out,
-                        &runtime::InstancePath::Root,
-                        value,
-                        runtime::Bounds {
-                            exclusive_min: Some(0.0),
-                            ..runtime::Bounds::NONE
-                        },
-                    );
-                }
-                runtime::first(violations)
-                    .map(|()| Self(value))
-                    .map_err(runtime::BuildError::value)
-            }
-        }
-    };
-}
 macro_rules! serialize_impl {
     ($t:ty) => {
         impl serde::Serialize for $t {
@@ -75,15 +50,6 @@ macro_rules! serialize_impl {
                         serde::Serialize::serialize(&j, s)
                     }
                 }
-            }
-        }
-    };
-}
-macro_rules! deserialize_impl {
-    ($t:ty) => {
-        impl<'de> serde::Deserialize<'de> for $t {
-            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-                runtime::tagged::<D, Self>(d)
             }
         }
     };
@@ -168,28 +134,7 @@ impl runtime::XmlShape for Token {
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
 #[serde(transparent)]
 pub struct Item(pub(super) ItemVariants);
-impl<'de> serde::Deserialize<'de> for Item {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let (value, text) = runtime::read_once::<_, ItemVariants>(d)?;
-        match text {
-            Some(text) => {
-                let json = runtime::Content::parse(text)
-                    .map_err(serde::de::Error::custom)?;
-                Self::checked(value, &json)
-            }
-            None => Self::try_from(value),
-        }
-            .map_err(serde::de::Error::custom)
-    }
-}
-impl TryFrom<ItemVariants> for Item {
-    type Error = runtime::BuildError;
-    fn try_from(value: ItemVariants) -> Result<Self, runtime::BuildError> {
-        let json = runtime::to_value(&value)
-            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
-        Self::checked(value, &runtime::Content::of(&json))
-    }
-}
+runtime::checked_deserialize!(Item, ItemVariants, once);
 impl Item {
     fn checked(
         value: ItemVariants,
@@ -217,6 +162,7 @@ impl Item {
             .map_err(runtime::BuildError::value)
     }
 }
+runtime::checked_json!(Item, ItemVariants);
 runtime::checked_impls!(Item, ItemVariants);
 runtime::object! {
     /// A product in the shop
@@ -1084,13 +1030,33 @@ impl runtime::XmlShape for ProductDimensions {
 #[derive(Debug, Clone, PartialEq, Copy, PartialOrd, serde::Serialize)]
 #[serde(transparent)]
 pub struct ProductDimensionsWeight(pub(super) f32);
-try_from_impl_2!(ProductDimensionsWeight);
+impl TryFrom<f32> for ProductDimensionsWeight {
+    type Error = runtime::BuildError;
+    fn try_from(value: f32) -> Result<Self, runtime::BuildError> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            runtime::check_range(
+                out,
+                &runtime::InstancePath::Root,
+                value,
+                runtime::Bounds {
+                    exclusive_min: Some(0.0),
+                    ..runtime::Bounds::NONE
+                },
+            );
+        }
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
+    }
+}
 runtime::checked_num_impls!(ProductDimensionsWeight, f32);
 /// Width in centimetres (must be greater than 0)
 #[derive(Debug, Clone, PartialEq, Copy, PartialOrd, serde::Serialize)]
 #[serde(transparent)]
 pub struct ProductDimensionsWidth(pub(super) f32);
-try_from_impl_2!(ProductDimensionsWidth);
+runtime::checked_twin!(ProductDimensionsWidth, ProductDimensionsWeight, f32);
 runtime::checked_num_impls!(ProductDimensionsWidth, f32);
 runtime::object! {
     #[unique_keys]
@@ -1915,28 +1881,7 @@ impl runtime::XmlShape for CredentialsRequest {
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
 #[serde(transparent)]
 pub struct ItemRequest(pub(super) ItemRequestVariants);
-impl<'de> serde::Deserialize<'de> for ItemRequest {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let (value, text) = runtime::read_once::<_, ItemRequestVariants>(d)?;
-        match text {
-            Some(text) => {
-                let json = runtime::Content::parse(text)
-                    .map_err(serde::de::Error::custom)?;
-                Self::checked(value, &json)
-            }
-            None => Self::try_from(value),
-        }
-            .map_err(serde::de::Error::custom)
-    }
-}
-impl TryFrom<ItemRequestVariants> for ItemRequest {
-    type Error = runtime::BuildError;
-    fn try_from(value: ItemRequestVariants) -> Result<Self, runtime::BuildError> {
-        let json = runtime::to_value(&value)
-            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
-        Self::checked(value, &runtime::Content::of(&json))
-    }
-}
+runtime::checked_deserialize!(ItemRequest, ItemRequestVariants, once);
 impl ItemRequest {
     fn checked(
         value: ItemRequestVariants,
@@ -1964,6 +1909,7 @@ impl ItemRequest {
             .map_err(runtime::BuildError::value)
     }
 }
+runtime::checked_json!(ItemRequest, ItemRequestVariants);
 runtime::checked_impls!(ItemRequest, ItemRequestVariants);
 runtime::object! {
     /// A product in the shop
@@ -2463,7 +2409,7 @@ pub enum ItemVariants {
     Variant(Variant),
 }
 serialize_impl!(ItemVariants);
-deserialize_impl!(ItemVariants);
+runtime::tagged_deserialize!(ItemVariants);
 impl<'de> runtime::TaggedUnion<'de> for ItemVariants {
     const TAG: &'static str = "type";
     fn knows(tag: &str) -> bool {
@@ -2503,7 +2449,7 @@ pub enum ItemRequestVariants {
     Variant(VariantRequest),
 }
 serialize_impl!(ItemRequestVariants);
-deserialize_impl!(ItemRequestVariants);
+runtime::tagged_deserialize!(ItemRequestVariants);
 impl<'de> runtime::TaggedUnion<'de> for ItemRequestVariants {
     const TAG: &'static str = "type";
     fn knows(tag: &str) -> bool {
@@ -2539,12 +2485,7 @@ impl<'de> runtime::TaggedUnion<'de> for ItemRequestVariants {
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct PaginatedResourceData(pub(super) Vec<serde_json::Value>);
-impl<'de> serde::Deserialize<'de> for PaginatedResourceData {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let value = <Vec<serde_json::Value> as serde::Deserialize>::deserialize(d)?;
-        Self::try_from(value).map_err(serde::de::Error::custom)
-    }
-}
+runtime::checked_deserialize!(PaginatedResourceData, Vec < serde_json::Value >);
 impl TryFrom<Vec<serde_json::Value>> for PaginatedResourceData {
     type Error = runtime::BuildError;
     fn try_from(value: Vec<serde_json::Value>) -> Result<Self, runtime::BuildError> {

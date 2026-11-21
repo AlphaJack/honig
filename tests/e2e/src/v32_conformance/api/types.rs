@@ -17,28 +17,7 @@ impl Closed {
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct Product(pub(super) ProductVariants);
-impl<'de> serde::Deserialize<'de> for Product {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let (value, text) = runtime::read_once::<_, ProductVariants>(d)?;
-        match text {
-            Some(text) => {
-                let json = runtime::Content::parse(text)
-                    .map_err(serde::de::Error::custom)?;
-                Self::checked(value, &json)
-            }
-            None => Self::try_from(value),
-        }
-            .map_err(serde::de::Error::custom)
-    }
-}
-impl TryFrom<ProductVariants> for Product {
-    type Error = runtime::BuildError;
-    fn try_from(value: ProductVariants) -> Result<Self, runtime::BuildError> {
-        let json = runtime::to_value(&value)
-            .map_err(|e| runtime::BuildError::value(e.to_string()))?;
-        Self::checked(value, &runtime::Content::of(&json))
-    }
-}
+runtime::checked_deserialize!(Product, ProductVariants, once);
 impl Product {
     fn checked(
         value: ProductVariants,
@@ -58,6 +37,7 @@ impl Product {
             .map_err(runtime::BuildError::value)
     }
 }
+runtime::checked_json!(Product, ProductVariants);
 runtime::checked_impls!(Product, ProductVariants);
 runtime::object! {
     #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
@@ -214,11 +194,7 @@ impl serde::Serialize for ProductVariants {
         }
     }
 }
-impl<'de> serde::Deserialize<'de> for ProductVariants {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        runtime::tagged::<D, Self>(d)
-    }
-}
+runtime::tagged_deserialize!(ProductVariants);
 impl<'de> runtime::TaggedUnion<'de> for ProductVariants {
     const TAG: &'static str = "kind";
     fn knows(tag: &str) -> bool {

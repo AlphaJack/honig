@@ -290,18 +290,7 @@ impl<'de> serde::Deserialize<'de> for EventPayment {
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EventPayload(pub EventPayloadContent);
-impl serde::Serialize for EventPayload {
-    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        let text = serde_json::to_string(&self.0).map_err(serde::ser::Error::custom)?;
-        s.serialize_str(&text)
-    }
-}
-impl<'de> serde::Deserialize<'de> for EventPayload {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let text = <String as serde::Deserialize>::deserialize(d)?;
-        runtime::json_text(&text).map(Self).map_err(serde::de::Error::custom)
-    }
-}
+runtime::json_text_impls!(EventPayload);
 runtime::object! {
     #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
     pub struct EventPayloadContent {

@@ -891,18 +891,7 @@ fn json_string(items: &mut Vec<TokenStream>, space: &Space<'_>, def: &TypeDef, t
         #doc
         #[derive(Debug, Clone, PartialEq, #eq)]
         pub struct #name(pub #t);
-        impl serde::Serialize for #name {
-            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-                let text = serde_json::to_string(&self.0).map_err(serde::ser::Error::custom)?;
-                s.serialize_str(&text)
-            }
-        }
-        impl<'de> serde::Deserialize<'de> for #name {
-            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-                let text = <String as serde::Deserialize>::deserialize(d)?;
-                runtime::json_text(&text).map(Self).map_err(serde::de::Error::custom)
-            }
-        }
+        runtime::json_text_impls!(#name);
     });
 }
 
@@ -1013,14 +1002,15 @@ fn checked_type(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, def
             });
             let checks = if added { quote!(if !matches!(value, #base::Other(_)) { #checks }) } else { checks };
             let eq = (!has_float(space, &Ty::Named(id))).then(|| quote!(Eq,));
-            // The base decodes the text of its library formats checked, as a field of it would.
-            let read = match holds(space, &c.base) {
-                Some(h) => quote!(runtime::formats::read::<_, #base, #h>(d)?),
-                None => quote!(<#base as serde::Deserialize>::deserialize(d)?),
+            // The base decodes the text of its library formats checked, as a field of it would. Otherwise JSON text is
+            // parsed once when the checks use it as JSON.
+            let de = match holds(space, &c.base) {
+                Some(h) => quote!(runtime::checked_deserialize!(#n, #base, read #h);),
+                None if reads_json(subschemas.as_ref(), &checks) => {
+                    quote!(runtime::checked_deserialize!(#n, #base, once);)
+                }
+                None => quote!(runtime::checked_deserialize!(#n, #base);),
             };
-            // JSON text is parsed once ([`checked_deserialize`]); a base decoded through a library format keeps `read`.
-            let once = holds(space, &c.base).is_none() && reads_json(subschemas.as_ref(), &checks);
-            let de = checked_deserialize(&n, &base, &read, once);
             (checks, quote!(#eq), Some(de))
         }
     };
@@ -1030,7 +1020,19 @@ fn checked_type(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, def
         Base::Int | Base::Float => quote!(runtime::checked_num_impls!(#n, #base);),
         Base::Other => quote!(runtime::checked_impls!(#n, #base);),
     };
-    let build = checked_try_from(&n, &base, subschemas.as_ref(), &checks);
+    // An earlier checked type of the same base and keywords checks for this one.
+    let twin = space.types.defs[..id.0].iter().find(|d| {
+        d.rust_type.is_none()
+            && matches!(&d.kind, Kind::Checked(o) if o.base == c.base && o.constraints == c.constraints)
+    });
+    let build = match twin {
+        Some(first) => {
+            let first = pascal_ident(&first.name);
+            let json = reads_json(subschemas.as_ref(), &checks).then(|| quote!(, json));
+            quote!(runtime::checked_twin!(#n, #first, #base #json);)
+        }
+        None => checked_try_from(&n, &base, subschemas.as_ref(), &checks),
+    };
     items.push(quote! {
         #doc
         #[derive(Debug, Clone, PartialEq, #derive serde::Serialize)]
@@ -1071,49 +1073,12 @@ fn checked_try_from(
     }
     // The checks see the value as JSON: from the text that it was decoded from, or from the value written out once.
     quote! {
-        impl TryFrom<#base> for #n {
-            type Error = runtime::BuildError;
-            fn try_from(value: #base) -> Result<Self, runtime::BuildError> {
-                let json = runtime::to_value(&value).map_err(|e| runtime::BuildError::value(e.to_string()))?;
-                Self::checked(value, &runtime::Content::of(&json))
-            }
-        }
         impl #n {
             fn checked(value: #base, json: &runtime::Content<'_>) -> Result<Self, runtime::BuildError> {
                 #body
             }
         }
-    }
-}
-
-/// Returns `Deserialize` of the checked type `n` of `base`, decoded by `read`. With `once`, JSON text is parsed once:
-/// the value decodes from it and the checks use it. Any other source of the value decodes as `read` does, and the
-/// checks use the value written out once.
-fn checked_deserialize(n: &proc_macro2::Ident, base: &TokenStream, read: &TokenStream, once: bool) -> TokenStream {
-    if !once {
-        return quote! {
-            impl<'de> serde::Deserialize<'de> for #n {
-                fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-                    let value = #read;
-                    Self::try_from(value).map_err(serde::de::Error::custom)
-                }
-            }
-        };
-    }
-    quote! {
-        impl<'de> serde::Deserialize<'de> for #n {
-            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-                let (value, text) = runtime::read_once::<_, #base>(d)?;
-                match text {
-                    Some(text) => {
-                        let json = runtime::Content::parse(text).map_err(serde::de::Error::custom)?;
-                        Self::checked(value, &json)
-                    }
-                    None => Self::try_from(value),
-                }
-                .map_err(serde::de::Error::custom)
-            }
-        }
+        runtime::checked_json!(#n, #base);
     }
 }
 

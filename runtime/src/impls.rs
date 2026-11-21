@@ -308,3 +308,114 @@ macro_rules! response_error {
         impl std::error::Error for $n {}
     };
 }
+
+/// The impls of a value sent as JSON text inside a string: it writes its JSON and parses it back.
+#[doc(hidden)]
+#[macro_export]
+macro_rules! json_text_impls {
+    ($n:ident) => {
+        impl ::serde::Serialize for $n {
+            fn serialize<S: ::serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                let text = ::serde_json::to_string(&self.0).map_err(::serde::ser::Error::custom)?;
+                s.serialize_str(&text)
+            }
+        }
+        impl<'de> ::serde::Deserialize<'de> for $n {
+            fn deserialize<D: ::serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                let text = <String as ::serde::Deserialize>::deserialize(d)?;
+                $crate::__private::json_text(&text).map(Self).map_err(::serde::de::Error::custom)
+            }
+        }
+    };
+}
+
+/// `Deserialize` of a union told apart by a property: [`TaggedUnion`](crate::__private::TaggedUnion) decodes it.
+#[doc(hidden)]
+#[macro_export]
+macro_rules! tagged_deserialize {
+    ($n:ident) => {
+        impl<'de> ::serde::Deserialize<'de> for $n {
+            fn deserialize<D: ::serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                $crate::__private::tagged::<D, Self>(d)
+            }
+        }
+    };
+}
+
+/// `Deserialize` of a checked type of `$base`: the value decodes as its base, then its checks run. With `read $h`, the
+/// base decodes the text of its library formats checked through `$h`. With `once`, JSON text is parsed once: the
+/// value decodes from it and the checks use it.
+#[doc(hidden)]
+#[macro_export]
+macro_rules! checked_deserialize {
+    ($n:ident, $base:ty) => {
+        impl<'de> ::serde::Deserialize<'de> for $n {
+            fn deserialize<D: ::serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                let value = <$base as ::serde::Deserialize>::deserialize(d)?;
+                Self::try_from(value).map_err(::serde::de::Error::custom)
+            }
+        }
+    };
+    ($n:ident, $base:ty, read $h:ty) => {
+        impl<'de> ::serde::Deserialize<'de> for $n {
+            fn deserialize<D: ::serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                let value = $crate::__private::formats::read::<_, $base, $h>(d)?;
+                Self::try_from(value).map_err(::serde::de::Error::custom)
+            }
+        }
+    };
+    ($n:ident, $base:ty, once) => {
+        impl<'de> ::serde::Deserialize<'de> for $n {
+            fn deserialize<D: ::serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                let (value, text) = $crate::__private::read_once::<_, $base>(d)?;
+                match text {
+                    Some(text) => {
+                        let json = $crate::__private::Content::parse(text).map_err(::serde::de::Error::custom)?;
+                        Self::checked(value, &json)
+                    }
+                    None => Self::try_from(value),
+                }
+                .map_err(::serde::de::Error::custom)
+            }
+        }
+    };
+}
+
+/// `TryFrom<$base>` of a checked type whose checks use the value as JSON: the value written out once, then
+/// `$n::checked` on it.
+#[doc(hidden)]
+#[macro_export]
+macro_rules! checked_json {
+    ($n:ident, $base:ty) => {
+        impl TryFrom<$base> for $n {
+            type Error = $crate::BuildError;
+            fn try_from(value: $base) -> Result<Self, $crate::BuildError> {
+                let json = $crate::__private::to_value(&value).map_err(|e| $crate::BuildError::value(e.to_string()))?;
+                Self::checked(value, &$crate::__private::Content::of(&json))
+            }
+        }
+    };
+}
+
+/// The checks of a checked type that has the base and the keywords of `$first`, an earlier one: `$first` runs them.
+/// With `json`, its `checked` as well.
+#[doc(hidden)]
+#[macro_export]
+macro_rules! checked_twin {
+    ($n:ident, $first:ident, $base:ty) => {
+        impl TryFrom<$base> for $n {
+            type Error = $crate::BuildError;
+            fn try_from(value: $base) -> Result<Self, $crate::BuildError> {
+                $first::try_from(value).map(|v| Self(v.0))
+            }
+        }
+    };
+    ($n:ident, $first:ident, $base:ty, json) => {
+        impl $n {
+            fn checked(value: $base, json: &$crate::__private::Content<'_>) -> Result<Self, $crate::BuildError> {
+                $first::checked(value, json).map(|v| Self(v.0))
+            }
+        }
+        $crate::checked_json!($n, $base);
+    };
+}
