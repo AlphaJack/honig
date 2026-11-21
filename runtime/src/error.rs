@@ -76,9 +76,15 @@ impl fmt::Display for ClientError {
         match self {
             Self::Transport(m) => write!(f, "transport error: {m}"),
             Self::Encode(m) => write!(f, "cannot encode request: {m}"),
-            Self::Decode { status: None, message, .. } => write!(f, "cannot decode request: {message}"),
-            Self::Decode { status: Some(status), message, .. } => {
-                write!(f, "cannot decode {status} response: {message}")
+            Self::Decode { status, message, pointer, .. } => {
+                match status {
+                    None => f.write_str("cannot decode request")?,
+                    Some(status) => write!(f, "cannot decode {status} response")?,
+                }
+                if !pointer.is_empty() {
+                    write!(f, " at {pointer}")?;
+                }
+                write!(f, ": {message}")
             }
             Self::UnexpectedMedia { status, content_type, declared, .. } => {
                 let sent = if content_type.is_empty() { "no Content-Type" } else { content_type.as_str() };
