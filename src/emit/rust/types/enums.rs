@@ -244,12 +244,16 @@ pub(super) fn union_deserialize_impl(
     }
 }
 
-/// Does the variant type declare the discriminator itself (a required
-/// string property)? Then it serializes directly without a buffer.
-pub(super) fn declares_tag(space: &Space<'_>, t: &Ty, property: &str) -> bool {
+/// Does the variant type declare the discriminator itself: a required string property, or one whose `const` is `tag`?
+/// Then it serializes directly without a buffer.
+pub(super) fn declares_tag(space: &Space<'_>, t: &Ty, property: &str, tag: &str) -> bool {
     let t = if let Ty::Indirect(inner) = t { inner } else { t };
     let Ty::Named(id) = t else { return false };
-    matches!(&space.types.get(*id).kind, Kind::Struct(s) if s.fields.iter().any(|f| f.wire == property && f.required && f.ty == Ty::String))
+    let holds = |f: &Ty| {
+        *f == Ty::String
+            || matches!(f, Ty::Named(c) if matches!(&space.types.get(*c).kind, Kind::Const(serde_json::Value::String(v)) if v == tag))
+    };
+    matches!(&space.types.get(*id).kind, Kind::Struct(s) if s.fields.iter().any(|f| f.wire == property && f.required && holds(&f.ty)))
 }
 
 pub(super) fn union_serialize(
@@ -262,7 +266,7 @@ pub(super) fn union_serialize(
         let same = Some(space.resolved(aliases, &v.ty));
         match (&u.mode, v.tags.first()) {
             // The struct carries the tag: its value is the caller's to keep right.
-            (UnionMode::Tagged { property, .. }, Some(_)) if declares_tag(space, &v.ty, property) => {
+            (UnionMode::Tagged { property, .. }, Some(tag)) if declares_tag(space, &v.ty, property, tag) => {
                 (quote!(Self::#name(v)), same, direct)
             }
             (UnionMode::Tagged { property, .. }, Some(tag)) => {

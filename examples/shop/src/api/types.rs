@@ -17,26 +17,8 @@ pub enum Product {
 impl serde::Serialize for Product {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         match self {
-            Self::Physical(v) => {
-                let mut j = serde_json::to_value(v).map_err(serde::ser::Error::custom)?;
-                if let serde_json::Value::Object(m) = &mut j {
-                    m.insert(
-                        "kind".to_owned(),
-                        serde_json::Value::String("physical".to_owned()),
-                    );
-                }
-                serde::Serialize::serialize(&j, s)
-            }
-            Self::Digital(v) => {
-                let mut j = serde_json::to_value(v).map_err(serde::ser::Error::custom)?;
-                if let serde_json::Value::Object(m) = &mut j {
-                    m.insert(
-                        "kind".to_owned(),
-                        serde_json::Value::String("digital".to_owned()),
-                    );
-                }
-                serde::Serialize::serialize(&j, s)
-            }
+            Self::Physical(v) => serde::Serialize::serialize(v, s),
+            Self::Digital(v) => serde::Serialize::serialize(v, s),
         }
     }
 }

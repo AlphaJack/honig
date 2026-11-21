@@ -555,16 +555,7 @@ impl serde::Serialize for NoteVariants {
                 }
                 serde::Serialize::serialize(&j, s)
             }
-            Self::ImageNote(v) => {
-                let mut j = serde_json::to_value(v).map_err(serde::ser::Error::custom)?;
-                if let serde_json::Value::Object(m) = &mut j {
-                    m.insert(
-                        "kind".to_owned(),
-                        serde_json::Value::String("image".to_owned()),
-                    );
-                }
-                serde::Serialize::serialize(&j, s)
-            }
+            Self::ImageNote(v) => serde::Serialize::serialize(v, s),
         }
     }
 }
