@@ -1670,7 +1670,8 @@ fn a_reorder_of_colliding_names_changes_nothing() {
         common::generate(if flip { "reorder-b" } else { "reorder-a" }, &doc, &crate::emit::Options::default())
     };
     // Every wire name with the Rust name that holds it: a `rename` and its field, a match arm, a query encoded from a
-    // field, and a header or query read into or written from the field named just before it.
+    // field, and a header or query read into or written from the field named just before it. Builder entries
+    // (`field(setter) : Type = "wire"`) print wrapped and name the same fields as the struct.
     let pairs = |text: &str| {
         let mut out = Vec::new();
         let (mut field, mut renamed) = ("", None::<&str>);
@@ -1686,7 +1687,7 @@ fn a_reorder_of_colliding_names_changes_nothing() {
             }
             if l.contains("rename =") {
                 renamed = Some(l);
-            } else if (l.contains("=>") || l.contains("encode_query(")) && l.contains('"') {
+            } else if (l.contains("=>") || l.contains("encode_query(")) && l.contains('"') && !l.contains(" : ") {
                 out.push(l.to_owned());
             } else if ["query_text(", "joined_header(", "set_header("].iter().any(|c| l.contains(c)) {
                 out.push(format!("{field} {l}"));
@@ -1706,6 +1707,7 @@ fn a_reorder_of_colliding_names_changes_nothing() {
         let (x, y) = (pairs(text), b.iter().find(|(f, _)| f == file).map(|(_, t)| pairs(t)).unwrap_or_default());
         assert_eq!(x, y, "{file}");
     }
+}
 
 /// Two required values of the same type could swap in a positional `new`: such a type or `Params` has only its builder,
 /// which takes them by name. One whose required values all differ in type keeps `new`.
