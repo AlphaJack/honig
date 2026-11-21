@@ -718,6 +718,8 @@ fn an_xml_field_names_only_what_differs() {
         "{types}"
     );
     assert!(types.contains(r#",runtime::XmlField::new("title"),"#), "{types}");
+}
+
 /// A branch whose tag property is a `const` of its own tag writes itself: no `serde_json::Value` in between.
 #[test]
 fn a_const_tag_serializes_without_a_value_tree() {
