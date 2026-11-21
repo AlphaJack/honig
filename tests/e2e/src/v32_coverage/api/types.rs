@@ -255,7 +255,7 @@ impl Crop {
         {
             let out = &mut violations;
             {
-                let hits = [json.matches::<String>(), json.matches::<CropVariant2>()]
+                let hits = [json.matches::<String>(), json.matches::<CropVariant1>()]
                     .into_iter()
                     .filter(|hit| *hit)
                     .count();
@@ -407,11 +407,11 @@ impl<'de> serde::Deserialize<'de> for NoteImageNoteKind {
 pub use NoteTextNoteKind as TextNoteKind;
 pub use NoteImageNoteKind as ImageNoteKind;
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum CropVariant2 {
+pub enum CropVariant1 {
     Integer(i64),
-    Variant2(CropVariant2Variant2),
+    Variant2(CropVariant1Variant2),
 }
-impl serde::Serialize for CropVariant2 {
+impl serde::Serialize for CropVariant1 {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         match self {
             Self::Integer(v) => serde::Serialize::serialize(v, s),
@@ -419,7 +419,7 @@ impl serde::Serialize for CropVariant2 {
         }
     }
 }
-impl<'de> serde::Deserialize<'de> for CropVariant2 {
+impl<'de> serde::Deserialize<'de> for CropVariant1 {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         let v = <runtime::Content<'de> as serde::Deserialize>::deserialize(d)?;
         match v.kind() {
@@ -435,14 +435,14 @@ impl<'de> serde::Deserialize<'de> for CropVariant2 {
 }
 runtime::object! {
     #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-    pub struct CropVariant2Variant2 {
+    pub struct CropVariant1Variant2 {
         #[optional]
         pub x: i64,
         #[optional]
         pub y: i64,
     }
 }
-impl CropVariant2Variant2 {
+impl CropVariant1Variant2 {
     #[must_use]
     pub const fn new() -> Self {
         Self { x: None, y: None }
@@ -644,13 +644,13 @@ impl TextNoteFields {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CropVariants {
     String(String),
-    Variant2(CropVariant2),
+    Variant1(CropVariant1),
 }
 impl serde::Serialize for CropVariants {
     fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
         match self {
             Self::String(v) => serde::Serialize::serialize(v, s),
-            Self::Variant2(v) => serde::Serialize::serialize(v, s),
+            Self::Variant1(v) => serde::Serialize::serialize(v, s),
         }
     }
 }
@@ -673,10 +673,10 @@ impl<'de> serde::Deserialize<'de> for CropVariants {
             }
         }
         {
-            match v.decode_ref::<CropVariant2>() {
+            match v.decode_ref::<CropVariant1>() {
                 Ok(x) => {
                     matches += 1;
-                    found.get_or_insert(Self::Variant2(x));
+                    found.get_or_insert(Self::Variant1(x));
                 }
                 Err(e) => {
                     first.get_or_insert(e.to_string());
@@ -869,7 +869,7 @@ pub mod builders {
         some, None } fixed { kind : types::NoteImageNoteKind {}, }
     }
     runtime::typestate_builder! {
-        CropVariant2Variant2 => super::CropVariant2Variant2; required {} optional { x(x)
+        CropVariant1Variant2 => super::CropVariant1Variant2; required {} optional { x(x)
         : i64 = "x" => some, None, y(y) : i64 = "y" => some, None } fixed {}
     }
     runtime::typestate_builder! {

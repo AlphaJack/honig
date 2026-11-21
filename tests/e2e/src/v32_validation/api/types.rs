@@ -640,10 +640,17 @@ impl runtime::XmlShape for Degenerate {
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Tree {
-    Variant1(TreeVariant1),
     Variant2(TreeVariant2),
+    Variant1(TreeVariant1),
 }
-serialize_impl_2!(Tree);
+impl serde::Serialize for Tree {
+    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+        match self {
+            Self::Variant2(v) => serde::Serialize::serialize(v, s),
+            Self::Variant1(v) => serde::Serialize::serialize(v, s),
+        }
+    }
+}
 impl<'de> serde::Deserialize<'de> for Tree {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         let v = <runtime::Content<'de> as serde::Deserialize>::deserialize(d)?;
@@ -666,7 +673,7 @@ impl<'de> serde::Deserialize<'de> for Tree {
         let mut first: Option<String> = None;
         let mut matches = 0usize;
         let mut found: Option<Self> = None;
-        if fit_0 {
+        if fit_1 {
             match v.decode_ref::<TreeVariant1>() {
                 Ok(x) => {
                     matches += 1;
@@ -677,7 +684,7 @@ impl<'de> serde::Deserialize<'de> for Tree {
                 }
             }
         }
-        if fit_1 {
+        if fit_0 {
             match v.decode_ref::<TreeVariant2>() {
                 Ok(x) => {
                     matches += 1;
@@ -2355,21 +2362,21 @@ impl TryFrom<i64> for DegenerateHalf {
 runtime::checked_num_impls!(DegenerateHalf, i64);
 runtime::object! {
     #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-    pub struct TreeVariant1 {
+    pub struct TreeVariant2 {
         pub items: Vec<Tree>,
         pub x: String,
     }
 }
-impl TreeVariant1 {
+impl TreeVariant2 {
     #[must_use]
     pub const fn new(items: Vec<Tree>, x: String) -> Self {
         Self { items, x }
     }
 }
-impl runtime::XmlShape for TreeVariant1 {
+impl runtime::XmlShape for TreeVariant2 {
     fn xml() -> &'static runtime::XmlNode {
         static NODE: runtime::XmlNode = runtime::XmlNode {
-            name: "TreeVariant1",
+            name: "TreeVariant2",
             namespace: "",
             prefix: "",
             fields: &[
@@ -2412,21 +2419,21 @@ impl runtime::XmlShape for TreeVariant1 {
 }
 runtime::object! {
     #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
-    pub struct TreeVariant2 {
+    pub struct TreeVariant1 {
         pub items: Vec<Tree>,
         pub x: i64,
     }
 }
-impl TreeVariant2 {
+impl TreeVariant1 {
     #[must_use]
     pub const fn new(items: Vec<Tree>, x: i64) -> Self {
         Self { items, x }
     }
 }
-impl runtime::XmlShape for TreeVariant2 {
+impl runtime::XmlShape for TreeVariant1 {
     fn xml() -> &'static runtime::XmlNode {
         static NODE: runtime::XmlNode = runtime::XmlNode {
-            name: "TreeVariant2",
+            name: "TreeVariant1",
             namespace: "",
             prefix: "",
             fields: &[
@@ -5501,11 +5508,11 @@ pub mod builders {
         additional_properties : std::collections::BTreeMap::new(), }
     }
     runtime::typestate_builder! {
-        TreeVariant1 => super::TreeVariant1; required { items : R0 : Vec < types::Tree >
+        TreeVariant2 => super::TreeVariant2; required { items : R0 : Vec < types::Tree >
         = "items", x : R1 : String = "x" } optional {} fixed {}
     }
     runtime::typestate_builder! {
-        TreeVariant2 => super::TreeVariant2; required { items : R0 : Vec < types::Tree >
+        TreeVariant1 => super::TreeVariant1; required { items : R0 : Vec < types::Tree >
         = "items", x : R1 : i64 = "x" } optional {} fixed {}
     }
     runtime::typestate_builder! {

@@ -2298,12 +2298,16 @@ impl<'a> Builder<'a> {
             let (b, bptr) = &variants[0];
             return Some(Kind::Alias(self.ty(b, bptr, name)));
         }
+        // An untitled inline branch is numbered by the sorted text of its schema, so a reorder of the branches renames
+        // none of them.
+        let texts: Vec<String> = variants.iter().map(|(b, _)| b.to_string()).collect();
+        let rank = |i: usize| texts.iter().filter(|t| texts.get(i).is_some_and(|own| *t < own)).count() + 1;
         let mut named = vec![];
         for (i, (b, bptr)) in variants.iter().enumerate() {
             // `null` is the `Other` fallback of the union and not the payload of a variant.
             // An inline branch with a `title` takes its type name from it. Others are numbered.
             let branch =
-                b.get("title").and_then(Value::as_str).map_or_else(|| format!("Variant{}", i + 1), str::to_owned);
+                b.get("title").and_then(Value::as_str).map_or_else(|| format!("Variant{}", rank(i)), str::to_owned);
             let ty = self.ty(b, bptr, &name.and(&Name::new(&branch))).non_null().clone();
             let vname = match b.get("$ref").and_then(Value::as_str) {
                 Some(r) => Some(Name::new(&self.ref_name(r))),
@@ -2322,24 +2326,26 @@ impl<'a> Builder<'a> {
                     |t| Some(Name::new(t)),
                 ),
             };
-            let vname = vname.filter(|n| !n.is("other")).unwrap_or_else(|| Name::new(&format!("Variant{}", i + 1)));
+            let vname = vname.filter(|n| !n.is("other")).unwrap_or_else(|| Name::new(&format!("Variant{}", rank(i))));
             let constraints = if matches!(ty, Ty::Named(_)) { Constraints::default() } else { self.constraints(b) };
-            named.push((vname, ty, constraints));
+            named.push((vname, ty, constraints, texts.get(i).cloned().unwrap_or_default()));
         }
         // Several array branches are told apart by what they hold (`NumberArray`, `DocumentArray`) and not as
         // `Array`, `Array2`. One alone stays `Array`.
         if named.iter().filter(|(n, ..)| n.is("array")).count() > 1 {
-            for (n, ty, _) in &mut named {
+            for (n, ty, ..) in &mut named {
                 if n.is("array") {
                     *n = Name::new(&self.array_name(ty));
                 }
             }
         }
-        let mut taken = BTreeSet::new();
-        let mut out = vec![];
-        for (vname, ty, constraints) in named {
-            out.push(Variant { name: unique(vname, &mut taken), ty, tags: vec![], constraints });
-        }
+        let names =
+            unique_sorted(named.iter().map(|(n, .., text)| (n.clone(), text.clone())).collect(), &mut BTreeSet::new());
+        let mut out: Vec<Variant> = named
+            .into_iter()
+            .zip(names)
+            .map(|((_, ty, constraints, _), name)| Variant { name, ty, tags: vec![], constraints })
+            .collect();
         // A branch that any value passes (`{$comment: ...}` or the RFC 2557 example of 3.2) is what `Other` already
         // holds. Next to typed branches it would be a second catch-all that cannot be told apart.
         let open = out.iter().any(|v| v.ty != Ty::Any) && out.iter().any(|v| v.ty == Ty::Any);
