@@ -12,7 +12,7 @@ use super::{
     Struct, Ty, TypeDef, TypeId, TypeSpace, Union, UnionMode, Variant, XmlHint,
 };
 use crate::diag::Diagnostics;
-use crate::ir::names::{Name, Reserved, reserved, unique};
+use crate::ir::names::{Name, Reserved, reserved, unique, unique_sorted};
 use crate::json;
 use crate::json::{Doc, pointer};
 use crate::json::{escape_token, join};
@@ -834,7 +834,7 @@ pub(crate) fn int_enum(o: &serde_json::Map<String, Value>, values: &[i64]) -> Ki
         .and_then(|a| a.iter().map(Value::as_str).collect::<Option<Vec<_>>>())
         .filter(|n| n.len() == values.len());
     let mut taken = reserved(&["Other"]);
-    let variants = values
+    let bases = values
         .iter()
         .enumerate()
         .map(|(i, v)| {
@@ -842,10 +842,10 @@ pub(crate) fn int_enum(o: &serde_json::Map<String, Value>, values: &[i64]) -> Ki
                 || Name::new(&if *v < 0 { format!("Minus{}", v.unsigned_abs()) } else { format!("N{v}") }),
                 |n| Name::new(n[i]),
             );
-            (unique(base, &mut taken), *v)
+            (base, *v)
         })
         .collect();
-    Kind::IntEnum(variants)
+    Kind::IntEnum(unique_sorted(bases, &mut taken).into_iter().zip(values.iter().copied()).collect())
 }
 
 /// Keywords that only annotate and never change the type.
@@ -1980,7 +1980,7 @@ impl<'a> Builder<'a> {
                     !required.contains(wire.as_str()) && !read_write && !dependent.contains(wire.as_str()) && !counted
                 });
                 fields.push(Field {
-                    name: unique(Name::new(wire), &mut taken),
+                    name: Name::new(wire),
                     wire: wire.clone(),
                     ty,
                     // readOnly/writeOnly fields are absent in one direction.
@@ -2001,6 +2001,13 @@ impl<'a> Builder<'a> {
                     null_as_absent: self.from_v20 && !required.contains(wire.as_str()),
                 });
             }
+        }
+        let names = unique_sorted(
+            fields.iter().map(|f| (f.name.clone(), (f.wire.len(), f.wire.clone()))).collect(),
+            &mut taken,
+        );
+        for (f, n) in fields.iter_mut().zip(names) {
+            f.name = n;
         }
         // Unknown keys of an open object land in `extra`. So a proxy or a
         // read-modify-write keeps them.
@@ -2760,11 +2767,9 @@ pub(crate) fn const_ty(c: &Value) -> Ty {
 pub(crate) fn str_enum(values: &[&str]) -> Kind {
     let mut taken = reserved(&["Other"]);
     let mut seen_wire = BTreeSet::new();
-    let vs = values
-        .iter()
-        .filter(|w| seen_wire.insert(**w))
-        .map(|w| EnumValue { name: unique(Name::new(w), &mut taken), wire: w.to_string(), doc: None })
-        .collect();
+    let wires: Vec<&str> = values.iter().copied().filter(|w| seen_wire.insert(*w)).collect();
+    let names = unique_sorted(wires.iter().map(|w| (Name::new(w), (w.len(), *w))).collect(), &mut taken);
+    let vs = names.into_iter().zip(wires).map(|(name, w)| EnumValue { name, wire: w.to_owned(), doc: None }).collect();
     Kind::StrEnum(vs)
 }
 

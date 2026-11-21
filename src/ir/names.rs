@@ -183,6 +183,22 @@ pub(crate) fn unique(name: Name, taken: &mut BTreeSet<String>) -> Name {
     }
 }
 
+/// Returns a unique name within `taken` for each `(name, wire)`, in the order given. Colliding names are numbered in the
+/// sorted order of their wire keys, so a reorder of the group changes no name. A text key is `(length, text)`: `name`
+/// keeps `Name` and `-name` gets `Name2`.
+pub(crate) fn unique_sorted<W: Ord>(group: Vec<(Name, W)>, taken: &mut BTreeSet<String>) -> Vec<Name> {
+    let mut order: Vec<usize> = (0..group.len()).collect();
+    order.sort_by(|&a, &b| group.get(a).map(|g| &g.1).cmp(&group.get(b).map(|g| &g.1)));
+    let mut names: Vec<Option<Name>> = vec![None; group.len()];
+    let mut group: Vec<Option<Name>> = group.into_iter().map(|(n, _)| Some(n)).collect();
+    for i in order {
+        if let (Some(slot), Some(Some(name))) = (names.get_mut(i), group.get_mut(i).map(Option::take)) {
+            *slot = Some(unique(name, taken));
+        }
+    }
+    names.into_iter().flatten().collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
