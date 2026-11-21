@@ -54,7 +54,9 @@ paths:
   /blobs/{id}:
     servers:
       - url: https://{region}.blobs.example.com
+        name: regional
         variables: {region: {default: eu, enum: [eu, us]}}
+      - {url: 'https://archive.blobs.example.com', name: archive}
     put:
       operationId: putBlob
       parameters:

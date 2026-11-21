@@ -55,12 +55,12 @@ fn integer_enum_values_are_checked() {
     assert!(serde_json::from_str::<types::SubmitFormBodyPriority>("7").is_err());
 }
 
+/// Of several path servers the caller names one: a reorder in the description changes no request.
 #[test]
 fn path_servers_expand_their_variables() {
-    assert_eq!(
-        api::runtime::operation_path(ops::put_blob::SERVERS, "/blobs/1".to_owned()),
-        "https://eu.blobs.example.com/blobs/1"
-    );
+    let path = |s: ops::put_blob::Server| api::runtime::operation_path(&[s.url()], "/blobs/1".to_owned());
+    assert_eq!(path(ops::put_blob::Server::Regional), "https://eu.blobs.example.com/blobs/1");
+    assert_eq!(path(ops::put_blob::Server::Archive), "https://archive.blobs.example.com/blobs/1");
     assert_eq!(api::runtime::split_target("https://eu.blobs.example.com/blobs/1?x=1"), ("/blobs/1", "x=1"));
 }
 
@@ -479,7 +479,7 @@ fn a_blob_goes_to_its_own_server_and_back() {
     let products = std::sync::Arc::new(Products::default());
     let client = served(&products);
     let sent = ops::put_blob::Params::new("1".to_owned(), api::Blob::from(vec![1, 2, 3]));
-    let got = api::block_on(client.put_blob(sent));
+    let got = api::block_on(client.put_blob(ops::put_blob::Server::Regional, sent));
     let want = ops::put_blob::Response::Ok {
         body: vec![1, 2, 3].into(),
         x_size: Some(3),

@@ -131,10 +131,42 @@ pub mod put_blob {
     pub const SERVERS: &[runtime::ServerUrl] = &[
         runtime::ServerUrl {
             template: "https://{region}.blobs.example.com",
-            name: None,
+            name: Some("regional"),
             variables: &[("region", "eu", &["eu", "us"])],
         },
+        runtime::ServerUrl {
+            template: "https://archive.blobs.example.com",
+            name: Some("archive"),
+            variables: &[],
+        },
     ];
+    /// The server that a call goes to, by its name in the description.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    pub enum Server {
+        Regional,
+        Archive,
+    }
+    impl Server {
+        #[must_use]
+        pub const fn url(self) -> runtime::ServerUrl {
+            match self {
+                Self::Regional => {
+                    runtime::ServerUrl {
+                        template: "https://{region}.blobs.example.com",
+                        name: Some("regional"),
+                        variables: &[("region", "eu", &["eu", "us"])],
+                    }
+                }
+                Self::Archive => {
+                    runtime::ServerUrl {
+                        template: "https://archive.blobs.example.com",
+                        name: Some("archive"),
+                        variables: &[],
+                    }
+                }
+            }
+        }
+    }
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct Params {
         pub id: String,

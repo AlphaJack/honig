@@ -696,3 +696,25 @@ fn two_schemes_with_one_rust_name_are_an_error() {
         "{w:#?}"
     );
 }
+
+/// The client names one of several operation servers. Without a distinct name each, it would pick by position, and a
+/// reorder would send requests to another environment: generation fails.
+#[test]
+fn several_operation_servers_need_a_name_each() {
+    let (_, w) = common::build(
+        "operation-servers",
+        &doc(
+            &json!({"/a": {"get": {
+                "operationId": "a",
+                "servers": [{"url": "https://one.example"}, {"url": "https://two.example"}],
+                "responses": {"204": {"description": "ok"}}
+            }}}),
+            &json!({}),
+        ),
+        &[],
+    );
+    assert!(
+        w.iter().any(|m| m.contains("/get/servers:") && m.contains("several servers need a distinct `name`")),
+        "{w:#?}"
+    );
+}

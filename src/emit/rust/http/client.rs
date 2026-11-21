@@ -134,6 +134,11 @@ pub(crate) fn webhook_client(space: &Space<'_>, api: &Api, sec: &Securities) -> 
 
 /// Returns the path statements of the client (`path` ends up holding the request target).
 /// For webhooks and callbacks also the `url` argument.
+/// Returns `server: <op>::Server,`: the argument that names one of several servers of an operation.
+fn server_arg(op: &Operation, m: &TokenStream) -> Option<TokenStream> {
+    (op.servers.len() > 1).then(|| quote!(server: #m::Server,))
+}
+
 pub(crate) fn client_path(op: &Operation, m: &TokenStream, hook: bool) -> (Option<TokenStream>, TokenStream) {
     let mut pieces = template(&op.path).into_iter().peekable();
     // A leading literal starts the string and not an
@@ -170,15 +175,15 @@ pub(crate) fn client_path(op: &Operation, m: &TokenStream, hook: bool) -> (Optio
     if hook {
         (Some(quote!(url: &str,)), quote!(let path = url.to_owned();))
     } else {
-        // Operation or path-level `servers`: this operation goes there.
-        (None, {
-            let init = if path.is_empty() { quote!(let path = #start;) } else { quote!(let mut path = #start;) };
-            if op.servers.is_empty() {
-                quote!(#init #(#path)*)
-            } else {
-                quote!(#init #(#path)* let path = runtime::operation_path(#m::SERVERS, path);)
+        // Operation or path-level `servers`: this operation goes there. Of several, the caller names one.
+        let init = if path.is_empty() { quote!(let path = #start;) } else { quote!(let mut path = #start;) };
+        match op.servers.len() {
+            0 => (None, quote!(#init #(#path)*)),
+            1 => (None, quote!(#init #(#path)* let path = runtime::operation_path(#m::SERVERS, path);)),
+            _ => {
+                (server_arg(op, m), quote!(#init #(#path)* let path = runtime::operation_path(&[server.url()], path);))
             }
-        })
+        }
     }
 }
 
@@ -403,6 +408,7 @@ pub(crate) fn stream_method(
         .any(|(_, _, f)| f.to_string().contains("Sse"))
         .then(|| quote!(let again = runtime::resendable(&req);));
     let m = op_path(op);
+    let server = server_arg(op, &m);
     let f = format_ident!("{}_stream", snake(&op.name));
     let code = code(status);
     let doc = doc_opt(op.doc.as_deref());
@@ -414,7 +420,7 @@ pub(crate) fn stream_method(
     Some(quote! {
         #doc
         #deprecated
-        pub async fn #f(&self, #p: impl runtime::IntoArg<'_, #m::Params>) -> Result<runtime::Streamed<runtime::ItemStream<#item>, #m::Response>, runtime::ClientError> #owned {
+        pub async fn #f(&self, #server #p: impl runtime::IntoArg<'_, #m::Params>) -> Result<runtime::Streamed<runtime::ItemStream<#item>, #m::Response>, runtime::ClientError> #owned {
             #prelude
             #again
             let resp = runtime::send_streaming(&self.transport, req).await?;
@@ -461,6 +467,7 @@ pub(crate) fn blob_stream_method(
             Status::Range(_) | Status::Default => None,
         })
         .collect();
+    let server = server_arg(op, &op_path(op));
     // The first success response decides as before. A JSON `200` next to a binary `206` has no stream method.
     let first = op.responses.iter().find(|r| is_success(r))?;
     if !streamed.iter().any(|(_, r)| std::ptr::eq(*r, first)) {
@@ -484,7 +491,7 @@ pub(crate) fn blob_stream_method(
     Some(quote! {
         #doc
         #deprecated
-        pub async fn #f(&self, #p: impl runtime::IntoArg<'_, #m::Params>) -> Result<runtime::Streamed<runtime::Response, #m::Response>, runtime::ClientError> {
+        pub async fn #f(&self, #server #p: impl runtime::IntoArg<'_, #m::Params>) -> Result<runtime::Streamed<runtime::Response, #m::Response>, runtime::ClientError> {
             #prelude
             let resp = runtime::send_streaming(&self.transport, req).await?;
             #(#branches)*

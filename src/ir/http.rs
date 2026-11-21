@@ -501,6 +501,20 @@ fn operation(b: &mut Builder<'_>, site: &Site<'_>, security: Option<&Value>, sch
     let mut params = params(b, site, &prefix);
     let parts = part_headers(b, site, &prefix, &params);
     params.extend(parts);
+    let servers: Vec<crate::ir::Server> = op
+        .get("servers")
+        .or_else(|| pointer(&b.doc.root, site.item_ptr).and_then(|i| i.get("servers")))
+        .and_then(Value::as_array)
+        .map(|a| a.iter().filter_map(server).collect())
+        .unwrap_or_default();
+    // Of several servers the caller picks one by name: a position would follow the document order.
+    let keys = reserved(&servers.iter().filter_map(|s| s.name.as_deref()).collect::<Vec<_>>());
+    if servers.len() > 1 && keys.len() < servers.len() {
+        b.diags.error(
+            format!("{}/servers", site.op_ptr),
+            "several servers need a distinct `name` (or `description`) each: the client picks one by it",
+        );
+    }
     Operation {
         name: site.name.clone(),
         method: site.method.to_owned(),
@@ -527,12 +541,7 @@ fn operation(b: &mut Builder<'_>, site: &Site<'_>, security: Option<&Value>, sch
             .filter_map(Value::as_str)
             .map(String::from)
             .collect(),
-        servers: op
-            .get("servers")
-            .or_else(|| pointer(&b.doc.root, site.item_ptr).and_then(|i| i.get("servers")))
-            .and_then(Value::as_array)
-            .map(|a| a.iter().filter_map(server).collect())
-            .unwrap_or_default(),
+        servers,
         pointer: site.op_ptr.to_owned(),
     }
 }
