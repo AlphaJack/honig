@@ -3,24 +3,6 @@ macro_rules! serialize_impl {
     ($t:ty) => {
         impl serde::Serialize for $t {
             fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-                s.serialize_bool(Self::VALUE)
-            }
-        }
-    };
-}
-macro_rules! deserialize_impl {
-    ($t:ty) => {
-        impl<'de> serde::Deserialize<'de> for $t {
-            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-                runtime::expect_const(d, &serde_json::Value::Bool(true)).map(|()| Self)
-            }
-        }
-    };
-}
-macro_rules! serialize_impl_2 {
-    ($t:ty) => {
-        impl serde::Serialize for $t {
-            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
                 match self {
                     Self::Variant1(v) => serde::Serialize::serialize(v, s),
                     Self::Variant2(v) => serde::Serialize::serialize(v, s),
@@ -29,7 +11,7 @@ macro_rules! serialize_impl_2 {
         }
     };
 }
-macro_rules! deserialize_impl_2 {
+macro_rules! deserialize_impl {
     ($t:ty) => {
         impl<'de> serde::Deserialize<'de> for $t {
             fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
@@ -38,15 +20,6 @@ macro_rules! deserialize_impl_2 {
                     String,
                 > as serde::Deserialize>::deserialize(d)?;
                 Self::try_from(value).map_err(serde::de::Error::custom)
-            }
-        }
-    };
-}
-macro_rules! serialize_impl_3 {
-    ($t:ty) => {
-        impl serde::Serialize for $t {
-            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-                s.serialize_str(Self::VALUE)
             }
         }
     };
@@ -126,7 +99,7 @@ macro_rules! try_from_impl_3 {
         }
     };
 }
-macro_rules! serialize_impl_4 {
+macro_rules! serialize_impl_2 {
     ($t:ty) => {
         impl serde::Serialize for $t {
             fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
@@ -138,7 +111,7 @@ macro_rules! serialize_impl_4 {
         }
     };
 }
-macro_rules! deserialize_impl_3 {
+macro_rules! deserialize_impl_2 {
     ($t:ty) => {
         impl<'de> serde::Deserialize<'de> for $t {
             fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
@@ -181,7 +154,7 @@ macro_rules! try_from_impl_4 {
         }
     };
 }
-macro_rules! deserialize_impl_4 {
+macro_rules! deserialize_impl_3 {
     ($t:ty) => {
         impl<'de> serde::Deserialize<'de> for $t {
             fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
@@ -398,8 +371,7 @@ pub struct AlwaysTrue;
 impl AlwaysTrue {
     pub const VALUE: bool = true;
 }
-serialize_impl!(AlwaysTrue);
-deserialize_impl!(AlwaysTrue);
+runtime::const_impls!(AlwaysTrue, VALUE);
 runtime::object! {
     #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
     pub struct Stamp {
@@ -458,7 +430,7 @@ pub enum Code {
     Variant1(CodeVariant1),
     Variant2(CodeVariant2),
 }
-serialize_impl_2!(Code);
+serialize_impl!(Code);
 impl<'de> serde::Deserialize<'de> for Code {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         let v = <runtime::Content<'de> as serde::Deserialize>::deserialize(d)?;
@@ -1137,7 +1109,7 @@ impl runtime::XmlShape for Labelled {
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct Labels(pub(super) std::collections::BTreeMap<String, String>);
-deserialize_impl_2!(Labels);
+deserialize_impl!(Labels);
 impl TryFrom<std::collections::BTreeMap<String, String>> for Labels {
     type Error = runtime::BuildError;
     fn try_from(
@@ -1527,13 +1499,7 @@ pub struct TaggedLabelLabel;
 impl TaggedLabelLabel {
     pub const VALUE: &'static str = "a";
 }
-serialize_impl_3!(TaggedLabelLabel);
-impl<'de> serde::Deserialize<'de> for TaggedLabelLabel {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        runtime::expect_const(d, &serde_json::Value::String("a".to_owned()))
-            .map(|()| Self)
-    }
-}
+runtime::const_impls!(TaggedLabelLabel, VALUE);
 runtime::object! {
     #[unique_keys]
     /// colour
@@ -1578,13 +1544,7 @@ pub struct TaggedColourColour;
 impl TaggedColourColour {
     pub const VALUE: &'static str = "red";
 }
-serialize_impl_3!(TaggedColourColour);
-impl<'de> serde::Deserialize<'de> for TaggedColourColour {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        runtime::expect_const(d, &serde_json::Value::String("red".to_owned()))
-            .map(|()| Self)
-    }
-}
+runtime::const_impls!(TaggedColourColour, VALUE);
 runtime::object! {
     #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
     pub struct ImpliedObject {
@@ -1618,13 +1578,7 @@ pub struct SlugEmpty;
 impl SlugEmpty {
     pub const VALUE: &'static str = "";
 }
-serialize_impl_3!(SlugEmpty);
-impl<'de> serde::Deserialize<'de> for SlugEmpty {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        runtime::expect_const(d, &serde_json::Value::String(String::new()))
-            .map(|()| Self)
-    }
-}
+runtime::const_impls!(SlugEmpty, VALUE);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct SlugVariant2(pub(super) String);
@@ -1892,13 +1846,7 @@ pub struct RefusalObject;
 impl RefusalObject {
     pub const VALUE: &'static str = "error";
 }
-serialize_impl_3!(RefusalObject);
-impl<'de> serde::Deserialize<'de> for RefusalObject {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        runtime::expect_const(d, &serde_json::Value::String("error".to_owned()))
-            .map(|()| Self)
-    }
-}
+runtime::const_impls!(RefusalObject, VALUE);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum ProblemCode {
     Invalid,
@@ -2022,20 +1970,14 @@ pub struct ShipmentInternationalKind;
 impl ShipmentInternationalKind {
     pub const VALUE: &'static str = "international";
 }
-serialize_impl_3!(ShipmentInternationalKind);
-impl<'de> serde::Deserialize<'de> for ShipmentInternationalKind {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        runtime::expect_const(d, &serde_json::Value::String("international".to_owned()))
-            .map(|()| Self)
-    }
-}
+runtime::const_impls!(ShipmentInternationalKind, VALUE);
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ShipmentInternationalMeta {
     Object(MetaObject),
     Other(serde_json::Value),
 }
-serialize_impl_4!(ShipmentInternationalMeta);
-deserialize_impl_3!(ShipmentInternationalMeta);
+serialize_impl_2!(ShipmentInternationalMeta);
+deserialize_impl_2!(ShipmentInternationalMeta);
 runtime::object! {
     #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
     pub struct MetaObject {
@@ -2542,7 +2484,7 @@ pub enum UserLoyalty {
     Variant1(UserLoyaltyVariant1),
     Variant2(UserLoyaltyVariant2),
 }
-serialize_impl_2!(UserLoyalty);
+serialize_impl!(UserLoyalty);
 impl<'de> serde::Deserialize<'de> for UserLoyalty {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         let v = <runtime::Content<'de> as serde::Deserialize>::deserialize(d)?;
@@ -2835,13 +2777,7 @@ pub struct Not4;
 impl Not4 {
     pub const VALUE: &'static str = "owner";
 }
-serialize_impl_3!(Not4);
-impl<'de> serde::Deserialize<'de> for Not4 {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        runtime::expect_const(d, &serde_json::Value::String("owner".to_owned()))
-            .map(|()| Self)
-    }
-}
+runtime::const_impls!(Not4, VALUE);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct Not5(pub(super) Not5Variants);
@@ -2931,8 +2867,7 @@ pub struct Not5ObjectFragile;
 impl Not5ObjectFragile {
     pub const VALUE: bool = true;
 }
-serialize_impl!(Not5ObjectFragile);
-deserialize_impl!(Not5ObjectFragile);
+runtime::const_impls!(Not5ObjectFragile, VALUE);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct Not6(pub(super) Not6Variants);
@@ -3022,13 +2957,7 @@ pub struct ObjectCustoms;
 impl ObjectCustoms {
     pub const VALUE: &'static str = "none";
 }
-serialize_impl_3!(ObjectCustoms);
-impl<'de> serde::Deserialize<'de> for ObjectCustoms {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        runtime::expect_const(d, &serde_json::Value::String("none".to_owned()))
-            .map(|()| Self)
-    }
-}
+runtime::const_impls!(ObjectCustoms, VALUE);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct Not7(pub(super) Not7Variants);
@@ -3339,8 +3268,8 @@ pub enum ImpliedVariants {
     Object(ImpliedObject),
     Other(serde_json::Value),
 }
-serialize_impl_4!(ImpliedVariants);
-deserialize_impl_3!(ImpliedVariants);
+serialize_impl_2!(ImpliedVariants);
+deserialize_impl_2!(ImpliedVariants);
 #[derive(Debug, Clone, PartialEq)]
 pub enum ShipmentVariants {
     International(ShipmentInternational),
@@ -3748,29 +3677,29 @@ pub enum Not2Variants {
     Object(Not2Object),
     Other(serde_json::Value),
 }
-serialize_impl_4!(Not2Variants);
-deserialize_impl_3!(Not2Variants);
+serialize_impl_2!(Not2Variants);
+deserialize_impl_2!(Not2Variants);
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Not3Variants {
     Object(Not3Object),
     Other(serde_json::Value),
 }
-serialize_impl_4!(Not3Variants);
-deserialize_impl_3!(Not3Variants);
+serialize_impl_2!(Not3Variants);
+deserialize_impl_2!(Not3Variants);
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Not5Variants {
     Object(Not5Object),
     Other(serde_json::Value),
 }
-serialize_impl_4!(Not5Variants);
-deserialize_impl_3!(Not5Variants);
+serialize_impl_2!(Not5Variants);
+deserialize_impl_2!(Not5Variants);
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Not6Variants {
     Object(Not6Object),
     Other(serde_json::Value),
 }
-serialize_impl_4!(Not6Variants);
-deserialize_impl_3!(Not6Variants);
+serialize_impl_2!(Not6Variants);
+deserialize_impl_2!(Not6Variants);
 pub type Not7Variants = Not6Variants;
 pub type Not8Variants = Not6Variants;
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -3778,8 +3707,8 @@ pub enum Not9Variants {
     Object(Not9Object),
     Other(serde_json::Value),
 }
-serialize_impl_4!(Not9Variants);
-deserialize_impl_3!(Not9Variants);
+serialize_impl_2!(Not9Variants);
+deserialize_impl_2!(Not9Variants);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct EntryLinesChecked(pub(super) EntryLines);
@@ -3866,7 +3795,7 @@ runtime::checked_impls!(BadgeHolders, Vec < String >);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct LooseV(pub(super) serde_json::Value);
-deserialize_impl_4!(LooseV);
+deserialize_impl_3!(LooseV);
 impl TryFrom<serde_json::Value> for LooseV {
     type Error = runtime::BuildError;
     fn try_from(value: serde_json::Value) -> Result<Self, runtime::BuildError> {
@@ -3943,7 +3872,7 @@ runtime::checked_impls!(UserTags, Vec < UserTagsItem >);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct UserMeta(pub(super) std::collections::BTreeMap<String, String>);
-deserialize_impl_2!(UserMeta);
+deserialize_impl!(UserMeta);
 impl TryFrom<std::collections::BTreeMap<String, String>> for UserMeta {
     type Error = runtime::BuildError;
     fn try_from(
@@ -3970,7 +3899,7 @@ runtime::checked_impls!(UserMeta, std::collections::BTreeMap < String, String >)
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct Not9ObjectAmount(pub(super) serde_json::Value);
-deserialize_impl_4!(Not9ObjectAmount);
+deserialize_impl_3!(Not9ObjectAmount);
 impl TryFrom<serde_json::Value> for Not9ObjectAmount {
     type Error = runtime::BuildError;
     fn try_from(value: serde_json::Value) -> Result<Self, runtime::BuildError> {
@@ -4000,7 +3929,7 @@ pub type BadgeRequestHolders = BadgeHolders;
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct ShipmentInternationalRating(pub(super) serde_json::Value);
-deserialize_impl_4!(ShipmentInternationalRating);
+deserialize_impl_3!(ShipmentInternationalRating);
 impl TryFrom<serde_json::Value> for ShipmentInternationalRating {
     type Error = runtime::BuildError;
     fn try_from(value: serde_json::Value) -> Result<Self, runtime::BuildError> {

@@ -507,13 +507,7 @@ pub(crate) fn params_new(space: &Space<'_>, op: &Operation) -> TokenStream {
         .then(|| quote!(#![allow(clippy::too_many_arguments, reason = "one argument per required parameter")]));
     // Every other field starts as `None`: nothing to evaluate at run time.
     let constness = op.params.iter().filter(|p| !is_arg(p)).all(|p| const_default(space, p)).then(|| quote!(const));
-    let default = (count == 0).then(|| {
-        quote! {
-            impl Default for Params {
-                fn default() -> Self { Self::new() }
-            }
-        }
-    });
+    let default = (count == 0).then(|| quote!(runtime::default_from_new!(Params);));
     quote! {
         impl Params {
             #[must_use]
@@ -805,22 +799,15 @@ fn response_error(op: &Operation) -> TokenStream {
         match status_code(r) {
             Some(code) => {
                 let (pattern, text) = (any_of(r), lit(&format!("status {code} ({})", pascal(&r.variant))));
-                quote!(#pattern => f.write_str(#text),)
+                quote!(#pattern => #text,)
             }
             None => {
                 let text = lit(&format!("status {{}} ({})", pascal(&r.variant)));
-                quote!(Self::#variant { status, .. } => write!(f, #text, status.as_u16()),)
+                quote!(Self::#variant { status, .. } => format_args!(#text, status.as_u16()),)
             }
         }
     });
-    quote! {
-        impl std::fmt::Display for Response {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                match self { #(#arms)* }
-            }
-        }
-        impl std::error::Error for Response {}
-    }
+    quote!(runtime::response_error!(Response { #(#arms)* });)
 }
 
 /// A response of an operation and its index among the responses.

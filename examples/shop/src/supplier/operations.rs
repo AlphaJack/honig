@@ -50,14 +50,7 @@ pub mod add_book {
         /// Created.
         Created(types::Book),
     }
-    impl std::fmt::Display for Response {
-        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            match self {
-                Self::Created(..) => f.write_str("status 201 (Created)"),
-            }
-        }
-    }
-    impl std::error::Error for Response {}
+    runtime::response_error!(Response { Self::Created(..) => "status 201 (Created)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
         pub fn into_ok(self) -> Result<types::Book, Box<Self>> {

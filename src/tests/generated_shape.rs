@@ -82,17 +82,7 @@ fn only_operations_with_their_own_servers_get_servers() {
 fn params_always_have_new_and_default_only_without_arguments() {
     let ops = operations("shape-default");
     let module = |op: &str| op_module(&ops, op);
-    // `Default` is written in the module or by a macro that the file shares (`shared_impl_N!(Params);`).
-    let shared: Vec<String> = ops
-        .split("macro_rules! ")
-        .skip(1)
-        .filter(|m| m.split("};").next().is_some_and(|body| body.contains("impl Default for $t")))
-        .filter_map(|m| m.split_whitespace().next().map(|name| format!("{name}!(Params)")))
-        .collect();
-    let has_default = |op: &str| {
-        let m = module(op);
-        m.contains("impl Default for Params") || shared.iter().any(|s| m.contains(s.as_str()))
-    };
+    let has_default = |op: &str| module(op).contains("runtime::default_from_new!(Params)");
     for op in ["a", "b", "c", "d", "e", "f"] {
         assert!(module(op).contains("fn new("), "{op} has new: {ops}");
         assert!(!module(op).contains("Default)]\n    pub struct Params"), "{op} derives no Default: {ops}");
@@ -1294,7 +1284,7 @@ fn values_that_no_scalar_type_holds_are_unit_types() {
     let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Sized": mixed}}));
     let types = common::file(&common::generate("untyped-values", &doc, &crate::emit::Options::default()), "types.rs")
         .to_owned();
-    assert!(types.contains("runtime::expect_const") && !types.contains("runtime::content_equal"), "{types}");
+    assert!(types.contains("runtime::const_impls!(") && !types.contains("runtime::content_equal"), "{types}");
 }
 
 /// `unevaluatedProperties` refuses the names that the schema, what it applies in place and the branches that the value
@@ -2126,6 +2116,28 @@ fn shared_impls_are_runtime_macros_and_not_copies() {
         assert!(types.contains(call), "{call} in {types}");
     }
     assert!(types.contains("runtime::checked_num_impls!(Count, i64)"), "{types}");
+}
+
+/// Two constants and two operations with the same responses share their impls through runtime macros: no file
+/// writes a macro of its own for them.
+#[test]
+fn constants_and_responses_share_runtime_macros() {
+    let op = |id: &str| json!({"get": {"operationId": id, "responses": {"204": {"description": "done"}}}});
+    let doc = common::spec(
+        "3.2.0",
+        &json!({"/a": op("a"), "/b": op("b")}),
+        &json!({"schemas": {
+            "A": {"const": "a"}, "B": {"const": "b"},
+            "C": {"const": {"c": 1}}, "D": {"const": [1]}
+        }}),
+    );
+    let files = common::generate("shared-consts", &doc, &crate::emit::Options::default());
+    let (types, ops) = (common::file(&files, "types.rs"), common::file(&files, "operations.rs"));
+    assert!(!types.contains("macro_rules!") && !ops.contains("macro_rules!"), "{types}{ops}");
+    for call in ["runtime::const_impls!(A, VALUE)", "runtime::const_impls!(C)"] {
+        assert!(types.contains(call), "{call} in {types}");
+    }
+    assert!(ops.contains("runtime::response_error!(Response") && ops.contains("runtime::default_from_new!(Params)"));
 }
 
 /// An object type is one `runtime::object!` that prints as a struct: a marker picks the kind of a field, and no serde
