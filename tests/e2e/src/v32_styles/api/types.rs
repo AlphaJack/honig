@@ -29,9 +29,12 @@ runtime::object! {
         pub b: i64,
     }
 }
-impl Obj {
-    #[must_use]
-    pub const fn new(r: i64, g: i64, b: i64) -> Self {
-        Self { r, g, b }
+/// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
+/// its field. `build` returns the first field that did not convert.
+pub mod builders {
+    use super::runtime;
+    runtime::typestate_builder! {
+        Obj => super::Obj; required { r : R0 : i64 = "R", g : R1 : i64 = "G", b : R2 :
+        i64 = "B" } optional {} fixed {}
     }
 }

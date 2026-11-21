@@ -480,12 +480,8 @@ pub(crate) fn callbacks_mod(api: &Api, op: &Operation) -> Option<TokenStream> {
 /// has neither `Option` nor a usable spec `default`. Then a required body.
 /// Everything else starts at its default. With no arguments `Default` calls it.
 pub(crate) fn params_new(space: &Space<'_>, op: &Operation) -> TokenStream {
-    let is_arg = |p: &Param| p.location == Location::Path || (!p.ty.is_option() && spec_default(space, p).is_none());
-    let mut args: Vec<&Param> = op.params.iter().filter(|p| is_arg(p)).collect();
-    // A stable sort. Path parameters go by URL position and the rest in declaration order after them.
-    args.sort_by_key(|p| {
-        if p.location == Location::Path { op.path.find(&format!("{{{}}}", p.wire)).unwrap_or(0) } else { usize::MAX }
-    });
+    let is_arg = |p: &Param| is_required_param(space, p);
+    let args = new_args(space, op);
     let body = op.body.as_ref().filter(|b| b.required).map(|b| body_ty(space, &b.contents, "Body"));
     let count = args.len() + usize::from(body.is_some());
     let arg_list = args.iter().map(|p| {
@@ -527,6 +523,95 @@ pub(crate) fn params_new(space: &Space<'_>, op: &Operation) -> TokenStream {
         }
         #default
     }
+}
+
+/// Returns the arguments of `Params::new` in order: path parameters by their place in the URL, then every other
+/// parameter that has neither `Option` nor a usable spec `default`.
+fn new_args<'a>(space: &Space<'_>, op: &'a Operation) -> Vec<&'a Param> {
+    let mut args: Vec<&Param> = op.params.iter().filter(|p| is_required_param(space, p)).collect();
+    // A stable sort. Path parameters go by URL position and the rest in declaration order after them.
+    args.sort_by_key(|p| {
+        if p.location == Location::Path { op.path.find(&format!("{{{}}}", p.wire)).unwrap_or(0) } else { usize::MAX }
+    });
+    args
+}
+
+/// Is `p` an argument of `Params::new` and a required value of its builder?
+fn is_required_param(space: &Space<'_>, p: &Param) -> bool {
+    p.location == Location::Path || (!p.ty.is_option() && spec_default(space, p).is_none())
+}
+
+/// Can `Params::new` take the required values by position? Only when no two of them have the same type: then a swap is
+/// a type error. A required value of a checked type is made with its own `try_from` first.
+fn params_new_is_safe(space: &Space<'_>, op: &Operation) -> bool {
+    let mut types: Vec<String> = new_args(space, op).iter().map(|p| ty(space, &p.ty, true).to_string()).collect();
+    if let Some(b) = op.body.as_ref().filter(|b| b.required) {
+        types.push(body_ty(space, &b.contents, "Body").to_string());
+    }
+    let count = types.len();
+    types.sort();
+    types.dedup();
+    types.len() == count
+}
+
+/// Returns `builders::Params`: each parameter by name through `runtime::typestate_builder!`, with `Params::builder()`.
+/// An operation without parameters or body has none.
+pub(crate) fn params_builder(space: &Space<'_>, op: &Operation) -> Option<TokenStream> {
+    if op.params.is_empty() && op.body.is_none() {
+        return None;
+    }
+    let setter = |name: &Name| {
+        let mut setter = snake(name);
+        if setter == "build" || setter == "new" || setter == "builder" {
+            setter.push('_');
+        }
+        ident(&setter)
+    };
+    let in_builders = |t: TokenStream| if t.to_string() == "Body" { quote!(super::Body) } else { t };
+    let mut required: Vec<TokenStream> = Vec::new();
+    for (i, p) in new_args(space, op).into_iter().enumerate() {
+        let (n, g, t, w) = (snake_ident(&p.name), format_ident!("R{i}"), ty(space, &p.ty, true), lit(&p.wire));
+        required.push(quote!(#n: #g: #t = #w));
+    }
+    let body = op.body.as_ref().map(|b| (b.required, in_builders(body_ty(space, &b.contents, "Body"))));
+    if let Some((true, t)) = &body {
+        let g = format_ident!("R{}", required.len());
+        required.push(quote!(body: #g: #t = "body"));
+    }
+    let mut optional: Vec<TokenStream> = Vec::new();
+    for p in op.params.iter().filter(|p| !is_required_param(space, p)) {
+        let (n, set, w) = (snake_ident(&p.name), setter(&p.name), lit(&p.wire));
+        let (t, wrap, start) = if p.ty.is_option() {
+            (ty(space, p.ty.non_null(), true), quote!(some), quote!(None))
+        } else {
+            (ty(space, &p.ty, true), quote!(value), crate::emit::rust::http::shared::param_start(space, p))
+        };
+        optional.push(quote!(#n (#set): #t = #w => #wrap, #start));
+    }
+    if let Some((false, t)) = &body {
+        optional.push(quote!(body (body): #t = "body" => some, None));
+    }
+    let mut fixed: Vec<TokenStream> = Vec::new();
+    if crate::emit::rust::http::shared::chooses_part_types(op) {
+        fixed.push(quote!(part_types: runtime::PartTypes::new()));
+    }
+    if crate::emit::rust::http::shared::chooses_media(op) {
+        fixed.push(quote!(media: super::Media::ALL[0]));
+    }
+    let text = quote!(#(#required)* #(#optional)* #(#fixed)*).to_string();
+    let types_import = crate::emit::rust::http::shared::types_import(text.contains("types ::"));
+    Some(quote! {
+        pub mod builders {
+            #types_import
+            use super::runtime;
+            runtime::typestate_builder! {
+                Params => super::Params;
+                required { #(#required),* }
+                optional { #(#optional),* }
+                fixed { #(#fixed),* }
+            }
+        }
+    })
 }
 
 /// Returns whether `Params::new` can set the optional parameter `p` in a `const fn`? Yes for `None` or a spec default
@@ -577,7 +662,8 @@ pub(crate) fn params_struct(space: &Space<'_>, op: &Operation, conveniences: boo
     let part_types_field = crate::emit::rust::http::shared::part_types_field(op);
     let (media_field, media_enum) =
         (crate::emit::rust::http::shared::media_field(op), crate::emit::rust::http::shared::media_enum(op));
-    let new = conveniences.then(|| params_new(space, op));
+    let new = conveniences.then(|| params_new(space, op)).filter(|_| params_new_is_safe(space, op));
+    let builder = conveniences.then(|| params_builder(space, op)).flatten();
     let consts = conveniences.then(|| quote!(pub const METHOD: &str = #method; pub const PATH: &str = #path;));
     quote! {
         #consts
@@ -591,6 +677,7 @@ pub(crate) fn params_struct(space: &Space<'_>, op: &Operation, conveniences: boo
         }
         #media_enum
         #new
+        #builder
     }
 }
 

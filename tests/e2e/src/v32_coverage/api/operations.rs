@@ -136,6 +136,7 @@ pub mod unarchive {
 }
 pub mod add_note {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/notes";
     #[derive(Debug, Clone, PartialEq)]
@@ -146,6 +147,14 @@ pub mod add_note {
         #[must_use]
         pub const fn new(body: types::Note) -> Self {
             Self { body }
+        }
+    }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { body : R0 : types::Note = "body" }
+            optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq)]
@@ -181,6 +190,7 @@ pub mod add_note {
 }
 pub mod find_box {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/boxes";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -194,32 +204,13 @@ pub mod find_box {
         pub row: i64,
         pub bin: i64,
     }
-    impl Params {
-        #[must_use]
-        pub const fn new(
-            width: i64,
-            height: i64,
-            depth: i64,
-            weight: i64,
-            color: i64,
-            shelf: i64,
-            row: i64,
-            bin: i64,
-        ) -> Self {
-            #![allow(
-                clippy::too_many_arguments,
-                reason = "one argument per required parameter"
-            )]
-            Self {
-                width,
-                height,
-                depth,
-                weight,
-                color,
-                shelf,
-                row,
-                bin,
-            }
+    pub mod builders {
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { width : R0 : i64 = "width", height : R1 :
+            i64 = "height", depth : R2 : i64 = "depth", weight : R3 : i64 = "weight",
+            color : R4 : i64 = "color", shelf : R5 : i64 = "shelf", row : R6 : i64 =
+            "row", bin : R7 : i64 = "bin" } optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]

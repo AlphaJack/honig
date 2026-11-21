@@ -558,15 +558,21 @@ fn a_recursive_union_decodes_in_time_linear_in_its_depth() {
 #[test]
 fn a_builder_converts_each_field_and_returns_the_first_error() -> Result<(), Box<dyn std::error::Error>> {
     // ANCHOR: builder
-    let user = types::User::builder("Anna", "admin").age(30).email("anna@example.com").build()?;
+    let user = types::User::builder().name("Anna").role("admin").age(30).email("anna@example.com").build()?;
     // ANCHOR_END: builder
     assert_eq!(
         (user.name.as_str(), user.role, user.age.map(types::UserAge::get)),
         ("Anna", types::UserRole::Admin, Some(30))
     );
-    let err = types::User::builder("Anna", "admin").age(150).email("x").build().expect_err("150 is past the limit");
+    let err = types::User::builder()
+        .name("Anna")
+        .role("admin")
+        .age(150)
+        .email("x")
+        .build()
+        .expect_err("150 is past the limit");
     assert_eq!(err.to_string(), "/age: 150 must be less than 150", "the first error");
-    let err = types::User::builder("anna", "admin").age(30).build().expect_err("a lowercase name");
+    let err = types::User::builder().name("anna").role("admin").age(30).build().expect_err("a lowercase name");
     assert_eq!(err.violation().path, "/name", "{err}");
     assert!(err.to_string().starts_with("/name: "), "{err}");
     Ok(())
@@ -781,9 +787,10 @@ fn a_map_component_checks_a_value_built_in_code() {
 fn a_builder_checks_the_rules_across_fields() {
     let parcels =
         || -> types::ShipmentInternationalParcels { serde_json::from_value(json!([{"fragile": true}])).unwrap() };
-    types::ShipmentInternational::builder("cn22", parcels()).build().expect("every rule holds");
-    let insured_alone = types::ShipmentInternational::builder("cn22", parcels()).insured(true).build();
+    types::ShipmentInternational::builder().customs("cn22").parcels(parcels()).build().expect("every rule holds");
+    let insured_alone =
+        types::ShipmentInternational::builder().customs("cn22").parcels(parcels()).insured(true).build();
     assert!(insured_alone.is_err(), "dependentRequired: insured needs insurer");
-    let both = types::ShipmentInternational::builder("none", parcels()).insurer("acme").build();
+    let both = types::ShipmentInternational::builder().customs("none").parcels(parcels()).insurer("acme").build();
     assert!(both.is_err(), "not: customs `none` together with an insurer");
 }

@@ -34,6 +34,13 @@ pub mod get_export {
             Self { id }
         }
     }
+    pub mod builders {
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { id : R0 : String = "id" } optional {}
+            fixed {}
+        }
+    }
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// The export as a zip archive.
@@ -74,6 +81,13 @@ pub mod get_thumbnail {
             Self { id }
         }
     }
+    pub mod builders {
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { id : R0 : String = "id" } optional {}
+            fixed {}
+        }
+    }
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// A preview in whatever image format the export has.
@@ -97,6 +111,7 @@ pub mod get_thumbnail {
     }
 }
 pub mod get_manifest {
+    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/exports/{id}/manifest";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -107,6 +122,13 @@ pub mod get_manifest {
         #[must_use]
         pub const fn new(id: String) -> Self {
             Self { id }
+        }
+    }
+    pub mod builders {
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { id : R0 : String = "id" } optional {}
+            fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -140,6 +162,7 @@ pub mod get_manifest {
     }
 }
 pub mod replace_manifest {
+    use super::super::runtime;
     pub const METHOD: &str = "PUT";
     pub const PATH: &str = "/exports/{id}/manifest";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -152,6 +175,14 @@ pub mod replace_manifest {
         #[must_use]
         pub const fn new(id: String, body: Vec<String>) -> Self {
             Self { if_match: None, id, body }
+        }
+    }
+    pub mod builders {
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { id : R0 : String = "id", body : R1 : Vec
+            < String > = "body" } optional { if_match(if_match) : String = "If-Match" =>
+            some, None } fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]

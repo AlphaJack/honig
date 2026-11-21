@@ -23,9 +23,12 @@ runtime::object! {
         pub chunks: i64,
     }
 }
-impl PutFileOk {
-    #[must_use]
-    pub const fn new(bytes: i64, chunks: i64) -> Self {
-        Self { bytes, chunks }
+/// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
+/// its field. `build` returns the first field that did not convert.
+pub mod builders {
+    use super::runtime;
+    runtime::typestate_builder! {
+        PutFileOk => super::PutFileOk; required { bytes : R0 : i64 = "bytes", chunks : R1
+        : i64 = "chunks" } optional {} fixed {}
     }
 }

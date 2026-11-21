@@ -38,7 +38,7 @@ fn open_objects_keep_unknown_keys() {
 /// decodes again: its decoder refuses a name written twice.
 #[test]
 fn an_extra_entry_named_like_a_field_is_written_once() {
-    let mut customer = types::Customer::new("Ann".try_into().expect("a valid name"));
+    let mut customer = types::Customer::builder().name("Ann").build().expect("a valid name");
     customer.additional_properties.insert("name".to_owned(), json!("Bob"));
     customer.additional_properties.insert("vip".to_owned(), json!(true));
     let text = serde_json::to_string(&customer).expect("encodes");

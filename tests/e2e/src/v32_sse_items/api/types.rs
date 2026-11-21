@@ -44,3 +44,17 @@ impl TileUpdatesOkItem {
         Self { id: None, data: None }
     }
 }
+/// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
+/// its field. `build` returns the first field that did not convert.
+pub mod builders {
+    use super::runtime;
+    runtime::typestate_builder! {
+        TileEvent => super::TileEvent; required { tile : R0 : String = "tile", rows : R1
+        : i64 = "rows" } optional {} fixed {}
+    }
+    runtime::typestate_builder! {
+        TileUpdatesOkItem => super::TileUpdatesOkItem; required {} optional { id(id) :
+        String = "id" => some, None, data(data) : std::collections::BTreeMap < String,
+        serde_json::Value > = "data" => some, None } fixed {}
+    }
+}

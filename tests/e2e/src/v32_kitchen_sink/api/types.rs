@@ -1490,22 +1490,6 @@ runtime::object! {
         pub owner: Owner,
     }
 }
-impl ProductFields {
-    #[must_use]
-    pub const fn new(id: ProductId, name: ProductName, kind: ProductKind) -> Self {
-        Self {
-            id,
-            name,
-            kind,
-            nickname: runtime::Nullable::Absent,
-            tags: None,
-            point: None,
-            attrs: None,
-            weight: None,
-            owner: None,
-        }
-    }
-}
 runtime::object! {
     #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
     pub struct BookFields {
@@ -1527,23 +1511,6 @@ runtime::object! {
         pub owner: Owner,
         #[optional]
         pub hardcover: bool,
-    }
-}
-impl BookFields {
-    #[must_use]
-    pub const fn new(id: BookId, name: BookName, kind: BookKind) -> Self {
-        Self {
-            id,
-            name,
-            kind,
-            nickname: runtime::Nullable::Absent,
-            tags: None,
-            point: None,
-            attrs: None,
-            weight: None,
-            owner: None,
-            hardcover: None,
-        }
     }
 }
 runtime::object! {
@@ -1670,22 +1637,6 @@ runtime::object! {
         pub owner: Owner,
     }
 }
-impl Gadget2Fields {
-    #[must_use]
-    pub const fn new(id: Gadget2Id, name: Gadget2Name, kind: Gadget2Kind) -> Self {
-        Self {
-            id,
-            name,
-            kind,
-            nickname: runtime::Nullable::Absent,
-            tags: None,
-            point: None,
-            attrs: None,
-            weight: None,
-            owner: None,
-        }
-    }
-}
 pub type Gadget2AttrsFields = AttrsFields;
 runtime::object! {
     /// Product
@@ -1715,22 +1666,6 @@ runtime::object! {
         pub owner: Owner,
     }
 }
-impl ProductRequestFields {
-    #[must_use]
-    pub const fn new(name: ProductName, kind: ProductKind) -> Self {
-        Self {
-            name,
-            kind,
-            nickname: runtime::Nullable::Absent,
-            secret: None,
-            tags: None,
-            point: None,
-            attrs: None,
-            weight: None,
-            owner: None,
-        }
-    }
-}
 runtime::object! {
     #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
     pub struct BookRequestFields {
@@ -1754,23 +1689,6 @@ runtime::object! {
         pub owner: Owner,
         #[optional]
         pub hardcover: bool,
-    }
-}
-impl BookRequestFields {
-    #[must_use]
-    pub const fn new(name: BookName, kind: BookKind) -> Self {
-        Self {
-            name,
-            kind,
-            nickname: runtime::Nullable::Absent,
-            secret: None,
-            tags: None,
-            point: None,
-            attrs: None,
-            weight: None,
-            owner: None,
-            hardcover: None,
-        }
     }
 }
 #[derive(Debug, Clone, PartialEq)]
@@ -1848,22 +1766,6 @@ runtime::object! {
         #[optional]
         /// Overrides description
         pub owner: Owner,
-    }
-}
-impl Gadget2RequestFields {
-    #[must_use]
-    pub const fn new(name: Gadget2Name, kind: Gadget2Kind) -> Self {
-        Self {
-            name,
-            kind,
-            nickname: runtime::Nullable::Absent,
-            secret: None,
-            tags: None,
-            point: None,
-            attrs: None,
-            weight: None,
-            owner: None,
-        }
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
@@ -2095,1044 +1997,210 @@ runtime::checked_impls!(NotChecked4, serde_json::Value);
 pub mod builders {
     use super as types;
     use super::runtime;
-    impl super::Product {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            id: impl TryInto<types::ProductId, Error: std::fmt::Display>,
-            name: impl TryInto<types::ProductName, Error: std::fmt::Display>,
-            kind: impl TryInto<types::ProductKind, Error: std::fmt::Display>,
-        ) -> Product {
-            Product(
-                runtime::Builder::start(|| Ok(
-                    super::ProductFields::new(
-                        runtime::field("id", id)?,
-                        runtime::field("name", name)?,
-                        runtime::field("kind", kind)?,
-                    ),
-                )),
-            )
-        }
+    runtime::typestate_builder! {
+        Product => super::ProductFields, try_from super::Product; required { id : R0 :
+        types::ProductId = "id", name : R1 : types::ProductName = "name", kind : R2 :
+        types::ProductKind = "kind" } optional { nickname(nickname) : String = "nickname"
+        => nullable, runtime::Nullable::Absent, tags(tags) : types::ProductTags = "tags"
+        => some, None, point(point) : types::ProductPoint = "point" => some, None,
+        attrs(attrs) : types::ProductAttrs = "attrs" => some, None, weight(weight) :
+        types::ProductWeight = "weight" => some, None, owner(owner) : types::Owner =
+        "owner" => some, None } fixed {}
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct Product(runtime::Builder<super::ProductFields>);
-    impl Product {
-        pub fn nickname(
-            self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(
-                self
-                    .0
-                    .set(
-                        "nickname",
-                        value,
-                        |s, v| s.nickname = runtime::Nullable::Value(v),
-                    ),
-            )
-        }
-        pub fn tags(
-            self,
-            value: impl TryInto<types::ProductTags, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("tags", value, |s, v| s.tags = Some(v)))
-        }
-        pub fn point(
-            self,
-            value: impl TryInto<types::ProductPoint, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("point", value, |s, v| s.point = Some(v)))
-        }
-        pub fn attrs(
-            self,
-            value: impl TryInto<types::ProductAttrs, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("attrs", value, |s, v| s.attrs = Some(v)))
-        }
-        pub fn weight(
-            self,
-            value: impl TryInto<types::ProductWeight, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("weight", value, |s, v| s.weight = Some(v)))
-        }
-        /// Overrides description
-        pub fn owner(
-            self,
-            value: impl TryInto<types::Owner, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("owner", value, |s, v| s.owner = Some(v)))
-        }
-        /// Returns the value once its whole schema holds.
-        pub fn build(self) -> Result<super::Product, runtime::BuildError> {
-            self.0.build().and_then(super::Product::try_from)
-        }
+    runtime::typestate_builder! {
+        Book => super::BookFields, try_from super::Book; required { id : R0 :
+        types::BookId = "id", name : R1 : types::BookName = "name", kind : R2 :
+        types::BookKind = "kind" } optional { nickname(nickname) : String = "nickname" =>
+        nullable, runtime::Nullable::Absent, tags(tags) : types::BookTags = "tags" =>
+        some, None, point(point) : types::BookPoint = "point" => some, None, attrs(attrs)
+        : types::BookAttrs = "attrs" => some, None, weight(weight) : types::BookWeight =
+        "weight" => some, None, owner(owner) : types::Owner = "owner" => some, None,
+        hardcover(hardcover) : bool = "hardcover" => some, None } fixed {}
     }
-    impl super::Book {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            id: impl TryInto<types::BookId, Error: std::fmt::Display>,
-            name: impl TryInto<types::BookName, Error: std::fmt::Display>,
-            kind: impl TryInto<types::BookKind, Error: std::fmt::Display>,
-        ) -> Book {
-            Book(
-                runtime::Builder::start(|| Ok(
-                    super::BookFields::new(
-                        runtime::field("id", id)?,
-                        runtime::field("name", name)?,
-                        runtime::field("kind", kind)?,
-                    ),
-                )),
-            )
-        }
+    runtime::typestate_builder! {
+        Owner => super::OwnerFields, try_from super::Owner; required {} optional {
+        children(children) : Vec < types::Owner > = "children" => some, None } fixed {}
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct Book(runtime::Builder<super::BookFields>);
-    impl Book {
-        pub fn nickname(
-            self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(
-                self
-                    .0
-                    .set(
-                        "nickname",
-                        value,
-                        |s, v| s.nickname = runtime::Nullable::Value(v),
-                    ),
-            )
-        }
-        pub fn tags(
-            self,
-            value: impl TryInto<types::BookTags, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("tags", value, |s, v| s.tags = Some(v)))
-        }
-        pub fn point(
-            self,
-            value: impl TryInto<types::BookPoint, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("point", value, |s, v| s.point = Some(v)))
-        }
-        pub fn attrs(
-            self,
-            value: impl TryInto<types::BookAttrs, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("attrs", value, |s, v| s.attrs = Some(v)))
-        }
-        pub fn weight(
-            self,
-            value: impl TryInto<types::BookWeight, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("weight", value, |s, v| s.weight = Some(v)))
-        }
-        /// Overrides description
-        pub fn owner(
-            self,
-            value: impl TryInto<types::Owner, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("owner", value, |s, v| s.owner = Some(v)))
-        }
-        pub fn hardcover(
-            self,
-            value: impl TryInto<bool, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("hardcover", value, |s, v| s.hardcover = Some(v)))
-        }
-        /// Returns the value once its whole schema holds.
-        pub fn build(self) -> Result<super::Book, runtime::BuildError> {
-            self.0.build().and_then(super::Book::try_from)
-        }
+    runtime::typestate_builder! {
+        Error => super::Error; required {} optional { code(code) : i64 = "code" => some,
+        None, message(message) : String = "message" => some, None } fixed {}
     }
-    impl super::Owner {
-        /// Starts a builder from the required properties.
-        pub fn builder() -> Owner {
-            Owner(runtime::Builder::start(|| Ok(super::OwnerFields::new())))
-        }
+    runtime::typestate_builder! {
+        ProductAttrs => super::AttrsFields, try_from super::ProductAttrs; required {}
+        optional {} fixed { pattern_1 : std::collections::BTreeMap::new(),
+        additional_properties : std::collections::BTreeMap::new(), }
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct Owner(runtime::Builder<super::OwnerFields>);
-    impl Owner {
-        pub fn children(
-            self,
-            value: impl TryInto<Vec<types::Owner>, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("children", value, |s, v| s.children = Some(v)))
-        }
-        /// Returns the value once its whole schema holds.
-        pub fn build(self) -> Result<super::Owner, runtime::BuildError> {
-            self.0.build().and_then(super::Owner::try_from)
-        }
+    runtime::typestate_builder! {
+        BookAttrs => super::BookAttrsFields, try_from super::BookAttrs; required {}
+        optional {} fixed { pattern_1 : std::collections::BTreeMap::new(),
+        additional_properties : std::collections::BTreeMap::new(), }
     }
-    impl super::ProductAttrs {
-        /// Starts a builder from the required properties.
-        pub fn builder() -> ProductAttrs {
-            ProductAttrs(runtime::Builder::start(|| Ok(super::AttrsFields::new())))
-        }
+    runtime::typestate_builder! {
+        Gadget2 => super::Gadget2Fields, try_from super::Gadget2; required { id : R0 :
+        types::Gadget2Id = "id", name : R1 : types::Gadget2Name = "name", kind : R2 :
+        types::Gadget2Kind = "kind" } optional { nickname(nickname) : String = "nickname"
+        => nullable, runtime::Nullable::Absent, tags(tags) : types::Gadget2Tags = "tags"
+        => some, None, point(point) : types::Gadget2Point = "point" => some, None,
+        attrs(attrs) : types::Gadget2Attrs = "attrs" => some, None, weight(weight) :
+        types::Gadget2Weight = "weight" => some, None, owner(owner) : types::Owner =
+        "owner" => some, None } fixed {}
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct ProductAttrs(runtime::Builder<super::AttrsFields>);
-    impl ProductAttrs {
-        /// Returns the value once its whole schema holds.
-        pub fn build(self) -> Result<super::ProductAttrs, runtime::BuildError> {
-            self.0.build().and_then(super::ProductAttrs::try_from)
-        }
+    runtime::typestate_builder! {
+        Gadget2Attrs => super::Gadget2AttrsFields, try_from super::Gadget2Attrs; required
+        {} optional {} fixed { pattern_1 : std::collections::BTreeMap::new(),
+        additional_properties : std::collections::BTreeMap::new(), }
     }
-    impl super::BookAttrs {
-        /// Starts a builder from the required properties.
-        pub fn builder() -> BookAttrs {
-            BookAttrs(runtime::Builder::start(|| Ok(super::BookAttrsFields::new())))
-        }
+    runtime::typestate_builder! {
+        SubmitFormBody => super::SubmitFormBody; required { tags : R0 : Vec < String > =
+        "tags", priority : R1 : types::SubmitFormBodyPriority = "priority" } optional {
+        filter(filter) : types::SubmitFormBodyFilter = "filter" => some, None, note(note)
+        : String = "note" => some, None, blob(blob) : runtime::Binary = "blob" => some,
+        None } fixed {}
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct BookAttrs(runtime::Builder<super::BookAttrsFields>);
-    impl BookAttrs {
-        /// Returns the value once its whole schema holds.
-        pub fn build(self) -> Result<super::BookAttrs, runtime::BuildError> {
-            self.0.build().and_then(super::BookAttrs::try_from)
-        }
+    runtime::typestate_builder! {
+        SubmitFormBodyFilter => super::SubmitFormBodyFilter; required { a : R0 : String =
+        "a" } optional { b(b) : String = "b" => some, None } fixed {}
     }
-    impl super::Gadget2 {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            id: impl TryInto<types::Gadget2Id, Error: std::fmt::Display>,
-            name: impl TryInto<types::Gadget2Name, Error: std::fmt::Display>,
-            kind: impl TryInto<types::Gadget2Kind, Error: std::fmt::Display>,
-        ) -> Gadget2 {
-            Gadget2(
-                runtime::Builder::start(|| Ok(
-                    super::Gadget2Fields::new(
-                        runtime::field("id", id)?,
-                        runtime::field("name", name)?,
-                        runtime::field("kind", kind)?,
-                    ),
-                )),
-            )
-        }
+    runtime::typestate_builder! {
+        PutBlobOkXQuota => super::PutBlobOkXQuota; required { limit : R0 : i64 = "limit"
+        } optional { scope(scope) : String = "scope" => some, None } fixed {}
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct Gadget2(runtime::Builder<super::Gadget2Fields>);
-    impl Gadget2 {
-        pub fn nickname(
-            self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(
-                self
-                    .0
-                    .set(
-                        "nickname",
-                        value,
-                        |s, v| s.nickname = runtime::Nullable::Value(v),
-                    ),
-            )
-        }
-        pub fn tags(
-            self,
-            value: impl TryInto<types::Gadget2Tags, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("tags", value, |s, v| s.tags = Some(v)))
-        }
-        pub fn point(
-            self,
-            value: impl TryInto<types::Gadget2Point, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("point", value, |s, v| s.point = Some(v)))
-        }
-        pub fn attrs(
-            self,
-            value: impl TryInto<types::Gadget2Attrs, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("attrs", value, |s, v| s.attrs = Some(v)))
-        }
-        pub fn weight(
-            self,
-            value: impl TryInto<types::Gadget2Weight, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("weight", value, |s, v| s.weight = Some(v)))
-        }
-        /// Overrides description
-        pub fn owner(
-            self,
-            value: impl TryInto<types::Owner, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("owner", value, |s, v| s.owner = Some(v)))
-        }
-        /// Returns the value once its whole schema holds.
-        pub fn build(self) -> Result<super::Gadget2, runtime::BuildError> {
-            self.0.build().and_then(super::Gadget2::try_from)
-        }
+    runtime::typestate_builder! {
+        CreateProductBody => super::CreateProductBody; required {} optional { meta(meta)
+        : types::Product = "meta" => some, None, photo(photo) : runtime::Binary = "photo"
+        => some, None } fixed {}
     }
-    impl super::Gadget2Attrs {
-        /// Starts a builder from the required properties.
-        pub fn builder() -> Gadget2Attrs {
-            Gadget2Attrs(
-                runtime::Builder::start(|| Ok(super::Gadget2AttrsFields::new())),
-            )
-        }
+    runtime::typestate_builder! {
+        SearchQ => super::SearchQ; required {} optional { term(term) : String = "term" =>
+        some, None, page(page) : i64 = "page" => some, None, filters(filters) :
+        std::collections::BTreeMap < String, serde_json::Value > = "filters" => some,
+        None } fixed {}
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct Gadget2Attrs(runtime::Builder<super::Gadget2AttrsFields>);
-    impl Gadget2Attrs {
-        /// Returns the value once its whole schema holds.
-        pub fn build(self) -> Result<super::Gadget2Attrs, runtime::BuildError> {
-            self.0.build().and_then(super::Gadget2Attrs::try_from)
-        }
+    runtime::typestate_builder! {
+        SearchOkItem => super::SearchOkItem; required { data : R0 :
+        types::SearchOkItemData = "data" } optional { event(event) : String = "event" =>
+        some, None, id(id) : String = "id" => some, None, retry(retry) : i64 = "retry" =>
+        some, None } fixed {}
     }
-    impl super::CreateProductBody {
-        /// Starts a builder from the required properties.
-        pub fn builder() -> CreateProductBody {
-            CreateProductBody(runtime::Builder::start(|| Ok(Self::new())))
-        }
+    runtime::typestate_builder! {
+        Not2Object => super::Not2Object; required {} optional { kind(kind) :
+        types::Not2ObjectKind = "kind" => some, None } fixed { additional_properties :
+        std::collections::BTreeMap::new(), }
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct CreateProductBody(runtime::Builder<super::CreateProductBody>);
-    impl CreateProductBody {
-        pub fn meta(
-            self,
-            value: impl TryInto<types::Product, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("meta", value, |s, v| s.meta = Some(v)))
-        }
-        pub fn photo(
-            self,
-            value: impl TryInto<runtime::Binary, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("photo", value, |s, v| s.photo = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::CreateProductBody, runtime::BuildError> {
-            self.0.build()
-        }
+    runtime::typestate_builder! {
+        ProductRequest => super::ProductRequestFields, try_from super::ProductRequest;
+        required { name : R0 : types::ProductName = "name", kind : R1 :
+        types::ProductKind = "kind" } optional { nickname(nickname) : String = "nickname"
+        => nullable, runtime::Nullable::Absent, secret(secret) : String = "secret" =>
+        some, None, tags(tags) : types::ProductRequestTags = "tags" => some, None,
+        point(point) : types::ProductRequestPoint = "point" => some, None, attrs(attrs) :
+        types::ProductAttrs = "attrs" => some, None, weight(weight) :
+        types::ProductWeight = "weight" => some, None, owner(owner) : types::Owner =
+        "owner" => some, None } fixed {}
     }
-    impl super::ProductRequest {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            name: impl TryInto<types::ProductName, Error: std::fmt::Display>,
-            kind: impl TryInto<types::ProductKind, Error: std::fmt::Display>,
-        ) -> ProductRequest {
-            ProductRequest(
-                runtime::Builder::start(|| Ok(
-                    super::ProductRequestFields::new(
-                        runtime::field("name", name)?,
-                        runtime::field("kind", kind)?,
-                    ),
-                )),
-            )
-        }
+    runtime::typestate_builder! {
+        BookRequest => super::BookRequestFields, try_from super::BookRequest; required {
+        name : R0 : types::BookName = "name", kind : R1 : types::BookKind = "kind" }
+        optional { nickname(nickname) : String = "nickname" => nullable,
+        runtime::Nullable::Absent, secret(secret) : String = "secret" => some, None,
+        tags(tags) : types::BookRequestTags = "tags" => some, None, point(point) :
+        types::BookRequestPoint = "point" => some, None, attrs(attrs) : types::BookAttrs
+        = "attrs" => some, None, weight(weight) : types::BookWeight = "weight" => some,
+        None, owner(owner) : types::Owner = "owner" => some, None, hardcover(hardcover) :
+        bool = "hardcover" => some, None } fixed {}
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct ProductRequest(runtime::Builder<super::ProductRequestFields>);
-    impl ProductRequest {
-        pub fn nickname(
-            self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(
-                self
-                    .0
-                    .set(
-                        "nickname",
-                        value,
-                        |s, v| s.nickname = runtime::Nullable::Value(v),
-                    ),
-            )
-        }
-        pub fn secret(
-            self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("secret", value, |s, v| s.secret = Some(v)))
-        }
-        pub fn tags(
-            self,
-            value: impl TryInto<types::ProductRequestTags, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("tags", value, |s, v| s.tags = Some(v)))
-        }
-        pub fn point(
-            self,
-            value: impl TryInto<types::ProductRequestPoint, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("point", value, |s, v| s.point = Some(v)))
-        }
-        pub fn attrs(
-            self,
-            value: impl TryInto<types::ProductAttrs, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("attrs", value, |s, v| s.attrs = Some(v)))
-        }
-        pub fn weight(
-            self,
-            value: impl TryInto<types::ProductWeight, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("weight", value, |s, v| s.weight = Some(v)))
-        }
-        /// Overrides description
-        pub fn owner(
-            self,
-            value: impl TryInto<types::Owner, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("owner", value, |s, v| s.owner = Some(v)))
-        }
-        /// Returns the value once its whole schema holds.
-        pub fn build(self) -> Result<super::ProductRequest, runtime::BuildError> {
-            self.0.build().and_then(super::ProductRequest::try_from)
-        }
+    runtime::typestate_builder! {
+        Gadget2Request => super::Gadget2RequestFields, try_from super::Gadget2Request;
+        required { name : R0 : types::Gadget2Name = "name", kind : R1 :
+        types::Gadget2Kind = "kind" } optional { nickname(nickname) : String = "nickname"
+        => nullable, runtime::Nullable::Absent, secret(secret) : String = "secret" =>
+        some, None, tags(tags) : types::Gadget2RequestTags = "tags" => some, None,
+        point(point) : types::Gadget2RequestPoint = "point" => some, None, attrs(attrs) :
+        types::Gadget2Attrs = "attrs" => some, None, weight(weight) :
+        types::Gadget2Weight = "weight" => some, None, owner(owner) : types::Owner =
+        "owner" => some, None } fixed {}
     }
-    impl super::BookRequest {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            name: impl TryInto<types::BookName, Error: std::fmt::Display>,
-            kind: impl TryInto<types::BookKind, Error: std::fmt::Display>,
-        ) -> BookRequest {
-            BookRequest(
-                runtime::Builder::start(|| Ok(
-                    super::BookRequestFields::new(
-                        runtime::field("name", name)?,
-                        runtime::field("kind", kind)?,
-                    ),
-                )),
-            )
-        }
+    runtime::typestate_builder! {
+        CreateProductBodyRequest => super::CreateProductBodyRequest; required {} optional
+        { meta(meta) : types::ProductRequest = "meta" => some, None, photo(photo) :
+        runtime::Binary = "photo" => some, None } fixed {}
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct BookRequest(runtime::Builder<super::BookRequestFields>);
-    impl BookRequest {
-        pub fn nickname(
-            self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(
-                self
-                    .0
-                    .set(
-                        "nickname",
-                        value,
-                        |s, v| s.nickname = runtime::Nullable::Value(v),
-                    ),
-            )
-        }
-        pub fn secret(
-            self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("secret", value, |s, v| s.secret = Some(v)))
-        }
-        pub fn tags(
-            self,
-            value: impl TryInto<types::BookRequestTags, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("tags", value, |s, v| s.tags = Some(v)))
-        }
-        pub fn point(
-            self,
-            value: impl TryInto<types::BookRequestPoint, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("point", value, |s, v| s.point = Some(v)))
-        }
-        pub fn attrs(
-            self,
-            value: impl TryInto<types::BookAttrs, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("attrs", value, |s, v| s.attrs = Some(v)))
-        }
-        pub fn weight(
-            self,
-            value: impl TryInto<types::BookWeight, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("weight", value, |s, v| s.weight = Some(v)))
-        }
-        /// Overrides description
-        pub fn owner(
-            self,
-            value: impl TryInto<types::Owner, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("owner", value, |s, v| s.owner = Some(v)))
-        }
-        pub fn hardcover(
-            self,
-            value: impl TryInto<bool, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("hardcover", value, |s, v| s.hardcover = Some(v)))
-        }
-        /// Returns the value once its whole schema holds.
-        pub fn build(self) -> Result<super::BookRequest, runtime::BuildError> {
-            self.0.build().and_then(super::BookRequest::try_from)
-        }
+    runtime::typestate_builder! {
+        SearchOkItemRequest => super::SearchOkItemRequest; required { data : R0 :
+        types::SearchOkItemDataRequest = "data" } optional { event(event) : String =
+        "event" => some, None, id(id) : String = "id" => some, None, retry(retry) : i64 =
+        "retry" => some, None } fixed {}
     }
-    impl super::Gadget2Request {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            name: impl TryInto<types::Gadget2Name, Error: std::fmt::Display>,
-            kind: impl TryInto<types::Gadget2Kind, Error: std::fmt::Display>,
-        ) -> Gadget2Request {
-            Gadget2Request(
-                runtime::Builder::start(|| Ok(
-                    super::Gadget2RequestFields::new(
-                        runtime::field("name", name)?,
-                        runtime::field("kind", kind)?,
-                    ),
-                )),
-            )
-        }
+    runtime::typestate_builder! {
+        ProductFields => super::ProductFields; required { id : R0 : types::ProductId =
+        "id", name : R1 : types::ProductName = "name", kind : R2 : types::ProductKind =
+        "kind" } optional { nickname(nickname) : String = "nickname" => nullable,
+        runtime::Nullable::Absent, tags(tags) : types::ProductTags = "tags" => some,
+        None, point(point) : types::ProductPoint = "point" => some, None, attrs(attrs) :
+        types::ProductAttrs = "attrs" => some, None, weight(weight) :
+        types::ProductWeight = "weight" => some, None, owner(owner) : types::Owner =
+        "owner" => some, None } fixed {}
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct Gadget2Request(runtime::Builder<super::Gadget2RequestFields>);
-    impl Gadget2Request {
-        pub fn nickname(
-            self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(
-                self
-                    .0
-                    .set(
-                        "nickname",
-                        value,
-                        |s, v| s.nickname = runtime::Nullable::Value(v),
-                    ),
-            )
-        }
-        pub fn secret(
-            self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("secret", value, |s, v| s.secret = Some(v)))
-        }
-        pub fn tags(
-            self,
-            value: impl TryInto<types::Gadget2RequestTags, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("tags", value, |s, v| s.tags = Some(v)))
-        }
-        pub fn point(
-            self,
-            value: impl TryInto<types::Gadget2RequestPoint, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("point", value, |s, v| s.point = Some(v)))
-        }
-        pub fn attrs(
-            self,
-            value: impl TryInto<types::Gadget2Attrs, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("attrs", value, |s, v| s.attrs = Some(v)))
-        }
-        pub fn weight(
-            self,
-            value: impl TryInto<types::Gadget2Weight, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("weight", value, |s, v| s.weight = Some(v)))
-        }
-        /// Overrides description
-        pub fn owner(
-            self,
-            value: impl TryInto<types::Owner, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("owner", value, |s, v| s.owner = Some(v)))
-        }
-        /// Returns the value once its whole schema holds.
-        pub fn build(self) -> Result<super::Gadget2Request, runtime::BuildError> {
-            self.0.build().and_then(super::Gadget2Request::try_from)
-        }
+    runtime::typestate_builder! {
+        BookFields => super::BookFields; required { id : R0 : types::BookId = "id", name
+        : R1 : types::BookName = "name", kind : R2 : types::BookKind = "kind" } optional
+        { nickname(nickname) : String = "nickname" => nullable,
+        runtime::Nullable::Absent, tags(tags) : types::BookTags = "tags" => some, None,
+        point(point) : types::BookPoint = "point" => some, None, attrs(attrs) :
+        types::BookAttrs = "attrs" => some, None, weight(weight) : types::BookWeight =
+        "weight" => some, None, owner(owner) : types::Owner = "owner" => some, None,
+        hardcover(hardcover) : bool = "hardcover" => some, None } fixed {}
     }
-    impl super::CreateProductBodyRequest {
-        /// Starts a builder from the required properties.
-        pub fn builder() -> CreateProductBodyRequest {
-            CreateProductBodyRequest(runtime::Builder::start(|| Ok(Self::new())))
-        }
+    runtime::typestate_builder! {
+        OwnerFields => super::OwnerFields; required {} optional { children(children) :
+        Vec < types::Owner > = "children" => some, None } fixed {}
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct CreateProductBodyRequest(
-        runtime::Builder<super::CreateProductBodyRequest>,
-    );
-    impl CreateProductBodyRequest {
-        pub fn meta(
-            self,
-            value: impl TryInto<types::ProductRequest, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("meta", value, |s, v| s.meta = Some(v)))
-        }
-        pub fn photo(
-            self,
-            value: impl TryInto<runtime::Binary, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("photo", value, |s, v| s.photo = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(
-            self,
-        ) -> Result<super::CreateProductBodyRequest, runtime::BuildError> {
-            self.0.build()
-        }
+    runtime::typestate_builder! {
+        AttrsFields => super::AttrsFields; required {} optional {} fixed { pattern_1 :
+        std::collections::BTreeMap::new(), additional_properties :
+        std::collections::BTreeMap::new(), }
     }
-    impl super::ProductFields {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            id: impl TryInto<types::ProductId, Error: std::fmt::Display>,
-            name: impl TryInto<types::ProductName, Error: std::fmt::Display>,
-            kind: impl TryInto<types::ProductKind, Error: std::fmt::Display>,
-        ) -> ProductFields {
-            ProductFields(
-                runtime::Builder::start(|| Ok(
-                    Self::new(
-                        runtime::field("id", id)?,
-                        runtime::field("name", name)?,
-                        runtime::field("kind", kind)?,
-                    ),
-                )),
-            )
-        }
+    runtime::typestate_builder! {
+        Gadget2Fields => super::Gadget2Fields; required { id : R0 : types::Gadget2Id =
+        "id", name : R1 : types::Gadget2Name = "name", kind : R2 : types::Gadget2Kind =
+        "kind" } optional { nickname(nickname) : String = "nickname" => nullable,
+        runtime::Nullable::Absent, tags(tags) : types::Gadget2Tags = "tags" => some,
+        None, point(point) : types::Gadget2Point = "point" => some, None, attrs(attrs) :
+        types::Gadget2Attrs = "attrs" => some, None, weight(weight) :
+        types::Gadget2Weight = "weight" => some, None, owner(owner) : types::Owner =
+        "owner" => some, None } fixed {}
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct ProductFields(runtime::Builder<super::ProductFields>);
-    impl ProductFields {
-        pub fn nickname(
-            self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(
-                self
-                    .0
-                    .set(
-                        "nickname",
-                        value,
-                        |s, v| s.nickname = runtime::Nullable::Value(v),
-                    ),
-            )
-        }
-        pub fn tags(
-            self,
-            value: impl TryInto<types::ProductTags, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("tags", value, |s, v| s.tags = Some(v)))
-        }
-        pub fn point(
-            self,
-            value: impl TryInto<types::ProductPoint, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("point", value, |s, v| s.point = Some(v)))
-        }
-        pub fn attrs(
-            self,
-            value: impl TryInto<types::ProductAttrs, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("attrs", value, |s, v| s.attrs = Some(v)))
-        }
-        pub fn weight(
-            self,
-            value: impl TryInto<types::ProductWeight, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("weight", value, |s, v| s.weight = Some(v)))
-        }
-        /// Overrides description
-        pub fn owner(
-            self,
-            value: impl TryInto<types::Owner, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("owner", value, |s, v| s.owner = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::ProductFields, runtime::BuildError> {
-            self.0.build()
-        }
+    runtime::typestate_builder! {
+        ProductRequestFields => super::ProductRequestFields; required { name : R0 :
+        types::ProductName = "name", kind : R1 : types::ProductKind = "kind" } optional {
+        nickname(nickname) : String = "nickname" => nullable, runtime::Nullable::Absent,
+        secret(secret) : String = "secret" => some, None, tags(tags) :
+        types::ProductRequestTags = "tags" => some, None, point(point) :
+        types::ProductRequestPoint = "point" => some, None, attrs(attrs) :
+        types::ProductAttrs = "attrs" => some, None, weight(weight) :
+        types::ProductWeight = "weight" => some, None, owner(owner) : types::Owner =
+        "owner" => some, None } fixed {}
     }
-    impl super::BookFields {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            id: impl TryInto<types::BookId, Error: std::fmt::Display>,
-            name: impl TryInto<types::BookName, Error: std::fmt::Display>,
-            kind: impl TryInto<types::BookKind, Error: std::fmt::Display>,
-        ) -> BookFields {
-            BookFields(
-                runtime::Builder::start(|| Ok(
-                    Self::new(
-                        runtime::field("id", id)?,
-                        runtime::field("name", name)?,
-                        runtime::field("kind", kind)?,
-                    ),
-                )),
-            )
-        }
+    runtime::typestate_builder! {
+        BookRequestFields => super::BookRequestFields; required { name : R0 :
+        types::BookName = "name", kind : R1 : types::BookKind = "kind" } optional {
+        nickname(nickname) : String = "nickname" => nullable, runtime::Nullable::Absent,
+        secret(secret) : String = "secret" => some, None, tags(tags) :
+        types::BookRequestTags = "tags" => some, None, point(point) :
+        types::BookRequestPoint = "point" => some, None, attrs(attrs) : types::BookAttrs
+        = "attrs" => some, None, weight(weight) : types::BookWeight = "weight" => some,
+        None, owner(owner) : types::Owner = "owner" => some, None, hardcover(hardcover) :
+        bool = "hardcover" => some, None } fixed {}
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct BookFields(runtime::Builder<super::BookFields>);
-    impl BookFields {
-        pub fn nickname(
-            self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(
-                self
-                    .0
-                    .set(
-                        "nickname",
-                        value,
-                        |s, v| s.nickname = runtime::Nullable::Value(v),
-                    ),
-            )
-        }
-        pub fn tags(
-            self,
-            value: impl TryInto<types::BookTags, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("tags", value, |s, v| s.tags = Some(v)))
-        }
-        pub fn point(
-            self,
-            value: impl TryInto<types::BookPoint, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("point", value, |s, v| s.point = Some(v)))
-        }
-        pub fn attrs(
-            self,
-            value: impl TryInto<types::BookAttrs, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("attrs", value, |s, v| s.attrs = Some(v)))
-        }
-        pub fn weight(
-            self,
-            value: impl TryInto<types::BookWeight, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("weight", value, |s, v| s.weight = Some(v)))
-        }
-        /// Overrides description
-        pub fn owner(
-            self,
-            value: impl TryInto<types::Owner, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("owner", value, |s, v| s.owner = Some(v)))
-        }
-        pub fn hardcover(
-            self,
-            value: impl TryInto<bool, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("hardcover", value, |s, v| s.hardcover = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::BookFields, runtime::BuildError> {
-            self.0.build()
-        }
-    }
-    impl super::OwnerFields {
-        /// Starts a builder from the required properties.
-        pub fn builder() -> OwnerFields {
-            OwnerFields(runtime::Builder::start(|| Ok(Self::new())))
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct OwnerFields(runtime::Builder<super::OwnerFields>);
-    impl OwnerFields {
-        pub fn children(
-            self,
-            value: impl TryInto<Vec<types::Owner>, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("children", value, |s, v| s.children = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::OwnerFields, runtime::BuildError> {
-            self.0.build()
-        }
-    }
-    impl super::Gadget2Fields {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            id: impl TryInto<types::Gadget2Id, Error: std::fmt::Display>,
-            name: impl TryInto<types::Gadget2Name, Error: std::fmt::Display>,
-            kind: impl TryInto<types::Gadget2Kind, Error: std::fmt::Display>,
-        ) -> Gadget2Fields {
-            Gadget2Fields(
-                runtime::Builder::start(|| Ok(
-                    Self::new(
-                        runtime::field("id", id)?,
-                        runtime::field("name", name)?,
-                        runtime::field("kind", kind)?,
-                    ),
-                )),
-            )
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct Gadget2Fields(runtime::Builder<super::Gadget2Fields>);
-    impl Gadget2Fields {
-        pub fn nickname(
-            self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(
-                self
-                    .0
-                    .set(
-                        "nickname",
-                        value,
-                        |s, v| s.nickname = runtime::Nullable::Value(v),
-                    ),
-            )
-        }
-        pub fn tags(
-            self,
-            value: impl TryInto<types::Gadget2Tags, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("tags", value, |s, v| s.tags = Some(v)))
-        }
-        pub fn point(
-            self,
-            value: impl TryInto<types::Gadget2Point, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("point", value, |s, v| s.point = Some(v)))
-        }
-        pub fn attrs(
-            self,
-            value: impl TryInto<types::Gadget2Attrs, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("attrs", value, |s, v| s.attrs = Some(v)))
-        }
-        pub fn weight(
-            self,
-            value: impl TryInto<types::Gadget2Weight, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("weight", value, |s, v| s.weight = Some(v)))
-        }
-        /// Overrides description
-        pub fn owner(
-            self,
-            value: impl TryInto<types::Owner, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("owner", value, |s, v| s.owner = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::Gadget2Fields, runtime::BuildError> {
-            self.0.build()
-        }
-    }
-    impl super::ProductRequestFields {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            name: impl TryInto<types::ProductName, Error: std::fmt::Display>,
-            kind: impl TryInto<types::ProductKind, Error: std::fmt::Display>,
-        ) -> ProductRequestFields {
-            ProductRequestFields(
-                runtime::Builder::start(|| Ok(
-                    Self::new(
-                        runtime::field("name", name)?,
-                        runtime::field("kind", kind)?,
-                    ),
-                )),
-            )
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct ProductRequestFields(runtime::Builder<super::ProductRequestFields>);
-    impl ProductRequestFields {
-        pub fn nickname(
-            self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(
-                self
-                    .0
-                    .set(
-                        "nickname",
-                        value,
-                        |s, v| s.nickname = runtime::Nullable::Value(v),
-                    ),
-            )
-        }
-        pub fn secret(
-            self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("secret", value, |s, v| s.secret = Some(v)))
-        }
-        pub fn tags(
-            self,
-            value: impl TryInto<types::ProductRequestTags, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("tags", value, |s, v| s.tags = Some(v)))
-        }
-        pub fn point(
-            self,
-            value: impl TryInto<types::ProductRequestPoint, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("point", value, |s, v| s.point = Some(v)))
-        }
-        pub fn attrs(
-            self,
-            value: impl TryInto<types::ProductAttrs, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("attrs", value, |s, v| s.attrs = Some(v)))
-        }
-        pub fn weight(
-            self,
-            value: impl TryInto<types::ProductWeight, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("weight", value, |s, v| s.weight = Some(v)))
-        }
-        /// Overrides description
-        pub fn owner(
-            self,
-            value: impl TryInto<types::Owner, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("owner", value, |s, v| s.owner = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::ProductRequestFields, runtime::BuildError> {
-            self.0.build()
-        }
-    }
-    impl super::BookRequestFields {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            name: impl TryInto<types::BookName, Error: std::fmt::Display>,
-            kind: impl TryInto<types::BookKind, Error: std::fmt::Display>,
-        ) -> BookRequestFields {
-            BookRequestFields(
-                runtime::Builder::start(|| Ok(
-                    Self::new(
-                        runtime::field("name", name)?,
-                        runtime::field("kind", kind)?,
-                    ),
-                )),
-            )
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct BookRequestFields(runtime::Builder<super::BookRequestFields>);
-    impl BookRequestFields {
-        pub fn nickname(
-            self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(
-                self
-                    .0
-                    .set(
-                        "nickname",
-                        value,
-                        |s, v| s.nickname = runtime::Nullable::Value(v),
-                    ),
-            )
-        }
-        pub fn secret(
-            self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("secret", value, |s, v| s.secret = Some(v)))
-        }
-        pub fn tags(
-            self,
-            value: impl TryInto<types::BookRequestTags, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("tags", value, |s, v| s.tags = Some(v)))
-        }
-        pub fn point(
-            self,
-            value: impl TryInto<types::BookRequestPoint, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("point", value, |s, v| s.point = Some(v)))
-        }
-        pub fn attrs(
-            self,
-            value: impl TryInto<types::BookAttrs, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("attrs", value, |s, v| s.attrs = Some(v)))
-        }
-        pub fn weight(
-            self,
-            value: impl TryInto<types::BookWeight, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("weight", value, |s, v| s.weight = Some(v)))
-        }
-        /// Overrides description
-        pub fn owner(
-            self,
-            value: impl TryInto<types::Owner, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("owner", value, |s, v| s.owner = Some(v)))
-        }
-        pub fn hardcover(
-            self,
-            value: impl TryInto<bool, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("hardcover", value, |s, v| s.hardcover = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::BookRequestFields, runtime::BuildError> {
-            self.0.build()
-        }
-    }
-    impl super::Gadget2RequestFields {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            name: impl TryInto<types::Gadget2Name, Error: std::fmt::Display>,
-            kind: impl TryInto<types::Gadget2Kind, Error: std::fmt::Display>,
-        ) -> Gadget2RequestFields {
-            Gadget2RequestFields(
-                runtime::Builder::start(|| Ok(
-                    Self::new(
-                        runtime::field("name", name)?,
-                        runtime::field("kind", kind)?,
-                    ),
-                )),
-            )
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct Gadget2RequestFields(runtime::Builder<super::Gadget2RequestFields>);
-    impl Gadget2RequestFields {
-        pub fn nickname(
-            self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(
-                self
-                    .0
-                    .set(
-                        "nickname",
-                        value,
-                        |s, v| s.nickname = runtime::Nullable::Value(v),
-                    ),
-            )
-        }
-        pub fn secret(
-            self,
-            value: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("secret", value, |s, v| s.secret = Some(v)))
-        }
-        pub fn tags(
-            self,
-            value: impl TryInto<types::Gadget2RequestTags, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("tags", value, |s, v| s.tags = Some(v)))
-        }
-        pub fn point(
-            self,
-            value: impl TryInto<types::Gadget2RequestPoint, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("point", value, |s, v| s.point = Some(v)))
-        }
-        pub fn attrs(
-            self,
-            value: impl TryInto<types::Gadget2Attrs, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("attrs", value, |s, v| s.attrs = Some(v)))
-        }
-        pub fn weight(
-            self,
-            value: impl TryInto<types::Gadget2Weight, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("weight", value, |s, v| s.weight = Some(v)))
-        }
-        /// Overrides description
-        pub fn owner(
-            self,
-            value: impl TryInto<types::Owner, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("owner", value, |s, v| s.owner = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::Gadget2RequestFields, runtime::BuildError> {
-            self.0.build()
-        }
+    runtime::typestate_builder! {
+        Gadget2RequestFields => super::Gadget2RequestFields; required { name : R0 :
+        types::Gadget2Name = "name", kind : R1 : types::Gadget2Kind = "kind" } optional {
+        nickname(nickname) : String = "nickname" => nullable, runtime::Nullable::Absent,
+        secret(secret) : String = "secret" => some, None, tags(tags) :
+        types::Gadget2RequestTags = "tags" => some, None, point(point) :
+        types::Gadget2RequestPoint = "point" => some, None, attrs(attrs) :
+        types::Gadget2Attrs = "attrs" => some, None, weight(weight) :
+        types::Gadget2Weight = "weight" => some, None, owner(owner) : types::Owner =
+        "owner" => some, None } fixed {}
     }
 }

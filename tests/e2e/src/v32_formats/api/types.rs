@@ -117,45 +117,6 @@ runtime::object! {
         pub payload: EventPayload,
     }
 }
-impl Event {
-    #[must_use]
-    pub const fn new(id: runtime::UuidText, at: runtime::DateTimeText) -> Self {
-        Self {
-            id,
-            at,
-            ip4: None,
-            ip6: None,
-            day: None,
-            seen: None,
-            token: None,
-            level: None,
-            port: None,
-            amount: None,
-            sum: None,
-            initial: None,
-            home: None,
-            net4: None,
-            net6: None,
-            local: None,
-            clock: None,
-            price: None,
-            total: None,
-            opens: None,
-            expires: None,
-            lasts: None,
-            link: None,
-            page: None,
-            rel: None,
-            at_path: None,
-            up: None,
-            filter: None,
-            search: None,
-            charge: None,
-            payment: None,
-            payload: None,
-        }
-    }
-}
 runtime::object! {
     #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct Card {
@@ -163,29 +124,11 @@ runtime::object! {
         pub amount: CardAmount,
     }
 }
-impl Card {
-    #[must_use]
-    pub const fn new(amount: CardAmount) -> Self {
-        Self {
-            method: CardMethod {},
-            amount,
-        }
-    }
-}
 runtime::object! {
     #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct Transfer {
         pub method: TransferMethod,
         pub amount: TransferAmount,
-    }
-}
-impl Transfer {
-    #[must_use]
-    pub const fn new(amount: TransferAmount) -> Self {
-        Self {
-            method: TransferMethod {},
-            amount,
-        }
     }
 }
 #[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
@@ -439,245 +382,55 @@ pub type TransferAmount = EventAmount;
 pub mod builders {
     use super as types;
     use super::runtime;
-    impl super::Event {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            id: impl TryInto<runtime::UuidText, Error: std::fmt::Display>,
-            at: impl TryInto<runtime::DateTimeText, Error: std::fmt::Display>,
-        ) -> Event {
-            Event(
-                runtime::Builder::start(|| Ok(
-                    Self::new(runtime::field("id", id)?, runtime::field("at", at)?),
-                )),
-            )
-        }
+    runtime::typestate_builder! {
+        StoreNetwork => super::StoreNetwork; required { first : R0 : std::net::Ipv4Addr =
+        "first", last : R1 : std::net::Ipv6Addr = "last" } optional {} fixed {}
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct Event(runtime::Builder<super::Event>);
-    impl Event {
-        pub fn ip4(
-            self,
-            value: impl TryInto<std::net::Ipv4Addr, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("ip4", value, |s, v| s.ip4 = Some(v)))
-        }
-        pub fn ip6(
-            self,
-            value: impl TryInto<std::net::Ipv6Addr, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("ip6", value, |s, v| s.ip6 = Some(v)))
-        }
-        pub fn day(
-            self,
-            value: impl TryInto<runtime::DateText, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("day", value, |s, v| s.day = Some(v)))
-        }
-        pub fn seen(
-            self,
-            value: impl TryInto<Vec<runtime::DateTimeText>, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("seen", value, |s, v| s.seen = Some(v)))
-        }
-        pub fn token(
-            self,
-            value: impl TryInto<runtime::Base64Url, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("token", value, |s, v| s.token = Some(v)))
-        }
-        pub fn level(self, value: impl TryInto<i8, Error: std::fmt::Display>) -> Self {
-            Self(self.0.set("level", value, |s, v| s.level = Some(v)))
-        }
-        pub fn port(
-            self,
-            value: impl TryInto<types::EventPort, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("port", value, |s, v| s.port = Some(v)))
-        }
-        pub fn amount(
-            self,
-            value: impl TryInto<types::EventAmount, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("amount", value, |s, v| s.amount = Some(v)))
-        }
-        pub fn sum(
-            self,
-            value: impl TryInto<types::EventSum, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("sum", value, |s, v| s.sum = Some(v)))
-        }
-        pub fn initial(
-            self,
-            value: impl TryInto<char, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("initial", value, |s, v| s.initial = Some(v)))
-        }
-        pub fn home(
-            self,
-            value: impl TryInto<url::Url, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("home", value, |s, v| s.home = Some(v)))
-        }
-        pub fn net4(
-            self,
-            value: impl TryInto<ipnet::Ipv4Net, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("net4", value, |s, v| s.net4 = Some(v)))
-        }
-        pub fn net6(
-            self,
-            value: impl TryInto<ipnet::Ipv6Net, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("net6", value, |s, v| s.net6 = Some(v)))
-        }
-        pub fn local(
-            self,
-            value: impl TryInto<runtime::DateTimeLocalText, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("local", value, |s, v| s.local = Some(v)))
-        }
-        pub fn clock(
-            self,
-            value: impl TryInto<runtime::TimeLocalText, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("clock", value, |s, v| s.clock = Some(v)))
-        }
-        pub fn price(
-            self,
-            value: impl TryInto<runtime::DecimalText, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("price", value, |s, v| s.price = Some(v)))
-        }
-        pub fn total(
-            self,
-            value: impl TryInto<runtime::Decimal128Text, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("total", value, |s, v| s.total = Some(v)))
-        }
-        pub fn opens(
-            self,
-            value: impl TryInto<runtime::FullTime, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("opens", value, |s, v| s.opens = Some(v)))
-        }
-        pub fn expires(
-            self,
-            value: impl TryInto<runtime::HttpDateText, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("expires", value, |s, v| s.expires = Some(v)))
-        }
-        pub fn lasts(
-            self,
-            value: impl TryInto<runtime::DurationText, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("lasts", value, |s, v| s.lasts = Some(v)))
-        }
-        pub fn link(
-            self,
-            value: impl TryInto<runtime::UriReferenceText, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("link", value, |s, v| s.link = Some(v)))
-        }
-        pub fn page(
-            self,
-            value: impl TryInto<runtime::IriText, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("page", value, |s, v| s.page = Some(v)))
-        }
-        pub fn rel(
-            self,
-            value: impl TryInto<runtime::IriReferenceText, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("rel", value, |s, v| s.rel = Some(v)))
-        }
-        pub fn at_path(
-            self,
-            value: impl TryInto<runtime::JsonPointerText, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("at_path", value, |s, v| s.at_path = Some(v)))
-        }
-        pub fn up(
-            self,
-            value: impl TryInto<
-                runtime::RelativeJsonPointerText,
-                Error: std::fmt::Display,
-            >,
-        ) -> Self {
-            Self(self.0.set("up", value, |s, v| s.up = Some(v)))
-        }
-        pub fn filter(
-            self,
-            value: impl TryInto<runtime::RegexText, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("filter", value, |s, v| s.filter = Some(v)))
-        }
-        pub fn search(
-            self,
-            value: impl TryInto<runtime::UriTemplateText, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("search", value, |s, v| s.search = Some(v)))
-        }
-        pub fn charge(
-            self,
-            value: impl TryInto<types::EventCharge, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("charge", value, |s, v| s.charge = Some(v)))
-        }
-        pub fn payment(
-            self,
-            value: impl TryInto<types::EventPayment, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("payment", value, |s, v| s.payment = Some(v)))
-        }
-        pub fn payload(
-            self,
-            value: impl TryInto<types::EventPayload, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("payload", value, |s, v| s.payload = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::Event, runtime::BuildError> {
-            self.0.build()
-        }
+    runtime::typestate_builder! {
+        Event => super::Event; required { id : R0 : runtime::UuidText = "id", at : R1 :
+        runtime::DateTimeText = "at" } optional { ip4(ip4) : std::net::Ipv4Addr = "ip4"
+        => some, None, ip6(ip6) : std::net::Ipv6Addr = "ip6" => some, None, day(day) :
+        runtime::DateText = "day" => some, None, seen(seen) : Vec < runtime::DateTimeText
+        > = "seen" => some, None, token(token) : runtime::Base64Url = "token" => some,
+        None, level(level) : i8 = "level" => some, None, port(port) : types::EventPort =
+        "port" => some, None, amount(amount) : types::EventAmount = "amount" => some,
+        None, sum(sum) : types::EventSum = "sum" => some, None, initial(initial) : char =
+        "initial" => some, None, home(home) : url::Url = "home" => some, None, net4(net4)
+        : ipnet::Ipv4Net = "net4" => some, None, net6(net6) : ipnet::Ipv6Net = "net6" =>
+        some, None, local(local) : runtime::DateTimeLocalText = "local" => some, None,
+        clock(clock) : runtime::TimeLocalText = "clock" => some, None, price(price) :
+        runtime::DecimalText = "price" => some, None, total(total) :
+        runtime::Decimal128Text = "total" => some, None, opens(opens) : runtime::FullTime
+        = "opens" => some, None, expires(expires) : runtime::HttpDateText = "expires" =>
+        some, None, lasts(lasts) : runtime::DurationText = "lasts" => some, None,
+        link(link) : runtime::UriReferenceText = "link" => some, None, page(page) :
+        runtime::IriText = "page" => some, None, rel(rel) : runtime::IriReferenceText =
+        "rel" => some, None, at_path(at_path) : runtime::JsonPointerText = "at_path" =>
+        some, None, up(up) : runtime::RelativeJsonPointerText = "up" => some, None,
+        filter(filter) : runtime::RegexText = "filter" => some, None, search(search) :
+        runtime::UriTemplateText = "search" => some, None, charge(charge) :
+        types::EventCharge = "charge" => some, None, payment(payment) :
+        types::EventPayment = "payment" => some, None, payload(payload) :
+        types::EventPayload = "payload" => some, None } fixed {}
     }
-    impl super::Card {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            amount: impl TryInto<types::CardAmount, Error: std::fmt::Display>,
-        ) -> Card {
-            Card(
-                runtime::Builder::start(|| Ok(
-                    Self::new(runtime::field("amount", amount)?),
-                )),
-            )
-        }
+    runtime::typestate_builder! {
+        Card => super::Card; required { amount : R0 : types::CardAmount = "amount" }
+        optional {} fixed { method : types::CardMethod {}, }
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct Card(runtime::Builder<super::Card>);
-    impl Card {
-        /// Returns the value.
-        pub fn build(self) -> Result<super::Card, runtime::BuildError> {
-            self.0.build()
-        }
+    runtime::typestate_builder! {
+        Transfer => super::Transfer; required { amount : R0 : types::TransferAmount =
+        "amount" } optional {} fixed { method : types::TransferMethod {}, }
     }
-    impl super::Transfer {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            amount: impl TryInto<types::TransferAmount, Error: std::fmt::Display>,
-        ) -> Transfer {
-            Transfer(
-                runtime::Builder::start(|| Ok(
-                    Self::new(runtime::field("amount", amount)?),
-                )),
-            )
-        }
+    runtime::typestate_builder! {
+        EventChargeRefund => super::EventChargeRefund; required { refund : R0 :
+        runtime::Decimal = "refund" } optional {} fixed {}
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct Transfer(runtime::Builder<super::Transfer>);
-    impl Transfer {
-        /// Returns the value.
-        pub fn build(self) -> Result<super::Transfer, runtime::BuildError> {
-            self.0.build()
-        }
+    runtime::typestate_builder! {
+        EventChargeFee => super::EventChargeFee; required { fee : R0 : runtime::Decimal =
+        "fee" } optional {} fixed {}
+    }
+    runtime::typestate_builder! {
+        EventPayloadContent => super::EventPayloadContent; required { n : R0 : i64 = "n"
+        } optional {} fixed {}
     }
 }

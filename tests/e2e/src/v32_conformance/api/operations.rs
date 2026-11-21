@@ -120,6 +120,13 @@ pub mod get_item {
             Self { limit: None, id }
         }
     }
+    pub mod builders {
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { id : R0 : String = "id" } optional {
+            limit(limit) : i64 = "limit" => some, None } fixed {}
+        }
+    }
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// any success
@@ -155,6 +162,7 @@ pub mod get_item {
 }
 pub mod post_closed {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/closed";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -165,6 +173,14 @@ pub mod post_closed {
         #[must_use]
         pub const fn new(body: types::Closed) -> Self {
             Self { body }
+        }
+    }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { body : R0 : types::Closed = "body" }
+            optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -184,6 +200,7 @@ pub mod post_closed {
     }
 }
 pub mod optional_body {
+    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/optional-body";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -197,6 +214,14 @@ pub mod optional_body {
         }
     }
     default_impl!(Params);
+    pub mod builders {
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required {} optional { body(body) :
+            std::collections::BTreeMap < String, serde_json::Value > = "body" => some,
+            None } fixed {}
+        }
+    }
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// ok
@@ -215,6 +240,7 @@ pub mod optional_body {
 }
 pub mod post_product {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/products";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -225,6 +251,14 @@ pub mod post_product {
         #[must_use]
         pub const fn new(body: types::Product) -> Self {
             Self { body }
+        }
+    }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { body : R0 : types::Product = "body" }
+            optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -245,6 +279,7 @@ pub mod post_product {
 }
 pub mod upload {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/upload";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -255,6 +290,14 @@ pub mod upload {
         #[must_use]
         pub const fn new(body: types::UploadBody) -> Self {
             Self { body }
+        }
+    }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { body : R0 : types::UploadBody = "body" }
+            optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -309,6 +352,7 @@ pub mod cookies {
 }
 pub mod filter {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/filter";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -323,6 +367,15 @@ pub mod filter {
         }
     }
     default_impl!(Params);
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required {} optional { where_(where_) :
+            types::Closed = "where" => some, None, page(page) : i64 = "page" => some,
+            None } fixed {}
+        }
+    }
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// ok

@@ -31,3 +31,12 @@ impl GetFileOk {
         Self { path: None, filter: None }
     }
 }
+/// One builder per struct, started by its `builder`. Each setter takes anything that converts to the type of
+/// its field. `build` returns the first field that did not convert.
+pub mod builders {
+    use super::runtime;
+    runtime::typestate_builder! {
+        GetFileOk => super::GetFileOk; required {} optional { path(path) : String =
+        "path" => some, None, filter(filter) : String = "filter" => some, None } fixed {}
+    }
+}

@@ -142,23 +142,11 @@ runtime::object! {
         pub store: String,
     }
 }
-impl Pickup {
-    #[must_use]
-    pub const fn new(kind: String, store: String) -> Self {
-        Self { kind, store }
-    }
-}
 runtime::object! {
     #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
     pub struct Courier {
         pub kind: String,
         pub address: String,
-    }
-}
-impl Courier {
-    #[must_use]
-    pub const fn new(kind: String, address: String) -> Self {
-        Self { kind, address }
     }
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -388,76 +376,24 @@ pub type DeliveryRequestVariants = DeliveryVariants;
 pub mod builders {
     use super as types;
     use super::runtime;
-    impl super::Order {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            id: impl TryInto<String, Error: std::fmt::Display>,
-            status: impl TryInto<types::Status, Error: std::fmt::Display>,
-        ) -> Order {
-            Order(
-                runtime::Builder::start(|| Ok(
-                    Self::new(
-                        runtime::field("id", id)?,
-                        runtime::field("status", status)?,
-                    ),
-                )),
-            )
-        }
+    runtime::typestate_builder! {
+        Order => super::Order; required { id : R0 : String = "id", status : R1 :
+        types::Status = "status" } optional { priority(priority) : types::OrderPriority =
+        "priority" => some, None, delivery(delivery) : types::Delivery = "delivery" =>
+        some, None } fixed {}
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct Order(runtime::Builder<super::Order>);
-    impl Order {
-        pub fn priority(
-            self,
-            value: impl TryInto<types::OrderPriority, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("priority", value, |s, v| s.priority = Some(v)))
-        }
-        pub fn delivery(
-            self,
-            value: impl TryInto<types::Delivery, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("delivery", value, |s, v| s.delivery = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::Order, runtime::BuildError> {
-            self.0.build()
-        }
+    runtime::typestate_builder! {
+        Pickup => super::Pickup; required { kind : R0 : String = "kind", store : R1 :
+        String = "store" } optional {} fixed {}
     }
-    impl super::OrderRequest {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            id: impl TryInto<String, Error: std::fmt::Display>,
-            status: impl TryInto<types::StatusRequest, Error: std::fmt::Display>,
-        ) -> OrderRequest {
-            OrderRequest(
-                runtime::Builder::start(|| Ok(
-                    Self::new(
-                        runtime::field("id", id)?,
-                        runtime::field("status", status)?,
-                    ),
-                )),
-            )
-        }
+    runtime::typestate_builder! {
+        Courier => super::Courier; required { kind : R0 : String = "kind", address : R1 :
+        String = "address" } optional {} fixed {}
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct OrderRequest(runtime::Builder<super::OrderRequest>);
-    impl OrderRequest {
-        pub fn priority(
-            self,
-            value: impl TryInto<types::OrderPriorityRequest, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("priority", value, |s, v| s.priority = Some(v)))
-        }
-        pub fn delivery(
-            self,
-            value: impl TryInto<types::DeliveryRequest, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("delivery", value, |s, v| s.delivery = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::OrderRequest, runtime::BuildError> {
-            self.0.build()
-        }
+    runtime::typestate_builder! {
+        OrderRequest => super::OrderRequest; required { id : R0 : String = "id", status :
+        R1 : types::StatusRequest = "status" } optional { priority(priority) :
+        types::OrderPriorityRequest = "priority" => some, None, delivery(delivery) :
+        types::DeliveryRequest = "delivery" => some, None } fixed {}
     }
 }

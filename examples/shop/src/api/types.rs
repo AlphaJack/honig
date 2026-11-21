@@ -229,35 +229,18 @@ runtime::checked_num_impls!(ListProductsLimit, i32);
 pub mod builders {
     use super as types;
     use super::runtime;
-    impl super::Physical {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            name: impl TryInto<String, Error: std::fmt::Display>,
-        ) -> Physical {
-            Physical(
-                runtime::Builder::start(|| Ok(Self::new(runtime::field("name", name)?))),
-            )
-        }
+    runtime::typestate_builder! {
+        Physical => super::Physical; required { name : R0 : String = "name" } optional {
+        fragile(fragile) : bool = "fragile" => some, None, sku(sku) : types::PhysicalSku
+        = "sku" => some, None } fixed { kind : types::PhysicalKind {}, }
     }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct Physical(runtime::Builder<super::Physical>);
-    impl Physical {
-        pub fn fragile(
-            self,
-            value: impl TryInto<bool, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("fragile", value, |s, v| s.fragile = Some(v)))
-        }
-        /// Stock keeping unit
-        pub fn sku(
-            self,
-            value: impl TryInto<types::PhysicalSku, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("sku", value, |s, v| s.sku = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::Physical, runtime::BuildError> {
-            self.0.build()
-        }
+    runtime::typestate_builder! {
+        Digital => super::Digital; required { name : R0 : String = "name" } optional {
+        downloads(downloads) : i32 = "downloads" => nullable, runtime::Nullable::Absent }
+        fixed { kind : types::DigitalKind {}, }
+    }
+    runtime::typestate_builder! {
+        Error => super::Error; required { code : R0 : i32 = "code", message : R1 : String
+        = "message" } optional {} fixed {}
     }
 }

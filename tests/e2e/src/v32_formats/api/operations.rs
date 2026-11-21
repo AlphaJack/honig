@@ -33,6 +33,14 @@ pub mod get_event {
             Self { id, on: None, above: None }
         }
     }
+    pub mod builders {
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { id : R0 : runtime::UuidText = "id" }
+            optional { on(on) : runtime::DateText = "on" => some, None, above(above) :
+            runtime::Decimal = "above" => some, None } fixed {}
+        }
+    }
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// The event.

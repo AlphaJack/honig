@@ -22,6 +22,7 @@ macro_rules! error_impl {
 }
 pub mod get_file {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/files/{path}";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -38,6 +39,14 @@ pub mod get_file {
                 filter: None,
                 x_trace: None,
             }
+        }
+    }
+    pub mod builders {
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { path : R0 : String = "path" } optional {
+            filter(filter) : String = "filter" => some, None, x_trace(x_trace) : String =
+            "X-Trace" => some, None } fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]

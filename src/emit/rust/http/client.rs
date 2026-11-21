@@ -68,11 +68,7 @@ pub(crate) fn client(api: &Api, space: &Space<'_>, only: Option<&[String]>, bina
     // `<op>_stream` methods spell out their item type.
     let uses_types =
         api.http.operations.iter().filter(called).filter_map(stream_target).any(|(_, item, _)| mentions(item).0);
-    let types_import = uses_types.then(|| {
-        quote!(
-            use super::types;
-        )
-    });
+    let types_import = crate::emit::rust::http::shared::types_import(uses_types);
     quote! {
         #header
         use super::{operations as ops, runtime};

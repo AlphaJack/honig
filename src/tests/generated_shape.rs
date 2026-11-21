@@ -233,15 +233,16 @@ fn a_binary_with_a_client_gets_the_constructors() {
 /// allows, one security requirement, and a type with more required properties than clippy allows and an example that
 /// `documented_examples.rs` decodes.
 fn wide_binary(test: &str, client: bool) -> Vec<(String, String)> {
+    // Each value an enum of its own: no two can swap, so `new` takes them all.
     let names = ["a", "b", "c", "d", "e", "f", "g", "h"];
     let params: Vec<serde_json::Value> = names
         .iter()
-        .map(|n| json!({"name": n, "in": "query", "required": true, "schema": {"type": "integer"}}))
+        .map(|n| json!({"name": n, "in": "query", "required": true, "schema": {"type": "string", "enum": ["x", "y"]}}))
         .collect();
     let properties: serde_json::Map<String, serde_json::Value> =
-        names.iter().map(|n| ((*n).to_owned(), json!({"type": "integer"}))).collect();
+        names.iter().map(|n| ((*n).to_owned(), json!({"type": "string", "enum": ["x", "y"]}))).collect();
     let example: serde_json::Map<String, serde_json::Value> =
-        names.iter().map(|n| ((*n).to_owned(), json!(1))).collect();
+        names.iter().map(|n| ((*n).to_owned(), json!("x"))).collect();
     let mut doc = common::spec(
         "3.1.0",
         &json!({"/wide": {"get": {
@@ -370,7 +371,7 @@ fn params_new_and_one_name_per_type() {
                 "operationId": "getRepo",
                 // Declared out of URL order on purpose.
                 "parameters": [
-                    {"name": "repo", "in": "path", "required": true, "schema": {"type": "string"}},
+                    {"name": "repo", "in": "path", "required": true, "schema": {"type": "integer"}},
                     {"name": "org", "in": "path", "required": true, "schema": {"type": "string"}},
                     {"name": "page", "in": "query", "schema": {"type": "integer"}},
                 ],
@@ -388,7 +389,7 @@ fn params_new_and_one_name_per_type() {
     );
     let files = common::generate("shape-new-aliases", &doc, &crate::emit::Options::default());
     let ops = common::file(&files, "operations.rs");
-    assert!(ops.contains("pub const fn new(org: String, repo: String) -> Self"), "{ops}");
+    assert!(ops.contains("pub const fn new(org: String, repo: i64) -> Self"), "{ops}");
     // A string default is built at run time (`to_owned`). So that `new` cannot be `const`.
     assert!(op_module(ops, "sorted").contains("    pub fn new() -> Self"), "{ops}");
     assert!(!ops.contains("Params as "), "no short aliases: {ops}");
@@ -649,10 +650,9 @@ fn a_ref_beside_an_extension_or_keyword_names_is_typed() {
     assert!(!all.contains("check_schema"), "{all}");
 }
 
-/// A builder gathers the `?` of each checked field into one. A struct without a checked field builds with `new` and
-/// struct update, with no `?`, so it gets no builder.
+/// Every struct gets a builder, with a checked field or without: the builder is the one way to set fields by name.
 #[test]
-fn only_a_struct_with_a_checked_field_gets_a_builder() {
+fn every_struct_gets_a_builder() {
     let doc = common::spec(
         "3.1.0",
         &json!({}),
@@ -668,9 +668,9 @@ fn only_a_struct_with_a_checked_field_gets_a_builder() {
     );
     let files = common::generate("shape-builders-where-they-pay", &doc, &crate::emit::Options::default());
     let types = common::file(&files, "types.rs");
-    assert!(!types.contains("impl super::Plain {"), "{types}");
-    assert!(types.contains("impl super::Coded {"), "{types}");
-    assert!(types.contains("impl super::Tagged {"), "{types}");
+    for name in ["Plain", "Coded", "Tagged"] {
+        assert!(types.contains(&format!("{name} => super::{name}")), "{name}: {types}");
+    }
 }
 
 /// An `anyOf` or `oneOf` whose branches share a type needs no check of the whole value: decoding checks every keyword
@@ -1670,7 +1670,8 @@ fn a_reorder_of_colliding_names_changes_nothing() {
         common::generate(if flip { "reorder-b" } else { "reorder-a" }, &doc, &crate::emit::Options::default())
     };
     // Every wire name with the Rust name that holds it: a `rename` and its field, a match arm, a query encoded from a
-    // field, and a header or query read into or written from the field named just before it.
+    // field, and a header or query read into or written from the field named just before it. Builder entries
+    // (`field(setter) : Type = "wire"`) print wrapped and name the same fields as the struct.
     let pairs = |text: &str| {
         let mut out = Vec::new();
         let (mut field, mut renamed) = ("", None::<&str>);
@@ -1686,7 +1687,7 @@ fn a_reorder_of_colliding_names_changes_nothing() {
             }
             if l.contains("rename =") {
                 renamed = Some(l);
-            } else if (l.contains("=>") || l.contains("encode_query(")) && l.contains('"') {
+            } else if (l.contains("=>") || l.contains("encode_query(")) && l.contains('"') && !l.contains(" : ") {
                 out.push(l.to_owned());
             } else if ["query_text(", "joined_header(", "set_header("].iter().any(|c| l.contains(c)) {
                 out.push(format!("{field} {l}"));
@@ -1706,4 +1707,38 @@ fn a_reorder_of_colliding_names_changes_nothing() {
         let (x, y) = (pairs(text), b.iter().find(|(f, _)| f == file).map(|(_, t)| pairs(t)).unwrap_or_default());
         assert_eq!(x, y, "{file}");
     }
+}
+
+/// Two required values of the same type could swap in a positional `new`: such a type or `Params` has only its builder,
+/// which takes them by name. One whose required values all differ in type keeps `new`.
+#[test]
+fn new_exists_only_where_no_two_required_values_can_swap() {
+    let doc = common::spec(
+        "3.2.0",
+        &json!({
+            "/orgs/{org}/repos/{repo}": {"get": {"operationId": "getRepo",
+                "parameters": [
+                    {"name": "org", "in": "path", "required": true, "schema": {"type": "string"}},
+                    {"name": "repo", "in": "path", "required": true, "schema": {"type": "string"}}
+                ],
+                "responses": {"204": {"description": "ok"}}}},
+            "/orders/{id}": {"get": {"operationId": "getOrder",
+                "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "integer"}}],
+                "responses": {"204": {"description": "ok"}}}}
+        }),
+        &json!({"schemas": {
+            "Person": {"type": "object", "required": ["first_name", "last_name"],
+                "properties": {"first_name": {"type": "string"}, "last_name": {"type": "string"}}},
+            "Point": {"type": "object", "required": ["x", "label"],
+                "properties": {"x": {"type": "number"}, "label": {"type": "string"}}}
+        }}),
+    );
+    let files = common::generate("new-or-builder", &doc, &crate::emit::Options::default());
+    let types = common::file(&files, "types.rs");
+    let ops = common::file(&files, "operations.rs");
+    assert!(!types.contains("impl Person {"), "no positional new for two strings: {types}");
+    assert!(types.contains("impl Point {"), "a number and a string cannot swap: {types}");
+    assert!(types.contains("Person => super::Person"), "Person has its builder: {types}");
+    assert!(!op_module(ops, "get_repo").contains("fn new("), "two string path parameters: {ops}");
+    assert!(op_module(ops, "get_order").contains("fn new("), "one path parameter: {ops}");
 }

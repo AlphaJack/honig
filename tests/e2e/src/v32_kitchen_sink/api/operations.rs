@@ -99,6 +99,14 @@ pub mod submit_form {
             Self { body }
         }
     }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { body : R0 : types::SubmitFormBody =
+            "body" } optional {} fixed {}
+        }
+    }
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Accepted.
@@ -138,6 +146,14 @@ pub mod put_blob {
         #[must_use]
         pub const fn new(id: String, body: runtime::Blob) -> Self {
             Self { id, legacy: None, body }
+        }
+    }
+    pub mod builders {
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { id : R0 : String = "id", body : R1 :
+            runtime::Blob = "body" } optional { legacy(legacy) : String = "legacy" =>
+            some, None } fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -229,6 +245,19 @@ pub mod list_products {
         }
     }
     default_impl!(Params);
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required {} optional { limit(limit) :
+            types::ListProductsLimit = "limit" => some, None, tags(tags) : Vec < String >
+            = "tags" => some, None, filter(filter) : std::collections::BTreeMap < String,
+            String > = "filter" => some, None, session(session) : String = "session" =>
+            some, None, x_rate(x_rate) : i64 = "X-Rate" => some, None, empty(empty) :
+            String = "empty" => some, None, x_trace(x_trace) : runtime::UuidText =
+            "X-Trace" => some, None } fixed { media : super::Media::ALL[0] }
+        }
+    }
     #[derive(Debug, Clone, PartialEq)]
     pub enum Response {
         /// A page of products
@@ -326,6 +355,14 @@ pub mod create_product {
             }
         }
     }
+    pub mod builders {
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { body : R0 : super::Body = "body" }
+            optional { x_trace(x_trace) : runtime::UuidText = "X-Trace" => some, None,
+            meta_x_part(meta_x_part) : String = "X-Part" => some, None } fixed {}
+        }
+    }
     #[derive(Debug, Clone, PartialEq)]
     pub enum Body {
         Json(types::ProductRequest),
@@ -403,6 +440,15 @@ pub mod search_products {
         }
     }
     default_impl!(Params);
+    pub mod builders {
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required {} optional { x_trace(x_trace) :
+            runtime::UuidText = "X-Trace" => some, None, body(body) :
+            std::collections::BTreeMap < String, serde_json::Value > = "body" => some,
+            None } fixed {}
+        }
+    }
     #[derive(Debug, Clone, PartialEq)]
     pub enum Response {
         /// Products
@@ -444,6 +490,13 @@ pub mod copy_products {
         }
     }
     default_impl!(Params);
+    pub mod builders {
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required {} optional { x_trace(x_trace) :
+            runtime::UuidText = "X-Trace" => some, None } fixed {}
+        }
+    }
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// Copied
@@ -462,6 +515,7 @@ pub mod copy_products {
 }
 pub mod get_product {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "GET";
     pub const PATH: &str = "/products/{productId}";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -472,6 +526,13 @@ pub mod get_product {
         #[must_use]
         pub const fn new(product_id: i64) -> Self {
             Self { product_id }
+        }
+    }
+    pub mod builders {
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { product_id : R0 : i64 = "productId" }
+            optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq)]
@@ -491,6 +552,7 @@ pub mod get_product {
     }
 }
 pub mod put_product {
+    use super::super::runtime;
     pub const METHOD: &str = "PUT";
     pub const PATH: &str = "/products/{productId}";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -501,6 +563,13 @@ pub mod put_product {
         #[must_use]
         pub const fn new(product_id: i64) -> Self {
             Self { product_id }
+        }
+    }
+    pub mod builders {
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { product_id : R0 : i64 = "productId" }
+            optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -520,6 +589,7 @@ pub mod put_product {
     }
 }
 pub mod delete_product {
+    use super::super::runtime;
     pub const METHOD: &str = "DELETE";
     pub const PATH: &str = "/products/{productId}";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -530,6 +600,13 @@ pub mod delete_product {
         #[must_use]
         pub const fn new(product_id: i64) -> Self {
             Self { product_id }
+        }
+    }
+    pub mod builders {
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { product_id : R0 : i64 = "productId" }
+            optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -549,6 +626,7 @@ pub mod delete_product {
     }
 }
 pub mod options_product {
+    use super::super::runtime;
     pub const METHOD: &str = "OPTIONS";
     pub const PATH: &str = "/products/{productId}";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -559,6 +637,13 @@ pub mod options_product {
         #[must_use]
         pub const fn new(product_id: i64) -> Self {
             Self { product_id }
+        }
+    }
+    pub mod builders {
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { product_id : R0 : i64 = "productId" }
+            optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -578,6 +663,7 @@ pub mod options_product {
     }
 }
 pub mod head_product {
+    use super::super::runtime;
     pub const METHOD: &str = "HEAD";
     pub const PATH: &str = "/products/{productId}";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -588,6 +674,13 @@ pub mod head_product {
         #[must_use]
         pub const fn new(product_id: i64) -> Self {
             Self { product_id }
+        }
+    }
+    pub mod builders {
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { product_id : R0 : i64 = "productId" }
+            optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -607,6 +700,7 @@ pub mod head_product {
     }
 }
 pub mod patch_product {
+    use super::super::runtime;
     pub const METHOD: &str = "PATCH";
     pub const PATH: &str = "/products/{productId}";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -617,6 +711,13 @@ pub mod patch_product {
         #[must_use]
         pub const fn new(product_id: i64) -> Self {
             Self { product_id }
+        }
+    }
+    pub mod builders {
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { product_id : R0 : i64 = "productId" }
+            optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -636,6 +737,7 @@ pub mod patch_product {
     }
 }
 pub mod trace_product {
+    use super::super::runtime;
     pub const METHOD: &str = "TRACE";
     pub const PATH: &str = "/products/{productId}";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -646,6 +748,13 @@ pub mod trace_product {
         #[must_use]
         pub const fn new(product_id: i64) -> Self {
             Self { product_id }
+        }
+    }
+    pub mod builders {
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { product_id : R0 : i64 = "productId" }
+            optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -680,6 +789,14 @@ pub mod search {
         }
     }
     default_impl!(Params);
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required {} optional { q(q) : types::SearchQ = "q"
+            => some, None } fixed {}
+        }
+    }
     #[derive(Debug, Clone, PartialEq)]
     pub enum Response {
         /// Events
@@ -698,6 +815,7 @@ pub mod search {
 }
 pub mod new_product_post {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "";
     #[derive(Debug, Clone, PartialEq)]
@@ -711,6 +829,14 @@ pub mod new_product_post {
         }
     }
     default_impl!(Params);
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required {} optional { body(body) :
+            types::ProductRequest = "body" => some, None } fixed {}
+        }
+    }
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// ok
@@ -729,6 +855,7 @@ pub mod new_product_post {
 }
 pub mod create_product_on_adopt_post {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "";
     #[derive(Debug, Clone, PartialEq)]
@@ -742,6 +869,14 @@ pub mod create_product_on_adopt_post {
         }
     }
     default_impl!(Params);
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required {} optional { body(body) :
+            types::ProductRequest = "body" => some, None } fixed {}
+        }
+    }
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub enum Response {
         /// ack

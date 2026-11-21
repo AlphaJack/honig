@@ -26,7 +26,7 @@ fn every_way_to_build_a_value_fails_with_build_error() {
     fn lamp(sku: &str) -> Result<types::Physical, e2e::v32_catalog::api::BuildError> {
         let sku: types::PhysicalSku = sku.parse()?;
         let checked: types::PhysicalSku = sku.as_str().try_into()?;
-        types::Physical::builder("Desk lamp").sku(checked).build()
+        types::Physical::builder().name("Desk lamp").sku(checked).build()
     }
     assert!(lamp("LMP-0042").is_ok());
     let e = lamp("lamp").expect_err("not the pattern");

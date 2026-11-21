@@ -11,7 +11,7 @@ A schema with `readOnly` or `writeOnly` properties becomes two types:
 
 Each is required in Rust where the schema requires it. A missing password is a compile error and not a runtime check. Types that contain one split too. An example is `Session` and `SessionRequest`.
 
-Every struct has `new`. It takes the required properties in document order. A property with a `default` starts at it. Any other optional property starts empty:
+Every struct has a builder that takes each property by name: `build` exists once every required one is set, so leaving one out is a compile error, and the order of the properties in the description does not matter. A struct also has `new` when that cannot go wrong: no required property holds a checked value and no two have the same type, so a swap is a type error. `new` takes the required properties; a property with a `default` starts at it, and any other optional property starts empty:
 
 ```rust
 {{#include ../../../tests/e2e/tests/v32_catalog/schemas.rs:new}}
@@ -167,13 +167,13 @@ Where the field type is known, `try_into` builds the value. A spec `default` is 
 {{#include ../../../tests/e2e/tests/v32_catalog/schemas.rs:try-into}}
 ```
 
-A struct with a checked field has a builder. A builder converts every field and returns the first one that does not convert, from `build`. So the whole value needs one `?`. `builder` takes the required properties, so leaving one out is still a compile error. Each setter takes anything that converts to the type of its field: a number for a checked number, a `&str` for a string, a checked string or an enum:
+A builder converts every field and returns the first one that does not convert, from `build`. So the whole value needs one `?`. Each setter takes anything that converts to the type of its field: a number for a checked number, a `&str` for a string, a checked string or an enum:
 
 ```rust
 {{#include ../../../tests/e2e/tests/v32_validation.rs:builder}}
 ```
 
-The error points to the field with a JSON pointer, as a refused request does: `/age: 150 must be less than 150`. The builder of `User` is `types::builders::User`. A struct without a checked field has none: `new` and struct update build it with no `?`.
+The error points to the field with a JSON pointer, as a refused request does: `/age: 150 must be less than 150`. The builder of `User` is `types::builders::User`. Where `new` exists, it and struct update build the value with no `?`.
 
 `try_from`, `parse` and `build` all fail with `api::BuildError`, so a function that mixes them needs no `Box<dyn Error>`. In a handler, `?` turns it into a `500`: the handler's inputs are checked already, so a value that its schema refuses came from the server's own data.
 

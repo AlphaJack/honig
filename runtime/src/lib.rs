@@ -8,6 +8,7 @@ mod auth;
 mod base64;
 mod binary;
 mod builder;
+mod builder_typestate;
 mod checks;
 #[cfg(feature = "client")]
 mod client;
@@ -67,6 +68,7 @@ pub use auth::Presented;
 pub use binary::Base64Url;
 pub use binary::Binary;
 pub use builder::BuildError;
+pub use builder_typestate::{Set, Unset, put};
 pub use bytes::Bytes;
 pub use checks::{InstancePath, Violation};
 #[cfg(feature = "oauth")]

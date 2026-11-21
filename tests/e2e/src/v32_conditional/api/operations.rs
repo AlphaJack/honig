@@ -33,6 +33,7 @@ macro_rules! error_impl {
 }
 pub mod a {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/a";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -43,6 +44,14 @@ pub mod a {
         #[must_use]
         pub const fn new(body: types::Discriminated) -> Self {
             Self { body }
+        }
+    }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { body : R0 : types::Discriminated = "body"
+            } optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -63,6 +72,7 @@ pub mod a {
 }
 pub mod b {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/b";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -73,6 +83,14 @@ pub mod b {
         #[must_use]
         pub const fn new(body: types::IfThen) -> Self {
             Self { body }
+        }
+    }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { body : R0 : types::IfThen = "body" }
+            optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -93,6 +111,7 @@ pub mod b {
 }
 pub mod c {
     use super::super::types;
+    use super::super::runtime;
     pub const METHOD: &str = "POST";
     pub const PATH: &str = "/c";
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -103,6 +122,14 @@ pub mod c {
         #[must_use]
         pub const fn new(body: types::ConstOneOf) -> Self {
             Self { body }
+        }
+    }
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { body : R0 : types::ConstOneOf = "body" }
+            optional {} fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]

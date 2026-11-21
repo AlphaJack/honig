@@ -91,34 +91,9 @@ impl Route {
 pub mod builders {
     use super as types;
     use super::runtime;
-    impl super::Route {
-        /// Starts a builder from the required properties.
-        pub fn builder(
-            start: impl TryInto<types::Point, Error: std::fmt::Display>,
-            stops: impl TryInto<Vec<types::Point>, Error: std::fmt::Display>,
-        ) -> Route {
-            Route(
-                runtime::Builder::start(|| Ok(
-                    Self::new(
-                        runtime::field("start", start)?,
-                        runtime::field("stops", stops)?,
-                    ),
-                )),
-            )
-        }
-    }
-    #[must_use = "a builder does nothing until `build`"]
-    pub struct Route(runtime::Builder<super::Route>);
-    impl Route {
-        pub fn tags(
-            self,
-            value: impl TryInto<types::Open, Error: std::fmt::Display>,
-        ) -> Self {
-            Self(self.0.set("tags", value, |s, v| s.tags = Some(v)))
-        }
-        /// Returns the value.
-        pub fn build(self) -> Result<super::Route, runtime::BuildError> {
-            self.0.build()
-        }
+    runtime::typestate_builder! {
+        Route => super::Route; required { start : R0 : types::Point = "start", stops : R1
+        : Vec < types::Point > = "stops" } optional { tags(tags) : types::Open = "tags"
+        => some, None } fixed {}
     }
 }
