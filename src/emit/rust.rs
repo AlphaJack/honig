@@ -1,8 +1,8 @@
 //! Rust code emission. Output is a module directory (`mod.rs` + submodules)
 //! that lives inside the user's crate.
 //!
-//! Generated code names std and serde items by absolute path (`::std::...`).
-//! So spec types called `String`, `Result` or `Option` cannot shadow them.
+//! A spec type named like a prelude item (`String`, `Result`, `Option`) takes a suffix
+//! (`names::off_prelude`). So it cannot shadow it.
 //! Text from the spec only reaches code through `lit()` (string literals) or
 //! sanitized identifiers.
 
@@ -277,8 +277,8 @@ fn root(api: &Api, opts: &super::Options, tests: bool) -> TokenStream {
     let unused = opts.rust.binary.then(
         || quote!(#![allow(unused_imports, reason = "a binary may refer to the runtime's items only through `runtime`, and the client or the server by its path")]),
     );
-    // No lint attributes except that one. The code is written to pass strict clippy and
-    // rustdoc lint sets. Set levels for it where the module is declared.
+    // Each file carries the `#![allow]`s of `syntax::file_allow`, each with its reason. Otherwise the code passes
+    // strict clippy and rustdoc lint sets.
     // `rustfmt::skip`: prettyplease prints the files and its layout
     // differs from that of rustfmt. So the `cargo fmt --check` of the crate leaves them alone.
     quote! {

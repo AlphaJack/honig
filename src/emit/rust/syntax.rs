@@ -398,9 +398,8 @@ fn macro_rules_text(m: &syn::ItemMacro) -> Option<String> {
     Some(format!("macro_rules! {name} {{\n    ({matcher}) => {{\n{body}    }};\n}}\n"))
 }
 
-/// Writes once a trait impl that several types share word for word. Examples are the `Validate` of the JSON,
-/// form and multipart shapes of a payload and the `Serialize` of two unions with the same variants. A
-/// `macro_rules!` at the top of the file writes it for any type. Each type invokes it. Generated code holds no two
+/// Writes once a trait impl that several types share word for word, such as the `Serialize` of two unions with the
+/// same variants. A `macro_rules!` at the top of the file writes it for any type. Each type invokes it. Generated code holds no two
 /// identical function bodies.
 fn share_identical_impls(file: &mut syn::File) {
     use syn::visit_mut::VisitMut;
