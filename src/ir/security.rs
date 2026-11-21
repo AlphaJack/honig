@@ -4,6 +4,7 @@ use serde_json::Value;
 
 use super::refs::resolve_value;
 use super::types::Builder;
+use crate::ir::names::Name;
 use crate::json;
 use crate::json::escape_token;
 
@@ -66,7 +67,9 @@ pub(crate) struct Requirement {
 }
 
 /// Returns every scheme in `components.securitySchemes`.
-pub(crate) fn schemes(b: &Builder<'_>) -> Vec<SecurityScheme> {
+/// Two names that differ only in case or separators (`api-key`, `api_key`) are an error: numbering them would follow
+/// the document order, so a reorder would swap their validators.
+pub(crate) fn schemes(b: &mut Builder<'_>) -> Vec<SecurityScheme> {
     let root = &b.doc.root;
     let Some(Value::Object(defs)) = root.get("components").and_then(|c| c.get("securitySchemes")) else {
         return vec![];
@@ -131,6 +134,17 @@ pub(crate) fn schemes(b: &Builder<'_>) -> Vec<SecurityScheme> {
                 scopes.into_iter().collect()
             },
         });
+    }
+    let mut seen: std::collections::BTreeMap<String, &str> = std::collections::BTreeMap::new();
+    for s in &out {
+        if let Some(other) = seen.insert(Name::new(&s.name).key(), &s.name) {
+            let (first, second) =
+                if other < s.name.as_str() { (other, s.name.as_str()) } else { (s.name.as_str(), other) };
+            b.diags.error(
+                format!("/components/securitySchemes/{}", escape_token(second)),
+                format!("security schemes `{first}` and `{second}` name the same item in Rust: rename one"),
+            );
+        }
     }
     out
 }

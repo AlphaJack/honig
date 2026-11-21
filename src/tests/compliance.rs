@@ -679,3 +679,20 @@ fn a_problem_json_error_body_needs_no_error_response() {
         "{server}"
     );
 }
+
+/// Two scheme names that differ only in case or separators name one Rust item. Numbering them would follow the
+/// document order, and a reorder would swap their validators: generation fails and names both.
+#[test]
+fn two_schemes_with_one_rust_name_are_an_error() {
+    let key = |name: &str| json!({"type": "apiKey", "in": "header", "name": name});
+    let (_, w) = common::build(
+        "scheme-collision",
+        &doc(&json!({}), &json!({"securitySchemes": {"api-key": key("X-A"), "api_key": key("X-B")}})),
+        &[],
+    );
+    assert!(
+        w.iter().any(|m| m.starts_with("/components/securitySchemes/api_key:")
+            && m.contains("`api-key` and `api_key` name the same item")),
+        "{w:#?}"
+    );
+}
