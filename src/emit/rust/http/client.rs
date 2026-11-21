@@ -36,9 +36,10 @@ fn servers_doc(api: &Api) -> TokenStream {
     doc_opt(Some(&text.join("\n")))
 }
 
-/// Returns `only`: the operations to call (`operationId` or generated name). `None` for every one.
-/// `binary`: a crate without a library that calls part of the client.
-pub(crate) fn client(api: &Api, space: &Space<'_>, only: Option<&[String]>, binary: bool) -> TokenStream {
+/// Returns `client.rs` for the operations to call (`client_operations`: `operationId` or generated name, all without
+/// it). A binary calls part of the client.
+pub(crate) fn client(api: &Api, space: &Space<'_>, opts: &crate::emit::Options) -> TokenStream {
+    let (only, binary) = (opts.client_operations.as_deref(), opts.rust.binary);
     let called = |op: &&Operation| is_path(op) && only.is_none_or(|names| super::shared::listed(names, op));
     let servers = api.servers.iter().map(server_url);
     let sec = Securities::new(api);

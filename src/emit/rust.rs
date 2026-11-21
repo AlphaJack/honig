@@ -179,15 +179,10 @@ pub(crate) fn trees(api: &Api, opts: &super::Options) -> Trees {
     let space = &space;
     let examples = opts.tests.then(|| http::tests(api, space)).flatten();
     let mut trees = vec![("mod.rs", root(api, opts, examples.is_some()))];
-    // A type spelt out twice (one inline schema per operation) is declared once; the others alias it.
-    let aliases = types::aliases(space, &opts.rust.derives);
-    trees.push(("types.rs", types::emit(space, http::has_xml(api), &opts.rust.derives, &aliases, opts.rust.binary)));
-    trees.push((
-        "operations.rs",
-        http::operations(api, space, !opts.rust.binary || opts.client, opts.rust.binary, opts.server),
-    ));
+    trees.push(("types.rs", types::emit(api, space, opts)));
+    trees.push(("operations.rs", http::operations(api, space, opts)));
     if opts.client {
-        trees.push(("client.rs", http::client(api, space, opts.client_operations.as_deref(), opts.rust.binary)));
+        trees.push(("client.rs", http::client(api, space, opts)));
     }
     if opts.server {
         // The server serves its own operations: the module also holds those that only the client calls.
