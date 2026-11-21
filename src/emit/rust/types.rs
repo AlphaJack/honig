@@ -13,14 +13,19 @@ use crate::ir::types::{
     Checked, EnumValue, Field, Format, JsonKind, Kind, Struct, Ty, TypeDef, TypeId, Union, UnionMode,
 };
 
-/// Returns `aliases`: from [`aliases`]. They are declared as `pub type` of the type that they repeat.
-pub(super) fn emit(
-    space: &Space<'_>,
-    xml: bool,
-    extra: &[(String, Vec<String>)],
-    aliases: &std::collections::BTreeMap<usize, usize>,
-    binary: bool,
-) -> TokenStream {
+/// Returns `types.rs`. A type spelt out twice is declared once and the others are `pub type` aliases of it
+/// ([`aliases`]).
+pub(super) fn emit(api: &crate::ir::Api, space: &Space<'_>, opts: &crate::emit::Options) -> TokenStream {
+    // Whether any body travels as XML.
+    let xml = api
+        .http
+        .operations
+        .iter()
+        .flat_map(crate::ir::http::Operation::contents)
+        .any(|c| c.kind == crate::ir::media::MediaKind::Xml);
+    let (extra, binary) = (opts.rust.derives.as_slice(), opts.rust.binary);
+    // A type spelt out twice (one inline schema per operation) is declared once; the others alias it.
+    let aliases = &aliases(space, extra);
     let mut items = vec![];
     let mut builders = vec![];
     // Whether a builder refers to a generated type: then the module imports `types`.
