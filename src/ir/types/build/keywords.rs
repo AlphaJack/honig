@@ -304,43 +304,25 @@ pub(super) fn typed_property_names(s: &Value) -> Option<Box<Constraints>> {
 /// `dependentRequired`: each name that triggers it, with the names that it requires then.
 pub(super) type Dependents = Vec<(String, Vec<String>)>;
 
-/// Returns `dependentRequired` of `s` when generated code checks it: on a struct, every name is a property that `s`
-/// declares, whose absence shows ([`absence_shows`]); or one that it does not declare, which its struct keeps, and
-/// whether one is (it is checked on the JSON object then). A map or a value without `type` keeps every name. `None`
-/// leaves it to the run-time check of the whole schema.
+/// Returns `dependentRequired` of `s` when generated code checks it, and whether it names a property that `s` does not
+/// declare. Its struct keeps such a name, which is checked on the JSON object then. A map or a value without `type`
+/// keeps every name. `None` leaves it to the run-time check of the whole schema.
 pub(super) fn typed_dependents(s: &Value) -> Option<(Dependents, bool)> {
     let deps = s.get("dependentRequired")?.as_object()?;
-    // Without properties the value is a map or a `serde_json::Value`, which keeps every name it was sent.
-    let props = json::object(s, "properties").filter(|p| !p.is_empty());
-    let seen = absence_shows(s);
-    if props.is_some() && seen.is_none() || !s.as_object().is_some_and(|o| may_be(o, "object")) {
+    if !s.as_object().is_some_and(|o| may_be(o, "object")) {
         return None;
     }
-    // A name that the struct does not declare is kept by it, and checked on the JSON object.
-    let declared = |n: &str| props.is_some_and(|p| p.contains_key(n));
+    // Without properties the value is a map or a `serde_json::Value`, which keeps every name it was sent.
+    let props = json::object(s, "properties").filter(|p| !p.is_empty());
     let mut out = vec![];
     let mut undeclared = false;
     for (name, needs) in deps {
         let needs: Vec<String> =
             needs.as_array()?.iter().map(|n| n.as_str().map(String::from)).collect::<Option<_>>()?;
-        for n in std::iter::once(name).chain(&needs) {
-            if !declared(n) {
-                undeclared |= props.is_some();
-            } else if !seen.as_ref().is_some_and(|f| f(n)) {
-                return None;
-            }
-        }
+        undeclared |= props.is_some_and(|p| std::iter::once(name).chain(&needs).any(|n| !p.contains_key(n)));
         out.push((name.clone(), needs));
     }
     Some((out, undeclared))
-}
-
-/// Returns whether the absence of a property of `s` shows in its struct: it is declared. A name that a dependent
-/// keyword reads fills in no default ([`dependent_names`]). `None` when `s` declares no properties.
-pub(super) fn absence_shows(s: &Value) -> Option<impl Fn(&str) -> bool + '_> {
-    let props = s.get("properties")?.as_object()?;
-    // A name that `dependentRequired` or `dependentSchemas` reads keeps its absence: its default is not filled in.
-    Some(move |n: &str| props.contains_key(n))
 }
 
 /// Returns the names that `dependentRequired` or `dependentSchemas` of `o` reads: each that triggers one, and each
@@ -352,15 +334,9 @@ pub(super) fn dependent_names(o: &serde_json::Map<String, Value>) -> BTreeSet<&s
     triggers.chain(needs).collect()
 }
 
-/// Returns `dependentSchemas` of `s` when generated code checks it: each name is a property whose absence shows
-/// ([`absence_shows`]), or one that `s` does not declare, which its struct keeps. `None` leaves it to the run-time
-/// check of the whole schema.
+/// Returns `dependentSchemas` of `s`: generated code checks each.
 pub(super) fn typed_dependent_schemas(s: &Value) -> Option<&serde_json::Map<String, Value>> {
-    let deps = s.get("dependentSchemas")?.as_object()?;
-    let props = s.get("properties").and_then(Value::as_object);
-    let seen = absence_shows(s);
-    let shows = |n: &str| !props.is_some_and(|p| p.contains_key(n)) || seen.as_ref().is_some_and(|f| f(n));
-    deps.keys().all(|n| shows(n)).then_some(deps)
+    s.get("dependentSchemas")?.as_object()
 }
 
 /// Returns a property schema's `example` and `examples` (an array in JSON Schema).
