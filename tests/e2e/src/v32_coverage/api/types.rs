@@ -3,15 +3,6 @@ macro_rules! serialize_impl {
     ($t:ty) => {
         impl serde::Serialize for $t {
             fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-                s.serialize_str(Self::VALUE)
-            }
-        }
-    };
-}
-macro_rules! serialize_impl_2 {
-    ($t:ty) => {
-        impl serde::Serialize for $t {
-            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
                 match self {
                     Self::Object(v) => serde::Serialize::serialize(v, s),
                     Self::Other(v) => serde::Serialize::serialize(v, s),
@@ -320,13 +311,7 @@ pub struct NoteTextNoteKind;
 impl NoteTextNoteKind {
     pub const VALUE: &'static str = "text";
 }
-serialize_impl!(NoteTextNoteKind);
-impl<'de> serde::Deserialize<'de> for NoteTextNoteKind {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        runtime::expect_const(d, &serde_json::Value::String("text".to_owned()))
-            .map(|()| Self)
-    }
-}
+runtime::const_impls!(NoteTextNoteKind, VALUE);
 runtime::object! {
     /// `ImageNote`
     #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -380,13 +365,7 @@ pub struct NoteImageNoteKind;
 impl NoteImageNoteKind {
     pub const VALUE: &'static str = "image";
 }
-serialize_impl!(NoteImageNoteKind);
-impl<'de> serde::Deserialize<'de> for NoteImageNoteKind {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        runtime::expect_const(d, &serde_json::Value::String("image".to_owned()))
-            .map(|()| Self)
-    }
-}
+runtime::const_impls!(NoteImageNoteKind, VALUE);
 pub use NoteTextNoteKind as TextNoteKind;
 pub use NoteImageNoteKind as ImageNoteKind;
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -465,7 +444,7 @@ pub enum Not {
     Object(NotObject),
     Other(serde_json::Value),
 }
-serialize_impl_2!(Not);
+serialize_impl!(Not);
 deserialize_impl!(Not);
 runtime::object! {
     #[unique_keys]
@@ -491,7 +470,7 @@ pub enum Not2 {
     Object(Not2Object),
     Other(serde_json::Value),
 }
-serialize_impl_2!(Not2);
+serialize_impl!(Not2);
 deserialize_impl!(Not2);
 runtime::object! {
     #[unique_keys]

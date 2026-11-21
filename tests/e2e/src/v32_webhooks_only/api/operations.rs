@@ -27,14 +27,7 @@ pub mod order_shipped_post {
         /// Received.
         NoContent,
     }
-    impl std::fmt::Display for Response {
-        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            match self {
-                Self::NoContent => f.write_str("status 204 (NoContent)"),
-            }
-        }
-    }
-    impl std::error::Error for Response {}
+    runtime::response_error!(Response { Self::NoContent => "status 204 (NoContent)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
         pub fn into_ok(self) -> Result<(), Box<Self>> {

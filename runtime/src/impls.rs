@@ -247,3 +247,64 @@ macro_rules! checked_decimal_impls {
         }
     };
 }
+
+/// The impls that every constant shares: it serializes to its one value, `$n::value()` or `$n::VALUE`, and decodes
+/// only it.
+#[doc(hidden)]
+#[macro_export]
+macro_rules! const_impls {
+    ($n:ident) => {
+        impl ::serde::Serialize for $n {
+            fn serialize<S: ::serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                ::serde::Serialize::serialize(Self::value(), s)
+            }
+        }
+        impl<'de> ::serde::Deserialize<'de> for $n {
+            fn deserialize<D: ::serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                $crate::__private::expect_const(d, Self::value()).map(|()| Self)
+            }
+        }
+    };
+    ($n:ident, VALUE) => {
+        impl ::serde::Serialize for $n {
+            fn serialize<S: ::serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                ::serde::Serialize::serialize(&Self::VALUE, s)
+            }
+        }
+        impl<'de> ::serde::Deserialize<'de> for $n {
+            fn deserialize<D: ::serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                $crate::__private::expect_const(d, &::serde_json::Value::from(Self::VALUE)).map(|()| Self)
+            }
+        }
+    };
+}
+
+/// `Default` of a type whose `new()` takes no argument: that value.
+#[doc(hidden)]
+#[macro_export]
+macro_rules! default_from_new {
+    ($n:ident) => {
+        impl Default for $n {
+            fn default() -> Self {
+                Self::new()
+            }
+        }
+    };
+}
+
+/// `Display` and `Error` of an operation's response: each variant written as its text, so that `?` takes it into any
+/// error type.
+#[doc(hidden)]
+#[macro_export]
+macro_rules! response_error {
+    ($n:ident { $($pat:pat => $text:expr,)* }) => {
+        impl std::fmt::Display for $n {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                match self {
+                    $($pat => std::fmt::Display::fmt(&$text, f),)*
+                }
+            }
+        }
+        impl std::error::Error for $n {}
+    };
+}

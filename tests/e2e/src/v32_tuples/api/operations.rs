@@ -27,14 +27,7 @@ pub mod plan {
         /// The route, echoed.
         Ok(types::Route),
     }
-    impl std::fmt::Display for Response {
-        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-            match self {
-                Self::Ok(..) => f.write_str("status 200 (Ok)"),
-            }
-        }
-    }
-    impl std::error::Error for Response {}
+    runtime::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` takes the `Err` into any error type.
         pub fn into_ok(self) -> Result<types::Route, Box<Self>> {

@@ -20,25 +20,6 @@ macro_rules! serialize_impl {
         }
     };
 }
-macro_rules! serialize_impl_2 {
-    ($t:ty) => {
-        impl serde::Serialize for $t {
-            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-                s.serialize_str(Self::VALUE)
-            }
-        }
-    };
-}
-macro_rules! deserialize_impl_2 {
-    ($t:ty) => {
-        impl<'de> serde::Deserialize<'de> for $t {
-            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-                runtime::expect_const(d, &serde_json::Value::String("sms".to_owned()))
-                    .map(|()| Self)
-            }
-        }
-    };
-}
 use super::runtime;
 runtime::object! {
     #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -420,20 +401,13 @@ pub struct EmailType;
 impl EmailType {
     pub const VALUE: &'static str = "email";
 }
-serialize_impl_2!(EmailType);
-impl<'de> serde::Deserialize<'de> for EmailType {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        runtime::expect_const(d, &serde_json::Value::String("email".to_owned()))
-            .map(|()| Self)
-    }
-}
+runtime::const_impls!(EmailType, VALUE);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 pub struct SmsType;
 impl SmsType {
     pub const VALUE: &'static str = "sms";
 }
-serialize_impl_2!(SmsType);
-deserialize_impl_2!(SmsType);
+runtime::const_impls!(SmsType, VALUE);
 runtime::object! {
     #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct IfThenEmail {
@@ -555,13 +529,7 @@ pub struct ShippingUsCountry;
 impl ShippingUsCountry {
     pub const VALUE: &'static str = "US";
 }
-serialize_impl_2!(ShippingUsCountry);
-impl<'de> serde::Deserialize<'de> for ShippingUsCountry {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        runtime::expect_const(d, &serde_json::Value::String("US".to_owned()))
-            .map(|()| Self)
-    }
-}
+runtime::const_impls!(ShippingUsCountry, VALUE);
 runtime::object! {
     #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
     pub struct ShippingOtherwise {
@@ -647,8 +615,7 @@ pub struct ContactSmsVia;
 impl ContactSmsVia {
     pub const VALUE: &'static str = "sms";
 }
-serialize_impl_2!(ContactSmsVia);
-deserialize_impl_2!(ContactSmsVia);
+runtime::const_impls!(ContactSmsVia, VALUE);
 runtime::object! {
     #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
     pub struct ContactOtherwise {

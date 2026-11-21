@@ -74,15 +74,6 @@ macro_rules! serialize_impl_2 {
     ($t:ty) => {
         impl serde::Serialize for $t {
             fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-                s.serialize_str(Self::VALUE)
-            }
-        }
-    };
-}
-macro_rules! serialize_impl_3 {
-    ($t:ty) => {
-        impl serde::Serialize for $t {
-            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
                 match self {
                     Self::Book(v) => serde::Serialize::serialize(v, s),
                     Self::Gadget(v) => serde::Serialize::serialize(v, s),
@@ -1038,13 +1029,7 @@ pub struct Not;
 impl Not {
     pub const VALUE: &'static str = "vip";
 }
-serialize_impl_2!(Not);
-impl<'de> serde::Deserialize<'de> for Not {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        runtime::expect_const(d, &serde_json::Value::String("vip".to_owned()))
-            .map(|()| Self)
-    }
-}
+runtime::const_impls!(Not, VALUE);
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Not2 {
     Object(Not2Object),
@@ -1096,13 +1081,7 @@ pub struct Not2ObjectKind;
 impl Not2ObjectKind {
     pub const VALUE: &'static str = "gadget";
 }
-serialize_impl_2!(Not2ObjectKind);
-impl<'de> serde::Deserialize<'de> for Not2ObjectKind {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        runtime::expect_const(d, &serde_json::Value::String("gadget".to_owned()))
-            .map(|()| Self)
-    }
-}
+runtime::const_impls!(Not2ObjectKind, VALUE);
 /// Product
 ///
 /// A product
@@ -1496,7 +1475,7 @@ pub enum ShapeVariants {
     Book(Book),
     Gadget(Gadget),
 }
-serialize_impl_3!(ShapeVariants);
+serialize_impl_2!(ShapeVariants);
 impl<'de> serde::Deserialize<'de> for ShapeVariants {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         let v = <runtime::Content<'de> as serde::Deserialize>::deserialize(d)?;
@@ -1661,7 +1640,7 @@ pub enum ShapeRequestVariants {
     Book(BookRequest),
     Gadget(GadgetRequest),
 }
-serialize_impl_3!(ShapeRequestVariants);
+serialize_impl_2!(ShapeRequestVariants);
 impl<'de> serde::Deserialize<'de> for ShapeRequestVariants {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         let v = <runtime::Content<'de> as serde::Deserialize>::deserialize(d)?;

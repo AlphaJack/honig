@@ -53,15 +53,6 @@ macro_rules! serialize_impl {
     ($t:ty) => {
         impl serde::Serialize for $t {
             fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-                s.serialize_str(Self::VALUE)
-            }
-        }
-    };
-}
-macro_rules! serialize_impl_2 {
-    ($t:ty) => {
-        impl serde::Serialize for $t {
-            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
                 let text = serde_json::to_string(&self.0).map_err(serde::ser::Error::custom)?;
                 s.serialize_str(&text)
             }
@@ -103,7 +94,7 @@ macro_rules! try_from_impl_3 {
         }
     };
 }
-macro_rules! serialize_impl_3 {
+macro_rules! serialize_impl_2 {
     ($t:ty) => {
         impl serde::Serialize for $t {
             fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
@@ -664,13 +655,7 @@ pub struct ServerSentEventStreamsBodyItemEventEvent;
 impl ServerSentEventStreamsBodyItemEventEvent {
     pub const VALUE: &'static str = "addString";
 }
-serialize_impl!(ServerSentEventStreamsBodyItemEventEvent);
-impl<'de> serde::Deserialize<'de> for ServerSentEventStreamsBodyItemEventEvent {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        runtime::expect_const(d, &serde_json::Value::String("addString".to_owned()))
-            .map(|()| Self)
-    }
-}
+runtime::const_impls!(ServerSentEventStreamsBodyItemEventEvent, VALUE);
 pub type ServerSentEventStreamsBodyItemEventRetry = EventRetry;
 runtime::object! {
     #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
@@ -700,13 +685,7 @@ pub struct ServerSentEventStreamsBodyItemAddInt64Event;
 impl ServerSentEventStreamsBodyItemAddInt64Event {
     pub const VALUE: &'static str = "addInt64";
 }
-serialize_impl!(ServerSentEventStreamsBodyItemAddInt64Event);
-impl<'de> serde::Deserialize<'de> for ServerSentEventStreamsBodyItemAddInt64Event {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        runtime::expect_const(d, &serde_json::Value::String("addInt64".to_owned()))
-            .map(|()| Self)
-    }
-}
+runtime::const_impls!(ServerSentEventStreamsBodyItemAddInt64Event, VALUE);
 pub type ServerSentEventStreamsBodyItemAddInt64Data = String;
 pub type ServerSentEventStreamsBodyItemAddInt64Retry = EventRetry;
 runtime::object! {
@@ -737,19 +716,13 @@ pub struct ServerSentEventStreamsBodyItemAddJsonEvent;
 impl ServerSentEventStreamsBodyItemAddJsonEvent {
     pub const VALUE: &'static str = "addJSON";
 }
-serialize_impl!(ServerSentEventStreamsBodyItemAddJsonEvent);
-impl<'de> serde::Deserialize<'de> for ServerSentEventStreamsBodyItemAddJsonEvent {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        runtime::expect_const(d, &serde_json::Value::String("addJSON".to_owned()))
-            .map(|()| Self)
-    }
-}
+runtime::const_impls!(ServerSentEventStreamsBodyItemAddJsonEvent, VALUE);
 pub type ServerSentEventStreamsBodyItemAddJsonData = ServerSentEventStreamsBodyItemAddJsonData2;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ServerSentEventStreamsBodyItemAddJsonData2(
     pub ServerSentEventStreamsBodyItemAddJsonData2Content,
 );
-serialize_impl_2!(ServerSentEventStreamsBodyItemAddJsonData2);
+serialize_impl!(ServerSentEventStreamsBodyItemAddJsonData2);
 deserialize_impl!(ServerSentEventStreamsBodyItemAddJsonData2);
 runtime::object! {
     #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
@@ -846,7 +819,7 @@ pub enum Not4 {
     Object(Not4Object),
     Other(serde_json::Value),
 }
-serialize_impl_3!(Not4);
+serialize_impl_2!(Not4);
 deserialize_impl_2!(Not4);
 runtime::object! {
     #[unique_keys]
@@ -873,7 +846,7 @@ pub enum Not5 {
     Object(Not5Object),
     Other(serde_json::Value),
 }
-serialize_impl_3!(Not5);
+serialize_impl_2!(Not5);
 deserialize_impl_2!(Not5);
 runtime::object! {
     #[unique_keys]
@@ -903,7 +876,7 @@ pub enum Not6 {
     Object(Not6Object),
     Other(serde_json::Value),
 }
-serialize_impl_3!(Not6);
+serialize_impl_2!(Not6);
 deserialize_impl_2!(Not6);
 runtime::object! {
     #[unique_keys]
@@ -930,7 +903,7 @@ impl Not6Object {
 pub use ServerSentEventStreamsBodyItemAddJsonEvent as Not6ObjectEvent;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Not6ObjectData(pub Not6ObjectDataContent);
-serialize_impl_2!(Not6ObjectData);
+serialize_impl!(Not6ObjectData);
 deserialize_impl!(Not6ObjectData);
 runtime::object! {
     #[unique_keys]
