@@ -5,7 +5,7 @@ use std::collections::BTreeSet;
 use serde_json::Value;
 
 use super::media::MediaKind;
-use super::names::{Name, reserved, unique};
+use super::names::{Name, reserved, unique, unique_sorted};
 use super::refs::{MAX_REF_HOPS, resolve_value};
 use super::security::{Requirement, SecurityScheme, requirements};
 use super::types::{Builder, Ty, TypeId, TypeSpace, doc_of};
@@ -13,7 +13,7 @@ use crate::json;
 use crate::json::pointer;
 use crate::json::{escape_token, join};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 /// Parameter location.
 pub(crate) enum Location {
     /// `in: path`.
@@ -620,7 +620,7 @@ fn params(b: &mut Builder<'_>, site: &Site<'_>, prefix: &Name) -> Vec<Param> {
         let default =
             p.get("schema").and_then(crate::ir::types::literal_default).filter(|_| !required && b.literal_type(&ty));
         out.push(Param {
-            name: unique(Name::new(&wire), &mut taken),
+            name: Name::new(&wire),
             wire,
             location,
             ty: if required || default.is_some() { ty } else { ty.option() },
@@ -637,6 +637,13 @@ fn params(b: &mut Builder<'_>, site: &Site<'_>, prefix: &Name) -> Vec<Param> {
             part: None,
             serialized: serialized_of(b, &p, &pptr),
         });
+    }
+    let names = unique_sorted(
+        out.iter().map(|x| (x.name.clone(), (x.wire.len(), x.wire.clone(), x.location))).collect(),
+        &mut taken,
+    );
+    for (x, n) in out.iter_mut().zip(names) {
+        x.name = n;
     }
     out
 }
@@ -670,7 +677,7 @@ fn part_headers(b: &mut Builder<'_>, site: &Site<'_>, prefix: &Name, params: &[P
             let ty = b.ty(&s, &join(&hptr, "schema"), &prefix.and(&Name::new(prop)).and(&Name::new(hname)));
             let required = only && json::flag(&h, "required");
             out.push(Param {
-                name: unique(Name::new(&format!("{prop}_{hname}")), &mut taken),
+                name: Name::new(&format!("{prop}_{hname}")),
                 wire: hname.clone(),
                 location: Location::Part,
                 ty: if required { ty } else { ty.option() },
@@ -688,6 +695,13 @@ fn part_headers(b: &mut Builder<'_>, site: &Site<'_>, prefix: &Name, params: &[P
                 serialized: serialized_of(b, &h, &hptr),
             });
         }
+    }
+    let names = unique_sorted(
+        out.iter().map(|x| (x.name.clone(), (x.part.clone(), x.wire.len(), x.wire.clone()))).collect(),
+        &mut taken,
+    );
+    for (x, n) in out.iter_mut().zip(names) {
+        x.name = n;
     }
     out
 }
@@ -942,7 +956,7 @@ fn response_headers(b: &mut Builder<'_>, r: &Value, rptr: &str, prefix: &Name) -
         let required = json::flag(&h, "required");
         let ty = b.ty(&s, &sptr, &prefix.and(&Name::new(hname)));
         out.push(ResponseHeader {
-            name: unique(Name::new(hname), &mut taken),
+            name: Name::new(hname),
             wire: hname.clone(),
             ty: if required { ty } else { ty.option() },
             json,
@@ -952,6 +966,11 @@ fn response_headers(b: &mut Builder<'_>, r: &Value, rptr: &str, prefix: &Name) -
             explode: h.get("explode").and_then(Value::as_bool).unwrap_or(false),
             examples: examples_of(b, &h, &hptr, false),
         });
+    }
+    let names =
+        unique_sorted(out.iter().map(|x| (x.name.clone(), (x.wire.len(), x.wire.clone()))).collect(), &mut taken);
+    for (x, n) in out.iter_mut().zip(names) {
+        x.name = n;
     }
     out
 }

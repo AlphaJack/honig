@@ -1631,3 +1631,79 @@ fn an_object_is_one_runtime_macro_with_a_field_per_line() {
     let fields = "        pub name: String,\n        #[optional]\n        pub count: i64,\n        #[nullable]\n        pub owner: String,\n";
     assert!(types.contains(fields), "one field per line: {types}");
 }
+
+/// Names that collide in Rust (`userId`, `user_id`) are numbered by their sorted wire names, not by where they stand.
+/// So after a reorder of properties, enum values, parameters or headers each wire name keeps its Rust name. The
+/// declarations keep the order of the description.
+#[test]
+fn a_reorder_of_colliding_names_changes_nothing() {
+    let generate = |flip: bool| {
+        let pair = |a: serde_json::Value, b: serde_json::Value| if flip { json!([b, a]) } else { json!([a, b]) };
+        let props = |a: &str, b: &str| {
+            let mut m = serde_json::Map::new();
+            for k in if flip { [b, a] } else { [a, b] } {
+                m.insert(k.to_owned(), json!({"type": "string"}));
+            }
+            serde_json::Value::Object(m)
+        };
+        let param = |name: &str| json!({"name": name, "in": "query", "schema": {"type": "string"}});
+        let header = |a: &str, b: &str| {
+            let mut m = serde_json::Map::new();
+            for k in if flip { [b, a] } else { [a, b] } {
+                m.insert(k.to_owned(), json!({"schema": {"type": "string"}}));
+            }
+            serde_json::Value::Object(m)
+        };
+        let doc = common::spec(
+            "3.1.0",
+            &json!({"/u": {"get": {
+                "operationId": "getUser",
+                "parameters": pair(param("userId"), param("user_id")),
+                "responses": {"200": {"description": "ok", "headers": header("X-Rate", "x_rate"),
+                    "content": {"application/json": {"schema": {"$ref": "#/components/schemas/User"}}}}},
+            }}}),
+            &json!({"schemas": {
+                "User": {"type": "object", "properties": props("userId", "user_id")},
+                "Kind": {"type": "string", "enum": pair(json!("a-b"), json!("a_b"))},
+            }}),
+        );
+        common::generate(if flip { "reorder-b" } else { "reorder-a" }, &doc, &crate::emit::Options::default())
+    };
+    // Every wire name with the Rust name that holds it: a `rename` and its field, a match arm, a query encoded from a
+    // field, and a header or query read into or written from the field named just before it.
+    let pairs = |text: &str| {
+        let mut out = Vec::new();
+        let (mut field, mut renamed) = ("", None::<&str>);
+        for l in text.lines().map(str::trim) {
+            if let Some(r) = renamed.take() {
+                out.push(format!("{r} {l}"));
+            }
+            if let Some((name, _)) = l.split_once(": runtime::") {
+                field = name;
+            }
+            if let Some(name) = l.strip_prefix("if let Some(h) = runtime::encode_header(&") {
+                field = name;
+            }
+            if l.contains("rename =") {
+                renamed = Some(l);
+            } else if (l.contains("=>") || l.contains("encode_query(")) && l.contains('"') {
+                out.push(l.to_owned());
+            } else if ["query_text(", "joined_header(", "set_header("].iter().any(|c| l.contains(c)) {
+                out.push(format!("{field} {l}"));
+            }
+        }
+        out.sort();
+        out
+    };
+    let (a, b) = (generate(false), generate(true));
+    let types = common::file(&a, "types.rs");
+    assert!(types.contains("user_id2") && types.contains("AB2"), "collisions to number: {types}");
+    let found: Vec<String> = a.iter().flat_map(|(_, t)| pairs(t)).collect();
+    for wire in ["\"userId\"", "\"user_id\"", "\"X-Rate\"", "\"x_rate\""] {
+        assert!(found.iter().filter(|l| l.contains(wire)).count() >= 2, "{wire}: {found:#?}");
+    }
+    for (file, text) in &a {
+        let (x, y) = (pairs(text), b.iter().find(|(f, _)| f == file).map(|(_, t)| pairs(t)).unwrap_or_default());
+        assert_eq!(x, y, "{file}");
+    }
+}
