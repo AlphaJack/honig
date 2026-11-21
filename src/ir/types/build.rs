@@ -1195,6 +1195,47 @@ mod tests {
         s.defs.iter().find(|d| d.name == Name::new(n)).unwrap_or_else(|| panic!("no {n}"))
     }
 
+    /// Returns the keywords that generated code cannot check in the schema `S`.
+    fn unchecked(schema: &Value) -> String {
+        let doc = Doc::new(json!({"openapi": "3.2.0", "components": {"schemas": {"S": schema}}}));
+        let mut d = Diagnostics::default();
+        let mut b = Builder::new(&doc, &mut d, Reserved::default());
+        b.components();
+        b.finish();
+        d.iter().filter_map(|x| x.message.strip_prefix("generated code cannot check this schema: ")).collect()
+    }
+
+    /// A keyword that a type or a generated check holds is checked; beside it, one that none holds still stops
+    /// generation. The same keyword where nothing holds it stops it too.
+    #[test]
+    fn a_held_keyword_hides_no_other() {
+        let held = [
+            json!({"type": "object", "dependentRequired": {"a": ["b"]}}),
+            json!({"type": "object", "propertyNames": {"maxLength": 3}}),
+            json!({"propertyNames": {"maxLength": 3}}),
+            json!({"type": "object", "patternProperties": {"^a": {"type": "string"}}, "additionalProperties": false}),
+            json!({"type": "object", "patternProperties": {"^a": {"type": "string"}}}),
+            json!({"type": "object", "dependentSchemas": {"a": {}}}),
+            json!({"type": "object", "properties": {"a": {}}, "unevaluatedProperties": false}),
+            json!({"type": "array", "prefixItems": [{}], "unevaluatedItems": false}),
+        ];
+        for mut s in held {
+            s["dependencies"] = json!({"a": ["b"]});
+            assert_eq!(unchecked(&s), "dependencies", "{s}");
+        }
+        let dynamic = json!([{"$dynamicRef": "#m"}]);
+        let unheld = [
+            (json!({"type": "string", "dependentRequired": {"a": ["b"]}}), "dependentRequired"),
+            (json!({"type": "string", "propertyNames": {"maxLength": 3}}), "propertyNames"),
+            (json!({"type": "string", "patternProperties": {"^a": {}}}), "patternProperties"),
+            (json!({"type": "object", "allOf": dynamic, "unevaluatedProperties": false}), "unevaluatedProperties"),
+            (json!({"type": "array", "allOf": dynamic, "unevaluatedItems": false}), "unevaluatedItems"),
+        ];
+        for (s, keyword) in unheld {
+            assert_eq!(unchecked(&s), keyword, "{s}");
+        }
+    }
+
     /// An `enum` without `type` has the type of each of its values. A list or an object among them is one too: the
     /// `enum` is not typed as its first scalar, which would refuse the list. Its type is a union of one constant per
     /// value.
