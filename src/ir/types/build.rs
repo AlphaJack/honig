@@ -61,7 +61,7 @@ pub(crate) struct Builder<'a> {
     pub keep_unknown: bool,
     /// The generated crate's dependencies (`-` as `_`): an object-form `x-rust-type` refers to one of them.
     pub crates: Vec<String>,
-    /// The description was Swagger 2.0: an optional property reads `null` as absent ([`Field::null_as_absent`]).
+    /// The description was Swagger 2.0: an optional property reads `null` as absent ([`crate::ir::types::Field::null_as_absent`]).
     pub from_v20: bool,
     /// The `$ref` targets whose keywords are being read: one met again is a cycle, whose keywords its own type holds.
     reading: RefCell<Vec<String>>,

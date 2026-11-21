@@ -254,7 +254,7 @@ pub(super) fn may_be(o: &serde_json::Map<String, Value>, kind: &str) -> bool {
 
 /// Returns the pattern of `s` when it is a map that generated code holds whole: `type: object` with one
 /// `patternProperties` entry, no `properties` and `additionalProperties: false`. Its type is a map of the pattern's
-/// schema ([`Builder::scalar`]), so each value decodes as that schema, and every name must match the pattern.
+/// schema ([`super::Builder::scalar`]), so each value decodes as that schema, and every name must match the pattern.
 pub(super) fn typed_pattern_map(s: &Value) -> Option<String> {
     let o = s.as_object().filter(|o| is_object(o))?;
     let patterns = o.get("patternProperties")?.as_object().filter(|p| p.len() == 1)?;
@@ -262,7 +262,7 @@ pub(super) fn typed_pattern_map(s: &Value) -> Option<String> {
     (closed && !o.contains_key("properties")).then(|| patterns.keys().next().cloned()).flatten()
 }
 
-/// Returns `patternProperties` of `s` when its struct holds them ([`Struct::patterns`]): an object, with properties of
+/// Returns `patternProperties` of `s` when its struct holds them ([`crate::ir::types::Struct::patterns`]): an object, with properties of
 /// its own or none, and `additionalProperties` absent, a bool or a schema. Every pattern compiles, so the
 /// generator can tell which declared names it matches.
 pub(super) fn struct_patterns(s: &Value) -> Option<&serde_json::Map<String, Value>> {
@@ -692,7 +692,7 @@ pub(super) fn untyped_value_checks(s: &Value, c: &mut Constraints) {
     }
 }
 
-/// What [`Builder::evaluation`] works out: the names ([`Evaluated`]) or the items ([`EvaluatedItems`]) that a schema
+/// What [`super::Builder::evaluation`] works out: the names ([`Evaluated`]) or the items ([`EvaluatedItems`]) that a schema
 /// evaluates.
 pub(super) trait Evaluation: Default {
     /// What schema object `o` evaluates by its own keywords. `index` gives the type of a schema that it decodes as.
