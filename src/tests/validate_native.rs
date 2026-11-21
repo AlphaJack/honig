@@ -42,6 +42,52 @@ fn a_dangling_ref_and_an_incomplete_scheme_are_errors() {
     assert!(out.iter().any(|m| m.contains("path parameter `id` is not declared")), "{out:#?}");
 }
 
+/// 3.2 rules a validator states: component names, tag parents that loop, siblings of `$ref`, and one `querystring`
+/// parameter, which an operation's own parameter of the same name and place overrides.
+#[test]
+fn component_names_tag_loops_ref_siblings_and_querystrings() {
+    let qs = |name: &str| json!({"name": name, "in": "querystring", "content": {"application/x-www-form-urlencoded": {"schema": {"type": "object"}}}});
+    let mut doc = common::spec(
+        "3.2.0",
+        &json!({"/a": {"parameters": [qs("s")], "get": {"parameters": [qs("s")],
+            "responses": {"200": {"$ref": "#/components/responses/Ok", "foo": 1, "x-note": 1}}}}}),
+        &json!({"schemas": {"bad name": {"type": "string"}}, "responses": {"Ok": {"description": "ok"}}}),
+    );
+    doc["tags"] = json!([{"name": "a", "parent": "b"}, {"name": "b", "parent": "a"}]);
+    let out = check("native-rules", &doc);
+    let has = |text: &str| out.iter().any(|m| m.contains(text));
+    assert!(has("component names may only use"), "{out:#?}");
+    assert!(has("tag `a` is its own ancestor"), "{out:#?}");
+    assert!(has("`foo` next to `$ref` is ignored") && !has("`x-note` next to"), "{out:#?}");
+    assert!(!has("at most one `querystring`"), "{out:#?}");
+}
+
+/// 2.0 rules: a `file` parameter needs a form media type, `allowEmptyValue` belongs to `query` and `formData`, and an
+/// array may hold arrays.
+#[test]
+fn file_parameters_empty_values_and_nested_arrays_in_v20() {
+    let file = json!({"name": "f", "in": "formData", "type": "file"});
+    let op = |consumes: &str, params: Value| json!({"/a": {"post": {"consumes": [consumes], "parameters": params, "responses": {"200": {"description": "ok"}}}}});
+    for media in ["multipart/form-data", "application/x-www-form-urlencoded"] {
+        assert_eq!(
+            check("native-file-form", &swagger(&op(media, json!([file])), &json!({}))),
+            Vec::<String>::new(),
+            "{media}"
+        );
+    }
+    let empty = |at: &str| json!({"name": "e", "in": at, "type": "string", "allowEmptyValue": true});
+    let out =
+        check("native-empty", &swagger(&op("application/json", json!([empty("query"), empty("header")])), &json!({})));
+    assert_eq!(out.len(), 1, "{out:#?}");
+    assert!(out[0].contains("parameters/1/allowEmptyValue"), "{out:#?}");
+    let nested = |inner: Value| {
+        let p = json!({"name": "n", "in": "query", "type": "array", "items": {"type": "array", "items": inner}});
+        check("native-nested", &swagger(&op("application/json", json!([p])), &json!({})))
+    };
+    assert_eq!(nested(json!({"type": "string"})), Vec::<String>::new());
+    assert!(nested(json!({"type": "date"})).iter().any(|m| m.contains("parameters/0/items/items")));
+}
+
 #[test]
 fn version_features_are_not_upgrade_noise() {
     // `nullable` is valid 3.0: nothing to report.
