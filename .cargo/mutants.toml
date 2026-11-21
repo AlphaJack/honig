@@ -83,4 +83,7 @@ exclude_re = [
   'runtime/src/xml/stream\.rs:\d+:\d+: replace match guard c\.contains\(.\\r.\) with true in ',
   # A shape of 128 fields or more: none is that big.
   'runtime/src/xml/stream\.rs:\d+:\d+: replace < with <= in Seen::bit$',
+  # Members of an object start with a quoted key: without commas the text still tells them apart.
+  'runtime/src/checks\.rs:447:\d+: replace > with (<|==) in canonical$',
+  'runtime/src/checks\.rs:513:\d+: replace > with (<|==|>=) in canonical_content$',
 ]
