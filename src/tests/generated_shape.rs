@@ -240,7 +240,7 @@ fn an_operation_is_listed_by_its_id_or_its_name() {
     );
     let listed = |names: &[&str]| {
         let opts = crate::emit::Options {
-            client_operations: Some(names.iter().map(|n| (*n).to_owned()).collect()),
+            operations: Some(names.iter().map(|n| (*n).to_owned()).collect()),
             ..crate::emit::Options::default()
         };
         let files = common::generate(&format!("shape-listed-{}", names.join("-")), &doc, &opts);
