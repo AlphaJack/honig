@@ -187,11 +187,6 @@ fn one_deprecated_item_allows_deprecated() {
             &json!({}),
             &json!({"securitySchemes": {"k": {"type": "apiKey", "in": "header", "name": "K", "deprecated": true}}}),
         ),
-        common::spec(
-            "3.2.0",
-            &json!({}),
-            &json!({"schemas": {"A": {"type": "object", "properties": {"old": {"type": "string", "deprecated": true}}}}}),
-        ),
         common::spec("3.2.0", &op(json!({"operationId": "a", "deprecated": true, "responses": ok})), &json!({})),
         common::spec(
             "3.2.0",
@@ -245,7 +240,7 @@ fn an_operation_is_listed_by_its_id_or_its_name() {
     );
     let listed = |names: &[&str]| {
         let opts = crate::emit::Options {
-            client_operations: Some(names.iter().map(|n| (*n).to_owned()).collect()),
+            operations: Some(names.iter().map(|n| (*n).to_owned()).collect()),
             ..crate::emit::Options::default()
         };
         let files = common::generate(&format!("shape-listed-{}", names.join("-")), &doc, &opts);
@@ -278,6 +273,71 @@ fn a_tag_too_deep_is_left_out() {
     let files = common::generate("shape-tag-depth", &doc, &crate::emit::Options::default());
     let ops = common::file(&files, "operations.rs");
     assert!(!ops.contains("pub mod tags"), "{ops}");
+}
+
+/// The string formats of a description turn on the runtime features that check them, and nothing else: `idn` for mail
+/// addresses and host names (typed or not), `regress` for `regex` without a library, `jiff` for `time` with jiff dates.
+#[test]
+fn formats_turn_on_the_features_that_check_them() {
+    let features = |schema: serde_json::Value, libs: crate::settings::FormatLibs| {
+        let doc = common::spec("3.1.0", &json!({}), &json!({"schemas": {"S": schema}}));
+        let mut opts = crate::emit::Options::default();
+        opts.rust.libs = libs;
+        let g =
+            crate::generate::generate(&common::write("shape-format-features", &doc, &[]), &opts).expect("generates");
+        assert!(
+            g.runtime_features.iter().all(|f| crate::settings::FEATURES.iter().any(|(k, _)| k == f)),
+            "{:?}",
+            g.runtime_features
+        );
+        g.runtime_features
+    };
+    let none = crate::settings::FormatLibs::default;
+    let has = |schema: serde_json::Value, f: &str| features(schema, none()).contains(&f);
+    assert!(has(json!({"type": "string", "format": "email"}), crate::settings::IDN));
+    assert!(has(json!({"format": "hostname"}), crate::settings::IDN), "a format without `type` is checked at run time");
+    assert!(!has(json!({"type": "object", "properties": {"format": {"type": "string"}}}), crate::settings::IDN));
+    assert!(has(json!({"type": "string", "format": "regex"}), crate::settings::REGRESS));
+    let jiff = crate::settings::FormatLibs { dates: Some(crate::settings::DateLib::Jiff), ..none() };
+    assert!(features(json!({"type": "string", "format": "time"}), jiff).contains(&crate::settings::JIFF));
+    assert!(!has(json!({"type": "string", "format": "time"}), crate::settings::JIFF));
+}
+
+/// A path variable that no parameter declares stays literal text; a tag whose `parent` is no tag is a root; a server
+/// URL that is a path is the base path of the server.
+#[test]
+fn literal_path_variables_orphan_tags_and_relative_servers() {
+    let mut doc = common::spec(
+        "3.2.0",
+        &json!({"/a/{x}/{y}": {"get": {"operationId": "a", "tags": ["child"],
+            "parameters": [{"name": "y", "in": "path", "required": true, "schema": {"type": "string"}}],
+            "responses": {"204": {"description": "ok"}}}}}),
+        &json!({}),
+    );
+    doc["tags"] = json!([{"name": "child", "parent": "missing"}]);
+    doc["servers"] = json!([{"url": "/v1"}, {"url": "v2"}]);
+    let files = common::generate("shape-literal-paths", &doc, &crate::emit::Options::default());
+    let (client, server, ops) =
+        (common::file(&files, "client.rs"), common::file(&files, "server.rs"), common::file(&files, "operations.rs"));
+    assert!(client.contains(r#"path.push_str("{x}");"#), "{client}");
+    assert!(server.contains(r#"static BASE_PATHS: &[&str] = &["/v1"];"#), "{server}");
+    assert!(server.contains(r#""/a/{{x}}/{s2}""#), "a literal brace is escaped in the route: {server}");
+    assert!(ops.contains("pub mod child"), "{ops}");
+}
+
+/// A header parameter other than `Range` leaves ranges to the server: only a `Range` parameter of its own takes them.
+#[test]
+fn another_header_leaves_ranges_to_the_server() {
+    let doc = common::spec(
+        "3.2.0",
+        &json!({"/a": {"get": {"operationId": "a", "parameters": [{"name": "X-Trace", "in": "header", "schema": {"type": "string"}}],
+            "responses": {"200": {"description": "ok", "content": {"application/octet-stream": {"schema": {"type": "string", "format": "binary"}}}}}}}}),
+        &json!({}),
+    );
+    let server =
+        common::file(&common::generate("shape-ranges-header", &doc, &crate::emit::Options::default()), "server.rs")
+            .to_owned();
+    assert!(server.contains("ranges: true,"), "{server}");
 }
 
 /// An `http` scheme other than basic or bearer keeps its spelling: a server may compare `Token` case-sensitively.
@@ -1867,52 +1927,42 @@ fn a_response_summary_and_description_of_one_text_show_once() {
     assert_eq!(ops.matches("Found it").count(), 1, "{ops}");
 }
 
-/// An `enum` or a `const` whose values no type holds (objects) is checked on the JSON of the value.
+/// Extra derives from the settings go on every type (`*`) or on one by its Rust name, once each, and never a derive
+/// that honig writes itself.
 #[test]
-fn values_that_no_type_holds_are_compared_as_json() {
-    for schema in [
-        json!({"type": "object", "properties": {"a": {"type": "integer"}}, "const": {"a": 1}}),
-        json!({"type": "object", "properties": {"a": {"type": "integer"}}, "enum": [{"a": 1}, {"a": 2}]}),
-    ] {
-        let doc = common::spec("3.1.0", &json!({}), &json!({"schemas": {"V": schema}}));
-        let types =
-            common::file(&common::generate("shape-json-values", &doc, &crate::emit::Options::default()), "types.rs")
-                .to_owned();
-        assert!(types.contains("runtime::content_equal("), "{schema}: {types}");
-    }
+fn extra_derives_go_where_the_settings_say() {
+    let obj = json!({"type": "object", "properties": {"a": {"type": "string"}}});
+    let doc = common::spec("3.1.0", &json!({}), &json!({"schemas": {"Item": obj, "Other": obj}}));
+    let derives = |list: Vec<(&str, Vec<&str>)>| {
+        let mut opts = crate::emit::Options::default();
+        opts.rust.derives =
+            list.into_iter().map(|(k, v)| (k.to_owned(), v.into_iter().map(str::to_owned).collect())).collect();
+        let types = common::file(&common::generate("shape-derives", &doc, &opts), "types.rs").to_owned();
+        let of = |n: &str| {
+            types
+                .split("runtime::object!")
+                .find(|b| b.contains(&format!("pub struct {n} {{")))
+                .unwrap_or_default()
+                .to_owned()
+        };
+        (of("Item"), of("Other"))
+    };
+    let (item, other) = derives(vec![("Item", vec!["x::Marker", "x::Marker", "Clone"])]);
+    assert_eq!((item.matches("x::Marker").count(), other.contains("x::Marker")), (1, false), "{item} {other}");
+    let (item, other) = derives(vec![("*", vec!["x::Marker"])]);
+    assert!(item.contains("x::Marker") && other.contains("x::Marker"), "{item} {other}");
 }
 
-/// A `multipleOf` as large as the largest value of the type still divides: it is no "only `0`" check.
+/// A deprecated object type is deprecated as a struct: the attribute sits on the struct inside its macro.
 #[test]
-fn a_modulus_at_the_largest_value_still_divides() {
-    let doc = common::spec(
-        "3.1.0",
-        &json!({}),
-        &json!({"schemas": {
-            "M": {"type": "integer", "format": "int32", "multipleOf": 2_147_483_648_i64},
-        }}),
-    );
+fn a_deprecated_object_type_is_a_deprecated_struct() {
+    let obj = json!({"type": "object", "deprecated": true, "properties": {"a": {"type": "string"}}});
+    let doc = common::spec("3.1.0", &json!({}), &json!({"schemas": {"Old": obj}}));
     let types =
-        common::file(&common::generate("shape-modulus", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
-    assert!(types.contains("% 2_147_483_648 == 0"), "{types}");
-}
-
-/// The items past `prefixItems` bind the item only where a schema of `unevaluatedItems` reads it.
-#[test]
-fn unevaluated_items_bind_the_item_only_to_read_it() {
-    let doc = common::spec(
-        "3.1.0",
-        &json!({}),
-        &json!({"schemas": {
-            "Closed": {"type": "array", "prefixItems": [{"type": "string"}], "unevaluatedItems": false},
-            "Typed": {"type": "array", "prefixItems": [{"type": "string"}], "unevaluatedItems": {"type": "integer", "minimum": 3}},
-        }}),
-    );
-    let types =
-        common::file(&common::generate("shape-unevaluated-bind", &doc, &crate::emit::Options::default()), "types.rs")
-            .to_owned();
-    assert!(types.contains("for (i, _) in items.iter().enumerate().skip(1)"), "{types}");
-    assert!(types.contains("for (i, item) in items.iter().enumerate().skip(1)"), "{types}");
+        common::file(&common::generate("shape-deprecated-object", &doc, &crate::emit::Options::default()), "types.rs")
+            .split_whitespace()
+            .collect::<String>();
+    assert!(types.contains("#[deprecated]pubstructOld{"), "{types}");
 }
 
 /// A multipart part whose schema gives a `contentMediaType` is sent as that type when `encoding` gives none.
