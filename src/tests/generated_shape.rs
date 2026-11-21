@@ -717,6 +717,8 @@ fn an_xml_field_names_only_what_differs() {
         "{types}"
     );
     assert!(types.contains(r#",runtime::XmlField::new("title"),"#), "{types}");
+}
+
 /// A server operation names only what differs from `Op::new`: an operation without security, body or ranges is the
 /// call alone.
 #[test]
