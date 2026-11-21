@@ -136,15 +136,8 @@ async fn dispatch<A: Api>(
     }
 }
 static ADD_BOOK_OP: runtime::Op = runtime::Op {
-    name: "add_book",
-    method: "POST",
-    route: "/books",
-    span: "POST /books",
-    security: &[],
-    takes_body: false,
     produces: &["application/xml", "application/json"],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new("add_book", "POST", "/books", "POST /books", error_schema)
 };
 async fn add_book<A: Api>(
     api: &A,

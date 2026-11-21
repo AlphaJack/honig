@@ -35,10 +35,13 @@ fn security_consts(files: &[(String, String)]) -> Vec<String> {
         let decl = format!("pubconst{name}:&[&[runtime::Requirement]]=");
         ops.split_once(&decl).and_then(|(_, rest)| rest.split_once(';')).expect("declared").0.to_owned()
     };
+    // `security` is the first member that an `Op` sets; one without it has none.
     server
-        .split("security:")
+        .split("runtime::Op=")
         .skip(1)
-        .map(|rest| rest.split_once(",takes_body:").expect("field ends").0)
+        .map(|rest| {
+            rest.strip_prefix("runtime::Op{security:").and_then(|r| r.split_once(',')).map_or("&[]", |(s, _)| s)
+        })
         .map(|s| s.strip_prefix("ops::").map_or_else(|| s.to_owned(), value))
         .collect()
 }

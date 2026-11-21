@@ -463,17 +463,13 @@ async fn dispatch<A: Api>(
         Op::O8 => Box::pin(oidc(api, routed, call)).await,
     }
 }
-static PUBLIC_OP: runtime::Op = runtime::Op {
-    name: "public",
-    method: "GET",
-    route: "/public",
-    span: "GET /public",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static PUBLIC_OP: runtime::Op = runtime::Op::new(
+    "public",
+    "GET",
+    "/public",
+    "GET /public",
+    error_schema,
+);
 async fn public<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -492,15 +488,8 @@ fn public_encode(resp: &ops::public::Response) -> runtime::Response {
     runtime::new_response(204)
 }
 static ME_OP: runtime::Op = runtime::Op {
-    name: "me",
-    method: "GET",
-    route: "/me",
-    span: "GET /me",
     security: ops::SECURITY_0,
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new("me", "GET", "/me", "GET /me", error_schema)
 };
 async fn me<A: Api>(
     api: &A,
@@ -520,15 +509,8 @@ fn me_encode(resp: &ops::me::Response) -> runtime::Response {
     runtime::new_response(204)
 }
 static OPTIONAL_OP: runtime::Op = runtime::Op {
-    name: "optional",
-    method: "GET",
-    route: "/optional",
-    span: "GET /optional",
     security: ops::SECURITY_1,
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new("optional", "GET", "/optional", "GET /optional", error_schema)
 };
 async fn optional<A: Api>(
     api: &A,
@@ -548,15 +530,8 @@ fn optional_encode(resp: &ops::optional::Response) -> runtime::Response {
     runtime::new_response(204)
 }
 static READ_OP: runtime::Op = runtime::Op {
-    name: "read",
-    method: "GET",
-    route: "/read",
-    span: "GET /read",
     security: ops::SECURITY_2,
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new("read", "GET", "/read", "GET /read", error_schema)
 };
 async fn read<A: Api>(
     api: &A,
@@ -576,15 +551,8 @@ fn read_encode(resp: &ops::read::Response) -> runtime::Response {
     runtime::new_response(204)
 }
 static WRITE_OP: runtime::Op = runtime::Op {
-    name: "write",
-    method: "POST",
-    route: "/write",
-    span: "POST /write",
     security: ops::SECURITY_3,
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new("write", "POST", "/write", "POST /write", error_schema)
 };
 async fn write<A: Api>(
     api: &A,
@@ -604,15 +572,8 @@ fn write_encode(resp: &ops::write::Response) -> runtime::Response {
     runtime::new_response(204)
 }
 static BOTH_OP: runtime::Op = runtime::Op {
-    name: "both",
-    method: "GET",
-    route: "/both",
-    span: "GET /both",
     security: ops::SECURITY_4,
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new("both", "GET", "/both", "GET /both", error_schema)
 };
 async fn both<A: Api>(
     api: &A,
@@ -632,15 +593,8 @@ fn both_encode(resp: &ops::both::Response) -> runtime::Response {
     runtime::new_response(204)
 }
 static LOGIN_OP: runtime::Op = runtime::Op {
-    name: "login",
-    method: "GET",
-    route: "/login",
-    span: "GET /login",
     security: ops::SECURITY_5,
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new("login", "GET", "/login", "GET /login", error_schema)
 };
 async fn login<A: Api>(
     api: &A,
@@ -660,15 +614,8 @@ fn login_encode(resp: &ops::login::Response) -> runtime::Response {
     runtime::new_response(204)
 }
 static CERT_OP: runtime::Op = runtime::Op {
-    name: "cert",
-    method: "GET",
-    route: "/cert",
-    span: "GET /cert",
     security: ops::SECURITY_6,
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new("cert", "GET", "/cert", "GET /cert", error_schema)
 };
 async fn cert<A: Api>(
     api: &A,
@@ -688,15 +635,8 @@ fn cert_encode(resp: &ops::cert::Response) -> runtime::Response {
     runtime::new_response(204)
 }
 static OIDC_OP: runtime::Op = runtime::Op {
-    name: "oidc",
-    method: "GET",
-    route: "/oidc",
-    span: "GET /oidc",
     security: ops::SECURITY_7,
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new("oidc", "GET", "/oidc", "GET /oidc", error_schema)
 };
 async fn oidc<A: Api>(
     api: &A,

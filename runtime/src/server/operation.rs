@@ -54,3 +54,18 @@ pub struct Op {
     /// response that declares no `206` and no `Range` parameter of its own.
     pub ranges: bool,
 }
+
+impl Op {
+    /// Returns the operation with no security, a body read whole, no success body and no ranges: the start of
+    /// `Op { takes_body: true, ..Op::new(..) }`.
+    #[must_use]
+    pub const fn new(
+        name: &'static str,
+        method: &'static str,
+        route: &'static str,
+        span: &'static str,
+        errors: ProblemSchemas,
+    ) -> Self {
+        Self { name, method, route, span, security: &[], takes_body: false, errors, produces: &[], ranges: false }
+    }
+}

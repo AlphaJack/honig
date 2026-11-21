@@ -183,15 +183,15 @@ async fn dispatch<A: Api>(
     }
 }
 static GET_EXPORT_OP: runtime::Op = runtime::Op {
-    name: "get_export",
-    method: "GET",
-    route: "/exports/{id}",
-    span: "GET /exports/{id}",
-    security: &[],
-    takes_body: false,
     produces: &["application/zip"],
     ranges: true,
-    errors: error_schema,
+    ..runtime::Op::new(
+        "get_export",
+        "GET",
+        "/exports/{id}",
+        "GET /exports/{id}",
+        error_schema,
+    )
 };
 async fn get_export<A: Api>(
     api: &A,
@@ -225,15 +225,15 @@ fn get_export_encode(resp: ops::get_export::Response) -> runtime::Response {
     }
 }
 static GET_THUMBNAIL_OP: runtime::Op = runtime::Op {
-    name: "get_thumbnail",
-    method: "GET",
-    route: "/exports/{id}/thumbnail",
-    span: "GET /exports/{id}/thumbnail",
-    security: &[],
-    takes_body: false,
     produces: &["image/*"],
     ranges: true,
-    errors: error_schema,
+    ..runtime::Op::new(
+        "get_thumbnail",
+        "GET",
+        "/exports/{id}/thumbnail",
+        "GET /exports/{id}/thumbnail",
+        error_schema,
+    )
 };
 async fn get_thumbnail<A: Api>(
     api: &A,
@@ -265,15 +265,14 @@ fn get_thumbnail_encode(resp: ops::get_thumbnail::Response) -> runtime::Response
     }
 }
 static GET_MANIFEST_OP: runtime::Op = runtime::Op {
-    name: "get_manifest",
-    method: "GET",
-    route: "/exports/{id}/manifest",
-    span: "GET /exports/{id}/manifest",
-    security: &[],
-    takes_body: false,
     produces: &["application/json"],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new(
+        "get_manifest",
+        "GET",
+        "/exports/{id}/manifest",
+        "GET /exports/{id}/manifest",
+        error_schema,
+    )
 };
 async fn get_manifest<A: Api>(
     api: &A,
@@ -320,17 +319,13 @@ fn get_manifest_encode(
         },
     )
 }
-static REPLACE_MANIFEST_OP: runtime::Op = runtime::Op {
-    name: "replace_manifest",
-    method: "PUT",
-    route: "/exports/{id}/manifest",
-    span: "PUT /exports/{id}/manifest",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static REPLACE_MANIFEST_OP: runtime::Op = runtime::Op::new(
+    "replace_manifest",
+    "PUT",
+    "/exports/{id}/manifest",
+    "PUT /exports/{id}/manifest",
+    error_schema,
+);
 async fn replace_manifest<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,

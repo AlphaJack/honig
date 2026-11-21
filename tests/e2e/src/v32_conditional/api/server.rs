@@ -162,17 +162,7 @@ async fn dispatch<A: Api>(
         Op::O2 => Box::pin(c(api, routed, call)).await,
     }
 }
-static A_OP: runtime::Op = runtime::Op {
-    name: "a",
-    method: "POST",
-    route: "/a",
-    span: "POST /a",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static A_OP: runtime::Op = runtime::Op::new("a", "POST", "/a", "POST /a", error_schema);
 async fn a<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -197,17 +187,7 @@ fn a_encode(resp: &ops::a::Response) -> runtime::Response {
     let ops::a::Response::NoContent = resp;
     runtime::new_response(204)
 }
-static B_OP: runtime::Op = runtime::Op {
-    name: "b",
-    method: "POST",
-    route: "/b",
-    span: "POST /b",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static B_OP: runtime::Op = runtime::Op::new("b", "POST", "/b", "POST /b", error_schema);
 async fn b<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -232,17 +212,7 @@ fn b_encode(resp: &ops::b::Response) -> runtime::Response {
     let ops::b::Response::NoContent = resp;
     runtime::new_response(204)
 }
-static C_OP: runtime::Op = runtime::Op {
-    name: "c",
-    method: "POST",
-    route: "/c",
-    span: "POST /c",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static C_OP: runtime::Op = runtime::Op::new("c", "POST", "/c", "POST /c", error_schema);
 async fn c<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,

@@ -329,18 +329,19 @@ pub(crate) fn server_op(space: &Space<'_>, api: &Api, sec: &Securities, op: &Ope
         Needs::SignedIn => quote!(runtime::serve_signed_in(routed, call, &steps).await),
     };
     let id = operation_type(op);
+    // Only what differs from `Op::new`.
+    let produces: Vec<proc_macro2::Literal> = produces.collect();
+    let set: Vec<TokenStream> = (!op.security.is_empty())
+        .then(|| quote!(security: #security,))
+        .into_iter()
+        .chain(take.then(|| quote!(takes_body: true,)))
+        .chain((!produces.is_empty()).then(|| quote!(produces: &[#(#produces),*],)))
+        .chain(ranges.then(|| quote!(ranges: true,)))
+        .collect();
+    let new = quote!(runtime::Op::new(#op_name, #method, #route, #span, error_schema));
+    let op_value = if set.is_empty() { new } else { quote!(runtime::Op { #(#set)* ..#new }) };
     quote! {
-        static #info: runtime::Op = runtime::Op {
-            name: #op_name,
-            method: #method,
-            route: #route,
-            span: #span,
-            security: #security,
-            takes_body: #take,
-            produces: &[#(#produces),*],
-            ranges: #ranges,
-            errors: error_schema,
-        };
+        static #info: runtime::Op = #op_value;
         async fn #name<A: #tr>(api: &A, routed: runtime::Routed<'_>, call: runtime::Call<'_, Option<A::Principal>, #id>) -> runtime::Response {
             let steps = runtime::Steps { api, decode: #decode, call: |a, p, c| Box::pin(a.#name(p, c)), encode: #encode };
             #serve

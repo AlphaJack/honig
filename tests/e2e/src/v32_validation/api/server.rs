@@ -234,15 +234,8 @@ async fn dispatch<A: Api>(
     }
 }
 static CREATE_USER_OP: runtime::Op = runtime::Op {
-    name: "create_user",
-    method: "POST",
-    route: "/users",
-    span: "POST /users",
-    security: &[],
-    takes_body: false,
     produces: &["application/json"],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new("create_user", "POST", "/users", "POST /users", error_schema)
 };
 async fn create_user<A: Api>(
     api: &A,
@@ -296,17 +289,13 @@ fn create_user_encode(
         },
     )
 }
-static CREATE_SHIPMENT_OP: runtime::Op = runtime::Op {
-    name: "create_shipment",
-    method: "POST",
-    route: "/shipments",
-    span: "POST /shipments",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static CREATE_SHIPMENT_OP: runtime::Op = runtime::Op::new(
+    "create_shipment",
+    "POST",
+    "/shipments",
+    "POST /shipments",
+    error_schema,
+);
 async fn create_shipment<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -346,15 +335,8 @@ fn create_shipment_encode(
     )
 }
 static LOGIN_OP: runtime::Op = runtime::Op {
-    name: "login",
-    method: "POST",
-    route: "/logins",
-    span: "POST /logins",
-    security: &[],
-    takes_body: false,
     produces: &["application/json"],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new("login", "POST", "/logins", "POST /logins", error_schema)
 };
 async fn login<A: Api>(
     api: &A,
@@ -384,17 +366,13 @@ fn login_encode(
     let ops::login::Response::Created(body) = resp;
     Ok(runtime::body_response(201, "application/json", runtime::json_encode(&body)?))
 }
-static ADD_MEMBER_OP: runtime::Op = runtime::Op {
-    name: "add_member",
-    method: "POST",
-    route: "/members",
-    span: "POST /members",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static ADD_MEMBER_OP: runtime::Op = runtime::Op::new(
+    "add_member",
+    "POST",
+    "/members",
+    "POST /members",
+    error_schema,
+);
 async fn add_member<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -436,17 +414,13 @@ fn add_member_encode(resp: &ops::add_member::Response) -> runtime::Response {
     let ops::add_member::Response::Created = resp;
     runtime::new_response(201)
 }
-static ADD_CLOSED_OP: runtime::Op = runtime::Op {
-    name: "add_closed",
-    method: "POST",
-    route: "/closed",
-    span: "POST /closed",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static ADD_CLOSED_OP: runtime::Op = runtime::Op::new(
+    "add_closed",
+    "POST",
+    "/closed",
+    "POST /closed",
+    error_schema,
+);
 async fn add_closed<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -493,17 +467,13 @@ fn add_closed_encode(resp: &ops::add_closed::Response) -> runtime::Response {
     let ops::add_closed::Response::Created = resp;
     runtime::new_response(201)
 }
-static ADD_BADGE_OP: runtime::Op = runtime::Op {
-    name: "add_badge",
-    method: "POST",
-    route: "/badges",
-    span: "POST /badges",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static ADD_BADGE_OP: runtime::Op = runtime::Op::new(
+    "add_badge",
+    "POST",
+    "/badges",
+    "POST /badges",
+    error_schema,
+);
 async fn add_badge<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,

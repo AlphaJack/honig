@@ -165,15 +165,14 @@ async fn dispatch<A: Api>(
     }
 }
 static LIST_PRODUCTS_OP: runtime::Op = runtime::Op {
-    name: "list_products",
-    method: "GET",
-    route: "/products",
-    span: "GET /products",
-    security: &[],
-    takes_body: false,
     produces: &["application/json"],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new(
+        "list_products",
+        "GET",
+        "/products",
+        "GET /products",
+        error_schema,
+    )
 };
 async fn list_products<A: Api>(
     api: &A,
@@ -195,15 +194,8 @@ fn list_products_encode(
     Ok(runtime::body_response(200, "application/json", runtime::json_encode(&body)?))
 }
 static TAG_TREE_OP: runtime::Op = runtime::Op {
-    name: "tag_tree",
-    method: "GET",
-    route: "/tags",
-    span: "GET /tags",
-    security: &[],
-    takes_body: false,
     produces: &["application/json"],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new("tag_tree", "GET", "/tags", "GET /tags", error_schema)
 };
 async fn tag_tree<A: Api>(
     api: &A,
@@ -225,15 +217,8 @@ fn tag_tree_encode(
     Ok(runtime::body_response(200, "application/json", runtime::json_encode(&body)?))
 }
 static ANY_PAGE_OP: runtime::Op = runtime::Op {
-    name: "any_page",
-    method: "GET",
-    route: "/any",
-    span: "GET /any",
-    security: &[],
-    takes_body: false,
     produces: &["application/json"],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new("any_page", "GET", "/any", "GET /any", error_schema)
 };
 async fn any_page<A: Api>(
     api: &A,

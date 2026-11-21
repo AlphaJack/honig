@@ -234,15 +234,8 @@ async fn dispatch<A: Api>(
     }
 }
 static LIST_ISSUES_OP: runtime::Op = runtime::Op {
-    name: "list_issues",
-    method: "GET",
-    route: "/issues",
-    span: "GET /issues",
     security: ops::SECURITY_0,
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new("list_issues", "GET", "/issues", "GET /issues", error_schema)
 };
 async fn list_issues<A: Api>(
     api: &A,
@@ -262,15 +255,8 @@ fn list_issues_encode(resp: &ops::list_issues::Response) -> runtime::Response {
     runtime::new_response(204)
 }
 static CREATE_ISSUE_OP: runtime::Op = runtime::Op {
-    name: "create_issue",
-    method: "POST",
-    route: "/issues",
-    span: "POST /issues",
     security: ops::SECURITY_1,
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new("create_issue", "POST", "/issues", "POST /issues", error_schema)
 };
 async fn create_issue<A: Api>(
     api: &A,
@@ -289,17 +275,13 @@ fn create_issue_encode(resp: &ops::create_issue::Response) -> runtime::Response 
     let ops::create_issue::Response::NoContent = resp;
     runtime::new_response(204)
 }
-static OPEN_OP: runtime::Op = runtime::Op {
-    name: "open",
-    method: "GET",
-    route: "/public",
-    span: "GET /public",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static OPEN_OP: runtime::Op = runtime::Op::new(
+    "open",
+    "GET",
+    "/public",
+    "GET /public",
+    error_schema,
+);
 async fn open<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,

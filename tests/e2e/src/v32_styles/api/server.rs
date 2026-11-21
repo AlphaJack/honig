@@ -640,17 +640,13 @@ async fn dispatch_1<A: Api>(
         Op1::O32 => Box::pin(cookie_to(api, routed, call)).await,
     }
 }
-static MATRIX_FS_OP: runtime::Op = runtime::Op {
-    name: "matrix_fs",
-    method: "GET",
-    route: "/matrix-f-s/{color}",
-    span: "GET /matrix-f-s/{color}",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static MATRIX_FS_OP: runtime::Op = runtime::Op::new(
+    "matrix_fs",
+    "GET",
+    "/matrix-f-s/{color}",
+    "GET /matrix-f-s/{color}",
+    error_schema,
+);
 async fn matrix_fs<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -676,17 +672,13 @@ fn matrix_fs_encode(resp: &ops::matrix_fs::Response) -> runtime::Response {
     let ops::matrix_fs::Response::NoContent = resp;
     runtime::new_response(204)
 }
-static MATRIX_FA_OP: runtime::Op = runtime::Op {
-    name: "matrix_fa",
-    method: "GET",
-    route: "/matrix-f-a/{color}",
-    span: "GET /matrix-f-a/{color}",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static MATRIX_FA_OP: runtime::Op = runtime::Op::new(
+    "matrix_fa",
+    "GET",
+    "/matrix-f-a/{color}",
+    "GET /matrix-f-a/{color}",
+    error_schema,
+);
 async fn matrix_fa<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -723,17 +715,13 @@ fn matrix_fa_encode(resp: &ops::matrix_fa::Response) -> runtime::Response {
     let ops::matrix_fa::Response::NoContent = resp;
     runtime::new_response(204)
 }
-static MATRIX_FO_OP: runtime::Op = runtime::Op {
-    name: "matrix_fo",
-    method: "GET",
-    route: "/matrix-f-o/{color}",
-    span: "GET /matrix-f-o/{color}",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static MATRIX_FO_OP: runtime::Op = runtime::Op::new(
+    "matrix_fo",
+    "GET",
+    "/matrix-f-o/{color}",
+    "GET /matrix-f-o/{color}",
+    error_schema,
+);
 async fn matrix_fo<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -770,17 +758,13 @@ fn matrix_fo_encode(resp: &ops::matrix_fo::Response) -> runtime::Response {
     let ops::matrix_fo::Response::NoContent = resp;
     runtime::new_response(204)
 }
-static MATRIX_TA_OP: runtime::Op = runtime::Op {
-    name: "matrix_ta",
-    method: "GET",
-    route: "/matrix-t-a/{color}",
-    span: "GET /matrix-t-a/{color}",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static MATRIX_TA_OP: runtime::Op = runtime::Op::new(
+    "matrix_ta",
+    "GET",
+    "/matrix-t-a/{color}",
+    "GET /matrix-t-a/{color}",
+    error_schema,
+);
 async fn matrix_ta<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -817,17 +801,13 @@ fn matrix_ta_encode(resp: &ops::matrix_ta::Response) -> runtime::Response {
     let ops::matrix_ta::Response::NoContent = resp;
     runtime::new_response(204)
 }
-static MATRIX_TO_OP: runtime::Op = runtime::Op {
-    name: "matrix_to",
-    method: "GET",
-    route: "/matrix-t-o/{color}",
-    span: "GET /matrix-t-o/{color}",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static MATRIX_TO_OP: runtime::Op = runtime::Op::new(
+    "matrix_to",
+    "GET",
+    "/matrix-t-o/{color}",
+    "GET /matrix-t-o/{color}",
+    error_schema,
+);
 async fn matrix_to<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -864,17 +844,13 @@ fn matrix_to_encode(resp: &ops::matrix_to::Response) -> runtime::Response {
     let ops::matrix_to::Response::NoContent = resp;
     runtime::new_response(204)
 }
-static LABEL_FS_OP: runtime::Op = runtime::Op {
-    name: "label_fs",
-    method: "GET",
-    route: "/label-f-s/{color}",
-    span: "GET /label-f-s/{color}",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static LABEL_FS_OP: runtime::Op = runtime::Op::new(
+    "label_fs",
+    "GET",
+    "/label-f-s/{color}",
+    "GET /label-f-s/{color}",
+    error_schema,
+);
 async fn label_fs<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -900,17 +876,13 @@ fn label_fs_encode(resp: &ops::label_fs::Response) -> runtime::Response {
     let ops::label_fs::Response::NoContent = resp;
     runtime::new_response(204)
 }
-static LABEL_FA_OP: runtime::Op = runtime::Op {
-    name: "label_fa",
-    method: "GET",
-    route: "/label-f-a/{color}",
-    span: "GET /label-f-a/{color}",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static LABEL_FA_OP: runtime::Op = runtime::Op::new(
+    "label_fa",
+    "GET",
+    "/label-f-a/{color}",
+    "GET /label-f-a/{color}",
+    error_schema,
+);
 async fn label_fa<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -947,17 +919,13 @@ fn label_fa_encode(resp: &ops::label_fa::Response) -> runtime::Response {
     let ops::label_fa::Response::NoContent = resp;
     runtime::new_response(204)
 }
-static LABEL_FO_OP: runtime::Op = runtime::Op {
-    name: "label_fo",
-    method: "GET",
-    route: "/label-f-o/{color}",
-    span: "GET /label-f-o/{color}",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static LABEL_FO_OP: runtime::Op = runtime::Op::new(
+    "label_fo",
+    "GET",
+    "/label-f-o/{color}",
+    "GET /label-f-o/{color}",
+    error_schema,
+);
 async fn label_fo<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -994,17 +962,13 @@ fn label_fo_encode(resp: &ops::label_fo::Response) -> runtime::Response {
     let ops::label_fo::Response::NoContent = resp;
     runtime::new_response(204)
 }
-static LABEL_TA_OP: runtime::Op = runtime::Op {
-    name: "label_ta",
-    method: "GET",
-    route: "/label-t-a/{color}",
-    span: "GET /label-t-a/{color}",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static LABEL_TA_OP: runtime::Op = runtime::Op::new(
+    "label_ta",
+    "GET",
+    "/label-t-a/{color}",
+    "GET /label-t-a/{color}",
+    error_schema,
+);
 async fn label_ta<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -1041,17 +1005,13 @@ fn label_ta_encode(resp: &ops::label_ta::Response) -> runtime::Response {
     let ops::label_ta::Response::NoContent = resp;
     runtime::new_response(204)
 }
-static LABEL_TO_OP: runtime::Op = runtime::Op {
-    name: "label_to",
-    method: "GET",
-    route: "/label-t-o/{color}",
-    span: "GET /label-t-o/{color}",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static LABEL_TO_OP: runtime::Op = runtime::Op::new(
+    "label_to",
+    "GET",
+    "/label-t-o/{color}",
+    "GET /label-t-o/{color}",
+    error_schema,
+);
 async fn label_to<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -1088,17 +1048,13 @@ fn label_to_encode(resp: &ops::label_to::Response) -> runtime::Response {
     let ops::label_to::Response::NoContent = resp;
     runtime::new_response(204)
 }
-static SIMPLE_FA_OP: runtime::Op = runtime::Op {
-    name: "simple_fa",
-    method: "GET",
-    route: "/simple-f-a/{color}",
-    span: "GET /simple-f-a/{color}",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static SIMPLE_FA_OP: runtime::Op = runtime::Op::new(
+    "simple_fa",
+    "GET",
+    "/simple-f-a/{color}",
+    "GET /simple-f-a/{color}",
+    error_schema,
+);
 async fn simple_fa<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -1135,17 +1091,13 @@ fn simple_fa_encode(resp: &ops::simple_fa::Response) -> runtime::Response {
     let ops::simple_fa::Response::NoContent = resp;
     runtime::new_response(204)
 }
-static SIMPLE_FO_OP: runtime::Op = runtime::Op {
-    name: "simple_fo",
-    method: "GET",
-    route: "/simple-f-o/{color}",
-    span: "GET /simple-f-o/{color}",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static SIMPLE_FO_OP: runtime::Op = runtime::Op::new(
+    "simple_fo",
+    "GET",
+    "/simple-f-o/{color}",
+    "GET /simple-f-o/{color}",
+    error_schema,
+);
 async fn simple_fo<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -1182,17 +1134,13 @@ fn simple_fo_encode(resp: &ops::simple_fo::Response) -> runtime::Response {
     let ops::simple_fo::Response::NoContent = resp;
     runtime::new_response(204)
 }
-static SIMPLE_TA_OP: runtime::Op = runtime::Op {
-    name: "simple_ta",
-    method: "GET",
-    route: "/simple-t-a/{color}",
-    span: "GET /simple-t-a/{color}",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static SIMPLE_TA_OP: runtime::Op = runtime::Op::new(
+    "simple_ta",
+    "GET",
+    "/simple-t-a/{color}",
+    "GET /simple-t-a/{color}",
+    error_schema,
+);
 async fn simple_ta<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -1229,17 +1177,13 @@ fn simple_ta_encode(resp: &ops::simple_ta::Response) -> runtime::Response {
     let ops::simple_ta::Response::NoContent = resp;
     runtime::new_response(204)
 }
-static SIMPLE_TO_OP: runtime::Op = runtime::Op {
-    name: "simple_to",
-    method: "GET",
-    route: "/simple-t-o/{color}",
-    span: "GET /simple-t-o/{color}",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static SIMPLE_TO_OP: runtime::Op = runtime::Op::new(
+    "simple_to",
+    "GET",
+    "/simple-t-o/{color}",
+    "GET /simple-t-o/{color}",
+    error_schema,
+);
 async fn simple_to<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -1276,17 +1220,13 @@ fn simple_to_encode(resp: &ops::simple_to::Response) -> runtime::Response {
     let ops::simple_to::Response::NoContent = resp;
     runtime::new_response(204)
 }
-static FORM_FA_OP: runtime::Op = runtime::Op {
-    name: "form_fa",
-    method: "GET",
-    route: "/form-f-a",
-    span: "GET /form-f-a",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static FORM_FA_OP: runtime::Op = runtime::Op::new(
+    "form_fa",
+    "GET",
+    "/form-f-a",
+    "GET /form-f-a",
+    error_schema,
+);
 async fn form_fa<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -1322,17 +1262,13 @@ fn form_fa_encode(resp: &ops::form_fa::Response) -> runtime::Response {
     let ops::form_fa::Response::NoContent = resp;
     runtime::new_response(204)
 }
-static FORM_FO_OP: runtime::Op = runtime::Op {
-    name: "form_fo",
-    method: "GET",
-    route: "/form-f-o",
-    span: "GET /form-f-o",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static FORM_FO_OP: runtime::Op = runtime::Op::new(
+    "form_fo",
+    "GET",
+    "/form-f-o",
+    "GET /form-f-o",
+    error_schema,
+);
 async fn form_fo<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -1368,17 +1304,13 @@ fn form_fo_encode(resp: &ops::form_fo::Response) -> runtime::Response {
     let ops::form_fo::Response::NoContent = resp;
     runtime::new_response(204)
 }
-static FORM_TA_OP: runtime::Op = runtime::Op {
-    name: "form_ta",
-    method: "GET",
-    route: "/form-t-a",
-    span: "GET /form-t-a",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static FORM_TA_OP: runtime::Op = runtime::Op::new(
+    "form_ta",
+    "GET",
+    "/form-t-a",
+    "GET /form-t-a",
+    error_schema,
+);
 async fn form_ta<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -1414,17 +1346,13 @@ fn form_ta_encode(resp: &ops::form_ta::Response) -> runtime::Response {
     let ops::form_ta::Response::NoContent = resp;
     runtime::new_response(204)
 }
-static FORM_TO_OP: runtime::Op = runtime::Op {
-    name: "form_to",
-    method: "GET",
-    route: "/form-t-o",
-    span: "GET /form-t-o",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static FORM_TO_OP: runtime::Op = runtime::Op::new(
+    "form_to",
+    "GET",
+    "/form-t-o",
+    "GET /form-t-o",
+    error_schema,
+);
 async fn form_to<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -1463,17 +1391,13 @@ fn form_to_encode(resp: &ops::form_to::Response) -> runtime::Response {
     let ops::form_to::Response::NoContent = resp;
     runtime::new_response(204)
 }
-static SPACE_FA_OP: runtime::Op = runtime::Op {
-    name: "space_fa",
-    method: "GET",
-    route: "/space-f-a",
-    span: "GET /space-f-a",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static SPACE_FA_OP: runtime::Op = runtime::Op::new(
+    "space_fa",
+    "GET",
+    "/space-f-a",
+    "GET /space-f-a",
+    error_schema,
+);
 async fn space_fa<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -1509,17 +1433,13 @@ fn space_fa_encode(resp: &ops::space_fa::Response) -> runtime::Response {
     let ops::space_fa::Response::NoContent = resp;
     runtime::new_response(204)
 }
-static SPACE_FO_OP: runtime::Op = runtime::Op {
-    name: "space_fo",
-    method: "GET",
-    route: "/space-f-o",
-    span: "GET /space-f-o",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static SPACE_FO_OP: runtime::Op = runtime::Op::new(
+    "space_fo",
+    "GET",
+    "/space-f-o",
+    "GET /space-f-o",
+    error_schema,
+);
 async fn space_fo<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -1555,17 +1475,13 @@ fn space_fo_encode(resp: &ops::space_fo::Response) -> runtime::Response {
     let ops::space_fo::Response::NoContent = resp;
     runtime::new_response(204)
 }
-static PIPE_FA_OP: runtime::Op = runtime::Op {
-    name: "pipe_fa",
-    method: "GET",
-    route: "/pipe-f-a",
-    span: "GET /pipe-f-a",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static PIPE_FA_OP: runtime::Op = runtime::Op::new(
+    "pipe_fa",
+    "GET",
+    "/pipe-f-a",
+    "GET /pipe-f-a",
+    error_schema,
+);
 async fn pipe_fa<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -1601,17 +1517,13 @@ fn pipe_fa_encode(resp: &ops::pipe_fa::Response) -> runtime::Response {
     let ops::pipe_fa::Response::NoContent = resp;
     runtime::new_response(204)
 }
-static PIPE_FO_OP: runtime::Op = runtime::Op {
-    name: "pipe_fo",
-    method: "GET",
-    route: "/pipe-f-o",
-    span: "GET /pipe-f-o",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static PIPE_FO_OP: runtime::Op = runtime::Op::new(
+    "pipe_fo",
+    "GET",
+    "/pipe-f-o",
+    "GET /pipe-f-o",
+    error_schema,
+);
 async fn pipe_fo<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -1647,17 +1559,13 @@ fn pipe_fo_encode(resp: &ops::pipe_fo::Response) -> runtime::Response {
     let ops::pipe_fo::Response::NoContent = resp;
     runtime::new_response(204)
 }
-static DEEP_O_OP: runtime::Op = runtime::Op {
-    name: "deep_o",
-    method: "GET",
-    route: "/deep-o",
-    span: "GET /deep-o",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static DEEP_O_OP: runtime::Op = runtime::Op::new(
+    "deep_o",
+    "GET",
+    "/deep-o",
+    "GET /deep-o",
+    error_schema,
+);
 async fn deep_o<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -1693,17 +1601,13 @@ fn deep_o_encode(resp: &ops::deep_o::Response) -> runtime::Response {
     let ops::deep_o::Response::NoContent = resp;
     runtime::new_response(204)
 }
-static HEADER_FA_OP: runtime::Op = runtime::Op {
-    name: "header_fa",
-    method: "GET",
-    route: "/header-f-a",
-    span: "GET /header-f-a",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static HEADER_FA_OP: runtime::Op = runtime::Op::new(
+    "header_fa",
+    "GET",
+    "/header-f-a",
+    "GET /header-f-a",
+    error_schema,
+);
 async fn header_fa<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -1736,17 +1640,13 @@ fn header_fa_encode(resp: &ops::header_fa::Response) -> runtime::Response {
     let ops::header_fa::Response::NoContent = resp;
     runtime::new_response(204)
 }
-static HEADER_FO_OP: runtime::Op = runtime::Op {
-    name: "header_fo",
-    method: "GET",
-    route: "/header-f-o",
-    span: "GET /header-f-o",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static HEADER_FO_OP: runtime::Op = runtime::Op::new(
+    "header_fo",
+    "GET",
+    "/header-f-o",
+    "GET /header-f-o",
+    error_schema,
+);
 async fn header_fo<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -1779,17 +1679,13 @@ fn header_fo_encode(resp: &ops::header_fo::Response) -> runtime::Response {
     let ops::header_fo::Response::NoContent = resp;
     runtime::new_response(204)
 }
-static HEADER_TA_OP: runtime::Op = runtime::Op {
-    name: "header_ta",
-    method: "GET",
-    route: "/header-t-a",
-    span: "GET /header-t-a",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static HEADER_TA_OP: runtime::Op = runtime::Op::new(
+    "header_ta",
+    "GET",
+    "/header-t-a",
+    "GET /header-t-a",
+    error_schema,
+);
 async fn header_ta<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -1822,17 +1718,13 @@ fn header_ta_encode(resp: &ops::header_ta::Response) -> runtime::Response {
     let ops::header_ta::Response::NoContent = resp;
     runtime::new_response(204)
 }
-static HEADER_TO_OP: runtime::Op = runtime::Op {
-    name: "header_to",
-    method: "GET",
-    route: "/header-t-o",
-    span: "GET /header-t-o",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static HEADER_TO_OP: runtime::Op = runtime::Op::new(
+    "header_to",
+    "GET",
+    "/header-t-o",
+    "GET /header-t-o",
+    error_schema,
+);
 async fn header_to<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -1865,17 +1757,13 @@ fn header_to_encode(resp: &ops::header_to::Response) -> runtime::Response {
     let ops::header_to::Response::NoContent = resp;
     runtime::new_response(204)
 }
-static COOKIE_FORM_FA_OP: runtime::Op = runtime::Op {
-    name: "cookie_form_fa",
-    method: "GET",
-    route: "/cookie-form-f-a",
-    span: "GET /cookie-form-f-a",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static COOKIE_FORM_FA_OP: runtime::Op = runtime::Op::new(
+    "cookie_form_fa",
+    "GET",
+    "/cookie-form-f-a",
+    "GET /cookie-form-f-a",
+    error_schema,
+);
 async fn cookie_form_fa<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -1910,17 +1798,13 @@ fn cookie_form_fa_encode(resp: &ops::cookie_form_fa::Response) -> runtime::Respo
     let ops::cookie_form_fa::Response::NoContent = resp;
     runtime::new_response(204)
 }
-static COOKIE_FORM_FO_OP: runtime::Op = runtime::Op {
-    name: "cookie_form_fo",
-    method: "GET",
-    route: "/cookie-form-f-o",
-    span: "GET /cookie-form-f-o",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static COOKIE_FORM_FO_OP: runtime::Op = runtime::Op::new(
+    "cookie_form_fo",
+    "GET",
+    "/cookie-form-f-o",
+    "GET /cookie-form-f-o",
+    error_schema,
+);
 async fn cookie_form_fo<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -1955,17 +1839,13 @@ fn cookie_form_fo_encode(resp: &ops::cookie_form_fo::Response) -> runtime::Respo
     let ops::cookie_form_fo::Response::NoContent = resp;
     runtime::new_response(204)
 }
-static COOKIE_FA_OP: runtime::Op = runtime::Op {
-    name: "cookie_fa",
-    method: "GET",
-    route: "/cookie-f-a",
-    span: "GET /cookie-f-a",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static COOKIE_FA_OP: runtime::Op = runtime::Op::new(
+    "cookie_fa",
+    "GET",
+    "/cookie-f-a",
+    "GET /cookie-f-a",
+    error_schema,
+);
 async fn cookie_fa<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -2000,17 +1880,13 @@ fn cookie_fa_encode(resp: &ops::cookie_fa::Response) -> runtime::Response {
     let ops::cookie_fa::Response::NoContent = resp;
     runtime::new_response(204)
 }
-static COOKIE_FO_OP: runtime::Op = runtime::Op {
-    name: "cookie_fo",
-    method: "GET",
-    route: "/cookie-f-o",
-    span: "GET /cookie-f-o",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static COOKIE_FO_OP: runtime::Op = runtime::Op::new(
+    "cookie_fo",
+    "GET",
+    "/cookie-f-o",
+    "GET /cookie-f-o",
+    error_schema,
+);
 async fn cookie_fo<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -2045,17 +1921,13 @@ fn cookie_fo_encode(resp: &ops::cookie_fo::Response) -> runtime::Response {
     let ops::cookie_fo::Response::NoContent = resp;
     runtime::new_response(204)
 }
-static COOKIE_TA_OP: runtime::Op = runtime::Op {
-    name: "cookie_ta",
-    method: "GET",
-    route: "/cookie-t-a",
-    span: "GET /cookie-t-a",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static COOKIE_TA_OP: runtime::Op = runtime::Op::new(
+    "cookie_ta",
+    "GET",
+    "/cookie-t-a",
+    "GET /cookie-t-a",
+    error_schema,
+);
 async fn cookie_ta<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -2090,17 +1962,13 @@ fn cookie_ta_encode(resp: &ops::cookie_ta::Response) -> runtime::Response {
     let ops::cookie_ta::Response::NoContent = resp;
     runtime::new_response(204)
 }
-static COOKIE_TO_OP: runtime::Op = runtime::Op {
-    name: "cookie_to",
-    method: "GET",
-    route: "/cookie-t-o",
-    span: "GET /cookie-t-o",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static COOKIE_TO_OP: runtime::Op = runtime::Op::new(
+    "cookie_to",
+    "GET",
+    "/cookie-t-o",
+    "GET /cookie-t-o",
+    error_schema,
+);
 async fn cookie_to<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,

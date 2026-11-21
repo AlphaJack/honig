@@ -153,15 +153,14 @@ async fn dispatch<A: Api>(
     }
 }
 static GET_FILE_OP: runtime::Op = runtime::Op {
-    name: "get_file",
-    method: "GET",
-    route: "/files/{path}",
-    span: "GET /files/{path}",
-    security: &[],
-    takes_body: false,
     produces: &["application/json"],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new(
+        "get_file",
+        "GET",
+        "/files/{path}",
+        "GET /files/{path}",
+        error_schema,
+    )
 };
 async fn get_file<A: Api>(
     api: &A,
@@ -199,17 +198,13 @@ fn get_file_encode(
     let ops::get_file::Response::Ok(body) = resp;
     Ok(runtime::body_response(200, "application/json", runtime::json_encode(&body)?))
 }
-static ADMIN_OP: runtime::Op = runtime::Op {
-    name: "admin",
-    method: "GET",
-    route: "/admin",
-    span: "GET /admin",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static ADMIN_OP: runtime::Op = runtime::Op::new(
+    "admin",
+    "GET",
+    "/admin",
+    "GET /admin",
+    error_schema,
+);
 async fn admin<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,

@@ -245,15 +245,8 @@ async fn dispatch<A: Api>(
     }
 }
 static PRIVATE_OP: runtime::Op = runtime::Op {
-    name: "private",
-    method: "GET",
-    route: "/private",
-    span: "GET /private",
     security: ops::SECURITY_0,
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new("private", "GET", "/private", "GET /private", error_schema)
 };
 async fn private<A: Api>(
     api: &A,
@@ -273,15 +266,8 @@ fn private_encode(resp: &ops::private::Response) -> runtime::Response {
     runtime::new_response(204)
 }
 static TOKEN_OP: runtime::Op = runtime::Op {
-    name: "token",
-    method: "GET",
-    route: "/token",
-    span: "GET /token",
     security: ops::SECURITY_1,
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new("token", "GET", "/token", "GET /token", error_schema)
 };
 async fn token<A: Api>(
     api: &A,
@@ -301,15 +287,8 @@ fn token_encode(resp: &ops::token::Response) -> runtime::Response {
     runtime::new_response(204)
 }
 static KEYED_OP: runtime::Op = runtime::Op {
-    name: "keyed",
-    method: "GET",
-    route: "/keyed",
-    span: "GET /keyed",
     security: ops::SECURITY_2,
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new("keyed", "GET", "/keyed", "GET /keyed", error_schema)
 };
 async fn keyed<A: Api>(
     api: &A,

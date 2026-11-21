@@ -168,15 +168,14 @@ async fn dispatch<A: Api>(
     }
 }
 static LIST_ITEMS_OP: runtime::Op = runtime::Op {
-    name: "list_items",
-    method: "GET",
-    route: "/items/{ids}",
-    span: "GET /items/{ids}",
-    security: &[],
-    takes_body: false,
     produces: &["application/json"],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new(
+        "list_items",
+        "GET",
+        "/items/{ids}",
+        "GET /items/{ids}",
+        error_schema,
+    )
 };
 async fn list_items<A: Api>(
     api: &A,
@@ -309,17 +308,13 @@ fn list_items_encode(
     let ops::list_items::Response::Ok(body) = resp;
     Ok(runtime::body_response(200, "application/json", runtime::json_encode(&body)?))
 }
-static UPLOAD_OP: runtime::Op = runtime::Op {
-    name: "upload",
-    method: "POST",
-    route: "/upload",
-    span: "POST /upload",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static UPLOAD_OP: runtime::Op = runtime::Op::new(
+    "upload",
+    "POST",
+    "/upload",
+    "POST /upload",
+    error_schema,
+);
 async fn upload<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -351,15 +346,8 @@ fn upload_encode(resp: &ops::upload::Response) -> runtime::Response {
     runtime::new_response(204)
 }
 static LIST_KEYS_OP: runtime::Op = runtime::Op {
-    name: "list_keys",
-    method: "GET",
-    route: "/keys",
-    span: "GET /keys",
-    security: &[],
-    takes_body: false,
     produces: &["application/json"],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new("list_keys", "GET", "/keys", "GET /keys", error_schema)
 };
 async fn list_keys<A: Api>(
     api: &A,

@@ -255,15 +255,9 @@ async fn dispatch<A: Api>(
     }
 }
 static LIST_ORDERS_OP: runtime::Op = runtime::Op {
-    name: "list_orders",
-    method: "GET",
-    route: "/orders",
-    span: "GET /orders",
     security: ops::SECURITY_0,
-    takes_body: false,
     produces: &["application/json"],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new("list_orders", "GET", "/orders", "GET /orders", error_schema)
 };
 async fn list_orders<A: Api>(
     api: &A,
@@ -356,15 +350,9 @@ fn list_orders_encode(
     )
 }
 static CREATE_ORDER_OP: runtime::Op = runtime::Op {
-    name: "create_order",
-    method: "POST",
-    route: "/orders",
-    span: "POST /orders",
     security: ops::SECURITY_0,
-    takes_body: false,
     produces: &["application/json"],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new("create_order", "POST", "/orders", "POST /orders", error_schema)
 };
 async fn create_order<A: Api>(
     api: &A,
@@ -418,15 +406,15 @@ fn create_order_encode(
     )
 }
 static GET_ORDER_OP: runtime::Op = runtime::Op {
-    name: "get_order",
-    method: "GET",
-    route: "/orders/{orderId}",
-    span: "GET /orders/{orderId}",
     security: ops::SECURITY_0,
-    takes_body: false,
     produces: &["application/json"],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new(
+        "get_order",
+        "GET",
+        "/orders/{orderId}",
+        "GET /orders/{orderId}",
+        error_schema,
+    )
 };
 async fn get_order<A: Api>(
     api: &A,
@@ -484,15 +472,14 @@ fn get_order_encode(
     )
 }
 static UPLOAD_DOCUMENT_OP: runtime::Op = runtime::Op {
-    name: "upload_document",
-    method: "POST",
-    route: "/orders/{orderId}/documents",
-    span: "POST /orders/{orderId}/documents",
     security: ops::SECURITY_0,
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new(
+        "upload_document",
+        "POST",
+        "/orders/{orderId}/documents",
+        "POST /orders/{orderId}/documents",
+        error_schema,
+    )
 };
 async fn upload_document<A: Api>(
     api: &A,

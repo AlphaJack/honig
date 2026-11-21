@@ -118,17 +118,13 @@ impl<A: Webhooks> runtime::Operations for WebhookRoutes<A> {
     }
 }
 static WEBHOOK_METHODS: &[(&str, &str)] = &[("orderShipped", "POST")];
-static ORDER_SHIPPED_POST_OP: runtime::Op = runtime::Op {
-    name: "order_shipped_post",
-    method: "POST",
-    route: "orderShipped",
-    span: "POST orderShipped",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static ORDER_SHIPPED_POST_OP: runtime::Op = runtime::Op::new(
+    "order_shipped_post",
+    "POST",
+    "orderShipped",
+    "POST orderShipped",
+    error_schema,
+);
 async fn order_shipped_post<A: Webhooks>(
     api: &A,
     routed: runtime::Routed<'_>,

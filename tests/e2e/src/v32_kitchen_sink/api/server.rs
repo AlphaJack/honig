@@ -665,15 +665,8 @@ async fn dispatch<A: Api>(
     }
 }
 static SUBMIT_FORM_OP: runtime::Op = runtime::Op {
-    name: "submit_form",
-    method: "POST",
-    route: "/forms",
-    span: "POST /forms",
     security: ops::SECURITY_0,
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new("submit_form", "POST", "/forms", "POST /forms", error_schema)
 };
 async fn submit_form<A: Api>(
     api: &A,
@@ -713,15 +706,10 @@ fn submit_form_encode(resp: &ops::submit_form::Response) -> runtime::Response {
     runtime::new_response(204)
 }
 static PUT_BLOB_OP: runtime::Op = runtime::Op {
-    name: "put_blob",
-    method: "PUT",
-    route: "/blobs/{id}",
-    span: "PUT /blobs/{id}",
     security: ops::SECURITY_0,
     takes_body: true,
     produces: &["application/octet-stream"],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new("put_blob", "PUT", "/blobs/{id}", "PUT /blobs/{id}", error_schema)
 };
 async fn put_blob<A: Api>(
     api: &A,
@@ -770,15 +758,15 @@ fn put_blob_encode(
     })
 }
 static LIST_PRODUCTS_OP: runtime::Op = runtime::Op {
-    name: "list_products",
-    method: "GET",
-    route: "/products",
-    span: "GET /products",
     security: ops::SECURITY_0,
-    takes_body: false,
     produces: &["application/json", "application/jsonl"],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new(
+        "list_products",
+        "GET",
+        "/products",
+        "GET /products",
+        error_schema,
+    )
 };
 async fn list_products<A: Api>(
     api: &A,
@@ -904,15 +892,14 @@ fn list_products_encode(
     )
 }
 static CREATE_PRODUCT_OP: runtime::Op = runtime::Op {
-    name: "create_product",
-    method: "POST",
-    route: "/products",
-    span: "POST /products",
     security: ops::SECURITY_1,
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new(
+        "create_product",
+        "POST",
+        "/products",
+        "POST /products",
+        error_schema,
+    )
 };
 async fn create_product<A: Api>(
     api: &A,
@@ -993,15 +980,15 @@ fn create_product_encode(resp: &ops::create_product::Response) -> runtime::Respo
     runtime::new_response(201)
 }
 static SEARCH_PRODUCTS_OP: runtime::Op = runtime::Op {
-    name: "search_products",
-    method: "QUERY",
-    route: "/products",
-    span: "QUERY /products",
     security: ops::SECURITY_0,
-    takes_body: false,
     produces: &["application/json"],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new(
+        "search_products",
+        "QUERY",
+        "/products",
+        "QUERY /products",
+        error_schema,
+    )
 };
 async fn search_products<A: Api>(
     api: &A,
@@ -1043,15 +1030,14 @@ fn search_products_encode(
     Ok(runtime::body_response(200, "application/json", runtime::json_encode(&body)?))
 }
 static COPY_PRODUCTS_OP: runtime::Op = runtime::Op {
-    name: "copy_products",
-    method: "COPY",
-    route: "/products",
-    span: "COPY /products",
     security: ops::SECURITY_0,
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new(
+        "copy_products",
+        "COPY",
+        "/products",
+        "COPY /products",
+        error_schema,
+    )
 };
 async fn copy_products<A: Api>(
     api: &A,
@@ -1083,15 +1069,15 @@ fn copy_products_encode(resp: &ops::copy_products::Response) -> runtime::Respons
     runtime::new_response(204)
 }
 static GET_PRODUCT_OP: runtime::Op = runtime::Op {
-    name: "get_product",
-    method: "GET",
-    route: "/products/{productId}",
-    span: "GET /products/{productId}",
     security: ops::SECURITY_0,
-    takes_body: false,
     produces: &["application/json"],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new(
+        "get_product",
+        "GET",
+        "/products/{productId}",
+        "GET /products/{productId}",
+        error_schema,
+    )
 };
 async fn get_product<A: Api>(
     api: &A,
@@ -1126,15 +1112,14 @@ fn get_product_encode(
     Ok(runtime::body_response(200, "application/json", runtime::json_encode(&body)?))
 }
 static PUT_PRODUCT_OP: runtime::Op = runtime::Op {
-    name: "put_product",
-    method: "PUT",
-    route: "/products/{productId}",
-    span: "PUT /products/{productId}",
     security: ops::SECURITY_0,
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new(
+        "put_product",
+        "PUT",
+        "/products/{productId}",
+        "PUT /products/{productId}",
+        error_schema,
+    )
 };
 async fn put_product<A: Api>(
     api: &A,
@@ -1167,15 +1152,14 @@ fn put_product_encode(resp: &ops::put_product::Response) -> runtime::Response {
     runtime::new_response(200)
 }
 static DELETE_PRODUCT_OP: runtime::Op = runtime::Op {
-    name: "delete_product",
-    method: "DELETE",
-    route: "/products/{productId}",
-    span: "DELETE /products/{productId}",
     security: ops::SECURITY_0,
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new(
+        "delete_product",
+        "DELETE",
+        "/products/{productId}",
+        "DELETE /products/{productId}",
+        error_schema,
+    )
 };
 async fn delete_product<A: Api>(
     api: &A,
@@ -1208,15 +1192,14 @@ fn delete_product_encode(resp: &ops::delete_product::Response) -> runtime::Respo
     runtime::new_response(204)
 }
 static OPTIONS_PRODUCT_OP: runtime::Op = runtime::Op {
-    name: "options_product",
-    method: "OPTIONS",
-    route: "/products/{productId}",
-    span: "OPTIONS /products/{productId}",
     security: ops::SECURITY_0,
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new(
+        "options_product",
+        "OPTIONS",
+        "/products/{productId}",
+        "OPTIONS /products/{productId}",
+        error_schema,
+    )
 };
 async fn options_product<A: Api>(
     api: &A,
@@ -1249,15 +1232,14 @@ fn options_product_encode(resp: &ops::options_product::Response) -> runtime::Res
     runtime::new_response(200)
 }
 static HEAD_PRODUCT_OP: runtime::Op = runtime::Op {
-    name: "head_product",
-    method: "HEAD",
-    route: "/products/{productId}",
-    span: "HEAD /products/{productId}",
     security: ops::SECURITY_0,
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new(
+        "head_product",
+        "HEAD",
+        "/products/{productId}",
+        "HEAD /products/{productId}",
+        error_schema,
+    )
 };
 async fn head_product<A: Api>(
     api: &A,
@@ -1290,15 +1272,14 @@ fn head_product_encode(resp: &ops::head_product::Response) -> runtime::Response 
     runtime::new_response(200)
 }
 static PATCH_PRODUCT_OP: runtime::Op = runtime::Op {
-    name: "patch_product",
-    method: "PATCH",
-    route: "/products/{productId}",
-    span: "PATCH /products/{productId}",
     security: ops::SECURITY_0,
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new(
+        "patch_product",
+        "PATCH",
+        "/products/{productId}",
+        "PATCH /products/{productId}",
+        error_schema,
+    )
 };
 async fn patch_product<A: Api>(
     api: &A,
@@ -1331,15 +1312,14 @@ fn patch_product_encode(resp: &ops::patch_product::Response) -> runtime::Respons
     runtime::new_response(200)
 }
 static TRACE_PRODUCT_OP: runtime::Op = runtime::Op {
-    name: "trace_product",
-    method: "TRACE",
-    route: "/products/{productId}",
-    span: "TRACE /products/{productId}",
     security: ops::SECURITY_0,
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new(
+        "trace_product",
+        "TRACE",
+        "/products/{productId}",
+        "TRACE /products/{productId}",
+        error_schema,
+    )
 };
 async fn trace_product<A: Api>(
     api: &A,
@@ -1372,15 +1352,9 @@ fn trace_product_encode(resp: &ops::trace_product::Response) -> runtime::Respons
     runtime::new_response(200)
 }
 static SEARCH_OP: runtime::Op = runtime::Op {
-    name: "search",
-    method: "GET",
-    route: "/search",
-    span: "GET /search",
     security: ops::SECURITY_0,
-    takes_body: false,
     produces: &["text/event-stream"],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new("search", "GET", "/search", "GET /search", error_schema)
 };
 async fn search<A: Api>(
     api: &A,
@@ -1414,15 +1388,14 @@ fn search_encode(
     })
 }
 static NEW_PRODUCT_POST_OP: runtime::Op = runtime::Op {
-    name: "new_product_post",
-    method: "POST",
-    route: "newProduct",
-    span: "POST newProduct",
     security: ops::SECURITY_0,
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new(
+        "new_product_post",
+        "POST",
+        "newProduct",
+        "POST newProduct",
+        error_schema,
+    )
 };
 async fn new_product_post<A: Webhooks>(
     api: &A,
@@ -1457,15 +1430,14 @@ fn new_product_post_encode(resp: &ops::new_product_post::Response) -> runtime::R
     runtime::new_response(200)
 }
 static CREATE_PRODUCT_ON_ADOPT_POST_OP: runtime::Op = runtime::Op {
-    name: "create_product_on_adopt_post",
-    method: "POST",
-    route: "onAdopt",
-    span: "POST onAdopt",
     security: ops::SECURITY_0,
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new(
+        "create_product_on_adopt_post",
+        "POST",
+        "onAdopt",
+        "POST onAdopt",
+        error_schema,
+    )
 };
 async fn create_product_on_adopt_post<A: Webhooks>(
     api: &A,
@@ -1502,15 +1474,14 @@ fn create_product_on_adopt_post_encode(
     runtime::new_response(200)
 }
 static CREATE_PRODUCT_SHARED_POST_OP: runtime::Op = runtime::Op {
-    name: "create_product_shared_post",
-    method: "POST",
-    route: "shared",
-    span: "POST shared",
     security: ops::SECURITY_0,
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new(
+        "create_product_shared_post",
+        "POST",
+        "shared",
+        "POST shared",
+        error_schema,
+    )
 };
 async fn create_product_shared_post<A: Webhooks>(
     api: &A,

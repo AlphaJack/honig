@@ -151,15 +151,14 @@ async fn dispatch<A: Api>(
     }
 }
 static GET_ORDER_OP: runtime::Op = runtime::Op {
-    name: "get_order",
-    method: "GET",
-    route: "/orders/{id}",
-    span: "GET /orders/{id}",
-    security: &[],
-    takes_body: false,
     produces: &["application/json"],
-    ranges: false,
-    errors: error_schema,
+    ..runtime::Op::new(
+        "get_order",
+        "GET",
+        "/orders/{id}",
+        "GET /orders/{id}",
+        error_schema,
+    )
 };
 async fn get_order<A: Api>(
     api: &A,
@@ -188,17 +187,13 @@ fn get_order_encode(
     let ops::get_order::Response::Ok(body) = resp;
     Ok(runtime::body_response(200, "application/json", runtime::json_encode(&body)?))
 }
-static PUT_ORDER_OP: runtime::Op = runtime::Op {
-    name: "put_order",
-    method: "POST",
-    route: "/orders",
-    span: "POST /orders",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static PUT_ORDER_OP: runtime::Op = runtime::Op::new(
+    "put_order",
+    "POST",
+    "/orders",
+    "POST /orders",
+    error_schema,
+);
 async fn put_order<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,

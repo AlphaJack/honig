@@ -261,17 +261,13 @@ async fn dispatch<A: Api>(
         Op::O0 => Box::pin(subscribe(api, routed, call)).await,
     }
 }
-static SUBSCRIBE_OP: runtime::Op = runtime::Op {
-    name: "subscribe",
-    method: "POST",
-    route: "/subscriptions",
-    span: "POST /subscriptions",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static SUBSCRIBE_OP: runtime::Op = runtime::Op::new(
+    "subscribe",
+    "POST",
+    "/subscriptions",
+    "POST /subscriptions",
+    error_schema,
+);
 async fn subscribe<A: Api>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -298,17 +294,13 @@ fn subscribe_encode(resp: &ops::subscribe::Response) -> runtime::Response {
     let ops::subscribe::Response::Created = resp;
     runtime::new_response(201)
 }
-static NEW_PRODUCT_OP: runtime::Op = runtime::Op {
-    name: "new_product",
-    method: "POST",
-    route: "newProduct",
-    span: "POST newProduct",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static NEW_PRODUCT_OP: runtime::Op = runtime::Op::new(
+    "new_product",
+    "POST",
+    "newProduct",
+    "POST newProduct",
+    error_schema,
+);
 async fn new_product<A: Webhooks>(
     api: &A,
     routed: runtime::Routed<'_>,
@@ -337,17 +329,13 @@ fn new_product_encode(resp: &ops::new_product::Response) -> runtime::Response {
         ops::new_product::Response::Gone => runtime::new_response(410),
     }
 }
-static SUBSCRIBE_ON_EVENT_POST_OP: runtime::Op = runtime::Op {
-    name: "subscribe_on_event_post",
-    method: "POST",
-    route: "onEvent",
-    span: "POST onEvent",
-    security: &[],
-    takes_body: false,
-    produces: &[],
-    ranges: false,
-    errors: error_schema,
-};
+static SUBSCRIBE_ON_EVENT_POST_OP: runtime::Op = runtime::Op::new(
+    "subscribe_on_event_post",
+    "POST",
+    "onEvent",
+    "POST onEvent",
+    error_schema,
+);
 async fn subscribe_on_event_post<A: Webhooks>(
     api: &A,
     routed: runtime::Routed<'_>,
