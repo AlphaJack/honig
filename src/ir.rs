@@ -99,7 +99,7 @@ pub(crate) fn build_with(
     b.crates = crates.iter().map(|c| c.replace('-', "_")).collect();
     b.from_v20 = from_v20;
     b.components();
-    let schemes = security::schemes(&b);
+    let schemes = security::schemes(&mut b);
     let mut http = Http::build(&mut b, &schemes);
     let mut types = b.finish();
     http.use_request_types(&types.split_directions(lenient));

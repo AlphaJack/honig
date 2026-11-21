@@ -194,10 +194,9 @@ pub(crate) fn verify_fn(api: &Api, ops: &[&Operation], reach: &TokenStream, prin
     }
 }
 
-/// Returns the unique variant name of each security scheme in `Credential`.
+/// Returns the variant name of each security scheme in `Credential`. Names are unique: a collision fails generation.
 pub(crate) fn credential_variants(api: &Api) -> Vec<String> {
-    let mut taken = BTreeSet::new();
-    api.schemes.iter().map(|s| pascal(&crate::ir::names::unique(Name::new(&s.name), &mut taken))).collect()
+    api.schemes.iter().map(|s| pascal(&Name::new(&s.name))).collect()
 }
 
 /// Returns `Credential`: one variant per security scheme. So an authentication layer can match
