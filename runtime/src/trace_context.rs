@@ -7,7 +7,7 @@
 use crate::Request;
 
 /// Puts the `traceparent` and `tracestate` of the current span on a request unless it already has a `traceparent`.
-/// Generated client methods call it.
+/// `send` and `send_streaming` call it.
 #[cfg_attr(not(feature = "tracing-opentelemetry"), expect(clippy::missing_const_for_fn, reason = "a no-op here"))]
 pub fn propagate_trace(req: &mut Request) {
     #[cfg(feature = "tracing-opentelemetry")]

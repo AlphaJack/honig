@@ -26,7 +26,6 @@ impl<T: runtime::Transport> Client<T> {
         let mut req = runtime::new_request("GET", path, query)?;
         runtime::Message::set_header(&mut req, "Accept", "application/zip")?;
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -59,7 +58,6 @@ impl<T: runtime::Transport> Client<T> {
         let mut req = runtime::new_request("GET", path, query)?;
         runtime::Message::set_header(&mut req, "Accept", "application/zip")?;
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send_streaming(&self.transport, req).await?;
         if resp.status() == 200 {
             runtime::check_response_media(
@@ -103,7 +101,6 @@ impl<T: runtime::Transport> Client<T> {
         let mut req = runtime::new_request("GET", path, query)?;
         runtime::Message::set_header(&mut req, "Accept", "image/*")?;
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -140,7 +137,6 @@ impl<T: runtime::Transport> Client<T> {
         let mut req = runtime::new_request("GET", path, query)?;
         runtime::Message::set_header(&mut req, "Accept", "image/*")?;
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send_streaming(&self.transport, req).await?;
         if resp.status() == 200 {
             runtime::check_response_media(
@@ -179,7 +175,6 @@ impl<T: runtime::Transport> Client<T> {
         let mut req = runtime::new_request("GET", path, query)?;
         runtime::Message::set_header(&mut req, "Accept", "application/json")?;
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -197,12 +192,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/ETag",
                         )
-                        .map_err(|e| runtime::ClientError::Decode {
-                            status: Some(status),
-                            message: e.to_string(),
-                            body: body.clone(),
-                            pointer: String::new(),
-                        })?,
+                        .map_err(|e| runtime::decode_err(Some(status), &body, e))?,
                     last_modified: runtime::from_param(
                             runtime::decode_header(
                                 runtime::joined_header(&head.headers, "Last-Modified")
@@ -212,12 +202,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/Last-Modified",
                         )
-                        .map_err(|e| runtime::ClientError::Decode {
-                            status: Some(status),
-                            message: e.to_string(),
-                            body: body.clone(),
-                            pointer: String::new(),
-                        })?,
+                        .map_err(|e| runtime::decode_err(Some(status), &body, e))?,
                 })
             }
             404 => Ok(ops::get_manifest::Response::NotFound),
@@ -248,7 +233,6 @@ impl<T: runtime::Transport> Client<T> {
             runtime::json_encode(&p.body)?,
         );
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();

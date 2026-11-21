@@ -32,7 +32,6 @@ impl<T: runtime::Transport> Client<T> {
             );
         }
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -87,7 +86,6 @@ impl<T: runtime::Transport> Client<T> {
         )?;
         runtime::set_cookies(&mut req, cookies)?;
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -111,7 +109,6 @@ impl<T: runtime::Transport> Client<T> {
         runtime::encode_querystring(&mut query, &runtime::to_value(&p.metadata)?, true);
         let mut req = runtime::new_request("GET", path, query)?;
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -135,7 +132,6 @@ impl<T: runtime::Transport> Client<T> {
         runtime::encode_querystring(&mut query, &runtime::to_value(&p.json)?, false);
         let mut req = runtime::new_request("GET", path, query)?;
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -162,7 +158,6 @@ impl<T: runtime::Transport> Client<T> {
             runtime::Message::set_body(&mut req, ct, bytes);
         }
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -211,7 +206,6 @@ impl<T: runtime::Transport> Client<T> {
             runtime::Message::set_body(&mut req, ct, bytes);
         }
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -241,7 +235,6 @@ impl<T: runtime::Transport> Client<T> {
             runtime::Message::set_body(&mut req, ct, bytes);
         }
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -272,7 +265,6 @@ impl<T: runtime::Transport> Client<T> {
             runtime::Message::set_body(&mut req, ct, bytes);
         }
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -314,7 +306,6 @@ impl<T: runtime::Transport> Client<T> {
             runtime::Message::set_body(&mut req, ct, bytes);
         }
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -345,7 +336,6 @@ impl<T: runtime::Transport> Client<T> {
             runtime::Message::set_body(&mut req, ct, bytes);
         }
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -368,7 +358,6 @@ impl<T: runtime::Transport> Client<T> {
         let mut req = runtime::new_request("GET", path, query)?;
         runtime::Message::set_header(&mut req, "Accept", "multipart/mixed")?;
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -402,7 +391,6 @@ impl<T: runtime::Transport> Client<T> {
         let mut req = runtime::new_request("GET", path, query)?;
         runtime::Message::set_header(&mut req, "Accept", "multipart/mixed")?;
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send_streaming(&self.transport, req).await?;
         let status = resp.status().as_u16();
         if status == 200 {
@@ -445,7 +433,6 @@ impl<T: runtime::Transport> Client<T> {
         let mut req = runtime::new_request("GET", path, query)?;
         runtime::Message::set_header(&mut req, "Accept", "multipart/byteranges")?;
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -479,7 +466,6 @@ impl<T: runtime::Transport> Client<T> {
         let mut req = runtime::new_request("GET", path, query)?;
         runtime::Message::set_header(&mut req, "Accept", "multipart/byteranges")?;
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send_streaming(&self.transport, req).await?;
         let status = resp.status().as_u16();
         if status == 206 {
@@ -523,7 +509,6 @@ impl<T: runtime::Transport> Client<T> {
         runtime::encode_querystring(&mut query, &runtime::to_value(&p.selector)?, false);
         let mut req = runtime::new_request("GET", path, query)?;
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -546,7 +531,6 @@ impl<T: runtime::Transport> Client<T> {
         let mut req = runtime::new_request("GET", path, query)?;
         runtime::Message::set_header(&mut req, "Accept", "application/json")?;
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -562,12 +546,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/Link",
                         )
-                        .map_err(|e| runtime::ClientError::Decode {
-                            status: Some(status),
-                            message: e.to_string(),
-                            body: body.clone(),
-                            pointer: String::new(),
-                        })?,
+                        .map_err(|e| runtime::decode_err(Some(status), &body, e))?,
                 })
             }
         } else {
@@ -586,7 +565,6 @@ impl<T: runtime::Transport> Client<T> {
         let mut req = runtime::new_request("GET", path, query)?;
         runtime::Message::set_header(&mut req, "Accept", "application/linkset+json")?;
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -613,7 +591,6 @@ impl<T: runtime::Transport> Client<T> {
         let mut req = runtime::new_request("GET", path, query)?;
         runtime::Message::set_header(&mut req, "Accept", "application/linkset")?;
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -640,7 +617,6 @@ impl<T: runtime::Transport> Client<T> {
         let mut req = runtime::new_request("GET", path, query)?;
         runtime::Message::set_header(&mut req, "Accept", "application/json")?;
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -682,7 +658,6 @@ impl<T: runtime::Transport> Client<T> {
             },
         )?;
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -762,7 +737,6 @@ impl<T: runtime::Transport> Client<T> {
             },
         )?;
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send_streaming(&self.transport, req).await?;
         let status = resp.status().as_u16();
         if status == 200 {
@@ -840,7 +814,6 @@ impl<T: runtime::Transport> Client<T> {
             },
         )?;
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -953,7 +926,6 @@ impl<T: runtime::Transport> Client<T> {
             },
         )?;
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send_streaming(&self.transport, req).await?;
         let status = resp.status().as_u16();
         if status == 200 {
@@ -1027,7 +999,6 @@ impl<T: runtime::Transport> Client<T> {
             runtime::Framing::Sse,
         )?;
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();

@@ -25,7 +25,6 @@ impl<T: runtime::Transport> Client<T> {
         let mut req = runtime::new_request("GET", path, query)?;
         runtime::Message::set_header(&mut req, "Accept", "text/event-stream")?;
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -62,7 +61,6 @@ impl<T: runtime::Transport> Client<T> {
         let mut req = runtime::new_request("GET", path, query)?;
         runtime::Message::set_header(&mut req, "Accept", "text/event-stream")?;
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
-        runtime::propagate_trace(&mut req);
         let again = runtime::resendable(&req);
         let resp = runtime::send_streaming(&self.transport, req).await?;
         let status = resp.status().as_u16();
@@ -106,7 +104,6 @@ impl<T: runtime::Transport> Client<T> {
         let mut req = runtime::new_request("GET", path, query)?;
         runtime::Message::set_header(&mut req, "Accept", "application/jsonl")?;
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -140,7 +137,6 @@ impl<T: runtime::Transport> Client<T> {
         let mut req = runtime::new_request("GET", path, query)?;
         runtime::Message::set_header(&mut req, "Accept", "application/jsonl")?;
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send_streaming(&self.transport, req).await?;
         let status = resp.status().as_u16();
         if status == 200 {
@@ -186,7 +182,6 @@ impl<T: runtime::Transport> Client<T> {
         let mut req = runtime::new_request("GET", path, query)?;
         runtime::Message::set_header(&mut req, "Accept", "text/event-stream")?;
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -223,7 +218,6 @@ impl<T: runtime::Transport> Client<T> {
         let mut req = runtime::new_request("GET", path, query)?;
         runtime::Message::set_header(&mut req, "Accept", "text/event-stream")?;
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
-        runtime::propagate_trace(&mut req);
         let again = runtime::resendable(&req);
         let resp = runtime::send_streaming(&self.transport, req).await?;
         let status = resp.status().as_u16();
@@ -267,7 +261,6 @@ impl<T: runtime::Transport> Client<T> {
         let mut req = runtime::new_request("POST", path, query)?;
         runtime::Message::set_header(&mut req, "Accept", "text/event-stream")?;
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -304,7 +297,6 @@ impl<T: runtime::Transport> Client<T> {
         let mut req = runtime::new_request("POST", path, query)?;
         runtime::Message::set_header(&mut req, "Accept", "text/event-stream")?;
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
-        runtime::propagate_trace(&mut req);
         let again = runtime::resendable(&req);
         let resp = runtime::send_streaming(&self.transport, req).await?;
         let status = resp.status().as_u16();
@@ -354,7 +346,6 @@ impl<T: runtime::Transport> Client<T> {
             runtime::Framing::JsonLines,
         )?;
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -377,7 +368,6 @@ impl<T: runtime::Transport> Client<T> {
         let mut req = runtime::new_request("GET", path, query)?;
         runtime::Message::set_header(&mut req, "Accept", "application/jsonl")?;
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -420,7 +410,6 @@ impl<T: runtime::Transport> Client<T> {
         let mut req = runtime::new_request("GET", path, query)?;
         runtime::Message::set_header(&mut req, "Accept", "application/jsonl")?;
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send_streaming(&self.transport, req).await?;
         let status = resp.status().as_u16();
         if status == 200 {

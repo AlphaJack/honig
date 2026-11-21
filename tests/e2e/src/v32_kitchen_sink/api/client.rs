@@ -260,7 +260,6 @@ impl<T: runtime::Transport> Client<T> {
             )?,
         );
         runtime::apply_auth(&mut req, &self.credentials, ops::SECURITY_0)?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -289,7 +288,6 @@ impl<T: runtime::Transport> Client<T> {
         runtime::Message::set_header(&mut req, "Accept", "application/octet-stream")?;
         runtime::set_blob(&mut req, "application/octet-stream", p.body);
         runtime::apply_auth(&mut req, &self.credentials, ops::SECURITY_0)?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -307,24 +305,14 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Size",
                         )
-                        .map_err(|e| runtime::ClientError::Decode {
-                            status: Some(status),
-                            message: e.to_string(),
-                            body: body.clone(),
-                            pointer: String::new(),
-                        })?,
+                        .map_err(|e| runtime::decode_err(Some(status), &body, e))?,
                     x_quota: runtime::from_param(
                             runtime::json_header(
                                 runtime::first_header(&head.headers, "X-Quota").as_deref(),
                             ),
                             "/header/X-Quota",
                         )
-                        .map_err(|e| runtime::ClientError::Decode {
-                            status: Some(status),
-                            message: e.to_string(),
-                            body: body.clone(),
-                            pointer: String::new(),
-                        })?,
+                        .map_err(|e| runtime::decode_err(Some(status), &body, e))?,
                 })
             }
         } else {
@@ -352,7 +340,6 @@ impl<T: runtime::Transport> Client<T> {
         runtime::Message::set_header(&mut req, "Accept", "application/octet-stream")?;
         runtime::set_blob(&mut req, "application/octet-stream", p.body);
         runtime::apply_auth(&mut req, &self.credentials, ops::SECURITY_0)?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send_streaming(&self.transport, req).await?;
         if resp.status() == 200 {
             runtime::check_response_media(
@@ -451,7 +438,6 @@ impl<T: runtime::Transport> Client<T> {
         )?;
         runtime::set_cookies(&mut req, cookies)?;
         runtime::apply_auth(&mut req, &self.credentials, ops::SECURITY_0)?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -487,12 +473,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Next",
                         )
-                        .map_err(|e| runtime::ClientError::Decode {
-                            status: Some(status),
-                            message: e.to_string(),
-                            body: body.clone(),
-                            pointer: String::new(),
-                        })?,
+                        .map_err(|e| runtime::decode_err(Some(status), &body, e))?,
                     x_total: runtime::from_param(
                             runtime::decode_header(
                                 runtime::joined_header(&head.headers, "X-Total").as_deref(),
@@ -501,12 +482,7 @@ impl<T: runtime::Transport> Client<T> {
                             ),
                             "/header/X-Total",
                         )
-                        .map_err(|e| runtime::ClientError::Decode {
-                            status: Some(status),
-                            message: e.to_string(),
-                            body: body.clone(),
-                            pointer: String::new(),
-                        })?,
+                        .map_err(|e| runtime::decode_err(Some(status), &body, e))?,
                 })
             }
             s if (200..300).contains(&s) => {
@@ -601,7 +577,6 @@ impl<T: runtime::Transport> Client<T> {
         )?;
         runtime::set_cookies(&mut req, cookies)?;
         runtime::apply_auth(&mut req, &self.credentials, ops::SECURITY_0)?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send_streaming(&self.transport, req).await?;
         let status = resp.status().as_u16();
         if status == 200 {
@@ -711,7 +686,6 @@ impl<T: runtime::Transport> Client<T> {
             }
         }
         runtime::apply_auth(&mut req, &self.credentials, ops::SECURITY_1)?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -749,7 +723,6 @@ impl<T: runtime::Transport> Client<T> {
             );
         }
         runtime::apply_auth(&mut req, &self.credentials, ops::SECURITY_0)?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -783,7 +756,6 @@ impl<T: runtime::Transport> Client<T> {
             runtime::Message::set_header(&mut req, "X-Trace", h)?;
         }
         runtime::apply_auth(&mut req, &self.credentials, ops::SECURITY_0)?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -810,7 +782,6 @@ impl<T: runtime::Transport> Client<T> {
         let mut req = runtime::new_request("GET", path, query)?;
         runtime::Message::set_header(&mut req, "Accept", "application/json")?;
         runtime::apply_auth(&mut req, &self.credentials, ops::SECURITY_0)?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -840,7 +811,6 @@ impl<T: runtime::Transport> Client<T> {
         let query = Vec::new();
         let mut req = runtime::new_request("PUT", path, query)?;
         runtime::apply_auth(&mut req, &self.credentials, ops::SECURITY_0)?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -866,7 +836,6 @@ impl<T: runtime::Transport> Client<T> {
         let query = Vec::new();
         let mut req = runtime::new_request("DELETE", path, query)?;
         runtime::apply_auth(&mut req, &self.credentials, ops::SECURITY_0)?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -892,7 +861,6 @@ impl<T: runtime::Transport> Client<T> {
         let query = Vec::new();
         let mut req = runtime::new_request("OPTIONS", path, query)?;
         runtime::apply_auth(&mut req, &self.credentials, ops::SECURITY_0)?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -918,7 +886,6 @@ impl<T: runtime::Transport> Client<T> {
         let query = Vec::new();
         let mut req = runtime::new_request("HEAD", path, query)?;
         runtime::apply_auth(&mut req, &self.credentials, ops::SECURITY_0)?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -944,7 +911,6 @@ impl<T: runtime::Transport> Client<T> {
         let query = Vec::new();
         let mut req = runtime::new_request("PATCH", path, query)?;
         runtime::apply_auth(&mut req, &self.credentials, ops::SECURITY_0)?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -970,7 +936,6 @@ impl<T: runtime::Transport> Client<T> {
         let query = Vec::new();
         let mut req = runtime::new_request("TRACE", path, query)?;
         runtime::apply_auth(&mut req, &self.credentials, ops::SECURITY_0)?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -995,7 +960,6 @@ impl<T: runtime::Transport> Client<T> {
         let mut req = runtime::new_request("GET", path, query)?;
         runtime::Message::set_header(&mut req, "Accept", "text/event-stream")?;
         runtime::apply_auth(&mut req, &self.credentials, ops::SECURITY_0)?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -1034,7 +998,6 @@ impl<T: runtime::Transport> Client<T> {
         let mut req = runtime::new_request("GET", path, query)?;
         runtime::Message::set_header(&mut req, "Accept", "text/event-stream")?;
         runtime::apply_auth(&mut req, &self.credentials, ops::SECURITY_0)?;
-        runtime::propagate_trace(&mut req);
         let again = runtime::resendable(&req);
         let resp = runtime::send_streaming(&self.transport, req).await?;
         let status = resp.status().as_u16();
@@ -1128,7 +1091,6 @@ impl<T: runtime::Transport> WebhookClient<T> {
             );
         }
         runtime::apply_auth(&mut req, &self.credentials, ops::SECURITY_0)?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -1159,7 +1121,6 @@ impl<T: runtime::Transport> WebhookClient<T> {
             );
         }
         runtime::apply_auth(&mut req, &self.credentials, ops::SECURITY_0)?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
@@ -1182,7 +1143,6 @@ impl<T: runtime::Transport> WebhookClient<T> {
         let query = Vec::new();
         let mut req = runtime::new_request("POST", path, query)?;
         runtime::apply_auth(&mut req, &self.credentials, ops::SECURITY_0)?;
-        runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
         let (head, body) = resp.into_parts();
         let (body, _) = body.into_parts();
