@@ -159,9 +159,7 @@ pub(crate) fn server(api: &Api, space: &Space<'_>, allow_unimplemented: bool) ->
         )
     });
     let error_response = (!path_ops.is_empty()).then(|| error_response_method(&quote!(Operation), filled));
-    let header = crate::emit::rust::syntax::file_allow(crate::emit::rust::syntax::has_deprecated(api));
     quote! {
-        #header
         use super::{operations as ops, runtime};
         use std::future::Future;
 
