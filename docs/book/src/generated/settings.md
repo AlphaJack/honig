@@ -5,9 +5,8 @@
 | `spec` | yes |  | the description relative to Cargo.toml; a list ["a.yaml", "api/*.yaml"] merges several |
 | `output` | no | `"src/<module>"` | the module directory |
 | `mod_rs` | no | `the crate's clippy lints, else true` | true writes the root of the module as `<output>/mod.rs`, false as `<output>.rs` |
-| `client` | no | `true` | generate the client; a table sets its adapters = ["reqwest"] and strict = false |
-| `server` | no | `true` | generate the server; a table sets its adapters = ["axum"] and allow_unimplemented = true |
-| `operations` | no | `every one` | the only operations, by operationId, that the client calls and the server serves; the module holds only the types that they reach |
+| `client` | no | `true` | generate the client; a table sets its adapters = ["reqwest"] and operations = ["getOrder"]. With a list of operations on either side, the module holds those of both and only the types that they reach |
+| `server` | no | `true` | generate the server; a table sets its adapters = ["axum"], allow_unimplemented = true and operations = ["getOrder"] |
 | `tests` | no | `false` | generate a test that the description's examples decode |
 | `unknown_fields` | no | `"drop"` | "keep": objects without additionalProperties keep unknown keys |
 | `overlays` | no | `[]` | Overlays (1.0 to 1.2) applied in order to the spec |

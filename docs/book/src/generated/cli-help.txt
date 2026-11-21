@@ -17,5 +17,5 @@ Options:
   -h, --help                  Print help
   -V, --version               Print version
 
-SETTINGS ([package.metadata.honig.<module>] in Cargo.toml): spec, output, mod_rs, client, server, operations, tests, unknown_fields, overlays, formats, derives
+SETTINGS ([package.metadata.honig.<module>] in Cargo.toml): spec, output, mod_rs, client, server, tests, unknown_fields, overlays, formats, derives
 The Settings page of the book explains each one: https://alphajack.github.io/honig/settings.html

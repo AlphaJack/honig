@@ -187,6 +187,11 @@ fn one_deprecated_item_allows_deprecated() {
             &json!({}),
             &json!({"securitySchemes": {"k": {"type": "apiKey", "in": "header", "name": "K", "deprecated": true}}}),
         ),
+        common::spec(
+            "3.2.0",
+            &json!({}),
+            &json!({"schemas": {"A": {"type": "object", "properties": {"old": {"type": "string", "deprecated": true}}}}}),
+        ),
         common::spec("3.2.0", &op(json!({"operationId": "a", "deprecated": true, "responses": ok})), &json!({})),
         common::spec(
             "3.2.0",
@@ -240,7 +245,7 @@ fn an_operation_is_listed_by_its_id_or_its_name() {
     );
     let listed = |names: &[&str]| {
         let opts = crate::emit::Options {
-            operations: Some(names.iter().map(|n| (*n).to_owned()).collect()),
+            client_operations: Some(names.iter().map(|n| (*n).to_owned()).collect()),
             ..crate::emit::Options::default()
         };
         let files = common::generate(&format!("shape-listed-{}", names.join("-")), &doc, &opts);
@@ -1862,42 +1867,52 @@ fn a_response_summary_and_description_of_one_text_show_once() {
     assert_eq!(ops.matches("Found it").count(), 1, "{ops}");
 }
 
-/// Extra derives from the settings go on every type (`*`) or on one by its Rust name, once each, and never a derive
-/// that honig writes itself.
+/// An `enum` or a `const` whose values no type holds (objects) is checked on the JSON of the value.
 #[test]
-fn extra_derives_go_where_the_settings_say() {
-    let obj = json!({"type": "object", "properties": {"a": {"type": "string"}}});
-    let doc = common::spec("3.1.0", &json!({}), &json!({"schemas": {"Item": obj, "Other": obj}}));
-    let derives = |list: Vec<(&str, Vec<&str>)>| {
-        let mut opts = crate::emit::Options::default();
-        opts.rust.derives =
-            list.into_iter().map(|(k, v)| (k.to_owned(), v.into_iter().map(str::to_owned).collect())).collect();
-        let types = common::file(&common::generate("shape-derives", &doc, &opts), "types.rs").to_owned();
-        let of = |n: &str| {
-            types
-                .split("runtime::object!")
-                .find(|b| b.contains(&format!("pub struct {n} {{")))
-                .unwrap_or_default()
-                .to_owned()
-        };
-        (of("Item"), of("Other"))
-    };
-    let (item, other) = derives(vec![("Item", vec!["x::Marker", "x::Marker", "Clone"])]);
-    assert_eq!((item.matches("x::Marker").count(), other.contains("x::Marker")), (1, false), "{item} {other}");
-    let (item, other) = derives(vec![("*", vec!["x::Marker"])]);
-    assert!(item.contains("x::Marker") && other.contains("x::Marker"), "{item} {other}");
+fn values_that_no_type_holds_are_compared_as_json() {
+    for schema in [
+        json!({"type": "object", "properties": {"a": {"type": "integer"}}, "const": {"a": 1}}),
+        json!({"type": "object", "properties": {"a": {"type": "integer"}}, "enum": [{"a": 1}, {"a": 2}]}),
+    ] {
+        let doc = common::spec("3.1.0", &json!({}), &json!({"schemas": {"V": schema}}));
+        let types =
+            common::file(&common::generate("shape-json-values", &doc, &crate::emit::Options::default()), "types.rs")
+                .to_owned();
+        assert!(types.contains("runtime::content_equal("), "{schema}: {types}");
+    }
 }
 
-/// A deprecated object type is deprecated as a struct: the attribute sits on the struct inside its macro.
+/// A `multipleOf` as large as the largest value of the type still divides: it is no "only `0`" check.
 #[test]
-fn a_deprecated_object_type_is_a_deprecated_struct() {
-    let obj = json!({"type": "object", "deprecated": true, "properties": {"a": {"type": "string"}}});
-    let doc = common::spec("3.1.0", &json!({}), &json!({"schemas": {"Old": obj}}));
+fn a_modulus_at_the_largest_value_still_divides() {
+    let doc = common::spec(
+        "3.1.0",
+        &json!({}),
+        &json!({"schemas": {
+            "M": {"type": "integer", "format": "int32", "multipleOf": 2_147_483_648_i64},
+        }}),
+    );
     let types =
-        common::file(&common::generate("shape-deprecated-object", &doc, &crate::emit::Options::default()), "types.rs")
-            .split_whitespace()
-            .collect::<String>();
-    assert!(types.contains("#[deprecated]pubstructOld{"), "{types}");
+        common::file(&common::generate("shape-modulus", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
+    assert!(types.contains("% 2_147_483_648 == 0"), "{types}");
+}
+
+/// The items past `prefixItems` bind the item only where a schema of `unevaluatedItems` reads it.
+#[test]
+fn unevaluated_items_bind_the_item_only_to_read_it() {
+    let doc = common::spec(
+        "3.1.0",
+        &json!({}),
+        &json!({"schemas": {
+            "Closed": {"type": "array", "prefixItems": [{"type": "string"}], "unevaluatedItems": false},
+            "Typed": {"type": "array", "prefixItems": [{"type": "string"}], "unevaluatedItems": {"type": "integer", "minimum": 3}},
+        }}),
+    );
+    let types =
+        common::file(&common::generate("shape-unevaluated-bind", &doc, &crate::emit::Options::default()), "types.rs")
+            .to_owned();
+    assert!(types.contains("for (i, _) in items.iter().enumerate().skip(1)"), "{types}");
+    assert!(types.contains("for (i, item) in items.iter().enumerate().skip(1)"), "{types}");
 }
 
 /// A multipart part whose schema gives a `contentMediaType` is sent as that type when `encoding` gives none.

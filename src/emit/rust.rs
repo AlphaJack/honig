@@ -75,13 +75,21 @@ pub(crate) struct Trees {
 
 /// Returns every file of a generated module as a syntax tree, as (path relative to the module dir, tree). Each is
 /// printed by `prettyplease` ([`print()`]); the `runtime.rs` is a short hand-written template over the runtime crate.
-/// Returns `api` with only the listed `operations`, and every type that none of them reaches left out. `None` without a
-/// list: then every one stays.
+/// Returns `api` with only the operations that the client calls or the server serves, and every type that none of them
+/// reaches left out. `None` when neither side lists its operations: then every one stays.
 fn kept(api: &Api, opts: &super::Options) -> Option<Api> {
     use crate::ir::http::OpKind;
     use crate::ir::types::{Constraints, Kind, TypeId};
-    let names = opts.operations.as_deref()?;
-    let keeps = |op: &crate::ir::http::Operation| http::listed(names, op);
+    if opts.client_operations.is_none() && opts.server_operations.is_none() {
+        return None;
+    }
+    let side = |on: bool, names: Option<&[String]>, op: &crate::ir::http::Operation| {
+        on && names.is_none_or(|names| http::listed(names, op))
+    };
+    let keeps = |op: &crate::ir::http::Operation| {
+        side(opts.client, opts.client_operations.as_deref(), op)
+            || side(opts.server, opts.server_operations.as_deref(), op)
+    };
     let mut api = api.clone();
     let parents: std::collections::BTreeSet<String> = api
         .http
@@ -177,7 +185,13 @@ pub(crate) fn trees(api: &Api, opts: &super::Options) -> Trees {
         trees.push(("client.rs", http::client(api, space, opts)));
     }
     if opts.server {
-        trees.push(("server.rs", http::server(api, space, opts.allow_unimplemented)));
+        // The server serves its own operations: the module also holds those that only the client calls.
+        let served = opts.server_operations.as_deref().map(|names| {
+            let mut served = api.clone();
+            served.http.operations.retain(|op| !http::is_path(op) || http::listed(names, op));
+            served
+        });
+        trees.push(("server.rs", http::server(served.as_ref().unwrap_or(api), space, opts.allow_unimplemented)));
     }
     if let Some(examples) = examples {
         trees.push(("documented_examples.rs", examples));

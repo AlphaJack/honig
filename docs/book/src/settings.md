@@ -26,12 +26,10 @@ Each table `[package.metadata.honig.<module>]` is one module and sets what is ge
 | `client = false` | no client | none for the client |
 | `client = true` | the client; you bring a transport of your own | `client` |
 | `client = { adapters = ["reqwest"] }` | the client and `ReqwestTransport` | `client`, `reqwest` |
+| `client = { adapters = ["reqwest"], operations = ["getOrder"] }` | the client with one operation | `client`, `reqwest` |
 | `client = { strict = false }` | the client; a response reads what the server added: an enum value or a member of a tagged `oneOf` as `Other`, and a property of a closed object by ignoring it. Requests stay strict: each such type gets a `<Name>Request` copy that is closed | `client` |
 | `server = { adapters = ["axum", "tracing"] }` | the server, `into_axum` and a span per request | `server`, `axum`, `tracing` |
 | `server = { allow_unimplemented = true }` | the server; a method you do not write answers 501 | `server` |
-
-`operations = ["getOrder"]` on the module table keeps only those operations, by `operationId`, for both halves: the
-client calls them, the server serves them, and the module holds only the types that they reach.
 
 An adapter serves one half, and `tracing-opentelemetry` serves both. Each adapter needs its library in `[dependencies]`. [Adapters](adapters.md) lists them all.
 
@@ -88,7 +86,7 @@ client = false
 [package.metadata.honig.billing]
 spec = "vendor/billing.yaml"
 server = false
-operations = ["createInvoice", "getInvoice"]
+client = { operations = ["createInvoice", "getInvoice"] }
 ```
 
 Then declare each module: `mod api;` and `mod billing;`.
