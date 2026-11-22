@@ -57,7 +57,12 @@ impl Visit for Schemas<'_> {
         // Before the children are walked. So the promoted subschemas (`if`, `contains`, ...) are upgraded too.
         super::extensions::promote(s, JSONSCHEMA, ptr, self.diags);
         nullable(s);
-        ref_siblings(s);
+        for dropped in ref_siblings(s) {
+            self.diags.warning(
+                crate::json::join(ptr, &dropped),
+                format!("`{dropped}` next to `$ref` has no effect in OpenAPI 3.0 and is left out: put it in the referenced schema or in an `allOf`"),
+            );
+        }
         exclusive(s, "exclusiveMinimum", "minimum");
         exclusive(s, "exclusiveMaximum", "maximum");
         if let Some(example) = s.remove("example") {
@@ -119,13 +124,18 @@ fn nullable(s: &mut Obj) {
 /// In 2020-12 they would apply, so dropping them keeps them meaning nothing. Annotations
 /// stay because they never change a type. Runs after `nullable`. 3.0 tooling
 /// honours that next to `$ref` and it is converted first.
-fn ref_siblings(s: &mut Obj) {
+///
+/// Returns the keywords that it dropped: a limit that its author may have meant.
+fn ref_siblings(s: &mut Obj) -> Vec<String> {
     const KEEP: &[&str] =
         &["$ref", "description", "summary", "title", "deprecated", "readOnly", "writeOnly", "examples", "default"];
     if !s.contains_key("$ref") {
-        return;
+        return vec![];
     }
+    let dropped: Vec<String> =
+        s.keys().filter(|k| !KEEP.contains(&k.as_str()) && !k.starts_with("x-")).cloned().collect();
     s.retain(|k, _| KEEP.contains(&k.as_str()) || k.starts_with("x-"));
+    dropped
 }
 
 pub(super) fn exclusive(s: &mut Obj, flag_key: &str, bound_key: &str) {
@@ -195,6 +205,17 @@ mod tests {
             up(&json!({"allOf": [{"$ref": "#/components/schemas/A"}], "nullable": true, "description": "d"})),
             json!({"description": "d", "anyOf": [{"allOf": [{"$ref": "#/components/schemas/A"}]}, {"type": "null"}]})
         );
+    }
+
+    /// A keyword next to a 3.0 `$ref` is left out with a warning that names it: its author may have meant a limit.
+    #[test]
+    fn a_dropped_ref_sibling_is_a_warning() {
+        let mut diags = Diagnostics::default();
+        let doc =
+            json!({"components": {"schemas": {"B": {"$ref": "#/components/schemas/A", "maxLength": 3, "x-k": 1}}}});
+        upgrade(doc, &mut diags);
+        let at: Vec<&str> = diags.iter().map(|d| d.pointer.as_str()).collect();
+        assert_eq!(at, ["/components/schemas/B/maxLength"]);
     }
 
     #[test]
