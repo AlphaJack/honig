@@ -102,10 +102,10 @@ The `formats` table picks the library type of each string format:
 
 ```toml
 [package.metadata.honig.api]
-formats = { uuid = true, dates = "chrono", url = true, ipnet = true }
+formats = { uuid = true, url = true, ipnet = true, jiff = true }
 ```
 
-`dates` is `"chrono"`, `"jiff"` or `"string"`. Each library named must be a dependency with its `serde` feature. `cargo honig init` writes the table from the dependencies the crate has then.
+Each library set to `true` must be a dependency with its `serde` feature. `jiff` types the dates and times. `cargo honig init` writes the table from the dependencies the crate has then.
 
 The table is required. Without it, a dependency added for another reason would change the types of fields. `generate` stops and prints the line that keeps the types that the dependencies give today, such as `formats = { uuid = true }`.
 
@@ -114,16 +114,16 @@ The table is required. Without it, a dependency added for another reason would c
 A format with a check can also refer to a type of your own, or of a library that honig has no shorthand for:
 
 ```toml
-formats = { dates = "chrono", date-time = "time::OffsetDateTime", uuid = "crate::ids::OrderId" }
+formats = { jiff = true, date-time = "crate::Stamp", uuid = "crate::ids::OrderId" }
 ```
 
-The key is the name of the format. The value is the path of a type, without generic arguments. A named type wins over the shorthand for its format only: above, `date` stays `chrono::NaiveDate`. The type must implement `Debug`, `Clone`, `PartialEq`, `Eq` and the serde traits. It parses text that honig checked first, as a library type does. honig knows the quirks of the shorthand libraries only. For any type of `date-time`, `date-time-local` and `time-local` it cuts a fraction of a second to nine digits. honig does not check the type: the compiler reports a wrong one. A struct with a required field of a named type derives no `Default`.
+The key is the name of the format. The value is the path of a type, without generic arguments. A named type wins over the shorthand for its format only: above, `date` stays `jiff::civil::Date`. The type must implement `Debug`, `Clone`, `PartialEq`, `Eq` and the serde traits. It parses text that honig checked first, as a library type does. honig knows the quirks of the shorthand libraries only. For any type of `date-time`, `date-time-local` and `time-local` it cuts a fraction of a second to nine digits. honig does not check the type: the compiler reports a wrong one. A struct with a required field of a named type derives no `Default`.
 
-`format: time` has an offset (`08:30:06+02:00`), and no date library's time type supports one. So it is `api::FullTime` with any `dates` setting: plain numbers (`hour`, `minute`, `second`, `nanosecond`, `offset_seconds`) and whether the second was a leap second. With `dates = "jiff"`, `time()` and `offset()` return it as `jiff` types.
+`format: time` has an offset (`08:30:06+02:00`), and no `jiff` time type supports one. So it is `api::FullTime` with or without `jiff`: plain numbers (`hour`, `minute`, `second`, `nanosecond`, `offset_seconds`) and whether the second was a leap second. With `jiff = true`, `time()` and `offset()` return it as `jiff` types.
 
 A format without its library is its checked text, such as `api::UuidText` or `api::DateTimeText`. Only text of the format is one: `try_from`, `parse` and decoding check it as the library would on parsing. It derefs to `str`. `generate` turns on the runtime feature that each check needs. [Adapters](adapters.md) lists the features.
 
-A library accepts more than its format allows. `jiff` and `chrono` accept `2024-06-19 08:30Z` as a `date-time`. `uuid` accepts `{...}` and `url` accepts a space. So a library type in a property, a branch of a union, a newtype, a parameter or a body has its text validated first, as a `String` of that format is. The items of a body decoded as it arrives are validated one at a time. Then the library parses it. A server decoding a request and a client decoding a response check alike. A fraction of a second past nine digits is cut: both date libraries store nanoseconds.
+A library accepts more than its format allows. `jiff` accepts `2024-06-19 08:30Z` as a `date-time`. `uuid` accepts `{...}` and `url` accepts a space. So a library type in a property, a branch of a union, a newtype, a parameter or a body has its text validated first, as a `String` of that format is. The items of a body decoded as it arrives are validated one at a time. Then the library parses it. A server decoding a request and a client decoding a response check alike. A fraction of a second past nine digits is cut: `jiff` stores nanoseconds.
 
 Mail addresses and host names are types of the runtime. Only a valid value can be one of them. `try_from` and decoding check the value. They need the `idn` feature of the runtime. `generate` turns it on when the description uses them:
 

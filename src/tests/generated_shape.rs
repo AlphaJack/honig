@@ -288,7 +288,7 @@ fn formats_turn_on_the_features_that_check_them() {
     assert!(has(json!({"format": "hostname"}), crate::settings::IDN), "a format without `type` is checked at run time");
     assert!(!has(json!({"type": "object", "properties": {"format": {"type": "string"}}}), crate::settings::IDN));
     assert!(has(json!({"type": "string", "format": "regex"}), crate::settings::REGRESS));
-    let jiff = crate::settings::FormatLibs { dates: Some(crate::settings::DateLib::Jiff), ..none() };
+    let jiff = crate::settings::FormatLibs { jiff: true, ..none() };
     assert!(features(json!({"type": "string", "format": "time"}), jiff).contains(&crate::settings::JIFF));
     assert!(!has(json!({"type": "string", "format": "time"}), crate::settings::JIFF));
 }
