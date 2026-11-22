@@ -205,8 +205,23 @@ pub(crate) fn unresolved_security(root: &Value) -> Vec<(String, String)> {
     let mut keys = vec![];
     security_keys(root, "", &[], &mut keys);
     let schemes = root.pointer("/components/securitySchemes").and_then(Value::as_object);
-    keys.retain(|(_, k)| schemes.is_none_or(|m| !m.contains_key(k)));
+    keys.retain(|(_, k)| !schemes.and_then(|m| m.get(k)).is_some_and(|s| is_scheme(root, s)));
     keys
+}
+
+/// Is `s`, through local `$ref`s, a Security Scheme of a known `type`?
+fn is_scheme<'a>(root: &'a Value, mut s: &'a Value) -> bool {
+    const TYPES: &[&str] = &["apiKey", "http", "oauth2", "openIdConnect", "mutualTLS"];
+    let mut seen = vec![];
+    while let Some(r) = s.get("$ref").and_then(Value::as_str) {
+        let Some(next) = r.strip_prefix('#').and_then(|p| root.pointer(p)) else { return false };
+        if seen.contains(&r) {
+            return false;
+        }
+        seen.push(r);
+        s = next;
+    }
+    s.get("type").and_then(Value::as_str).is_some_and(|t| TYPES.contains(&t))
 }
 
 /// Visits every Security Requirement key as (pointer of its requirement object, key).
