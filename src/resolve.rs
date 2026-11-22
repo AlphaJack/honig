@@ -135,7 +135,7 @@ fn security_scheme_uris(
     }
     let self_uri = root.get("$self").and_then(Value::as_str).map(|s| s.trim_end_matches('#').to_owned());
     let mut keys = vec![];
-    security_keys(root, "", &[], &mut keys);
+    security_keys(root, &mut keys);
     let mut renamed: BTreeMap<String, String> = BTreeMap::new();
     for (ptr, key) in keys {
         let known =
@@ -203,44 +203,46 @@ fn security_scheme_uris(
 /// (after bundling) as (pointer of the requirement object, key).
 pub(crate) fn unresolved_security(root: &Value) -> Vec<(String, String)> {
     let mut keys = vec![];
-    security_keys(root, "", &[], &mut keys);
+    security_keys(root, &mut keys);
     let schemes = root.pointer("/components/securitySchemes").and_then(Value::as_object);
-    keys.retain(|(_, k)| !schemes.and_then(|m| m.get(k)).is_some_and(|s| is_scheme(root, s)));
+    keys.retain(|(_, k)| schemes.is_none_or(|m| !m.contains_key(k)));
     keys
 }
 
-/// Is `s`, through local `$ref`s, a Security Scheme of a known `type`?
-fn is_scheme<'a>(root: &'a Value, mut s: &'a Value) -> bool {
-    const TYPES: &[&str] = &["apiKey", "http", "oauth2", "openIdConnect", "mutualTLS"];
-    let mut seen = vec![];
-    while let Some(r) = s.get("$ref").and_then(Value::as_str) {
-        let Some(next) = r.strip_prefix('#').and_then(|p| root.pointer(p)) else { return false };
-        if seen.contains(&r) {
-            return false;
+/// Visits every Security Requirement key as (pointer of its requirement object, key).
+fn security_keys(root: &Value, out: &mut Vec<(String, String)>) {
+    for (ptr, v) in security_values(root) {
+        for (i, r) in v.as_array().into_iter().flatten().enumerate() {
+            for k in r.as_object().into_iter().flat_map(|r| r.keys()) {
+                out.push((format!("{ptr}/{i}"), k.clone()));
+            }
         }
-        seen.push(r);
-        s = next;
     }
-    s.get("type").and_then(Value::as_str).is_some_and(|t| TYPES.contains(&t))
 }
 
-/// Visits every Security Requirement key as (pointer of its requirement object, key).
-/// Requirements sit at the root and on operations (any method key or an
+/// Returns the pointer of every `security` that is not a list. A `null` (a bare `security:` in YAML) would read as
+/// absent, so the operation would not get the root requirement.
+pub(crate) fn security_not_lists(root: &Value) -> Vec<String> {
+    security_values(root).into_iter().filter(|(_, v)| !v.is_array()).map(|(p, _)| p).collect()
+}
+
+/// Returns every `security` as (its pointer, its value). They sit at the root and on operations (any method key or an
 /// entry of `additionalOperations`) wherever path items nest.
-fn security_keys<'a>(v: &'a Value, ptr: &str, path: &[&'a str], out: &mut Vec<(String, String)>) {
+fn security_values(root: &Value) -> Vec<(String, &Value)> {
+    let mut out = vec![];
+    security_walk(root, "", &[], &mut out);
+    out
+}
+
+fn security_walk<'a>(v: &'a Value, ptr: &str, path: &[&'a str], out: &mut Vec<(String, &'a Value)>) {
     const METHODS: &[&str] = &["get", "put", "post", "delete", "options", "head", "patch", "trace", "query"];
     let Value::Object(o) = v else { return };
     let at_op = match path {
         [] | [.., "additionalOperations", _] => true,
         [.., m] => METHODS.contains(m) && path.len() >= 2,
     };
-    if at_op && let Some(Value::Array(reqs)) = o.get("security") {
-        for (i, r) in reqs.iter().enumerate() {
-            let rptr = format!("{}/{i}", crate::json::join(ptr, "security"));
-            for k in r.as_object().into_iter().flat_map(|r| r.keys()) {
-                out.push((rptr.clone(), k.clone()));
-            }
-        }
+    if at_op && let Some(security) = o.get("security") {
+        out.push((crate::json::join(ptr, "security"), security));
     }
     for (k, c) in o {
         if k == "security" || is_data(path.last().copied().unwrap_or(""), k) || k == "schemas" || k == "schema" {
@@ -248,7 +250,7 @@ fn security_keys<'a>(v: &'a Value, ptr: &str, path: &[&'a str], out: &mut Vec<(S
         }
         let mut next = path.to_vec();
         next.push(k);
-        security_keys(c, &crate::json::join(ptr, k), &next, out);
+        security_walk(c, &crate::json::join(ptr, k), &next, out);
     }
 }
 
