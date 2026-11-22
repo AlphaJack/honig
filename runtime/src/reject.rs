@@ -578,8 +578,8 @@ mod tests {
     #[test]
     fn an_invalid_request_holds_its_one_violation() {
         let reason = Reason::invalid("/query/limit", "must be at most 100");
-        let Reason::Invalid(Violation { path, message }) = &reason else { panic!("invalid") };
-        assert_eq!((path.as_str(), message.as_str()), ("/query/limit", "must be at most 100"));
+        let Reason::Invalid(Violation { instance_location, message }) = &reason else { panic!("invalid") };
+        assert_eq!((instance_location.as_str(), message.as_str()), ("/query/limit", "must be at most 100"));
         assert_eq!(reason.to_string(), "/query/limit: must be at most 100");
     }
 }
