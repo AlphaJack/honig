@@ -193,7 +193,7 @@ fn webhooks(api: &Api, allow_unimplemented: bool, filled: bool) -> Option<TokenS
     let dispatch = verify_fn(api, &hooks, &quote!(&*self.api), &quote!(A::Principal));
     let found = hooks.iter().map(|op| {
         let (key, method, v) = (lit(&hook_name(op)), lit(&op.method), operation_variant(op));
-        quote!((#key, #method) => Ok(WebhookOperation::#v),)
+        quote!((#key, #method) => Ok((WebhookOperation::#v, runtime::Spans::default())),)
     });
     let operations = operation_enum("WebhookOperation", &hooks, &[("WebhookContext", "Context")]);
     let pairs = hooks.iter().map(|op| {
@@ -238,7 +238,7 @@ fn webhooks(api: &Api, allow_unimplemented: bool, filled: bool) -> Option<TokenS
                 &[]
             }
 
-            fn route(&self, method: &str, _: &str) -> Result<WebhookOperation, runtime::Reason> {
+            fn route(&self, method: &str, _: &str) -> Result<(WebhookOperation, runtime::Spans), runtime::Reason> {
                 match (self.name, method) {
                     #(#found)*
                     (name, _) => {

@@ -280,3 +280,18 @@ fn generic_tower_layers_fit_between_routing_and_the_operations() {
         api::block_on(service.handle(api::runtime::new_request("GET", "/orders/search".to_owned(), vec![]).unwrap()));
     assert_eq!(r.status().as_u16(), 204);
 }
+
+/// A request reaches the operation that the server routed and checked, with the path variables that it routed, even
+/// when a layer rewrites its target on the way.
+#[test]
+fn a_layer_that_rewrites_the_target_does_not_reroute() {
+    let rewrite = tower::util::MapRequestLayer::new(|mut r: api::runtime::Request| {
+        *r.uri_mut() = "/orders/search".parse().unwrap();
+        r
+    });
+    let service = api::Server::new(Server { heavy: false }).operation_layer(rewrite).into_service();
+    let request = api::runtime::new_request("GET", "/status/abc".to_owned(), vec![]).unwrap();
+    let r = api::block_on(service.handle(request));
+    assert_eq!(r.status().as_u16(), 200, "`statusByKey`, as routed, not `searchOrders`");
+    assert_eq!(r.body().bytes(), b"\"abc\"");
+}

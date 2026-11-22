@@ -82,13 +82,13 @@ fn error_schema(
         _ => Some(&ERROR_SCHEMA_0),
     }
 }
-static METHODS: &[&[(&str, (Op, Operation))]] = &[
-    &[("POST", (Op::O0, Operation::CreateUser))],
-    &[("POST", (Op::O1, Operation::CreateShipment))],
-    &[("POST", (Op::O2, Operation::Login))],
-    &[("POST", (Op::O3, Operation::AddMember))],
-    &[("POST", (Op::O4, Operation::AddClosed))],
-    &[("POST", (Op::O5, Operation::AddBadge))],
+static METHODS: &[&[(&str, Operation)]] = &[
+    &[("POST", Operation::CreateUser)],
+    &[("POST", Operation::CreateShipment)],
+    &[("POST", Operation::Login)],
+    &[("POST", Operation::AddMember)],
+    &[("POST", Operation::AddClosed)],
+    &[("POST", Operation::AddBadge)],
 ];
 static ROUTES: &[runtime::Node] = &[
     runtime::node(
@@ -142,15 +142,21 @@ impl<A: Api> runtime::Operations for Routes<A> {
     fn paths(&self) -> &'static [&'static str] {
         PATHS
     }
-    fn route(&self, method: &str, target: &str) -> Result<Operation, runtime::Reason> {
+    fn route(
+        &self,
+        method: &str,
+        target: &str,
+    ) -> Result<(Operation, runtime::Spans), runtime::Reason> {
         let (path, _) = runtime::split_target(target);
         let path = runtime::normalize_path(path);
         let path: &str = &path;
         let found = runtime::route(ROUTES, path);
-        let found = found.and_then(|(leaf, caps)| Some((*METHODS.get(leaf)?, caps)));
-        let Some((methods, _)) = found else { return Err(runtime::Reason::NotFound) };
+        let Some((methods, caps)) = found
+            .and_then(|(leaf, caps)| Some((*METHODS.get(leaf)?, caps))) else {
+            return Err(runtime::Reason::NotFound);
+        };
         runtime::find_method(methods, method)
-            .map(|(_, (_, info))| *info)
+            .map(|(_, op)| (*op, runtime::Spans::of(path, &caps)))
             .ok_or_else(|| runtime::Reason::MethodNotAllowed(
                 runtime::allowed_methods(methods),
             ))
@@ -176,51 +182,34 @@ impl<A: Api> runtime::Operations for Routes<A> {
     ) -> runtime::BoxFuture<'r, runtime::Response> {
         Box::pin(async move {
             let mut req = req;
-            let uri = req.uri().clone();
-            let target = runtime::path_and_query(&uri);
-            let (path, raw_query) = runtime::split_target(target);
+            let uri = call.uri().clone();
+            let (path, raw_query) = runtime::split_target(runtime::path_and_query(&uri));
             let path = runtime::normalize_path(path);
-            let path: &str = &path;
-            let found = runtime::route(ROUTES, path);
-            let found = found.and_then(|(leaf, caps)| Some((*METHODS.get(leaf)?, caps)));
+            let caps = call.captures(&path);
             let query = runtime::parse_query(raw_query);
-            let Some((methods, caps)) = found else { return runtime::new_response(404) };
-            let Some((_, (op, _))) = runtime::find_method(methods, req.method().as_str())
-            else {
-                return runtime::new_response(405);
-            };
             let routed = runtime::Routed {
                 request: &mut req,
                 caps: &caps,
                 raw_query,
                 query: &query,
             };
-            dispatch(&*self.0, *op, routed, call).await
+            dispatch(&*self.0, call.operation(), routed, call).await
         })
     }
 }
-#[derive(Clone, Copy)]
-enum Op {
-    O0,
-    O1,
-    O2,
-    O3,
-    O4,
-    O5,
-}
 async fn dispatch<A: Api>(
     api: &A,
-    op: Op,
+    op: Operation,
     routed: runtime::Routed<'_>,
     call: runtime::Call<'_, Option<A::Principal>, Operation>,
 ) -> runtime::Response {
     match op {
-        Op::O0 => Box::pin(create_user(api, routed, call)).await,
-        Op::O1 => Box::pin(create_shipment(api, routed, call)).await,
-        Op::O2 => Box::pin(login(api, routed, call)).await,
-        Op::O3 => Box::pin(add_member(api, routed, call)).await,
-        Op::O4 => Box::pin(add_closed(api, routed, call)).await,
-        Op::O5 => Box::pin(add_badge(api, routed, call)).await,
+        Operation::CreateUser => Box::pin(create_user(api, routed, call)).await,
+        Operation::CreateShipment => Box::pin(create_shipment(api, routed, call)).await,
+        Operation::Login => Box::pin(login(api, routed, call)).await,
+        Operation::AddMember => Box::pin(add_member(api, routed, call)).await,
+        Operation::AddClosed => Box::pin(add_closed(api, routed, call)).await,
+        Operation::AddBadge => Box::pin(add_badge(api, routed, call)).await,
     }
 }
 static CREATE_USER_OP: runtime::Op = runtime::Op {

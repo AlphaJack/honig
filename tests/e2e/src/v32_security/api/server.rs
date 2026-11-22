@@ -228,16 +228,16 @@ const fn error_schema(
 ) -> Option<&'static runtime::ProblemSchema> {
     None
 }
-static METHODS: &[&[(&str, (Op, Operation))]] = &[
-    &[("GET", (Op::O0, Operation::Public))],
-    &[("GET", (Op::O1, Operation::Me))],
-    &[("GET", (Op::O2, Operation::Optional))],
-    &[("GET", (Op::O3, Operation::Read))],
-    &[("POST", (Op::O4, Operation::Write))],
-    &[("GET", (Op::O5, Operation::Both))],
-    &[("GET", (Op::O6, Operation::Login))],
-    &[("GET", (Op::O7, Operation::Cert))],
-    &[("GET", (Op::O8, Operation::Oidc))],
+static METHODS: &[&[(&str, Operation)]] = &[
+    &[("GET", Operation::Public)],
+    &[("GET", Operation::Me)],
+    &[("GET", Operation::Optional)],
+    &[("GET", Operation::Read)],
+    &[("POST", Operation::Write)],
+    &[("GET", Operation::Both)],
+    &[("GET", Operation::Login)],
+    &[("GET", Operation::Cert)],
+    &[("GET", Operation::Oidc)],
 ];
 static ROUTES: &[runtime::Node] = &[
     runtime::node(
@@ -300,15 +300,21 @@ impl<A: Api> runtime::Operations for Routes<A> {
     fn paths(&self) -> &'static [&'static str] {
         PATHS
     }
-    fn route(&self, method: &str, target: &str) -> Result<Operation, runtime::Reason> {
+    fn route(
+        &self,
+        method: &str,
+        target: &str,
+    ) -> Result<(Operation, runtime::Spans), runtime::Reason> {
         let (path, _) = runtime::split_target(target);
         let path = runtime::normalize_path(path);
         let path: &str = &path;
         let found = runtime::route(ROUTES, path);
-        let found = found.and_then(|(leaf, caps)| Some((*METHODS.get(leaf)?, caps)));
-        let Some((methods, _)) = found else { return Err(runtime::Reason::NotFound) };
+        let Some((methods, caps)) = found
+            .and_then(|(leaf, caps)| Some((*METHODS.get(leaf)?, caps))) else {
+            return Err(runtime::Reason::NotFound);
+        };
         runtime::find_method(methods, method)
-            .map(|(_, (_, info))| *info)
+            .map(|(_, op)| (*op, runtime::Spans::of(path, &caps)))
             .ok_or_else(|| runtime::Reason::MethodNotAllowed(
                 runtime::allowed_methods(methods),
             ))
@@ -410,57 +416,37 @@ impl<A: Api> runtime::Operations for Routes<A> {
     ) -> runtime::BoxFuture<'r, runtime::Response> {
         Box::pin(async move {
             let mut req = req;
-            let uri = req.uri().clone();
-            let target = runtime::path_and_query(&uri);
-            let (path, raw_query) = runtime::split_target(target);
+            let uri = call.uri().clone();
+            let (path, raw_query) = runtime::split_target(runtime::path_and_query(&uri));
             let path = runtime::normalize_path(path);
-            let path: &str = &path;
-            let found = runtime::route(ROUTES, path);
-            let found = found.and_then(|(leaf, caps)| Some((*METHODS.get(leaf)?, caps)));
+            let caps = call.captures(&path);
             let query = runtime::parse_query(raw_query);
-            let Some((methods, caps)) = found else { return runtime::new_response(404) };
-            let Some((_, (op, _))) = runtime::find_method(methods, req.method().as_str())
-            else {
-                return runtime::new_response(405);
-            };
             let routed = runtime::Routed {
                 request: &mut req,
                 caps: &caps,
                 raw_query,
                 query: &query,
             };
-            dispatch(&*self.0, *op, routed, call).await
+            dispatch(&*self.0, call.operation(), routed, call).await
         })
     }
 }
-#[derive(Clone, Copy)]
-enum Op {
-    O0,
-    O1,
-    O2,
-    O3,
-    O4,
-    O5,
-    O6,
-    O7,
-    O8,
-}
 async fn dispatch<A: Api>(
     api: &A,
-    op: Op,
+    op: Operation,
     routed: runtime::Routed<'_>,
     call: runtime::Call<'_, Option<A::Principal>, Operation>,
 ) -> runtime::Response {
     match op {
-        Op::O0 => Box::pin(public(api, routed, call)).await,
-        Op::O1 => Box::pin(me(api, routed, call)).await,
-        Op::O2 => Box::pin(optional(api, routed, call)).await,
-        Op::O3 => Box::pin(read(api, routed, call)).await,
-        Op::O4 => Box::pin(write(api, routed, call)).await,
-        Op::O5 => Box::pin(both(api, routed, call)).await,
-        Op::O6 => Box::pin(login(api, routed, call)).await,
-        Op::O7 => Box::pin(cert(api, routed, call)).await,
-        Op::O8 => Box::pin(oidc(api, routed, call)).await,
+        Operation::Public => Box::pin(public(api, routed, call)).await,
+        Operation::Me => Box::pin(me(api, routed, call)).await,
+        Operation::Optional => Box::pin(optional(api, routed, call)).await,
+        Operation::Read => Box::pin(read(api, routed, call)).await,
+        Operation::Write => Box::pin(write(api, routed, call)).await,
+        Operation::Both => Box::pin(both(api, routed, call)).await,
+        Operation::Login => Box::pin(login(api, routed, call)).await,
+        Operation::Cert => Box::pin(cert(api, routed, call)).await,
+        Operation::Oidc => Box::pin(oidc(api, routed, call)).await,
     }
 }
 static PUBLIC_OP: runtime::Op = runtime::Op::new(

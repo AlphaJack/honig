@@ -341,17 +341,32 @@ impl<A: Webhooks> runtime::Operations for WebhookRoutes<A> {
     fn paths(&self) -> &'static [&'static str] {
         &[]
     }
-    fn route(&self, method: &str, _: &str) -> Result<WebhookOperation, runtime::Reason> {
+    fn route(
+        &self,
+        method: &str,
+        _: &str,
+    ) -> Result<(WebhookOperation, runtime::Spans), runtime::Reason> {
         match (self.name, method) {
-            ("newProduct", "POST") => Ok(WebhookOperation::NewProductPost),
+            ("newProduct", "POST") => {
+                Ok((WebhookOperation::NewProductPost, runtime::Spans::default()))
+            }
             ("productCreated", "POST") => {
-                Ok(WebhookOperation::CreateProductProductCreatedPost)
+                Ok((
+                    WebhookOperation::CreateProductProductCreatedPost,
+                    runtime::Spans::default(),
+                ))
             }
             ("productCreationFailed", "POST") => {
-                Ok(WebhookOperation::CreateProductProductCreationFailedPost)
+                Ok((
+                    WebhookOperation::CreateProductProductCreationFailedPost,
+                    runtime::Spans::default(),
+                ))
             }
             ("productDiscontinued", "POST") => {
-                Ok(WebhookOperation::CreateProductProductDiscontinuedPost)
+                Ok((
+                    WebhookOperation::CreateProductProductDiscontinuedPost,
+                    runtime::Spans::default(),
+                ))
             }
             (name, _) => {
                 let allowed: Vec<&'static str> = WEBHOOK_METHODS
@@ -422,26 +437,26 @@ static WEBHOOK_METHODS: &[(&str, &str)] = &[
     ("productCreationFailed", "POST"),
     ("productDiscontinued", "POST"),
 ];
-static METHODS: &[&[(&str, (Op, Operation))]] = &[
+static METHODS: &[&[(&str, Operation)]] = &[
     &[
-        ("GET", (Op::O0, Operation::GetAllData)),
-        ("POST", (Op::O1, Operation::CreateProduct)),
-        ("QUERY", (Op::O2, Operation::QueryProducts)),
+        ("GET", Operation::GetAllData),
+        ("POST", Operation::CreateProduct),
+        ("QUERY", Operation::QueryProducts),
     ],
-    &[("POST", (Op::O11, Operation::CreateItem))],
-    &[("GET", (Op::O14, Operation::GetMe))],
-    &[("GET", (Op::O3, Operation::SearchProducts))],
-    &[("GET", (Op::O9, Operation::StreamProductEvents))],
-    &[("POST", (Op::O12, Operation::CreateUser))],
-    &[("POST", (Op::O13, Operation::GetToken))],
+    &[("POST", Operation::CreateItem)],
+    &[("GET", Operation::GetMe)],
+    &[("GET", Operation::SearchProducts)],
+    &[("GET", Operation::StreamProductEvents)],
+    &[("POST", Operation::CreateUser)],
+    &[("POST", Operation::GetToken)],
     &[
-        ("GET", (Op::O4, Operation::GetProduct)),
-        ("PUT", (Op::O5, Operation::UpdateProduct)),
-        ("DELETE", (Op::O6, Operation::DeleteProduct)),
-        ("COPY", (Op::O7, Operation::CopyProduct)),
+        ("GET", Operation::GetProduct),
+        ("PUT", Operation::UpdateProduct),
+        ("DELETE", Operation::DeleteProduct),
+        ("COPY", Operation::CopyProduct),
     ],
-    &[("POST", (Op::O8, Operation::UploadImage))],
-    &[("POST", (Op::O10, Operation::UploadPhotos))],
+    &[("POST", Operation::UploadImage)],
+    &[("POST", Operation::UploadPhotos)],
 ];
 static ROUTES: &[runtime::Node] = &[
     runtime::node(
@@ -498,15 +513,21 @@ impl<A: Api> runtime::Operations for Routes<A> {
     fn paths(&self) -> &'static [&'static str] {
         PATHS
     }
-    fn route(&self, method: &str, target: &str) -> Result<Operation, runtime::Reason> {
+    fn route(
+        &self,
+        method: &str,
+        target: &str,
+    ) -> Result<(Operation, runtime::Spans), runtime::Reason> {
         let (path, _) = runtime::split_target(target);
         let path = runtime::normalize_path(path);
         let path: &str = &path;
         let found = runtime::route(ROUTES, path);
-        let found = found.and_then(|(leaf, caps)| Some((*METHODS.get(leaf)?, caps)));
-        let Some((methods, _)) = found else { return Err(runtime::Reason::NotFound) };
+        let Some((methods, caps)) = found
+            .and_then(|(leaf, caps)| Some((*METHODS.get(leaf)?, caps))) else {
+            return Err(runtime::Reason::NotFound);
+        };
         runtime::find_method(methods, method)
-            .map(|(_, (_, info))| *info)
+            .map(|(_, op)| (*op, runtime::Spans::of(path, &caps)))
             .ok_or_else(|| runtime::Reason::MethodNotAllowed(
                 runtime::allowed_methods(methods),
             ))
@@ -600,69 +621,45 @@ impl<A: Api> runtime::Operations for Routes<A> {
     ) -> runtime::BoxFuture<'r, runtime::Response> {
         Box::pin(async move {
             let mut req = req;
-            let uri = req.uri().clone();
-            let target = runtime::path_and_query(&uri);
-            let (path, raw_query) = runtime::split_target(target);
+            let uri = call.uri().clone();
+            let (path, raw_query) = runtime::split_target(runtime::path_and_query(&uri));
             let path = runtime::normalize_path(path);
-            let path: &str = &path;
-            let found = runtime::route(ROUTES, path);
-            let found = found.and_then(|(leaf, caps)| Some((*METHODS.get(leaf)?, caps)));
+            let caps = call.captures(&path);
             let query = runtime::parse_query(raw_query);
-            let Some((methods, caps)) = found else { return runtime::new_response(404) };
-            let Some((_, (op, _))) = runtime::find_method(methods, req.method().as_str())
-            else {
-                return runtime::new_response(405);
-            };
             let routed = runtime::Routed {
                 request: &mut req,
                 caps: &caps,
                 raw_query,
                 query: &query,
             };
-            dispatch(&*self.0, *op, routed, call).await
+            dispatch(&*self.0, call.operation(), routed, call).await
         })
     }
 }
-#[derive(Clone, Copy)]
-enum Op {
-    O0,
-    O1,
-    O2,
-    O3,
-    O4,
-    O5,
-    O6,
-    O7,
-    O8,
-    O9,
-    O10,
-    O11,
-    O12,
-    O13,
-    O14,
-}
 async fn dispatch<A: Api>(
     api: &A,
-    op: Op,
+    op: Operation,
     routed: runtime::Routed<'_>,
     call: runtime::Call<'_, Option<A::Principal>, Operation>,
 ) -> runtime::Response {
     match op {
-        Op::O0 => Box::pin(get_all_data(api, routed, call)).await,
-        Op::O1 => Box::pin(create_product(api, routed, call)).await,
-        Op::O2 => Box::pin(query_products(api, routed, call)).await,
-        Op::O3 => Box::pin(search_products(api, routed, call)).await,
-        Op::O4 => Box::pin(get_product(api, routed, call)).await,
-        Op::O5 => Box::pin(update_product(api, routed, call)).await,
-        Op::O6 => Box::pin(delete_product(api, routed, call)).await,
-        Op::O7 => Box::pin(copy_product(api, routed, call)).await,
-        Op::O8 => Box::pin(upload_image(api, routed, call)).await,
-        Op::O9 => Box::pin(stream_product_events(api, routed, call)).await,
-        Op::O10 => Box::pin(upload_photos(api, routed, call)).await,
-        Op::O11 => Box::pin(create_item(api, routed, call)).await,
-        Op::O12 => Box::pin(create_user(api, routed, call)).await,
-        Op::O13 => Box::pin(get_token(api, routed, call)).await,
-        Op::O14 => Box::pin(get_me(api, routed, call)).await,
+        Operation::GetAllData => Box::pin(get_all_data(api, routed, call)).await,
+        Operation::CreateProduct => Box::pin(create_product(api, routed, call)).await,
+        Operation::QueryProducts => Box::pin(query_products(api, routed, call)).await,
+        Operation::SearchProducts => Box::pin(search_products(api, routed, call)).await,
+        Operation::GetProduct => Box::pin(get_product(api, routed, call)).await,
+        Operation::UpdateProduct => Box::pin(update_product(api, routed, call)).await,
+        Operation::DeleteProduct => Box::pin(delete_product(api, routed, call)).await,
+        Operation::CopyProduct => Box::pin(copy_product(api, routed, call)).await,
+        Operation::UploadImage => Box::pin(upload_image(api, routed, call)).await,
+        Operation::StreamProductEvents => {
+            Box::pin(stream_product_events(api, routed, call)).await
+        }
+        Operation::UploadPhotos => Box::pin(upload_photos(api, routed, call)).await,
+        Operation::CreateItem => Box::pin(create_item(api, routed, call)).await,
+        Operation::CreateUser => Box::pin(create_user(api, routed, call)).await,
+        Operation::GetToken => Box::pin(get_token(api, routed, call)).await,
+        Operation::GetMe => Box::pin(get_me(api, routed, call)).await,
     }
 }
 static GET_ALL_DATA_OP: runtime::Op = runtime::Op {

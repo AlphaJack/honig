@@ -161,6 +161,30 @@ impl<'p> std::ops::Deref for Captures<'p> {
     }
 }
 
+/// Where the path variables of a route are: byte ranges of the path that was routed. The server keeps them from routing
+/// to the operation, so that the path is routed once.
+#[derive(Debug, Clone, Default)]
+pub struct Spans(Vec<std::ops::Range<usize>>);
+
+impl Spans {
+    /// Returns where `caps`, slices of `path`, are in it.
+    #[must_use]
+    pub fn of(path: &str, caps: &[&str]) -> Self {
+        let start = path.as_ptr().addr();
+        Self(caps.iter().map(|c| c.as_ptr().addr() - start..c.as_ptr().addr() - start + c.len()).collect())
+    }
+
+    /// Returns the variables in `path`, the path that was routed.
+    #[must_use]
+    pub fn captures<'p>(&self, path: &'p str) -> Captures<'p> {
+        let mut caps = Captures::default();
+        for r in &self.0 {
+            caps.push(path.get(r.clone()).unwrap_or_default());
+        }
+        caps
+    }
+}
+
 /// Literal children this few are scanned; more are binary searched.
 const SCAN: usize = 8;
 

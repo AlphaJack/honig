@@ -96,17 +96,17 @@ const fn error_schema(
 ) -> Option<&'static runtime::ProblemSchema> {
     None
 }
-static METHODS: &[&[(&str, (Op, Operation))]] = &[
-    &[("GET", (Op::O0, Operation::SearchOrders))],
-    &[("GET", (Op::O2, Operation::StatusAt))],
-    &[("GET", (Op::O4, Operation::LatestMeta))],
-    &[("GET", (Op::O6, Operation::FileExt))],
-    &[("GET", (Op::O7, Operation::MixLiteralTail))],
-    &[("GET", (Op::O8, Operation::MixMixedTail))],
-    &[("GET", (Op::O9, Operation::MixVarTail))],
-    &[("POST", (Op::O1, Operation::UpdateOrder))],
-    &[("GET", (Op::O3, Operation::StatusByKey))],
-    &[("GET", (Op::O5, Operation::FileRaw))],
+static METHODS: &[&[(&str, Operation)]] = &[
+    &[("GET", Operation::SearchOrders)],
+    &[("GET", Operation::StatusAt)],
+    &[("GET", Operation::LatestMeta)],
+    &[("GET", Operation::FileExt)],
+    &[("GET", Operation::MixLiteralTail)],
+    &[("GET", Operation::MixMixedTail)],
+    &[("GET", Operation::MixVarTail)],
+    &[("POST", Operation::UpdateOrder)],
+    &[("GET", Operation::StatusByKey)],
+    &[("GET", Operation::FileRaw)],
 ];
 static ROUTES: &[runtime::Node] = &[
     runtime::node(
@@ -214,7 +214,11 @@ impl<A: Api> runtime::Operations for Routes<A> {
     fn paths(&self) -> &'static [&'static str] {
         PATHS
     }
-    fn route(&self, method: &str, target: &str) -> Result<Operation, runtime::Reason> {
+    fn route(
+        &self,
+        method: &str,
+        target: &str,
+    ) -> Result<(Operation, runtime::Spans), runtime::Reason> {
         let (path, _) = runtime::split_target(target);
         let path = runtime::normalize_path(path);
         let path: &str = &path;
@@ -228,10 +232,12 @@ impl<A: Api> runtime::Operations for Routes<A> {
             .map(|rest| if rest.is_empty() { "/" } else { rest })
             .and_then(|rest| runtime::route(ROUTES, rest))
             .or_else(|| runtime::route(ROUTES, path));
-        let found = found.and_then(|(leaf, caps)| Some((*METHODS.get(leaf)?, caps)));
-        let Some((methods, _)) = found else { return Err(runtime::Reason::NotFound) };
+        let Some((methods, caps)) = found
+            .and_then(|(leaf, caps)| Some((*METHODS.get(leaf)?, caps))) else {
+            return Err(runtime::Reason::NotFound);
+        };
         runtime::find_method(methods, method)
-            .map(|(_, (_, info))| *info)
+            .map(|(_, op)| (*op, runtime::Spans::of(path, &caps)))
             .ok_or_else(|| runtime::Reason::MethodNotAllowed(
                 runtime::allowed_methods(methods),
             ))
@@ -257,68 +263,38 @@ impl<A: Api> runtime::Operations for Routes<A> {
     ) -> runtime::BoxFuture<'r, runtime::Response> {
         Box::pin(async move {
             let mut req = req;
-            let uri = req.uri().clone();
-            let target = runtime::path_and_query(&uri);
-            let (path, raw_query) = runtime::split_target(target);
+            let uri = call.uri().clone();
+            let (path, raw_query) = runtime::split_target(runtime::path_and_query(&uri));
             let path = runtime::normalize_path(path);
-            let path: &str = &path;
-            let found = BASE_PATHS
-                .iter()
-                .find_map(|b| {
-                    path
-                        .strip_prefix(b)
-                        .filter(|rest| rest.is_empty() || rest.starts_with('/'))
-                })
-                .map(|rest| if rest.is_empty() { "/" } else { rest })
-                .and_then(|rest| runtime::route(ROUTES, rest))
-                .or_else(|| runtime::route(ROUTES, path));
-            let found = found.and_then(|(leaf, caps)| Some((*METHODS.get(leaf)?, caps)));
+            let caps = call.captures(&path);
             let query = runtime::parse_query(raw_query);
-            let Some((methods, caps)) = found else { return runtime::new_response(404) };
-            let Some((_, (op, _))) = runtime::find_method(methods, req.method().as_str())
-            else {
-                return runtime::new_response(405);
-            };
             let routed = runtime::Routed {
                 request: &mut req,
                 caps: &caps,
                 raw_query,
                 query: &query,
             };
-            dispatch(&*self.0, *op, routed, call).await
+            dispatch(&*self.0, call.operation(), routed, call).await
         })
     }
 }
-#[derive(Clone, Copy)]
-enum Op {
-    O0,
-    O1,
-    O2,
-    O3,
-    O4,
-    O5,
-    O6,
-    O7,
-    O8,
-    O9,
-}
 async fn dispatch<A: Api>(
     api: &A,
-    op: Op,
+    op: Operation,
     routed: runtime::Routed<'_>,
     call: runtime::Call<'_, Option<A::Principal>, Operation>,
 ) -> runtime::Response {
     match op {
-        Op::O0 => Box::pin(search_orders(api, routed, call)).await,
-        Op::O1 => Box::pin(update_order(api, routed, call)).await,
-        Op::O2 => Box::pin(status_at(api, routed, call)).await,
-        Op::O3 => Box::pin(status_by_key(api, routed, call)).await,
-        Op::O4 => Box::pin(latest_meta(api, routed, call)).await,
-        Op::O5 => Box::pin(file_raw(api, routed, call)).await,
-        Op::O6 => Box::pin(file_ext(api, routed, call)).await,
-        Op::O7 => Box::pin(mix_literal_tail(api, routed, call)).await,
-        Op::O8 => Box::pin(mix_mixed_tail(api, routed, call)).await,
-        Op::O9 => Box::pin(mix_var_tail(api, routed, call)).await,
+        Operation::SearchOrders => Box::pin(search_orders(api, routed, call)).await,
+        Operation::UpdateOrder => Box::pin(update_order(api, routed, call)).await,
+        Operation::StatusAt => Box::pin(status_at(api, routed, call)).await,
+        Operation::StatusByKey => Box::pin(status_by_key(api, routed, call)).await,
+        Operation::LatestMeta => Box::pin(latest_meta(api, routed, call)).await,
+        Operation::FileRaw => Box::pin(file_raw(api, routed, call)).await,
+        Operation::FileExt => Box::pin(file_ext(api, routed, call)).await,
+        Operation::MixLiteralTail => Box::pin(mix_literal_tail(api, routed, call)).await,
+        Operation::MixMixedTail => Box::pin(mix_mixed_tail(api, routed, call)).await,
+        Operation::MixVarTail => Box::pin(mix_var_tail(api, routed, call)).await,
     }
 }
 static SEARCH_ORDERS_OP: runtime::Op = runtime::Op::new(

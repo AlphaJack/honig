@@ -174,27 +174,27 @@ const fn error_schema(
 ) -> Option<&'static runtime::ProblemSchema> {
     None
 }
-static METHODS: &[&[(&str, (Op, Operation))]] = &[
-    &[("POST", (Op::O0, Operation::FormWithXml))],
-    &[("GET", (Op::O13, Operation::CollectionWithLinks))],
-    &[("GET", (Op::O16, Operation::MediaTypeJson))],
-    &[("POST", (Op::O19, Operation::ServerSentEventStreams))],
-    &[("GET", (Op::O2, Operation::QuerystringForm))],
-    &[("GET", (Op::O3, Operation::QuerystringJson))],
-    &[("POST", (Op::O4, Operation::BasicMultipartForm))],
-    &[("POST", (Op::O5, Operation::MultipartFormWithEncodingObjects))],
-    &[("POST", (Op::O6, Operation::MultipartFormWithMultipleFiles))],
-    &[("POST", (Op::O7, Operation::OrderedUnnamedMultipart))],
-    &[("POST", (Op::O8, Operation::OrderedMultipartWithRequiredHeader))],
-    &[("POST", (Op::O9, Operation::NestedMultipartMixed))],
-    &[("GET", (Op::O10, Operation::StreamingMultipart))],
-    &[("GET", (Op::O11, Operation::StreamingByteRanges))],
-    &[("GET", (Op::O12, Operation::QuerystringJsonpath))],
-    &[("GET", (Op::O14, Operation::StandaloneJsonLinkset))],
-    &[("GET", (Op::O15, Operation::LinksetBody))],
-    &[("GET", (Op::O17, Operation::LogStream))],
-    &[("GET", (Op::O18, Operation::LogExcerpt))],
-    &[("GET", (Op::O1, Operation::ParameterExamples))],
+static METHODS: &[&[(&str, Operation)]] = &[
+    &[("POST", Operation::FormWithXml)],
+    &[("GET", Operation::CollectionWithLinks)],
+    &[("GET", Operation::MediaTypeJson)],
+    &[("POST", Operation::ServerSentEventStreams)],
+    &[("GET", Operation::QuerystringForm)],
+    &[("GET", Operation::QuerystringJson)],
+    &[("POST", Operation::BasicMultipartForm)],
+    &[("POST", Operation::MultipartFormWithEncodingObjects)],
+    &[("POST", Operation::MultipartFormWithMultipleFiles)],
+    &[("POST", Operation::OrderedUnnamedMultipart)],
+    &[("POST", Operation::OrderedMultipartWithRequiredHeader)],
+    &[("POST", Operation::NestedMultipartMixed)],
+    &[("GET", Operation::StreamingMultipart)],
+    &[("GET", Operation::StreamingByteRanges)],
+    &[("GET", Operation::QuerystringJsonpath)],
+    &[("GET", Operation::StandaloneJsonLinkset)],
+    &[("GET", Operation::LinksetBody)],
+    &[("GET", Operation::LogStream)],
+    &[("GET", Operation::LogExcerpt)],
+    &[("GET", Operation::ParameterExamples)],
 ];
 static ROUTES: &[runtime::Node] = &[
     runtime::node(
@@ -306,15 +306,21 @@ impl<A: Api> runtime::Operations for Routes<A> {
     fn paths(&self) -> &'static [&'static str] {
         PATHS
     }
-    fn route(&self, method: &str, target: &str) -> Result<Operation, runtime::Reason> {
+    fn route(
+        &self,
+        method: &str,
+        target: &str,
+    ) -> Result<(Operation, runtime::Spans), runtime::Reason> {
         let (path, _) = runtime::split_target(target);
         let path = runtime::normalize_path(path);
         let path: &str = &path;
         let found = runtime::route(ROUTES, path);
-        let found = found.and_then(|(leaf, caps)| Some((*METHODS.get(leaf)?, caps)));
-        let Some((methods, _)) = found else { return Err(runtime::Reason::NotFound) };
+        let Some((methods, caps)) = found
+            .and_then(|(leaf, caps)| Some((*METHODS.get(leaf)?, caps))) else {
+            return Err(runtime::Reason::NotFound);
+        };
         runtime::find_method(methods, method)
-            .map(|(_, (_, info))| *info)
+            .map(|(_, op)| (*op, runtime::Spans::of(path, &caps)))
             .ok_or_else(|| runtime::Reason::MethodNotAllowed(
                 runtime::allowed_methods(methods),
             ))
@@ -340,81 +346,74 @@ impl<A: Api> runtime::Operations for Routes<A> {
     ) -> runtime::BoxFuture<'r, runtime::Response> {
         Box::pin(async move {
             let mut req = req;
-            let uri = req.uri().clone();
-            let target = runtime::path_and_query(&uri);
-            let (path, raw_query) = runtime::split_target(target);
+            let uri = call.uri().clone();
+            let (path, raw_query) = runtime::split_target(runtime::path_and_query(&uri));
             let path = runtime::normalize_path(path);
-            let path: &str = &path;
-            let found = runtime::route(ROUTES, path);
-            let found = found.and_then(|(leaf, caps)| Some((*METHODS.get(leaf)?, caps)));
+            let caps = call.captures(&path);
             let query = runtime::parse_query(raw_query);
-            let Some((methods, caps)) = found else { return runtime::new_response(404) };
-            let Some((_, (op, _))) = runtime::find_method(methods, req.method().as_str())
-            else {
-                return runtime::new_response(405);
-            };
             let routed = runtime::Routed {
                 request: &mut req,
                 caps: &caps,
                 raw_query,
                 query: &query,
             };
-            dispatch(&*self.0, *op, routed, call).await
+            dispatch(&*self.0, call.operation(), routed, call).await
         })
     }
 }
-#[derive(Clone, Copy)]
-enum Op {
-    O0,
-    O1,
-    O2,
-    O3,
-    O4,
-    O5,
-    O6,
-    O7,
-    O8,
-    O9,
-    O10,
-    O11,
-    O12,
-    O13,
-    O14,
-    O15,
-    O16,
-    O17,
-    O18,
-    O19,
-}
 async fn dispatch<A: Api>(
     api: &A,
-    op: Op,
+    op: Operation,
     routed: runtime::Routed<'_>,
     call: runtime::Call<'_, Option<A::Principal>, Operation>,
 ) -> runtime::Response {
     match op {
-        Op::O0 => Box::pin(form_with_xml(api, routed, call)).await,
-        Op::O1 => Box::pin(parameter_examples(api, routed, call)).await,
-        Op::O2 => Box::pin(querystring_form(api, routed, call)).await,
-        Op::O3 => Box::pin(querystring_json(api, routed, call)).await,
-        Op::O4 => Box::pin(basic_multipart_form(api, routed, call)).await,
-        Op::O5 => Box::pin(multipart_form_with_encoding_objects(api, routed, call)).await,
-        Op::O6 => Box::pin(multipart_form_with_multiple_files(api, routed, call)).await,
-        Op::O7 => Box::pin(ordered_unnamed_multipart(api, routed, call)).await,
-        Op::O8 => {
+        Operation::FormWithXml => Box::pin(form_with_xml(api, routed, call)).await,
+        Operation::ParameterExamples => {
+            Box::pin(parameter_examples(api, routed, call)).await
+        }
+        Operation::QuerystringForm => Box::pin(querystring_form(api, routed, call)).await,
+        Operation::QuerystringJson => Box::pin(querystring_json(api, routed, call)).await,
+        Operation::BasicMultipartForm => {
+            Box::pin(basic_multipart_form(api, routed, call)).await
+        }
+        Operation::MultipartFormWithEncodingObjects => {
+            Box::pin(multipart_form_with_encoding_objects(api, routed, call)).await
+        }
+        Operation::MultipartFormWithMultipleFiles => {
+            Box::pin(multipart_form_with_multiple_files(api, routed, call)).await
+        }
+        Operation::OrderedUnnamedMultipart => {
+            Box::pin(ordered_unnamed_multipart(api, routed, call)).await
+        }
+        Operation::OrderedMultipartWithRequiredHeader => {
             Box::pin(ordered_multipart_with_required_header(api, routed, call)).await
         }
-        Op::O9 => Box::pin(nested_multipart_mixed(api, routed, call)).await,
-        Op::O10 => Box::pin(streaming_multipart(api, routed, call)).await,
-        Op::O11 => Box::pin(streaming_byte_ranges(api, routed, call)).await,
-        Op::O12 => Box::pin(querystring_jsonpath(api, routed, call)).await,
-        Op::O13 => Box::pin(collection_with_links(api, routed, call)).await,
-        Op::O14 => Box::pin(standalone_json_linkset(api, routed, call)).await,
-        Op::O15 => Box::pin(linkset_body(api, routed, call)).await,
-        Op::O16 => Box::pin(media_type_json(api, routed, call)).await,
-        Op::O17 => Box::pin(log_stream(api, routed, call)).await,
-        Op::O18 => Box::pin(log_excerpt(api, routed, call)).await,
-        Op::O19 => Box::pin(server_sent_event_streams(api, routed, call)).await,
+        Operation::NestedMultipartMixed => {
+            Box::pin(nested_multipart_mixed(api, routed, call)).await
+        }
+        Operation::StreamingMultipart => {
+            Box::pin(streaming_multipart(api, routed, call)).await
+        }
+        Operation::StreamingByteRanges => {
+            Box::pin(streaming_byte_ranges(api, routed, call)).await
+        }
+        Operation::QuerystringJsonpath => {
+            Box::pin(querystring_jsonpath(api, routed, call)).await
+        }
+        Operation::CollectionWithLinks => {
+            Box::pin(collection_with_links(api, routed, call)).await
+        }
+        Operation::StandaloneJsonLinkset => {
+            Box::pin(standalone_json_linkset(api, routed, call)).await
+        }
+        Operation::LinksetBody => Box::pin(linkset_body(api, routed, call)).await,
+        Operation::MediaTypeJson => Box::pin(media_type_json(api, routed, call)).await,
+        Operation::LogStream => Box::pin(log_stream(api, routed, call)).await,
+        Operation::LogExcerpt => Box::pin(log_excerpt(api, routed, call)).await,
+        Operation::ServerSentEventStreams => {
+            Box::pin(server_sent_event_streams(api, routed, call)).await
+        }
     }
 }
 static FORM_WITH_XML_OP: runtime::Op = runtime::Op::new(

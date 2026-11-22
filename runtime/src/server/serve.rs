@@ -154,13 +154,35 @@ pub struct Call<'r, C, Id> {
     pub(crate) satisfied: SatisfiedSecurity,
     pub(crate) principal: C,
     pub(crate) event: &'r RequestEvent<Id>,
+    /// The target that was routed and where its path variables are.
+    pub(crate) uri: http::Uri,
+    pub(crate) spans: crate::server::route::Spans,
 }
 
 impl<'r, C, Id> Call<'r, Option<C>, Id> {
     /// Drops the principal for an operation without `security`: its handler sees none.
     pub fn public(self) -> Call<'r, (), Id> {
-        let Self { config, operation, satisfied, principal: _, event } = self;
-        Call { config, operation, satisfied, principal: (), event }
+        let Self { config, operation, satisfied, principal: _, event, uri, spans } = self;
+        Call { config, operation, satisfied, principal: (), event, uri, spans }
+    }
+}
+
+impl<C, Id: Copy> Call<'_, C, Id> {
+    /// Returns the operation that the server routed the request to.
+    pub const fn operation(&self) -> Id {
+        self.operation
+    }
+
+    /// Returns the target that the server routed: its path variables are in it, wherever a layer took the request.
+    #[must_use]
+    pub const fn uri(&self) -> &http::Uri {
+        &self.uri
+    }
+
+    /// Returns the path variables in `path`, the routed path as [`normalize_path`](crate::server::route::normalize_path) gives it.
+    #[must_use]
+    pub fn captures<'p>(&self, path: &'p str) -> crate::server::route::Captures<'p> {
+        self.spans.captures(path)
     }
 }
 
@@ -245,7 +267,7 @@ pub async fn serve<C, Id: Operation>(
     steps: &dyn OpSteps<C, Id>,
 ) -> Response {
     let Routed { request, caps, raw_query, query } = routed;
-    let Call { config, operation, satisfied, principal, event } = call;
+    let Call { config, operation, satisfied, principal, event, .. } = call;
     let op = operation.op();
     // The headers of the request go along for the error renderer. They are moved out at the failure and not up front.
     let fail = |headers: http::HeaderMap, reason: Reason| {
@@ -298,13 +320,13 @@ pub async fn serve_signed_in<C, Id: Operation>(
     call: Call<'_, Option<C>, Id>,
     steps: &dyn OpSteps<C, Id>,
 ) -> Response {
-    let Call { config, operation, satisfied, principal, event } = call;
+    let Call { config, operation, satisfied, principal, event, uri, spans } = call;
     let Some(principal) = principal else {
         event.fail(&Reason::Unauthorized);
         let errors = operation.op().errors;
         return config.reject(errors, Some(operation), Reason::Unauthorized, routed.request.headers().clone());
     };
-    serve(routed, Call { config, operation, satisfied, principal, event }, steps).await
+    serve(routed, Call { config, operation, satisfied, principal, event, uri, spans }, steps).await
 }
 
 /// Adds the `WWW-Authenticate` challenge of a 401 (RFC 9110 section 11.6.1). There is one per HTTP scheme that
