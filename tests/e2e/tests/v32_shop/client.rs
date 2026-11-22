@@ -14,7 +14,7 @@ where
     F: Fn(api::Request) -> Fut + Send + Sync + 'static,
     Fut: Future<Output = api::Response> + Send + 'static,
 {
-    api::Client::new(crate::support::loopback(answer))
+    api::Client::new(crate::support::loopback(answer)).with_bearer_auth("t")
 }
 
 /// The value of header `name` in `req`.

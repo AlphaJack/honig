@@ -48,6 +48,9 @@ pub enum ClientError {
     },
     /// A body still arriving went past a limit in bytes: the `max_body_bytes` of the server.
     TooLarge(usize),
+    /// The client has no credentials for any alternative of the operation's `security`, so the request is not sent. The
+    /// text lists the alternatives: schemes joined with `+` when one needs several, alternatives joined with `or`.
+    MissingCredentials(String),
 }
 
 impl ClientError {
@@ -90,6 +93,7 @@ impl fmt::Display for ClientError {
                 write!(f, "unexpected status {}: {text}", status.as_u16())
             }
             Self::TooLarge(limit) => write!(f, "body exceeds {limit} bytes"),
+            Self::MissingCredentials(wanted) => write!(f, "the operation needs credentials for {wanted}"),
         }
     }
 }

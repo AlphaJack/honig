@@ -237,7 +237,8 @@ fn the_client_reads_a_status_range_with_its_actual_status() {
             .insert(honig::http::header::CONTENT_TYPE, honig::http::HeaderValue::from_static("application/json"));
         *r.body_mut() = honig::Body::from(b"{}".to_vec());
         std::future::ready(r)
-    }));
+    }))
+    .with_bearer("t");
     let got = api::block_on(missing.get_item(ops::get_item::Params::new("1".to_owned())));
     assert_eq!(
         got.ok(),

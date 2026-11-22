@@ -350,6 +350,7 @@ impl From<ClientError> for Reason {
             | ClientError::Decode { .. }
             | ClientError::UnexpectedMedia { .. }
             | ClientError::UnexpectedStatus { .. }
+            | ClientError::MissingCredentials(_)
             | ClientError::NotModified { .. }) => Self::Body(other.to_string()),
         }
     }
