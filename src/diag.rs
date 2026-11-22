@@ -135,6 +135,10 @@ pub(crate) const NO_NODES: &str = "the target selects no nodes: the action does 
 /// numbered by its place in the sorted list, so an added scope renames the others. A server is not generated.
 pub(crate) const SAME_VARIANT: &str = "are one variant of its scope enum";
 
+/// The end of the message about enum names that do not pair with the values: `x-enum-varnames` pairs them by position,
+/// so a list of another length would give every value the name of another. `generate` fails on it.
+pub(crate) const ENUM_NAMES: &str = "list one name for each value";
+
 #[cfg(test)]
 mod tests {
     use super::*;

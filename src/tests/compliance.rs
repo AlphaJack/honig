@@ -285,6 +285,24 @@ fn a_schema_that_no_value_meets_fails_generation() {
     }
 }
 
+/// `x-enum-varnames` pairs names with values by position: a list of another length gives a value the name of
+/// another, and an edit of the `enum` alone shifts every meaning.
+#[test]
+fn enum_names_of_another_length_fail_generation() {
+    let enums =
+        |names: Value| json!({"schemas": {"Level": {"type": "integer", "enum": [1, 2, 3], "x-enum-varnames": names}}});
+    for (i, names) in [json!(["Low", "High"]), json!(["Low", "Mid", "High", "Max"]), json!(["Low", 2, "High"])]
+        .into_iter()
+        .enumerate()
+    {
+        let path = common::write(&format!("enum-names-{i}"), &doc(&json!({}), &enums(names)), &[]);
+        let err = crate::generate::generate(&path, &Options::default()).expect_err("must fail");
+        assert!(err.iter().any(|d| d.pointer == "/components/schemas/Level/x-enum-varnames"), "{:#?}", err.0);
+    }
+    let ok = common::write("enum-names-ok", &doc(&json!({}), &enums(json!(["Low", "Mid", "High"]))), &[]);
+    crate::generate::generate(&ok, &Options::default()).expect("one name for each value generates");
+}
+
 // `content` (3.2 Request Body / Response): "For requests that match multiple
 // keys, only the most specific key is applicable."
 
