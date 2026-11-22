@@ -322,16 +322,12 @@ pub(crate) fn print(file: &str, tokens: TokenStream, binary: bool) -> Result<Str
     use syn::visit_mut::VisitMut;
     let mut file: syn::File = syn::parse2(group_digits(tokens))
         .map_err(|source| crate::error::Error::Unparsable { file: file.to_owned(), source })?;
-    share_identical_impls(&mut file);
     SelfInOwnFields.visit_file_mut(&mut file);
     if binary {
         CrateOnly.visit_file_mut(&mut file);
     }
     Ok(unparse(file))
 }
-
-/// The prefix of a metavariable of a macro body while it is printed as plain items: `$n` is `__honig_n`.
-const METAVAR: &str = "__honig_";
 
 /// Returns `file` printed by `prettyplease`, with the body of each top-level `macro_rules!` printed as the items it
 /// expands to. `prettyplease` prints a macro body as raw tokens, one space between each: a body of trait impls would
@@ -340,7 +336,7 @@ pub(crate) fn unparse(mut file: syn::File) -> String {
     let mut bodies = Vec::new();
     for item in &mut file.items {
         let syn::Item::Macro(m) = item else { continue };
-        let Some(text) = macro_rules_text(m).or_else(|| items_macro_text(m)) else { continue };
+        let Some(text) = items_macro_text(m) else { continue };
         let marker = quote::format_ident!("__HONIG_MACRO_{}", bodies.len());
         let attrs = &m.attrs;
         let Ok(placeholder) = syn::parse2::<syn::Item>(quote!(#(#attrs)* const #marker: () = ();)) else { continue };
@@ -352,29 +348,6 @@ pub(crate) fn unparse(mut file: syn::File) -> String {
         out = out.replacen(&marker, text.trim_end(), 1);
     }
     out
-}
-
-/// Returns a macro body with each metavariable `$x` as the identifier `__honig_x`. So it parses as items.
-fn hide_metavars(tokens: TokenStream) -> TokenStream {
-    use proc_macro2::TokenTree;
-    let mut out = Vec::new();
-    let mut it = tokens.into_iter().peekable();
-    while let Some(t) = it.next() {
-        match t {
-            TokenTree::Punct(p) if p.as_char() == '$' && matches!(it.peek(), Some(TokenTree::Ident(_))) => {
-                if let Some(TokenTree::Ident(i)) = it.next() {
-                    out.push(TokenTree::Ident(quote::format_ident!("{METAVAR}{i}")));
-                }
-            }
-            TokenTree::Group(g) => {
-                let mut inner = proc_macro2::Group::new(g.delimiter(), hide_metavars(g.stream()));
-                inner.set_span(g.span());
-                out.push(TokenTree::Group(inner));
-            }
-            other @ (TokenTree::Ident(_) | TokenTree::Punct(_) | TokenTree::Literal(_)) => out.push(other),
-        }
-    }
-    out.into_iter().collect()
 }
 
 /// Returns a call of a runtime macro whose body is items, `runtime::object! { .. }`, with the body printed as those
@@ -392,107 +365,6 @@ fn items_macro_text(m: &syn::ItemMacro) -> Option<String> {
         .map(|l| if l.is_empty() { "\n".to_owned() } else { format!("    {l}\n") })
         .collect();
     Some(format!("runtime::{name}! {{\n{body}}}\n"))
-}
-
-/// Returns `macro_rules! name { (matcher) => { body }; }` with its body printed as items. `None` for any other macro
-/// or for a body that does not parse as items.
-fn macro_rules_text(m: &syn::ItemMacro) -> Option<String> {
-    use proc_macro2::TokenTree;
-    if !m.mac.path.is_ident("macro_rules") {
-        return None;
-    }
-    let name = m.ident.as_ref()?;
-    let tokens: Vec<TokenTree> = m.mac.tokens.clone().into_iter().collect();
-    // One rule: a matcher, `=>`, a braced body and an optional `;`.
-    let [TokenTree::Group(matcher), TokenTree::Punct(eq), TokenTree::Punct(gt), TokenTree::Group(body), rest @ ..] =
-        tokens.as_slice()
-    else {
-        return None;
-    };
-    let semi = |t: &TokenTree| matches!(t, TokenTree::Punct(p) if p.as_char() == ';');
-    if eq.as_char() != '=' || gt.as_char() != '>' || !rest.iter().all(semi) || rest.len() > 1 {
-        return None;
-    }
-    let items: syn::File = syn::parse2(hide_metavars(body.stream())).ok()?;
-    let printed = prettyplease::unparse(&items).replace(METAVAR, "$");
-    let body: String =
-        printed.lines().map(|l| if l.is_empty() { "\n".to_owned() } else { format!("        {l}\n") }).collect();
-    let matcher = matcher.stream().to_string().replace("$ ", "$").replace(" : ", ":").replace(" , ", ", ");
-    Some(format!("macro_rules! {name} {{\n    ({matcher}) => {{\n{body}    }};\n}}\n"))
-}
-
-/// Writes once a trait impl that several types share word for word, such as the `Serialize` of two unions with the same
-/// variants. A `macro_rules!` at the top of the file writes it for any type. Each type invokes it. Generated code
-/// contains no two identical function bodies.
-fn share_identical_impls(file: &mut syn::File) {
-    use syn::visit_mut::VisitMut;
-    let mut count = CountImpls::default();
-    count.visit_file_mut(file);
-    let mut share = ShareImpls { count: count.0, shared: Vec::new(), cfg: Vec::new() };
-    share.visit_file_mut(file);
-    let macros: Vec<syn::Item> = share
-        .shared
-        .into_iter()
-        .map(|shared| {
-            let name = quote::format_ident!("{}", shared.name);
-            let body = for_type(shared.shape);
-            // Under the `cfg` of every use (`#[cfg(test)]` for samples). So a build without them has no unused macro.
-            let cfg = shared.cfg.unwrap_or_default();
-            let mut attrs = Vec::new();
-            attrs.extend(cfg.into_iter().map(|tokens| {
-                let path = syn::Path::from(quote::format_ident!("cfg"));
-                let delimiter = syn::MacroDelimiter::Paren(syn::token::Paren::default());
-                attribute(syn::Meta::List(syn::MetaList { path, delimiter, tokens }))
-            }));
-            syn::Item::Macro(syn::ItemMacro {
-                attrs,
-                ident: Some(name),
-                mac: macro_call(
-                    "macro_rules",
-                    syn::MacroDelimiter::Brace(syn::token::Brace::default()),
-                    quote!(($t:ty) => { #body };),
-                ),
-                semi_token: None,
-            })
-        })
-        .collect();
-    file.items.splice(0..0, macros);
-}
-
-/// The placeholder for the implementing type in a shared impl.
-const SELF_TYPE: &str = "__HonigSelfType";
-
-/// Returns a trait impl with its type replaced by [`SELF_TYPE`] and the type. [`share_identical_impls`] compares these.
-fn impl_shape(item: &mut syn::Item) -> Option<(TokenStream, TokenStream)> {
-    let syn::Item::Impl(i) = item else { return None };
-    i.trait_.as_ref()?;
-    let placeholder = Ident::new(SELF_TYPE, Span::call_site());
-    let stand_in =
-        syn::Type::Path(syn::TypePath { attrs: Vec::new(), qself: None, path: syn::Path::from(placeholder) });
-    let ty = std::mem::replace(&mut *i.self_ty, stand_in);
-    let shape = i.to_token_stream();
-    *i.self_ty = ty;
-    Some((shape, i.self_ty.to_token_stream()))
-}
-
-/// Returns an outer attribute `#[meta]`.
-fn attribute(meta: syn::Meta) -> syn::Attribute {
-    syn::Attribute {
-        pound_token: syn::token::Pound::default(),
-        style: syn::AttrStyle::Outer,
-        bracket_token: syn::token::Bracket::default(),
-        meta,
-    }
-}
-
-/// Returns `name!(tokens)` with `delimiter`.
-fn macro_call(name: &str, delimiter: syn::MacroDelimiter, tokens: TokenStream) -> syn::Macro {
-    syn::Macro {
-        path: syn::Path::from(Ident::new(name, Span::call_site())),
-        bang_token: syn::token::Not::default(),
-        delimiter,
-        tokens,
-    }
 }
 
 /// Every `pub` becomes `pub(crate)`.
@@ -617,113 +489,6 @@ impl syn::visit_mut::VisitMut for OwnName<'_> {
             return;
         }
         syn::visit_mut::visit_type_path_mut(self, t);
-    }
-}
-
-/// Replaces [`SELF_TYPE`] with the macro's `$t`.
-fn for_type(tokens: TokenStream) -> TokenStream {
-    use proc_macro2::{Group, Punct, Spacing, TokenTree};
-    tokens
-        .into_iter()
-        .flat_map(|tt| -> Vec<TokenTree> {
-            match tt {
-                TokenTree::Group(g) => {
-                    let mut ng = Group::new(g.delimiter(), for_type(g.stream()));
-                    ng.set_span(g.span());
-                    vec![TokenTree::Group(ng)]
-                }
-                TokenTree::Ident(i) if i == SELF_TYPE => {
-                    vec![TokenTree::Punct(Punct::new('$', Spacing::Alone)), TokenTree::Ident(Ident::new("t", i.span()))]
-                }
-                other @ (TokenTree::Ident(_) | TokenTree::Punct(_) | TokenTree::Literal(_)) => vec![other],
-            }
-        })
-        .collect()
-}
-
-/// How often each trait impl's shape occurs.
-#[derive(Default)]
-struct CountImpls(std::collections::BTreeMap<String, usize>);
-
-impl syn::visit_mut::VisitMut for CountImpls {
-    fn visit_item_mut(&mut self, item: &mut syn::Item) {
-        if let Some((shape, _)) = impl_shape(item) {
-            *self.0.entry(shape.to_string()).or_default() += 1;
-        }
-        syn::visit_mut::visit_item_mut(self, item);
-    }
-}
-
-/// One shared impl with its shape and the `cfg` attributes that every use sits under (`None` once two uses differ).
-struct Shared {
-    text: String,
-    /// The macro: the trait in `snake_case` and `_impl`, then a number from the second one of a trait on.
-    name: String,
-    /// The trait as written.
-    trait_name: String,
-    shape: TokenStream,
-    cfg: Option<Vec<TokenStream>>,
-}
-
-/// Replaces each impl whose shape occurs more than once by an invocation of its shared macro.
-struct ShareImpls {
-    count: std::collections::BTreeMap<String, usize>,
-    /// Each shared macro in order.
-    shared: Vec<Shared>,
-    /// The `cfg` attributes of the modules being visited.
-    cfg: Vec<TokenStream>,
-}
-
-impl syn::visit_mut::VisitMut for ShareImpls {
-    fn visit_item_mod_mut(&mut self, m: &mut syn::ItemMod) {
-        let depth = self.cfg.len();
-        // The condition of each `#[cfg(...)]` to put back on the shared macro.
-        self.cfg.extend(m.attrs.iter().filter_map(|a| match &a.meta {
-            syn::Meta::List(l) if l.path.is_ident("cfg") => Some(l.tokens.clone()),
-            syn::Meta::List(_) | syn::Meta::Path(_) | syn::Meta::NameValue(_) => None,
-        }));
-        syn::visit_mut::visit_item_mod_mut(self, m);
-        self.cfg.truncate(depth);
-    }
-
-    fn visit_item_mut(&mut self, item: &mut syn::Item) {
-        syn::visit_mut::visit_item_mut(self, item);
-        let trait_name = if let syn::Item::Impl(i) = &*item {
-            i.trait_.as_ref().and_then(|(path, _)| path.segments.last()).map(|s| s.ident.to_string())
-        } else {
-            None
-        };
-        let Some((shape, ty)) = impl_shape(item) else { return };
-        let trait_name = trait_name.unwrap_or_default();
-        let text = shape.to_string();
-        if self.count.get(&text).copied().unwrap_or(0) < 2 {
-            return;
-        }
-        let cfg_text = |c: &[TokenStream]| c.iter().map(ToString::to_string).collect::<Vec<_>>();
-        let here = cfg_text(&self.cfg);
-        let n = match self.shared.iter().position(|sh| sh.text == text) {
-            Some(n) => {
-                let same = self.shared[n].cfg.as_deref().is_some_and(|c| cfg_text(c) == here);
-                if !same {
-                    self.shared[n].cfg = None;
-                }
-                n
-            }
-            None => {
-                let base = format!("{}_impl", snake(&Name::new(&trait_name)));
-                let same_trait = self.shared.iter().filter(|sh| sh.trait_name == trait_name).count();
-                let name = if same_trait == 0 { base } else { format!("{base}_{}", same_trait + 1) };
-                self.shared.push(Shared { text, name, trait_name, shape, cfg: Some(self.cfg.clone()) });
-                self.shared.len() - 1
-            }
-        };
-        let name = quote::format_ident!("{}", self.shared[n].name);
-        *item = syn::Item::Macro(syn::ItemMacro {
-            attrs: Vec::new(),
-            ident: None,
-            mac: macro_call(&name.to_string(), syn::MacroDelimiter::Paren(syn::token::Paren::default()), ty),
-            semi_token: Some(syn::token::Semi::default()),
-        });
     }
 }
 
@@ -1075,22 +840,6 @@ pub(crate) fn match_arm(patterns: &[TokenStream], body: &TokenStream) -> TokenSt
     quote!(#(#patterns)|* => #body,)
 }
 
-/// Returns `match` arms from `(pattern, type, body)`: variants of one type (`Some`) write their body once,
-/// `Self::A(v) | Self::B(v) => ...` (clippy `match_same_arms`). `None` shares with no other arm.
-pub(crate) fn shared_arms(arms: Vec<(TokenStream, Option<Ty>, TokenStream)>) -> Vec<TokenStream> {
-    let mut groups: Vec<(Option<Ty>, Vec<TokenStream>, TokenStream)> = vec![];
-    for (pattern, same, body) in arms {
-        // One type and the same checks: two variants of one type with different constraints keep their own arms.
-        let found =
-            groups.iter_mut().find(|(s, _, b)| same.is_some() && *s == same && b.to_string() == body.to_string());
-        match found {
-            Some((_, patterns, _)) => patterns.push(pattern),
-            None => groups.push((same, vec![pattern], body)),
-        }
-    }
-    groups.into_iter().map(|(_, patterns, body)| match_arm(&patterns, &body)).collect()
-}
-
 /// Returns the name of the field that stores the other properties of `s`.
 pub(crate) fn extra_field(s: &crate::ir::types::Struct) -> String {
     free_field(s, "additional_properties")
@@ -1141,32 +890,6 @@ mod tests {
     }
 
     /// A shared impl gets the `cfg` of its uses when they all have it, and none when one does not.
-    #[test]
-    fn a_shared_impl_has_the_cfg_of_all_its_uses() {
-        let shared = |inside: proc_macro2::TokenStream| {
-            let tokens = quote::quote! {
-                #inside
-                #[cfg(test)]
-                mod t { impl Default for B { fn default() -> Self { Self::new() } } }
-            };
-            let text: String = super::print("x.rs", tokens, false).unwrap().split_whitespace().collect();
-            text.split("macro_rules!").next().unwrap_or_default().contains("#[cfg(test)]")
-        };
-        let at_top = quote::quote!(impl Default for A { fn default() -> Self { Self::new() } });
-        let in_test = quote::quote!(
-            #[cfg(test)]
-            mod u {
-                impl Default for A {
-                    fn default() -> Self {
-                        Self::new()
-                    }
-                }
-            }
-        );
-        assert!(!shared(at_top), "used outside the tests too");
-        assert!(shared(in_test), "used in the tests alone");
-    }
-
     #[test]
     fn prose_becomes_lint_clean_rustdoc() {
         assert_eq!(rustdoc("Uses OpenAPI and user_id."), "Uses `OpenAPI` and `user_id`.");

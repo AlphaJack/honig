@@ -42,6 +42,31 @@ pub fn first(violations: Vec<Violation>) -> Result<(), String> {
     }
 }
 
+/// Serializes the object `v` with the property `property` set to `tag`: a variant of a tagged union whose struct does
+/// not carry its tag.
+///
+/// # Errors
+/// `v` does not serialize.
+pub fn serialize_tagged<T: Serialize + ?Sized, S: serde::Serializer>(
+    v: &T,
+    property: &str,
+    tag: &str,
+    s: S,
+) -> Result<S::Ok, S::Error> {
+    let mut j = serde_json::to_value(v).map_err(serde::ser::Error::custom)?;
+    if let Value::Object(m) = &mut j {
+        m.insert(property.to_owned(), Value::String(tag.to_owned()));
+    }
+    Serialize::serialize(&j, s)
+}
+
+/// Returns the error of `value`, which is none of `allowed`.
+#[must_use]
+pub fn not_one_of(value: &str, allowed: &[&str]) -> crate::BuildError {
+    let allowed: Vec<String> = allowed.iter().map(|a| format!("`{a}`")).collect();
+    crate::BuildError::value(format!("`{value}` is not one of {}", allowed.join(", ")))
+}
+
 /// Records a violation.
 pub fn violation(out: &mut Vec<Violation>, location: &InstanceLocation<'_>, message: impl Into<String>) {
     out.push(Violation { instance_location: location.to_string(), message: message.into() });

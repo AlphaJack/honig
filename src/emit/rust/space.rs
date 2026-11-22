@@ -1,7 +1,5 @@
 //! The type space as the Rust emitter sees it. That is the types of the IR with what only Rust output depends on.
 
-use std::collections::BTreeMap;
-
 use crate::ir::TypeSpace;
 use crate::ir::types::{JsonKind, Kind, Ty, TypeId, all_refs, def_types};
 use crate::settings::FormatLibs;
@@ -94,17 +92,6 @@ impl<'a> Space<'a> {
         let mut refs = vec![];
         all_refs(ty, &mut refs);
         decimal_here(ty) || refs.iter().any(|id| self.decimals.get(id.0).copied().unwrap_or_default())
-    }
-
-    /// Returns the type that `t` names once aliases are followed. That covers a twin declared as an alias of its first
-    /// (`aliases`) and a `Kind::Alias`.
-    pub(crate) fn resolved(&self, aliases: &BTreeMap<usize, usize>, t: &Ty) -> Ty {
-        let Ty::Named(id) = t else { return t.clone() };
-        match (aliases.get(&id.0), &self.types.get(*id).kind) {
-            (Some(&first), _) => self.resolved(aliases, &Ty::Named(TypeId(first))),
-            (None, Kind::Alias(x)) => self.resolved(aliases, x),
-            (None, _) => t.clone(),
-        }
     }
 }
 

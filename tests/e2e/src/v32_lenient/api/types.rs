@@ -172,32 +172,7 @@ pub enum StatusRequest {
     Open,
     Closed,
 }
-impl StatusRequest {
-    #[must_use]
-    pub const fn as_str(&self) -> &'static str {
-        match self {
-            Self::Open => "open",
-            Self::Closed => "closed",
-        }
-    }
-}
-impl TryFrom<&str> for StatusRequest {
-    type Error = runtime::BuildError;
-    fn try_from(s: &str) -> Result<Self, runtime::BuildError> {
-        match s {
-            "open" => Ok(Self::Open),
-            "closed" => Ok(Self::Closed),
-            other => {
-                Err(
-                    runtime::BuildError::value(
-                        format!("`{other}` is not one of `open`, `closed`"),
-                    ),
-                )
-            }
-        }
-    }
-}
-runtime::str_enum_impls!(StatusRequest);
+runtime::str_enum_impls!(StatusRequest { Closed => "closed", Open => "open" });
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct DeliveryRequest(pub(super) DeliveryRequestVariants);
@@ -271,15 +246,7 @@ pub enum DeliveryVariants {
     Courier(Courier),
     Other(serde_json::Value),
 }
-impl serde::Serialize for DeliveryVariants {
-    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        match self {
-            Self::Pickup(v) => serde::Serialize::serialize(v, s),
-            Self::Courier(v) => serde::Serialize::serialize(v, s),
-            Self::Other(v) => serde::Serialize::serialize(v, s),
-        }
-    }
-}
+runtime::union_serialize!(DeliveryVariants { Courier, Pickup, Other });
 runtime::tagged_deserialize!(DeliveryVariants);
 impl<'de> runtime::TaggedUnion<'de> for DeliveryVariants {
     const TAG: &'static str = "kind";

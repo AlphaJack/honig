@@ -7,36 +7,9 @@ pub enum Status {
     Confirmed,
     Delivered,
 }
-impl Status {
-    #[must_use]
-    pub const fn as_str(&self) -> &'static str {
-        match self {
-            Self::Draft => "draft",
-            Self::Confirmed => "confirmed",
-            Self::Delivered => "delivered",
-        }
-    }
-}
-impl TryFrom<&str> for Status {
-    type Error = runtime::BuildError;
-    fn try_from(s: &str) -> Result<Self, runtime::BuildError> {
-        match s {
-            "draft" => Ok(Self::Draft),
-            "confirmed" => Ok(Self::Confirmed),
-            "delivered" => Ok(Self::Delivered),
-            other => {
-                Err(
-                    runtime::BuildError::value(
-                        format!(
-                            "`{other}` is not one of `draft`, `confirmed`, `delivered`"
-                        ),
-                    ),
-                )
-            }
-        }
-    }
-}
-runtime::str_enum_impls!(Status);
+runtime::str_enum_impls!(
+    Status { Confirmed => "confirmed", Delivered => "delivered", Draft => "draft" }
+);
 runtime::object! {
     #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct Money {
@@ -296,14 +269,7 @@ pub enum OrderPayment {
     Card(Card),
     Sepa(Sepa),
 }
-impl serde::Serialize for OrderPayment {
-    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        match self {
-            Self::Card(v) => serde::Serialize::serialize(v, s),
-            Self::Sepa(v) => serde::Serialize::serialize(v, s),
-        }
-    }
-}
+runtime::union_serialize!(OrderPayment { Card, Sepa });
 impl<'de> serde::Deserialize<'de> for OrderPayment {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         let v = <runtime::Content<'de> as serde::Deserialize>::deserialize(d)?;
@@ -359,14 +325,7 @@ pub enum OrderDiscount {
     Money(Money),
     Other(serde_json::Value),
 }
-impl serde::Serialize for OrderDiscount {
-    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        match self {
-            Self::Money(v) => serde::Serialize::serialize(v, s),
-            Self::Other(v) => serde::Serialize::serialize(v, s),
-        }
-    }
-}
+runtime::union_serialize!(OrderDiscount { Money, Other });
 impl<'de> serde::Deserialize<'de> for OrderDiscount {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         let v = <runtime::Content<'de> as serde::Deserialize>::deserialize(d)?;
@@ -417,32 +376,7 @@ pub enum ListOrdersSort {
     Newest,
     Oldest,
 }
-impl ListOrdersSort {
-    #[must_use]
-    pub const fn as_str(&self) -> &'static str {
-        match self {
-            Self::Newest => "newest",
-            Self::Oldest => "oldest",
-        }
-    }
-}
-impl TryFrom<&str> for ListOrdersSort {
-    type Error = runtime::BuildError;
-    fn try_from(s: &str) -> Result<Self, runtime::BuildError> {
-        match s {
-            "newest" => Ok(Self::Newest),
-            "oldest" => Ok(Self::Oldest),
-            other => {
-                Err(
-                    runtime::BuildError::value(
-                        format!("`{other}` is not one of `newest`, `oldest`"),
-                    ),
-                )
-            }
-        }
-    }
-}
-runtime::str_enum_impls!(ListOrdersSort);
+runtime::str_enum_impls!(ListOrdersSort { Newest => "newest", Oldest => "oldest" });
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct ListOrdersCursor(pub(super) String);
@@ -491,32 +425,9 @@ pub enum UploadDocumentBodyKind {
     Invoice,
     Contract,
 }
-impl UploadDocumentBodyKind {
-    #[must_use]
-    pub const fn as_str(&self) -> &'static str {
-        match self {
-            Self::Invoice => "invoice",
-            Self::Contract => "contract",
-        }
-    }
-}
-impl TryFrom<&str> for UploadDocumentBodyKind {
-    type Error = runtime::BuildError;
-    fn try_from(s: &str) -> Result<Self, runtime::BuildError> {
-        match s {
-            "invoice" => Ok(Self::Invoice),
-            "contract" => Ok(Self::Contract),
-            other => {
-                Err(
-                    runtime::BuildError::value(
-                        format!("`{other}` is not one of `invoice`, `contract`"),
-                    ),
-                )
-            }
-        }
-    }
-}
-runtime::str_enum_impls!(UploadDocumentBodyKind);
+runtime::str_enum_impls!(
+    UploadDocumentBodyKind { Contract => "contract", Invoice => "invoice" }
+);
 pub type Not = Customer;
 runtime::object! {
     #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -557,14 +468,7 @@ pub enum VehicleVariants {
     Car(Car),
     Van(Van),
 }
-impl serde::Serialize for VehicleVariants {
-    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        match self {
-            Self::Car(v) => serde::Serialize::serialize(v, s),
-            Self::Van(v) => serde::Serialize::serialize(v, s),
-        }
-    }
-}
+runtime::union_serialize!(VehicleVariants { Car, Van });
 runtime::tagged_deserialize!(VehicleVariants);
 impl<'de> runtime::TaggedUnion<'de> for VehicleVariants {
     const TAG: &'static str = "kind";

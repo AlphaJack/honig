@@ -187,14 +187,7 @@ pub enum EventCharge {
     Refund(EventChargeRefund),
     Fee(EventChargeFee),
 }
-impl serde::Serialize for EventCharge {
-    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        match self {
-            Self::Refund(v) => serde::Serialize::serialize(v, s),
-            Self::Fee(v) => serde::Serialize::serialize(v, s),
-        }
-    }
-}
+runtime::union_serialize!(EventCharge { Fee, Refund });
 impl<'de> serde::Deserialize<'de> for EventCharge {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         let v = runtime::Content::exact(d)?;
@@ -274,14 +267,7 @@ pub enum EventPayment {
     Card(Card),
     Transfer(Transfer),
 }
-impl serde::Serialize for EventPayment {
-    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        match self {
-            Self::Card(v) => serde::Serialize::serialize(v, s),
-            Self::Transfer(v) => serde::Serialize::serialize(v, s),
-        }
-    }
-}
+runtime::union_serialize!(EventPayment { Card, Transfer });
 impl<'de> serde::Deserialize<'de> for EventPayment {
     fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
         let v = runtime::Content::exact(d)?;

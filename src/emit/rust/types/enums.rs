@@ -23,33 +23,18 @@ pub(super) fn str_enum(items: &mut Vec<TokenStream>, def: &TypeDef, values: &[En
         let name = pascal_ident(&v.name);
         quote!(#d #name,)
     });
-    let names: Vec<_> = values.iter().map(|v| pascal_ident(&v.name)).collect();
-    let wires: Vec<_> = values.iter().map(|v| lit(&v.wire)).collect();
-    let allowed = lit(&one_of(values.iter().map(|v| v.wire.clone())));
+    // By value: the impls do not depend on the order of the variants, and a reorder of the description changes nothing.
+    let mut by_wire: Vec<_> = values.iter().collect();
+    by_wire.sort_by(|a, b| a.wire.cmp(&b.wire));
+    let names: Vec<_> = by_wire.iter().map(|v| pascal_ident(&v.name)).collect();
+    let wires: Vec<_> = by_wire.iter().map(|v| lit(&v.wire)).collect();
     items.push(quote! {
         #doc
         #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
         pub enum #n {
             #(#variants)*
         }
-        impl #n {
-            #[must_use]
-            pub const fn as_str(&self) -> &'static str {
-                match self {
-                    #(Self::#names => #wires,)*
-                }
-            }
-        }
-        impl TryFrom<&str> for #n {
-            type Error = runtime::BuildError;
-            fn try_from(s: &str) -> Result<Self, runtime::BuildError> {
-                match s {
-                    #(#wires => Ok(Self::#names),)*
-                    other => Err(runtime::BuildError::value(format!(#allowed))),
-                }
-            }
-        }
-        runtime::str_enum_impls!(#n);
+        runtime::str_enum_impls!(#n { #(#names => #wires),* });
     });
 }
 
@@ -134,13 +119,7 @@ pub(super) fn no_variant(u: &Union) -> TokenStream {
     }
 }
 
-pub(super) fn union(
-    items: &mut Vec<TokenStream>,
-    space: &Space<'_>,
-    aliases: &std::collections::BTreeMap<usize, usize>,
-    def: &TypeDef,
-    u: &Union,
-) {
+pub(super) fn union(items: &mut Vec<TokenStream>, space: &Space<'_>, def: &TypeDef, u: &Union) {
     let n = pascal_ident(&def.name);
     let doc = doc_opt(def.doc.as_deref());
     let eq = (!u.variants.iter().any(|v| has_float(space, &v.ty))).then(|| quote!(Eq,));
@@ -148,15 +127,12 @@ pub(super) fn union(
         let (name, t) = (pascal_ident(&v.name), ty(space, &v.ty, false));
         quote!(#name(#t),)
     });
-    let ser = union_serialize(space, aliases, u);
     let deserialize = union_deserialize_impl(space, &n, def, u);
     // Only a union that the schema leaves open stores a value that no variant accepts, or a lenient client's member
     // that the server added. A closed one fails to decode it.
-    let (other, other_ser) = if has_other(u) || reads_added(def, u) {
-        (quote!(Other(serde_json::Value),), quote!(Self::Other(v) => serde::Serialize::serialize(v, s),))
-    } else {
-        (TokenStream::new(), TokenStream::new())
-    };
+    let open = has_other(u) || reads_added(def, u);
+    let other = open.then(|| quote!(Other(serde_json::Value),));
+    let ser = union_serialize(space, &n, u, open);
     items.push(quote! {
         #doc
         #[derive(Debug, Clone, PartialEq, #eq)]
@@ -164,14 +140,7 @@ pub(super) fn union(
             #(#variants)*
             #other
         }
-        impl serde::Serialize for #n {
-            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-                match self {
-                    #ser
-                    #other_ser
-                }
-            }
-        }
+        #ser
         #deserialize
     });
 }
@@ -188,6 +157,12 @@ pub(super) fn union_deserialize_impl(
     // A buffered number is an `f64`. So a union that contains a `Decimal` decodes from the JSON text instead. An
     // untagged one pays one parse per branch that it tries. A tagged one parses its tag and then parses the one branch.
     let exact = u.variants.iter().any(|v| space.has_decimal(&v.ty));
+    if !exact
+        && u.mode == UnionMode::ByKind
+        && let Some(m) = by_kind_macro(space, n, u)
+    {
+        return m;
+    }
     let property = match &u.mode {
         UnionMode::Tagged { property, .. } if !exact => property,
         UnionMode::Tagged { .. } | UnionMode::ByKind | UnionMode::Untagged => {
@@ -253,36 +228,29 @@ pub(super) fn declares_tag(space: &Space<'_>, t: &Ty, property: &str, tag: &str)
     matches!(&space.types.get(*id).kind, Kind::Struct(s) if s.fields.iter().any(|f| f.wire == property && f.required && holds(&f.ty)))
 }
 
-pub(super) fn union_serialize(
-    space: &Space<'_>,
-    aliases: &std::collections::BTreeMap<usize, usize>,
-    u: &Union,
-) -> TokenStream {
-    let arms = u.variants.iter().map(|v| {
-        let (name, direct) = (pascal_ident(&v.name), quote!(serde::Serialize::serialize(v, s)));
-        let same = Some(space.resolved(aliases, &v.ty));
+/// Returns `Serialize` of the union `n` through `runtime::union_serialize!`: each variant as its value, and a variant
+/// whose struct does not carry its tag with the tag put in.
+pub(super) fn union_serialize(space: &Space<'_>, n: &proc_macro2::Ident, u: &Union, other: bool) -> TokenStream {
+    let (mut direct, mut tagged) = (vec![], vec![]);
+    for v in &u.variants {
+        let name = pascal_ident(&v.name);
         match (&u.mode, v.tags.first()) {
             // The struct carries the tag: its value is the caller's to keep right.
-            (UnionMode::Tagged { property, .. }, Some(tag)) if declares_tag(space, &v.ty, property, tag) => {
-                (quote!(Self::#name(v)), same, direct)
+            (UnionMode::Tagged { property, .. }, Some(tag)) if !declares_tag(space, &v.ty, property, tag) => {
+                tagged.push(quote!(#name => #tag));
             }
-            (UnionMode::Tagged { property, .. }, Some(tag)) => {
-                let (property, tag) = (lit(property), lit(tag));
-                let body = quote! {{
-                    let mut j = serde_json::to_value(v).map_err(serde::ser::Error::custom)?;
-                    if let serde_json::Value::Object(m) = &mut j {
-                        m.insert(#property.to_owned(), serde_json::Value::String(#tag.to_owned()));
-                    }
-                    serde::Serialize::serialize(&j, s)
-                }};
-                // Its own tag: shared with no other arm.
-                (quote!(Self::#name(v)), None, body)
-            }
-            _ => (quote!(Self::#name(v)), same, direct),
+            _ => direct.push(name),
         }
-    });
-    let arms = super::super::syntax::shared_arms(arms.collect());
-    quote!(#(#arms)*)
+    }
+    // Sorted: the impls do not depend on the order of the variants, and a reorder of the description changes nothing.
+    direct.sort_by_key(ToString::to_string);
+    tagged.sort_by_key(ToString::to_string);
+    direct.extend(other.then(|| ident("Other")));
+    let tagged = match &u.mode {
+        UnionMode::Tagged { property, .. } if !tagged.is_empty() => quote!(#property { #(#tagged),* }),
+        UnionMode::Tagged { .. } | UnionMode::ByKind | UnionMode::Untagged => TokenStream::new(),
+    };
+    quote!(runtime::union_serialize!(#n { #(#direct),* } #tagged);)
 }
 
 /// Returns the buffered value `v` decoded into variant `name` of type `t`. A library type has its text checked first.
@@ -553,8 +521,12 @@ pub(super) fn reads_several_kinds(space: &Space<'_>, t: &Ty, depth: usize) -> bo
     }
 }
 
-/// Returns `match v.kind()`: every kind is named and there is no wildcard.
-pub(super) fn by_kind(space: &Space<'_>, u: &Union) -> TokenStream {
+/// A variant of a union by kind: the JSON kinds that it takes, its name and its type.
+type KindArm<'u> = (Vec<rtkind::K>, String, &'u Ty);
+
+/// Returns the variant that each JSON kind decodes as, the first variant of a kind taking it, and the kinds that no
+/// variant takes.
+fn kind_arms<'u>(space: &Space<'_>, u: &'u Union) -> (Vec<KindArm<'u>>, Vec<rtkind::K>) {
     use rtkind::K;
     let mut kinds: Vec<(JsonKind, String, &Ty)> =
         u.variants.iter().map(|v| (space.kind_of(&v.ty), pascal(&v.name), &v.ty)).collect();
@@ -576,15 +548,43 @@ pub(super) fn by_kind(space: &Space<'_>, u: &Union) -> TokenStream {
             JsonKind::Any => K::ALL.to_vec(),
         };
         let fresh: Vec<K> = ks.into_iter().filter(|k| !covered.contains(k)).collect();
-        if fresh.is_empty() {
-            continue;
+        if !fresh.is_empty() {
+            covered.extend(&fresh);
+            arms.push((fresh, name, vty));
         }
-        covered.extend(&fresh);
-        let pats = fresh.iter().map(|k| k.path());
+    }
+    let rest = K::ALL.iter().copied().filter(|k| !covered.contains(k)).collect();
+    (arms, rest)
+}
+
+/// Returns `runtime::by_kind_deserialize!` of the union `n`: each JSON kind decodes as its variant. `None` where a
+/// variant checks its text through a library format or the union is open: [`by_kind`] writes those.
+fn by_kind_macro(space: &Space<'_>, n: &proc_macro2::Ident, u: &Union) -> Option<TokenStream> {
+    let (arms, rest) = kind_arms(space, u);
+    if u.open || arms.iter().any(|(_, _, t)| holds(space, t).is_some()) {
+        return None;
+    }
+    let arms = arms.iter().map(|(ks, name, _)| {
+        let (ks, v) = (ks.iter().map(|k| k.name()), ident(name));
+        quote!(#(#ks)|* => #v)
+    });
+    let rest = (!rest.is_empty()).then(|| {
+        let ks = rest.iter().map(|k| k.name());
+        let fallback = if has_other(u) { quote!(Other) } else { quote!(none) };
+        quote!(; #(#ks)|* => #fallback)
+    });
+    Some(quote!(runtime::by_kind_deserialize!(#n { #(#arms),* } #rest);))
+}
+
+/// Returns `match v.kind()`: every kind is named and there is no wildcard.
+pub(super) fn by_kind(space: &Space<'_>, u: &Union) -> TokenStream {
+    let (kinds, rest) = kind_arms(space, u);
+    let arms = kinds.iter().map(|(ks, name, vty)| {
+        let pats = ks.iter().map(|k| k.path());
         let c = if u.open {
             // An open union has a branch that accepts any value. A value of this kind that does not decode as the
             // variant, which checks its keywords, is that branch's: `Other` stores it.
-            let (vn, decoded) = (ident(&name), decode_ref(space, vty));
+            let (vn, decoded) = (ident(name), decode_ref(space, vty));
             quote!({
                 match #decoded {
                     Ok(x) => Ok(Self::#vn(x)),
@@ -592,11 +592,11 @@ pub(super) fn by_kind(space: &Space<'_>, u: &Union) -> TokenStream {
                 }
             })
         } else {
-            conv(space, &name, vty)
+            conv(space, name, vty)
         };
-        arms.push(quote!(#(#pats)|* => #c,));
-    }
-    let rest: Vec<TokenStream> = K::ALL.iter().filter(|k| !covered.contains(k)).map(|k| k.path()).collect();
+        quote!(#(#pats)|* => #c,)
+    });
+    let rest: Vec<TokenStream> = rest.iter().map(|k| k.path()).collect();
     let none = no_variant(u);
     let other = (!rest.is_empty()).then(|| quote!(#(#rest)|* => #none,));
     quote! {
@@ -626,6 +626,12 @@ pub(super) mod rtkind {
     impl K {
         pub(super) const ALL: [Self; 7] =
             [Self::Null, Self::Bool, Self::Integer, Self::Number, Self::String, Self::Array, Self::Object];
+
+        /// The variant name of `runtime::Kind`.
+        pub(super) fn name(self) -> proc_macro2::Ident {
+            let path = self.path().to_string();
+            quote::format_ident!("{}", path.rsplit(' ').next().unwrap_or_default())
+        }
 
         pub(super) fn path(self) -> TokenStream {
             match self {

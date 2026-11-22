@@ -190,14 +190,7 @@ pub enum ProductVariants {
     Gadget(ProductGadget),
     Book(ProductBook),
 }
-impl serde::Serialize for ProductVariants {
-    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        match self {
-            Self::Gadget(v) => serde::Serialize::serialize(v, s),
-            Self::Book(v) => serde::Serialize::serialize(v, s),
-        }
-    }
-}
+runtime::union_serialize!(ProductVariants { Book, Gadget });
 runtime::tagged_deserialize!(ProductVariants);
 impl<'de> runtime::TaggedUnion<'de> for ProductVariants {
     const TAG: &'static str = "kind";
