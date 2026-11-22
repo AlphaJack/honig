@@ -4,6 +4,7 @@
 //! after [`newer_fields`] reports what its own version does not define.
 
 pub(crate) mod overlap;
+pub(crate) mod unsatisfiable;
 pub(crate) mod v20;
 pub(crate) mod v32;
 
