@@ -438,6 +438,23 @@ fn a_limit_on_a_text_or_binary_body_is_a_warning() {
     }
 }
 
+/// A scheme that refers to a schema, to itself or to nothing defines no check: a server would skip it.
+#[test]
+fn a_scheme_reference_to_no_scheme_refuses_a_server() {
+    let refs = ["#/components/schemas/S", "#/components/securitySchemes/local", "#/components/securitySchemes/nope"];
+    for r in refs {
+        let components = json!({"schemas": {"S": {"type": "string"}}, "securitySchemes": {"local": {"$ref": r}}});
+        let path = common::write("sec-scheme-ref", &doc(&secured_op(&json!([{"local": []}])), &components), &[]);
+        crate::generate::generate(&path, &Options::default()).expect_err(r);
+    }
+    let components = json!({"securitySchemes": {"local": {"$ref": "#/components/securitySchemes/real"},
+        "real": {"type": "http", "scheme": "bearer"}}});
+    let d = doc(&secured_op(&json!([{"local": []}])), &components);
+    let consts = security_consts(&common::generate("sec-scheme-ref-real", &d, &Options::default()));
+    assert_eq!(consts.len(), 1);
+    assert!(!is_public(&consts[0]), "{}", consts[0]);
+}
+
 // `content` (3.2 Request Body / Response): "For requests that match multiple
 // keys, only the most specific key is applicable."
 
