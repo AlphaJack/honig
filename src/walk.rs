@@ -292,6 +292,19 @@ fn each_entry_all(obj: &mut Obj, key: &str, base: &str, f: &mut dyn FnMut(&mut V
     }
 }
 
+/// Runs `rule` on every schema of `root`. It pushes (pointer, message) for what is wrong with a schema.
+pub(crate) fn findings(root: &Value, rule: fn(&Obj, &str, &mut Vec<(String, String)>)) -> Vec<(String, String)> {
+    struct Each(fn(&Obj, &str, &mut Vec<(String, String)>), Vec<(String, String)>);
+    impl Visit for Each {
+        fn schema(&mut self, s: &mut Obj, ptr: &str) {
+            (self.0)(s, ptr, &mut self.1);
+        }
+    }
+    let mut each = Each(rule, vec![]);
+    walk(&mut root.clone(), &mut each);
+    each.1
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

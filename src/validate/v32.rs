@@ -30,7 +30,9 @@ pub(crate) fn validate_as(doc: &OpenApi, resolved: &Doc, version: Version, diags
     let mut v = V { diags, resolved, op_ids: BTreeMap::new(), links: vec![], version };
     v.root(doc);
     super::overlap::check(resolved, diags);
-    super::unsatisfiable::check(resolved, diags);
+    for (ptr, message) in super::schema_rules::errors(&resolved.root) {
+        diags.error(&ptr, message);
+    }
 }
 
 struct V<'a> {
