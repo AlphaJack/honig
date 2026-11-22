@@ -100,7 +100,7 @@ jiff = { version = "1", features = ["serde"] }
             },
         }}}),
     );
-    let libs = crate::settings::FormatLibs { dates: Some(crate::settings::DateLib::Jiff), ..Default::default() };
+    let libs = crate::settings::FormatLibs { jiff: true, ..Default::default() };
     let opts = crate::emit::Options {
         client: false,
         server: false,
@@ -145,20 +145,16 @@ fn a_shift_keeps_every_offset_as_sent() {
     assert!(status.success(), "the jiff crate does not build or its test fails");
 }
 
-/// A library type accepts more than its format allows: `jiff` and `chrono` accept `2024-06-19 08:30:06Z`, `uuid`
+/// A library type accepts more than its format allows: `jiff` accepts `2024-06-19 08:30:06Z`, `uuid`
 /// accepts `{...}`, `url` accepts a space and `ipnet` accepts `01.2.3.4/8`. Generated code checks the text first, in
 /// every place a field can contain it.
 #[test]
 #[ignore = "compiles generated crates"]
 fn library_types_read_only_their_format() {
     let types = Crate { paths: serde_json::json!({}), schemas: validated_schemas(), test: VALIDATED_TEST, http: false };
-    let all = crate::settings::FormatLibs { uuid: true, url: true, ipnet: true, dates: None, ..Default::default() };
+    let libs = crate::settings::FormatLibs { uuid: true, url: true, ipnet: true, jiff: true, ..Default::default() };
     let jiff = "jiff = { version = \"1\", features = [\"serde\"] }";
-    let with_jiff = crate::settings::FormatLibs { dates: Some(crate::settings::DateLib::Jiff), ..all.clone() };
-    build_validated("validated-jiff", jiff, with_jiff, &types);
-    let chrono = "chrono = { version = \"0.4\", features = [\"serde\"] }";
-    let with_chrono = crate::settings::FormatLibs { dates: Some(crate::settings::DateLib::Chrono), ..all };
-    build_validated("validated-chrono", chrono, with_chrono, &types);
+    build_validated("validated-jiff", jiff, libs, &types);
 }
 
 /// A struct with a checked format in every place a field can contain one: itself, `Option`, `runtime::Nullable`, a
@@ -365,13 +361,7 @@ fn library_types_in_requests_read_only_their_format() {
     let http =
         Crate { paths: validated_paths(), schemas: serde_json::json!({}), test: VALIDATED_HTTP_TEST, http: true };
     let jiff = "jiff = { version = \"1\", features = [\"serde\"] }";
-    let libs = crate::settings::FormatLibs {
-        uuid: true,
-        url: true,
-        ipnet: true,
-        dates: Some(crate::settings::DateLib::Jiff),
-        ..Default::default()
-    };
+    let libs = crate::settings::FormatLibs { uuid: true, url: true, ipnet: true, jiff: true, ..Default::default() };
     build_validated("validated-http", jiff, libs, &http);
 }
 

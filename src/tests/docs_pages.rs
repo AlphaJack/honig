@@ -162,8 +162,6 @@ fn variants_page(source: &str, item: &str) -> Result<String> {
     Ok(page)
 }
 
-/// The Rust type of each string format: with none of its libraries, with all of them and `chrono`, and with `jiff`
-/// in place of `chrono`. The generator's own choice makes each cell.
 /// A table of [`crate::settings::SETTINGS`]: every setting of a module with its default.
 fn settings_page() -> String {
     let mut page = "| Setting | Required | Default | What it does |\n|---|---|---|---|\n".to_owned();
@@ -174,19 +172,21 @@ fn settings_page() -> String {
     page
 }
 
+/// The Rust type of each string format: with none of its libraries and with all of them. The generator's own choice
+/// makes each cell.
 fn formats_page() -> String {
     use crate::ir::types::Format;
-    use crate::settings::{DateLib, FormatLibs};
+    use crate::settings::FormatLibs;
     let none = FormatLibs::default();
-    let chrono = FormatLibs { uuid: true, url: true, ipnet: true, dates: Some(DateLib::Chrono), ..Default::default() };
-    let jiff = FormatLibs { dates: Some(DateLib::Jiff), ..chrono.clone() };
+    let all = FormatLibs { uuid: true, url: true, ipnet: true, jiff: true, ..Default::default() };
     let ty = |libs: &FormatLibs, f| {
         let path = crate::emit::rust::syntax::format_ty(libs, f).to_string();
         format!("`{}`", path.replace(' ', "").replace("runtime::", "api::"))
     };
-    let mut page = "| Format | Without its library | With `uuid`, `url`, `ipnet` and `chrono` | With `jiff` in place of `chrono` |\n|---|---|---|---|\n".to_owned();
+    let mut page =
+        "| Format | Without its library | With `uuid`, `url`, `ipnet` and `jiff` |\n|---|---|---|\n".to_owned();
     for f in Format::ALL {
-        page.push_str(&format!("| `{}` | {} | {} | {} |\n", f.name(), ty(&none, f), ty(&chrono, f), ty(&jiff, f)));
+        page.push_str(&format!("| `{}` | {} | {} |\n", f.name(), ty(&none, f), ty(&all, f)));
     }
     page
 }

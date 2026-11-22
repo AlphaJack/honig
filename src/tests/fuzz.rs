@@ -377,7 +377,6 @@ fn recursive_unions(r: &mut Rng<'_>, mut schemas: Vec<Named>) -> Vec<Named> {
 
 /// Every choice at zero gives the default options.
 fn gen_options(r: &mut Rng<'_>) -> crate::emit::Options {
-    use crate::settings::DateLib;
     let mut o = crate::emit::Options {
         client: !r.chance(20),
         server: !r.chance(30),
@@ -390,7 +389,7 @@ fn gen_options(r: &mut Rng<'_>) -> crate::emit::Options {
     libs.uuid = r.chance(50);
     libs.url = r.chance(50);
     libs.ipnet = r.chance(50);
-    libs.dates = [None, Some(DateLib::Chrono), Some(DateLib::Jiff)][r.below(3)];
+    libs.jiff = r.chance(50);
     o
 }
 
@@ -1119,17 +1118,11 @@ fn generated_crates_compile_and_pass_their_tests() {
 
 /// Adds the libraries that the options give formats to.
 fn add_libs(manifest: &std::path::Path, libs: &crate::settings::FormatLibs) {
-    use crate::settings::DateLib;
     let mut doc: toml_edit::DocumentMut = std::fs::read_to_string(manifest).unwrap().parse().unwrap();
-    let dates = match libs.dates {
-        Some(DateLib::Jiff) => Some(("jiff", "1")),
-        Some(DateLib::Chrono) => Some(("chrono", "0.4")),
-        None => None,
-    };
-    let wanted = [(libs.uuid, "uuid", "1"), (libs.url, "url", "2"), (libs.ipnet, "ipnet", "2")]
-        .into_iter()
-        .filter_map(|(on, name, version)| on.then_some((name, version)))
-        .chain(dates);
+    let wanted =
+        [(libs.uuid, "uuid", "1"), (libs.url, "url", "2"), (libs.ipnet, "ipnet", "2"), (libs.jiff, "jiff", "1")]
+            .into_iter()
+            .filter_map(|(on, name, version)| on.then_some((name, version)));
     for (name, version) in wanted {
         let mut dep = toml_edit::InlineTable::new();
         dep.insert("version", version.into());

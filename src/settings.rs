@@ -40,7 +40,7 @@ pub(crate) const SETTINGS: [(&str, Option<&str>, &str); 11] = [
     ("tests", Some("false"), "generate a test that the description's examples decode"),
     ("unknown_fields", Some("\"drop\""), "\"keep\": objects without additionalProperties keep unknown keys"),
     ("overlays", Some("[]"), "Overlays (1.0 to 1.2) applied in order to the spec"),
-    ("formats", None, "required: types of string formats, like { dates = \"chrono\", uuid = \"crate::Id\" } or {}"),
+    ("formats", None, "required: types of string formats, like { jiff = true, uuid = \"crate::Id\" } or {}"),
     ("derives", Some("{}"), "extra derives on every type or on one type by Rust name, like { \"*\" = [\"Hash\"] }"),
 ];
 
@@ -738,16 +738,7 @@ fn keys() -> impl Iterator<Item = &'static str> {
     SETTINGS.into_iter().map(|(key, _, _)| key)
 }
 
-/// Date and time library the target crate depends on.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum DateLib {
-    /// `chrono` (with its `serde` feature).
-    Chrono,
-    /// `jiff` (with its `serde` feature).
-    Jiff,
-}
-
-/// A type that the `formats` table sets for a format: a path such as `time::OffsetDateTime`. Only a path of Rust
+/// A type that the `formats` table sets for a format: a path such as `crate::Stamp`. Only a path of Rust
 /// identifiers is one.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct NamedType(String);
@@ -774,13 +765,12 @@ pub(crate) struct FormatLibs {
     pub url: bool,
     /// `ipnet` (with its `serde` feature): `format: ipv4-cidr` and `ipv6-cidr` as networks.
     pub ipnet: bool,
-    /// Dates and timestamps.
-    pub dates: Option<DateLib>,
+    /// `jiff` (with its `serde` feature): dates and timestamps.
+    pub jiff: bool,
     /// The types that the table sets for formats. Each wins over a library for its format.
     pub named: BTreeMap<Format, NamedType>,
 }
 
-const CHRONO: &str = "chrono";
 /// `jiff` (with its `serde` feature): the dates and times. Also the runtime feature of `runtime::FullTime`.
 pub(crate) const JIFF: &str = "jiff";
 
@@ -804,13 +794,8 @@ pub(crate) fn format_libs<'a>(module: impl Into<Module<'a>>) -> Result<FormatLib
         ));
     };
     let formats = &format!("{}.formats", module.path());
-    let named = [
-        (UUID, "uuid", libs.uuid),
-        (URL, "url", libs.url),
-        (IPNET, "ipnet", libs.ipnet),
-        (CHRONO, "dates", libs.dates == Some(DateLib::Chrono)),
-        (JIFF, "dates", libs.dates == Some(DateLib::Jiff)),
-    ];
+    let named =
+        [(UUID, "uuid", libs.uuid), (URL, "url", libs.url), (IPNET, "ipnet", libs.ipnet), (JIFF, "jiff", libs.jiff)];
     for (lib, key, on) in named {
         if on && !manifest.has_serde_dependency(lib) {
             let found = format!("no `{lib}` dependency with its `serde` feature");
@@ -833,20 +818,13 @@ fn formats_setting(module: Module<'_>) -> Result<Option<FormatLibs>, Error> {
             "uuid" => libs.uuid = flag()?,
             "url" => libs.url = flag()?,
             "ipnet" => libs.ipnet = flag()?,
-            "dates" => {
-                libs.dates = match value.as_str() {
-                    Some(CHRONO) => Some(DateLib::Chrono),
-                    Some(JIFF) => Some(DateLib::Jiff),
-                    Some("string") => None,
-                    _ => return Err(setting(formats, key, "\"chrono\", \"jiff\" or \"string\"", shown(value))),
-                };
-            }
+            "jiff" => libs.jiff = flag()?,
             _ => {
                 let Some(format) = Format::ALL.into_iter().find(|f| f.name() == key && f.marker().is_some()) else {
                     return Err(setting(
                         formats,
                         key,
-                        "uuid, dates, url, ipnet or a format with a check, such as date-time",
+                        "uuid, url, ipnet, jiff or a format with a check, such as date-time",
                         "an unknown setting".to_owned(),
                     ));
                 };
@@ -867,28 +845,24 @@ fn named_type(formats: &str, key: &str, value: &Item) -> Result<NamedType, Error
 
 /// Returns the `formats` line that keeps `libs`: only the libraries in use, `{}` for none.
 pub(crate) fn formats_line(libs: &FormatLibs) -> String {
-    let dates = libs.dates.map(|d| format!("dates = \"{}\"", if d == DateLib::Chrono { CHRONO } else { JIFF }));
-    let on = [(libs.uuid, "uuid = true"), (libs.url, "url = true"), (libs.ipnet, "ipnet = true")];
+    let on = [
+        (libs.uuid, "uuid = true"),
+        (libs.url, "url = true"),
+        (libs.ipnet, "ipnet = true"),
+        (libs.jiff, "jiff = true"),
+    ];
     let named = libs.named.iter().map(|(f, t)| format!("{} = \"{}\"", f.name(), t.path()));
-    let parts: Vec<String> =
-        on.iter().filter(|(b, _)| *b).map(|(_, s)| (*s).to_owned()).chain(dates).chain(named).collect();
+    let parts: Vec<String> = on.iter().filter(|(b, _)| *b).map(|(_, s)| (*s).to_owned()).chain(named).collect();
     if parts.is_empty() { "formats = {}".to_owned() } else { format!("formats = {{ {} }}", parts.join(", ")) }
 }
 
 /// Returns the libraries that the crate depends on with their `serde` feature.
 pub(crate) fn detected_format_libs(manifest: &Manifest) -> FormatLibs {
-    let dates = if manifest.has_serde_dependency(CHRONO) {
-        Some(DateLib::Chrono)
-    } else if manifest.has_serde_dependency(JIFF) {
-        Some(DateLib::Jiff)
-    } else {
-        None
-    };
     FormatLibs {
         uuid: manifest.has_serde_dependency(UUID),
         url: manifest.has_serde_dependency(URL),
         ipnet: manifest.has_serde_dependency(IPNET),
-        dates,
+        jiff: manifest.has_serde_dependency(JIFF),
         named: BTreeMap::new(),
     }
 }
@@ -935,23 +909,22 @@ mod tests {
         // No table: a dependency added for another reason would change field types. The error says what to write.
         let missing = libs("", &all).unwrap_err().to_string();
         assert!(
-            missing.contains(
-                "`formats` must be set: `formats = { uuid = true, url = true, ipnet = true, dates = \"jiff\" }`"
-            ),
+            missing
+                .contains("`formats` must be set: `formats = { uuid = true, url = true, ipnet = true, jiff = true }`"),
             "{missing}"
         );
         assert_eq!(libs("formats = {}", &all).unwrap(), FormatLibs::default(), "a dependency alone types nothing");
         assert_eq!(
-            libs("formats = { uuid = true, ipnet = true, dates = \"jiff\" }", &all).unwrap(),
-            FormatLibs { uuid: true, ipnet: true, dates: Some(DateLib::Jiff), ..FormatLibs::default() }
+            libs("formats = { uuid = true, ipnet = true, jiff = true }", &all).unwrap(),
+            FormatLibs { uuid: true, ipnet: true, jiff: true, ..FormatLibs::default() }
         );
-        assert_eq!(libs("formats = { dates = \"string\" }", &all).unwrap(), FormatLibs::default());
+        assert_eq!(libs("formats = { jiff = false }", &all).unwrap(), FormatLibs::default());
         let error = |formats: &str, deps: &str| libs(formats, deps).unwrap_err().to_string();
         assert!(error("formats = { uuid = true }", "uuid = \"1\"\n").contains("features = [\"serde\"]"));
-        assert!(error("formats = { dates = \"time\" }", &all).contains("\"chrono\", \"jiff\" or \"string\""));
-        assert!(
-            error("formats = { decimals = true }", &all).contains("uuid, dates, url, ipnet or a format with a check")
-        );
+        assert!(error("formats = { jiff = true }", "").contains("no `jiff` dependency with its `serde` feature"));
+        for gone in ["formats = { dates = \"jiff\" }", "formats = { chrono = true }", "formats = { decimals = true }"] {
+            assert!(error(gone, &all).contains("uuid, url, ipnet, jiff or a format with a check"), "{gone}");
+        }
         assert!(error("formats = { url = \"yes\" }", &all).contains("true or false"));
     }
 
@@ -960,23 +933,23 @@ mod tests {
         let libs = |formats: &str| {
             format_libs(&parse(&format!(
                 "[package.metadata.honig.api]\nspec = \"a.yaml\"\n{formats}\n[dependencies]\n\
-                 chrono = {{ version = \"0.4\", features = [\"serde\"] }}\n"
+                 jiff = {{ version = \"1\", features = [\"serde\"] }}\n"
             )))
         };
         let named = |libs: &FormatLibs, f: Format| libs.named.get(&f).map(|t| t.path().to_owned());
-        let time = libs("formats = { date-time = \"time::OffsetDateTime\" }").unwrap();
-        assert_eq!(named(&time, Format::DateTime).as_deref(), Some("time::OffsetDateTime"));
+        let stamp = libs("formats = { date-time = \"crate::Stamp\" }").unwrap();
+        assert_eq!(named(&stamp, Format::DateTime).as_deref(), Some("crate::Stamp"));
         // A named format wins over the library for its format only.
-        let mixed = libs("formats = { dates = \"chrono\", date-time = \"crate::Stamp\" }").unwrap();
+        let mixed = libs("formats = { jiff = true, date-time = \"crate::Stamp\" }").unwrap();
         assert_eq!(named(&mixed, Format::DateTime).as_deref(), Some("crate::Stamp"));
-        assert_eq!((named(&mixed, Format::Date), mixed.dates), (None, Some(DateLib::Chrono)));
+        assert_eq!((named(&mixed, Format::Date), mixed.jiff), (None, true));
         let ids = libs("formats = { uuid = \"crate::ids::OrderId\" }").unwrap();
         assert_eq!((named(&ids, Format::Uuid).as_deref(), ids.uuid), (Some("crate::ids::OrderId"), false));
         assert_eq!(formats_line(&ids), "formats = { uuid = \"crate::ids::OrderId\" }");
         let error = |formats: &str| libs(formats).unwrap_err().to_string();
         assert!(error("formats = { uuid = \"not a type(\" }").contains("`uuid`"), "the error points to the key");
         assert!(error("formats = { date = 1 }").contains("the path of a type"));
-        assert!(error("formats = { date = \"chrono::DateTime<chrono::Utc>\" }").contains("the path of a type"));
+        assert!(error("formats = { date = \"jiff::Zoned<jiff::Tz>\" }").contains("the path of a type"));
         // `time` accepts only valid values: no check to keep, so no type to set.
         assert!(error("formats = { time = \"crate::T\" }").contains("an unknown setting"));
     }
@@ -984,8 +957,8 @@ mod tests {
     #[test]
     fn the_formats_line_names_only_the_libraries_in_use() {
         assert_eq!(formats_line(&FormatLibs::default()), "formats = {}");
-        let libs = FormatLibs { uuid: true, ipnet: true, dates: Some(DateLib::Chrono), ..FormatLibs::default() };
-        assert_eq!(formats_line(&libs), "formats = { uuid = true, ipnet = true, dates = \"chrono\" }");
+        let libs = FormatLibs { uuid: true, ipnet: true, jiff: true, ..FormatLibs::default() };
+        assert_eq!(formats_line(&libs), "formats = { uuid = true, ipnet = true, jiff = true }");
     }
 
     #[test]

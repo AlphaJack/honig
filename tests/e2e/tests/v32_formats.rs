@@ -106,8 +106,8 @@ fn a_decimal_number_keeps_every_digit() {
     assert!(negative.to_string().starts_with("-1 is less than the minimum 0"), "{negative}");
 }
 
-/// `char`, `uri` (with `url`) and the CIDR formats (with `ipnet`) are typed. Without chrono or jiff the local date
-/// and time formats are checked text.
+/// `char`, `uri` (with `url`) and the CIDR formats (with `ipnet`) are typed. Without jiff the local date and time
+/// formats are checked text.
 #[test]
 fn registry_formats_take_their_library_types() {
     let wire = json!({"id": ID, "at": AT, "initial": "Z", "home": "https://example.com/a?b=c",

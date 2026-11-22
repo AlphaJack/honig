@@ -30,7 +30,7 @@ pub trait Format {
 /// The digits of a fraction of a second that `jiff` parses: nanoseconds. RFC 3339 allows more.
 const NANO_DIGITS: usize = 9;
 
-/// Returns `text` with the fraction of its seconds cut to nanoseconds. `jiff` refuses more digits. `chrono` drops them.
+/// Returns `text` with the fraction of its seconds cut to nanoseconds. `jiff` refuses more digits.
 fn nanoseconds(text: &str) -> Cow<'_, str> {
     let Some(dot) = text.find('.') else { return Cow::Borrowed(text) };
     let digits = text.get(dot + 1..).map_or(0, |f| f.bytes().take_while(u8::is_ascii_digit).count());
