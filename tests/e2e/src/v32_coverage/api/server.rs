@@ -186,13 +186,18 @@ async fn ping<A: Api>(
         api,
         decode: |_| Ok(ops::ping::Params {}),
         call: |a, p, c| Box::pin(a.ping(p, c)),
-        encode: |r, _| Ok(ping_encode(&r)),
+        encode: |r, _| ping_encode(&r),
     };
     runtime::serve(routed, call.public(), &steps).await
 }
-fn ping_encode(resp: &ops::ping::Response) -> runtime::Response {
+fn ping_encode(
+    resp: &ops::ping::Response,
+) -> Result<runtime::Response, runtime::ClientError> {
     let ops::ping::Response::Default { status } = resp;
-    runtime::new_response(status.as_u16())
+    Ok({
+        runtime::check_status(status.as_u16(), None, &[], &[])?;
+        runtime::new_response(status.as_u16())
+    })
 }
 static ARCHIVE_OP: runtime::Op = runtime::Op::new(
     "archive",

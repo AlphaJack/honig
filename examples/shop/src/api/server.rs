@@ -258,6 +258,7 @@ fn list_products_encode(
                 r
             }
             ops::list_products::Response::Default { status, body } => {
+                runtime::check_status(status.as_u16(), None, &[200], &[])?;
                 runtime::body_response(
                     status.as_u16(),
                     "application/json",
@@ -313,6 +314,7 @@ fn create_product_encode(
                 )
             }
             ops::create_product::Response::Default { status, body } => {
+                runtime::check_status(status.as_u16(), None, &[201], &[])?;
                 runtime::body_response(
                     status.as_u16(),
                     "application/json",
