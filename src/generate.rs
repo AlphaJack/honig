@@ -74,11 +74,8 @@ pub fn load(specs: &[std::path::PathBuf], opts: &Options) -> Result<Loaded, Diag
         return Err(diagnostics);
     }
     let Some(doc) = loaded.doc() else { return Err(diagnostics) };
-    // An overlay that changed nothing: a fix that no longer applies, such as a `security` added to a path that was
-    // renamed, leaves the operation as it was.
-    if let Some(d) = diagnostics.iter().find(|d| d.message == crate::diag::NO_NODES) {
-        let mut diagnostics = diagnostics.clone();
-        diagnostics.error(d.pointer.clone(), crate::diag::NO_NODES);
+    // What the description says and the generated code would not (`Diagnostic::refuses`).
+    if diagnostics.refused(opts.server) {
         return Err(diagnostics);
     }
     // A requirement on a scheme the generator cannot see cannot be checked: generating
@@ -101,13 +98,6 @@ pub fn load(specs: &[std::path::PathBuf], opts: &Options) -> Result<Loaded, Diag
                 "`security` must be a list: write `[]` for a public operation or remove the key to use the root's",
             );
         }
-        return Err(diagnostics);
-    }
-    // A misspelt `security` key is an unknown field, and its operation would be served public.
-    let unknown = |d: &&crate::diag::Diagnostic| {
-        d.level == crate::diag::Level::Error && d.message.starts_with(crate::diag::UNKNOWN_FIELD)
-    };
-    if opts.server && diagnostics.iter().any(|d| unknown(&d)) {
         return Err(diagnostics);
     }
     // A schema that no value meets: its type would refuse every one.
@@ -150,24 +140,7 @@ pub fn print(loaded: &Loaded, built: Ir, trees: Trees, opts: &Options) -> Result
     let mut diagnostics = loaded.diagnostics.clone();
     diagnostics.0.extend(built.diagnostics.0);
     let api = &built.api;
-    let refuses = |d: &&crate::diag::Diagnostic| {
-        d.level == crate::diag::Level::Error
-            && [crate::diag::DUPLICATE_HOOK, crate::diag::SAME_VARIANT].iter().any(|m| d.message.contains(m))
-    };
-    if opts.server && diagnostics.iter().any(|d| refuses(&d)) {
-        return Err(diagnostics);
-    }
-    if diagnostics.iter().any(|d| d.level == crate::diag::Level::Error && d.message.contains(crate::diag::SAME_ITEM)) {
-        return Err(diagnostics);
-    }
-    if opts.server
-        && diagnostics
-            .iter()
-            .any(|d| d.level == crate::diag::Level::Error && d.message.contains(crate::diag::AUTH_PARAM))
-    {
-        return Err(diagnostics);
-    }
-    if diagnostics.iter().any(|d| d.level == crate::diag::Level::Error && d.message.contains(crate::diag::ENUM_NAMES)) {
+    if diagnostics.refused(opts.server) {
         return Err(diagnostics);
     }
     let files = match rust::print(trees.0, opts.rust.binary) {
