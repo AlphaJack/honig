@@ -46,6 +46,7 @@ impl Builder<'_> {
                 // is known once every component is filled: `finish` drops the ones it cannot.
                 // A count of the properties sees the ones sent: a default filled in would count one that was not.
                 let counted = o.contains_key("minProperties") || o.contains_key("maxProperties");
+                self.warn_unapplied_default(prop, &fptr);
                 let default = literal_default(prop).filter(|_| {
                     !required.contains(wire.as_str()) && !read_write && !dependent.contains(wire.as_str()) && !counted
                 });
@@ -999,5 +1000,17 @@ impl<'d> Kinds<'d> {
         }
         self.unsettled |= outer;
         kind
+    }
+}
+
+impl Builder<'_> {
+    /// Warns about the `default` of a property that is no string, number or boolean: no field applies it.
+    fn warn_unapplied_default(&mut self, prop: &Value, ptr: &str) {
+        if let Some(d) = prop.get("default").filter(|d| !json::is_scalar(d)) {
+            self.diags.warning(
+                join(ptr, "default"),
+                format!("the default `{d}` is no string, number or boolean: the field has none"),
+            );
+        }
     }
 }

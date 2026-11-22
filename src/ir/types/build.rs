@@ -1167,7 +1167,15 @@ impl<'a> Builder<'a> {
             .map(|(i, j, _)| (i, j))
             .collect();
         for (i, j) in unfit {
+            let owner = self.defs[i].name.words().join("_");
             if let Kind::Struct(s) = &mut self.defs[i].kind {
+                self.diags.warning(
+                    "",
+                    format!(
+                        "`{owner}.{}` has a `default` that no Rust value of its type writes: the field has none and is optional",
+                        s.fields[j].wire
+                    ),
+                );
                 // Only optional properties carry a default.
                 (s.fields[j].default, s.fields[j].required) = (None, false);
             }

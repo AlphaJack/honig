@@ -403,6 +403,21 @@ fn a_link_parameter_that_the_target_lacks_fails_generation() {
     }
 }
 
+/// A field whose `default` is no string, number or boolean has none: that is a warning, not silence. A literal one
+/// stays quiet.
+#[test]
+fn a_default_that_no_value_writes_is_a_warning() {
+    let holder = json!({"type": "object", "properties": {
+        "options": {"type": "object", "properties": {"a": {"type": "string"}}, "default": {"a": "x"}},
+        "limit": {"type": "integer", "default": 10}}});
+    let path = common::write("dropped-default", &doc(&json!({}), &json!({"schemas": {"Holder": holder}})), &[]);
+    let made = crate::generate::generate(&path, &Options::default()).expect("generates");
+    let warned: Vec<&str> = made.diagnostics.iter().map(|d| d.message.as_str()).collect();
+    let at = |p: &str| made.diagnostics.iter().any(|d| d.pointer == p && d.level == crate::diag::Level::Warning);
+    assert!(at("/components/schemas/Holder/properties/options/default"), "{warned:?}");
+    assert!(!at("/components/schemas/Holder/properties/limit/default"), "{warned:?}");
+}
+
 // `content` (3.2 Request Body / Response): "For requests that match multiple
 // keys, only the most specific key is applicable."
 
