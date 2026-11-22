@@ -36,6 +36,7 @@ pub fn encode_header<T: Serialize + ?Sized>(v: &T, explode: bool) -> Result<Opti
         Some(s) => Ok(Some(s)),
         None => {
             let value = to_value(v)?;
+            reject_separator(&value, &[','], "header")?;
             Ok(encode_header_value(&value, explode, &object_order(&value, v)))
         }
     }
@@ -53,6 +54,9 @@ pub fn encode_query<T: Serialize + ?Sized>(
         Some(s) => out.push(format!("{}={}", pct(name, false), pct(&s, enc.allow_reserved))),
         None => {
             let value = to_value(v)?;
+            if let Some(separator) = enc.style.separator() {
+                reject_separator(&value, &[separator], name)?;
+            }
             encode_query_value(out, name, &value, enc, &object_order(&value, v));
         }
     }
@@ -68,14 +72,40 @@ pub fn encode_cookie<T: Serialize + ?Sized>(
     enc: Enc,
 ) -> Result<(), ClientError> {
     match scalar_text(v) {
-        Some(s) if enc.style == Style::Cookie => out.push(format!("{name}={s}")),
+        Some(s) if enc.style == Style::Cookie => {
+            reject_separator(&Value::String(s.clone()), COOKIE_RAW, name)?;
+            out.push(format!("{name}={s}"));
+        }
         Some(s) => out.push(format!("{name}={}", pct(&s, false))),
         None => {
             let value = to_value(v)?;
+            if enc.style == Style::Cookie {
+                reject_separator(&value, COOKIE_RAW, name)?;
+            }
             encode_cookie_value(out, name, &value, enc, &object_order(&value, v));
         }
     }
     Ok(())
+}
+
+/// What a raw `cookie` style value cannot hold: the characters that end a cookie or a list in it (RFC 6265).
+const COOKIE_RAW: &[char] = &[';', ',', ' '];
+
+/// Fails when a text in `v` holds a character of `separators`: an item or a key that holds the character that its style
+/// splits on would arrive as two. A scalar that is not text, and a list or object of such, hold none.
+fn reject_separator(v: &Value, separators: &[char], name: &str) -> Result<(), ClientError> {
+    let texts: Vec<String> = match v {
+        Value::Array(a) => a.iter().map(scalar).collect(),
+        Value::Object(o) => o.iter().flat_map(|(k, x)| [k.clone(), scalar(x)]).collect(),
+        Value::String(s) => vec![s.clone()],
+        Value::Null | Value::Bool(_) | Value::Number(_) => vec![],
+    };
+    match texts.iter().find(|t| t.contains(separators)) {
+        Some(t) => Err(ClientError::Encode(format!(
+            "`{name}`: `{t}` holds a character that separates the items of its style, so it would arrive as several"
+        ))),
+        None => Ok(()),
+    }
 }
 
 /// Returns [`key_order`] of `v` when its `value` is an object. A null, a scalar or a list has no keys: they cost no
@@ -285,6 +315,25 @@ mod tests {
     struct Pair {
         b: u8,
         a: u8,
+    }
+
+    /// An item that holds the character its style splits on would arrive as several: the encoder refuses it.
+    #[test]
+    fn an_item_with_its_separator_is_refused() {
+        use super::{Enc, Style, encode_cookie, encode_header, encode_query};
+        let enc = |style| Enc { style, explode: false, allow_reserved: false };
+        let mut out = vec![];
+        assert!(encode_query(&mut out, "city", &["New York", "Paris"], enc(Style::SpaceDelimited)).is_err());
+        assert!(encode_query(&mut out, "city", &["a|b", "c"], enc(Style::PipeDelimited)).is_err());
+        assert!(encode_header(&["a,b", "c"], false).is_err());
+        assert!(encode_cookie(&mut out, "role", "x; admin=true", enc(Style::Cookie)).is_err());
+        assert!(encode_cookie(&mut out, "role", &["a b"], enc(Style::Cookie)).is_err());
+        assert!(out.is_empty(), "{out:?}");
+        encode_query(&mut out, "city", &["Paris", "Rome"], enc(Style::SpaceDelimited)).unwrap();
+        encode_cookie(&mut out, "role", "admin", enc(Style::Cookie)).unwrap();
+        encode_cookie(&mut out, "name", "a b", enc(Style::Form)).unwrap();
+        assert!(encode_header(&"a,b", false).is_ok(), "a scalar header may hold a comma");
+        assert_eq!(out, ["city=Paris%20Rome", "role=admin", "name=a%20b"]);
     }
 
     #[test]

@@ -36,6 +36,16 @@ pub enum Style {
 }
 
 impl Style {
+    /// Returns the character that this style splits a list on: the one that an item must not hold.
+    const fn separator(self) -> Option<char> {
+        match self {
+            Self::SpaceDelimited => Some(' '),
+            Self::PipeDelimited => Some('|'),
+            Self::TabDelimited => Some('\t'),
+            Self::Simple | Self::Label | Self::Matrix | Self::Form | Self::DeepObject | Self::Cookie => None,
+        }
+    }
+
     /// Returns the percent-encoded delimiter of `spaceDelimited`, `pipeDelimited` and `tsv` values. `|` is
     /// percent-encoded like the space (RFC 3986).
     const fn delimiter(self) -> Option<&'static str> {
