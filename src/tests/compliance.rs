@@ -323,6 +323,23 @@ fn an_unknown_operation_id_fails_generation() {
     assert_eq!(all.operations, 2);
 }
 
+/// A key of `derives` that names no generated type fails generation: after a rename of a schema the derive (a marker
+/// such as a zeroize derive) would vanish without a word. `*` and a type's name stay valid.
+#[test]
+fn a_derives_key_that_names_no_type_fails_generation() {
+    let schema = json!({"type": "object", "properties": {"id": {"type": "string"}}});
+    let path = common::write("unknown-derives", &doc(&json!({}), &json!({"schemas": {"Account": schema}})), &[]);
+    let with = |key: &str| {
+        let mut opts = Options::default();
+        opts.rust.derives = vec![(key.to_owned(), vec!["Hash".to_owned()])];
+        opts
+    };
+    let err = crate::generate::generate(&path, &with("Acount")).expect_err("must fail");
+    assert!(err.iter().any(|d| d.message.contains("`Acount`")), "{:#?}", err.0);
+    crate::generate::generate(&path, &with("Account")).expect("a type's name");
+    crate::generate::generate(&path, &with("*")).expect("every type");
+}
+
 // `content` (3.2 Request Body / Response): "For requests that match multiple
 // keys, only the most specific key is applicable."
 

@@ -143,6 +143,9 @@ pub fn print(loaded: &Loaded, built: Ir, trees: Trees, opts: &Options) -> Result
     for name in rust::unknown_operations(api, opts) {
         diagnostics.refuse("", format!("`{name}` is not an operation of the description: check `operations`"));
     }
+    for key in rust::unknown_derives(api, opts) {
+        diagnostics.refuse("", format!("`derives` names `{key}`, which is no generated type: check the name"));
+    }
     if diagnostics.refused(opts.server) {
         return Err(diagnostics);
     }
