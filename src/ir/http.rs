@@ -374,6 +374,16 @@ fn operations(b: &mut Builder<'_>, schemes: &[SecurityScheme]) -> Vec<Operation>
                 }
             };
             let base = Name::new(op.get("operationId").and_then(Value::as_str).unwrap_or(&fallback));
+            if taken.contains(&base.key()) && !b.reserved_operations.contains(&base.key()) {
+                b.diags.error(
+                    &op_ptr,
+                    format!(
+                        "this operation and an earlier one {}: rename one (`{}`)",
+                        crate::diag::SAME_ITEM,
+                        base.words().join("_")
+                    ),
+                );
+            }
             let name = unique(base, taken);
             let security = op.get("security").or(global_security.as_ref());
             let site = Site {
@@ -1088,7 +1098,12 @@ fn nested_encoding(path: &str, enc: &Value, out: &mut Vec<(String, String)>, dep
 fn contents(b: &mut Builder<'_>, holder: &Value, ptr: &str, hint: &Name) -> Vec<Content> {
     let Some(Value::Object(content)) = holder.get("content") else { return vec![] };
     let mut out = vec![];
-    let mut taken = BTreeSet::new();
+    // Numbered in the sorted order of the media types: a reorder of `content` changes no name.
+    let names = unique_sorted(
+        content.keys().map(|m| (Name::new(&media_variant(m)), m.as_str())).collect(),
+        &mut BTreeSet::new(),
+    );
+    let variants: BTreeMap<&str, Name> = content.keys().map(String::as_str).zip(names).collect();
     for (media, media_obj) in content {
         let Some((media_obj, mptr)) = resolve_value(b, media_obj, &join(&join(ptr, "content"), media)) else {
             continue;
@@ -1144,7 +1159,7 @@ fn contents(b: &mut Builder<'_>, holder: &Value, ptr: &str, hint: &Name) -> Vec<
                 }
             }
         };
-        let variant = unique(Name::new(&media_variant(media)), &mut taken);
+        let variant = variants.get(media.as_str()).cloned().unwrap_or_else(|| Name::new(&media_variant(media)));
         let encoding = part_types(b, kind, &media_obj, schema, &mptr, open_prefix);
         let examples = examples_of(b, &media_obj, &mptr, kind == MediaKind::Json);
         let form_styles = if kind == MediaKind::Form { form_styles(b, &media_obj, schema, &mptr) } else { vec![] };

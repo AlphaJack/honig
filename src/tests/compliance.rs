@@ -196,6 +196,52 @@ fn a_description_with_an_unknown_field_refuses_a_server() {
     }
 }
 
+/// Two names that are one item in Rust fail generation: the later would be numbered by its place in the document, so a
+/// reorder of the paths would make `delete_user` delete from the archive.
+#[test]
+fn two_names_of_one_rust_item_fail_generation() {
+    let ok = json!({"204": {"description": "ok"}});
+    let operations = json!({
+        "/live/users/{id}": {"delete": {"operationId": "delete-user", "responses": ok}},
+        "/archive/users/{id}": {"delete": {"operationId": "deleteUser", "responses": ok}}
+    });
+    let schema = json!({"type": "object"});
+    let components = json!({"schemas": {"billing_address": schema, "BillingAddress": schema}});
+    for (name, d) in
+        [("same-item-operations", doc(&operations, &json!({}))), ("same-item-components", doc(&json!({}), &components))]
+    {
+        let path = common::write(name, &d, &[]);
+        for options in [Options::default(), Options { server: false, tests: false, ..Options::default() }] {
+            let err = crate::generate::generate(&path, &options).expect_err(name);
+            assert!(err.iter().any(|d| d.message.contains("map to the same item in Rust")), "{name}: {:#?}", err.0);
+        }
+    }
+}
+
+/// Media types that give one variant name are numbered in the sorted order of the types: a reorder of `content`
+/// changes no name.
+#[test]
+fn a_reorder_of_media_types_changes_no_variant() {
+    let variants = |flip: bool| {
+        let (plain, charset) = (json!({"schema": {"type": "string"}}), json!({"schema": {"type": "string"}}));
+        let content = if flip {
+            json!({"text/plain; charset=utf-8": charset, "text/plain": plain})
+        } else {
+            json!({"text/plain": plain, "text/plain; charset=utf-8": charset})
+        };
+        let paths = json!({"/a": {"post": {"operationId": "a", "requestBody": {"content": content},
+            "responses": {"204": {"description": "ok"}}}}});
+        let (api, diags) = common::build(if flip { "media-b" } else { "media-a" }, &doc(&paths, &json!({})), &[]);
+        assert!(diags.is_empty(), "{diags:?}");
+        let body = api.http.operations[0].body.as_ref().expect("a body");
+        let mut out: Vec<(String, String)> =
+            body.contents.iter().map(|c| (c.media.clone(), c.variant.words().join("_"))).collect();
+        out.sort();
+        out
+    };
+    assert_eq!(variants(false), variants(true));
+}
+
 // `content` (3.2 Request Body / Response): "For requests that match multiple
 // keys, only the most specific key is applicable."
 

@@ -152,6 +152,9 @@ pub fn print(loaded: &Loaded, built: Ir, trees: Trees, opts: &Options) -> Result
     if opts.server && diagnostics.iter().any(|d| duplicate(&d)) {
         return Err(diagnostics);
     }
+    if diagnostics.iter().any(|d| d.level == crate::diag::Level::Error && d.message.contains(crate::diag::SAME_ITEM)) {
+        return Err(diagnostics);
+    }
     let files = match rust::print(trees.0, opts.rust.binary) {
         Ok(files) => files,
         Err(e) => {

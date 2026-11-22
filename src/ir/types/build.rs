@@ -46,6 +46,8 @@ pub(crate) struct Builder<'a> {
     /// Named types built so far.
     pub defs: Vec<TypeDef>,
     names: BTreeSet<String>,
+    /// Names of the component schemas reserved so far: two that are one item in Rust are an error.
+    components: BTreeSet<String>,
     /// Names that operations start from. They are the names that the target keeps for itself as `unique` records them.
     pub(crate) reserved_operations: BTreeSet<String>,
     /// Pointer of a schema to its named type.
@@ -103,6 +105,7 @@ impl<'a> Builder<'a> {
             dynamic: crate::schema_ids::dynamic(&doc.root),
             defs: vec![],
             names: crate::ir::names::reserved(reserved.types),
+            components: BTreeSet::new(),
             reserved_operations: crate::ir::names::reserved(reserved.operations),
             by_ptr: BTreeMap::new(),
             claimed: BTreeMap::new(),
@@ -162,6 +165,18 @@ impl<'a> Builder<'a> {
     }
 
     fn reserve(&mut self, name: &Name, ptr: &str) -> TypeId {
+        if ptr.strip_prefix("/components/schemas/").is_some_and(|t| !t.contains('/'))
+            && !self.components.insert(name.key())
+        {
+            self.diags.error(
+                ptr,
+                format!(
+                    "this component and an earlier one {}: rename one (`{}`)",
+                    crate::diag::SAME_ITEM,
+                    name.words().join("_")
+                ),
+            );
+        }
         let name = unique(name.clone(), &mut self.names);
         let id = TypeId(self.defs.len());
         self.defs.push(TypeDef {
