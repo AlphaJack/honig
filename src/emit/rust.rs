@@ -157,6 +157,13 @@ pub(crate) fn unknown_operations<'a>(api: &Api, opts: &'a super::Options) -> Vec
     opts.operations.iter().flatten().filter(|n| !listed(n)).map(String::as_str).collect()
 }
 
+/// Returns the keys of `derives` that name no generated type: a renamed schema would lose its derive without a word.
+pub(crate) fn unknown_derives<'a>(api: &Api, opts: &'a super::Options) -> Vec<&'a str> {
+    let known: std::collections::BTreeSet<String> = api.types.defs.iter().map(|d| names::pascal(&d.name)).collect();
+    let keys = opts.rust.derives.iter().map(|(key, _)| key.as_str());
+    keys.filter(|key| *key != "*" && !known.contains(*key)).collect()
+}
+
 pub(crate) fn trees(api: &Api, opts: &super::Options) -> Trees {
     let kept = kept(api, opts);
     let api = kept.as_ref().unwrap_or(api);
