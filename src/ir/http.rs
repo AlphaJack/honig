@@ -1,6 +1,6 @@
 //! HTTP operations. There is one per (path, method) with typed params, bodies and responses.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 use serde_json::Value;
 
@@ -408,7 +408,29 @@ fn operations(b: &mut Builder<'_>, schemes: &[SecurityScheme]) -> Vec<Operation>
     for (ptr, kind) in callback_items(b, &root, &ops, path_ops) {
         add_item(b, "", &ptr, &kind, &mut ops, &mut taken);
     }
+    one_operation_per_hook(b, &ops);
     ops
+}
+
+/// Reports a webhook or callback with the name and the method of an earlier one: a server routes them by both.
+fn one_operation_per_hook(b: &mut Builder<'_>, ops: &[Operation]) {
+    let mut seen: BTreeMap<(&str, &str), &str> = BTreeMap::new();
+    for op in ops {
+        let name = match &op.kind {
+            OpKind::Path => continue,
+            OpKind::Webhook { name } | OpKind::Callback { name, .. } => name.as_str(),
+        };
+        if let Some(first) = seen.insert((name, op.method.as_str()), op.pointer.as_str()) {
+            b.diags.error(
+                &op.pointer,
+                format!(
+                    "`{} {name}` is {} `{first}`: a server answers with the first",
+                    op.method,
+                    crate::diag::DUPLICATE_HOOK
+                ),
+            );
+        }
+    }
 }
 
 /// Returns callbacks: per path operation a map of runtime expressions to path
