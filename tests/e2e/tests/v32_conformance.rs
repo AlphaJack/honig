@@ -42,10 +42,16 @@ impl api::Api for Server {
     }
     fn get_item(
         &self,
-        _: ops::get_item::Params,
+        params: ops::get_item::Params,
         _: &api::Context<'_>,
     ) -> impl Future<Output = Result<ops::get_item::Response, api::ApiError>> + Send {
-        ok(ops::get_item::Response::Success { status: api::http::StatusCode::CREATED, body: "x".into() })
+        use api::http::StatusCode;
+        // The id picks a response that stands for a status it does not: `2XX` with a 404, `default` with a 2XX.
+        ok(match params.id.as_str() {
+            "range-404" => ops::get_item::Response::Success { status: StatusCode::NOT_FOUND, body: "x".into() },
+            "default-201" => ops::get_item::Response::Default { status: StatusCode::CREATED, body: Default::default() },
+            _ => ops::get_item::Response::Success { status: StatusCode::CREATED, body: "x".into() },
+        })
     }
     fn post_closed(
         &self,
@@ -247,4 +253,21 @@ fn the_client_reads_a_status_range_with_its_actual_status() {
             body: std::collections::BTreeMap::new()
         })
     );
+}
+
+/// A response variant stands for the statuses that its description gives it: `2XX` for the 2xx and `default` for the
+/// others. A handler that returns `Success` with a 404 or `Default` with a 201 would have a client decode it as the
+/// other variant, so the server answers with a server error instead.
+#[test]
+fn a_status_outside_its_variant_is_a_server_error() {
+    let service = api::Server::new(Server).into_service();
+    let get = |id: &str| {
+        let req = api::runtime::new_request("GET", format!("/items/{id}"), vec![]).unwrap();
+        let mut req = req;
+        req.headers_mut().append("authorization", honig::http::HeaderValue::from_static("Bearer t"));
+        api::block_on(service.handle(req)).status().as_u16()
+    };
+    assert_eq!(get("fine"), 201);
+    assert_eq!(get("range-404"), 500);
+    assert_eq!(get("default-201"), 500);
 }
