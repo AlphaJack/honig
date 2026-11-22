@@ -117,6 +117,9 @@ impl Diagnostics {
 /// The start of the message about two webhooks or callbacks that the server could not tell apart. A server is not
 /// generated from a description that has them: the first would answer for both.
 pub(crate) const DUPLICATE_HOOK: &str = "also described by";
+/// The start of the message about a field that its object does not have. A server is not generated from a description
+/// that has one: it may be a misspelt `security`.
+pub(crate) const UNKNOWN_FIELD: &str = "unknown field";
 
 /// The end of the warning for an overlay action whose target selects nothing. `generate` fails on it: after a rewrite
 /// of the description the overlay's fix would stop applying.

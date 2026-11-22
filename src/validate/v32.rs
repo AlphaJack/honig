@@ -54,7 +54,7 @@ impl V<'_> {
     fn unknown(&mut self, extra: &Extra, ptr: &str) {
         for k in extra.keys() {
             if !k.starts_with("x-") {
-                self.diags.error(join(ptr, k), format!("unknown field `{k}`"));
+                self.diags.error(join(ptr, k), format!("{} `{k}`", crate::diag::UNKNOWN_FIELD));
             }
         }
     }

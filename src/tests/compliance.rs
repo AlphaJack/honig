@@ -169,6 +169,33 @@ fn two_callbacks_of_one_name_and_method_refuse_a_server() {
     crate::generate::generate(&path, &client).expect("a client is still generated");
 }
 
+/// A description with an unknown field generates no server: `securty` on an operation, so the operation would be
+/// served without the requirement that its author meant.
+#[test]
+fn a_description_with_an_unknown_field_refuses_a_server() {
+    let get = |extra: (&str, Value)| {
+        let mut op = json!({"operationId": "a", "responses": {"204": {"description": "ok"}}});
+        op[extra.0] = extra.1;
+        json!({"/a": {"get": op}})
+    };
+    let local = json!([{"local": []}]);
+    let mut root = doc(&get(("securty", local.clone())), &bearer());
+    root["security"] = local.clone();
+    let mut capital = doc(&get(("x-ok", json!(1))), &bearer());
+    capital["Security"] = local.clone();
+    let mut item = doc(&get(("x-ok", json!(1))), &bearer());
+    item["paths"]["/a"]["security"] = local;
+    for (i, (d, ptr)) in
+        [(root, "/paths/~1a/get/securty"), (capital, "/Security"), (item, "/paths/~1a/security")].iter().enumerate()
+    {
+        let path = common::write(&format!("sec-error-{i}"), d, &[]);
+        let err = crate::generate::generate(&path, &Options::default()).expect_err(ptr);
+        assert!(err.iter().any(|d| d.pointer == *ptr), "{ptr}: {:#?}", err.0);
+        let client = Options { server: false, tests: false, ..Options::default() };
+        crate::generate::generate(&path, &client).expect("a client is still generated");
+    }
+}
+
 // `content` (3.2 Request Body / Response): "For requests that match multiple
 // keys, only the most specific key is applicable."
 
