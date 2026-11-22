@@ -23,17 +23,33 @@ pub struct Diagnostic {
     pub pointer: String,
     /// What is wrong for humans.
     pub message: String,
+    /// Whether `generate` stops for it.
+    pub(crate) refuses: Refuses,
+}
+
+/// What a diagnostic makes `generate` do besides report it. A description may have a meaning that the generator reads
+/// otherwise than its author: a misspelt `security` key, two names that become one item. The generated code would still
+/// compile and differ from what the description says.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub(crate) enum Refuses {
+    /// It is reported and generation goes on.
+    #[default]
+    Nothing,
+    /// A server is not generated. A client is.
+    Server,
+    /// Nothing is generated.
+    Everything,
 }
 
 impl Diagnostic {
     /// Returns an error at `pointer`.
     pub fn error(pointer: impl Into<String>, message: impl Into<String>) -> Self {
-        Self { level: Level::Error, pointer: pointer.into(), message: message.into() }
+        Self { level: Level::Error, pointer: pointer.into(), message: message.into(), refuses: Refuses::Nothing }
     }
 
     /// Returns a warning at `pointer`.
     pub fn warning(pointer: impl Into<String>, message: impl Into<String>) -> Self {
-        Self { level: Level::Warning, pointer: pointer.into(), message: message.into() }
+        Self { level: Level::Warning, pointer: pointer.into(), message: message.into(), refuses: Refuses::Nothing }
     }
 }
 
@@ -66,6 +82,29 @@ impl Diagnostics {
     /// Records a warning.
     pub fn warning(&mut self, pointer: impl Into<String>, message: impl Into<String>) {
         self.push(Diagnostic::warning(pointer, message));
+    }
+
+    /// Records an error that stops `generate`, for a client too.
+    pub(crate) fn refuse(&mut self, pointer: impl Into<String>, message: impl Into<String>) {
+        self.push(Diagnostic { refuses: Refuses::Everything, ..Diagnostic::error(pointer, message) });
+    }
+
+    /// Records an error that stops `generate` for a server.
+    pub(crate) fn refuse_server(&mut self, pointer: impl Into<String>, message: impl Into<String>) {
+        self.push(Diagnostic { refuses: Refuses::Server, ..Diagnostic::error(pointer, message) });
+    }
+
+    /// Makes an error of every diagnostic that stops `generate` and says whether any does. `server`: a server is
+    /// generated.
+    pub(crate) fn refused(&mut self, server: bool) -> bool {
+        let mut any = false;
+        for d in &mut self.0 {
+            if d.refuses == Refuses::Everything || (server && d.refuses == Refuses::Server) {
+                d.level = Level::Error;
+                any = true;
+            }
+        }
+        any
     }
 
     /// Is any diagnostic an error?
@@ -114,34 +153,24 @@ impl Diagnostics {
     }
 }
 
-/// The start of the message about two webhooks or callbacks that the server could not tell apart. A server is not
-/// generated from a description that has them: the first would answer for both.
-pub(crate) const DUPLICATE_HOOK: &str = "also described by";
-/// The end of the message about two names of the description that are one item in Rust (`delete-user` and
-/// `deleteUser`). `generate` fails on it: the later would be numbered by its place in the document, so a reorder would
-/// swap the two.
-pub(crate) const SAME_ITEM: &str = "map to the same item in Rust";
-/// The end of the message about a required `Authorization` header parameter. OAS ignores it, so a server would never
-/// ask for it: a description states authentication with a security scheme. A server is not generated.
-pub(crate) const AUTH_PARAM: &str = "describe authentication with a security scheme";
-/// The start of the message about a field that its object does not have. A server is not generated from a description
-/// that has one: it may be a misspelt `security`.
-pub(crate) const UNKNOWN_FIELD: &str = "unknown field";
-
-/// The end of the warning for an overlay action whose target selects nothing. `generate` fails on it: after a rewrite
-/// of the description the overlay's fix would stop applying.
-pub(crate) const NO_NODES: &str = "the target selects no nodes: the action does nothing";
-/// The end of the message about two scopes of one scheme that are one variant of its scope enum: the second would be
-/// numbered by its place in the sorted list, so an added scope renames the others. A server is not generated.
-pub(crate) const SAME_VARIANT: &str = "are one variant of its scope enum";
-
-/// The end of the message about enum names that do not pair with the values: `x-enum-varnames` pairs them by position,
-/// so a list of another length would give every value the name of another. `generate` fails on it.
-pub(crate) const ENUM_NAMES: &str = "list one name for each value";
-
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_refusing_diagnostic_stops_generation_for_what_it_names() {
+        let mut d = Diagnostics::default();
+        d.refuse_server("/a", "only a server");
+        assert!(!d.clone().refused(false), "a client is generated");
+        assert!(d.refused(true));
+        let mut d = Diagnostics::default();
+        d.push(Diagnostic { refuses: Refuses::Everything, ..Diagnostic::warning("/b", "a warning that stops it") });
+        assert!(d.refused(false));
+        assert!(d.has_errors(), "it is an error once it stops generation");
+        let mut d = Diagnostics::default();
+        d.error("/c", "reported only");
+        assert!(!d.refused(true));
+    }
 
     #[test]
     fn a_message_at_several_pointers_prints_once() {

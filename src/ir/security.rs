@@ -141,9 +141,9 @@ pub(crate) fn schemes(b: &mut Builder<'_>) -> Vec<SecurityScheme> {
             let mut pair = [other, s.name.as_str()];
             pair.sort_unstable();
             let [first, second] = pair;
-            b.diags.error(
+            b.diags.refuse(
                 format!("/components/securitySchemes/{}", escape_token(second)),
-                format!("security schemes `{first}` and `{second}` {}: rename one", crate::diag::SAME_ITEM),
+                format!("security schemes `{first}` and `{second}` map to the same item in Rust: rename one"),
             );
         }
     }
@@ -165,9 +165,9 @@ pub(crate) fn one_variant_per_scope(b: &mut Builder<'_>, schemes: &[SecuritySche
         let mut seen: std::collections::BTreeMap<String, &str> = std::collections::BTreeMap::new();
         for name in names {
             if let Some(first) = seen.insert(Name::new(name).key(), name) {
-                b.diags.error(
+                b.diags.refuse_server(
                     format!("/components/securitySchemes/{}", escape_token(&scheme.name)),
-                    format!("the scopes `{first}` and `{name}` {} (`{}`)", crate::diag::SAME_VARIANT, scheme.name),
+                    format!("the scopes `{first}` and `{name}` are one variant of its scope enum (`{}`)", scheme.name),
                 );
             }
         }

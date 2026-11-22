@@ -380,11 +380,10 @@ fn operations(b: &mut Builder<'_>, schemes: &[SecurityScheme]) -> Vec<Operation>
             };
             let base = Name::new(op.get("operationId").and_then(Value::as_str).unwrap_or(&fallback));
             if taken.contains(&base.key()) && !b.reserved_operations.contains(&base.key()) {
-                b.diags.error(
+                b.diags.refuse(
                     &op_ptr,
                     format!(
-                        "this operation and an earlier one {}: rename one (`{}`)",
-                        crate::diag::SAME_ITEM,
+                        "this operation and an earlier one map to the same item in Rust: rename one (`{}`)",
                         base.words().join("_")
                     ),
                 );
@@ -436,13 +435,9 @@ fn one_operation_per_hook(b: &mut Builder<'_>, ops: &[Operation]) {
             OpKind::Webhook { name } | OpKind::Callback { name, .. } => name.as_str(),
         };
         if let Some(first) = seen.insert((name, op.method.as_str()), op.pointer.as_str()) {
-            b.diags.error(
+            b.diags.refuse_server(
                 &op.pointer,
-                format!(
-                    "`{} {name}` is {} `{first}`: a server answers with the first",
-                    op.method,
-                    crate::diag::DUPLICATE_HOOK
-                ),
+                format!("`{} {name}` is also described by `{first}`: a server answers with the first", op.method),
             );
         }
     }
@@ -618,7 +613,10 @@ fn ignored_header(b: &mut Builder<'_>, wire: &str, param: &Value, ptr: &str) -> 
         return false;
     }
     if wire.eq_ignore_ascii_case("authorization") && json::flag(param, "required") {
-        b.diags.error(ptr, format!("a required `{wire}` header parameter is ignored: {}", crate::diag::AUTH_PARAM));
+        b.diags.refuse_server(
+            ptr,
+            format!("a required `{wire}` header parameter is ignored: describe authentication with a security scheme"),
+        );
     }
     true
 }
