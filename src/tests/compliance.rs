@@ -340,6 +340,23 @@ fn a_derives_key_that_names_no_type_fails_generation() {
     crate::generate::generate(&path, &with("*")).expect("every type");
 }
 
+/// An unquoted YAML `007` under `type: string` is the number 7: the type falls back to a JSON value and refuses
+/// `"007"`. `generate` fails and points at the value.
+#[test]
+fn an_enum_value_outside_the_type_fails_generation() {
+    let dir = std::env::temp_dir().join(format!("honig-enum-type-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let spec = dir.join("openapi.yaml");
+    std::fs::write(
+        &spec,
+        "openapi: 3.1.0\ninfo: {title: t, version: '1'}\npaths: {}\ncomponents:\n  schemas:\n    Code:\n      type: string\n      enum: [007, 1.10]\n",
+    )
+    .unwrap();
+    let err = crate::generate::generate(&spec, &Options::default()).expect_err("must fail");
+    assert!(err.iter().any(|d| d.pointer == "/components/schemas/Code/enum"), "{:#?}", err.0);
+    std::fs::remove_dir_all(&dir).ok();
+}
+
 // `content` (3.2 Request Body / Response): "For requests that match multiple
 // keys, only the most specific key is applicable."
 

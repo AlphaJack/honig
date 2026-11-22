@@ -3,7 +3,9 @@
 //! A 2.0 document is checked as written ([`v20`]). A 3.x document is upgraded to 3.2 and checked there ([`v32`]),
 //! after [`newer_fields`] reports what its own version does not define.
 
+pub(crate) mod enum_type;
 pub(crate) mod overlap;
+pub(crate) mod schema_rules;
 pub(crate) mod unsatisfiable;
 pub(crate) mod v20;
 pub(crate) mod v32;
