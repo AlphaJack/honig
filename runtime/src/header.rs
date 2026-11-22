@@ -14,6 +14,20 @@ pub(crate) fn header_value(v: Cow<'static, str>) -> Option<http::HeaderValue> {
     }
 }
 
+/// Returns why a browser cannot send the header `name` with `value`, or `None` when it can.
+///
+/// `fetch` sets `Cookie` itself and takes only ASCII text: an adapter that dropped such a header would send a request
+/// without it and no word. The adapter for a browser uses it.
+pub fn browser_refuses(name: &str, value: &http::HeaderValue) -> Option<String> {
+    if name.eq_ignore_ascii_case("cookie") {
+        return Some(
+            "a browser sets `Cookie` itself: send cookies with `prepare(|r| r.credentials(RequestCredentials::Include))`"
+                .to_owned(),
+        );
+    }
+    value.to_str().is_err().then(|| format!("`{name}` holds a value that is not ASCII text, which `fetch` cannot send"))
+}
+
 /// Returns a header value as text. It is borrowed when it is UTF-8. Otherwise it is decoded as ISO-8859-1. Adapters use
 /// it.
 pub fn header_text(bytes: &[u8]) -> Cow<'_, str> {
@@ -45,5 +59,20 @@ mod tests {
     fn text_that_is_not_utf8_is_latin1() {
         assert_eq!(header_text(b"caf\xE9"), "café");
         assert!(matches!(header_text(b"cafe"), Cow::Borrowed("cafe")));
+    }
+}
+
+#[cfg(test)]
+mod browser_tests {
+    use super::browser_refuses;
+
+    /// A header that `fetch` would drop is reported: a cookie and a value that is not ASCII.
+    #[test]
+    fn a_header_that_fetch_drops_is_refused() {
+        let v = |s: &[u8]| http::HeaderValue::from_bytes(s).unwrap();
+        assert!(browser_refuses("Cookie", &v(b"a=b")).is_some_and(|w| w.contains("RequestCredentials")));
+        assert!(browser_refuses("x-name", &v("café".as_bytes())).is_some_and(|w| w.contains("`x-name`")));
+        assert!(browser_refuses("x-name", &v(b"plain")).is_none());
+        assert!(browser_refuses("authorization", &v(b"Bearer t")).is_none());
     }
 }

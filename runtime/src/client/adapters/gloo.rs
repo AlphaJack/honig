@@ -54,6 +54,9 @@ impl GlooTransport {
         // `append` keeps repeated headers; the builder's `header` would replace them.
         let headers = gloo_net::http::Headers::new();
         for (k, v) in &req.headers {
+            if let Some(why) = crate::header::browser_refuses(k.as_str(), v) {
+                return Err(ClientError::Encode(why));
+            }
             if let (false, Ok(v)) = (forbidden(k.as_str()), v.to_str()) {
                 headers.append(k.as_str(), v);
             }
