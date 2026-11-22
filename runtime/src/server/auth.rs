@@ -16,6 +16,15 @@ pub struct SatisfiedSecurity {
     pub scopes: Vec<&'static str>,
 }
 
+impl SatisfiedSecurity {
+    /// Keeps the credentials and scopes of `alternative`, the one that passed. A credential of another alternative was
+    /// presented but no `verify_` method accepted it.
+    pub(crate) fn keep(&mut self, alternative: &[Requirement]) {
+        self.auth.retain(|(s, _)| alternative.iter().any(|(r, _)| r == s));
+        self.scopes = alternative.iter().flat_map(|(_, scopes)| scopes.iter().copied()).collect();
+    }
+}
+
 /// Who is calling and the scopes that their credential grants: what a `verify_` method of the `Api` found.
 ///
 /// The `Api` has one `verify_` method per security scheme that its operations use, and does not compile without it.
