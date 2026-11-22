@@ -5,10 +5,7 @@
 
 use crate::emit::rust::RUNTIME_VERSION;
 use crate::error::Error;
-use crate::settings::{FEATURES, Manifest};
-
-/// The package of the runtime.
-pub(crate) const RUNTIME: &str = "honig";
+use crate::settings::{FEATURES, Manifest, RUNTIME};
 
 /// Checks that the crate depends on the runtime at the version of the generator with every feature in `needed`.
 ///

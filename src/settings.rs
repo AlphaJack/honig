@@ -303,7 +303,7 @@ impl Manifest {
 
     /// Returns the dependency on the runtime, by package so a renamed one counts too.
     pub(crate) fn runtime(&self) -> Option<&Dependency> {
-        self.deps.iter().find(|d| d.package == crate::manifest::RUNTIME)
+        self.deps.iter().find(|d| d.package == RUNTIME)
     }
 
     /// Does the dependency `name` take its version from `[workspace.dependencies]` (`workspace = true`)?
@@ -325,6 +325,9 @@ fn matches_star(path: &Path, prefix: &str, suffix: &str) -> bool {
         n.len() >= prefix.len() + suffix.len() && n.starts_with(prefix) && n.ends_with(suffix)
     })
 }
+
+/// The package of the runtime.
+pub(crate) const RUNTIME: &str = "honig";
 
 /// The table that contains one table per module.
 const ROOT: &str = "package.metadata.honig";

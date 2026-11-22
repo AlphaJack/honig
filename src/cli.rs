@@ -459,7 +459,7 @@ fn init(spec: &str, args: &Args) -> Result<ExitCode, Failure> {
     args.say(format_args!("added [package.metadata.honig.api] to {}", args.manifest.display()));
     if manifest.runtime().is_none() {
         let version = crate::emit::rust::RUNTIME_VERSION;
-        args.say(format_args!("next: cargo add {}@={version} -F client,server", crate::manifest::RUNTIME));
+        args.say(format_args!("next: cargo add {}@={version} -F client,server", settings::RUNTIME));
     }
     for line in serde_lines(&manifest) {
         args.say(format_args!("next: {line}"));
