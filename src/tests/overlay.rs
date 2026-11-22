@@ -179,3 +179,31 @@ fn generation_reads_the_description_through_its_overlays() {
     assert!(ops.contains("pub mod list_products"), "{ops}");
     std::fs::remove_dir_all(&dir).ok();
 }
+
+/// An overlay action that selects nothing fails `generate`: a `security` added to a path that was renamed would
+/// leave the operation public.
+#[test]
+fn an_overlay_action_that_selects_nothing_fails_generation() {
+    let dir = std::env::temp_dir().join(format!("honig-overlay-nothing-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let spec = dir.join("openapi.yaml");
+    std::fs::write(
+        &spec,
+        "openapi: 3.1.0\ninfo: {title: t, version: '1'}\npaths:\n  /a:\n    get:\n      operationId: a\n      responses: {'204': {description: ok}}\n",
+    )
+    .unwrap();
+    let overlay = dir.join("secure.overlay.yaml");
+    std::fs::write(
+        &overlay,
+        "overlay: 1.2.0\ninfo: {title: secure, version: '1'}\nactions:\n  - target: $.paths['/b'].get\n    update: {security: [{local: []}]}\n",
+    )
+    .unwrap();
+    let opts = crate::emit::Options { overlays: vec![overlay], ..Default::default() };
+    let err = crate::generate::generate(&spec, &opts).unwrap_err();
+    assert!(
+        err.iter().any(|d| d.level == crate::diag::Level::Error && d.pointer.ends_with("/actions/0/target")),
+        "{:#?}",
+        err.0
+    );
+    std::fs::remove_dir_all(&dir).ok();
+}

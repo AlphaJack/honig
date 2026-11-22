@@ -74,6 +74,13 @@ pub fn load(specs: &[std::path::PathBuf], opts: &Options) -> Result<Loaded, Diag
         return Err(diagnostics);
     }
     let Some(doc) = loaded.doc() else { return Err(diagnostics) };
+    // An overlay that changed nothing: a fix that no longer applies, such as a `security` added to a path that was
+    // renamed, leaves the operation as it was.
+    if let Some(d) = diagnostics.iter().find(|d| d.message == crate::diag::NO_NODES) {
+        let mut diagnostics = diagnostics.clone();
+        diagnostics.error(d.pointer.clone(), crate::diag::NO_NODES);
+        return Err(diagnostics);
+    }
     // A requirement on a scheme the generator cannot see cannot be checked: generating
     // anyway would serve the operation without it.
     let unresolved = crate::resolve::unresolved_security(&doc.root);
