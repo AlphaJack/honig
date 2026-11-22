@@ -192,7 +192,7 @@ impl<T: runtime::Transport> Client<T> {
                     e_tag: runtime::from_param(
                             runtime::decode_header(
                                 runtime::joined_header(&head.headers, "ETag").as_deref(),
-                                runtime::Shape::Prim,
+                                runtime::Shape::Primitive,
                                 false,
                             ),
                             "/header/ETag",
@@ -207,7 +207,7 @@ impl<T: runtime::Transport> Client<T> {
                             runtime::decode_header(
                                 runtime::joined_header(&head.headers, "Last-Modified")
                                     .as_deref(),
-                                runtime::Shape::Prim,
+                                runtime::Shape::Primitive,
                                 false,
                             ),
                             "/header/Last-Modified",

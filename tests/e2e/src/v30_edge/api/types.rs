@@ -120,7 +120,7 @@ impl Vehicle {
                 if hits != 1 {
                     runtime::violation(
                         out,
-                        &runtime::InstancePath::Root,
+                        &runtime::InstanceLocation::Root,
                         format!("matches {hits} of `oneOf`, not exactly one"),
                     );
                 }
@@ -224,7 +224,7 @@ impl TryFrom<String> for MoneyCurrency {
             let out = &mut violations;
             runtime::check_pattern(
                 out,
-                &runtime::InstancePath::Root,
+                &runtime::InstanceLocation::Root,
                 {
                     static RE: runtime::Pattern = runtime::Pattern::new("^[A-Z]{3}$");
                     &RE
@@ -250,7 +250,7 @@ impl TryFrom<String> for CustomerName {
             let n = (value.as_str()).chars().count();
             runtime::check_len(
                 out,
-                &runtime::InstancePath::Root,
+                &runtime::InstanceLocation::Root,
                 n,
                 Some(1),
                 None,
@@ -275,7 +275,7 @@ impl TryFrom<String> for CardLast4 {
             let n = (value.as_str()).chars().count();
             runtime::check_len(
                 out,
-                &runtime::InstancePath::Root,
+                &runtime::InstanceLocation::Root,
                 n,
                 Some(4),
                 Some(4),
@@ -396,7 +396,7 @@ impl TryFrom<i32> for ListOrdersLimit {
             let out = &mut violations;
             runtime::check_range(
                 out,
-                &runtime::InstancePath::Root,
+                &runtime::InstanceLocation::Root,
                 value,
                 runtime::Bounds {
                     min: Some(1),
@@ -456,7 +456,7 @@ impl TryFrom<String> for ListOrdersCursor {
             let out = &mut violations;
             runtime::check_pattern(
                 out,
-                &runtime::InstancePath::Root,
+                &runtime::InstanceLocation::Root,
                 {
                     static RE: runtime::Pattern = runtime::Pattern::new(
                         "^[A-Za-z0-9_-]+$",
@@ -606,7 +606,7 @@ impl OrderCustomerChecked {
                 if !(json.matches::<Not>() || json.matches::<()>()) {
                     runtime::violation(
                         out,
-                        &runtime::InstancePath::Root,
+                        &runtime::InstanceLocation::Root,
                         "matches none of `anyOf`",
                     );
                 }

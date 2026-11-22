@@ -151,7 +151,7 @@ impl Item {
                 if hits != 1 {
                     runtime::violation(
                         out,
-                        &runtime::InstancePath::Root,
+                        &runtime::InstanceLocation::Root,
                         format!("matches {hits} of `oneOf`, not exactly one"),
                     );
                 }
@@ -961,7 +961,7 @@ impl TryFrom<f32> for ProductRating {
             let out = &mut violations;
             runtime::check_range(
                 out,
-                &runtime::InstancePath::Root,
+                &runtime::InstanceLocation::Root,
                 value,
                 runtime::Bounds {
                     min: Some(0.0),
@@ -1038,7 +1038,7 @@ impl TryFrom<f32> for ProductDimensionsWeight {
             let out = &mut violations;
             runtime::check_range(
                 out,
-                &runtime::InstancePath::Root,
+                &runtime::InstanceLocation::Root,
                 value,
                 runtime::Bounds {
                     exclusive_min: Some(0.0),
@@ -1148,7 +1148,7 @@ impl TryFrom<f32> for ProductMaterialsItemPercentage {
             let out = &mut violations;
             runtime::check_range(
                 out,
-                &runtime::InstancePath::Root,
+                &runtime::InstanceLocation::Root,
                 value,
                 runtime::Bounds {
                     exclusive_max: Some(100.0),
@@ -1898,7 +1898,7 @@ impl ItemRequest {
                 if hits != 1 {
                     runtime::violation(
                         out,
-                        &runtime::InstancePath::Root,
+                        &runtime::InstanceLocation::Root,
                         format!("matches {hits} of `oneOf`, not exactly one"),
                     );
                 }
@@ -2493,7 +2493,7 @@ impl TryFrom<Vec<serde_json::Value>> for PaginatedResourceData {
         {
             let out = &mut violations;
             {
-                let base = &runtime::InstancePath::Root;
+                let base = &runtime::InstanceLocation::Root;
                 for (i, v) in value.iter().enumerate() {
                     {
                         let json = runtime::to_value(v).unwrap_or_default();
@@ -2501,7 +2501,7 @@ impl TryFrom<Vec<serde_json::Value>> for PaginatedResourceData {
                         if json.matches::<serde_json::Value>() {
                             runtime::violation(
                                 out,
-                                &runtime::InstancePath::Index(base, i),
+                                &runtime::InstanceLocation::Index(base, i),
                                 "matches `not`",
                             );
                         }

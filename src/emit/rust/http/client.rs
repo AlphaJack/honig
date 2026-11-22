@@ -108,6 +108,7 @@ pub(crate) fn webhook_client(space: &Space<'_>, api: &Api, sec: &Securities) -> 
     let setters = credential_setters(api);
     (!hooks.is_empty()).then(|| {
         quote! {
+            /// Sends the webhooks of the API and the callbacks (`callbacks`) of its operations.
             #[derive(Debug, Clone)]
             pub struct WebhookClient<T> {
                 pub transport: T,

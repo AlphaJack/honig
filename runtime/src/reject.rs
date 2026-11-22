@@ -95,10 +95,10 @@ impl Reason {
         if let Self::Invalid(v) = self { std::slice::from_ref(v) } else { &[] }
     }
 
-    /// Returns [`Reason::Invalid`] with one violation: `path` is a JSON pointer into the request (`/query/limit`).
+    /// Returns [`Reason::Invalid`] with one violation: `location` is a JSON pointer into the request (`/query/limit`).
     #[must_use]
-    pub fn invalid(path: impl Into<String>, message: impl Into<String>) -> Self {
-        Self::Invalid(Violation { path: path.into(), message: message.into() })
+    pub fn invalid(location: impl Into<String>, message: impl Into<String>) -> Self {
+        Self::Invalid(Violation { instance_location: location.into(), message: message.into() })
     }
 
     /// Returns the response for an [`ApiError`] that carries its own body. It goes out as it is.
@@ -214,9 +214,9 @@ pub struct ProblemError {
 
 impl ProblemError {
     fn of(v: &Violation) -> Self {
-        let pointer = match v.path.strip_prefix("/body") {
+        let pointer = match v.instance_location.strip_prefix("/body") {
             Some(rest) if rest.is_empty() || rest.starts_with('/') => format!("#{rest}"),
-            _ => format!("#{}", v.path),
+            _ => format!("#{}", v.instance_location),
         };
         Self { detail: v.message.clone(), pointer }
     }
@@ -302,12 +302,12 @@ fn decode_violation(pointer: &str, why: &str) -> Violation {
     let why = why.rsplit_once(" at line ").filter(|(_, at)| at.contains(" column ")).map_or(why, |(why, _)| why);
     let at = |field: &str| format!("/body{pointer}/{}", field.replace('~', "~0").replace('/', "~1"));
     if let Some(field) = why.strip_prefix("missing field `").and_then(|rest| rest.strip_suffix('`')) {
-        return Violation { path: at(field), message: "is required".to_owned() };
+        return Violation { instance_location: at(field), message: "is required".to_owned() };
     }
     if let Some((field, _)) = why.strip_prefix("unknown field `").and_then(|rest| rest.split_once('`')) {
-        return Violation { path: at(field), message: "is not allowed (additionalProperties)".to_owned() };
+        return Violation { instance_location: at(field), message: "is not allowed (additionalProperties)".to_owned() };
     }
-    Violation { path: format!("/body{pointer}"), message: why.to_owned() }
+    Violation { instance_location: format!("/body{pointer}"), message: why.to_owned() }
 }
 
 /// Returns the `errors` extension member of a problem.
@@ -394,7 +394,7 @@ impl fmt::Display for Reason {
             }
             Self::Body(why) | Self::Encode(why) => f.write_str(why),
             Self::Unreadable(why) => write!(f, "unreadable request body: {why}"),
-            Self::Invalid(v) => write!(f, "{}: {}", v.path, v.message),
+            Self::Invalid(v) => write!(f, "{}: {}", v.instance_location, v.message),
             Self::Unauthorized => f.write_str("no security requirement is satisfied"),
             Self::Denied(e) | Self::Handler(e) => write!(f, "{}: {}", e.status, e.message),
         }
@@ -527,7 +527,7 @@ mod tests {
         let body: Value = serde_json::from_slice(r.in_schema(&schema).body().bytes()).unwrap();
         assert_eq!(body["errors"], serde_json::json!([{"detail": "is required", "pointer": "#/name"}]));
         let nested = undecoded("/items/0", "missing field `id`");
-        assert_eq!(nested.violations()[0].path, "/body/items/0/id");
+        assert_eq!(nested.violations()[0].instance_location, "/body/items/0/id");
         let unknown = undecoded("", "unknown field `b`, expected `a` at line 1 column 12");
         assert_eq!(unknown.to_string(), "/body/b: is not allowed (additionalProperties)");
     }

@@ -38,7 +38,7 @@ pub mod get_file {
     runtime::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<types::GetFileOk, Box<Self>> {
+        pub fn into_result(self) -> Result<types::GetFileOk, Box<Self>> {
             match self {
                 Self::Ok(body) => Ok(body),
             }
@@ -68,7 +68,7 @@ pub mod admin {
     runtime::response_error!(Response { Self::NoContent => "status 204 (NoContent)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<(), Box<Self>> {
+        pub fn into_result(self) -> Result<(), Box<Self>> {
             match self {
                 Self::NoContent => Ok(()),
             }

@@ -106,7 +106,7 @@ A call returns `Err(api::ClientError)` when it gets no response the description 
 
 Every other variant that received a response carries its raw body.
 
-A declared response that is not the success is still `Ok` from the call: the description declares it. `into_ok` turns the response into the success and anything else into an `Err` that `?` converts into any error type:
+A declared response that is not the success is still `Ok` from the call: the description declares it. `into_result` turns the response into the success and anything else into an `Err` that `?` converts into any error type:
 
 ```rust
 {{#include ../../../tests/e2e/tests/v32_shop/client.rs:into-ok}}

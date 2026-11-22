@@ -33,7 +33,7 @@ pub mod form_with_xml {
     runtime::response_error!(Response { Self::NoContent => "status 204 (NoContent)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<(), Box<Self>> {
+        pub fn into_result(self) -> Result<(), Box<Self>> {
             match self {
                 Self::NoContent => Ok(()),
             }
@@ -94,7 +94,7 @@ pub mod parameter_examples {
     runtime::response_error!(Response { Self::NoContent => "status 204 (NoContent)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<(), Box<Self>> {
+        pub fn into_result(self) -> Result<(), Box<Self>> {
             match self {
                 Self::NoContent => Ok(()),
             }
@@ -135,7 +135,7 @@ pub mod querystring_form {
     runtime::response_error!(Response { Self::NoContent => "status 204 (NoContent)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<(), Box<Self>> {
+        pub fn into_result(self) -> Result<(), Box<Self>> {
             match self {
                 Self::NoContent => Ok(()),
             }
@@ -176,7 +176,7 @@ pub mod querystring_json {
     runtime::response_error!(Response { Self::NoContent => "status 204 (NoContent)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<(), Box<Self>> {
+        pub fn into_result(self) -> Result<(), Box<Self>> {
             match self {
                 Self::NoContent => Ok(()),
             }
@@ -217,7 +217,7 @@ pub mod basic_multipart_form {
     runtime::response_error!(Response { Self::NoContent => "status 204 (NoContent)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<(), Box<Self>> {
+        pub fn into_result(self) -> Result<(), Box<Self>> {
             match self {
                 Self::NoContent => Ok(()),
             }
@@ -268,7 +268,7 @@ pub mod multipart_form_with_encoding_objects {
     runtime::response_error!(Response { Self::NoContent => "status 204 (NoContent)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<(), Box<Self>> {
+        pub fn into_result(self) -> Result<(), Box<Self>> {
             match self {
                 Self::NoContent => Ok(()),
             }
@@ -309,7 +309,7 @@ pub mod multipart_form_with_multiple_files {
     runtime::response_error!(Response { Self::NoContent => "status 204 (NoContent)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<(), Box<Self>> {
+        pub fn into_result(self) -> Result<(), Box<Self>> {
             match self {
                 Self::NoContent => Ok(()),
             }
@@ -348,7 +348,7 @@ pub mod ordered_unnamed_multipart {
     runtime::response_error!(Response { Self::NoContent => "status 204 (NoContent)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<(), Box<Self>> {
+        pub fn into_result(self) -> Result<(), Box<Self>> {
             match self {
                 Self::NoContent => Ok(()),
             }
@@ -396,7 +396,7 @@ pub mod ordered_multipart_with_required_header {
     runtime::response_error!(Response { Self::NoContent => "status 204 (NoContent)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<(), Box<Self>> {
+        pub fn into_result(self) -> Result<(), Box<Self>> {
             match self {
                 Self::NoContent => Ok(()),
             }
@@ -435,7 +435,7 @@ pub mod nested_multipart_mixed {
     runtime::response_error!(Response { Self::NoContent => "status 204 (NoContent)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<(), Box<Self>> {
+        pub fn into_result(self) -> Result<(), Box<Self>> {
             match self {
                 Self::NoContent => Ok(()),
             }
@@ -465,7 +465,7 @@ pub mod streaming_multipart {
     runtime::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<Vec<runtime::Binary>, Box<Self>> {
+        pub fn into_result(self) -> Result<Vec<runtime::Binary>, Box<Self>> {
             match self {
                 Self::Ok(body) => Ok(body),
             }
@@ -497,7 +497,7 @@ pub mod streaming_byte_ranges {
     );
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<Vec<runtime::Binary>, Box<Self>> {
+        pub fn into_result(self) -> Result<Vec<runtime::Binary>, Box<Self>> {
             match self {
                 Self::PartialContent(body) => Ok(body),
             }
@@ -536,7 +536,7 @@ pub mod querystring_jsonpath {
     runtime::response_error!(Response { Self::NoContent => "status 204 (NoContent)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<(), Box<Self>> {
+        pub fn into_result(self) -> Result<(), Box<Self>> {
             match self {
                 Self::NoContent => Ok(()),
             }
@@ -565,11 +565,11 @@ pub mod collection_with_links {
     /// What the handler of this operation returns: its `Response`, or an error that the server answers.
     pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(Response { Self::Ok { .. } => "status 200 (Ok)", });
-    /// The body and headers of the success, in order: what `Response::into_ok` gives.
+    /// The body and headers of the success, in order: what `Response::into_result` gives.
     pub type Success = (Vec<serde_json::Value>, types::CollectionLinks);
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<Success, Box<Self>> {
+        pub fn into_result(self) -> Result<Success, Box<Self>> {
             match self {
                 Self::Ok { body, link } => Ok((body, link)),
             }
@@ -600,7 +600,7 @@ pub mod standalone_json_linkset {
     runtime::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<types::CollectionLinks, Box<Self>> {
+        pub fn into_result(self) -> Result<types::CollectionLinks, Box<Self>> {
             match self {
                 Self::Ok(body) => Ok(body),
             }
@@ -631,7 +631,7 @@ pub mod linkset_body {
     runtime::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<types::CollectionLinks, Box<Self>> {
+        pub fn into_result(self) -> Result<types::CollectionLinks, Box<Self>> {
             match self {
                 Self::Ok(body) => Ok(body),
             }
@@ -662,7 +662,7 @@ pub mod media_type_json {
     runtime::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<types::Product, Box<Self>> {
+        pub fn into_result(self) -> Result<types::Product, Box<Self>> {
             match self {
                 Self::Ok(body) => Ok(body),
             }
@@ -719,7 +719,7 @@ pub mod log_stream {
     runtime::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<OkBody, Box<Self>> {
+        pub fn into_result(self) -> Result<OkBody, Box<Self>> {
             match self {
                 Self::Ok(body) => Ok(body),
             }
@@ -777,7 +777,7 @@ pub mod log_excerpt {
     runtime::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<OkBody, Box<Self>> {
+        pub fn into_result(self) -> Result<OkBody, Box<Self>> {
             match self {
                 Self::Ok(body) => Ok(body),
             }
@@ -821,7 +821,7 @@ pub mod server_sent_event_streams {
     runtime::response_error!(Response { Self::NoContent => "status 204 (NoContent)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<(), Box<Self>> {
+        pub fn into_result(self) -> Result<(), Box<Self>> {
             match self {
                 Self::NoContent => Ok(()),
             }

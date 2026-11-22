@@ -807,7 +807,7 @@ fn form_styles(
             let shape = match ps.as_ref().and_then(|ps| ps.get("type")).and_then(Value::as_str) {
                 Some("array") => "Array",
                 Some("object") => "Object",
-                _ => "Prim",
+                _ => "Primitive",
             };
             (prop.clone(), style, explode, e.get("allowReserved").and_then(Value::as_bool).unwrap_or(false), shape)
         })

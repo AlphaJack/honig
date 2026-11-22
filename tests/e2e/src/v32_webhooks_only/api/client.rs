@@ -11,6 +11,7 @@ impl<T> Client<T> {
     }
 }
 impl<T: runtime::Transport> Client<T> {}
+/// Sends the webhooks of the API and the callbacks (`callbacks`) of its operations.
 #[derive(Debug, Clone)]
 pub struct WebhookClient<T> {
     pub transport: T,

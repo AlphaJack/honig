@@ -60,11 +60,11 @@ pub mod list_orders {
         Response { Self::Ok { .. } => "status 200 (Ok)", Self::ClientError { status, .. }
         => format_args!("status {} (ClientError)", status.as_u16()), }
     );
-    /// The body and headers of the success, in order: what `Response::into_ok` gives.
+    /// The body and headers of the success, in order: what `Response::into_result` gives.
     pub type Success = (types::OrderPage, Option<String>);
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<Success, Box<Self>> {
+        pub fn into_result(self) -> Result<Success, Box<Self>> {
             match self {
                 Self::Ok { body, x_next_cursor } => Ok((body, x_next_cursor)),
                 other @ Self::ClientError { .. } => Err(Box::new(other)),
@@ -114,7 +114,7 @@ pub mod create_order {
     );
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<Box<types::Order>, Box<Self>> {
+        pub fn into_result(self) -> Result<Box<types::Order>, Box<Self>> {
             match self {
                 Self::Created(body) => Ok(body),
                 other @ (Self::UnprocessableEntity(..) | Self::Default { .. }) => {
@@ -162,11 +162,11 @@ pub mod get_order {
         "status 404 (NotFound)", Self::Default { status, .. } =>
         format_args!("status {} (Default)", status.as_u16()), }
     );
-    /// The body and headers of the success, in order: what `Response::into_ok` gives.
+    /// The body and headers of the success, in order: what `Response::into_result` gives.
     pub type Success = (Box<types::Order>, String);
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<Success, Box<Self>> {
+        pub fn into_result(self) -> Result<Success, Box<Self>> {
             match self {
                 Self::Ok { body, x_request_id } => Ok((body, x_request_id)),
                 other @ (Self::NotFound(..) | Self::Default { .. }) => {
@@ -231,7 +231,7 @@ pub mod upload_document {
     runtime::response_error!(Response { Self::NoContent => "status 204 (NoContent)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<(), Box<Self>> {
+        pub fn into_result(self) -> Result<(), Box<Self>> {
             match self {
                 Self::NoContent => Ok(()),
             }

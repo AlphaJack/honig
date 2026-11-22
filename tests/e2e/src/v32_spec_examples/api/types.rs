@@ -127,7 +127,7 @@ impl TryFrom<Vec<LogEntry>> for Log {
             let out = &mut violations;
             runtime::check_len(
                 out,
-                &runtime::InstancePath::Root,
+                &runtime::InstanceLocation::Root,
                 value.len(),
                 None,
                 Some(100),
@@ -191,7 +191,7 @@ impl TryFrom<String> for FormDataCode2 {
             let out = &mut violations;
             runtime::check_pattern(
                 out,
-                &runtime::InstancePath::Root,
+                &runtime::InstanceLocation::Root,
                 {
                     static RE: runtime::Pattern = runtime::Pattern::new("1");
                     &RE
@@ -229,7 +229,7 @@ impl TryFrom<i64> for LogEntryLevel {
             let out = &mut violations;
             runtime::check_range(
                 out,
-                &runtime::InstancePath::Root,
+                &runtime::InstanceLocation::Root,
                 value,
                 runtime::Bounds {
                     min: Some(0),
@@ -428,7 +428,7 @@ impl TryFrom<String> for MultipartFormWithEncodingObjectsBodyAliasString {
             let out = &mut violations;
             runtime::check_pattern(
                 out,
-                &runtime::InstancePath::Root,
+                &runtime::InstanceLocation::Root,
                 {
                     static RE: runtime::Pattern = runtime::Pattern::new("^[A-Z][a-z]*$");
                     &RE
@@ -515,12 +515,16 @@ impl ServerSentEventStreamsBodyItem {
                 if hits != 1 {
                     runtime::violation(
                         out,
-                        &runtime::InstancePath::Root,
+                        &runtime::InstanceLocation::Root,
                         format!("matches {hits} of `oneOf`, not exactly one"),
                     );
                 }
                 if let Err(e) = json.decode_ref::<NotChecked>() {
-                    runtime::violation(out, &runtime::InstancePath::Root, e.to_string());
+                    runtime::violation(
+                        out,
+                        &runtime::InstanceLocation::Root,
+                        e.to_string(),
+                    );
                 }
             }
         }
@@ -659,7 +663,7 @@ impl TryFrom<String> for Not {
             let out = &mut violations;
             runtime::check_pattern(
                 out,
-                &runtime::InstancePath::Root,
+                &runtime::InstanceLocation::Root,
                 {
                     static RE: runtime::Pattern = runtime::Pattern::new("2");
                     &RE
@@ -720,7 +724,7 @@ impl TryFrom<f64> for Not2Number {
             let out = &mut violations;
             runtime::check_range(
                 out,
-                &runtime::InstancePath::Root,
+                &runtime::InstanceLocation::Root,
                 value,
                 runtime::Bounds {
                     min: Some(0.0),
@@ -950,10 +954,18 @@ impl FormDataCodeChecked {
             let out = &mut violations;
             {
                 if let Err(e) = json.decode_ref::<Not2>() {
-                    runtime::violation(out, &runtime::InstancePath::Root, e.to_string());
+                    runtime::violation(
+                        out,
+                        &runtime::InstanceLocation::Root,
+                        e.to_string(),
+                    );
                 }
                 if let Err(e) = json.decode_ref::<Not3>() {
-                    runtime::violation(out, &runtime::InstancePath::Root, e.to_string());
+                    runtime::violation(
+                        out,
+                        &runtime::InstanceLocation::Root,
+                        e.to_string(),
+                    );
                 }
             }
         }
@@ -975,7 +987,12 @@ impl TryFrom<serde_json::Value> for Not5ObjectData {
         {
             let out = &mut violations;
             if let serde_json::Value::String(text) = &value {
-                runtime::check_format(out, &runtime::InstancePath::Root, text, "int64");
+                runtime::check_format(
+                    out,
+                    &runtime::InstanceLocation::Root,
+                    text,
+                    "int64",
+                );
             }
         }
         runtime::first(violations)
@@ -997,7 +1014,7 @@ impl TryFrom<serde_json::Value> for NotChecked {
             if let serde_json::Value::Object(n) = &value {
                 runtime::check_required(
                     out,
-                    &runtime::InstancePath::Root,
+                    &runtime::InstanceLocation::Root,
                     |name| n.contains_key(name),
                     &["event"],
                 );

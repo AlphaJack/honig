@@ -55,7 +55,7 @@ impl Product {
                 {
                     runtime::violation(
                         out,
-                        &runtime::InstancePath::Root,
+                        &runtime::InstanceLocation::Root,
                         format!("{}{e}", "`secret` is present: "),
                     );
                 }
@@ -86,7 +86,7 @@ impl Book {
                 {
                     runtime::violation(
                         out,
-                        &runtime::InstancePath::Root,
+                        &runtime::InstanceLocation::Root,
                         format!("{}{e}", "`secret` is present: "),
                     );
                 }
@@ -117,7 +117,7 @@ impl Gadget {
                 {
                     runtime::violation(
                         out,
-                        &runtime::InstancePath::Root,
+                        &runtime::InstanceLocation::Root,
                         format!("{}{e}", "`secret` is present: "),
                     );
                 }
@@ -125,14 +125,14 @@ impl Gadget {
                     if let Err(e) = json.decode_ref::<NotChecked3>() {
                         runtime::violation(
                             out,
-                            &runtime::InstancePath::Root,
+                            &runtime::InstanceLocation::Root,
                             format!("{}{e}", "`then`: "),
                         );
                     }
                 } else if let Err(e) = json.decode_ref::<NotChecked4>() {
                     runtime::violation(
                         out,
-                        &runtime::InstancePath::Root,
+                        &runtime::InstanceLocation::Root,
                         format!("{}{e}", "`else`: "),
                     );
                 }
@@ -161,7 +161,7 @@ impl Owner {
                 if json.matches::<NotChecked>() {
                     runtime::violation(
                         out,
-                        &runtime::InstancePath::Root,
+                        &runtime::InstanceLocation::Root,
                         "matches `not`",
                     );
                 }
@@ -194,14 +194,14 @@ impl Shape {
                 if hits != 1 {
                     runtime::violation(
                         out,
-                        &runtime::InstancePath::Root,
+                        &runtime::InstanceLocation::Root,
                         format!("matches {hits} of `oneOf`, not exactly one"),
                     );
                 }
                 if !json.matches::<serde_json::Value>() {
                     runtime::violation(
                         out,
-                        &runtime::InstancePath::Root,
+                        &runtime::InstanceLocation::Root,
                         "matches none of `anyOf`",
                     );
                 }
@@ -242,7 +242,7 @@ impl TryFrom<serde_json::Value> for Nothing {
             let out = &mut violations;
             runtime::violation(
                 out,
-                &runtime::InstancePath::Root,
+                &runtime::InstanceLocation::Root,
                 "no value is allowed here",
             );
         }
@@ -263,7 +263,7 @@ impl TryFrom<i64> for ProductId {
             let out = &mut violations;
             runtime::check_range(
                 out,
-                &runtime::InstancePath::Root,
+                &runtime::InstanceLocation::Root,
                 value,
                 runtime::Bounds {
                     min: Some(0),
@@ -293,7 +293,7 @@ impl TryFrom<String> for ProductName {
             let n = (value.as_str()).chars().count();
             runtime::check_len(
                 out,
-                &runtime::InstancePath::Root,
+                &runtime::InstanceLocation::Root,
                 n,
                 Some(1),
                 Some(64),
@@ -302,7 +302,7 @@ impl TryFrom<String> for ProductName {
             if n <= 64 {
                 runtime::check_pattern(
                     out,
-                    &runtime::InstancePath::Root,
+                    &runtime::InstanceLocation::Root,
                     {
                         static RE: runtime::Pattern = runtime::Pattern::new(
                             "^[A-Za-z ]+$",
@@ -359,8 +359,8 @@ impl ProductAttrs {
                         )) {
                             runtime::violation(
                                 out,
-                                &runtime::InstancePath::Key(
-                                    &runtime::InstancePath::Root,
+                                &runtime::InstanceLocation::Key(
+                                    &runtime::InstanceLocation::Root,
                                     name,
                                 ),
                                 "is not allowed (unevaluatedProperties)",
@@ -372,7 +372,10 @@ impl ProductAttrs {
             for name in value.additional_properties.keys() {
                 runtime::check_pattern(
                     out,
-                    &runtime::InstancePath::Key(&runtime::InstancePath::Root, name),
+                    &runtime::InstanceLocation::Key(
+                        &runtime::InstanceLocation::Root,
+                        name,
+                    ),
                     {
                         static RE: runtime::Pattern = runtime::Pattern::new("^[a-z_]+$");
                         &RE
@@ -383,7 +386,10 @@ impl ProductAttrs {
             for name in value.pattern_1.keys() {
                 runtime::check_pattern(
                     out,
-                    &runtime::InstancePath::Key(&runtime::InstancePath::Root, name),
+                    &runtime::InstanceLocation::Key(
+                        &runtime::InstanceLocation::Root,
+                        name,
+                    ),
                     {
                         static RE: runtime::Pattern = runtime::Pattern::new("^[a-z_]+$");
                         &RE
@@ -393,7 +399,7 @@ impl ProductAttrs {
             }
             runtime::check_len(
                 out,
-                &runtime::InstancePath::Root,
+                &runtime::InstanceLocation::Root,
                 value.additional_properties.len() + value.pattern_1.len(),
                 Some(0),
                 Some(20),
@@ -418,14 +424,19 @@ impl TryFrom<f64> for ProductWeight {
             let out = &mut violations;
             runtime::check_range(
                 out,
-                &runtime::InstancePath::Root,
+                &runtime::InstanceLocation::Root,
                 value,
                 runtime::Bounds {
                     exclusive_min: Some(0.0),
                     ..runtime::Bounds::NONE
                 },
             );
-            runtime::check_multiple(out, &runtime::InstancePath::Root, value, "0.01");
+            runtime::check_multiple(
+                out,
+                &runtime::InstanceLocation::Root,
+                value,
+                "0.01",
+            );
         }
         runtime::first(violations)
             .map(|()| Self(value))
@@ -460,8 +471,8 @@ impl BookAttrs {
                         )) {
                             runtime::violation(
                                 out,
-                                &runtime::InstancePath::Key(
-                                    &runtime::InstancePath::Root,
+                                &runtime::InstanceLocation::Key(
+                                    &runtime::InstanceLocation::Root,
                                     name,
                                 ),
                                 "is not allowed (unevaluatedProperties)",
@@ -473,7 +484,10 @@ impl BookAttrs {
             for name in value.additional_properties.keys() {
                 runtime::check_pattern(
                     out,
-                    &runtime::InstancePath::Key(&runtime::InstancePath::Root, name),
+                    &runtime::InstanceLocation::Key(
+                        &runtime::InstanceLocation::Root,
+                        name,
+                    ),
                     {
                         static RE: runtime::Pattern = runtime::Pattern::new("^[a-z_]+$");
                         &RE
@@ -484,7 +498,10 @@ impl BookAttrs {
             for name in value.pattern_1.keys() {
                 runtime::check_pattern(
                     out,
-                    &runtime::InstancePath::Key(&runtime::InstancePath::Root, name),
+                    &runtime::InstanceLocation::Key(
+                        &runtime::InstanceLocation::Root,
+                        name,
+                    ),
                     {
                         static RE: runtime::Pattern = runtime::Pattern::new("^[a-z_]+$");
                         &RE
@@ -494,7 +511,7 @@ impl BookAttrs {
             }
             runtime::check_len(
                 out,
-                &runtime::InstancePath::Root,
+                &runtime::InstanceLocation::Root,
                 value.additional_properties.len() + value.pattern_1.len(),
                 Some(0),
                 Some(20),
@@ -527,7 +544,7 @@ impl Gadget2 {
                 {
                     runtime::violation(
                         out,
-                        &runtime::InstancePath::Root,
+                        &runtime::InstanceLocation::Root,
                         format!("{}{e}", "`secret` is present: "),
                     );
                 }
@@ -583,8 +600,8 @@ impl Gadget2Attrs {
                         )) {
                             runtime::violation(
                                 out,
-                                &runtime::InstancePath::Key(
-                                    &runtime::InstancePath::Root,
+                                &runtime::InstanceLocation::Key(
+                                    &runtime::InstanceLocation::Root,
                                     name,
                                 ),
                                 "is not allowed (unevaluatedProperties)",
@@ -596,7 +613,10 @@ impl Gadget2Attrs {
             for name in value.additional_properties.keys() {
                 runtime::check_pattern(
                     out,
-                    &runtime::InstancePath::Key(&runtime::InstancePath::Root, name),
+                    &runtime::InstanceLocation::Key(
+                        &runtime::InstanceLocation::Root,
+                        name,
+                    ),
                     {
                         static RE: runtime::Pattern = runtime::Pattern::new("^[a-z_]+$");
                         &RE
@@ -607,7 +627,10 @@ impl Gadget2Attrs {
             for name in value.pattern_1.keys() {
                 runtime::check_pattern(
                     out,
-                    &runtime::InstancePath::Key(&runtime::InstancePath::Root, name),
+                    &runtime::InstanceLocation::Key(
+                        &runtime::InstanceLocation::Root,
+                        name,
+                    ),
                     {
                         static RE: runtime::Pattern = runtime::Pattern::new("^[a-z_]+$");
                         &RE
@@ -617,7 +640,7 @@ impl Gadget2Attrs {
             }
             runtime::check_len(
                 out,
-                &runtime::InstancePath::Root,
+                &runtime::InstanceLocation::Root,
                 value.additional_properties.len() + value.pattern_1.len(),
                 Some(0),
                 Some(20),
@@ -731,7 +754,7 @@ impl TryFrom<i32> for ListProductsLimit {
             let out = &mut violations;
             runtime::check_range(
                 out,
-                &runtime::InstancePath::Root,
+                &runtime::InstanceLocation::Root,
                 value,
                 runtime::Bounds {
                     min: Some(1),
@@ -889,7 +912,7 @@ impl ProductRequest {
                 {
                     runtime::violation(
                         out,
-                        &runtime::InstancePath::Root,
+                        &runtime::InstanceLocation::Root,
                         format!("{}{e}", "`secret` is present: "),
                     );
                 }
@@ -920,7 +943,7 @@ impl BookRequest {
                 {
                     runtime::violation(
                         out,
-                        &runtime::InstancePath::Root,
+                        &runtime::InstanceLocation::Root,
                         format!("{}{e}", "`secret` is present: "),
                     );
                 }
@@ -951,7 +974,7 @@ impl GadgetRequest {
                 {
                     runtime::violation(
                         out,
-                        &runtime::InstancePath::Root,
+                        &runtime::InstanceLocation::Root,
                         format!("{}{e}", "`secret` is present: "),
                     );
                 }
@@ -959,14 +982,14 @@ impl GadgetRequest {
                     if let Err(e) = json.decode_ref::<NotChecked3>() {
                         runtime::violation(
                             out,
-                            &runtime::InstancePath::Root,
+                            &runtime::InstanceLocation::Root,
                             format!("{}{e}", "`then`: "),
                         );
                     }
                 } else if let Err(e) = json.decode_ref::<NotChecked4>() {
                     runtime::violation(
                         out,
-                        &runtime::InstancePath::Root,
+                        &runtime::InstanceLocation::Root,
                         format!("{}{e}", "`else`: "),
                     );
                 }
@@ -999,14 +1022,14 @@ impl ShapeRequest {
                 if hits != 1 {
                     runtime::violation(
                         out,
-                        &runtime::InstancePath::Root,
+                        &runtime::InstanceLocation::Root,
                         format!("matches {hits} of `oneOf`, not exactly one"),
                     );
                 }
                 if !json.matches::<serde_json::Value>() {
                     runtime::violation(
                         out,
-                        &runtime::InstancePath::Root,
+                        &runtime::InstanceLocation::Root,
                         "matches none of `anyOf`",
                     );
                 }
@@ -1037,7 +1060,7 @@ impl Gadget2Request {
                 {
                     runtime::violation(
                         out,
-                        &runtime::InstancePath::Root,
+                        &runtime::InstanceLocation::Root,
                         format!("{}{e}", "`secret` is present: "),
                     );
                 }
@@ -1409,20 +1432,20 @@ impl ProductTags {
             let out = &mut violations;
             runtime::check_len(
                 out,
-                &runtime::InstancePath::Root,
+                &runtime::InstanceLocation::Root,
                 value.len(),
                 Some(0),
                 Some(10),
                 "items",
             );
-            runtime::check_unique(out, &runtime::InstancePath::Root, &value);
+            runtime::check_unique(out, &runtime::InstanceLocation::Root, &value);
             {
                 let items = json.as_array().unwrap_or_default();
                 let hits = items.iter().filter(|item| item.matches::<Not>()).count();
                 if hits > 1 {
                     runtime::violation(
                         out,
-                        &runtime::InstancePath::Root,
+                        &runtime::InstanceLocation::Root,
                         format!("contains {hits} matching items, more than allowed"),
                     );
                 }
@@ -1454,7 +1477,10 @@ impl ProductPoint {
                 {
                     runtime::violation(
                         out,
-                        &runtime::InstancePath::Index(&runtime::InstancePath::Root, 0),
+                        &runtime::InstanceLocation::Index(
+                            &runtime::InstanceLocation::Root,
+                            0,
+                        ),
                         e.to_string(),
                     );
                 }
@@ -1463,7 +1489,10 @@ impl ProductPoint {
                 {
                     runtime::violation(
                         out,
-                        &runtime::InstancePath::Index(&runtime::InstancePath::Root, 1),
+                        &runtime::InstanceLocation::Index(
+                            &runtime::InstanceLocation::Root,
+                            1,
+                        ),
                         e.to_string(),
                     );
                 }
@@ -1471,8 +1500,8 @@ impl ProductPoint {
                     for (i, _) in items.iter().enumerate().skip(2) {
                         runtime::violation(
                             out,
-                            &runtime::InstancePath::Index(
-                                &runtime::InstancePath::Root,
+                            &runtime::InstanceLocation::Index(
+                                &runtime::InstanceLocation::Root,
                                 i,
                             ),
                             "is not allowed (unevaluatedItems)",
@@ -1511,7 +1540,7 @@ impl TryFrom<serde_json::Value> for NotChecked {
             if let serde_json::Value::Object(n) = &value {
                 runtime::check_required(
                     out,
-                    &runtime::InstancePath::Root,
+                    &runtime::InstanceLocation::Root,
                     |name| n.contains_key(name),
                     &["forbidden"],
                 );
@@ -1536,7 +1565,7 @@ impl TryFrom<serde_json::Value> for NotChecked2 {
             if let serde_json::Value::Object(n) = &value {
                 runtime::check_required(
                     out,
-                    &runtime::InstancePath::Root,
+                    &runtime::InstanceLocation::Root,
                     |name| n.contains_key(name),
                     &["id"],
                 );
@@ -1561,7 +1590,7 @@ impl TryFrom<serde_json::Value> for NotChecked3 {
             if let serde_json::Value::Object(n) = &value {
                 runtime::check_required(
                     out,
-                    &runtime::InstancePath::Root,
+                    &runtime::InstanceLocation::Root,
                     |name| n.contains_key(name),
                     &["name"],
                 );

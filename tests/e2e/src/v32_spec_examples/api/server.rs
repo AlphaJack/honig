@@ -553,7 +553,7 @@ fn parameter_examples_params(
                 "coordinates",
                 "/query/coordinates",
                 runtime::Style::Form,
-                runtime::Shape::Prim,
+                runtime::Shape::Primitive,
                 true,
             )?,
             "/query/coordinates",
@@ -718,7 +718,7 @@ fn multipart_form_with_encoding_objects_params(
                         "X-Rate-Limit-Limit",
                     )
                     .as_deref(),
-                runtime::Shape::Prim,
+                runtime::Shape::Primitive,
                 false,
             ),
             "/body/profileImage/X-Rate-Limit-Limit",

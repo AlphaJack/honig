@@ -9,7 +9,7 @@ use futures_core::Stream;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 
-use crate::checks::InstancePath;
+use crate::checks::InstanceLocation;
 use crate::codec::{sse_boundary, sse_comment_only, sse_item, sse_state};
 use crate::message::Message;
 use crate::source::{Blob, BodySource, ByteStream, Feed, Slot, Sse, put_slot, take_slot};
@@ -688,9 +688,9 @@ pub struct Limits {
 #[doc(hidden)]
 pub fn limit_items<T: Serialize>(status: Option<u16>, items: Vec<T>, limits: Limits) -> Result<Vec<T>, ClientError> {
     let mut out = vec![];
-    crate::checks::check_len(&mut out, &InstancePath::Root, items.len(), limits.min, limits.max, "items");
+    crate::checks::check_len(&mut out, &InstanceLocation::Root, items.len(), limits.min, limits.max, "items");
     if limits.unique {
-        crate::checks::check_unique(&mut out, &InstancePath::Root, &items);
+        crate::checks::check_unique(&mut out, &InstanceLocation::Root, &items);
     }
     match out.into_iter().next() {
         Some(v) => Err(limit_error(status, v.message)),

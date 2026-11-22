@@ -573,7 +573,7 @@ fn a_builder_converts_each_field_and_returns_the_first_error() -> Result<(), Box
         .expect_err("150 is past the limit");
     assert_eq!(err.to_string(), "/age: 150 must be less than 150", "the first error");
     let err = types::User::builder().name("anna").role("admin").age(30).build().expect_err("a lowercase name");
-    assert_eq!(err.violation().path, "/name", "{err}");
+    assert_eq!(err.violation().instance_location, "/name", "{err}");
     assert!(err.to_string().starts_with("/name: "), "{err}");
     Ok(())
 }

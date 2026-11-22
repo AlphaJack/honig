@@ -290,7 +290,7 @@ fn list_orders_params(
                     "limit",
                     "/query/limit",
                     runtime::Style::Form,
-                    runtime::Shape::Prim,
+                    runtime::Shape::Primitive,
                     true,
                 )?
                 .or_else(|| Some(serde_json::Value::from(20i64))),
@@ -302,7 +302,7 @@ fn list_orders_params(
                     "sort",
                     "/query/sort",
                     runtime::Style::Form,
-                    runtime::Shape::Prim,
+                    runtime::Shape::Primitive,
                     true,
                 )?
                 .or_else(|| Some(serde_json::Value::String("newest".to_owned()))),

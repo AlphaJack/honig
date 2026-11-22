@@ -9,7 +9,7 @@ use honig::__private::{
     form_decode_with, form_encode, jsonl_encode, mixed_decode, multipart_decode, multipart_encode_with, parse_cookies,
     parse_query, pct, pct_decode, set_items, sse_decode, xml_decode, xml_encode,
 };
-use honig::{ByteStream, InstancePath, Violation};
+use honig::{ByteStream, InstanceLocation, Violation};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
@@ -207,7 +207,7 @@ fn cookies_trim_spaces_skip_bare_names_and_percent_decode_by_name() {
 
 fn unique(items: &[Value]) -> bool {
     let mut out: Vec<Violation> = vec![];
-    check_unique(&mut out, &InstancePath::Root, items);
+    check_unique(&mut out, &InstanceLocation::Root, items);
     out.is_empty()
 }
 
@@ -368,7 +368,7 @@ fn deeply_nested_json_is_an_error_on_a_worker_sized_stack() {
 
 fn format_ok(value: &str, format: &str) -> bool {
     let mut out: Vec<Violation> = vec![];
-    honig::__private::check_format(&mut out, &InstancePath::Root, value, format);
+    honig::__private::check_format(&mut out, &InstanceLocation::Root, value, format);
     out.is_empty()
 }
 
@@ -448,7 +448,7 @@ fn a_one_value_query_parameter_sent_twice_is_refused() {
     // Servers disagree on which value counts (first or last). So none is picked.
     let twice = Reason::invalid("/query/a", "is sent more than once, but it carries one value");
     assert_eq!(query_text(&pairs, "a", "/query/a").unwrap_err(), twice);
-    assert_eq!(decode_query(&pairs, "a", "/query/a", Style::Form, Shape::Prim, true).unwrap_err(), twice);
+    assert_eq!(decode_query(&pairs, "a", "/query/a", Style::Form, Shape::Primitive, true).unwrap_err(), twice);
     assert!(decode_query(&pairs, "d", "/query/d", Style::SpaceDelimited, Shape::Array, false).is_err());
     // An exploded array and a deepObject key that contains a list are many values by design.
     assert_eq!(

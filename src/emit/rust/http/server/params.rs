@@ -196,7 +196,7 @@ pub(crate) fn server_params(
     let fields = op.params.iter().map(|p| {
         let (wire, at) = (lit(&p.wire), lit(&param_pointer(p)));
         // A parameter with `content` is one serialized string on the wire.
-        let shape = if p.content.is_some() { quote!(runtime::Shape::Prim) } else { shape(space, &p.ty) };
+        let shape = if p.content.is_some() { quote!(runtime::Shape::Primitive) } else { shape(space, &p.ty) };
         let (s, explode) = (style(p), p.explode);
         // Scalars decode from their text: no `Value` in between.
         // A library type has the text of its format checked first.

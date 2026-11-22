@@ -117,7 +117,7 @@ pub mod get_all_data {
     /// What the handler of this operation returns: its `Response`, or an error that the server answers.
     pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(Response { Self::Ok { .. } => "status 200 (Ok)", });
-    /// The body and headers of the success, in order: what `Response::into_ok` gives.
+    /// The body and headers of the success, in order: what `Response::into_result` gives.
     pub type Success = (
         OkBody,
         Option<runtime::UuidText>,
@@ -128,7 +128,7 @@ pub mod get_all_data {
     );
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<Success, Box<Self>> {
+        pub fn into_result(self) -> Result<Success, Box<Self>> {
             match self {
                 Self::Ok {
                     body,
@@ -278,7 +278,7 @@ pub mod create_product {
         } => "status 400 (BadRequest)", Self::Forbidden(..) => "status 403 (Forbidden)",
         }
     );
-    /// The body and headers of the success, in order: what `Response::into_ok` gives.
+    /// The body and headers of the success, in order: what `Response::into_result` gives.
     pub type Success = (
         Box<types::Product>,
         Option<runtime::UuidText>,
@@ -287,7 +287,7 @@ pub mod create_product {
     );
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<Success, Box<Self>> {
+        pub fn into_result(self) -> Result<Success, Box<Self>> {
             match self {
                 Self::Created { body, x_request_id, location, x_processing_time } => {
                     Ok((body, x_request_id, location, x_processing_time))
@@ -414,11 +414,11 @@ pub mod query_products {
         Response { Self::Ok { .. } => "status 200 (Ok)", Self::BadRequest { .. } =>
         "status 400 (BadRequest)", }
     );
-    /// The body and headers of the success, in order: what `Response::into_ok` gives.
+    /// The body and headers of the success, in order: what `Response::into_result` gives.
     pub type Success = (types::QueryProductsOk, Option<runtime::UuidText>);
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<Success, Box<Self>> {
+        pub fn into_result(self) -> Result<Success, Box<Self>> {
             match self {
                 Self::Ok { body, x_request_id } => Ok((body, x_request_id)),
                 other @ Self::BadRequest { .. } => Err(Box::new(other)),
@@ -465,11 +465,11 @@ pub mod search_products {
     /// What the handler of this operation returns: its `Response`, or an error that the server answers.
     pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(Response { Self::Ok { .. } => "status 200 (Ok)", });
-    /// The body and headers of the success, in order: what `Response::into_ok` gives.
+    /// The body and headers of the success, in order: what `Response::into_result` gives.
     pub type Success = (types::SearchProductsOk, Option<runtime::UuidText>);
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<Success, Box<Self>> {
+        pub fn into_result(self) -> Result<Success, Box<Self>> {
             match self {
                 Self::Ok { body, x_request_id } => Ok((body, x_request_id)),
             }
@@ -553,7 +553,7 @@ pub mod get_product {
         Response { Self::Ok { .. } => "status 200 (Ok)", Self::NotFound(..) =>
         "status 404 (NotFound)", }
     );
-    /// The body and headers of the success, in order: what `Response::into_ok` gives.
+    /// The body and headers of the success, in order: what `Response::into_result` gives.
     pub type Success = (
         Box<types::Product>,
         Option<runtime::UuidText>,
@@ -563,7 +563,7 @@ pub mod get_product {
     );
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<Success, Box<Self>> {
+        pub fn into_result(self) -> Result<Success, Box<Self>> {
             match self {
                 Self::Ok {
                     body,
@@ -688,7 +688,7 @@ pub mod update_product {
     );
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<Box<types::Product>, Box<Self>> {
+        pub fn into_result(self) -> Result<Box<types::Product>, Box<Self>> {
             match self {
                 Self::Ok(body) => Ok(body),
                 other @ (Self::BadRequest { .. }
@@ -757,7 +757,7 @@ pub mod delete_product {
     );
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<(), Box<Self>> {
+        pub fn into_result(self) -> Result<(), Box<Self>> {
             match self {
                 Self::NoContent => Ok(()),
                 other @ Self::NotFound(..) => Err(Box::new(other)),
@@ -813,11 +813,11 @@ pub mod copy_product {
         Response { Self::Created { .. } => "status 201 (Created)", Self::NotFound(..) =>
         "status 404 (NotFound)", }
     );
-    /// The body and headers of the success, in order: what `Response::into_ok` gives.
+    /// The body and headers of the success, in order: what `Response::into_result` gives.
     pub type Success = (Box<types::Product>, Option<url::Url>);
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<Success, Box<Self>> {
+        pub fn into_result(self) -> Result<Success, Box<Self>> {
             match self {
                 Self::Created { body, location } => Ok((body, location)),
                 other @ Self::NotFound(..) => Err(Box::new(other)),
@@ -926,11 +926,11 @@ pub mod upload_image {
         "status 400 (BadRequest)", Self::Forbidden(..) => "status 403 (Forbidden)",
         Self::NotFound(..) => "status 404 (NotFound)", }
     );
-    /// The body and headers of the success, in order: what `Response::into_ok` gives.
+    /// The body and headers of the success, in order: what `Response::into_result` gives.
     pub type Success = (OkBody, Option<runtime::UuidText>, Option<String>);
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<Success, Box<Self>> {
+        pub fn into_result(self) -> Result<Success, Box<Self>> {
             match self {
                 Self::Ok { body, x_request_id, x_cache_control } => {
                     Ok((body, x_request_id, x_cache_control))
@@ -1013,11 +1013,11 @@ pub mod stream_product_events {
     /// What the handler of this operation returns: its `Response`, or an error that the server answers.
     pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(Response { Self::Ok { .. } => "status 200 (Ok)", });
-    /// The body and headers of the success, in order: what `Response::into_ok` gives.
+    /// The body and headers of the success, in order: what `Response::into_result` gives.
     pub type Success = (OkBody, Option<runtime::UuidText>);
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<Success, Box<Self>> {
+        pub fn into_result(self) -> Result<Success, Box<Self>> {
             match self {
                 Self::Ok { body, x_request_id } => Ok((body, x_request_id)),
             }
@@ -1084,11 +1084,11 @@ pub mod upload_photos {
         .. } => "status 400 (BadRequest)", Self::NotFound(..) => "status 404 (NotFound)",
         }
     );
-    /// The body and headers of the success, in order: what `Response::into_ok` gives.
+    /// The body and headers of the success, in order: what `Response::into_result` gives.
     pub type Success = (types::UploadPhotosAccepted, Option<runtime::UuidText>);
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<Success, Box<Self>> {
+        pub fn into_result(self) -> Result<Success, Box<Self>> {
             match self {
                 Self::Accepted { body, x_request_id } => Ok((body, x_request_id)),
                 other @ (Self::BadRequest { .. } | Self::NotFound(..)) => {
@@ -1135,7 +1135,7 @@ pub mod create_item {
     runtime::response_error!(Response { Self::Created(..) => "status 201 (Created)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<types::Item, Box<Self>> {
+        pub fn into_result(self) -> Result<types::Item, Box<Self>> {
             match self {
                 Self::Created(body) => Ok(body),
             }
@@ -1234,7 +1234,7 @@ pub mod create_user {
         Self::Conflict(..) => "status 409 (Conflict)", Self::UnprocessableEntity(..) =>
         "status 422 (UnprocessableEntity)", }
     );
-    /// The body and headers of the success, in order: what `Response::into_ok` gives.
+    /// The body and headers of the success, in order: what `Response::into_result` gives.
     pub type Success = (
         types::User,
         Option<runtime::UuidText>,
@@ -1243,7 +1243,7 @@ pub mod create_user {
     );
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<Success, Box<Self>> {
+        pub fn into_result(self) -> Result<Success, Box<Self>> {
             match self {
                 Self::Created { body, x_request_id, location, x_processing_time } => {
                     Ok((body, x_request_id, location, x_processing_time))
@@ -1365,7 +1365,7 @@ pub mod get_token {
         "status 401 (Unauthorized)", Self::Forbidden(..) => "status 403 (Forbidden)",
         Self::TooManyRequests { .. } => "status 429 (TooManyRequests)", }
     );
-    /// The body and headers of the success, in order: what `Response::into_ok` gives.
+    /// The body and headers of the success, in order: what `Response::into_result` gives.
     pub type Success = (
         types::Token,
         Option<runtime::UuidText>,
@@ -1375,7 +1375,7 @@ pub mod get_token {
     );
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<Success, Box<Self>> {
+        pub fn into_result(self) -> Result<Success, Box<Self>> {
             match self {
                 Self::Created {
                     body,
@@ -1468,7 +1468,7 @@ pub mod get_me {
         Response { Self::Ok { .. } => "status 200 (Ok)", Self::Unauthorized(..) =>
         "status 401 (Unauthorized)", Self::Forbidden(..) => "status 403 (Forbidden)", }
     );
-    /// The body and headers of the success, in order: what `Response::into_ok` gives.
+    /// The body and headers of the success, in order: what `Response::into_result` gives.
     pub type Success = (
         types::User,
         Option<runtime::UuidText>,
@@ -1478,7 +1478,7 @@ pub mod get_me {
     );
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<Success, Box<Self>> {
+        pub fn into_result(self) -> Result<Success, Box<Self>> {
             match self {
                 Self::Ok {
                     body,
@@ -1531,7 +1531,7 @@ pub mod new_product_post {
     runtime::response_error!(Response { Self::Ok => "status 200 (Ok)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<(), Box<Self>> {
+        pub fn into_result(self) -> Result<(), Box<Self>> {
             match self {
                 Self::Ok => Ok(()),
             }
@@ -1578,7 +1578,7 @@ pub mod create_product_product_created_post {
     );
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<Self, Box<Self>> {
+        pub fn into_result(self) -> Result<Self, Box<Self>> {
             match self {
                 success @ (Self::Ok | Self::NoContent) => Ok(success),
             }
@@ -1620,7 +1620,7 @@ pub mod create_product_product_creation_failed_post {
     runtime::response_error!(Response { Self::Ok => "status 200 (Ok)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<(), Box<Self>> {
+        pub fn into_result(self) -> Result<(), Box<Self>> {
             match self {
                 Self::Ok => Ok(()),
             }
@@ -1662,7 +1662,7 @@ pub mod create_product_product_discontinued_post {
     runtime::response_error!(Response { Self::Ok => "status 200 (Ok)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<(), Box<Self>> {
+        pub fn into_result(self) -> Result<(), Box<Self>> {
             match self {
                 Self::Ok => Ok(()),
             }

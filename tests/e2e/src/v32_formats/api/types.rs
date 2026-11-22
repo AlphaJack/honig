@@ -117,7 +117,7 @@ impl TryFrom<u16> for EventPort {
             let out = &mut violations;
             runtime::check_range(
                 out,
-                &runtime::InstancePath::Root,
+                &runtime::InstanceLocation::Root,
                 value,
                 runtime::Bounds {
                     min: Some(1024),
@@ -142,7 +142,7 @@ impl TryFrom<runtime::Decimal> for EventAmount {
             let out = &mut violations;
             runtime::check_decimal_range(
                 out,
-                &runtime::InstancePath::Root,
+                &runtime::InstanceLocation::Root,
                 value.as_str(),
                 runtime::Bounds {
                     min: Some("0"),
@@ -165,7 +165,11 @@ impl TryFrom<runtime::Decimal> for EventSum {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
-            runtime::check_decimal128(out, &runtime::InstancePath::Root, value.as_str());
+            runtime::check_decimal128(
+                out,
+                &runtime::InstanceLocation::Root,
+                value.as_str(),
+            );
         }
         runtime::first(violations)
             .map(|()| Self(value))

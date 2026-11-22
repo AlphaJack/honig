@@ -341,7 +341,7 @@ pub(crate) const PATHS: &[Path] = &[
                 (0..size.div_ceil(MIXED.len())).map(|i| serde_json::json!({"i": i, "note": MIXED})).collect::<Vec<_>>();
             let check = |v: &Vec<Value>| {
                 let mut out = vec![];
-                runtime::check_unique(&mut out, &runtime::InstancePath::Root, v);
+                runtime::check_unique(&mut out, &runtime::InstanceLocation::Root, v);
                 out
             };
             (size, on(items, check))
