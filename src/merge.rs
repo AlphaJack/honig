@@ -47,12 +47,12 @@ pub(crate) fn merge(specs: &[PathBuf], diags: &mut Diagnostics) -> Option<Value>
                 *paths = std::mem::take(paths).into_iter().map(|(p, item)| (format!("{base}{p}"), item)).collect();
             }
         } else if !servers_shared && let Some(servers) = doc.remove("servers") {
-            each_item(&mut doc, |item| {
+            each_item(&mut doc, false, |item| {
                 item.entry("servers").or_insert_with(|| servers.clone());
             });
         }
         if !security_shared && let Some(security) = doc.remove("security") {
-            each_item(&mut doc, |item| onto_operations(item, "security", &security));
+            each_item(&mut doc, true, |item| onto_operations(item, "security", &security));
         }
         for (key, value) in doc {
             match (key.as_str(), out.get_mut(&key)) {
@@ -125,15 +125,50 @@ fn located(diags: Diagnostics, path: &Path) -> Diagnostics {
     )
 }
 
-/// Runs `f` on every path item and webhook of `doc`.
-fn each_item(doc: &mut Map<String, Value>, mut f: impl FnMut(&mut Map<String, Value>)) {
-    for key in ["paths", "webhooks"] {
-        for item in doc.get_mut(key).and_then(Value::as_object_mut).into_iter().flat_map(|m| m.values_mut()) {
-            if let Value::Object(item) = item {
-                f(item);
+/// Runs `f` on every path item of `doc` that the root `servers` and `security` apply to: those of `paths`, `webhooks`
+/// and `components.pathItems`. With `callbacks` also those of `components.callbacks` and of the callbacks of each
+/// operation, at any depth.
+fn each_item(doc: &mut Map<String, Value>, callbacks: bool, mut f: impl FnMut(&mut Map<String, Value>)) {
+    let mut items: Vec<&mut Value> = vec![];
+    for (k, v) in doc.iter_mut() {
+        match k.as_str() {
+            "paths" | "webhooks" => items.extend(values(v)),
+            "components" => {
+                for (k, v) in v.as_object_mut().into_iter().flatten() {
+                    match k.as_str() {
+                        "pathItems" => items.extend(values(v)),
+                        "callbacks" if callbacks => items.extend(values(v).flat_map(values)),
+                        _ => {}
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    while let Some(item) = items.pop() {
+        let Value::Object(item) = item else { continue };
+        f(item);
+        if !callbacks {
+            continue;
+        }
+        for (k, op) in item.iter_mut() {
+            let ops: Vec<&mut Value> = match k.as_str() {
+                ADDITIONAL => values(op).collect(),
+                k if METHODS.contains(&k) => vec![op],
+                _ => continue,
+            };
+            for op in ops {
+                if let Some(cbs) = op.get_mut("callbacks") {
+                    items.extend(values(cbs).flat_map(values));
+                }
             }
         }
     }
+}
+
+/// Returns the values of `v` when it is an object.
+fn values(v: &mut Value) -> impl Iterator<Item = &mut Value> {
+    v.as_object_mut().into_iter().flat_map(|m| m.values_mut())
 }
 
 /// The path item field with the operations of methods that have no field of their own (3.2 section 4.9).
@@ -459,6 +494,31 @@ mod tests {
         assert!(v.get("security").is_none(), "{v:#}");
         assert_eq!(v["paths"]["/login"]["get"]["security"], json!([{"key": []}]), "{:#}", v["paths"]);
         assert!(v["paths"]["/media"]["get"].get("security").is_none(), "{:#}", v["paths"]);
+    }
+
+    /// A file's `security` reaches its operations wherever they are: behind a `$ref` to a component path item and in
+    /// callbacks, inline or by `$ref`.
+    #[test]
+    fn each_file_keeps_its_security_on_every_operation() {
+        let dir = scratch("security-deep");
+        let op = |id: &str| json!({"operationId": id, "responses": {"204": {"description": "ok"}}});
+        let callback = json!({"{$request.body#/url}": {"post": op("cb_inline")}});
+        let mut a = file("/login", "/v3", &json!({"type": "string"}));
+        a["security"] = json!([{"key": []}]);
+        a["paths"]["/secret"] = json!({"$ref": "#/components/pathItems/Secret"});
+        a["paths"]["/login"]["get"]["callbacks"] =
+            json!({"inline": callback, "shared": {"$ref": "#/components/callbacks/Done"}});
+        a["components"]["pathItems"] = json!({"Secret": {"get": op("secret")}});
+        a["components"]["callbacks"] = json!({"Done": {"{$request.body#/done}": {"post": op("cb_shared")}}});
+        let a = write(&dir, "a.json", &a);
+        let b = write(&dir, "b.json", &file("/media", "/v3", &json!({"type": "string"})));
+        let mut d = Diagnostics::default();
+        let v = merge(&[a, b], &mut d).unwrap();
+        let key = json!([{"key": []}]);
+        assert_eq!(v["components"]["pathItems"]["Secret"]["get"]["security"], key, "{v:#}");
+        assert_eq!(v["components"]["callbacks"]["Done"]["{$request.body#/done}"]["post"]["security"], key, "{v:#}");
+        let inline = &v["paths"]["/login"]["get"]["callbacks"]["inline"]["{$request.body#/url}"]["post"];
+        assert_eq!(inline["security"], key, "{v:#}");
     }
 
     #[test]
