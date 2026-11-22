@@ -140,6 +140,9 @@ pub fn print(loaded: &Loaded, built: Ir, trees: Trees, opts: &Options) -> Result
     let mut diagnostics = loaded.diagnostics.clone();
     diagnostics.0.extend(built.diagnostics.0);
     let api = &built.api;
+    for name in rust::unknown_operations(api, opts) {
+        diagnostics.refuse("", format!("`{name}` is not an operation of the description: check `operations`"));
+    }
     if diagnostics.refused(opts.server) {
         return Err(diagnostics);
     }
@@ -168,7 +171,7 @@ pub fn print(loaded: &Loaded, built: Ir, trees: Trees, opts: &Options) -> Result
         ),
         files,
         diagnostics,
-        operations: api.http.operations.len(),
+        operations: rust::operation_count(api, opts),
         types: api.types.defs.len(),
     })
 }

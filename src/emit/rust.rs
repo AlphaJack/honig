@@ -146,6 +146,17 @@ fn kept(api: &Api, opts: &super::Options) -> Option<Api> {
     Some(api)
 }
 
+/// Returns how many operations the module has: those that `operations` lists, or every one.
+pub(crate) fn operation_count(api: &Api, opts: &super::Options) -> usize {
+    kept(api, opts).as_ref().unwrap_or(api).http.operations.len()
+}
+
+/// Returns the names in `operations` that no operation of `api` has, by `operationId` or generated name.
+pub(crate) fn unknown_operations<'a>(api: &Api, opts: &'a super::Options) -> Vec<&'a str> {
+    let listed = |name: &String| api.http.operations.iter().any(|op| http::listed(std::slice::from_ref(name), op));
+    opts.operations.iter().flatten().filter(|n| !listed(n)).map(String::as_str).collect()
+}
+
 pub(crate) fn trees(api: &Api, opts: &super::Options) -> Trees {
     let kept = kept(api, opts);
     let api = kept.as_ref().unwrap_or(api);
