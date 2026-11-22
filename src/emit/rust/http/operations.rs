@@ -750,6 +750,10 @@ pub(crate) fn response_enum(items: &mut Vec<TokenStream>, space: &Space<'_>, op:
             #(#variants)*
         }
     });
+    items.push(quote! {
+        /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+        pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
+    });
     items.push(response_error(op));
     items.extend(into_ok(space, op, bx));
     for (i, r) in op.responses.iter().enumerate() {

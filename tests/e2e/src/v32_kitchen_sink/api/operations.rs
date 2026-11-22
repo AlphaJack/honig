@@ -48,6 +48,8 @@ pub mod submit_form {
         /// Accepted.
         NoContent,
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(Response { Self::NoContent => "status 204 (NoContent)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
@@ -130,6 +132,8 @@ pub mod put_blob {
         /// The stored bytes.
         Ok { body: runtime::Blob, x_size: Option<i64>, x_quota: types::PutBlobOkXQuota },
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(Response { Self::Ok { .. } => "status 200 (Ok)", });
     /// The body and headers of the success, in order: what `Response::into_ok` gives.
     pub type Success = (runtime::Blob, Option<i64>, types::PutBlobOkXQuota);
@@ -234,6 +238,8 @@ pub mod list_products {
         /// Error
         Default { status: runtime::http::StatusCode, body: types::Error },
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(
         Response { Self::Ok { .. } => "status 200 (Ok)", Self::Success { status, .. } =>
         format_args!("status {} (Success)", status.as_u16()), Self::Default { status, ..
@@ -325,6 +331,8 @@ pub mod create_product {
         /// Created
         Created,
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(Response { Self::Created => "status 201 (Created)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
@@ -398,6 +406,8 @@ pub mod search_products {
         /// Products
         Ok(Vec<types::Product>),
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
@@ -445,6 +455,8 @@ pub mod copy_products {
         /// Copied
         NoContent,
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(Response { Self::NoContent => "status 204 (NoContent)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
@@ -482,6 +494,8 @@ pub mod get_product {
         /// ok
         Ok(types::Product),
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
@@ -518,6 +532,8 @@ pub mod put_product {
         /// ok
         Ok,
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(Response { Self::Ok => "status 200 (Ok)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
@@ -554,6 +570,8 @@ pub mod delete_product {
         /// deleted
         NoContent,
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(Response { Self::NoContent => "status 204 (NoContent)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
@@ -590,6 +608,8 @@ pub mod options_product {
         /// ok
         Ok,
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(Response { Self::Ok => "status 200 (Ok)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
@@ -626,6 +646,8 @@ pub mod head_product {
         /// ok
         Ok,
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(Response { Self::Ok => "status 200 (Ok)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
@@ -662,6 +684,8 @@ pub mod patch_product {
         /// ok
         Ok,
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(Response { Self::Ok => "status 200 (Ok)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
@@ -698,6 +722,8 @@ pub mod trace_product {
         /// ok
         Ok,
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(Response { Self::Ok => "status 200 (Ok)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
@@ -737,6 +763,8 @@ pub mod search {
         /// Events
         Ok(runtime::Items<types::SearchOkItem>),
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
@@ -776,6 +804,8 @@ pub mod new_product_post {
         /// ok
         Ok,
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(Response { Self::Ok => "status 200 (Ok)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
@@ -815,6 +845,8 @@ pub mod create_product_on_adopt_post {
         /// ack
         Ok,
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(Response { Self::Ok => "status 200 (Ok)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
@@ -843,6 +875,8 @@ pub mod create_product_shared_post {
         /// ok
         Ok,
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(Response { Self::Ok => "status 200 (Ok)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.

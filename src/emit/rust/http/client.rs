@@ -13,8 +13,7 @@ use super::paths::{path_param, template, value_expr};
 use super::security::Securities;
 use super::shared::{Boxing, VariantShape};
 use super::shared::{
-    blob, boxing, code, is_path, is_success, op_path, param_enc, server_url, shape, status_code, user_types,
-    variant_shape, wrap,
+    blob, boxing, code, is_path, is_success, op_path, param_enc, server_url, shape, status_code, variant_shape, wrap,
 };
 use crate::emit::rust::names::{pascal, snake};
 use crate::emit::rust::space::Space;
@@ -185,7 +184,7 @@ pub(crate) fn client_path(op: &Operation, m: &TokenStream, hook: bool) -> (Optio
 
 pub(crate) fn client_op(space: &Space<'_>, api: &Api, sec: &Securities, op: &Operation, hook: bool) -> TokenStream {
     let m = op_path(op);
-    let (params_ty, response_ty) = user_types(op);
+    let (params_ty, response_ty) = (quote!(#m::Params), quote!(#m::Response));
     let name = snake_ident(&op.name);
     let bx = boxing(space, op);
     let doc = doc_opt(op.doc.as_deref());

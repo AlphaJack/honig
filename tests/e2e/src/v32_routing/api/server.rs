@@ -11,68 +11,52 @@ pub trait Api: Send + Sync + 'static {
         &self,
         params: ops::search_orders::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::search_orders::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::search_orders::Result> + Send;
     fn update_order(
         &self,
         params: ops::update_order::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::update_order::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::update_order::Result> + Send;
     fn status_at(
         &self,
         params: ops::status_at::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::status_at::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::status_at::Result> + Send;
     fn status_by_key(
         &self,
         params: ops::status_by_key::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::status_by_key::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::status_by_key::Result> + Send;
     fn latest_meta(
         &self,
         params: ops::latest_meta::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::latest_meta::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::latest_meta::Result> + Send;
     fn file_raw(
         &self,
         params: ops::file_raw::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<Output = Result<ops::file_raw::Response, runtime::ApiError>> + Send;
+    ) -> impl Future<Output = ops::file_raw::Result> + Send;
     fn file_ext(
         &self,
         params: ops::file_ext::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<Output = Result<ops::file_ext::Response, runtime::ApiError>> + Send;
+    ) -> impl Future<Output = ops::file_ext::Result> + Send;
     fn mix_literal_tail(
         &self,
         params: ops::mix_literal_tail::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::mix_literal_tail::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::mix_literal_tail::Result> + Send;
     fn mix_mixed_tail(
         &self,
         params: ops::mix_mixed_tail::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::mix_mixed_tail::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::mix_mixed_tail::Result> + Send;
     fn mix_var_tail(
         &self,
         params: ops::mix_var_tail::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::mix_var_tail::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::mix_var_tail::Result> + Send;
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Operation {

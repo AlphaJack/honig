@@ -11,151 +11,104 @@ pub trait Api: Send + Sync + 'static {
         &self,
         params: ops::form_with_xml::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::form_with_xml::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::form_with_xml::Result> + Send;
     fn parameter_examples(
         &self,
         params: ops::parameter_examples::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::parameter_examples::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::parameter_examples::Result> + Send;
     fn querystring_form(
         &self,
         params: ops::querystring_form::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::querystring_form::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::querystring_form::Result> + Send;
     fn querystring_json(
         &self,
         params: ops::querystring_json::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::querystring_json::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::querystring_json::Result> + Send;
     fn basic_multipart_form(
         &self,
         params: ops::basic_multipart_form::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::basic_multipart_form::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::basic_multipart_form::Result> + Send;
     fn multipart_form_with_encoding_objects(
         &self,
         params: ops::multipart_form_with_encoding_objects::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<
-            ops::multipart_form_with_encoding_objects::Response,
-            runtime::ApiError,
-        >,
-    > + Send;
+    ) -> impl Future<Output = ops::multipart_form_with_encoding_objects::Result> + Send;
     fn multipart_form_with_multiple_files(
         &self,
         params: ops::multipart_form_with_multiple_files::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<
-            ops::multipart_form_with_multiple_files::Response,
-            runtime::ApiError,
-        >,
-    > + Send;
+    ) -> impl Future<Output = ops::multipart_form_with_multiple_files::Result> + Send;
     fn ordered_unnamed_multipart(
         &self,
         params: ops::ordered_unnamed_multipart::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::ordered_unnamed_multipart::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::ordered_unnamed_multipart::Result> + Send;
     fn ordered_multipart_with_required_header(
         &self,
         params: ops::ordered_multipart_with_required_header::Params,
         ctx: &Context<'_, ()>,
     ) -> impl Future<
-        Output = Result<
-            ops::ordered_multipart_with_required_header::Response,
-            runtime::ApiError,
-        >,
+        Output = ops::ordered_multipart_with_required_header::Result,
     > + Send;
     fn nested_multipart_mixed(
         &self,
         params: ops::nested_multipart_mixed::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::nested_multipart_mixed::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::nested_multipart_mixed::Result> + Send;
     fn streaming_multipart(
         &self,
         params: ops::streaming_multipart::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::streaming_multipart::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::streaming_multipart::Result> + Send;
     fn streaming_byte_ranges(
         &self,
         params: ops::streaming_byte_ranges::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::streaming_byte_ranges::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::streaming_byte_ranges::Result> + Send;
     fn querystring_jsonpath(
         &self,
         params: ops::querystring_jsonpath::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::querystring_jsonpath::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::querystring_jsonpath::Result> + Send;
     fn collection_with_links(
         &self,
         params: ops::collection_with_links::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::collection_with_links::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::collection_with_links::Result> + Send;
     fn standalone_json_linkset(
         &self,
         params: ops::standalone_json_linkset::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::standalone_json_linkset::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::standalone_json_linkset::Result> + Send;
     fn linkset_body(
         &self,
         params: ops::linkset_body::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::linkset_body::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::linkset_body::Result> + Send;
     fn media_type_json(
         &self,
         params: ops::media_type_json::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::media_type_json::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::media_type_json::Result> + Send;
     fn log_stream(
         &self,
         params: ops::log_stream::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::log_stream::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::log_stream::Result> + Send;
     fn log_excerpt(
         &self,
         params: ops::log_excerpt::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::log_excerpt::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::log_excerpt::Result> + Send;
     fn server_sent_event_streams(
         &self,
         params: ops::server_sent_event_streams::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::server_sent_event_streams::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::server_sent_event_streams::Result> + Send;
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Operation {

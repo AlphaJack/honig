@@ -38,6 +38,8 @@ pub mod upload {
         /// Stored.
         Created,
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(Response { Self::Created => "status 201 (Created)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
@@ -81,6 +83,8 @@ pub mod put_icon {
         /// Stored.
         NoContent,
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(Response { Self::NoContent => "status 204 (NoContent)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
@@ -120,6 +124,8 @@ pub mod upload_scan {
         /// Stored.
         NoContent,
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(Response { Self::NoContent => "status 204 (NoContent)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
@@ -159,6 +165,8 @@ pub mod deploy {
         /// Deployed.
         NoContent,
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(Response { Self::NoContent => "status 204 (NoContent)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.

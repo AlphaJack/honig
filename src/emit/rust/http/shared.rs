@@ -58,13 +58,6 @@ pub(crate) fn op_path(op: &Operation) -> TokenStream {
     quote!(ops::#n)
 }
 
-/// Returns `Params` and `Response` of `op` as user code refers to them: `ops::<operation>::Params`.
-/// One name per type: no short alias that exists only when it is unique.
-pub(crate) fn user_types(op: &Operation) -> (TokenStream, TokenStream) {
-    let m = op_path(op);
-    (quote!(#m::Params), quote!(#m::Response))
-}
-
 pub(crate) fn shape(space: &Space<'_>, t: &Ty) -> TokenStream {
     match space.kind_of(t.non_null()) {
         JsonKind::Array => quote!(runtime::Shape::Array),

@@ -11,30 +11,22 @@ pub trait Api: Send + Sync + 'static {
         &self,
         params: ops::get_export::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::get_export::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::get_export::Result> + Send;
     fn get_thumbnail(
         &self,
         params: ops::get_thumbnail::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::get_thumbnail::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::get_thumbnail::Result> + Send;
     fn get_manifest(
         &self,
         params: ops::get_manifest::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::get_manifest::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::get_manifest::Result> + Send;
     fn replace_manifest(
         &self,
         params: ops::replace_manifest::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::replace_manifest::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::replace_manifest::Result> + Send;
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Operation {

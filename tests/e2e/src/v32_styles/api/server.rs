@@ -11,205 +11,167 @@ pub trait Api: Send + Sync + 'static {
         &self,
         params: ops::matrix_fs::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::matrix_fs::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::matrix_fs::Result> + Send;
     fn matrix_fa(
         &self,
         params: ops::matrix_fa::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::matrix_fa::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::matrix_fa::Result> + Send;
     fn matrix_fo(
         &self,
         params: ops::matrix_fo::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::matrix_fo::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::matrix_fo::Result> + Send;
     fn matrix_ta(
         &self,
         params: ops::matrix_ta::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::matrix_ta::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::matrix_ta::Result> + Send;
     fn matrix_to(
         &self,
         params: ops::matrix_to::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::matrix_to::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::matrix_to::Result> + Send;
     fn label_fs(
         &self,
         params: ops::label_fs::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<Output = Result<ops::label_fs::Response, runtime::ApiError>> + Send;
+    ) -> impl Future<Output = ops::label_fs::Result> + Send;
     fn label_fa(
         &self,
         params: ops::label_fa::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<Output = Result<ops::label_fa::Response, runtime::ApiError>> + Send;
+    ) -> impl Future<Output = ops::label_fa::Result> + Send;
     fn label_fo(
         &self,
         params: ops::label_fo::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<Output = Result<ops::label_fo::Response, runtime::ApiError>> + Send;
+    ) -> impl Future<Output = ops::label_fo::Result> + Send;
     fn label_ta(
         &self,
         params: ops::label_ta::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<Output = Result<ops::label_ta::Response, runtime::ApiError>> + Send;
+    ) -> impl Future<Output = ops::label_ta::Result> + Send;
     fn label_to(
         &self,
         params: ops::label_to::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<Output = Result<ops::label_to::Response, runtime::ApiError>> + Send;
+    ) -> impl Future<Output = ops::label_to::Result> + Send;
     fn simple_fa(
         &self,
         params: ops::simple_fa::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::simple_fa::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::simple_fa::Result> + Send;
     fn simple_fo(
         &self,
         params: ops::simple_fo::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::simple_fo::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::simple_fo::Result> + Send;
     fn simple_ta(
         &self,
         params: ops::simple_ta::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::simple_ta::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::simple_ta::Result> + Send;
     fn simple_to(
         &self,
         params: ops::simple_to::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::simple_to::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::simple_to::Result> + Send;
     fn form_fa(
         &self,
         params: ops::form_fa::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<Output = Result<ops::form_fa::Response, runtime::ApiError>> + Send;
+    ) -> impl Future<Output = ops::form_fa::Result> + Send;
     fn form_fo(
         &self,
         params: ops::form_fo::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<Output = Result<ops::form_fo::Response, runtime::ApiError>> + Send;
+    ) -> impl Future<Output = ops::form_fo::Result> + Send;
     fn form_ta(
         &self,
         params: ops::form_ta::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<Output = Result<ops::form_ta::Response, runtime::ApiError>> + Send;
+    ) -> impl Future<Output = ops::form_ta::Result> + Send;
     fn form_to(
         &self,
         params: ops::form_to::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<Output = Result<ops::form_to::Response, runtime::ApiError>> + Send;
+    ) -> impl Future<Output = ops::form_to::Result> + Send;
     fn space_fa(
         &self,
         params: ops::space_fa::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<Output = Result<ops::space_fa::Response, runtime::ApiError>> + Send;
+    ) -> impl Future<Output = ops::space_fa::Result> + Send;
     fn space_fo(
         &self,
         params: ops::space_fo::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<Output = Result<ops::space_fo::Response, runtime::ApiError>> + Send;
+    ) -> impl Future<Output = ops::space_fo::Result> + Send;
     fn pipe_fa(
         &self,
         params: ops::pipe_fa::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<Output = Result<ops::pipe_fa::Response, runtime::ApiError>> + Send;
+    ) -> impl Future<Output = ops::pipe_fa::Result> + Send;
     fn pipe_fo(
         &self,
         params: ops::pipe_fo::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<Output = Result<ops::pipe_fo::Response, runtime::ApiError>> + Send;
+    ) -> impl Future<Output = ops::pipe_fo::Result> + Send;
     fn deep_o(
         &self,
         params: ops::deep_o::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<Output = Result<ops::deep_o::Response, runtime::ApiError>> + Send;
+    ) -> impl Future<Output = ops::deep_o::Result> + Send;
     fn header_fa(
         &self,
         params: ops::header_fa::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::header_fa::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::header_fa::Result> + Send;
     fn header_fo(
         &self,
         params: ops::header_fo::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::header_fo::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::header_fo::Result> + Send;
     fn header_ta(
         &self,
         params: ops::header_ta::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::header_ta::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::header_ta::Result> + Send;
     fn header_to(
         &self,
         params: ops::header_to::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::header_to::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::header_to::Result> + Send;
     fn cookie_form_fa(
         &self,
         params: ops::cookie_form_fa::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::cookie_form_fa::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::cookie_form_fa::Result> + Send;
     fn cookie_form_fo(
         &self,
         params: ops::cookie_form_fo::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::cookie_form_fo::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::cookie_form_fo::Result> + Send;
     fn cookie_fa(
         &self,
         params: ops::cookie_fa::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::cookie_fa::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::cookie_fa::Result> + Send;
     fn cookie_fo(
         &self,
         params: ops::cookie_fo::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::cookie_fo::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::cookie_fo::Result> + Send;
     fn cookie_ta(
         &self,
         params: ops::cookie_ta::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::cookie_ta::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::cookie_ta::Result> + Send;
     fn cookie_to(
         &self,
         params: ops::cookie_to::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::cookie_to::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::cookie_to::Result> + Send;
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Operation {

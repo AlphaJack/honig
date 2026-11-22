@@ -17,6 +17,8 @@ pub mod search_orders {
         /// Done.
         NoContent,
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(Response { Self::NoContent => "status 204 (NoContent)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
@@ -53,6 +55,8 @@ pub mod update_order {
         /// Done.
         NoContent,
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(Response { Self::NoContent => "status 204 (NoContent)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
@@ -81,6 +85,8 @@ pub mod status_at {
         /// Done.
         NoContent,
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(Response { Self::NoContent => "status 204 (NoContent)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
@@ -117,6 +123,8 @@ pub mod status_by_key {
         /// The key.
         Ok(String),
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
@@ -145,6 +153,8 @@ pub mod latest_meta {
         /// Done.
         NoContent,
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(Response { Self::NoContent => "status 204 (NoContent)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
@@ -181,6 +191,8 @@ pub mod file_raw {
         /// The directory.
         Ok(String),
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
@@ -212,6 +224,8 @@ pub mod file_ext {
         /// Name and extension.
         Ok(String),
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
@@ -248,6 +262,8 @@ pub mod mix_literal_tail {
         /// Done.
         NoContent,
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(Response { Self::NoContent => "status 204 (NoContent)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
@@ -280,6 +296,8 @@ pub mod mix_mixed_tail {
         /// The captures.
         Ok(String),
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
@@ -311,6 +329,8 @@ pub mod mix_var_tail {
         /// Accepted.
         Accepted,
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(Response { Self::Accepted => "status 202 (Accepted)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.

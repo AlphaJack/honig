@@ -21,53 +21,47 @@ pub trait Api: Send + Sync + 'static {
         &self,
         params: ops::open::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<Output = Result<ops::open::Response, runtime::ApiError>> + Send;
+    ) -> impl Future<Output = ops::open::Result> + Send;
     fn inherits(
         &self,
         params: ops::inherits::Params,
         ctx: &Context<'_, Self::Principal>,
-    ) -> impl Future<Output = Result<ops::inherits::Response, runtime::ApiError>> + Send;
+    ) -> impl Future<Output = ops::inherits::Result> + Send;
     fn get_item(
         &self,
         params: ops::get_item::Params,
         ctx: &Context<'_, Self::Principal>,
-    ) -> impl Future<Output = Result<ops::get_item::Response, runtime::ApiError>> + Send;
+    ) -> impl Future<Output = ops::get_item::Result> + Send;
     fn post_closed(
         &self,
         params: ops::post_closed::Params,
         ctx: &Context<'_, Self::Principal>,
-    ) -> impl Future<
-        Output = Result<ops::post_closed::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::post_closed::Result> + Send;
     fn optional_body(
         &self,
         params: ops::optional_body::Params,
         ctx: &Context<'_, Self::Principal>,
-    ) -> impl Future<
-        Output = Result<ops::optional_body::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::optional_body::Result> + Send;
     fn post_product(
         &self,
         params: ops::post_product::Params,
         ctx: &Context<'_, Self::Principal>,
-    ) -> impl Future<
-        Output = Result<ops::post_product::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::post_product::Result> + Send;
     fn upload(
         &self,
         params: ops::upload::Params,
         ctx: &Context<'_, Self::Principal>,
-    ) -> impl Future<Output = Result<ops::upload::Response, runtime::ApiError>> + Send;
+    ) -> impl Future<Output = ops::upload::Result> + Send;
     fn cookies(
         &self,
         params: ops::cookies::Params,
         ctx: &Context<'_, Self::Principal>,
-    ) -> impl Future<Output = Result<ops::cookies::Response, runtime::ApiError>> + Send;
+    ) -> impl Future<Output = ops::cookies::Result> + Send;
     fn filter(
         &self,
         params: ops::filter::Params,
         ctx: &Context<'_, Self::Principal>,
-    ) -> impl Future<Output = Result<ops::filter::Response, runtime::ApiError>> + Send;
+    ) -> impl Future<Output = ops::filter::Result> + Send;
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Operation {

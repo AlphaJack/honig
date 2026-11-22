@@ -50,6 +50,8 @@ pub mod add_book {
         /// Created.
         Created(types::Book),
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(Response { Self::Created(..) => "status 201 (Created)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.

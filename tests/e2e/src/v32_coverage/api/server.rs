@@ -9,29 +9,27 @@ pub trait Api: Send + Sync + 'static {
         &self,
         params: ops::ping::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<Output = Result<ops::ping::Response, runtime::ApiError>> + Send;
+    ) -> impl Future<Output = ops::ping::Result> + Send;
     fn archive(
         &self,
         params: ops::archive::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<Output = Result<ops::archive::Response, runtime::ApiError>> + Send;
+    ) -> impl Future<Output = ops::archive::Result> + Send;
     fn unarchive(
         &self,
         params: ops::unarchive::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::unarchive::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::unarchive::Result> + Send;
     fn add_note(
         &self,
         params: ops::add_note::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<Output = Result<ops::add_note::Response, runtime::ApiError>> + Send;
+    ) -> impl Future<Output = ops::add_note::Result> + Send;
     fn find_box(
         &self,
         params: ops::find_box::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<Output = Result<ops::find_box::Response, runtime::ApiError>> + Send;
+    ) -> impl Future<Output = ops::find_box::Result> + Send;
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Operation {

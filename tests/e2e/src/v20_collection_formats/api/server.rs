@@ -11,21 +11,17 @@ pub trait Api: Send + Sync + 'static {
         &self,
         params: ops::list_items::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::list_items::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::list_items::Result> + Send;
     fn upload(
         &self,
         params: ops::upload::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<Output = Result<ops::upload::Response, runtime::ApiError>> + Send;
+    ) -> impl Future<Output = ops::upload::Result> + Send;
     fn list_keys(
         &self,
         params: ops::list_keys::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::list_keys::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::list_keys::Result> + Send;
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Operation {

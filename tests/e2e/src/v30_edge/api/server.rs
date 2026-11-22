@@ -29,30 +29,22 @@ pub trait Api: Send + Sync + 'static {
         &self,
         params: ops::list_orders::Params,
         ctx: &Context<'_, Self::Principal>,
-    ) -> impl Future<
-        Output = Result<ops::list_orders::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::list_orders::Result> + Send;
     fn create_order(
         &self,
         params: ops::create_order::Params,
         ctx: &Context<'_, Self::Principal>,
-    ) -> impl Future<
-        Output = Result<ops::create_order::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::create_order::Result> + Send;
     fn get_order(
         &self,
         params: ops::get_order::Params,
         ctx: &Context<'_, Self::Principal>,
-    ) -> impl Future<
-        Output = Result<ops::get_order::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::get_order::Result> + Send;
     fn upload_document(
         &self,
         params: ops::upload_document::Params,
         ctx: &Context<'_, Self::Principal>,
-    ) -> impl Future<
-        Output = Result<ops::upload_document::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::upload_document::Result> + Send;
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Operation {

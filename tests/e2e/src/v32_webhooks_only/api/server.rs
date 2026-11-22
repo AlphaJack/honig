@@ -22,9 +22,7 @@ pub trait Webhooks: Send + Sync + 'static {
         &self,
         params: ops::order_shipped_post::Params,
         ctx: &WebhookContext<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::order_shipped_post::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::order_shipped_post::Result> + Send;
 }
 pub struct WebhookRoutes<A> {
     api: std::sync::Arc<A>,

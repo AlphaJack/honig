@@ -11,7 +11,7 @@ pub trait Api: Send + Sync + 'static {
         &self,
         params: ops::put_file::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<Output = Result<ops::put_file::Response, runtime::ApiError>> + Send;
+    ) -> impl Future<Output = ops::put_file::Result> + Send;
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Operation {

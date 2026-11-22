@@ -57,119 +57,91 @@ pub trait Api: Send + Sync + 'static {
         &self,
         params: ops::get_all_data::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::get_all_data::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::get_all_data::Result> + Send;
     /// Add a product to the catalog.
     fn create_product(
         &self,
         params: ops::create_product::Params,
         ctx: &Context<'_, Self::Principal>,
-    ) -> impl Future<
-        Output = Result<ops::create_product::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::create_product::Result> + Send;
     /// Search the product catalog by sending a query payload with the HTTP QUERY method (new in `OpenAPI` 3.2). QUERY is safe and idempotent like GET, but accepts a request body so you can express richer filters than a URL query string allows.
     fn query_products(
         &self,
         params: ops::query_products::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::query_products::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::query_products::Result> + Send;
     /// Filter products using a single, structured query string. The `filter` parameter sets `in` to `querystring` (new in `OpenAPI` 3.2), which describes the entire query string as one value via a media type instead of listing each query parameter individually.
     fn search_products(
         &self,
         params: ops::search_products::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::search_products::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::search_products::Result> + Send;
     /// One product, by its ID.
     fn get_product(
         &self,
         params: ops::get_product::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::get_product::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::get_product::Result> + Send;
     /// Change the details of a product.
     fn update_product(
         &self,
         params: ops::update_product::Params,
         ctx: &Context<'_, Self::Principal>,
-    ) -> impl Future<
-        Output = Result<ops::update_product::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::update_product::Result> + Send;
     /// Deprecated, since deleting a product breaks its open orders.
     fn delete_product(
         &self,
         params: ops::delete_product::Params,
         ctx: &Context<'_, Self::Principal>,
-    ) -> impl Future<
-        Output = Result<ops::delete_product::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::delete_product::Result> + Send;
     /// Duplicate an existing product using the `WebDAV-style` COPY method. This demonstrates how `OpenAPI` 3.2 describes custom HTTP methods.
     fn copy_product(
         &self,
         params: ops::copy_product::Params,
         ctx: &Context<'_, Self::Principal>,
-    ) -> impl Future<
-        Output = Result<ops::copy_product::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::copy_product::Result> + Send;
     /// Upload a photo of a product.
     fn upload_image(
         &self,
         params: ops::upload_image::Params,
         ctx: &Context<'_, Self::Principal>,
-    ) -> impl Future<
-        Output = Result<ops::upload_image::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::upload_image::Result> + Send;
     /// Subscribe to a live feed of product changes. The response is an open stream rather than a single document, so each media type uses `itemSchema` (new in `OpenAPI` 3.2) to describe one event at a time. Server-Sent Events (`text/event-stream`), JSON Lines (`application/jsonl`) and JSON Text Sequences (`application/json-seq`) are all offered.
     fn stream_product_events(
         &self,
         params: ops::stream_product_events::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::stream_product_events::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::stream_product_events::Result> + Send;
     /// Send a mixed multipart stream of one metadata part, then any number of image parts. `prefixEncoding` describes the leading, fixed parts and `itemEncoding` applies to every repeated item that follows.
     fn upload_photos(
         &self,
         params: ops::upload_photos::Params,
         ctx: &Context<'_, Self::Principal>,
-    ) -> impl Future<
-        Output = Result<ops::upload_photos::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::upload_photos::Result> + Send;
     /// Add a product or a variant, anything the shop sells.
     fn create_item(
         &self,
         params: ops::create_item::Params,
         ctx: &Context<'_, Self::Principal>,
-    ) -> impl Future<
-        Output = Result<ops::create_item::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::create_item::Result> + Send;
     /// Create a user account.
     fn create_user(
         &self,
         params: ops::create_user::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::create_user::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::create_user::Result> + Send;
     /// Trade credentials for a token.
     fn get_token(
         &self,
         params: ops::get_token::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::get_token::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::get_token::Result> + Send;
     /// Find yourself they say. That's what you can do here.
     fn get_me(
         &self,
         params: ops::get_me::Params,
         ctx: &Context<'_, Self::Principal>,
-    ) -> impl Future<Output = Result<ops::get_me::Response, runtime::ApiError>> + Send;
+    ) -> impl Future<Output = ops::get_me::Result> + Send;
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Operation {
@@ -300,38 +272,25 @@ pub trait Webhooks: Send + Sync + 'static {
         &self,
         params: ops::new_product_post::Params,
         ctx: &WebhookContext<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::new_product_post::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::new_product_post::Result> + Send;
     fn create_product_product_created_post(
         &self,
         params: ops::create_product_product_created_post::Params,
         ctx: &WebhookContext<'_, ()>,
-    ) -> impl Future<
-        Output = Result<
-            ops::create_product_product_created_post::Response,
-            runtime::ApiError,
-        >,
-    > + Send;
+    ) -> impl Future<Output = ops::create_product_product_created_post::Result> + Send;
     fn create_product_product_creation_failed_post(
         &self,
         params: ops::create_product_product_creation_failed_post::Params,
         ctx: &WebhookContext<'_, ()>,
     ) -> impl Future<
-        Output = Result<
-            ops::create_product_product_creation_failed_post::Response,
-            runtime::ApiError,
-        >,
+        Output = ops::create_product_product_creation_failed_post::Result,
     > + Send;
     fn create_product_product_discontinued_post(
         &self,
         params: ops::create_product_product_discontinued_post::Params,
         ctx: &WebhookContext<'_, ()>,
     ) -> impl Future<
-        Output = Result<
-            ops::create_product_product_discontinued_post::Response,
-            runtime::ApiError,
-        >,
+        Output = ops::create_product_product_discontinued_post::Result,
     > + Send;
 }
 pub struct WebhookRoutes<A> {

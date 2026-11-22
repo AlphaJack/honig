@@ -54,6 +54,8 @@ pub mod list_orders {
         /// A problem.
         ClientError { status: runtime::http::StatusCode, body: types::Problem },
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(
         Response { Self::Ok { .. } => "status 200 (Ok)", Self::ClientError { status, .. }
         => format_args!("status {} (ClientError)", status.as_u16()), }
@@ -102,6 +104,8 @@ pub mod create_order {
         /// A problem.
         Default { status: runtime::http::StatusCode, body: types::Problem },
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(
         Response { Self::Created(..) => "status 201 (Created)",
         Self::UnprocessableEntity(..) => "status 422 (UnprocessableEntity)",
@@ -151,6 +155,8 @@ pub mod get_order {
         /// A problem.
         Default { status: runtime::http::StatusCode, body: types::Problem },
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(
         Response { Self::Ok { .. } => "status 200 (Ok)", Self::NotFound(..) =>
         "status 404 (NotFound)", Self::Default { status, .. } =>
@@ -220,6 +226,8 @@ pub mod upload_document {
         /// Stored.
         NoContent,
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(Response { Self::NoContent => "status 204 (NoContent)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.

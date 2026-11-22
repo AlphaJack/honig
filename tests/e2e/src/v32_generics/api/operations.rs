@@ -18,6 +18,8 @@ pub mod list_products {
         /// A page of products.
         Ok(types::ProductPage),
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
@@ -47,6 +49,8 @@ pub mod tag_tree {
         /// A tree of tags.
         Ok(types::StringTree),
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
@@ -76,6 +80,8 @@ pub mod any_page {
         /// Unbound, the generic's default.
         Ok(types::Page),
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.

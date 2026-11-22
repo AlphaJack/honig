@@ -77,6 +77,21 @@ fn only_operations_with_their_own_servers_get_servers() {
     assert!(!op_module(&ops, "b").contains("SERVERS"), "{ops}");
 }
 
+/// A handler returns its operation's `Result`: its `Response` or an error that the server answers.
+#[test]
+fn a_handler_returns_its_operations_result() {
+    let doc = common::spec(
+        "3.2.0",
+        &json!({"/a": {"get": {"operationId": "a", "responses": {"204": {"description": "done"}}}}}),
+        &json!({}),
+    );
+    let files = common::generate("op-result", &doc, &crate::emit::Options::default());
+    let ops = common::file(&files, "operations.rs");
+    assert!(ops.contains("pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;"), "{ops}");
+    let server = common::file(&files, "server.rs");
+    assert!(server.contains("Output = ops::a::Result>"), "{server}");
+}
+
 /// Every `Params` has `new` accepting what is required; `Default` only when that is nothing.
 #[test]
 fn params_always_have_new_and_default_only_without_arguments() {

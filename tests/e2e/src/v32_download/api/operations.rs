@@ -27,6 +27,8 @@ pub mod get_export {
         /// No such export.
         NotFound,
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(
         Response { Self::Ok(..) => "status 200 (Ok)", Self::NotFound =>
         "status 404 (NotFound)", }
@@ -67,6 +69,8 @@ pub mod get_thumbnail {
         /// A preview in whatever image format the export has.
         Ok(runtime::Blob),
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
@@ -105,6 +109,8 @@ pub mod get_manifest {
         /// No such export.
         NotFound,
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(
         Response { Self::Ok { .. } => "status 200 (Ok)", Self::NotFound =>
         "status 404 (NotFound)", }
@@ -154,6 +160,8 @@ pub mod replace_manifest {
         /// The manifest changed since the client read it.
         PreconditionFailed,
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(
         Response { Self::NoContent => "status 204 (NoContent)", Self::PreconditionFailed
         => "status 412 (PreconditionFailed)", }
