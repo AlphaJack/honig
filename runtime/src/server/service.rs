@@ -461,6 +461,7 @@ where
     let event = RequestEvent::new(Some(operation), method);
     event.security(&satisfied);
     let extensions = req.extensions_mut();
+    extensions.remove::<O::Principal>();
     if let Some(principal) = principal {
         extensions.insert(principal);
     }
