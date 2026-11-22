@@ -181,9 +181,11 @@ pub(super) fn shared_names(
 /// References to twins resolve to the first. So a struct of twin enums is a twin too. Repeated until
 /// nothing changes.
 fn twins(space: &Space<'_>) -> std::collections::BTreeMap<usize, usize> {
-    let mut first: std::collections::BTreeMap<usize, usize> = std::collections::BTreeMap::new();
+    // Where each type points: itself, or the first of its twins. An index per lookup: every reference of every type
+    // is looked up on every pass.
+    let mut first: Vec<usize> = (0..space.types.defs.len()).collect();
     loop {
-        let canon = |id: TypeId| TypeId(first.get(&id.0).copied().unwrap_or(id.0));
+        let canon = |id: TypeId| TypeId(first.get(id.0).copied().unwrap_or(id.0));
         // References to a twin resolve to its first.
         // The last word of the name is the role (`type`, `usage`, `Ok`): twins with different roles stay apart, so an
         // order's `type` does not merge with a user's `status` although both are `enum: [0, 1]`.
@@ -194,7 +196,7 @@ fn twins(space: &Space<'_>) -> std::collections::BTreeMap<usize, usize> {
         // Keys by their hash first: keys are long and share a long start, so ordering them by text compares that start
         // again on every step down the map. The text still decides which keys are equal.
         let mut seen: std::collections::BTreeMap<u64, Vec<(String, usize)>> = std::collections::BTreeMap::new();
-        let mut next = std::collections::BTreeMap::new();
+        let mut next: Vec<usize> = (0..first.len()).collect();
         for (i, def) in space.types.defs.iter().enumerate() {
             // A schema of `components/schemas` is its own type: `Kind` and `Mode` may both be `enum: [0, 1]`.
             if def.component || def.rust_type.is_some() || matches!(def.kind, Kind::Pending | Kind::Alias(_)) {
@@ -205,14 +207,14 @@ fn twins(space: &Space<'_>) -> std::collections::BTreeMap<usize, usize> {
             std::hash::Hash::hash(&key, &mut hasher);
             let bucket = seen.entry(std::hash::Hasher::finish(&hasher)).or_default();
             match bucket.iter().find(|(k, _)| *k == key) {
-                Some(&(_, first)) => {
-                    next.insert(i, first);
+                Some(&(_, twin)) => {
+                    next[i] = twin;
                 }
                 None => bucket.push((key, i)),
             }
         }
         if next == first {
-            return first;
+            return first.into_iter().enumerate().filter(|(i, twin)| i != twin).collect();
         }
         first = next;
     }
