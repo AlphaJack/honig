@@ -13,14 +13,24 @@ use crate::{ClientError, Message, Request, params::pct};
 /// credentials that you configured are sent.
 ///
 /// # Errors
-/// A credential that a header or the query cannot carry: it contains a line break or another control character.
+/// - [`ClientError::MissingCredentials`] when the client has the credentials of no requirement and none is optional: a
+///   server would answer 401, so the request is not sent.
+/// - A credential that a header or the query cannot carry: it contains a line break or another control character.
 pub fn apply_auth(req: &mut Request, creds: &Credentials, requirements: &[&[Requirement]]) -> Result<(), ClientError> {
     let Some(alt) = requirements
         .iter()
         .filter(|alt| !alt.is_empty())
         .find(|alt| alt.iter().all(|(s, _)| matches!(s, Scheme::MutualTls(_)) || creds.contains_key(s.name())))
     else {
-        return Ok(());
+        let optional = requirements.iter().any(|alt| alt.is_empty());
+        if optional || requirements.is_empty() {
+            return Ok(());
+        }
+        let alternatives: Vec<String> = requirements
+            .iter()
+            .map(|alt| alt.iter().map(|(s, _)| format!("`{}`", s.name())).collect::<Vec<_>>().join(" + "))
+            .collect();
+        return Err(ClientError::MissingCredentials(alternatives.join(" or ")));
     };
     for (s, _) in *alt {
         let Some(c) = creds.get(s.name()) else {
@@ -44,4 +54,28 @@ pub fn apply_auth(req: &mut Request, creds: &Credentials, requirements: &[&[Requ
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn request() -> Request {
+        crate::__private::new_request("GET", "/a".to_owned(), vec![]).unwrap()
+    }
+
+    /// An operation that needs credentials fails before it is sent when the client has none for any alternative. One
+    /// alternative with its credentials, or an optional one, sends.
+    #[test]
+    fn missing_credentials_fail_before_the_request_is_sent() {
+        let key: &[Requirement] = &[(Scheme::ApiKey("key", KeyIn::Header, "X-Key"), &[])];
+        let session: &[Requirement] = &[(Scheme::ApiKey("session", KeyIn::Query, "s"), &[])];
+        let creds =
+            |names: &[&str]| -> Credentials { names.iter().map(|n| ((*n).to_owned(), "v".to_owned())).collect() };
+        let err = apply_auth(&mut request(), &creds(&[]), &[key, session]).unwrap_err();
+        assert!(matches!(&err, ClientError::MissingCredentials(w) if w == "`key` or `session`"), "{err}");
+        assert!(apply_auth(&mut request(), &creds(&["session"]), &[key, session]).is_ok());
+        assert!(apply_auth(&mut request(), &creds(&[]), &[key, &[]]).is_ok(), "an optional alternative sends none");
+        assert!(apply_auth(&mut request(), &creds(&[]), &[]).is_ok(), "no security needs none");
+    }
 }
