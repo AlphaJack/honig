@@ -686,13 +686,21 @@ impl V<'_> {
         self.unknown(&s.extra, ptr);
         let need = |v: &mut Self, ok: bool, field: &str| {
             if !ok {
-                v.diags.error(ptr, format!("`{field}` is required for this security scheme type"));
+                v.diags.refuse_server(ptr, format!("`{field}` is required for this security scheme type"));
             }
         };
         match s.kind {
             SecuritySchemeType::ApiKey => {
                 need(self, s.name.is_some(), "name");
                 need(self, s.location.is_some(), "in");
+                if let Some(place) =
+                    s.location.as_ref().filter(|p| !matches!(p.as_str(), "header" | "query" | "cookie"))
+                {
+                    self.diags.refuse_server(
+                        ptr,
+                        format!("`in` is `{place}`: an API key goes in `header`, `query` or `cookie`"),
+                    );
+                }
             }
             SecuritySchemeType::Http => need(self, s.scheme.is_some(), "scheme"),
             SecuritySchemeType::OAuth2 => need(self, s.flows.is_some(), "flows"),
