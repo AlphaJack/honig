@@ -95,7 +95,7 @@ impl<T: runtime::Transport> Client<T> {
                             runtime::decode_header(
                                 runtime::joined_header(&head.headers, "X-Next-Cursor")
                                     .as_deref(),
-                                runtime::Shape::Prim,
+                                runtime::Shape::Primitive,
                                 false,
                             ),
                             "/header/X-Next-Cursor",
@@ -201,7 +201,7 @@ impl<T: runtime::Transport> Client<T> {
                             runtime::decode_header(
                                 runtime::joined_header(&head.headers, "X-Request-Id")
                                     .as_deref(),
-                                runtime::Shape::Prim,
+                                runtime::Shape::Primitive,
                                 false,
                             ),
                             "/header/X-Request-Id",

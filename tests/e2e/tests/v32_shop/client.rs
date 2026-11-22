@@ -227,12 +227,12 @@ async fn the_feed_resumes_after_the_last_event_read() {
     assert_eq!(*asked.lock().unwrap(), [None, Some("e1".to_owned()), Some("e2".to_owned())]);
 }
 
-/// `into_ok` gives the success and any other response as an `Err` that `?` converts into any error type.
+/// `into_result` gives the success and any other response as an `Err` that `?` converts into any error type.
 #[tokio::test]
-async fn into_ok_gives_the_success_and_errs_with_the_rest() -> Result<(), Box<dyn std::error::Error>> {
+async fn into_result_gives_the_success_and_errs_with_the_rest() -> Result<(), Box<dyn std::error::Error>> {
     let gone = shop(|_| std::future::ready(api::runtime::new_response(204)));
     // ANCHOR: into-ok
-    gone.delete_product(ops::delete_product::Params { product_id: 7 }).await?.into_ok()?;
+    gone.delete_product(ops::delete_product::Params { product_id: 7 }).await?.into_result()?;
     // ANCHOR_END: into-ok
     let missing = shop(|_| {
         let mut r = api::runtime::new_response(404);
@@ -240,7 +240,7 @@ async fn into_ok_gives_the_success_and_errs_with_the_rest() -> Result<(), Box<dy
         *r.body_mut() = honig::Body::from(b"{}".to_vec());
         std::future::ready(r)
     });
-    let err = missing.delete_product(ops::delete_product::Params { product_id: 7 }).await?.into_ok().unwrap_err();
+    let err = missing.delete_product(ops::delete_product::Params { product_id: 7 }).await?.into_result().unwrap_err();
     assert_matches!(*err, ops::delete_product::Response::NotFound(_));
     assert_eq!(err.to_string(), "status 404 (NotFound)");
     Ok(())

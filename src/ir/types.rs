@@ -615,13 +615,13 @@ pub(crate) enum Format {
     /// `{type: string, format: decimal128}`: text checked as a decimal that IEEE 754 decimal128 represents exactly.
     /// That is at most 34 significant digits within its exponent range.
     Decimal128,
-    /// `format: email` (RFC 5321 Mailbox): `runtime::EmailText` (the runtime's `idn` feature).
+    /// `format: email` (RFC 5321 Mailbox): `runtime::EmailStr` (the runtime's `idn` feature).
     Email,
-    /// `format: idn-email` (RFC 6531 with UTF-8 allowed): `runtime::IdnEmailText`.
+    /// `format: idn-email` (RFC 6531 with UTF-8 allowed): `runtime::IdnEmailStr`.
     IdnEmail,
-    /// `format: hostname` (RFC 1123; punycode labels must decode): `runtime::HostnameText`.
+    /// `format: hostname` (RFC 1123; punycode labels must decode): `runtime::HostnameStr`.
     Hostname,
-    /// `format: idn-hostname` (IDNA2008): `runtime::IdnHostnameText`.
+    /// `format: idn-hostname` (IDNA2008): `runtime::IdnHostnameStr`.
     IdnHostname,
     /// `format: http-date` (RFC 9110 section 5.6.7): a `String` checked as one of the three forms.
     HttpDate,
@@ -865,7 +865,7 @@ impl TypeSpace {
     /// Returns [`TypeSpace::kind_of`] of every definition by `TypeId`, each found once. Asked one at a time, a chain of
     /// unions walks every union before it each time.
     pub(crate) fn kinds(&self) -> Vec<JsonKind> {
-        let mut kinds = build::Kinds::new(&self.defs);
+        let mut kinds = build::Kinds::every(&self.defs);
         (0..self.defs.len()).map(|i| kinds.of(&Ty::Named(TypeId(i)))).collect()
     }
 }

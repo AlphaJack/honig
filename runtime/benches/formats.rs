@@ -3,7 +3,7 @@
 
 use divan::Bencher;
 use honig::__private::check_format;
-use honig::{EmailText, HostnameText, IdnEmailText, IdnHostnameText, InstancePath};
+use honig::{EmailStr, HostnameStr, IdnEmailStr, IdnHostnameStr, InstanceLocation};
 
 fn main() {
     // Without its runtime feature a format is not checked. Its bench would then time nothing.
@@ -16,7 +16,7 @@ fn main() {
 /// A `String` that the crate has no library type for. It is checked as such.
 fn text(format: &str, value: &str) -> bool {
     let mut out = Vec::new();
-    check_format(&mut out, &InstancePath::Root, value, format);
+    check_format(&mut out, &InstanceLocation::Root, value, format);
     out.is_empty()
 }
 
@@ -28,10 +28,10 @@ type Check = fn(&str) -> bool;
 const CASES: [(&str, Check); 8] = [
     ("uuid", |v| text("uuid", v)),
     ("date-time", |v| text("date-time", v)),
-    ("email", |v| EmailText::try_from(v).is_ok()),
-    ("idn-email", |v| IdnEmailText::try_from(v).is_ok()),
-    ("hostname", |v| HostnameText::try_from(v).is_ok()),
-    ("idn-hostname", |v| IdnHostnameText::try_from(v).is_ok()),
+    ("email", |v| EmailStr::try_from(v).is_ok()),
+    ("idn-email", |v| IdnEmailStr::try_from(v).is_ok()),
+    ("hostname", |v| HostnameStr::try_from(v).is_ok()),
+    ("idn-hostname", |v| IdnHostnameStr::try_from(v).is_ok()),
     ("uri", |v| text("uri", v)),
     ("ipv6-cidr", |v| text("ipv6-cidr", v)),
 ];

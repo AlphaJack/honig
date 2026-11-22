@@ -106,8 +106,8 @@ fn a_decimal_number_keeps_every_digit() {
     assert!(negative.to_string().starts_with("-1 is less than the minimum 0"), "{negative}");
 }
 
-/// `char`, `uri` (with `url`) and the CIDR formats (with `ipnet`) are typed. Without chrono or jiff the local date
-/// and time formats are checked text.
+/// `char`, `uri` (with `url`) and the CIDR formats (with `ipnet`) are typed. Without jiff the local date and time
+/// formats are checked text.
 #[test]
 fn registry_formats_take_their_library_types() {
     let wire = json!({"id": ID, "at": AT, "initial": "Z", "home": "https://example.com/a?b=c",
@@ -117,7 +117,7 @@ fn registry_formats_take_their_library_types() {
     let home: honig::url::Url = e.home.clone().expect("present");
     let net4: honig::ipnet::Ipv4Net = e.net4.expect("present");
     let net6: honig::ipnet::Ipv6Net = e.net6.expect("present");
-    let local: api::DateTimeLocalText = e.local.clone().expect("present");
+    let local: api::DateTimeLocalStr = e.local.clone().expect("present");
     assert_eq!((initial, home.host_str(), net4.prefix_len(), net6.prefix_len()), ('Z', Some("example.com"), 24, 32));
     assert_eq!(local, "2024-01-31T13:45:30");
     let back = serde_json::to_value(&e).expect("encodes");

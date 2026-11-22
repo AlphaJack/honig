@@ -85,7 +85,7 @@ impl Delivery {
                     if hits != 1 {
                         runtime::violation(
                             out,
-                            &runtime::InstancePath::Root,
+                            &runtime::InstanceLocation::Root,
                             format!("matches {hits} of `oneOf`, not exactly one"),
                         );
                     }
@@ -218,7 +218,7 @@ impl DeliveryRequest {
                 if hits != 1 {
                     runtime::violation(
                         out,
-                        &runtime::InstancePath::Root,
+                        &runtime::InstanceLocation::Root,
                         format!("matches {hits} of `oneOf`, not exactly one"),
                     );
                 }

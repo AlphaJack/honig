@@ -33,7 +33,7 @@ pub mod put_file {
     runtime::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<types::PutFileOk, Box<Self>> {
+        pub fn into_result(self) -> Result<types::PutFileOk, Box<Self>> {
             match self {
                 Self::Ok(body) => Ok(body),
             }

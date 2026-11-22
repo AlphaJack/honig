@@ -302,7 +302,7 @@ impl<T: runtime::Transport> Client<T> {
                     x_size: runtime::from_param(
                             runtime::decode_header(
                                 runtime::joined_header(&head.headers, "X-Size").as_deref(),
-                                runtime::Shape::Prim,
+                                runtime::Shape::Primitive,
                                 false,
                             ),
                             "/header/X-Size",
@@ -482,7 +482,7 @@ impl<T: runtime::Transport> Client<T> {
                     x_next: runtime::from_param(
                             runtime::decode_header(
                                 runtime::joined_header(&head.headers, "X-Next").as_deref(),
-                                runtime::Shape::Prim,
+                                runtime::Shape::Primitive,
                                 false,
                             ),
                             "/header/X-Next",
@@ -496,7 +496,7 @@ impl<T: runtime::Transport> Client<T> {
                     x_total: runtime::from_param(
                             runtime::decode_header(
                                 runtime::joined_header(&head.headers, "X-Total").as_deref(),
-                                runtime::Shape::Prim,
+                                runtime::Shape::Primitive,
                                 false,
                             ),
                             "/header/X-Total",
@@ -1070,6 +1070,7 @@ impl<T: runtime::Transport> Client<T> {
         Ok(runtime::Streamed::Whole(other?))
     }
 }
+/// Sends the webhooks of the API and the callbacks (`callbacks`) of its operations.
 #[derive(Debug, Clone)]
 pub struct WebhookClient<T> {
     pub transport: T,

@@ -244,7 +244,7 @@ fn pattern_checks(c: &Constraints, ty: &dyn Fn(usize) -> TokenStream, path: &Tok
         let schema = ty(*n);
         let re = pattern_static(pattern);
         let matches = quote!(runtime::pattern_matches(#re, name));
-        let refuse = quote!(runtime::violation(out, &runtime::InstancePath::Key(#path, name), e.to_string()););
+        let refuse = quote!(runtime::violation(out, &runtime::InstanceLocation::Key(#path, name), e.to_string()););
         // Without `additionalProperties` nothing else happens on a match: one `if` tests both conditions.
         if closed {
             quote! {
@@ -267,7 +267,7 @@ fn pattern_checks(c: &Constraints, ty: &dyn Fn(usize) -> TokenStream, path: &Tok
             let other = match extra {
                 None => quote! {
                     if !matched #undeclared {
-                        runtime::violation(out, &runtime::InstancePath::Key(#path, name), "no value is allowed here");
+                        runtime::violation(out, &runtime::InstanceLocation::Key(#path, name), "no value is allowed here");
                     }
                 },
                 Some(n) => {
@@ -277,7 +277,7 @@ fn pattern_checks(c: &Constraints, ty: &dyn Fn(usize) -> TokenStream, path: &Tok
                             #undeclared
                             && let Err(e) = item.decode_ref::<#t>()
                         {
-                            runtime::violation(out, &runtime::InstancePath::Key(#path, name), e.to_string());
+                            runtime::violation(out, &runtime::InstanceLocation::Key(#path, name), e.to_string());
                         }
                     }
                 }
@@ -315,7 +315,7 @@ fn unevaluated_checks(
     let (binding, check) = match leftover {
         Leftover::Refused => (
             quote!(name),
-            quote!(runtime::violation(out, &runtime::InstancePath::Key(#path, name), "is not allowed (unevaluatedProperties)");),
+            quote!(runtime::violation(out, &runtime::InstanceLocation::Key(#path, name), "is not allowed (unevaluatedProperties)");),
         ),
         Leftover::Schema(n) => {
             let t = ty(n);
@@ -323,7 +323,7 @@ fn unevaluated_checks(
                 quote!((name, item)),
                 quote! {
                     if let Err(e) = item.decode_ref::<#t>() {
-                        runtime::violation(out, &runtime::InstancePath::Key(#path, name), e.to_string());
+                        runtime::violation(out, &runtime::InstanceLocation::Key(#path, name), e.to_string());
                     }
                 },
             )
@@ -362,13 +362,13 @@ fn unevaluated_item_checks(
     let evaluated = evaluated_item_expr(ev, ty, &mut flags);
     let check = match leftover {
         Leftover::Refused => {
-            quote!(runtime::violation(out, &runtime::InstancePath::Index(#path, i), "is not allowed (unevaluatedItems)");)
+            quote!(runtime::violation(out, &runtime::InstanceLocation::Index(#path, i), "is not allowed (unevaluatedItems)");)
         }
         Leftover::Schema(n) => {
             let t = ty(n);
             quote! {
                 if let Err(e) = item.decode_ref::<#t>() {
-                    runtime::violation(out, &runtime::InstancePath::Index(#path, i), e.to_string());
+                    runtime::violation(out, &runtime::InstanceLocation::Index(#path, i), e.to_string());
                 }
             }
         }
@@ -569,7 +569,7 @@ pub(super) fn checks(
 
 /// Returns `propertyNames` on the name in `name`, at the path of that name.
 fn name_check(names: &Constraints, path: &TokenStream) -> TokenStream {
-    string_checks(names, &quote!(name), &quote!(&runtime::InstancePath::Key(#path, name)))
+    string_checks(names, &quote!(name), &quote!(&runtime::InstanceLocation::Key(#path, name)))
 }
 
 /// Returns the keywords of one kind beside an implied shape (`required` beside `properties`, `minimum` beside
@@ -728,7 +728,7 @@ fn item_checks(space: &Space<'_>, x: &Ty, c: &Constraints, value: &TokenStream, 
     let unique = c.unique_items.then(|| quote!(runtime::check_unique(out, #path, #value);));
     let ic = c.item_constraints();
     // The parent path is bound once for every item.
-    let item = checks(space, x, &ic, &quote!(v), &quote!(&runtime::InstancePath::Index(base, i)));
+    let item = checks(space, x, &ic, &quote!(v), &quote!(&runtime::InstanceLocation::Index(base, i)));
     let r = receiver(value);
     let each = (!item.is_empty()).then(|| quote!({ let base = #path; for (i, v) in #r.iter().enumerate() { #item } }));
     quote!(#unique #each)
@@ -1075,7 +1075,7 @@ fn tuple_checks(c: &Constraints, ty: &dyn Fn(usize) -> TokenStream, path: &Token
         let t = ty(n);
         quote! {
             if let Err(e) = item.decode_ref::<#t>() {
-                runtime::violation(out, &runtime::InstancePath::Index(#path, #at), e.to_string());
+                runtime::violation(out, &runtime::InstanceLocation::Index(#path, #at), e.to_string());
             }
         }
     };
@@ -1086,7 +1086,7 @@ fn tuple_checks(c: &Constraints, ty: &dyn Fn(usize) -> TokenStream, path: &Token
             if let Some(item) = #item
                 && let Err(e) = item.decode_ref::<#t>()
             {
-                runtime::violation(out, &runtime::InstancePath::Index(#path, #i), e.to_string());
+                runtime::violation(out, &runtime::InstanceLocation::Index(#path, #i), e.to_string());
             }
         }
     });
@@ -1095,7 +1095,7 @@ fn tuple_checks(c: &Constraints, ty: &dyn Fn(usize) -> TokenStream, path: &Token
         Rest::Any => None,
         Rest::Refused => Some(quote! {
             if items.len() > #len {
-                runtime::violation(out, &runtime::InstancePath::Index(#path, #len), "no value is allowed here");
+                runtime::violation(out, &runtime::InstanceLocation::Index(#path, #len), "no value is allowed here");
             }
         }),
         Rest::Schema(n) => {
@@ -1203,7 +1203,7 @@ fn names_schema_checks(c: &Constraints, ty: &dyn Fn(usize) -> TokenStream, path:
         if let Some(object) = json.as_object() {
             for (name, _) in object {
                 if !runtime::Content::Str(name.into()).matches::<#t>() {
-                    runtime::violation(out, &runtime::InstancePath::Key(#path, name), "is not an allowed property name");
+                    runtime::violation(out, &runtime::InstanceLocation::Key(#path, name), "is not an allowed property name");
                 }
             }
         }

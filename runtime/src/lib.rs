@@ -70,7 +70,7 @@ pub use binary::Binary;
 pub use builder::BuildError;
 pub use builder_typestate::{Set, Unset, put};
 pub use bytes::Bytes;
-pub use checks::{InstancePath, Violation};
+pub use checks::{InstanceLocation, Violation};
 #[cfg(feature = "oauth")]
 pub use client::oauth::{AuthMetadata, DeviceCode, DevicePoll, Token};
 #[cfg(feature = "pkce")]
@@ -82,13 +82,11 @@ pub use codec::PartTypes;
 pub use decimal::Decimal;
 pub use error::{ApiError, ClientError};
 pub use formatted::Formatted;
-pub use formatted::UuidText;
-pub use formatted::{
-    DateText, DateTimeLocalText, DateTimeText, Decimal128Text, DecimalText, DurationText, HttpDateText,
-};
-pub use formatted::{EmailText, HostnameText, IdnEmailText, IdnHostnameText};
-pub use formatted::{Ipv4CidrText, Ipv6CidrText, IriReferenceText, IriText, JsonPointerText, RegexText};
-pub use formatted::{RelativeJsonPointerText, TimeLocalText, UriReferenceText, UriTemplateText, UriText};
+pub use formatted::UuidStr;
+pub use formatted::{DateStr, DateTimeLocalStr, DateTimeStr, Decimal128Str, DecimalStr, DurationStr, HttpDateStr};
+pub use formatted::{EmailStr, HostnameStr, IdnEmailStr, IdnHostnameStr};
+pub use formatted::{Ipv4CidrStr, Ipv6CidrStr, IriReferenceStr, IriStr, JsonPointerStr, RegexStr};
+pub use formatted::{RelativeJsonPointerStr, TimeLocalStr, UriReferenceStr, UriStr, UriTemplateStr};
 pub use full_time::FullTime;
 /// The `http` crate that [`Request`], [`Response`] and their parts come from.
 pub use http;

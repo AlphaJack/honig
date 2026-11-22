@@ -85,7 +85,7 @@ fn documented_examples_decode() {
         types::ProductRating,
     >(&mut bad, "/components/schemas/Product/properties/rating/examples/0", "0.68");
     value::<
-        runtime::DateTimeText,
+        runtime::DateTimeStr,
     >(
         &mut bad,
         "/components/schemas/Product/properties/listedAt/examples/0",
@@ -106,7 +106,7 @@ fn documented_examples_decode() {
         "[\"office\",\"lighting\",\"in-stock\"]",
     );
     value::<
-        runtime::DateTimeText,
+        runtime::DateTimeStr,
     >(
         &mut bad,
         "/components/schemas/Product/properties/lastUpdated/examples/0",
@@ -172,7 +172,7 @@ fn documented_examples_decode() {
         "\"-rating\"",
     );
     value::<
-        runtime::UuidText,
+        runtime::UuidStr,
     >(
         &mut bad,
         "/components/schemas/ProductEvent/properties/id/examples/0",
@@ -186,7 +186,7 @@ fn documented_examples_decode() {
         "\"created\"",
     );
     value::<
-        runtime::DateTimeText,
+        runtime::DateTimeStr,
     >(
         &mut bad,
         "/components/schemas/ProductEvent/properties/occurredAt/examples/0",
@@ -210,7 +210,7 @@ fn documented_examples_decode() {
         "\"Studio North\"",
     );
     value::<
-        runtime::DateTimeText,
+        runtime::DateTimeStr,
     >(
         &mut bad,
         "/components/schemas/PhotoBatchMeta/properties/takenAt/examples/0",
@@ -234,7 +234,7 @@ fn documented_examples_decode() {
         "\"https://cdn.example.com/images/8f47c132-9d1f-4f83-b5a4-91db5ee757ab.jpg\"",
     );
     value::<
-        runtime::DateTimeText,
+        runtime::DateTimeStr,
     >(
         &mut bad,
         "/components/schemas/ImageUploadedMessage/properties/uploadedAt/examples/0",
@@ -674,7 +674,7 @@ fn documented_examples_decode() {
         "12",
     );
     value::<
-        runtime::UuidText,
+        runtime::UuidStr,
     >(
         &mut bad,
         "/paths/~1products~1{productId}~1photos/post/responses/202/content/application~1json/schema/properties/batchId/examples/0",
@@ -812,7 +812,7 @@ fn documented_examples_decode() {
         types::ProductRating,
     >(&mut bad, "/components/schemas/Product/properties/rating/examples/0", "0.68");
     value::<
-        runtime::DateTimeText,
+        runtime::DateTimeStr,
     >(
         &mut bad,
         "/components/schemas/Product/properties/listedAt/examples/0",
@@ -863,7 +863,7 @@ fn documented_examples_decode() {
         types::VariantType,
     >(&mut bad, "/components/schemas/Variant/properties/type/examples/0", "\"size\"");
     value::<
-        runtime::UuidText,
+        runtime::UuidStr,
     >(
         &mut bad,
         "/components/schemas/ProductEvent/properties/id/examples/0",
@@ -877,7 +877,7 @@ fn documented_examples_decode() {
         "\"created\"",
     );
     value::<
-        runtime::DateTimeText,
+        runtime::DateTimeStr,
     >(
         &mut bad,
         "/components/schemas/ProductEvent/properties/occurredAt/examples/0",

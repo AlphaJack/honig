@@ -57,7 +57,11 @@ impl Note {
             let out = &mut violations;
             {
                 if let Err(e) = json.decode_ref::<Not3>() {
-                    runtime::violation(out, &runtime::InstancePath::Root, e.to_string());
+                    runtime::violation(
+                        out,
+                        &runtime::InstanceLocation::Root,
+                        e.to_string(),
+                    );
                 }
             }
         }
@@ -85,14 +89,14 @@ impl TextNote {
                     if let Err(e) = json.decode_ref::<Not>() {
                         runtime::violation(
                             out,
-                            &runtime::InstancePath::Root,
+                            &runtime::InstanceLocation::Root,
                             format!("{}{e}", "`then`: "),
                         );
                     }
                 } else if let Err(e) = json.decode_ref::<Not2>() {
                     runtime::violation(
                         out,
-                        &runtime::InstancePath::Root,
+                        &runtime::InstanceLocation::Root,
                         format!("{}{e}", "`else`: "),
                     );
                 }
@@ -165,7 +169,7 @@ impl Crop {
                 if hits != 1 {
                     runtime::violation(
                         out,
-                        &runtime::InstancePath::Root,
+                        &runtime::InstanceLocation::Root,
                         format!("matches {hits} of `oneOf`, not exactly one"),
                     );
                 }
@@ -196,14 +200,14 @@ impl NoteTextNote {
                     if let Err(e) = json.decode_ref::<Not>() {
                         runtime::violation(
                             out,
-                            &runtime::InstancePath::Root,
+                            &runtime::InstanceLocation::Root,
                             format!("{}{e}", "`then`: "),
                         );
                     }
                 } else if let Err(e) = json.decode_ref::<Not2>() {
                     runtime::violation(
                         out,
-                        &runtime::InstancePath::Root,
+                        &runtime::InstanceLocation::Root,
                         format!("{}{e}", "`else`: "),
                     );
                 }
@@ -601,7 +605,7 @@ impl TryFrom<serde_json::Value> for NotObjectSize {
                 let text = n.to_string();
                 runtime::check_decimal_range(
                     out,
-                    &runtime::InstancePath::Root,
+                    &runtime::InstanceLocation::Root,
                     text.as_str(),
                     runtime::Bounds {
                         max: Some("10"),
@@ -630,7 +634,7 @@ impl TryFrom<serde_json::Value> for Not2ObjectText {
                 let n = (text.as_str()).chars().count();
                 runtime::check_len(
                     out,
-                    &runtime::InstancePath::Root,
+                    &runtime::InstanceLocation::Root,
                     n,
                     None,
                     Some(5),
@@ -654,7 +658,7 @@ impl TryFrom<[u8; 3]> for TextNoteRgb {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
-            runtime::check_unique(out, &runtime::InstancePath::Root, &value);
+            runtime::check_unique(out, &runtime::InstanceLocation::Root, &value);
         }
         runtime::first(violations)
             .map(|()| Self(value))
@@ -676,7 +680,7 @@ impl TryFrom<serde_json::Value> for NotChecked {
             if let serde_json::Value::Object(n) = &value {
                 runtime::check_required(
                     out,
-                    &runtime::InstancePath::Root,
+                    &runtime::InstanceLocation::Root,
                     |name| n.contains_key(name),
                     &["size"],
                 );

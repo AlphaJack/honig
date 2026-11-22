@@ -70,7 +70,7 @@ impl Enc {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Shape {
     /// A primitive value.
-    Prim,
+    Primitive,
     /// An array.
     Array,
     /// An object.

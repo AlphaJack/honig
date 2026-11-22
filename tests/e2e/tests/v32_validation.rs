@@ -459,7 +459,7 @@ fn an_unfillable_error_schema_falls_back_to_rfc_9457() {
     assert_eq!(violations(&r), ["#/age 200 must be less than 150"], "{body}");
 }
 
-/// `email` and `idn-hostname` are types that only a valid value can be (`api::EmailText` and `api::IdnHostnameText`). A
+/// `email` and `idn-hostname` are types that only a valid value can be (`api::EmailStr` and `api::IdnHostnameStr`). A
 /// request that contains another value is refused while decoding.
 #[test]
 fn mail_addresses_and_host_names_are_types() {
@@ -473,7 +473,7 @@ fn mail_addresses_and_host_names_are_types() {
         let text = String::from_utf8_lossy(r.body().bytes());
         assert!(text.contains(&format!("`{bad}` is not a valid")), "{text}");
     }
-    assert!(api::EmailText::try_from("x").is_err(), "nor can a handler build one");
+    assert!(api::EmailStr::try_from("x").is_err(), "nor can a handler build one");
 }
 
 /// `multipleOf` on a number divides and allows 1e-9: decimal multiples a binary float cannot represent exactly pass.
@@ -573,7 +573,7 @@ fn a_builder_converts_each_field_and_returns_the_first_error() -> Result<(), Box
         .expect_err("150 is past the limit");
     assert_eq!(err.to_string(), "/age: 150 must be less than 150", "the first error");
     let err = types::User::builder().name("anna").role("admin").age(30).build().expect_err("a lowercase name");
-    assert_eq!(err.violation().path, "/name", "{err}");
+    assert_eq!(err.violation().instance_location, "/name", "{err}");
     assert!(err.to_string().starts_with("/name: "), "{err}");
     Ok(())
 }

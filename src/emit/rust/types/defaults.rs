@@ -197,7 +197,7 @@ pub(super) fn ty_default(space: &Space<'_>, t: &Ty, seen: &mut Vec<TypeId>) -> b
     }
     if let Ty::Format(f) = t {
         // `url::Url` and `std::net`'s `Ipv4Addr` and `Ipv6Addr` have no `Default`. A mail address and a host name
-        // have no value that every one of their kind could start from either. The uuid, chrono, jiff and ipnet format
+        // have no value that every one of their kind could start from either. The uuid, jiff and ipnet format
         // types all implement it. So does `runtime::FullTime`.
         // Nor has the text of a format without its library: an empty one is not of the format.
         // Nor has a type that the table sets: honig cannot know.

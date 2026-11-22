@@ -12,12 +12,13 @@ macro_rules! serialize_impl {
     };
 }
 use super::runtime;
+pub use runtime::EmailStr;
 runtime::object! {
     #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct EmailRequest {
         #[serde(rename = "type")]
         pub type_: EmailType,
-        pub email: runtime::EmailText,
+        pub email: runtime::EmailStr,
     }
 }
 runtime::object! {
@@ -404,7 +405,7 @@ runtime::object! {
     pub struct IfThenEmail {
         #[serde(rename = "type")]
         pub type_: IfThenEmailType,
-        pub email: runtime::EmailText,
+        pub email: runtime::EmailStr,
     }
 }
 pub use EmailType as IfThenEmailType;
@@ -626,7 +627,7 @@ pub mod builders {
     use super as types;
     use super::runtime;
     runtime::typestate_builder! {
-        EmailRequest => super::EmailRequest; required { email : R0 : runtime::EmailText =
+        EmailRequest => super::EmailRequest; required { email : R0 : runtime::EmailStr =
         "email" } optional {} fixed { type_ : types::EmailType {}, }
     }
     runtime::typestate_builder! {
@@ -638,7 +639,7 @@ pub mod builders {
         {} fixed {}
     }
     runtime::typestate_builder! {
-        IfThenEmail => super::IfThenEmail; required { email : R0 : runtime::EmailText =
+        IfThenEmail => super::IfThenEmail; required { email : R0 : runtime::EmailStr =
         "email" } optional {} fixed { type_ : types::IfThenEmailType {}, }
     }
     runtime::typestate_builder! {

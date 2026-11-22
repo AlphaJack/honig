@@ -55,6 +55,7 @@ macro_rules! serialize_impl {
     };
 }
 use super::runtime;
+pub use runtime::{DateTimeStr, EmailStr, UuidStr};
 runtime::object! {
     /// A user
     #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
@@ -86,7 +87,7 @@ runtime::object! {
     /// Credentials to authenticate a user
     #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct Credentials {
-        pub email: runtime::EmailText,
+        pub email: runtime::EmailStr,
     }
 }
 impl runtime::XmlShape for Credentials {
@@ -151,7 +152,7 @@ impl Item {
                 if hits != 1 {
                     runtime::violation(
                         out,
-                        &runtime::InstancePath::Root,
+                        &runtime::InstanceLocation::Root,
                         format!("matches {hits} of `oneOf`, not exactly one"),
                     );
                 }
@@ -185,7 +186,7 @@ runtime::object! {
         pub materials: Vec<ProductMaterialsItem>,
         #[optional]
         #[serde(rename = "listedAt")]
-        pub listed_at: runtime::DateTimeText,
+        pub listed_at: runtime::DateTimeStr,
         #[nullable]
         pub image: String,
         #[optional]
@@ -196,7 +197,7 @@ runtime::object! {
         pub tags: Vec<String>,
         #[optional]
         #[serde(rename = "lastUpdated")]
-        pub last_updated: runtime::DateTimeText,
+        pub last_updated: runtime::DateTimeStr,
         /// URL which gets invoked upon a successful operation
         #[serde(rename = "successCallbackUrl")]
         #[serde(
@@ -413,7 +414,7 @@ runtime::object! {
     pub struct ProductEvent {
         #[optional]
         /// Unique identifier for the event
-        pub id: runtime::UuidText,
+        pub id: runtime::UuidStr,
         /// The kind of change that occurred
         pub event: ProductEventEvent,
         pub product: Product,
@@ -421,7 +422,7 @@ runtime::object! {
         pub note: ShopMessage,
         #[optional]
         #[serde(rename = "occurredAt")]
-        pub occurred_at: runtime::DateTimeText,
+        pub occurred_at: runtime::DateTimeStr,
     }
 }
 impl ProductEvent {
@@ -513,7 +514,7 @@ runtime::object! {
         pub photographer: String,
         #[optional]
         #[serde(rename = "takenAt")]
-        pub taken_at: runtime::DateTimeText,
+        pub taken_at: runtime::DateTimeStr,
         #[optional]
         /// Number of image parts that follow this metadata part
         pub count: i64,
@@ -593,7 +594,7 @@ runtime::object! {
         #[optional]
         /// Timestamp when the image was uploaded
         #[serde(rename = "uploadedAt")]
-        pub uploaded_at: runtime::DateTimeText,
+        pub uploaded_at: runtime::DateTimeStr,
         #[optional]
         /// Size of the uploaded image in bytes
         #[serde(rename = "fileSize")]
@@ -961,7 +962,7 @@ impl TryFrom<f32> for ProductRating {
             let out = &mut violations;
             runtime::check_range(
                 out,
-                &runtime::InstancePath::Root,
+                &runtime::InstanceLocation::Root,
                 value,
                 runtime::Bounds {
                     min: Some(0.0),
@@ -1038,7 +1039,7 @@ impl TryFrom<f32> for ProductDimensionsWeight {
             let out = &mut violations;
             runtime::check_range(
                 out,
-                &runtime::InstancePath::Root,
+                &runtime::InstanceLocation::Root,
                 value,
                 runtime::Bounds {
                     exclusive_min: Some(0.0),
@@ -1148,7 +1149,7 @@ impl TryFrom<f32> for ProductMaterialsItemPercentage {
             let out = &mut violations;
             runtime::check_range(
                 out,
-                &runtime::InstancePath::Root,
+                &runtime::InstanceLocation::Root,
                 value,
                 runtime::Bounds {
                     exclusive_max: Some(100.0),
@@ -1742,7 +1743,7 @@ runtime::object! {
         pub accepted: i64,
         #[optional]
         #[serde(rename = "batchId")]
-        pub batch_id: runtime::UuidText,
+        pub batch_id: runtime::UuidStr,
     }
 }
 impl UploadPhotosAccepted {
@@ -1775,7 +1776,7 @@ runtime::object! {
         pub id: i64,
         #[optional]
         pub name: String,
-        pub email: runtime::EmailText,
+        pub email: runtime::EmailStr,
     }
 }
 impl runtime::XmlShape for CreateUserBody {
@@ -1803,7 +1804,7 @@ runtime::object! {
         pub id: i64,
         #[optional]
         pub name: String,
-        pub email: runtime::EmailText,
+        pub email: runtime::EmailStr,
     }
 }
 impl runtime::XmlShape for CreateUserBody2 {
@@ -1853,7 +1854,7 @@ runtime::object! {
     /// Credentials to authenticate a user
     #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct CredentialsRequest {
-        pub email: runtime::EmailText,
+        pub email: runtime::EmailStr,
         pub password: String,
     }
 }
@@ -1898,7 +1899,7 @@ impl ItemRequest {
                 if hits != 1 {
                     runtime::violation(
                         out,
-                        &runtime::InstancePath::Root,
+                        &runtime::InstanceLocation::Root,
                         format!("matches {hits} of `oneOf`, not exactly one"),
                     );
                 }
@@ -1931,7 +1932,7 @@ runtime::object! {
         pub materials: Vec<ProductMaterialsItem>,
         #[optional]
         #[serde(rename = "listedAt")]
-        pub listed_at: runtime::DateTimeText,
+        pub listed_at: runtime::DateTimeStr,
         #[nullable]
         pub image: String,
         #[optional]
@@ -2094,7 +2095,7 @@ runtime::object! {
     pub struct ProductEventRequest {
         #[optional]
         /// Unique identifier for the event
-        pub id: runtime::UuidText,
+        pub id: runtime::UuidStr,
         /// The kind of change that occurred
         pub event: ProductEventEvent,
         pub product: ProductRequest,
@@ -2102,7 +2103,7 @@ runtime::object! {
         pub note: ShopMessage,
         #[optional]
         #[serde(rename = "occurredAt")]
-        pub occurred_at: runtime::DateTimeText,
+        pub occurred_at: runtime::DateTimeStr,
     }
 }
 impl ProductEventRequest {
@@ -2347,7 +2348,7 @@ runtime::object! {
     pub struct CreateUserBodyRequest {
         #[optional]
         pub name: String,
-        pub email: runtime::EmailText,
+        pub email: runtime::EmailStr,
         pub password: String,
     }
 }
@@ -2377,7 +2378,7 @@ runtime::object! {
     pub struct CreateUserBody2Request {
         #[optional]
         pub name: String,
-        pub email: runtime::EmailText,
+        pub email: runtime::EmailStr,
         pub password: String,
     }
 }
@@ -2493,7 +2494,7 @@ impl TryFrom<Vec<serde_json::Value>> for PaginatedResourceData {
         {
             let out = &mut violations;
             {
-                let base = &runtime::InstancePath::Root;
+                let base = &runtime::InstanceLocation::Root;
                 for (i, v) in value.iter().enumerate() {
                     {
                         let json = runtime::to_value(v).unwrap_or_default();
@@ -2501,7 +2502,7 @@ impl TryFrom<Vec<serde_json::Value>> for PaginatedResourceData {
                         if json.matches::<serde_json::Value>() {
                             runtime::violation(
                                 out,
-                                &runtime::InstancePath::Index(base, i),
+                                &runtime::InstanceLocation::Index(base, i),
                                 "matches `not`",
                             );
                         }
@@ -2525,7 +2526,7 @@ pub mod builders {
         name(name) : String = "name" => some, None } fixed {}
     }
     runtime::typestate_builder! {
-        Credentials => super::Credentials; required { email : R0 : runtime::EmailText =
+        Credentials => super::Credentials; required { email : R0 : runtime::EmailStr =
         "email" } optional {} fixed {}
     }
     runtime::typestate_builder! {
@@ -2539,12 +2540,12 @@ pub mod builders {
         => some, None, rating(rating) : types::ProductRating = "rating" => some, None,
         dimensions(dimensions) : types::ProductDimensions = "dimensions" => some, None,
         materials(materials) : Vec < types::ProductMaterialsItem > = "materials" => some,
-        None, listed_at(listed_at) : runtime::DateTimeText = "listedAt" => some, None,
+        None, listed_at(listed_at) : runtime::DateTimeStr = "listedAt" => some, None,
         image(image) : String = "image" => nullable, runtime::Nullable::Absent,
         variants(variants) : Vec < types::Variant > = "variants" => some, None,
         creator(creator) : types::User = "creator" => some, None, tags(tags) : Vec <
         String > = "tags" => some, None, last_updated(last_updated) :
-        runtime::DateTimeText = "lastUpdated" => some, None,
+        runtime::DateTimeStr = "lastUpdated" => some, None,
         success_callback_url(success_callback_url) : runtime::url::Url =
         "successCallbackUrl" => some, None, failure_callback_url(failure_callback_url) :
         runtime::url::Url = "failureCallbackUrl" => some, None } fixed {}
@@ -2566,9 +2567,9 @@ pub mod builders {
     runtime::typestate_builder! {
         ProductEvent => super::ProductEvent; required { event : R0 :
         types::ProductEventEvent = "event", product : R1 : types::Product = "product" }
-        optional { id(id) : runtime::UuidText = "id" => some, None, note(note) :
+        optional { id(id) : runtime::UuidStr = "id" => some, None, note(note) :
         types::ShopMessage = "note" => some, None, occurred_at(occurred_at) :
-        runtime::DateTimeText = "occurredAt" => some, None } fixed {}
+        runtime::DateTimeStr = "occurredAt" => some, None } fixed {}
     }
     runtime::typestate_builder! {
         ShopMessage => super::ShopMessage; required {} optional { lang(lang) : String =
@@ -2576,8 +2577,8 @@ pub mod builders {
     }
     runtime::typestate_builder! {
         PhotoBatchMeta => super::PhotoBatchMeta; required { photographer : R0 : String =
-        "photographer" } optional { taken_at(taken_at) : runtime::DateTimeText =
-        "takenAt" => some, None, count(count) : i64 = "count" => some, None } fixed {}
+        "photographer" } optional { taken_at(taken_at) : runtime::DateTimeStr = "takenAt"
+        => some, None, count(count) : i64 = "count" => some, None } fixed {}
     }
     runtime::typestate_builder! {
         PaginatedResource => super::PaginatedResource; required {} optional { data(data)
@@ -2588,7 +2589,7 @@ pub mod builders {
         ImageUploadedMessage => super::ImageUploadedMessage; required {} optional {
         message(message) : String = "message" => some, None, image_url(image_url) :
         String = "imageUrl" => some, None, uploaded_at(uploaded_at) :
-        runtime::DateTimeText = "uploadedAt" => some, None, file_size(file_size) : i64 =
+        runtime::DateTimeStr = "uploadedAt" => some, None, file_size(file_size) : i64 =
         "fileSize" => some, None, mime_type(mime_type) : String = "mimeType" => some,
         None } fixed {}
     }
@@ -2717,16 +2718,16 @@ pub mod builders {
     runtime::typestate_builder! {
         UploadPhotosAccepted => super::UploadPhotosAccepted; required {} optional {
         accepted(accepted) : i64 = "accepted" => some, None, batch_id(batch_id) :
-        runtime::UuidText = "batchId" => some, None } fixed {}
+        runtime::UuidStr = "batchId" => some, None } fixed {}
     }
     runtime::typestate_builder! {
         CreateUserBody => super::CreateUserBody; required { email : R0 :
-        runtime::EmailText = "email" } optional { id(id) : i64 = "id" => some, None,
+        runtime::EmailStr = "email" } optional { id(id) : i64 = "id" => some, None,
         name(name) : String = "name" => some, None } fixed {}
     }
     runtime::typestate_builder! {
         CreateUserBody2 => super::CreateUserBody2; required { email : R0 :
-        runtime::EmailText = "email" } optional { id(id) : i64 = "id" => some, None,
+        runtime::EmailStr = "email" } optional { id(id) : i64 = "id" => some, None,
         name(name) : String = "name" => some, None } fixed {}
     }
     runtime::typestate_builder! {
@@ -2735,7 +2736,7 @@ pub mod builders {
     }
     runtime::typestate_builder! {
         CredentialsRequest => super::CredentialsRequest; required { email : R0 :
-        runtime::EmailText = "email", password : R1 : String = "password" } optional {}
+        runtime::EmailStr = "email", password : R1 : String = "password" } optional {}
         fixed {}
     }
     runtime::typestate_builder! {
@@ -2745,7 +2746,7 @@ pub mod builders {
         None, rating(rating) : types::ProductRating = "rating" => some, None,
         dimensions(dimensions) : types::ProductDimensions = "dimensions" => some, None,
         materials(materials) : Vec < types::ProductMaterialsItem > = "materials" => some,
-        None, listed_at(listed_at) : runtime::DateTimeText = "listedAt" => some, None,
+        None, listed_at(listed_at) : runtime::DateTimeStr = "listedAt" => some, None,
         image(image) : String = "image" => nullable, runtime::Nullable::Absent,
         variants(variants) : Vec < types::VariantRequest > = "variants" => some, None,
         creator(creator) : types::UserRequest = "creator" => some, None, tags(tags) : Vec
@@ -2764,9 +2765,9 @@ pub mod builders {
     runtime::typestate_builder! {
         ProductEventRequest => super::ProductEventRequest; required { event : R0 :
         types::ProductEventEvent = "event", product : R1 : types::ProductRequest =
-        "product" } optional { id(id) : runtime::UuidText = "id" => some, None,
-        note(note) : types::ShopMessage = "note" => some, None, occurred_at(occurred_at)
-        : runtime::DateTimeText = "occurredAt" => some, None } fixed {}
+        "product" } optional { id(id) : runtime::UuidStr = "id" => some, None, note(note)
+        : types::ShopMessage = "note" => some, None, occurred_at(occurred_at) :
+        runtime::DateTimeStr = "occurredAt" => some, None } fixed {}
     }
     runtime::typestate_builder! {
         VariantShippingRequest => super::VariantShippingRequest; required {} optional {
@@ -2796,12 +2797,12 @@ pub mod builders {
     }
     runtime::typestate_builder! {
         CreateUserBodyRequest => super::CreateUserBodyRequest; required { email : R0 :
-        runtime::EmailText = "email", password : R1 : String = "password" } optional {
+        runtime::EmailStr = "email", password : R1 : String = "password" } optional {
         name(name) : String = "name" => some, None } fixed {}
     }
     runtime::typestate_builder! {
         CreateUserBody2Request => super::CreateUserBody2Request; required { email : R0 :
-        runtime::EmailText = "email", password : R1 : String = "password" } optional {
+        runtime::EmailStr = "email", password : R1 : String = "password" } optional {
         name(name) : String = "name" => some, None } fixed {}
     }
 }

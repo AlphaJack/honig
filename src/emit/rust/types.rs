@@ -104,7 +104,20 @@ pub(super) fn emit(api: &crate::ir::Api, space: &Space<'_>, opts: &crate::emit::
         )
     });
     let builders = builders_mod(&builders, builders_name_types);
-    quote! { #header #runtime_import #(#items)* #builders }
+    let strs = format_strs(space, &items);
+    quote! { #header #runtime_import #strs #(#items)* #builders }
+}
+
+/// Returns `pub use` of the runtime's checked text types that `items` hold, so that they sit beside the types of the
+/// description. A type of the description with the same name keeps it.
+fn format_strs(space: &Space<'_>, items: &[TokenStream]) -> Option<TokenStream> {
+    let text: String = items.iter().map(ToString::to_string).collect();
+    let taken = space.types.name_keys();
+    let names: Vec<_> = (super::syntax::FORMAT_STRS.iter())
+        .filter(|n| text.contains(&format!("runtime :: {n} ")) && !taken.contains(**n))
+        .map(|n| ident(n))
+        .collect();
+    (!names.is_empty()).then(|| quote!(pub use runtime::{#(#names),*};))
 }
 
 /// Inlines types declared as an alias of an identical earlier one (one inline schema per operation): index to the
@@ -966,7 +979,7 @@ fn newtype(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, def: &Ty
 fn checked_type(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, def: &TypeDef, c: &Checked) {
     let n = pascal_ident(&def.name);
     let doc = doc_opt(def.doc.as_deref());
-    let path = quote!(&runtime::InstancePath::Root);
+    let path = quote!(&runtime::InstanceLocation::Root);
     let base = ty(space, &c.base, false);
     let kind = Base::of(c);
     // A scalar's own checks leave out `not`: it is checked here. `checks::checks` checks it for any other base.

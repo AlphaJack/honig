@@ -12,7 +12,7 @@ impl TryFrom<String> for UploadImageXChecksum {
             let n = (value.as_str()).chars().count();
             runtime::check_len(
                 out,
-                &runtime::InstancePath::Root,
+                &runtime::InstanceLocation::Root,
                 n,
                 Some(4),
                 None,

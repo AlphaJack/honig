@@ -53,7 +53,7 @@ pub mod submit_form {
     runtime::response_error!(Response { Self::NoContent => "status 204 (NoContent)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<(), Box<Self>> {
+        pub fn into_result(self) -> Result<(), Box<Self>> {
             match self {
                 Self::NoContent => Ok(()),
             }
@@ -135,11 +135,11 @@ pub mod put_blob {
     /// What the handler of this operation returns: its `Response`, or an error that the server answers.
     pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(Response { Self::Ok { .. } => "status 200 (Ok)", });
-    /// The body and headers of the success, in order: what `Response::into_ok` gives.
+    /// The body and headers of the success, in order: what `Response::into_result` gives.
     pub type Success = (runtime::Blob, Option<i64>, types::PutBlobOkXQuota);
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<Success, Box<Self>> {
+        pub fn into_result(self) -> Result<Success, Box<Self>> {
             match self {
                 Self::Ok { body, x_size, x_quota } => Ok((body, x_size, x_quota)),
             }
@@ -168,7 +168,7 @@ pub mod list_products {
         #[deprecated]
         pub x_rate: Option<i64>,
         pub empty: Option<String>,
-        pub x_trace: Option<runtime::UuidText>,
+        pub x_trace: Option<runtime::UuidStr>,
         pub media: Media,
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -218,7 +218,7 @@ pub mod list_products {
             = "tags" => some, None, filter(filter) : std::collections::BTreeMap < String,
             String > = "filter" => some, None, session(session) : String = "session" =>
             some, None, x_rate(x_rate) : i64 = "X-Rate" => some, None, empty(empty) :
-            String = "empty" => some, None, x_trace(x_trace) : runtime::UuidText =
+            String = "empty" => some, None, x_trace(x_trace) : runtime::UuidStr =
             "X-Trace" => some, None } fixed { media : super::Media::ALL[0] }
         }
     }
@@ -247,7 +247,7 @@ pub mod list_products {
     );
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<Self, Box<Self>> {
+        pub fn into_result(self) -> Result<Self, Box<Self>> {
             match self {
                 success @ (Self::Ok { .. } | Self::Success { .. }) => Ok(success),
                 other @ Self::Default { .. } => Err(Box::new(other)),
@@ -297,7 +297,7 @@ pub mod create_product {
     ];
     #[derive(Debug, Clone, PartialEq)]
     pub struct Params {
-        pub x_trace: Option<runtime::UuidText>,
+        pub x_trace: Option<runtime::UuidStr>,
         pub meta_x_part: Option<String>,
         /// New product
         pub body: Body,
@@ -316,7 +316,7 @@ pub mod create_product {
         use super::runtime;
         runtime::typestate_builder! {
             Params => super::Params; required { body : R0 : super::Body = "body" }
-            optional { x_trace(x_trace) : runtime::UuidText = "X-Trace" => some, None,
+            optional { x_trace(x_trace) : runtime::UuidStr = "X-Trace" => some, None,
             meta_x_part(meta_x_part) : String = "X-Part" => some, None } fixed {}
         }
     }
@@ -336,7 +336,7 @@ pub mod create_product {
     runtime::response_error!(Response { Self::Created => "status 201 (Created)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<(), Box<Self>> {
+        pub fn into_result(self) -> Result<(), Box<Self>> {
             match self {
                 Self::Created => Ok(()),
             }
@@ -382,7 +382,7 @@ pub mod search_products {
     ];
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct Params {
-        pub x_trace: Option<runtime::UuidText>,
+        pub x_trace: Option<runtime::UuidStr>,
         pub body: Option<std::collections::BTreeMap<String, serde_json::Value>>,
     }
     impl Params {
@@ -396,7 +396,7 @@ pub mod search_products {
         use super::runtime;
         runtime::typestate_builder! {
             Params => super::Params; required {} optional { x_trace(x_trace) :
-            runtime::UuidText = "X-Trace" => some, None, body(body) :
+            runtime::UuidStr = "X-Trace" => some, None, body(body) :
             std::collections::BTreeMap < String, serde_json::Value > = "body" => some,
             None } fixed {}
         }
@@ -411,7 +411,7 @@ pub mod search_products {
     runtime::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<Vec<types::Product>, Box<Self>> {
+        pub fn into_result(self) -> Result<Vec<types::Product>, Box<Self>> {
             match self {
                 Self::Ok(body) => Ok(body),
             }
@@ -434,7 +434,7 @@ pub mod copy_products {
     ];
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct Params {
-        pub x_trace: Option<runtime::UuidText>,
+        pub x_trace: Option<runtime::UuidStr>,
     }
     impl Params {
         #[must_use]
@@ -447,7 +447,7 @@ pub mod copy_products {
         use super::runtime;
         runtime::typestate_builder! {
             Params => super::Params; required {} optional { x_trace(x_trace) :
-            runtime::UuidText = "X-Trace" => some, None } fixed {}
+            runtime::UuidStr = "X-Trace" => some, None } fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -460,7 +460,7 @@ pub mod copy_products {
     runtime::response_error!(Response { Self::NoContent => "status 204 (NoContent)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<(), Box<Self>> {
+        pub fn into_result(self) -> Result<(), Box<Self>> {
             match self {
                 Self::NoContent => Ok(()),
             }
@@ -499,7 +499,7 @@ pub mod get_product {
     runtime::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<types::Product, Box<Self>> {
+        pub fn into_result(self) -> Result<types::Product, Box<Self>> {
             match self {
                 Self::Ok(body) => Ok(body),
             }
@@ -537,7 +537,7 @@ pub mod put_product {
     runtime::response_error!(Response { Self::Ok => "status 200 (Ok)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<(), Box<Self>> {
+        pub fn into_result(self) -> Result<(), Box<Self>> {
             match self {
                 Self::Ok => Ok(()),
             }
@@ -575,7 +575,7 @@ pub mod delete_product {
     runtime::response_error!(Response { Self::NoContent => "status 204 (NoContent)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<(), Box<Self>> {
+        pub fn into_result(self) -> Result<(), Box<Self>> {
             match self {
                 Self::NoContent => Ok(()),
             }
@@ -613,7 +613,7 @@ pub mod options_product {
     runtime::response_error!(Response { Self::Ok => "status 200 (Ok)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<(), Box<Self>> {
+        pub fn into_result(self) -> Result<(), Box<Self>> {
             match self {
                 Self::Ok => Ok(()),
             }
@@ -651,7 +651,7 @@ pub mod head_product {
     runtime::response_error!(Response { Self::Ok => "status 200 (Ok)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<(), Box<Self>> {
+        pub fn into_result(self) -> Result<(), Box<Self>> {
             match self {
                 Self::Ok => Ok(()),
             }
@@ -689,7 +689,7 @@ pub mod patch_product {
     runtime::response_error!(Response { Self::Ok => "status 200 (Ok)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<(), Box<Self>> {
+        pub fn into_result(self) -> Result<(), Box<Self>> {
             match self {
                 Self::Ok => Ok(()),
             }
@@ -727,7 +727,7 @@ pub mod trace_product {
     runtime::response_error!(Response { Self::Ok => "status 200 (Ok)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<(), Box<Self>> {
+        pub fn into_result(self) -> Result<(), Box<Self>> {
             match self {
                 Self::Ok => Ok(()),
             }
@@ -768,7 +768,9 @@ pub mod search {
     runtime::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<runtime::Items<types::SearchOkItem>, Box<Self>> {
+        pub fn into_result(
+            self,
+        ) -> Result<runtime::Items<types::SearchOkItem>, Box<Self>> {
             match self {
                 Self::Ok(body) => Ok(body),
             }
@@ -809,7 +811,7 @@ pub mod new_product_post {
     runtime::response_error!(Response { Self::Ok => "status 200 (Ok)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<(), Box<Self>> {
+        pub fn into_result(self) -> Result<(), Box<Self>> {
             match self {
                 Self::Ok => Ok(()),
             }
@@ -850,7 +852,7 @@ pub mod create_product_on_adopt_post {
     runtime::response_error!(Response { Self::Ok => "status 200 (Ok)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<(), Box<Self>> {
+        pub fn into_result(self) -> Result<(), Box<Self>> {
             match self {
                 Self::Ok => Ok(()),
             }
@@ -880,7 +882,7 @@ pub mod create_product_shared_post {
     runtime::response_error!(Response { Self::Ok => "status 200 (Ok)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<(), Box<Self>> {
+        pub fn into_result(self) -> Result<(), Box<Self>> {
             match self {
                 Self::Ok => Ok(()),
             }

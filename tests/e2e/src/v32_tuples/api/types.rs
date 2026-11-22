@@ -22,7 +22,10 @@ impl Open {
                 {
                     runtime::violation(
                         out,
-                        &runtime::InstancePath::Index(&runtime::InstancePath::Root, 0),
+                        &runtime::InstanceLocation::Index(
+                            &runtime::InstanceLocation::Root,
+                            0,
+                        ),
                         e.to_string(),
                     );
                 }

@@ -40,7 +40,7 @@ components:
         amount: {type: number, format: decimal, minimum: 0}
         sum: {type: number, format: decimal128}
         # Typed when the crate has the library: `char` always, `uri` with `url`, the CIDR formats with `ipnet`;
-        # `date-time-local` and `time-local` with chrono or jiff (strings here: this crate has neither).
+        # `date-time-local` and `time-local` with jiff (strings here: this crate does not depend on it).
         initial: {type: string, format: char}
         home: {type: string, format: uri}
         net4: {type: string, format: ipv4-cidr}

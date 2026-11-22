@@ -9,7 +9,7 @@ pub use crate::violation::Violation;
 
 /// Where a value is in a request. It is a JSON pointer that is formatted only on a violation.
 #[derive(Debug, Clone, Copy)]
-pub enum InstancePath<'a> {
+pub enum InstanceLocation<'a> {
     /// The request itself (`""`).
     Root,
     /// A property, parameter location or name under a parent.
@@ -18,7 +18,7 @@ pub enum InstancePath<'a> {
     Index(&'a Self, usize),
 }
 
-impl fmt::Display for InstancePath<'_> {
+impl fmt::Display for InstanceLocation<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Root => Ok(()),
@@ -37,14 +37,14 @@ impl fmt::Display for InstancePath<'_> {
 pub fn first(violations: Vec<Violation>) -> Result<(), String> {
     match violations.into_iter().next() {
         None => Ok(()),
-        Some(v) if v.path.is_empty() => Err(v.message),
-        Some(v) => Err(format!("{}: {}", v.path, v.message)),
+        Some(v) if v.instance_location.is_empty() => Err(v.message),
+        Some(v) => Err(format!("{}: {}", v.instance_location, v.message)),
     }
 }
 
 /// Records a violation.
-pub fn violation(out: &mut Vec<Violation>, path: &InstancePath<'_>, message: impl Into<String>) {
-    out.push(Violation { path: path.to_string(), message: message.into() });
+pub fn violation(out: &mut Vec<Violation>, location: &InstanceLocation<'_>, message: impl Into<String>) {
+    out.push(Violation { instance_location: location.to_string(), message: message.into() });
 }
 
 /// Checks a string `format` the crate has no library type for: what parsing into that type would refuse.
@@ -54,11 +54,11 @@ pub fn violation(out: &mut Vec<Violation>, path: &InstancePath<'_>, message: imp
 /// that it does not know passes.
 #[cfg_attr(
     feature = "idn",
-    doc = "\nThose types are [`EmailText`](crate::EmailText) and [`HostnameText`](crate::HostnameText)."
+    doc = "\nThose types are [`EmailStr`](crate::EmailStr) and [`HostnameStr`](crate::HostnameStr)."
 )]
-pub fn check_format(out: &mut Vec<Violation>, path: &InstancePath<'_>, value: &str, format: &str) {
+pub fn check_format(out: &mut Vec<Violation>, location: &InstanceLocation<'_>, value: &str, format: &str) {
     if !is_format(value, format) {
-        violation(out, path, format!("is not a valid {format}"));
+        violation(out, location, format!("is not a valid {format}"));
     }
 }
 
@@ -190,30 +190,35 @@ pub(crate) fn decimal128(s: &str) -> Result<(), String> {
 }
 
 /// Checks that the decimal number `text` is one that IEEE 754 decimal128 represents exactly (`format: decimal128`).
-pub fn check_decimal128(out: &mut Vec<Violation>, path: &InstancePath<'_>, text: &str) {
+pub fn check_decimal128(out: &mut Vec<Violation>, location: &InstanceLocation<'_>, text: &str) {
     if let Err(why) = decimal128(text) {
-        violation(out, path, format!("`{text}` {why}"));
+        violation(out, location, format!("`{text}` {why}"));
     }
 }
 
-/// Records `message` at `path` unless `ok`.
-pub fn check(out: &mut Vec<Violation>, path: &InstancePath<'_>, ok: bool, message: &str) {
+/// Records `message` at `location` unless `ok`.
+pub fn check(out: &mut Vec<Violation>, location: &InstanceLocation<'_>, ok: bool, message: &str) {
     if !ok {
-        violation(out, path, message);
+        violation(out, location, message);
     }
 }
 
 /// Checks `required` of an object whose names `has` looks up: each of `names` is one of its properties.
-pub fn check_required(out: &mut Vec<Violation>, path: &InstancePath<'_>, has: impl Fn(&str) -> bool, names: &[&str]) {
+pub fn check_required(
+    out: &mut Vec<Violation>,
+    location: &InstanceLocation<'_>,
+    has: impl Fn(&str) -> bool,
+    names: &[&str],
+) {
     for name in names.iter().filter(|name| !has(name)) {
-        violation(out, &InstancePath::Key(path, name), "is required");
+        violation(out, &InstanceLocation::Key(location, name), "is required");
     }
 }
 
 /// Checks `minLength`/`maxLength`, `minItems`/`maxItems`, `minProperties`/`maxProperties`.
 pub fn check_len(
     out: &mut Vec<Violation>,
-    path: &InstancePath<'_>,
+    location: &InstanceLocation<'_>,
     len: usize,
     min: Option<u64>,
     max: Option<u64>,
@@ -221,10 +226,10 @@ pub fn check_len(
 ) {
     let len = u64::try_from(len).unwrap_or(u64::MAX);
     if let Some(m) = min.filter(|m| len < *m) {
-        violation(out, path, format!("at least {m} {unit} required, found {len}"));
+        violation(out, location, format!("at least {m} {unit} required, found {len}"));
     }
     if let Some(m) = max.filter(|m| len > *m) {
-        violation(out, path, format!("at most {m} {unit} allowed, found {len}"));
+        violation(out, location, format!("at most {m} {unit} allowed, found {len}"));
     }
 }
 
@@ -291,36 +296,36 @@ impl<T> Bounds<T> {
 
 /// Checks that `s` matches `re`, with the pattern in the message.
 #[cfg(feature = "regress")]
-pub fn check_pattern(out: &mut Vec<Violation>, path: &InstancePath<'_>, re: &crate::pattern::Pattern, s: &str) {
+pub fn check_pattern(out: &mut Vec<Violation>, location: &InstanceLocation<'_>, re: &crate::pattern::Pattern, s: &str) {
     if !crate::pattern::pattern_matches(re, s) {
-        violation(out, path, format!("does not match `{}`", crate::pattern::pattern_text(re)));
+        violation(out, location, format!("does not match `{}`", crate::pattern::pattern_text(re)));
     }
 }
 
 /// Checks `minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum`.
 pub fn check_range<T: PartialOrd + fmt::Display + Copy + JsonNumber>(
     out: &mut Vec<Violation>,
-    path: &InstancePath<'_>,
+    location: &InstanceLocation<'_>,
     v: T,
     bounds: Bounds<T>,
 ) {
     let Bounds { min, max, exclusive_min: xmin, exclusive_max: xmax } = bounds;
     // `NaN` compares false with every bound. An infinity passes the bound on its own side.
     if !v.is_json_number() {
-        violation(out, path, "is not a number");
+        violation(out, location, "is not a number");
         return;
     }
     if let Some(m) = min.filter(|m| v < *m) {
-        violation(out, path, format!("{v} is less than the minimum {m}"));
+        violation(out, location, format!("{v} is less than the minimum {m}"));
     }
     if let Some(m) = max.filter(|m| v > *m) {
-        violation(out, path, format!("{v} is greater than the maximum {m}"));
+        violation(out, location, format!("{v} is greater than the maximum {m}"));
     }
     if let Some(m) = xmin.filter(|m| v <= *m) {
-        violation(out, path, format!("{v} must be greater than {m}"));
+        violation(out, location, format!("{v} must be greater than {m}"));
     }
     if let Some(m) = xmax.filter(|m| v >= *m) {
-        violation(out, path, format!("{v} must be less than {m}"));
+        violation(out, location, format!("{v} must be less than {m}"));
     }
 }
 
@@ -330,7 +335,7 @@ pub fn check_range<T: PartialOrd + fmt::Display + Copy + JsonNumber>(
 /// `1e300` is five bytes and not 301.
 pub fn check_multiple<T: fmt::LowerExp + JsonNumber + Copy>(
     out: &mut Vec<Violation>,
-    path: &InstancePath<'_>,
+    location: &InstanceLocation<'_>,
     value: T,
     of: &str,
 ) {
@@ -339,13 +344,13 @@ pub fn check_multiple<T: fmt::LowerExp + JsonNumber + Copy>(
     }
     match value.multiple_of(of) {
         Some(true) => {}
-        Some(false) => violation(out, path, format!("is not a multiple of {of}")),
+        Some(false) => violation(out, location, format!("is not a multiple of {of}")),
         None => {
             let mut text = StackText::default();
             if fmt::Write::write_fmt(&mut text, format_args!("{value:e}")).is_ok() {
-                check_multiple_text(out, path, text.as_str(), of);
+                check_multiple_text(out, location, text.as_str(), of);
             } else {
-                check_multiple_text(out, path, &format!("{value:e}"), of);
+                check_multiple_text(out, location, &format!("{value:e}"), of);
             }
         }
     }
@@ -376,29 +381,34 @@ impl fmt::Write for StackText {
 
 /// Checks that the decimal text `value` is a multiple of `of`, exactly. Text that is not decimal, or an `of` that is
 /// not positive, is no multiple: validation refuses such an `of` before generation.
-pub fn check_multiple_text(out: &mut Vec<Violation>, path: &InstancePath<'_>, value: &str, of: &str) {
+pub fn check_multiple_text(out: &mut Vec<Violation>, location: &InstanceLocation<'_>, value: &str, of: &str) {
     if !crate::exact::is_multiple(value, of).unwrap_or(false) {
-        violation(out, path, format!("is not a multiple of {of}"));
+        violation(out, location, format!("is not a multiple of {of}"));
     }
 }
 
 /// Checks `minimum`, `maximum`, `exclusiveMinimum` and `exclusiveMaximum` of the decimal text `value` exactly: a
 /// decimal keeps more digits than an `f64` compares.
-pub fn check_decimal_range(out: &mut Vec<Violation>, path: &InstancePath<'_>, value: &str, bounds: Bounds<&str>) {
+pub fn check_decimal_range(
+    out: &mut Vec<Violation>,
+    location: &InstanceLocation<'_>,
+    value: &str,
+    bounds: Bounds<&str>,
+) {
     use std::cmp::Ordering::{Greater, Less};
     let Bounds { min, max, exclusive_min: xmin, exclusive_max: xmax } = bounds;
     let cmp = |b: &str| crate::exact::compare(value, b);
     if let Some(m) = min.filter(|m| cmp(m) == Some(Less)) {
-        violation(out, path, format!("{value} is less than the minimum {m}"));
+        violation(out, location, format!("{value} is less than the minimum {m}"));
     }
     if let Some(m) = max.filter(|m| cmp(m) == Some(Greater)) {
-        violation(out, path, format!("{value} is greater than the maximum {m}"));
+        violation(out, location, format!("{value} is greater than the maximum {m}"));
     }
     if let Some(m) = xmin.filter(|m| cmp(m) != Some(Greater)) {
-        violation(out, path, format!("{value} must be greater than {m}"));
+        violation(out, location, format!("{value} must be greater than {m}"));
     }
     if let Some(m) = xmax.filter(|m| cmp(m) != Some(Less)) {
-        violation(out, path, format!("{value} must be less than {m}"));
+        violation(out, location, format!("{value} must be less than {m}"));
     }
 }
 
@@ -537,21 +547,25 @@ fn canonical_content(v: &crate::tagged::Content<'_>, out: &mut String) {
 }
 
 /// Checks `uniqueItems`.
-pub fn check_unique<T: Serialize>(out: &mut Vec<Violation>, path: &InstancePath<'_>, items: &[T]) {
+pub fn check_unique<T: Serialize>(out: &mut Vec<Violation>, location: &InstanceLocation<'_>, items: &[T]) {
     if has_duplicates(items) {
-        violation(out, path, "items must be unique");
+        violation(out, location, "items must be unique");
     }
 }
 
 /// Checks `uniqueItems` of the items of a buffered array, as [`check_unique`] does.
-pub fn check_unique_content(out: &mut Vec<Violation>, path: &InstancePath<'_>, items: &[crate::tagged::Content<'_>]) {
+pub fn check_unique_content(
+    out: &mut Vec<Violation>,
+    location: &InstanceLocation<'_>,
+    items: &[crate::tagged::Content<'_>],
+) {
     let keys = items.iter().map(|x| {
         let mut key = String::new();
         canonical_content(x, &mut key);
         key
     });
     if repeats(keys.collect()) {
-        violation(out, path, "items must be unique");
+        violation(out, location, "items must be unique");
     }
 }
 
@@ -743,18 +757,18 @@ mod mail {
     #[cfg(test)]
     mod tests {
         use super::{LABEL, email, hostname, mapped_name, plain_name};
-        use crate::{EmailText, IdnHostnameText};
+        use crate::{EmailStr, IdnHostnameStr};
 
         #[test]
         fn only_a_valid_value_is_one() {
             assert_eq!(
-                EmailText::try_from("ann@example.com").map(EmailText::into_inner),
+                EmailStr::try_from("ann@example.com").map(EmailStr::into_inner),
                 Ok("ann@example.com".to_owned())
             );
-            assert_eq!(EmailText::try_from("x"), Err(crate::BuildError::value("`x` is not a valid email".to_owned())));
-            let decoded: Result<EmailText, _> = serde_json::from_str("\"x\"");
+            assert_eq!(EmailStr::try_from("x"), Err(crate::BuildError::value("`x` is not a valid email".to_owned())));
+            let decoded: Result<EmailStr, _> = serde_json::from_str("\"x\"");
             assert!(decoded.unwrap_err().to_string().contains("is not a valid email"));
-            let site: IdnHostnameText = serde_json::from_str("\"bücher.example\"").unwrap();
+            let site: IdnHostnameStr = serde_json::from_str("\"bücher.example\"").unwrap();
             assert_eq!(serde_json::to_string(&site).unwrap(), "\"bücher.example\"", "the value as written");
         }
 
@@ -889,14 +903,14 @@ mod tests {
     fn a_pattern_names_itself_in_its_message() {
         static RE: crate::pattern::Pattern = crate::pattern::Pattern::new("^[a-z]+$");
         let mut out = vec![];
-        super::check_pattern(&mut out, &super::InstancePath::Root, &RE, "ABC");
+        super::check_pattern(&mut out, &super::InstanceLocation::Root, &RE, "ABC");
         assert_eq!(out.first().map(|v| v.message.as_str()), Some("does not match `^[a-z]+$`"));
     }
 
     #[test]
     fn nan_is_no_number_whatever_the_bounds() {
         let mut out = vec![];
-        let root = &super::InstancePath::Root;
+        let root = &super::InstanceLocation::Root;
         super::check_range(
             &mut out,
             root,
@@ -926,9 +940,9 @@ mod tests {
     #[test]
     fn each_missing_name_is_required_at_its_pointer() {
         let mut out = vec![];
-        let at = super::InstancePath::Index(&super::InstancePath::Root, 3);
+        let at = super::InstanceLocation::Index(&super::InstanceLocation::Root, 3);
         super::check_required(&mut out, &at, |n| n == "a", &["a", "b/c", "d~e"]);
-        let found: Vec<(&str, &str)> = out.iter().map(|v| (v.path.as_str(), v.message.as_str())).collect();
+        let found: Vec<(&str, &str)> = out.iter().map(|v| (v.instance_location.as_str(), v.message.as_str())).collect();
         assert_eq!(found, [("/3/b~1c", "is required"), ("/3/d~0e", "is required")]);
     }
 
@@ -948,12 +962,12 @@ mod tests {
         let mut out = vec![];
         super::check_unique(
             &mut out,
-            &super::InstancePath::Root,
+            &super::InstanceLocation::Root,
             &[json!([1, 2]), json!([12]), json!({"a": 1, "b": 2})],
         );
         super::check_unique(
             &mut out,
-            &super::InstancePath::Root,
+            &super::InstanceLocation::Root,
             &[json!({"a": 1, "b": [1, 2]}), json!({"b": [1, 2], "a": 1.0})],
         );
         let messages: Vec<&str> = out.iter().map(|v| v.message.as_str()).collect();
@@ -987,15 +1001,15 @@ mod tests {
             assert_eq!(super::decimal128(not), Err("is not a decimal".to_owned()), "{not:?}");
         }
         let mut out = vec![];
-        super::check_decimal128(&mut out, &super::InstancePath::Root, "1e6145");
+        super::check_decimal128(&mut out, &super::InstanceLocation::Root, "1e6145");
         assert_eq!(out[0].message, "`1e6145` is out of the range of decimal128");
     }
 
     #[test]
     fn check_records_its_message_only_when_not_ok() {
         let mut out = vec![];
-        super::check(&mut out, &super::InstancePath::Root, true, "fine");
-        super::check(&mut out, &super::InstancePath::Root, false, "must match ^a");
+        super::check(&mut out, &super::InstanceLocation::Root, true, "fine");
+        super::check(&mut out, &super::InstanceLocation::Root, false, "must match ^a");
         let messages: Vec<&str> = out.iter().map(|v| v.message.as_str()).collect();
         assert_eq!(messages, ["must match ^a"]);
     }
@@ -1003,7 +1017,10 @@ mod tests {
     #[test]
     fn the_first_violation_is_the_error_with_its_pointer_inside_the_value() {
         assert_eq!(super::first(vec![]), Ok(()));
-        let at = |path: &str, message: &str| super::Violation { path: path.to_owned(), message: message.to_owned() };
+        let at = |location: &str, message: &str| super::Violation {
+            instance_location: location.to_owned(),
+            message: message.to_owned(),
+        };
         assert_eq!(super::first(vec![at("", "too short"), at("/1", "later")]), Err("too short".to_owned()));
         assert_eq!(super::first(vec![at("/2", "not a uuid")]), Err("/2: not a uuid".to_owned()));
     }
@@ -1012,7 +1029,7 @@ mod tests {
     fn formats_are_checked_by_name() {
         let wrong = |value: &str, format: &str| {
             let mut out = vec![];
-            super::check_format(&mut out, &super::InstancePath::Root, value, format);
+            super::check_format(&mut out, &super::InstanceLocation::Root, value, format);
             !out.is_empty()
         };
         assert!(wrong("x", "ipv6") && !wrong("::1", "ipv6"));
@@ -1032,7 +1049,7 @@ mod tests {
     fn a_cidr_block_has_a_valid_address() {
         let wrong = |value: &str, format: &str| {
             let mut out = vec![];
-            super::check_format(&mut out, &super::InstancePath::Root, value, format);
+            super::check_format(&mut out, &super::InstanceLocation::Root, value, format);
             !out.is_empty()
         };
         assert!(!wrong("192.168.0.0/24", "ipv4-cidr") && !wrong("0.0.0.0/0", "ipv4-cidr"));

@@ -92,6 +92,20 @@ fn a_handler_returns_its_operations_result() {
     assert!(server.contains("Output = ops::a::Result>"), "{server}");
 }
 
+/// The runtime's checked text of a format sits beside the types that hold it: `types::UuidStr`. A schema of that name
+/// keeps it.
+#[test]
+fn format_strs_sit_beside_the_types() {
+    let types = |schemas: serde_json::Value| {
+        let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": schemas}));
+        common::file(&common::generate("format-strs", &doc, &crate::emit::Options::default()), "types.rs").to_owned()
+    };
+    let id = json!({"type": "object", "properties": {"id": {"type": "string", "format": "uuid"}}});
+    assert!(types(json!({"Item": id})).contains("pub use runtime::UuidStr;"));
+    let own = types(json!({"Item": id, "UuidStr": {"type": "integer"}}));
+    assert!(!own.contains("pub use runtime::UuidStr"), "{own}");
+}
+
 /// Every `Params` has `new` accepting what is required; `Default` only when that is nothing.
 #[test]
 fn params_always_have_new_and_default_only_without_arguments() {
@@ -1251,7 +1265,7 @@ fn a_tuple_checks_each_item_against_its_schema() {
     let holder = json!({"type": "object", "properties": {"pair": pair}});
     let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Holder": holder}}));
     let types = common::file(&common::generate("tuple", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
-    assert!(types.contains("runtime::InstancePath::Index") && !types.contains("check_schema"), "{types}");
+    assert!(types.contains("runtime::InstanceLocation::Index") && !types.contains("check_schema"), "{types}");
 }
 
 /// `required` of an object without `properties` is a map that must have those names.
@@ -1518,8 +1532,8 @@ fn false_and_implied_shapes_are_checked_by_types() {
     assert!(types.contains("runtime::check_pattern(") && types.contains(r#"runtime::Pattern::new("^a")"#), "{types}");
     // Each item of `list` and each value of `map` decodes as its schema: two item checks besides those of `pair`, and
     // one key check besides the pattern of `named`, whose names its pattern alone judges.
-    assert_eq!(types.matches("InstancePath::Index").count(), 4, "{types}");
-    assert_eq!(types.matches("InstancePath::Key").count(), 2, "{types}");
+    assert_eq!(types.matches("InstanceLocation::Index").count(), 4, "{types}");
+    assert_eq!(types.matches("InstanceLocation::Key").count(), 2, "{types}");
 }
 
 /// A `oneOf` or `anyOf` whose branches no union tells apart (a branch without one `type`) counts the branches that the
@@ -1670,7 +1684,7 @@ fn keywords_beside_an_all_of_see_only_their_own_schema() {
     );
     let types =
         common::file(&common::generate("all-of-own", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
-    assert!(types.contains(".skip(0)") && types.contains("InstancePath::Key"), "{types}");
+    assert!(types.contains(".skip(0)") && types.contains("InstanceLocation::Key"), "{types}");
 }
 
 /// `unevaluatedProperties` sees the names that a `dependentSchemas` schema evaluates when its name is present.

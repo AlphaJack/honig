@@ -119,7 +119,7 @@ impl TryFrom<String> for PhysicalSku {
             let out = &mut violations;
             runtime::check_pattern(
                 out,
-                &runtime::InstancePath::Root,
+                &runtime::InstanceLocation::Root,
                 {
                     static RE: runtime::Pattern = runtime::Pattern::new(
                         "^[A-Z]{3}-[0-9]{4}$",
@@ -152,7 +152,7 @@ impl TryFrom<i32> for ListProductsLimit {
             let out = &mut violations;
             runtime::check_range(
                 out,
-                &runtime::InstancePath::Root,
+                &runtime::InstanceLocation::Root,
                 value,
                 runtime::Bounds {
                     max: Some(100),
