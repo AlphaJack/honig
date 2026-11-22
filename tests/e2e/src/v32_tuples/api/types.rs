@@ -39,7 +39,7 @@ impl Open {
 runtime::checked_json!(Open, Vec < serde_json::Value >);
 runtime::checked_impls!(Open, Vec < serde_json::Value >);
 runtime::object! {
-    #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
     pub struct Route {
         pub start: Point,
         pub stops: Vec<Point>,

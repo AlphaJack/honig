@@ -239,7 +239,7 @@ impl<'de> serde::Deserialize<'de> for EventCharge {
     }
 }
 runtime::object! {
-    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct EventChargeRefund {
         pub refund: runtime::Decimal,
     }
@@ -251,7 +251,7 @@ impl EventChargeRefund {
     }
 }
 runtime::object! {
-    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct EventChargeFee {
         pub fee: runtime::Decimal,
     }
@@ -287,7 +287,7 @@ impl<'de> serde::Deserialize<'de> for EventPayment {
 pub struct EventPayload(pub EventPayloadContent);
 runtime::json_text_impls!(EventPayload);
 runtime::object! {
-    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct EventPayloadContent {
         pub n: i64,
     }

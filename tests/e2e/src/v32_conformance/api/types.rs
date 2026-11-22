@@ -169,7 +169,7 @@ impl UploadBodyMeta {
 }
 runtime::object! {
     #[unique_keys]
-    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct Not {
         pub kind: String,
         #[serde(flatten)]

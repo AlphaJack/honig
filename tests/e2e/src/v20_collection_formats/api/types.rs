@@ -2,7 +2,7 @@
 use super::runtime;
 pub use runtime::DateTimeStr;
 runtime::object! {
-    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct Key {
         pub id: String,
         #[maybe]
@@ -36,7 +36,7 @@ impl Owner {
     }
 }
 runtime::object! {
-    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct UploadBody {
         pub file: runtime::Binary,
         #[maybe]

@@ -10,7 +10,7 @@ runtime::object! {
     }
 }
 runtime::object! {
-    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct SmsRequest {
         #[serde(rename = "type")]
         pub type_: SmsType,
@@ -254,7 +254,7 @@ impl<'de> serde::Deserialize<'de> for DeliveryMethod {
     }
 }
 runtime::object! {
-    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct Address {
         pub street: String,
     }
@@ -352,7 +352,7 @@ runtime::object! {
 }
 pub use EmailType as IfThenEmailType;
 runtime::object! {
-    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct IfThenSms {
         #[serde(rename = "type")]
         pub type_: IfThenSmsType,
@@ -384,7 +384,7 @@ impl IfThenOtherwise {
     }
 }
 runtime::object! {
-    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct ConstOneOfEmail {
         #[serde(rename = "type")]
         pub type_: ConstOneOfEmailType,
@@ -405,7 +405,7 @@ pub type ConstOneOfSms = IfThenSms;
 pub use SmsType as ConstOneOfSmsType;
 runtime::object! {
     /// pickup
-    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct DeliveryPickup {
         pub pickup: bool,
         #[serde(rename = "orderId")]
@@ -420,7 +420,7 @@ impl DeliveryPickup {
 }
 runtime::object! {
     /// Address
-    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct DeliveryAddress {
         pub street: String,
         #[serde(rename = "orderId")]
@@ -428,7 +428,7 @@ runtime::object! {
     }
 }
 runtime::object! {
-    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct DeliveryMethodPickup {
         pub pickup: bool,
     }
@@ -440,7 +440,7 @@ impl DeliveryMethodPickup {
     }
 }
 runtime::object! {
-    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct ShippingUs {
         pub country: ShippingUsCountry,
         pub zip: String,
@@ -465,7 +465,7 @@ impl ShippingUsCountry {
 }
 runtime::const_impls!(ShippingUsCountry, VALUE);
 runtime::object! {
-    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct ShippingOtherwise {
         #[optional]
         pub country: String,
@@ -504,7 +504,7 @@ pub enum ContactEmailOrMailVia {
 }
 runtime::str_enum_impls!(ContactEmailOrMailVia { Email => "email", Mail => "mail" });
 runtime::object! {
-    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct ContactSms {
         pub via: ContactSmsVia,
         pub phone: String,

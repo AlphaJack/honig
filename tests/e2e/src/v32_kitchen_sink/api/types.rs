@@ -630,7 +630,7 @@ impl SubmitFormBody {
     }
 }
 runtime::object! {
-    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct SubmitFormBodyFilter {
         pub a: String,
         #[optional]
@@ -678,7 +678,7 @@ impl TryFrom<i64> for SubmitFormBodyPriority {
 }
 runtime::int_enum_impls!(SubmitFormBodyPriority);
 runtime::object! {
-    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct PutBlobOkXQuota {
         pub limit: i64,
         #[optional]

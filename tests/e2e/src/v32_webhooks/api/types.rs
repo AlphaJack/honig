@@ -2,7 +2,7 @@
 use super::runtime;
 pub use runtime::DateTimeStr;
 runtime::object! {
-    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct Product {
         pub id: i64,
         pub name: String,

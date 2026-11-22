@@ -26,7 +26,7 @@ impl TryFrom<String> for UploadImageXChecksum {
 }
 runtime::checked_str_impls!(UploadImageXChecksum);
 runtime::object! {
-    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct UploadBody {
         pub image: runtime::Binary,
         pub meta: UploadBodyMeta,
@@ -51,7 +51,7 @@ impl UploadBody {
     }
 }
 runtime::object! {
-    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct UploadBodyMeta {
         pub title: String,
         #[optional]
@@ -80,7 +80,7 @@ impl UploadBodyBundle {
     }
 }
 runtime::object! {
-    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct PutIconBody {
         #[optional]
         pub name: String,
@@ -94,7 +94,7 @@ impl PutIconBody {
     }
 }
 runtime::object! {
-    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct UploadScanBody {
         #[optional]
         pub label: String,
