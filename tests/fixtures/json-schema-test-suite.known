@@ -1,3 +1,10 @@
+default: invalid string value for default: still valid when the invalid default is used	does not generate: the default `"bad"` is shorter than `minLength`
+default: invalid string value for default: valid when property is specified	does not generate: the default `"bad"` is shorter than `minLength`
+default: invalid type for default: still valid when the invalid default is used	does not generate: `[]` is not of type `integer`: quote it or fix the type
+default: invalid type for default: valid when property is specified	does not generate: `[]` is not of type `integer`: quote it or fix the type
+default: the default keyword does not do anything if the property is missing: an explicit property value is checked against maximum (failing)	does not generate: the default `5` is above `maximum`
+default: the default keyword does not do anything if the property is missing: an explicit property value is checked against maximum (passing)	does not generate: the default `5` is above `maximum`
+default: the default keyword does not do anything if the property is missing: missing properties are not filled in with the default	does not generate: the default `5` is above `maximum`
 format-date-time: date-time annotation: invalid date-time string is only an annotation by default	refuses a valid instance: is not a valid date-time at line 1 column 37
 format-date: date format annotation: invalid date string is only an annotation by default	refuses a valid instance: is not a valid date at line 1 column 18
 format-duration: duration format annotation: invalid duration string is only an annotation by default	refuses a valid instance: is not a valid duration at line 1 column 12

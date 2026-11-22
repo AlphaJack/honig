@@ -1,4 +1,4 @@
-//! An `enum` or `const` value that its schema's `type` does not allow. An unquoted YAML `type: string, enum: [007,
+//! An `enum`, `const` or `default` value that its schema's `type` does not allow. An unquoted YAML `type: string, enum: [007,
 //! 1.10]` is the numbers 7 and 1.1: the type falls back to a JSON value and refuses `"007"`.
 
 use serde_json::Value;
@@ -35,7 +35,8 @@ fn rule(s: &Obj, ptr: &str, out: &mut Vec<(String, String)>) {
     };
     let one_of = |v: &Value| types.iter().any(|t| is(v, t));
     let listed = s.get("enum").and_then(Value::as_array).into_iter().flatten().map(|v| ("enum", v));
-    for (key, value) in listed.chain(s.get("const").map(|v| ("const", v))) {
+    let single = ["const", "default"].into_iter().filter_map(|key| s.get(key).map(|v| (key, v)));
+    for (key, value) in listed.chain(single) {
         if !one_of(value) {
             let at = crate::json::join(ptr, key);
             out.push((at, format!("`{value}` is not of type `{}`: quote it or fix the type", types.join("` or `"))));
