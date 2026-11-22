@@ -396,6 +396,18 @@ proptest! {
     }
 }
 
+/// A value of the principal's type that sits in the extensions before the server, a request id stored as `String`, is
+/// not the caller: an anonymous request reaches the handler without a principal.
+#[test]
+fn an_extension_of_the_principal_type_is_not_the_caller() {
+    let mut req = api::runtime::new_request("GET", "/optional".to_owned(), vec![]).unwrap();
+    req.extensions_mut().insert("request-id-123".to_owned());
+    let server = Arc::new(Server::default());
+    let resp = api::block_on(api::Server::new(Arc::clone(&server)).into_service().handle(req));
+    assert_eq!(resp.status().as_u16(), 204);
+    assert_eq!(server.seen.lock().unwrap().clone(), Some(Seen::Anonymous));
+}
+
 // ANCHOR: optional-rate-limit
 type Filter = std::future::Ready<Result<api::Request, api::ApiError>>;
 
