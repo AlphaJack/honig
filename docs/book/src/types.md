@@ -36,9 +36,9 @@ Two settings decide what happens to a property or a value that the description d
 | Setting | Applies to | What it does |
 |---|---|---|
 | `unknown_fields = "keep"` | objects without `additionalProperties`, both directions | keeps the undeclared properties in a map, so a value round-trips. The default `"drop"` ignores them |
-| `client = { strict = false }` | the responses of a client | accepts what a server added: an enum value or a union branch as `Other`, and a property of a closed object (`additionalProperties: false`) by ignoring it. Requests stay strict through `<Name>Request` copies |
+| `client = { allow_unknown_values = true }` | the responses of a client | accepts what a server added: an enum value or a union branch as `Other`, and a property of a closed object (`additionalProperties: false`) by ignoring it. Requests stay strict through `<Name>Request` copies |
 
-An object without `additionalProperties` never refuses an undeclared property: the first setting only chooses whether to keep it. A closed object refuses it, unless `strict = false` applies to the response.
+An object without `additionalProperties` never refuses an undeclared property: the first setting only chooses whether to keep it. A closed object refuses it, unless `allow_unknown_values = true` applies to the response.
 
 ## Conditional schemas
 

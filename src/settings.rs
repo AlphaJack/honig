@@ -18,14 +18,18 @@ use crate::ir::types::Format;
 /// Every setting of a module as (key, default, what it does). A setting without a default is required. `--help` and
 /// the book show it.
 pub(crate) const SETTINGS: [(&str, Option<&str>, &str); 11] = [
-    ("spec", None, "the description relative to Cargo.toml; a list [\"a.yaml\", \"api/*.yaml\"] merges several"),
+    (
+        "descriptions",
+        None,
+        "the descriptions relative to Cargo.toml, like [\"openapi.yaml\"]; several, such as [\"a.yaml\", \"api/*.yaml\"], merge",
+    ),
     ("output", Some("\"src/<module>\""), "the module directory"),
     (
         "mod_rs",
         Some("the crate's clippy lints, else true"),
         "true writes the root of the module as `<output>/mod.rs`, false as `<output>.rs`",
     ),
-    ("client", Some("true"), "generate the client; a table sets strict = false"),
+    ("client", Some("true"), "generate the client; a table sets allow_unknown_values = true"),
     ("server", Some("true"), "generate the server; a table sets allow_unimplemented = true"),
     (
         "operations",
@@ -42,7 +46,7 @@ pub(crate) const SETTINGS: [(&str, Option<&str>, &str); 11] = [
 
 /// Returns what `init` writes for the description `spec`: the module `api` with the settings that most crates change.
 pub(crate) fn init_table(spec: &str) -> String {
-    format!("[{ROOT}.{DEFAULT_MODULE}]\nspec = \"{spec}\"\nclient = true\nserver = true\n")
+    format!("[{ROOT}.{DEFAULT_MODULE}]\ndescriptions = [\"{spec}\"]\nclient = true\nserver = true\n")
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -71,8 +75,8 @@ pub(crate) struct Settings {
     pub derives: Vec<(String, Vec<String>)>,
     /// `unknown_fields = "keep"`.
     pub keep_unknown: bool,
-    /// `client = { strict = false }`: response types accept an enum value or a property that the description does not
-    /// list. `true` unless set: requests are always strict.
+    /// `false` with `client = { allow_unknown_values = true }`: response types accept an enum value or a property that
+    /// the description does not list. Requests are always strict.
     pub strict_client: bool,
     /// The crate has no library target (no `[lib]` and no `src/lib.rs`). The module is visible to the crate only.
     pub binary: bool,
@@ -101,7 +105,12 @@ impl Settings {
             let found: Vec<PathBuf> =
                 crate::disk::files_in(&dir)?.into_iter().filter(|p| matches_star(p, prefix, suffix)).collect();
             if found.is_empty() {
-                return Err(setting(&self.table, "spec", "a pattern that matches a file", spec.display().to_string()));
+                return Err(setting(
+                    &self.table,
+                    "descriptions",
+                    "patterns that match a file",
+                    spec.display().to_string(),
+                ));
             }
             out.extend(found);
         }
@@ -372,7 +381,7 @@ pub(crate) fn modules<'a>(manifest: &'a Manifest, path: &Path) -> Result<Vec<Mod
             } else if FEATURES.iter().any(|(f, _)| *f == name) {
                 format!("`{name}` is a feature of the runtime. List it in the `features` of the `honig` dependency")
             } else {
-                format!("`{name}` is not a module table. Write [{ROOT}.{name}] with its `spec`")
+                format!("`{name}` is not a module table. Write [{ROOT}.{name}] with its `descriptions`")
             };
             return Err(Error::Module { table: ROOT.to_owned(), problem });
         };
@@ -389,7 +398,7 @@ pub(crate) fn modules<'a>(manifest: &'a Manifest, path: &Path) -> Result<Vec<Mod
         return Err(Error::Module { table: module.path(), problem });
     }
     if out.is_empty() {
-        let problem = format!("has no module. Add [{ROOT}.{DEFAULT_MODULE}] with its `spec`");
+        let problem = format!("has no module. Add [{ROOT}.{DEFAULT_MODULE}] with its `descriptions`");
         return Err(Error::Module { table: ROOT.to_owned(), problem });
     }
     Ok(out)
@@ -448,13 +457,12 @@ pub(crate) fn settings<'a>(module: impl Into<Module<'a>>, path: &Path) -> Result
     }
     let manifest = module.manifest;
     let binary = !manifest.has_lib();
-    let wanted = "a path like \"openapi.yaml\" or a list of them";
-    let spec: Vec<PathBuf> = match table.get("spec") {
-        None => return Err(setting(&name, "spec", wanted, "nothing".to_owned())),
-        Some(item) => match (item.as_str(), string_array(Some(item))) {
-            (Some(one), _) => vec![one.into()],
-            (None, Some(many)) if !many.is_empty() => many.into_iter().map(PathBuf::from).collect(),
-            _ => return Err(setting(&name, "spec", wanted, shown(item))),
+    let wanted = "a list of paths like [\"openapi.yaml\"]";
+    let spec: Vec<PathBuf> = match table.get("descriptions") {
+        None => return Err(setting(&name, "descriptions", wanted, "nothing".to_owned())),
+        Some(item) => match string_array(Some(item)) {
+            Some(many) if !many.is_empty() => many.into_iter().map(PathBuf::from).collect(),
+            _ => return Err(setting(&name, "descriptions", wanted, shown(item))),
         },
     };
     named_types(module)?;
@@ -512,7 +520,7 @@ struct Halves {
 
 /// Returns `client` and `server` of the module table `name`.
 fn halves(table: &dyn TableLike, name: &str) -> Result<Halves, Error> {
-    let (client, client_table) = half(table, name, "client", &["strict"])?;
+    let (client, client_table) = half(table, name, "client", &["allow_unknown_values"])?;
     let (server, server_table) = half(table, name, "server", &["allow_unimplemented"])?;
     let allow_unimplemented = match server_table.and_then(|t| t.get("allow_unimplemented")) {
         None => false,
@@ -520,11 +528,11 @@ fn halves(table: &dyn TableLike, name: &str) -> Result<Halves, Error> {
             .as_bool()
             .ok_or_else(|| setting(&format!("{name}.server"), "allow_unimplemented", "true or false", shown(item)))?,
     };
-    let strict_client = match client_table.and_then(|t| t.get("strict")) {
+    let strict_client = match client_table.and_then(|t| t.get("allow_unknown_values")) {
         None => true,
-        Some(item) => {
-            item.as_bool().ok_or_else(|| setting(&format!("{name}.client"), "strict", "true or false", shown(item)))?
-        }
+        Some(item) => !item
+            .as_bool()
+            .ok_or_else(|| setting(&format!("{name}.client"), "allow_unknown_values", "true or false", shown(item)))?,
     };
     Ok(Halves { client, server, allow_unimplemented, strict_client })
 }
@@ -754,14 +762,16 @@ mod tests {
     fn init_writes_the_defaults() {
         assert_eq!(
             init_table("openapi.yaml"),
-            "[package.metadata.honig.api]\nspec = \"openapi.yaml\"\nclient = true\nserver = true\n"
+            "[package.metadata.honig.api]\ndescriptions = [\"openapi.yaml\"]\nclient = true\nserver = true\n"
         );
         let read = |tables: &str| {
             let path = Path::new("Cargo.toml");
             settings(modules(&parse(tables), path).unwrap()[0], path).unwrap()
         };
-        let (example, defaults) =
-            (read(&init_table("openapi.yaml")), read("[package.metadata.honig.api]\nspec = \"openapi.yaml\""));
+        let (example, defaults) = (
+            read(&init_table("openapi.yaml")),
+            read("[package.metadata.honig.api]\ndescriptions = [\"openapi.yaml\"]"),
+        );
         let shown =
             |c: Settings| (c.spec, c.output, c.client, c.server, c.tests, c.allow_unimplemented, c.keep_unknown);
         assert_eq!(shown(example), shown(defaults));
@@ -769,7 +779,7 @@ mod tests {
 
     fn libs(formats: &str, features: &str) -> Result<FormatLibs, Error> {
         format_libs(&parse(&format!(
-            "[package.metadata.honig.api]\nspec = \"a.yaml\"\n{formats}\n[dependencies]\n\
+            "[package.metadata.honig.api]\ndescriptions = [\"a.yaml\"]\n{formats}\n[dependencies]\n\
              honig = {{ version = \"=0.0.1\", features = [{features}] }}\n"
         )))
     }
@@ -817,8 +827,11 @@ mod tests {
                 .map(|e| e.to_string())
                 .unwrap_or_default()
         };
-        assert!(err("spec = \"a.yaml\"\nstrcit = false").contains("no setting `strcit`"), "a typo is not ignored");
-        assert_eq!(err("spec = \"a.yaml\""), "");
+        assert!(
+            err("descriptions = [\"a.yaml\"]\nstrcit = false").contains("no setting `strcit`"),
+            "a typo is not ignored"
+        );
+        assert_eq!(err("descriptions = [\"a.yaml\"]"), "");
     }
 
     /// A workspace as cargo resolves it: a virtual root with `crates/*` and an excluded member. `shop` inherits `uuid`
@@ -872,7 +885,7 @@ mod tests {
     #[test]
     fn derives_and_overlays_are_read_in_order() {
         let configs = modules_of(
-            "[package.metadata.honig.api]\nspec = \"a.yaml\"\noverlays = [\"one.yaml\", \"fix/two.yaml\"]\n\
+            "[package.metadata.honig.api]\ndescriptions = [\"a.yaml\"]\noverlays = [\"one.yaml\", \"fix/two.yaml\"]\n\
              derives = { \"*\" = [\"Hash\"], Pet = [\"sqlx::FromRow\", \"Eq\"] }\n",
         )
         .unwrap();
@@ -885,7 +898,8 @@ mod tests {
     #[test]
     fn a_derive_must_be_a_path() {
         for bad in ["\"\"", "\"not a path\"", "\"a::\"", "\"Hash\", 1"] {
-            let tables = format!("[package.metadata.honig.api]\nspec = \"a.yaml\"\nderives = {{ Pet = [{bad}] }}\n");
+            let tables =
+                format!("[package.metadata.honig.api]\ndescriptions = [\"a.yaml\"]\nderives = {{ Pet = [{bad}] }}\n");
             let err = modules_of(&tables).unwrap_err().to_string();
             assert!(err.contains("derives") && err.contains("Pet"), "{bad}: {err}");
         }
@@ -903,9 +917,9 @@ mod tests {
     #[test]
     fn each_table_is_one_module_with_its_own_output() {
         let configs = modules_of(
-            "[package.metadata.honig.api]\nspec = \"own.yaml\"\nclient = false\n\n\
-             [package.metadata.honig.billing]\nspec = [\"vendor/*.yaml\"]\nserver = false\n\n\
-             [package.metadata.honig.identity]\nspec = \"id.yaml\"\noutput = \"src/id\"\n",
+            "[package.metadata.honig.api]\ndescriptions = [\"own.yaml\"]\nclient = false\n\n\
+             [package.metadata.honig.billing]\ndescriptions = [\"vendor/*.yaml\"]\nserver = false\n\n\
+             [package.metadata.honig.identity]\ndescriptions = [\"id.yaml\"]\noutput = \"src/id\"\n",
         )
         .unwrap();
         let shown: Vec<_> = configs.iter().map(|c| (c.table.as_str(), c.output.clone(), c.client, c.server)).collect();
@@ -921,66 +935,77 @@ mod tests {
 
     #[test]
     fn client_and_server_take_a_table_of_their_own() {
-        let one = |module: &str| modules_of(&format!("[package.metadata.honig.api]\nspec = \"a.yaml\"\n{module}"));
+        let one =
+            |module: &str| modules_of(&format!("[package.metadata.honig.api]\ndescriptions = [\"a.yaml\"]\n{module}"));
         let s = one("server = { allow_unimplemented = true }\n").unwrap();
         assert_eq!((s[0].client, s[0].server, s[0].allow_unimplemented), (true, true, true));
         let s = one("client = false\n").unwrap();
         assert_eq!((s[0].client, s[0].server, s[0].allow_unimplemented), (false, true, false));
         assert_eq!(
-            one("server = { strict = false }\n").unwrap_err().to_string(),
-            "[package.metadata.honig.api.server] has no setting `strict`. The settings are allow_unimplemented"
+            one("server = { allow_unknown_values = true }\n").unwrap_err().to_string(),
+            "[package.metadata.honig.api.server] has no setting `allow_unknown_values`. The settings are \
+             allow_unimplemented"
         );
         assert_eq!(
             one("client = \"yes\"\n").unwrap_err().to_string(),
-            "[package.metadata.honig.api] `client` must be true, false or a table with strict, found \"yes\""
+            "[package.metadata.honig.api] `client` must be true, false or a table with allow_unknown_values, found \"yes\""
         );
         let strict = |client: &str| one(&format!("client = {client}\n")).unwrap()[0].strict_client;
         assert!(strict("true"), "strict unless set");
-        assert!(!strict("{ strict = false }"));
+        assert!(!strict("{ allow_unknown_values = true }"));
+        assert!(
+            one("client = { strict = false }\n").unwrap_err().to_string().contains("no setting `strict`"),
+            "the old name is an error"
+        );
     }
 
     /// One list of operations serves both halves. A list on a half is a setting that the half does not have.
     #[test]
     fn operations_are_one_list_for_both_halves() {
-        let one = |module: &str| modules_of(&format!("[package.metadata.honig.api]\nspec = \"a.yaml\"\n{module}"));
+        let one =
+            |module: &str| modules_of(&format!("[package.metadata.honig.api]\ndescriptions = [\"a.yaml\"]\n{module}"));
         let s = one("operations = [\"getOrder\"]\n").unwrap();
         assert_eq!(s[0].operations, Some(vec!["getOrder".to_owned()]));
         assert_eq!(one("client = true\n").unwrap()[0].operations, None);
         assert_eq!(
             one("client = { operations = [\"getOrder\"] }\n").unwrap_err().to_string(),
-            "[package.metadata.honig.api.client] has no setting `operations`. The settings are strict"
+            "[package.metadata.honig.api.client] has no setting `operations`. The settings are allow_unknown_values"
         );
     }
 
     #[test]
     fn a_setting_in_the_wrong_table_says_where_it_goes() {
         assert_eq!(
-            modules_of("[package.metadata.honig]\nspec = \"a.yaml\"\n").unwrap_err().to_string(),
-            "[package.metadata.honig] `spec` is a setting of one module. Move it to [package.metadata.honig.api] or \
+            modules_of("[package.metadata.honig]\ndescriptions = [\"a.yaml\"]\n").unwrap_err().to_string(),
+            "[package.metadata.honig] `descriptions` is a setting of one module. Move it to [package.metadata.honig.api] or \
              another module"
         );
         assert_eq!(
-            modules_of("[package.metadata.honig]\nsimd = false\n[package.metadata.honig.api]\nspec = \"a.yaml\"\n")
-                .unwrap_err()
-                .to_string(),
+            modules_of(
+                "[package.metadata.honig]\nsimd = false\n[package.metadata.honig.api]\ndescriptions = [\"a.yaml\"]\n"
+            )
+            .unwrap_err()
+            .to_string(),
             "[package.metadata.honig] `simd` is a feature of the runtime. List it in the `features` of the `honig` \
              dependency"
         );
         assert_eq!(
-            modules_of("[package.metadata.honig.api]\nspec = \"a.yaml\"\naxum = true\n").unwrap_err().to_string(),
+            modules_of("[package.metadata.honig.api]\ndescriptions = [\"a.yaml\"]\naxum = true\n")
+                .unwrap_err()
+                .to_string(),
             "[package.metadata.honig.api] `axum` is a feature of the runtime. List it in the `features` of the \
              `honig` dependency"
         );
         assert_eq!(
             modules_of("[package.metadata.honig]\n").unwrap_err().to_string(),
-            "[package.metadata.honig] has no module. Add [package.metadata.honig.api] with its `spec`"
+            "[package.metadata.honig] has no module. Add [package.metadata.honig.api] with its `descriptions`"
         );
     }
 
     #[test]
     fn a_wrong_module_table_is_named_in_its_error() {
         assert_eq!(
-            modules_of("[package.metadata.honig.billing]\nspec = \"b.yaml\"\nstrcit = false\n")
+            modules_of("[package.metadata.honig.billing]\ndescriptions = [\"b.yaml\"]\nstrcit = false\n")
                 .unwrap_err()
                 .to_string(),
             format!(
@@ -989,21 +1014,26 @@ mod tests {
             )
         );
         assert_eq!(
-            modules_of("[package.metadata.honig.billing]\nspec = 3\n").unwrap_err().to_string(),
-            "[package.metadata.honig.billing] `spec` must be a path like \"openapi.yaml\" or a list of them, found 3"
+            modules_of("[package.metadata.honig.billing]\ndescriptions = 3\n").unwrap_err().to_string(),
+            "[package.metadata.honig.billing] `descriptions` must be a list of paths like [\"openapi.yaml\"], found 3"
         );
         assert_eq!(
-            modules_of("[package.metadata.honig.billing]\nspec = \"b.yaml\"\nformats = { uuid = 1 }\n")
+            modules_of("[package.metadata.honig.billing]\ndescriptions = \"b.yaml\"\n").unwrap_err().to_string(),
+            "[package.metadata.honig.billing] `descriptions` must be a list of paths like [\"openapi.yaml\"], found \
+             \"b.yaml\""
+        );
+        assert_eq!(
+            modules_of("[package.metadata.honig.billing]\ndescriptions = [\"b.yaml\"]\nformats = { uuid = 1 }\n")
                 .unwrap_err()
                 .to_string(),
             "[package.metadata.honig.billing.formats] `uuid` must be the path of a type such as \"crate::Stamp\", found 1"
         );
         assert_eq!(
-            modules_of("[package.metadata.honig.type]\nspec = \"t.yaml\"\n").unwrap_err().to_string(),
+            modules_of("[package.metadata.honig.type]\ndescriptions = [\"t.yaml\"]\n").unwrap_err().to_string(),
             "[package.metadata.honig.type] `type` is a Rust keyword. Name the table like a module, such as `billing`"
         );
         assert_eq!(
-            modules_of("[package.metadata.honig.ext-a]\nspec = \"t.yaml\"\n").unwrap_err().to_string(),
+            modules_of("[package.metadata.honig.ext-a]\ndescriptions = [\"t.yaml\"]\n").unwrap_err().to_string(),
             "[package.metadata.honig.ext-a] `ext-a` is not a Rust identifier. Name the table like a module, such as \
              `billing`"
         );
@@ -1012,7 +1042,7 @@ mod tests {
     #[test]
     fn a_module_name_on_the_command_line_must_be_a_table() {
         let m = parse(
-            "[package.metadata.honig.api]\nspec = \"a.yaml\"\n[package.metadata.honig.billing]\nspec = \"b.yaml\"\n",
+            "[package.metadata.honig.api]\ndescriptions = [\"a.yaml\"]\n[package.metadata.honig.billing]\ndescriptions = [\"b.yaml\"]\n",
         );
         let check =
             |only| ensure_module(&modules(&m, Path::new("Cargo.toml")).unwrap(), only).map_err(|e| e.to_string());
@@ -1027,7 +1057,7 @@ mod tests {
     #[test]
     fn the_root_of_a_module_follows_the_lints_of_the_crate_unless_set() {
         let root = |extra: &str| {
-            let table = format!("[package.metadata.honig.api]\nspec = \"a.yaml\"\n{extra}");
+            let table = format!("[package.metadata.honig.api]\ndescriptions = [\"a.yaml\"]\n{extra}");
             modules_of(&table).ok().map(|ms| ms[0].root_path())
         };
         let file = Some(Path::new("src").join("api.rs"));

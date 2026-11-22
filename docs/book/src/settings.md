@@ -7,7 +7,7 @@
 honig = { version = "=x.y.z", features = ["client", "server", "reqwest", "uuid"] }
 
 [package.metadata.honig.api]
-spec = "openapi.yaml"
+descriptions = ["openapi.yaml"]
 client = true
 server = true
 ```
@@ -24,7 +24,7 @@ Each table `[package.metadata.honig.<module>]` is one module and sets what is ge
 |---|---|---|
 | `client = false` | no client | none for the client |
 | `client = true` | the client | `client` |
-| `client = { strict = false }` | the client; a response accepts what the server added: an enum value or a member of a tagged `oneOf` as `Other`, and a property of a closed object by ignoring it. Requests stay strict: each such type gets a `<Name>Request` copy that is closed | `client` |
+| `client = { allow_unknown_values = true }` | the client; a response accepts what the server added: an enum value or a member of a tagged `oneOf` as `Other`, and a property of a closed object by ignoring it. Requests stay strict: each such type gets a `<Name>Request` copy that is closed | `client` |
 | `server = true` | the server | `server` |
 | `server = { allow_unimplemented = true }` | the server; a method you do not write answers 501 | `server` |
 
@@ -39,7 +39,7 @@ Some APIs describe themselves in many complete documents, one per area. List the
 
 ```toml
 [package.metadata.honig.api]
-spec = ["specs/*.yaml"]
+descriptions = ["specs/*.yaml"]
 ```
 
 Each file is bundled against its own directory and upgraded to 3.2 alone. Then paths, webhooks, components and tags merge into one module.
@@ -56,7 +56,7 @@ Overlays fix a description that you do not own without editing it. List [Overlay
 
 ```toml
 [package.metadata.honig.api]
-spec = "vendor/openapi.yaml"
+descriptions = ["vendor/openapi.yaml"]
 overlays = ["public.overlay.yaml"]
 ```
 
@@ -80,11 +80,11 @@ A crate often serves its own API and calls others. Add a table per module:
 
 ```toml
 [package.metadata.honig.api]
-spec = "own.yaml"
+descriptions = ["own.yaml"]
 client = false
 
 [package.metadata.honig.billing]
-spec = "vendor/billing.yaml"
+descriptions = ["vendor/billing.yaml"]
 server = false
 operations = ["createInvoice", "getInvoice"]
 ```

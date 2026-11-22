@@ -14,8 +14,8 @@ pub struct Options {
     pub tests: bool,
     /// Objects without `additionalProperties` keep unknown keys in `extra`.
     pub keep_unknown: bool,
-    /// `client = { strict = ... }`: `false` accepts a response that contains an enum value, a property or a tagged
-    /// union member that the description does not list.
+    /// `false` with `client = { allow_unknown_values = true }`: a response may contain an enum value, a property or a
+    /// tagged union member that the description does not list.
     pub strict_client: bool,
     /// Server operations may be left out: each defaults to `501 Not Implemented`. `false`: every one must be written.
     pub allow_unimplemented: bool,

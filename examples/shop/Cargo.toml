@@ -18,9 +18,9 @@ tokio = { version = "1", features = ["macros", "net", "rt-multi-thread"] }
 
 # The catalog that the shop serves, with a client for it.
 [package.metadata.honig.api]
-spec = "openapi.yaml"
+descriptions = ["openapi.yaml"]
 
 # The book supplier that the shop calls. Its XML bodies turn on the `xml` feature of the runtime.
 [package.metadata.honig.supplier]
-spec = "supplier.yaml"
+descriptions = ["supplier.yaml"]
 server = false

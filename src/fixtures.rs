@@ -100,10 +100,10 @@ fn sidecar(spec: &Path) -> Result<Option<toml_edit::DocumentMut>, Error> {
     Ok(Some(crate::disk::read(&path)?.parse()?))
 }
 
-/// Returns the `strict` of the `client` table of a fixture: `true` without one. The fixture of a lenient client sets
-/// `client = { strict = false }`.
+/// Returns whether the client of a fixture is strict: `true` unless its `client` table sets
+/// `allow_unknown_values = true`.
 fn strict_client(sidecar: Option<&toml_edit::DocumentMut>) -> bool {
-    sidecar.and_then(|t| t.get("client")?.get("strict")?.as_bool()).unwrap_or(true)
+    !sidecar.and_then(|t| t.get("client")?.get("allow_unknown_values")?.as_bool()).unwrap_or(false)
 }
 
 /// Returns the types that the `formats` table of a fixture names, such as `formats = { date-time = "String" }`.

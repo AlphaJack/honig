@@ -110,7 +110,7 @@ fn init_then_generate_writes_a_module_that_check_finds_up_to_date() {
         assert!(out.contains(&line), "{line} missing from:\n{out}");
     }
     let manifest = std::fs::read_to_string(dir.join("Cargo.toml")).unwrap();
-    assert!(manifest.contains("[package.metadata.honig.api]\nspec = \"openapi.yaml\""), "{manifest}");
+    assert!(manifest.contains("[package.metadata.honig.api]\ndescriptions = [\"openapi.yaml\"]"), "{manifest}");
     assert!(!manifest.contains("[dependencies]"), "init adds no dependency:\n{manifest}");
 
     let (code, _, err) = in_crate(&dir, &["init", "openapi.yaml"]);
@@ -222,7 +222,7 @@ fn generate_reports_errors_warnings_and_hints_and_never_edits_the_manifest() {
     std::fs::write(dir.join("src").join("lib.rs"), "pub mod api;\n").unwrap();
     std::fs::write(
         dir.join("Cargo.toml"),
-        "[package]\nname = \"cli_hints\"\nedition = \"2024\"\n\n[package.metadata.honig.api]\nspec = \"openapi.yaml\"\n",
+        "[package]\nname = \"cli_hints\"\nedition = \"2024\"\n\n[package.metadata.honig.api]\ndescriptions = [\"openapi.yaml\"]\n",
     )
     .unwrap();
     add_runtime(&dir, &["client"]);
@@ -265,7 +265,8 @@ fn generate_names_a_package_or_output_that_does_not_fit() {
     assert_eq!(in_crate(&dir, &["check", "--package", "cli_misfit"]).0, Some(1), "its own name is fine");
 
     let manifest = std::fs::read_to_string(dir.join("Cargo.toml")).unwrap();
-    let twice = manifest + "\n[package.metadata.honig.again]\nspec = \"openapi.yaml\"\noutput = \"src/api\"\n";
+    let twice =
+        manifest + "\n[package.metadata.honig.again]\ndescriptions = [\"openapi.yaml\"]\noutput = \"src/api\"\n";
     std::fs::write(dir.join("Cargo.toml"), twice).unwrap();
     let (code, _, err) = in_crate(&dir, &["generate"]);
     assert_eq!(code, Some(2));

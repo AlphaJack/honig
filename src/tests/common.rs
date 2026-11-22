@@ -106,7 +106,7 @@ reqwest = ["dep:reqwest", "honig/reqwest"]
 axum = ["dep:axum", "honig/axum"]
 
 [package.metadata.honig.api]
-spec = "{spec_file}"
+descriptions = ["{spec_file}"]
 output = "src/api"
 formats = {{}}
 "#
