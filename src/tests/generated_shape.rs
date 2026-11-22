@@ -155,6 +155,24 @@ fn a_struct_with_a_required_field_has_no_default() {
     assert!(derive_of("Filter").contains("Default"), "{types}");
 }
 
+/// `into_result` gives a tuple of the body and headers only when no two have the same type: a reorder of two headers
+/// of one type would swap them without a compile error. Else it gives the response, which names each.
+#[test]
+fn into_result_gives_no_tuple_of_two_values_of_one_type() {
+    let header = |schema: serde_json::Value| json!({"schema": schema});
+    let responses = |second: serde_json::Value| json!({"200": {"description": "ok", "headers": {"ETag": header(json!({"type": "string"})), "Rev": header(second)}}});
+    let ops = |name: &str, second: serde_json::Value| {
+        let paths = json!({"/a": {"get": {"operationId": "a", "responses": responses(second)}}});
+        let doc = common::spec("3.2.0", &paths, &json!({}));
+        common::file(&common::generate(name, &doc, &crate::emit::Options::default()), "operations.rs").to_owned()
+    };
+    let same = ops("tuple-same", json!({"type": "string"}));
+    assert!(!same.contains("pub type Success"), "{same}");
+    assert!(same.contains("pub fn into_result(self) -> Result<Self, Box<Self>>"), "{same}");
+    let different = ops("tuple-different", json!({"type": "integer"}));
+    assert!(different.contains("pub type Success"), "{different}");
+}
+
 /// Every `Params` has `new` accepting what is required; `Default` only when that is nothing.
 #[test]
 fn params_always_have_new_and_default_only_without_arguments() {

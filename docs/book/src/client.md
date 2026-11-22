@@ -112,7 +112,7 @@ A declared response that is not the success is still `Ok` from the call: the des
 {{#include ../../../tests/e2e/tests/v32_shop/client.rs:into-ok}}
 ```
 
-One success gives what it carries: nothing, its body, or its body and headers in order as `Success`. Several successes, or a `2XX` range, give the response itself. The `Err` is the whole response, boxed, so its body stays typed.
+One success gives what it carries: nothing, its body, or its body and headers in order as `Success`. Several successes, a `2XX` range, or two values of one type (`ETag` and `Last-Modified`, which a reorder would swap) give the response itself. The `Err` is the whole response, boxed, so its body stays typed.
 
 ## Browser (WebAssembly)
 

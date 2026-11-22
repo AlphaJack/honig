@@ -850,7 +850,8 @@ fn into_result(space: &Space<'_>, op: &Operation, bx: &Boxing) -> Option<TokenSt
 }
 
 /// Returns the type that the one success `resp` gives from `into_result`, the match arm that destructures it and the alias
-/// that stands for a tuple: nothing, its body, its one header, or its body and headers as `Success` in order.
+/// that stands for a tuple: nothing, its body, its one header, or its body and headers as `Success` in order. Two of one
+/// type cannot be told apart by position: the response itself is the success then.
 fn one_success(space: &Space<'_>, resp: &Resp, boxed_body: bool) -> (TokenStream, TokenStream, Option<TokenStream>) {
     let variant = pascal_ident(&resp.variant);
     let body = || {
@@ -873,6 +874,14 @@ fn one_success(space: &Space<'_>, resp: &Resp, boxed_body: bool) -> (TokenStream
             }
             if let ([name], [single]) = (&names[..], &types[..]) {
                 return (single.clone(), quote!(Self::#variant { #name, .. } => Ok(#name),), None);
+            }
+            // Two of one type, such as `ETag` and `Last-Modified`: a reorder of the headers in the description would swap
+            // them without a compile error. The response keeps them by name.
+            let mut texts: Vec<String> = types.iter().map(ToString::to_string).collect();
+            texts.sort();
+            texts.dedup();
+            if texts.len() < types.len() {
+                return (quote!(Self), quote!(success @ Self::#variant { .. } => Ok(success),), None);
             }
             let alias = quote! {
                 /// The body and headers of the success, in order: what `Response::into_result` gives.

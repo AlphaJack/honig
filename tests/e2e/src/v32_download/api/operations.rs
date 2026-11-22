@@ -115,15 +115,11 @@ pub mod get_manifest {
         Response { Self::Ok { .. } => "status 200 (Ok)", Self::NotFound =>
         "status 404 (NotFound)", }
     );
-    /// The body and headers of the success, in order: what `Response::into_result` gives.
-    pub type Success = (Vec<String>, Option<String>, Option<String>);
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_result(self) -> Result<Success, Box<Self>> {
+        pub fn into_result(self) -> Result<Self, Box<Self>> {
             match self {
-                Self::Ok { body, e_tag, last_modified } => {
-                    Ok((body, e_tag, last_modified))
-                }
+                success @ Self::Ok { .. } => Ok(success),
                 other @ Self::NotFound => Err(Box::new(other)),
             }
         }
