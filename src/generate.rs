@@ -110,6 +110,10 @@ pub fn load(specs: &[std::path::PathBuf], opts: &Options) -> Result<Loaded, Diag
     if opts.server && diagnostics.iter().any(|d| unknown(&d)) {
         return Err(diagnostics);
     }
+    // A schema that no value meets: its type would refuse every one.
+    if !crate::validate::unsatisfiable::found(&doc.root).is_empty() {
+        return Err(diagnostics);
+    }
     // A `pattern` that does not compile cannot be checked: its type would accept every value.
     if crate::validate::v32::has_uncompilable_pattern(&doc.root, "") {
         return Err(diagnostics);

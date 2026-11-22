@@ -256,6 +256,23 @@ fn two_scopes_of_one_variant_refuse_a_server() {
     crate::generate::generate(&path, &client).expect("a client is still generated");
 }
 
+/// A schema that no value of its type meets generates a type that refuses every value: `generate` fails and points at
+/// the schema.
+#[test]
+fn a_schema_that_no_value_meets_fails_generation() {
+    let schemas = [
+        ("Price", json!({"type": "integer", "minimum": 10, "maximum": 5})),
+        ("Name", json!({"type": "string", "minLength": 5, "maxLength": 2})),
+        ("Tags", json!({"type": "array", "items": {"type": "string"}, "minItems": 3, "maxItems": 1})),
+    ];
+    for (name, schema) in schemas {
+        let path = common::write(&format!("empty-{name}"), &doc(&json!({}), &json!({"schemas": {name: schema}})), &[]);
+        let err = crate::generate::generate(&path, &Options::default()).expect_err(name);
+        let at = format!("/components/schemas/{name}");
+        assert!(err.iter().any(|d| d.pointer == at), "{name}: {:#?}", err.0);
+    }
+}
+
 // `content` (3.2 Request Body / Response): "For requests that match multiple
 // keys, only the most specific key is applicable."
 
