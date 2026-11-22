@@ -6,22 +6,22 @@ pub mod get_event {
     pub const PATH: &str = "/events/{id}";
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct Params {
-        pub id: runtime::UuidText,
-        pub on: Option<runtime::DateText>,
+        pub id: runtime::UuidStr,
+        pub on: Option<runtime::DateStr>,
         /// A decimal travels as its digits in the URL too.
         pub above: Option<runtime::Decimal>,
     }
     impl Params {
         #[must_use]
-        pub const fn new(id: runtime::UuidText) -> Self {
+        pub const fn new(id: runtime::UuidStr) -> Self {
             Self { id, on: None, above: None }
         }
     }
     pub mod builders {
         use super::runtime;
         runtime::typestate_builder! {
-            Params => super::Params; required { id : R0 : runtime::UuidText = "id" }
-            optional { on(on) : runtime::DateText = "on" => some, None, above(above) :
+            Params => super::Params; required { id : R0 : runtime::UuidStr = "id" }
+            optional { on(on) : runtime::DateStr = "on" => some, None, above(above) :
             runtime::Decimal = "above" => some, None } fixed {}
         }
     }

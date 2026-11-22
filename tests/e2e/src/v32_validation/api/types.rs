@@ -42,6 +42,7 @@ macro_rules! deserialize_impl {
     };
 }
 use super::runtime;
+pub use runtime::{EmailStr, IdnHostnameStr};
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct Tagged(pub(super) TaggedVariants);
@@ -1210,9 +1211,9 @@ runtime::object! {
         pub tags: UserTags,
         pub role: UserRole,
         #[optional]
-        pub email: runtime::EmailText,
+        pub email: runtime::EmailStr,
         #[optional]
-        pub site: runtime::IdnHostnameText,
+        pub site: runtime::IdnHostnameStr,
         #[optional]
         pub meta: UserMeta,
         #[optional]
@@ -3906,8 +3907,8 @@ pub mod builders {
         types::UserRole = "role" } optional { handle(handle) : types::UserHandle =
         "handle" => some, None, age(age) : types::UserAge = "age" => some, None,
         score(score) : types::UserScore = "score" => some, None, tags(tags) :
-        types::UserTags = "tags" => some, None, email(email) : runtime::EmailText =
-        "email" => some, None, site(site) : runtime::IdnHostnameText = "site" => some,
+        types::UserTags = "tags" => some, None, email(email) : runtime::EmailStr =
+        "email" => some, None, site(site) : runtime::IdnHostnameStr = "site" => some,
         None, meta(meta) : types::UserMeta = "meta" => some, None, loyalty(loyalty) :
         types::UserLoyalty = "loyalty" => some, None, note(note) : types::UserNote =
         "note" => nullable, runtime::Nullable::Absent } fixed {}

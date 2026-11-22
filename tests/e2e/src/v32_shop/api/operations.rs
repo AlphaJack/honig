@@ -103,7 +103,7 @@ pub mod get_all_data {
         Ok {
             body: OkBody,
             /// Unique identifier for the request
-            x_request_id: Option<runtime::UuidText>,
+            x_request_id: Option<runtime::UuidStr>,
             /// Total number of items available
             x_pagination_total: Option<i64>,
             /// Current page number
@@ -120,7 +120,7 @@ pub mod get_all_data {
     /// The body and headers of the success, in order: what `Response::into_result` gives.
     pub type Success = (
         OkBody,
-        Option<runtime::UuidText>,
+        Option<runtime::UuidStr>,
         Option<i64>,
         Option<i64>,
         Option<i64>,
@@ -256,7 +256,7 @@ pub mod create_product {
         Created {
             body: Box<types::Product>,
             /// Unique identifier for the request
-            x_request_id: Option<runtime::UuidText>,
+            x_request_id: Option<runtime::UuidStr>,
             /// The URL of the newly created resource
             location: Option<url::Url>,
             /// The time spent to process the request in milliseconds
@@ -266,7 +266,7 @@ pub mod create_product {
         BadRequest {
             body: BadRequestBody,
             /// Unique identifier for the request
-            x_request_id: Option<runtime::UuidText>,
+            x_request_id: Option<runtime::UuidStr>,
         },
         /// Forbidden
         Forbidden(ForbiddenBody),
@@ -281,7 +281,7 @@ pub mod create_product {
     /// The body and headers of the success, in order: what `Response::into_result` gives.
     pub type Success = (
         Box<types::Product>,
-        Option<runtime::UuidText>,
+        Option<runtime::UuidStr>,
         Option<url::Url>,
         Option<i64>,
     );
@@ -399,13 +399,13 @@ pub mod query_products {
         Ok {
             body: types::QueryProductsOk,
             /// Unique identifier for the request
-            x_request_id: Option<runtime::UuidText>,
+            x_request_id: Option<runtime::UuidStr>,
         },
         /// Bad Request
         BadRequest {
             body: BadRequestBody,
             /// Unique identifier for the request
-            x_request_id: Option<runtime::UuidText>,
+            x_request_id: Option<runtime::UuidStr>,
         },
     }
     /// What the handler of this operation returns: its `Response`, or an error that the server answers.
@@ -415,7 +415,7 @@ pub mod query_products {
         "status 400 (BadRequest)", }
     );
     /// The body and headers of the success, in order: what `Response::into_result` gives.
-    pub type Success = (types::QueryProductsOk, Option<runtime::UuidText>);
+    pub type Success = (types::QueryProductsOk, Option<runtime::UuidStr>);
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_result(self) -> Result<Success, Box<Self>> {
@@ -459,14 +459,14 @@ pub mod search_products {
         Ok {
             body: types::SearchProductsOk,
             /// Unique identifier for the request
-            x_request_id: Option<runtime::UuidText>,
+            x_request_id: Option<runtime::UuidStr>,
         },
     }
     /// What the handler of this operation returns: its `Response`, or an error that the server answers.
     pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(Response { Self::Ok { .. } => "status 200 (Ok)", });
     /// The body and headers of the success, in order: what `Response::into_result` gives.
-    pub type Success = (types::SearchProductsOk, Option<runtime::UuidText>);
+    pub type Success = (types::SearchProductsOk, Option<runtime::UuidStr>);
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_result(self) -> Result<Success, Box<Self>> {
@@ -536,11 +536,11 @@ pub mod get_product {
         Ok {
             body: Box<types::Product>,
             /// Unique identifier for the request
-            x_request_id: Option<runtime::UuidText>,
+            x_request_id: Option<runtime::UuidStr>,
             /// Entity tag for caching
             e_tag: Option<String>,
             /// The last modification date of the resource
-            last_modified: Option<runtime::DateTimeText>,
+            last_modified: Option<runtime::DateTimeStr>,
             /// Cache control directives
             x_cache_control: Option<String>,
         },
@@ -556,9 +556,9 @@ pub mod get_product {
     /// The body and headers of the success, in order: what `Response::into_result` gives.
     pub type Success = (
         Box<types::Product>,
-        Option<runtime::UuidText>,
+        Option<runtime::UuidStr>,
         Option<String>,
-        Option<runtime::DateTimeText>,
+        Option<runtime::DateTimeStr>,
         Option<String>,
     );
     impl Response {
@@ -669,7 +669,7 @@ pub mod update_product {
         BadRequest {
             body: BadRequestBody,
             /// Unique identifier for the request
-            x_request_id: Option<runtime::UuidText>,
+            x_request_id: Option<runtime::UuidStr>,
         },
         /// Forbidden
         Forbidden(ForbiddenBody),
@@ -777,13 +777,13 @@ pub mod copy_product {
         /// The ID of the product to get
         pub product_id: i64,
         /// The location where the copied product should be created
-        pub destination: runtime::UriReferenceText,
+        pub destination: runtime::UriReferenceStr,
     }
     impl Params {
         #[must_use]
         pub const fn new(
             product_id: i64,
-            destination: runtime::UriReferenceText,
+            destination: runtime::UriReferenceStr,
         ) -> Self {
             Self { product_id, destination }
         }
@@ -792,7 +792,7 @@ pub mod copy_product {
         use super::runtime;
         runtime::typestate_builder! {
             Params => super::Params; required { product_id : R0 : i64 = "productId",
-            destination : R1 : runtime::UriReferenceText = "Destination" } optional {}
+            destination : R1 : runtime::UriReferenceStr = "Destination" } optional {}
             fixed {}
         }
     }
@@ -904,7 +904,7 @@ pub mod upload_image {
         Ok {
             body: OkBody,
             /// Unique identifier for the request
-            x_request_id: Option<runtime::UuidText>,
+            x_request_id: Option<runtime::UuidStr>,
             /// Cache control directives
             x_cache_control: Option<String>,
         },
@@ -912,7 +912,7 @@ pub mod upload_image {
         BadRequest {
             body: BadRequestBody,
             /// Unique identifier for the request
-            x_request_id: Option<runtime::UuidText>,
+            x_request_id: Option<runtime::UuidStr>,
         },
         /// Forbidden
         Forbidden(ForbiddenBody),
@@ -927,7 +927,7 @@ pub mod upload_image {
         Self::NotFound(..) => "status 404 (NotFound)", }
     );
     /// The body and headers of the success, in order: what `Response::into_result` gives.
-    pub type Success = (OkBody, Option<runtime::UuidText>, Option<String>);
+    pub type Success = (OkBody, Option<runtime::UuidStr>, Option<String>);
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_result(self) -> Result<Success, Box<Self>> {
@@ -1007,14 +1007,14 @@ pub mod stream_product_events {
         Ok {
             body: OkBody,
             /// Unique identifier for the request
-            x_request_id: Option<runtime::UuidText>,
+            x_request_id: Option<runtime::UuidStr>,
         },
     }
     /// What the handler of this operation returns: its `Response`, or an error that the server answers.
     pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(Response { Self::Ok { .. } => "status 200 (Ok)", });
     /// The body and headers of the success, in order: what `Response::into_result` gives.
-    pub type Success = (OkBody, Option<runtime::UuidText>);
+    pub type Success = (OkBody, Option<runtime::UuidStr>);
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_result(self) -> Result<Success, Box<Self>> {
@@ -1066,13 +1066,13 @@ pub mod upload_photos {
         Accepted {
             body: types::UploadPhotosAccepted,
             /// Unique identifier for the request
-            x_request_id: Option<runtime::UuidText>,
+            x_request_id: Option<runtime::UuidStr>,
         },
         /// Bad Request
         BadRequest {
             body: BadRequestBody,
             /// Unique identifier for the request
-            x_request_id: Option<runtime::UuidText>,
+            x_request_id: Option<runtime::UuidStr>,
         },
         /// Not Found
         NotFound(NotFoundBody),
@@ -1085,7 +1085,7 @@ pub mod upload_photos {
         }
     );
     /// The body and headers of the success, in order: what `Response::into_result` gives.
-    pub type Success = (types::UploadPhotosAccepted, Option<runtime::UuidText>);
+    pub type Success = (types::UploadPhotosAccepted, Option<runtime::UuidStr>);
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_result(self) -> Result<Success, Box<Self>> {
@@ -1204,7 +1204,7 @@ pub mod create_user {
         Created {
             body: types::User,
             /// Unique identifier for the request
-            x_request_id: Option<runtime::UuidText>,
+            x_request_id: Option<runtime::UuidStr>,
             /// The URL of the newly created resource
             location: Option<url::Url>,
             /// The time spent to process the request in milliseconds
@@ -1214,7 +1214,7 @@ pub mod create_user {
         BadRequest {
             body: BadRequestBody,
             /// Unique identifier for the request
-            x_request_id: Option<runtime::UuidText>,
+            x_request_id: Option<runtime::UuidStr>,
         },
         /// Unauthorized
         Unauthorized(UnauthorizedBody),
@@ -1237,7 +1237,7 @@ pub mod create_user {
     /// The body and headers of the success, in order: what `Response::into_result` gives.
     pub type Success = (
         types::User,
-        Option<runtime::UuidText>,
+        Option<runtime::UuidStr>,
         Option<url::Url>,
         Option<i64>,
     );
@@ -1324,7 +1324,7 @@ pub mod get_token {
         Created {
             body: types::Token,
             /// Unique identifier for the request
-            x_request_id: Option<runtime::UuidText>,
+            x_request_id: Option<runtime::UuidStr>,
             /// The number of allowed requests in the current period
             x_rate_limit_limit: Option<i64>,
             /// The number of remaining requests in the current period
@@ -1336,7 +1336,7 @@ pub mod get_token {
         BadRequest {
             body: BadRequestBody,
             /// Unique identifier for the request
-            x_request_id: Option<runtime::UuidText>,
+            x_request_id: Option<runtime::UuidStr>,
         },
         /// Unauthorized
         Unauthorized(UnauthorizedBody),
@@ -1346,7 +1346,7 @@ pub mod get_token {
         TooManyRequests {
             body: TooManyRequestsBody,
             /// Unique identifier for the request
-            x_request_id: Option<runtime::UuidText>,
+            x_request_id: Option<runtime::UuidStr>,
             /// The number of allowed requests in the current period
             x_rate_limit_limit: Option<i64>,
             /// The number of remaining requests in the current period
@@ -1368,7 +1368,7 @@ pub mod get_token {
     /// The body and headers of the success, in order: what `Response::into_result` gives.
     pub type Success = (
         types::Token,
-        Option<runtime::UuidText>,
+        Option<runtime::UuidStr>,
         Option<i64>,
         Option<i64>,
         Option<i64>,
@@ -1449,11 +1449,11 @@ pub mod get_me {
         Ok {
             body: types::User,
             /// Unique identifier for the request
-            x_request_id: Option<runtime::UuidText>,
+            x_request_id: Option<runtime::UuidStr>,
             /// Entity tag for caching
             e_tag: Option<String>,
             /// The last modification date of the resource
-            last_modified: Option<runtime::DateTimeText>,
+            last_modified: Option<runtime::DateTimeStr>,
             /// Cache control directives
             x_cache_control: Option<String>,
         },
@@ -1471,9 +1471,9 @@ pub mod get_me {
     /// The body and headers of the success, in order: what `Response::into_result` gives.
     pub type Success = (
         types::User,
-        Option<runtime::UuidText>,
+        Option<runtime::UuidStr>,
         Option<String>,
-        Option<runtime::DateTimeText>,
+        Option<runtime::DateTimeStr>,
         Option<String>,
     );
     impl Response {

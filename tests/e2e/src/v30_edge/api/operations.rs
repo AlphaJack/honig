@@ -16,7 +16,7 @@ pub mod list_orders {
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct Params {
         pub status: Option<Vec<types::Status>>,
-        pub created_after: Option<runtime::DateTimeText>,
+        pub created_after: Option<runtime::DateTimeStr>,
         pub limit: types::ListOrdersLimit,
         pub sort: types::ListOrdersSort,
         pub cursor: Option<types::ListOrdersCursor>,
@@ -40,7 +40,7 @@ pub mod list_orders {
         runtime::typestate_builder! {
             Params => super::Params; required {} optional { status(status) : Vec <
             types::Status > = "status" => some, None, created_after(created_after) :
-            runtime::DateTimeText = "createdAfter" => some, None, limit(limit) :
+            runtime::DateTimeStr = "createdAfter" => some, None, limit(limit) :
             types::ListOrdersLimit = "limit" => value, types::ListOrdersLimit { 0 : 20i32
             }, sort(sort) : types::ListOrdersSort = "sort" => value,
             types::ListOrdersSort::Newest, cursor(cursor) : types::ListOrdersCursor =
@@ -131,18 +131,18 @@ pub mod get_order {
     pub const PATH: &str = "/orders/{orderId}";
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct Params {
-        pub order_id: runtime::UuidText,
+        pub order_id: runtime::UuidStr,
     }
     impl Params {
         #[must_use]
-        pub const fn new(order_id: runtime::UuidText) -> Self {
+        pub const fn new(order_id: runtime::UuidStr) -> Self {
             Self { order_id }
         }
     }
     pub mod builders {
         use super::runtime;
         runtime::typestate_builder! {
-            Params => super::Params; required { order_id : R0 : runtime::UuidText =
+            Params => super::Params; required { order_id : R0 : runtime::UuidStr =
             "orderId" } optional {} fixed {}
         }
     }
@@ -200,13 +200,13 @@ pub mod upload_document {
     pub const PATH: &str = "/orders/{orderId}/documents";
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct Params {
-        pub order_id: runtime::UuidText,
+        pub order_id: runtime::UuidStr,
         pub body: types::UploadDocumentBody,
     }
     impl Params {
         #[must_use]
         pub const fn new(
-            order_id: runtime::UuidText,
+            order_id: runtime::UuidStr,
             body: types::UploadDocumentBody,
         ) -> Self {
             Self { order_id, body }
@@ -216,7 +216,7 @@ pub mod upload_document {
         use super::types;
         use super::runtime;
         runtime::typestate_builder! {
-            Params => super::Params; required { order_id : R0 : runtime::UuidText =
+            Params => super::Params; required { order_id : R0 : runtime::UuidStr =
             "orderId", body : R1 : types::UploadDocumentBody = "body" } optional {} fixed
             {}
         }

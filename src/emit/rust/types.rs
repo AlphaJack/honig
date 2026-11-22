@@ -104,7 +104,38 @@ pub(super) fn emit(api: &crate::ir::Api, space: &Space<'_>, opts: &crate::emit::
         )
     });
     let builders = builders_mod(&builders, builders_name_types);
-    quote! { #header #runtime_import #(#items)* #builders }
+    let strs = format_strs(space, &items);
+    quote! { #header #runtime_import #strs #(#items)* #builders }
+}
+
+/// Returns `pub use` of the runtime's checked text types that `items` hold, so that they sit beside the types of the
+/// description. A type of the description with the same name keeps it.
+fn format_strs(space: &Space<'_>, items: &[TokenStream]) -> Option<TokenStream> {
+    fn find(ts: TokenStream, out: &mut std::collections::BTreeSet<String>) {
+        let mut after_runtime = 0;
+        for t in ts {
+            match t {
+                proc_macro2::TokenTree::Group(g) => {
+                    find(g.stream(), out);
+                    after_runtime = 0;
+                }
+                proc_macro2::TokenTree::Ident(i) => {
+                    let name = i.to_string();
+                    if after_runtime == 3 && super::syntax::FORMAT_STRS.contains(&name.as_str()) {
+                        out.insert(name.clone());
+                    }
+                    after_runtime = usize::from(name == "runtime");
+                }
+                proc_macro2::TokenTree::Punct(p) if p.as_char() == ':' && after_runtime > 0 => after_runtime += 1,
+                proc_macro2::TokenTree::Punct(_) | proc_macro2::TokenTree::Literal(_) => after_runtime = 0,
+            }
+        }
+    }
+    let mut used = std::collections::BTreeSet::new();
+    items.iter().for_each(|i| find(i.clone(), &mut used));
+    let taken = space.types.name_keys();
+    let names: Vec<_> = used.iter().filter(|n| !taken.contains(*n)).map(|n| ident(n)).collect();
+    (!names.is_empty()).then(|| quote!(pub use runtime::{#(#names),*};))
 }
 
 /// Inlines types declared as an alias of an identical earlier one (one inline schema per operation): index to the

@@ -54,7 +54,7 @@ pub fn violation(out: &mut Vec<Violation>, location: &InstanceLocation<'_>, mess
 /// that it does not know passes.
 #[cfg_attr(
     feature = "idn",
-    doc = "\nThose types are [`EmailText`](crate::EmailText) and [`HostnameText`](crate::HostnameText)."
+    doc = "\nThose types are [`EmailStr`](crate::EmailStr) and [`HostnameStr`](crate::HostnameStr)."
 )]
 pub fn check_format(out: &mut Vec<Violation>, location: &InstanceLocation<'_>, value: &str, format: &str) {
     if !is_format(value, format) {
@@ -757,18 +757,18 @@ mod mail {
     #[cfg(test)]
     mod tests {
         use super::{LABEL, email, hostname, mapped_name, plain_name};
-        use crate::{EmailText, IdnHostnameText};
+        use crate::{EmailStr, IdnHostnameStr};
 
         #[test]
         fn only_a_valid_value_is_one() {
             assert_eq!(
-                EmailText::try_from("ann@example.com").map(EmailText::into_inner),
+                EmailStr::try_from("ann@example.com").map(EmailStr::into_inner),
                 Ok("ann@example.com".to_owned())
             );
-            assert_eq!(EmailText::try_from("x"), Err(crate::BuildError::value("`x` is not a valid email".to_owned())));
-            let decoded: Result<EmailText, _> = serde_json::from_str("\"x\"");
+            assert_eq!(EmailStr::try_from("x"), Err(crate::BuildError::value("`x` is not a valid email".to_owned())));
+            let decoded: Result<EmailStr, _> = serde_json::from_str("\"x\"");
             assert!(decoded.unwrap_err().to_string().contains("is not a valid email"));
-            let site: IdnHostnameText = serde_json::from_str("\"bücher.example\"").unwrap();
+            let site: IdnHostnameStr = serde_json::from_str("\"bücher.example\"").unwrap();
             assert_eq!(serde_json::to_string(&site).unwrap(), "\"bücher.example\"", "the value as written");
         }
 

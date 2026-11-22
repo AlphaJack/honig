@@ -55,7 +55,7 @@ fn a_decimal_number_keeps_its_digits() {
         t.contains("#[optional]\n        pub total: PriceTotal") && t.contains("runtime::check_decimal128("),
         "{t}"
     );
-    assert!(t.contains("#[optional]\n        pub label: runtime::DecimalText"), "{t}");
+    assert!(t.contains("#[optional]\n        pub label: runtime::DecimalStr"), "{t}");
 }
 
 fn types_rs_of(test: &str, doc: &serde_json::Value) -> String {
@@ -76,8 +76,8 @@ fn a_string_decimal_is_checked_text() {
     );
     let t = common::file(&common::generate("string-decimal", &doc, &crate::emit::Options::default()), "types.rs")
         .to_owned();
-    assert!(t.contains("pub amount: runtime::DecimalText"), "{t}");
-    assert!(t.contains("pub wide: runtime::Decimal128Text"), "{t}");
+    assert!(t.contains("pub amount: runtime::DecimalStr"), "{t}");
+    assert!(t.contains("pub wide: runtime::Decimal128Str"), "{t}");
 }
 
 /// `date-time-local` and `time-local` (RFC 3339 without an offset) get the date library's civil types.
@@ -103,7 +103,7 @@ fn local_date_time_formats_use_the_date_library() {
     };
     let jiff = with(true, "local-jiff");
     assert!(jiff.contains("pub starts: jiff::civil::DateTime") && jiff.contains("pub ends: jiff::civil::Time"));
-    assert!(with(false, "local-none").contains("pub starts: runtime::DateTimeLocalText"));
+    assert!(with(false, "local-none").contains("pub starts: runtime::DateTimeLocalStr"));
 }
 
 /// A `pattern` beside a format that has a type of its own is not checked: the type decides the value. Generation says

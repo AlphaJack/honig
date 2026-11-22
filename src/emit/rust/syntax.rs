@@ -126,31 +126,58 @@ pub(crate) fn format_ty(libs: &FormatLibs, f: Format) -> TokenStream {
     library_ty(libs, f).unwrap_or_else(|| text_ty(f))
 }
 
-/// Returns the runtime type of the text of a format that the crate has no library type for: `runtime::UuidText` and so
+/// The runtime's checked text types of the formats: `runtime::UuidStr` and the rest.
+pub(crate) const FORMAT_STRS: [&str; 23] = [
+    "UuidStr",
+    "DateTimeStr",
+    "DateStr",
+    "DateTimeLocalStr",
+    "TimeLocalStr",
+    "UriStr",
+    "UriReferenceStr",
+    "IriStr",
+    "IriReferenceStr",
+    "Ipv4CidrStr",
+    "Ipv6CidrStr",
+    "DecimalStr",
+    "Decimal128Str",
+    "HttpDateStr",
+    "DurationStr",
+    "JsonPointerStr",
+    "RelativeJsonPointerStr",
+    "RegexStr",
+    "UriTemplateStr",
+    "EmailStr",
+    "IdnEmailStr",
+    "HostnameStr",
+    "IdnHostnameStr",
+];
+
+/// Returns the runtime type of the text of a format that the crate has no library type for: `runtime::UuidStr` and so
 /// on. Only text of the format is one.
 fn text_ty(f: Format) -> TokenStream {
     let name = match f {
-        Format::Uuid => "UuidText",
-        Format::DateTime => "DateTimeText",
-        Format::Date => "DateText",
+        Format::Uuid => "UuidStr",
+        Format::DateTime => "DateTimeStr",
+        Format::Date => "DateStr",
         // The runtime's `FullTime` stores a time with its offset with any date library (`library_ty`).
         Format::Time => "FullTime",
-        Format::DateTimeLocal => "DateTimeLocalText",
-        Format::TimeLocal => "TimeLocalText",
-        Format::Uri => "UriText",
-        Format::UriReference => "UriReferenceText",
-        Format::Iri => "IriText",
-        Format::IriReference => "IriReferenceText",
-        Format::Ipv4Cidr => "Ipv4CidrText",
-        Format::Ipv6Cidr => "Ipv6CidrText",
-        Format::Decimal => "DecimalText",
-        Format::Decimal128 => "Decimal128Text",
-        Format::HttpDate => "HttpDateText",
-        Format::Duration => "DurationText",
-        Format::JsonPointer => "JsonPointerText",
-        Format::RelativeJsonPointer => "RelativeJsonPointerText",
-        Format::Regex => "RegexText",
-        Format::UriTemplate => "UriTemplateText",
+        Format::DateTimeLocal => "DateTimeLocalStr",
+        Format::TimeLocal => "TimeLocalStr",
+        Format::Uri => "UriStr",
+        Format::UriReference => "UriReferenceStr",
+        Format::Iri => "IriStr",
+        Format::IriReference => "IriReferenceStr",
+        Format::Ipv4Cidr => "Ipv4CidrStr",
+        Format::Ipv6Cidr => "Ipv6CidrStr",
+        Format::Decimal => "DecimalStr",
+        Format::Decimal128 => "Decimal128Str",
+        Format::HttpDate => "HttpDateStr",
+        Format::Duration => "DurationStr",
+        Format::JsonPointer => "JsonPointerStr",
+        Format::RelativeJsonPointer => "RelativeJsonPointerStr",
+        Format::Regex => "RegexStr",
+        Format::UriTemplate => "UriTemplateStr",
         // Each of these has a type of its own in every crate (`library_ty`).
         Format::Ipv4
         | Format::Ipv6
@@ -187,10 +214,10 @@ fn library_ty(libs: &FormatLibs, f: Format) -> Option<TokenStream> {
         (Format::Ipv6, ..) => Some(quote!(std::net::Ipv6Addr)),
         (Format::Base64Url, ..) => Some(quote!(runtime::Base64Url)),
         // Types that only a valid value can be. The `idn` feature of the runtime has them. The description turns it on.
-        (Format::Email, ..) => Some(quote!(runtime::EmailText)),
-        (Format::IdnEmail, ..) => Some(quote!(runtime::IdnEmailText)),
-        (Format::Hostname, ..) => Some(quote!(runtime::HostnameText)),
-        (Format::IdnHostname, ..) => Some(quote!(runtime::IdnHostnameText)),
+        (Format::Email, ..) => Some(quote!(runtime::EmailStr)),
+        (Format::IdnEmail, ..) => Some(quote!(runtime::IdnEmailStr)),
+        (Format::Hostname, ..) => Some(quote!(runtime::HostnameStr)),
+        (Format::IdnHostname, ..) => Some(quote!(runtime::IdnHostnameStr)),
         // `jiff` has no time with an offset. The runtime's stores plain numbers, with any setting.
         (Format::Time, ..) => Some(quote!(runtime::FullTime)),
         (Format::TimeLocal, _, true) => Some(quote!(jiff::civil::Time)),

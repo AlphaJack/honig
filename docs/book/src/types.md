@@ -121,7 +121,7 @@ The key is the name of the format. The value is the path of a type, without gene
 
 `format: time` has an offset (`08:30:06+02:00`), and no `jiff` time type supports one. So it is `api::FullTime` with or without `jiff`: plain numbers (`hour`, `minute`, `second`, `nanosecond`, `offset_seconds`) and whether the second was a leap second. With `jiff = true`, `time()` and `offset()` return it as `jiff` types.
 
-A format without its library is its checked text, such as `api::UuidText` or `api::DateTimeText`. Only text of the format is one: `try_from`, `parse` and decoding check it as the library would on parsing. It derefs to `str`. `generate` turns on the runtime feature that each check needs. [Adapters](adapters.md) lists the features.
+A format without its library is its checked text, such as `api::UuidStr` or `api::DateTimeStr`. Only text of the format is one: `try_from`, `parse` and decoding check it as the library would on parsing. It derefs to `str`. `generate` turns on the runtime feature that each check needs. [Adapters](adapters.md) lists the features.
 
 A library accepts more than its format allows. `jiff` accepts `2024-06-19 08:30Z` as a `date-time`. `uuid` accepts `{...}` and `url` accepts a space. So a library type in a property, a branch of a union, a newtype, a parameter or a body has its text validated first, as a `String` of that format is. The items of a body decoded as it arrives are validated one at a time. Then the library parses it. A server decoding a request and a client decoding a response check alike. A fraction of a second past nine digits is cut: `jiff` stores nanoseconds.
 
@@ -133,7 +133,7 @@ Mail addresses and host names are types of the runtime. Only a valid value can b
 
 {{#include generated/checked-text.md}}
 
-`http-date` is `api::HttpDateText`, one of the three forms of RFC 9110 section 5.6.7. `duration` is `api::DurationText`, an ISO 8601 duration of RFC 3339 Appendix A. No std type represents `P1M`: a month has no fixed length. `uri-reference`, `iri`, `iri-reference`, `json-pointer`, `relative-json-pointer`, `uri-template` and `regex` are checked text of their grammars (RFC 3986, 3987, 6901, 6570 and ECMA-262). `uuid` without its library accepts only the hyphenated form of RFC 9562.
+`http-date` is `api::HttpDateStr`, one of the three forms of RFC 9110 section 5.6.7. `duration` is `api::DurationStr`, an ISO 8601 duration of RFC 3339 Appendix A. No std type represents `P1M`: a month has no fixed length. `uri-reference`, `iri`, `iri-reference`, `json-pointer`, `relative-json-pointer`, `uri-template` and `regex` are checked text of their grammars (RFC 3986, 3987, 6901, 6570 and ECMA-262). `uuid` without its library accepts only the hyphenated form of RFC 9562.
 
 `contentEncoding: base64url` gives `api::Base64Url`. It stores bytes in the URL-safe alphabet.
 
@@ -141,7 +141,7 @@ Mail addresses and host names are types of the runtime. Only a valid value can b
 It parses the exact text wherever the number is. This includes `oneOf` branches. It rounds only in the `Other` of an open union. That variant stores a value that no branch accepts as a `serde_json::Value`.
 
 For arithmetic parse its digits into a decimal type with `d.as_str().parse::<rust_decimal::Decimal>()`.
-`{type: string, format: decimal}` is `api::DecimalText` with every digit, checked as a decimal. `decimal128` keeps every digit too, as a number or as `api::Decimal128Text`, and enforces the limits of IEEE 754 decimal128: at most 34 significant digits within its exponent range. Use it past the 28 significant digits that `rust_decimal` supports.
+`{type: string, format: decimal}` is `api::DecimalStr` with every digit, checked as a decimal. `decimal128` keeps every digit too, as a number or as `api::Decimal128Str`, and enforces the limits of IEEE 754 decimal128: at most 34 significant digits within its exponent range. Use it past the 28 significant digits that `rust_decimal` supports.
 
 JSON the description leaves untyped is a `serde_json::Value`:
 
