@@ -155,6 +155,20 @@ fn a_security_that_is_not_a_list_refuses_a_server() {
     }
 }
 
+/// Two webhooks or callbacks with one name and method are routed to the first: a public one in front of a secured one
+/// would answer for both.
+#[test]
+fn two_callbacks_of_one_name_and_method_refuse_a_server() {
+    let callback = |security: Value| json!({"done": {"{$request.body#/url}": {"post": {"security": security, "responses": {"204": {"description": "ok"}}}}}});
+    let op = |id: &str, security: Value| json!({"operationId": id, "callbacks": callback(security), "responses": {"204": {"description": "ok"}}});
+    let paths = json!({"/a": {"get": op("a", json!([]))}, "/b": {"get": op("b", json!([{"local": []}]))}});
+    let path = common::write("sec-callbacks", &doc(&paths, &bearer()), &[]);
+    let err = crate::generate::generate(&path, &Options::default()).expect_err("must refuse");
+    assert!(err.iter().any(|d| d.message.contains("also described by")), "{:#?}", err.0);
+    let client = Options { server: false, tests: false, ..Options::default() };
+    crate::generate::generate(&path, &client).expect("a client is still generated");
+}
+
 // `content` (3.2 Request Body / Response): "For requests that match multiple
 // keys, only the most specific key is applicable."
 

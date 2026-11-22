@@ -114,6 +114,10 @@ impl Diagnostics {
     }
 }
 
+/// The start of the message about two webhooks or callbacks that the server could not tell apart. A server is not
+/// generated from a description that has them: the first would answer for both.
+pub(crate) const DUPLICATE_HOOK: &str = "also described by";
+
 #[cfg(test)]
 mod tests {
     use super::*;
