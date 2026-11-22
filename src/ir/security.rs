@@ -150,6 +150,30 @@ pub(crate) fn schemes(b: &mut Builder<'_>) -> Vec<SecurityScheme> {
     out
 }
 
+/// Reports two scopes of one scheme that are one variant of its scope enum (`read:user` and `read_user`). Numbering them
+/// would follow the sorted list, so adding `read-user` would move the others by one and a `verify_` method that grants
+/// one scope would grant another.
+pub(crate) fn one_variant_per_scope(b: &mut Builder<'_>, schemes: &[SecurityScheme], used: &[&Requirement]) {
+    for scheme in schemes {
+        let used = used.iter().filter(|r| r.scheme == scheme.name);
+        let names: std::collections::BTreeSet<&str> = scheme
+            .scopes
+            .iter()
+            .map(|(n, _)| n.as_str())
+            .chain(used.flat_map(|r| r.scopes.iter().map(String::as_str)))
+            .collect();
+        let mut seen: std::collections::BTreeMap<String, &str> = std::collections::BTreeMap::new();
+        for name in names {
+            if let Some(first) = seen.insert(Name::new(name).key(), name) {
+                b.diags.error(
+                    format!("/components/securitySchemes/{}", escape_token(&scheme.name)),
+                    format!("the scopes `{first}` and `{name}` {} (`{}`)", crate::diag::SAME_VARIANT, scheme.name),
+                );
+            }
+        }
+    }
+}
+
 /// Returns the requirements of scheme sets. An empty requirement (`{}`) makes
 /// authentication optional. A requirement that refers to an unknown scheme can never
 /// be met. So it is dropped and never shortened. Shortening `{unknown}` to `{}`

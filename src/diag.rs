@@ -128,6 +128,9 @@ pub(crate) const UNKNOWN_FIELD: &str = "unknown field";
 /// The end of the warning for an overlay action whose target selects nothing. `generate` fails on it: after a rewrite
 /// of the description the overlay's fix would stop applying.
 pub(crate) const NO_NODES: &str = "the target selects no nodes: the action does nothing";
+/// The end of the message about two scopes of one scheme that are one variant of its scope enum: the second would be
+/// numbered by its place in the sorted list, so an added scope renames the others. A server is not generated.
+pub(crate) const SAME_VARIANT: &str = "are one variant of its scope enum";
 
 #[cfg(test)]
 mod tests {

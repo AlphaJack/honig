@@ -146,10 +146,11 @@ pub fn print(loaded: &Loaded, built: Ir, trees: Trees, opts: &Options) -> Result
     let mut diagnostics = loaded.diagnostics.clone();
     diagnostics.0.extend(built.diagnostics.0);
     let api = &built.api;
-    let duplicate = |d: &&crate::diag::Diagnostic| {
-        d.level == crate::diag::Level::Error && d.message.contains(crate::diag::DUPLICATE_HOOK)
+    let refuses = |d: &&crate::diag::Diagnostic| {
+        d.level == crate::diag::Level::Error
+            && [crate::diag::DUPLICATE_HOOK, crate::diag::SAME_VARIANT].iter().any(|m| d.message.contains(m))
     };
-    if opts.server && diagnostics.iter().any(|d| duplicate(&d)) {
+    if opts.server && diagnostics.iter().any(|d| refuses(&d)) {
         return Err(diagnostics);
     }
     if diagnostics.iter().any(|d| d.level == crate::diag::Level::Error && d.message.contains(crate::diag::SAME_ITEM)) {
