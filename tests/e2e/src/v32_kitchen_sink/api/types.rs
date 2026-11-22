@@ -245,6 +245,21 @@ impl TryFrom<i64> for ProductId {
             .map_err(runtime::BuildError::value)
     }
 }
+impl ProductId {
+    /// Returns the value for a constant: it panics when the value breaks the limits, which is a build error
+    /// in a `const` and a panic when it runs. Convert a value that is not a literal with `try_from`.
+    ///
+    /// # Panics
+    /// The value breaks a limit.
+    #[must_use]
+    pub const fn from_literal(value: i64) -> Self {
+        assert!(
+            value >= 0 && value < 9_007_199_254_740_991,
+            "a literal outside the limits of this type"
+        );
+        Self(value)
+    }
+}
 runtime::checked_num_impls!(ProductId, i64);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
@@ -714,6 +729,18 @@ impl TryFrom<i32> for ListProductsLimit {
         runtime::first(violations)
             .map(|()| Self(value))
             .map_err(runtime::BuildError::value)
+    }
+}
+impl ListProductsLimit {
+    /// Returns the value for a constant: it panics when the value breaks the limits, which is a build error
+    /// in a `const` and a panic when it runs. Convert a value that is not a literal with `try_from`.
+    ///
+    /// # Panics
+    /// The value breaks a limit.
+    #[must_use]
+    pub const fn from_literal(value: i32) -> Self {
+        assert!(value >= 1 && value <= 100, "a literal outside the limits of this type");
+        Self(value)
     }
 }
 runtime::checked_num_impls!(ListProductsLimit, i32);

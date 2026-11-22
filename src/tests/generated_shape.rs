@@ -188,6 +188,32 @@ fn a_then_keeps_its_limits_beside_those_of_the_base() {
     assert!(!types.contains("pub enum Person"), "no union that drops the limits of the `then`: {types}");
 }
 
+/// A checked integer with only bounds has a `const fn from_literal`, so that a literal outside them is a build error in a
+/// constant. One that another keyword also limits has none: the check cannot run in a `const fn`.
+#[test]
+fn a_bounded_integer_has_a_const_constructor() {
+    let doc = common::spec(
+        "3.2.0",
+        &json!({}),
+        &json!({"schemas": {
+            "Limit": {"type": "integer", "minimum": 1, "maximum": 100},
+            "Level": {"type": "integer", "exclusiveMinimum": 0},
+            "Even": {"type": "integer", "minimum": 0, "multipleOf": 2},
+            "Rank": {"type": "integer", "format": "uint8", "maximum": 9}
+        }}),
+    );
+    let types =
+        common::file(&common::generate("const-literal", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
+    let has = |name: &str| {
+        let (before, _) = types.split_once(&format!("runtime::checked_num_impls!({name},")).expect("the type");
+        before
+            .rsplit_once("impl ")
+            .is_some_and(|(_, last)| last.starts_with(&format!("{name} {{")) && last.contains("from_literal"))
+    };
+    assert!(has("Limit") && has("Level"), "{types}");
+    assert!(!has("Even"), "{types}");
+}
+
 /// Every `Params` has `new` accepting what is required; `Default` only when that is nothing.
 #[test]
 fn params_always_have_new_and_default_only_without_arguments() {

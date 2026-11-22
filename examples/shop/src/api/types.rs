@@ -158,6 +158,18 @@ impl TryFrom<i32> for ListProductsLimit {
             .map_err(runtime::BuildError::value)
     }
 }
+impl ListProductsLimit {
+    /// Returns the value for a constant: it panics when the value breaks the limits, which is a build error
+    /// in a `const` and a panic when it runs. Convert a value that is not a literal with `try_from`.
+    ///
+    /// # Panics
+    /// The value breaks a limit.
+    #[must_use]
+    pub const fn from_literal(value: i32) -> Self {
+        assert!(value <= 100, "a literal outside the limits of this type");
+        Self(value)
+    }
+}
 runtime::checked_num_impls!(ListProductsLimit, i32);
 /// One builder per struct, started by its `builder`. Each setter accepts anything that converts to the type
 /// of its field. `build` returns the first field that did not convert.

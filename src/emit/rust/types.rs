@@ -975,6 +975,50 @@ fn newtype(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, def: &Ty
     });
 }
 
+/// Returns `from_literal` for a checked integer whose only limits are its bounds: a `const fn` that panics when a
+/// value breaks them. In a constant that is a build error. `None` when another keyword also limits the value, or a
+/// bound is negative for an unsigned base.
+fn literal_constructor(
+    n: &proc_macro2::Ident,
+    base: &TokenStream,
+    c: &crate::ir::types::Constraints,
+) -> Option<TokenStream> {
+    let mut rest = c.clone();
+    let bounds = [
+        (rest.minimum.take(), quote!(>=)),
+        (rest.exclusive_minimum.take(), quote!(>)),
+        (rest.maximum.take(), quote!(<=)),
+        (rest.exclusive_maximum.take(), quote!(<)),
+    ];
+    if rest != crate::ir::types::Constraints::default() {
+        return None;
+    }
+    let unsigned = base.to_string().starts_with('u');
+    let mut tests = vec![];
+    for (bound, op) in bounds {
+        let Some(bound) = bound else { continue };
+        let value = bound.as_i64().filter(|v| !unsigned || *v >= 0)?;
+        let value = proc_macro2::Literal::i64_unsuffixed(value);
+        tests.push(quote!(value #op #value));
+    }
+    (!tests.is_empty()).then(|| {
+        quote! {
+            impl #n {
+                /// Returns the value for a constant: it panics when the value breaks the limits, which is a build error
+                /// in a `const` and a panic when it runs. Convert a value that is not a literal with `try_from`.
+                ///
+                /// # Panics
+                /// The value breaks a limit.
+                #[must_use]
+                pub const fn from_literal(value: #base) -> Self {
+                    assert!(#(#tests)&&*, "a literal outside the limits of this type");
+                    Self(value)
+                }
+            }
+        }
+    })
+}
+
 /// Emits a checked newtype: a scalar that only `TryFrom` and decoding build. Both check the keywords of its schema and
 /// return the first that the value breaks. The impls shared by every checked type of one base are a macro (see
 /// `checked_macros`).
@@ -1032,7 +1076,10 @@ fn checked_type(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, def
     let shared = match kind {
         Base::Str => quote!(runtime::checked_str_impls!(#n);),
         Base::Decimal => quote!(runtime::checked_decimal_impls!(#n);),
-        Base::Int | Base::Float => quote!(runtime::checked_num_impls!(#n, #base);),
+        Base::Int | Base::Float => {
+            let literal = (kind == Base::Int).then(|| literal_constructor(&n, &base, &c.constraints)).flatten();
+            quote!(#literal runtime::checked_num_impls!(#n, #base);)
+        }
         Base::Other => quote!(runtime::checked_impls!(#n, #base);),
     };
     // An earlier checked type of the same base and keywords checks for this one.

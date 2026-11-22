@@ -1940,6 +1940,18 @@ impl TryFrom<i64> for ShipmentInternationalScoresValue {
             .map_err(runtime::BuildError::value)
     }
 }
+impl ShipmentInternationalScoresValue {
+    /// Returns the value for a constant: it panics when the value breaks the limits, which is a build error
+    /// in a `const` and a panic when it runs. Convert a value that is not a literal with `try_from`.
+    ///
+    /// # Panics
+    /// The value breaks a limit.
+    #[must_use]
+    pub const fn from_literal(value: i64) -> Self {
+        assert!(value >= 0, "a literal outside the limits of this type");
+        Self(value)
+    }
+}
 runtime::checked_num_impls!(ShipmentInternationalScoresValue, i64);
 #[derive(Debug, Clone, PartialEq, Copy, PartialOrd, serde::Serialize)]
 #[serde(transparent)]
@@ -1989,6 +2001,18 @@ impl TryFrom<i64> for ShipmentInternationalWeight {
         runtime::first(violations)
             .map(|()| Self(value))
             .map_err(runtime::BuildError::value)
+    }
+}
+impl ShipmentInternationalWeight {
+    /// Returns the value for a constant: it panics when the value breaks the limits, which is a build error
+    /// in a `const` and a panic when it runs. Convert a value that is not a literal with `try_from`.
+    ///
+    /// # Panics
+    /// The value breaks a limit.
+    #[must_use]
+    pub const fn from_literal(value: i64) -> Self {
+        assert!(value >= 256, "a literal outside the limits of this type");
+        Self(value)
     }
 }
 runtime::checked_num_impls!(ShipmentInternationalWeight, i64);
@@ -2145,6 +2169,18 @@ pub type SettingsPattern1 = LabelsPattern1;
 #[serde(transparent)]
 pub struct SettingsPattern2(pub(super) i64);
 runtime::checked_twin!(SettingsPattern2, ShipmentInternationalScoresValue, i64);
+impl SettingsPattern2 {
+    /// Returns the value for a constant: it panics when the value breaks the limits, which is a build error
+    /// in a `const` and a panic when it runs. Convert a value that is not a literal with `try_from`.
+    ///
+    /// # Panics
+    /// The value breaks a limit.
+    #[must_use]
+    pub const fn from_literal(value: i64) -> Self {
+        assert!(value >= 0, "a literal outside the limits of this type");
+        Self(value)
+    }
+}
 runtime::checked_num_impls!(SettingsPattern2, i64);
 pub type ScoresValue = ShipmentInternationalScoresValue;
 #[derive(Debug, Clone, PartialEq, Copy, PartialOrd, serde::Serialize)]
@@ -2272,6 +2308,18 @@ impl TryFrom<i64> for UserAge {
             .map_err(runtime::BuildError::value)
     }
 }
+impl UserAge {
+    /// Returns the value for a constant: it panics when the value breaks the limits, which is a build error
+    /// in a `const` and a panic when it runs. Convert a value that is not a literal with `try_from`.
+    ///
+    /// # Panics
+    /// The value breaks a limit.
+    #[must_use]
+    pub const fn from_literal(value: i64) -> Self {
+        assert!(value >= 0 && value < 150, "a literal outside the limits of this type");
+        Self(value)
+    }
+}
 runtime::checked_num_impls!(UserAge, i64);
 #[derive(Debug, Clone, PartialEq, Copy, PartialOrd, serde::Serialize)]
 #[serde(transparent)]
@@ -2336,6 +2384,18 @@ impl TryFrom<i64> for UserLoyaltyVariant1 {
             .map_err(runtime::BuildError::value)
     }
 }
+impl UserLoyaltyVariant1 {
+    /// Returns the value for a constant: it panics when the value breaks the limits, which is a build error
+    /// in a `const` and a panic when it runs. Convert a value that is not a literal with `try_from`.
+    ///
+    /// # Panics
+    /// The value breaks a limit.
+    #[must_use]
+    pub const fn from_literal(value: i64) -> Self {
+        assert!(value >= 1 && value <= 10, "a literal outside the limits of this type");
+        Self(value)
+    }
+}
 runtime::checked_num_impls!(UserLoyaltyVariant1, i64);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
@@ -2371,6 +2431,18 @@ impl TryFrom<i64> for CreateUserLimit {
         runtime::first(violations)
             .map(|()| Self(value))
             .map_err(runtime::BuildError::value)
+    }
+}
+impl CreateUserLimit {
+    /// Returns the value for a constant: it panics when the value breaks the limits, which is a build error
+    /// in a `const` and a panic when it runs. Convert a value that is not a literal with `try_from`.
+    ///
+    /// # Panics
+    /// The value breaks a limit.
+    #[must_use]
+    pub const fn from_literal(value: i64) -> Self {
+        assert!(value >= 1 && value <= 100, "a literal outside the limits of this type");
+        Self(value)
     }
 }
 runtime::checked_num_impls!(CreateUserLimit, i64);
