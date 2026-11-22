@@ -885,8 +885,8 @@ pub(crate) fn kind_in(defs: &[TypeDef], ty: &Ty) -> JsonKind {
 /// before it each time.
 pub(crate) struct Kinds<'d> {
     defs: &'d [TypeDef],
-    /// The types met in this call: only those, so a call costs what it reaches and not the whole description.
-    found: BTreeMap<usize, Found>,
+    /// The types met so far.
+    found: Seen,
     known: Option<&'d RefCell<Vec<Option<JsonKind>>>>,
     /// Whether the kind being found met a type still being built or a cycle: then it is not final.
     unsettled: bool,
@@ -900,9 +900,37 @@ pub(super) enum Found {
     Kind(JsonKind),
 }
 
+/// The types that a [`Kinds`] met. One call stores only those it reaches, so it costs what it reaches and not the whole
+/// description. A pass over every type indexes them all, so each lookup costs the same whatever the size.
+enum Seen {
+    Reached(BTreeMap<usize, Found>),
+    Every(Vec<Option<Found>>),
+}
+
+impl Seen {
+    fn get(&self, i: usize) -> Option<Found> {
+        match self {
+            Self::Reached(map) => map.get(&i).copied(),
+            Self::Every(all) => all[i],
+        }
+    }
+
+    fn insert(&mut self, i: usize, found: Found) {
+        match self {
+            Self::Reached(map) => _ = map.insert(i, found),
+            Self::Every(all) => all[i] = Some(found),
+        }
+    }
+}
+
 impl<'d> Kinds<'d> {
     pub(crate) fn new(defs: &'d [TypeDef]) -> Self {
-        Self { defs, found: BTreeMap::new(), known: None, unsettled: false }
+        Self { defs, found: Seen::Reached(BTreeMap::new()), known: None, unsettled: false }
+    }
+
+    /// [`Kinds::new`] for asking the kind of every type of `defs`.
+    pub(crate) fn every(defs: &'d [TypeDef]) -> Self {
+        Self { found: Seen::Every(vec![None; defs.len()]), ..Self::new(defs) }
     }
 
     /// [`Kinds::new`] that loads and keeps the final kinds in `known`.
@@ -929,8 +957,8 @@ impl<'d> Kinds<'d> {
         if let Some(kind) = self.known.and_then(|k| k.borrow().get(i).copied().flatten()) {
             return kind;
         }
-        match self.found.get(&i) {
-            Some(Found::Kind(kind)) => return *kind,
+        match self.found.get(i) {
+            Some(Found::Kind(kind)) => return kind,
             Some(Found::Finding) => {
                 self.unsettled = true;
                 return JsonKind::Any;
