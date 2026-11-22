@@ -280,7 +280,7 @@ fn an_operation_is_listed_by_its_id_or_its_name() {
     let doc = common::spec(
         "3.1.0",
         &json!({"/a": {"get": {"operationId": "getA", "responses": ok}},
-            "/b": {"get": {"operationId": "get_a", "responses": ok}},
+            "/b": {"get": {"operationId": "fetchB", "responses": ok}},
             "/c": {"get": {"responses": ok}}}),
         &json!({}),
     );
@@ -291,11 +291,12 @@ fn an_operation_is_listed_by_its_id_or_its_name() {
         };
         let files = common::generate(&format!("shape-listed-{}", names.join("-")), &doc, &opts);
         let client = common::file(&files, "client.rs");
-        ["get_a(", "get_a2(", "get_c("].map(|f| client.contains(&format!("pub async fn {f}")))
+        ["get_a(", "fetch_b(", "get_c("].map(|f| client.contains(&format!("pub async fn {f}")))
     };
     assert_eq!(listed(&["getA"]), [true, false, false]);
     assert_eq!(listed(&["get_c"]), [false, false, true]);
-    assert!(listed(&["get_a"])[1], "the id of the second");
+    assert_eq!(listed(&["fetchB"]), [false, true, false], "by id");
+    assert_eq!(listed(&["fetch_b"]), [false, true, false], "by name");
 }
 
 /// A tag nested deeper than 16 parents is left out, and a parent shows only for a descendant that shows.

@@ -143,7 +143,7 @@ pub(crate) fn schemes(b: &mut Builder<'_>) -> Vec<SecurityScheme> {
             let [first, second] = pair;
             b.diags.error(
                 format!("/components/securitySchemes/{}", escape_token(second)),
-                format!("security schemes `{first}` and `{second}` map to the same item in Rust: rename one"),
+                format!("security schemes `{first}` and `{second}` {}: rename one", crate::diag::SAME_ITEM),
             );
         }
     }
