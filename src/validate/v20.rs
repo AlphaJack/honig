@@ -128,7 +128,7 @@ impl V<'_> {
     /// Checks for unknown fixed fields: 2.0 allows only its own and `x-` ones.
     fn fields(&mut self, o: &Map<String, Value>, ptr: &str, known: &[&str]) {
         for k in o.keys().filter(|k| !k.starts_with("x-") && !known.contains(&k.as_str())) {
-            self.diags.error(join(ptr, k), format!("unknown field `{k}`"));
+            self.diags.error(join(ptr, k), format!("{} `{k}`", crate::diag::UNKNOWN_FIELD));
         }
     }
 

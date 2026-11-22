@@ -96,6 +96,13 @@ pub fn load(specs: &[std::path::PathBuf], opts: &Options) -> Result<Loaded, Diag
         }
         return Err(diagnostics);
     }
+    // A misspelt `security` key is an unknown field, and its operation would be served public.
+    let unknown = |d: &&crate::diag::Diagnostic| {
+        d.level == crate::diag::Level::Error && d.message.starts_with(crate::diag::UNKNOWN_FIELD)
+    };
+    if opts.server && diagnostics.iter().any(|d| unknown(&d)) {
+        return Err(diagnostics);
+    }
     // A `pattern` that does not compile cannot be checked: its type would accept every value.
     if crate::validate::v32::has_uncompilable_pattern(&doc.root, "") {
         return Err(diagnostics);
