@@ -117,36 +117,11 @@ pub mod get_all_data {
     /// What the handler of this operation returns: its `Response`, or an error that the server answers.
     pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(Response { Self::Ok { .. } => "status 200 (Ok)", });
-    /// The body and headers of the success, in order: what `Response::into_result` gives.
-    pub type Success = (
-        OkBody,
-        Option<runtime::UuidStr>,
-        Option<i64>,
-        Option<i64>,
-        Option<i64>,
-        Option<String>,
-    );
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_result(self) -> Result<Success, Box<Self>> {
+        pub fn into_result(self) -> Result<Self, Box<Self>> {
             match self {
-                Self::Ok {
-                    body,
-                    x_request_id,
-                    x_pagination_total,
-                    x_pagination_page,
-                    x_pagination_per_page,
-                    x_cache_control,
-                } => {
-                    Ok((
-                        body,
-                        x_request_id,
-                        x_pagination_total,
-                        x_pagination_page,
-                        x_pagination_per_page,
-                        x_cache_control,
-                    ))
-                }
+                success @ Self::Ok { .. } => Ok(success),
             }
         }
     }
@@ -553,25 +528,11 @@ pub mod get_product {
         Response { Self::Ok { .. } => "status 200 (Ok)", Self::NotFound(..) =>
         "status 404 (NotFound)", }
     );
-    /// The body and headers of the success, in order: what `Response::into_result` gives.
-    pub type Success = (
-        Box<types::Product>,
-        Option<runtime::UuidStr>,
-        Option<String>,
-        Option<runtime::DateTimeStr>,
-        Option<String>,
-    );
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_result(self) -> Result<Success, Box<Self>> {
+        pub fn into_result(self) -> Result<Self, Box<Self>> {
             match self {
-                Self::Ok {
-                    body,
-                    x_request_id,
-                    e_tag,
-                    last_modified,
-                    x_cache_control,
-                } => Ok((body, x_request_id, e_tag, last_modified, x_cache_control)),
+                success @ Self::Ok { .. } => Ok(success),
                 other @ Self::NotFound(..) => Err(Box::new(other)),
             }
         }
@@ -1365,33 +1326,11 @@ pub mod get_token {
         "status 401 (Unauthorized)", Self::Forbidden(..) => "status 403 (Forbidden)",
         Self::TooManyRequests { .. } => "status 429 (TooManyRequests)", }
     );
-    /// The body and headers of the success, in order: what `Response::into_result` gives.
-    pub type Success = (
-        types::Token,
-        Option<runtime::UuidStr>,
-        Option<i64>,
-        Option<i64>,
-        Option<i64>,
-    );
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_result(self) -> Result<Success, Box<Self>> {
+        pub fn into_result(self) -> Result<Self, Box<Self>> {
             match self {
-                Self::Created {
-                    body,
-                    x_request_id,
-                    x_rate_limit_limit,
-                    x_rate_limit_remaining,
-                    x_rate_limit_reset,
-                } => {
-                    Ok((
-                        body,
-                        x_request_id,
-                        x_rate_limit_limit,
-                        x_rate_limit_remaining,
-                        x_rate_limit_reset,
-                    ))
-                }
+                success @ Self::Created { .. } => Ok(success),
                 other @ (Self::BadRequest { .. }
                 | Self::Unauthorized(..)
                 | Self::Forbidden(..)
@@ -1468,25 +1407,11 @@ pub mod get_me {
         Response { Self::Ok { .. } => "status 200 (Ok)", Self::Unauthorized(..) =>
         "status 401 (Unauthorized)", Self::Forbidden(..) => "status 403 (Forbidden)", }
     );
-    /// The body and headers of the success, in order: what `Response::into_result` gives.
-    pub type Success = (
-        types::User,
-        Option<runtime::UuidStr>,
-        Option<String>,
-        Option<runtime::DateTimeStr>,
-        Option<String>,
-    );
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_result(self) -> Result<Success, Box<Self>> {
+        pub fn into_result(self) -> Result<Self, Box<Self>> {
             match self {
-                Self::Ok {
-                    body,
-                    x_request_id,
-                    e_tag,
-                    last_modified,
-                    x_cache_control,
-                } => Ok((body, x_request_id, e_tag, last_modified, x_cache_control)),
+                success @ Self::Ok { .. } => Ok(success),
                 other @ (Self::Unauthorized(..) | Self::Forbidden(..)) => {
                     Err(Box::new(other))
                 }
