@@ -150,6 +150,19 @@ impl<'a> Builder<'a> {
         }
     }
 
+    /// Reports names for the values of an enum that are not one string for each value.
+    fn check_enum_names(&mut self, o: &serde_json::Map<String, Value>, values: usize, ptr: &str) {
+        for key in keywords::ENUM_NAMES {
+            let Some(Value::Array(names)) = o.get(*key) else { continue };
+            if names.len() != values || names.iter().any(|n| !n.is_string()) {
+                self.diags.error(
+                    join(ptr, key),
+                    format!("`{key}` has {} entries for {values} values: {}", names.len(), crate::diag::ENUM_NAMES),
+                );
+            }
+        }
+    }
+
     /// Returns the name that a `$ref` gives. That is the name of the component, also through a pointer that a component
     /// claimed. Otherwise the last token of the pointer. An implicit discriminator mapping uses it on the wire.
     fn ref_name(&self, r: &str) -> String {
@@ -811,6 +824,7 @@ impl<'a> Builder<'a> {
             return self.all_of(o, ptr, name);
         }
         if let Some(ints) = int_enum_values(o) {
+            self.check_enum_names(o, ints.len(), ptr);
             return Some(int_enum(o, &ints));
         }
         if let Some(Value::Array(values)) = o.get("enum") {
