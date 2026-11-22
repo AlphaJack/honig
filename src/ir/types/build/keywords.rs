@@ -886,3 +886,11 @@ pub(crate) fn type_set(o: &serde_json::Map<String, Value>) -> (Vec<String>, bool
             .is_some_and(|bs| bs.iter().any(|b| b.get("type").and_then(Value::as_str) == Some("null")));
     (types, nullable)
 }
+
+/// Returns the names of a schema that has `required` and annotations alone: a value matches it when it is no object or
+/// has each name.
+pub(super) fn required_only(s: &Value) -> Option<Vec<String>> {
+    let o = s.as_object()?;
+    let names = o.get("required")?.as_array()?;
+    o.keys().all(|k| k == "required" || ANNOTATIONS.contains(&k.as_str())).then(|| json::strings(names))
+}

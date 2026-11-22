@@ -8,14 +8,15 @@ use serde_json::Value;
 use super::cycles::break_cycles;
 use super::rewrite::conditional_union;
 use super::{
-    Checked, Constraints, Evaluated, EvaluatedItems, Format, JsonKind, Kind, Leftover, Rest, Ty, TypeDef, TypeId,
-    TypeSpace, UnionMode, XmlHint,
+    Branch, Checked, Constraints, Evaluated, EvaluatedItems, Format, JsonKind, Kind, Leftover, Rest, Ty, TypeDef,
+    TypeId, TypeSpace, UnionMode, XmlHint,
 };
 use crate::diag::Diagnostics;
 use crate::ir::names::{Name, Reserved, unique};
 use crate::json;
 use crate::json::join;
 use crate::json::{Doc, pointer};
+use crate::validate::v32::indexed;
 
 mod keywords;
 mod union;
@@ -23,8 +24,8 @@ mod union;
 use keywords::{
     ANNOTATIONS, Evaluation, MAX_ALIAS_HOPS, MAX_SCHEMA_DEPTH, MAX_TUPLE, MAX_TYPE_DEPTH, UNTYPED_KEYWORDS,
     asserts_nothing, beside_union, checked_items, checked_scalar, count_of, fixed_len, inferred_kind, int_enum,
-    int_enum_values, int_format, json_string_schema, kind_scoped, may_be, mixed, references, scoped_keywords,
-    string_format, struct_patterns, type_set, typed_conditional, typed_const, typed_dependent_schemas,
+    int_enum_values, int_format, json_string_schema, kind_scoped, may_be, mixed, references, required_only,
+    scoped_keywords, string_format, struct_patterns, type_set, typed_conditional, typed_const, typed_dependent_schemas,
     typed_object_keywords, typed_patterns, typeless_assertions, untyped, untyped_value_checks, values_union,
 };
 pub(crate) use keywords::{binary_media, literal_default};
@@ -654,11 +655,17 @@ impl<'a> Builder<'a> {
         let loose = self.loose_union(s);
         let one_of = self.counted_one_of(s).or_else(|| s.get("oneOf").and_then(Value::as_array).filter(|_| loose));
         let any_of = s.get("anyOf").and_then(Value::as_array).filter(|_| loose);
-        for (key, branches, out) in [("oneOf", one_of, &mut c.one_of), ("anyOf", any_of, &mut c.any_of)] {
-            for (i, branch) in branches.into_iter().flatten().enumerate() {
-                let at = at.map(|p| join(&join(p, key), &i.to_string()));
-                out.push(self.queue_subschema(branch, at));
-            }
+        for (i, branch) in indexed(one_of.map(Vec::as_slice)) {
+            let branch = match required_only(branch) {
+                Some(names) => Branch::Required(names),
+                None => {
+                    Branch::Schema(self.queue_subschema(branch, at.map(|p| join(&join(p, "oneOf"), &i.to_string()))))
+                }
+            };
+            c.one_of.push(branch);
+        }
+        for (i, branch) in indexed(any_of.map(Vec::as_slice)) {
+            c.any_of.push(self.queue_subschema(branch, at.map(|p| join(&join(p, "anyOf"), &i.to_string()))));
         }
     }
 

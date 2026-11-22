@@ -10,7 +10,7 @@ use serde_json::Number;
 
 use super::syntax::{ident, lit};
 use crate::emit::rust::space::Space;
-use crate::ir::types::{Constraints, Evaluated, EvaluatedItems, Kind, Leftover, Rest, Ty};
+use crate::ir::types::{Branch, Constraints, Evaluated, EvaluatedItems, Kind, Leftover, Rest, Ty};
 
 /// Checks of `value`, an `&Option<t>`. Nested options peel in one pattern
 /// (`if let Some(Some(v))`) and never one `if let` inside another.
@@ -1214,9 +1214,18 @@ fn names_schema_checks(c: &Constraints, ty: &dyn Fn(usize) -> TokenStream, path:
 /// one at least of `anyOf`.
 fn branch_count_checks(c: &Constraints, ty: &dyn Fn(usize) -> TokenStream, path: &TokenStream) -> TokenStream {
     let one_of = (!c.one_of.is_empty()).then(|| {
-        let branches = c.one_of.iter().map(|&n| ty(n));
+        let branches = c.one_of.iter().map(|b| match b {
+            Branch::Schema(n) => {
+                let t = ty(*n);
+                quote!(json.matches::<#t>())
+            }
+            Branch::Required(names) => {
+                let has = names.iter().map(|n| quote!(json.contains_key(#n)));
+                quote!((json.as_object().is_none() || #(#has)&&*))
+            }
+        });
         quote! {
-            let hits = [#(json.matches::<#branches>()),*]
+            let hits = [#(#branches),*]
                 .into_iter()
                 .filter(|hit| *hit)
                 .count();

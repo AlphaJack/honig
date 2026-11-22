@@ -109,6 +109,11 @@ components:
       minLength: 2
       minimum: 1
       uniqueItems: true
+    # `oneOf` of branches that only list `required`: exactly one of the names.
+    Reach:
+      type: object
+      properties: {email: {type: string}, phone: {type: string}}
+      oneOf: [{required: [email]}, {required: [phone]}]
     # `anyOf` of two strings: the first branch that decodes, with its keywords, is the answer.
     Slug:
       anyOf: [{type: string, enum: [""]}, {type: string, pattern: '^[a-z]+$'}]

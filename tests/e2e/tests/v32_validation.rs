@@ -747,6 +747,14 @@ fn keywords_beside_an_implied_shape_check_their_kind() {
     }
 }
 
+/// A `oneOf` of branches that only list `required` takes a value with exactly one of the names.
+#[test]
+fn exactly_one_required_name_of_a_one_of() {
+    let reach = |v: serde_json::Value| serde_json::from_str::<types::Reach>(&v.to_string()).is_ok();
+    assert!(reach(json!({"email": "a"})) && reach(json!({"phone": "1"})));
+    assert!(!reach(json!({"email": "a", "phone": "1"})) && !reach(json!({})));
+}
+
 /// `dependentSchemas` over declared properties: when the property is present, the value decodes as the type of its
 /// schema.
 #[test]
