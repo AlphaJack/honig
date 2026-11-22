@@ -123,6 +123,10 @@ fn extends_and_self_name_whole_documents() {
         messages(&mut doc, &overlay("https://example.com/other#frag", "https://example.com/o")),
         ["Error overlay.yaml#/extends", "Warning overlay.yaml#/extends"]
     );
+    // An overlay written for another description stops generation: its actions would apply to what it was not meant for.
+    let mut mismatch = apply(&mut doc, &overlay("https://example.com/other", "https://example.com/o"));
+    assert!(mismatch.refused(false), "{mismatch:?}");
+    assert!(!apply(&mut doc, &ok).refused(false));
 }
 
 #[test]

@@ -133,7 +133,13 @@ fn identity(doc: &Value, overlay: &Value, at: &dyn Fn(&str) -> String, diags: &m
         && absolute(extends)
         && extends != own
     {
-        diags.warning(at("/extends"), format!("`extends` is `{extends}` but the description's `$self` is `{own}`"));
+        diags.push(crate::diag::Diagnostic {
+            refuses: crate::diag::Refuses::Everything,
+            ..crate::diag::Diagnostic::warning(
+                at("/extends"),
+                format!("`extends` is `{extends}` but the description's `$self` is `{own}`"),
+            )
+        });
     }
 }
 

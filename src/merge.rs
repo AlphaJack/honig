@@ -68,6 +68,14 @@ pub(crate) fn merge(specs: &[PathBuf], diags: &mut Diagnostics) -> Option<Value>
                         }
                     }
                 }
+                // Two files that differ in the dialect of their schemas or in the identity of the description would
+                // be read as the first's: a schema written for the other would mean something else.
+                ("jsonSchemaDialect" | "$self", Some(first)) if *first != value => {
+                    diags.refuse(
+                        format!("{file}#/{key}"),
+                        format!("`{key}` is `{value}` here and `{first}` in an earlier file: merged files share one"),
+                    );
+                }
                 // `openapi`, `info` and the rest: the first file's.
                 _ => {}
             }
@@ -326,6 +334,37 @@ mod tests {
         assert!(v["paths"]["/api/client/v3/login"]["get"].is_object(), "{:#}", v["paths"]);
         assert!(v["paths"]["/api/media/v1/media"]["get"].is_object());
         assert_eq!(v["components"]["schemas"]["Id"]["pattern"], "^@");
+    }
+
+    /// Files that differ in `jsonSchemaDialect` or `$self` stop generation: the second's schemas would be read in the
+    /// first's dialect.
+    #[test]
+    fn files_that_differ_in_dialect_or_identity_refuse_generation() {
+        let id = json!({"type": "string"});
+        for (key, first, second) in [
+            (
+                "jsonSchemaDialect",
+                "https://json-schema.org/draft/2020-12/schema",
+                "http://json-schema.org/draft-07/schema#",
+            ),
+            ("$self", "https://example.com/a", "https://example.com/b"),
+        ] {
+            let dir = scratch(&format!("differ-{}", key.trim_start_matches('$')));
+            let merged = |names: [&str; 2], values: [&str; 2]| {
+                let mut login = file("/login", "/v3", &id);
+                let mut media = file("/media", "/v3", &id);
+                login[key] = json!(values[0]);
+                media[key] = json!(values[1]);
+                let files = [write(&dir, names[0], &login), write(&dir, names[1], &media)];
+                let mut diags = Diagnostics::default();
+                merge(&files, &mut diags).unwrap();
+                diags
+            };
+            let mut differing = merged(["login.json", "media.json"], [first, second]);
+            assert!(differing.refused(false), "{key}: {differing:?}");
+            let mut agreeing = merged(["login2.json", "media2.json"], [first, first]);
+            assert!(!agreeing.refused(false), "{key} agrees: {agreeing:?}");
+        }
     }
 
     #[test]
