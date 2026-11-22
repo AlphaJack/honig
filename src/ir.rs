@@ -101,6 +101,7 @@ pub(crate) fn build_with(
     b.components();
     let schemes = security::schemes(&mut b);
     let mut http = Http::build(&mut b, &schemes);
+    security::one_variant_per_scope(&mut b, &schemes, &http::declared(http.operations.iter()).collect::<Vec<_>>());
     let mut types = b.finish();
     http.use_request_types(&types.split_directions(lenient));
     // After the split: each direction's type wraps its own fields.

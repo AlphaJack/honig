@@ -242,6 +242,20 @@ fn a_reorder_of_media_types_changes_no_variant() {
     assert_eq!(variants(false), variants(true));
 }
 
+/// Two scopes that are one variant of the scope enum refuse a server: numbered by their place in the sorted list, an
+/// added scope would rename the others and a `verify_` method would grant another scope than it names.
+#[test]
+fn two_scopes_of_one_variant_refuse_a_server() {
+    let components = json!({"securitySchemes": {"oauth": {"type": "oauth2", "flows": {"implicit": {
+        "authorizationUrl": "https://example.com/auth", "scopes": {"read:user": "a", "read_user": "b"}}}}}});
+    let path =
+        common::write("sec-scope-variants", &doc(&secured_op(&json!([{"oauth": ["read:user"]}])), &components), &[]);
+    let err = crate::generate::generate(&path, &Options::default()).expect_err("must refuse");
+    assert!(err.iter().any(|d| d.pointer == "/components/securitySchemes/oauth"), "{:#?}", err.0);
+    let client = Options { server: false, tests: false, ..Options::default() };
+    crate::generate::generate(&path, &client).expect("a client is still generated");
+}
+
 // `content` (3.2 Request Body / Response): "For requests that match multiple
 // keys, only the most specific key is applicable."
 

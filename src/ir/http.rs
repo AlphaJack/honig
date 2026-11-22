@@ -283,6 +283,11 @@ pub(crate) struct Operation {
     pub pointer: String,
 }
 
+/// Returns every requirement that `ops` declare.
+pub(crate) fn declared<'a>(ops: impl Iterator<Item = &'a Operation>) -> impl Iterator<Item = &'a Requirement> {
+    ops.flat_map(|o| o.security.iter().flatten())
+}
+
 impl Operation {
     /// Returns every media type of its request body and responses.
     pub(crate) fn contents(&self) -> impl Iterator<Item = &Content> {

@@ -10,13 +10,9 @@ use crate::emit::rust::syntax::pascal_ident;
 use crate::emit::rust::syntax::{doc_opt, ident, lit};
 use crate::ir::Api;
 use crate::ir::http::Operation;
+use crate::ir::http::declared as requirements;
 use crate::ir::names::Name;
-use crate::ir::security::{Requirement, SchemeKind, SecurityScheme as Scheme};
-
-/// Returns every requirement that `ops` declare.
-fn requirements<'a>(ops: impl Iterator<Item = &'a Operation>) -> impl Iterator<Item = &'a Requirement> {
-    ops.flat_map(|o| o.security.iter().flatten())
-}
+use crate::ir::security::{SchemeKind, SecurityScheme as Scheme};
 
 fn scheme_scopes(api: &Api, scheme: &Scheme) -> Vec<(String, Option<String>)> {
     let mut out: BTreeMap<String, Option<String>> = BTreeMap::new();
