@@ -1152,15 +1152,33 @@ fn nested_encoding(path: &str, enc: &Value, out: &mut Vec<(String, String)>, dep
     }
 }
 
-fn contents(b: &mut Builder<'_>, holder: &Value, ptr: &str, hint: &Name) -> Vec<Content> {
-    let Some(Value::Object(content)) = holder.get("content") else { return vec![] };
-    let mut out = vec![];
-    // Numbered in the sorted order of the media types: a reorder of `content` changes no name.
+/// Returns the variant name of each media type of `content`. They are numbered in the sorted order of the media types: a
+/// reorder of `content` changes no name.
+fn media_variants(content: &serde_json::Map<String, Value>) -> BTreeMap<&str, Name> {
     let names = unique_sorted(
         content.keys().map(|m| (Name::new(&media_variant(m)), m.as_str())).collect(),
         &mut BTreeSet::new(),
     );
-    let variants: BTreeMap<&str, Name> = content.keys().map(String::as_str).zip(names).collect();
+    content.keys().map(String::as_str).zip(names).collect()
+}
+
+/// Warns about each validation keyword of the schema of a text or binary body: the body is a `String` or bytes, and
+/// no check of the keyword runs.
+fn unchecked_keywords(b: &mut Builder<'_>, kind: MediaKind, schema: Option<&Value>, ptr: &str, media: &str) {
+    const KEYWORDS: [&str; 5] = ["minLength", "maxLength", "pattern", "enum", "const"];
+    if !matches!(kind, MediaKind::Text | MediaKind::Bytes) {
+        return;
+    }
+    for key in KEYWORDS.iter().filter(|k| schema.is_some_and(|s| s.get(**k).is_some())) {
+        b.diags
+            .warning(join(ptr, key), format!("`{key}` is not checked on a `{media}` body: it is plain text or bytes"));
+    }
+}
+
+fn contents(b: &mut Builder<'_>, holder: &Value, ptr: &str, hint: &Name) -> Vec<Content> {
+    let Some(Value::Object(content)) = holder.get("content") else { return vec![] };
+    let mut out = vec![];
+    let variants = media_variants(content);
     for (media, media_obj) in content {
         let Some((media_obj, mptr)) = resolve_value(b, media_obj, &join(&join(ptr, "content"), media)) else {
             continue;
@@ -1172,6 +1190,7 @@ fn contents(b: &mut Builder<'_>, holder: &Value, ptr: &str, hint: &Name) -> Vec<
         if item_schema.is_some() && kind == MediaKind::Json {
             kind = MediaKind::JsonLines;
         }
+        unchecked_keywords(b, kind, schema, &join(&mptr, "schema"), media);
         let schema_ty = |b: &mut Builder<'_>| schema.map_or(Ty::Any, |s| b.ty(s, &join(&mptr, "schema"), hint));
         let item_hint = hint.and(&Name::new("Item"));
         let mut open_prefix = None;

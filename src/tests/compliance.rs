@@ -418,6 +418,26 @@ fn a_default_that_no_value_writes_is_a_warning() {
     assert!(!at("/components/schemas/Holder/properties/limit/default"), "{warned:?}");
 }
 
+/// A keyword that no check runs is a warning, not silence: a `text/plain` body is a `String` and an upload is bytes.
+#[test]
+fn a_limit_on_a_text_or_binary_body_is_a_warning() {
+    let body = |media: &str, schema: Value| {
+        json!({"/a": {"post": {"operationId": "a", "requestBody": {"content": {media: {"schema": schema}}},
+            "responses": {"204": {"description": "ok"}}}}})
+    };
+    let text = body("text/plain", json!({"type": "string", "maxLength": 140}));
+    let upload = body("application/octet-stream", json!({"type": "string", "format": "byte", "maxLength": 1000}));
+    for (name, paths, key) in [("text", text, "maxLength"), ("upload", upload, "maxLength")] {
+        let path = common::write(&format!("unchecked-{name}"), &doc(&paths, &json!({})), &[]);
+        let made = crate::generate::generate(&path, &Options::default()).expect("generates");
+        let warned = made
+            .diagnostics
+            .iter()
+            .any(|d| d.pointer.ends_with(&format!("/schema/{key}")) && d.message.contains("not checked"));
+        assert!(warned, "{name}: {:#?}", made.diagnostics);
+    }
+}
+
 // `content` (3.2 Request Body / Response): "For requests that match multiple
 // keys, only the most specific key is applicable."
 
