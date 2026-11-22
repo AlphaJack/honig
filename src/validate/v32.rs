@@ -762,7 +762,7 @@ impl V<'_> {
 }
 
 /// Returns the items of an optional list with their index.
-fn indexed<T>(items: Option<&[T]>) -> impl Iterator<Item = (usize, &T)> {
+pub(crate) fn indexed<T>(items: Option<&[T]>) -> impl Iterator<Item = (usize, &T)> {
     items.into_iter().flatten().enumerate()
 }
 

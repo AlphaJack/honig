@@ -195,6 +195,15 @@ pub(crate) struct TypeDef {
     pub lenient: bool,
 }
 
+/// A branch of a `oneOf` that a check counts.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) enum Branch {
+    /// A schema: an index into [`TypeSpace::subschemas`]. A value matches it when it decodes as its type.
+    Schema(usize),
+    /// A schema of `required` alone: a value matches it when it is no object, or has each of these names.
+    Required(Vec<String>),
+}
+
 /// Validation keywords of a schema (JSON Schema 2020-12 validation vocabulary).
 #[derive(Debug, Clone, Default, PartialEq)]
 pub(crate) struct Constraints {
@@ -268,9 +277,9 @@ pub(crate) struct Constraints {
     pub json_contains: Option<(usize, u64, Option<u64>)>,
     /// `dependentRequired` of a schema without `type`: checked on the JSON object, whatever type the value has.
     pub json_dependents: Vec<(String, Vec<String>)>,
-    /// The branches of a `oneOf` that a value must decode as exactly one of, each an index into
-    /// [`TypeSpace::subschemas`]: a discriminator picks one branch, and two share a type.
-    pub one_of: Vec<usize>,
+    /// The branches of a `oneOf` that a value must match exactly one of: a discriminator picks one branch, and two
+    /// share a type.
+    pub one_of: Vec<Branch>,
     /// The branches of an `anyOf` that its union type cannot judge alone, each an index into
     /// [`TypeSpace::subschemas`]: a value must decode as one of them at least.
     pub any_of: Vec<usize>,
@@ -892,7 +901,7 @@ impl Constraints {
         }
         out.extend(self.contains.map(|(i, ..)| i));
         out.extend(self.json_contains.map(|(i, ..)| i));
-        out.extend(&self.one_of);
+        out.extend(self.one_of.iter().filter_map(|b| if let Branch::Schema(i) = b { Some(*i) } else { None }));
         out.extend(&self.any_of);
         out.extend(self.pattern_properties.iter().map(|(_, i)| *i));
         out.extend(self.closed_to.as_ref().and_then(|(_, i)| *i));

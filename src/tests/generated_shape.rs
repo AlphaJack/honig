@@ -106,6 +106,18 @@ fn format_strs_sit_beside_the_types() {
     assert!(!own.contains("pub use runtime::UuidStr"), "{own}");
 }
 
+/// A `oneOf` branch that only lists `required` is counted by its names: no type of its own decodes the value.
+#[test]
+fn a_required_only_branch_is_counted_by_its_names() {
+    let contact = json!({"type": "object", "properties": {"email": {"type": "string"}, "phone": {"type": "string"}},
+        "oneOf": [{"required": ["email"]}, {"required": ["phone"], "description": "by phone"}]});
+    let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Contact": contact}}));
+    let types =
+        common::file(&common::generate("required-keys", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
+    assert!(types.contains(r#"json.contains_key("phone")"#), "{types}");
+    assert!(!types.contains("NotChecked"), "{types}");
+}
+
 /// Every `Params` has `new` accepting what is required; `Default` only when that is nothing.
 #[test]
 fn params_always_have_new_and_default_only_without_arguments() {
