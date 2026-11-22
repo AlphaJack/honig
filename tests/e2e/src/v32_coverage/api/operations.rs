@@ -16,6 +16,8 @@ pub mod ping {
     pub enum Response {
         Default { status: runtime::http::StatusCode },
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(
         Response { Self::Default { status, .. } => format_args!("status {} (Default)",
         status.as_u16()), }
@@ -42,6 +44,8 @@ pub mod archive {
         /// Already archived.
         Conflict(types::ArchiveConflict),
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(
         Response { Self::NoContent => "status 204 (NoContent)", Self::Conflict(..) =>
         "status 409 (Conflict)", }
@@ -77,6 +81,8 @@ pub mod unarchive {
         /// Not archived.
         Conflict(types::UnarchiveConflict),
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(
         Response { Self::NoContent => "status 204 (NoContent)", Self::Conflict(..) =>
         "status 409 (Conflict)", }
@@ -126,6 +132,8 @@ pub mod add_note {
             x_tags: Option<types::AddNoteCreatedXTags>,
         },
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(
         Response { Self::Created { .. } => "status 201 (Created)", }
     );
@@ -170,6 +178,8 @@ pub mod find_box {
         /// The box.
         Ok(types::Box2),
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.

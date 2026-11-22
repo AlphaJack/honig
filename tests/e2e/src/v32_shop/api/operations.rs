@@ -114,6 +114,8 @@ pub mod get_all_data {
             x_cache_control: Option<String>,
         },
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(Response { Self::Ok { .. } => "status 200 (Ok)", });
     /// The body and headers of the success, in order: what `Response::into_ok` gives.
     pub type Success = (
@@ -269,6 +271,8 @@ pub mod create_product {
         /// Forbidden
         Forbidden(ForbiddenBody),
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(
         Response { Self::Created { .. } => "status 201 (Created)", Self::BadRequest { ..
         } => "status 400 (BadRequest)", Self::Forbidden(..) => "status 403 (Forbidden)",
@@ -404,6 +408,8 @@ pub mod query_products {
             x_request_id: Option<runtime::UuidText>,
         },
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(
         Response { Self::Ok { .. } => "status 200 (Ok)", Self::BadRequest { .. } =>
         "status 400 (BadRequest)", }
@@ -456,6 +462,8 @@ pub mod search_products {
             x_request_id: Option<runtime::UuidText>,
         },
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(Response { Self::Ok { .. } => "status 200 (Ok)", });
     /// The body and headers of the success, in order: what `Response::into_ok` gives.
     pub type Success = (types::SearchProductsOk, Option<runtime::UuidText>);
@@ -539,6 +547,8 @@ pub mod get_product {
         /// Not Found
         NotFound(NotFoundBody),
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(
         Response { Self::Ok { .. } => "status 200 (Ok)", Self::NotFound(..) =>
         "status 404 (NotFound)", }
@@ -668,6 +678,8 @@ pub mod update_product {
         /// The product changed since the client fetched it
         PreconditionFailed,
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(
         Response { Self::Ok(..) => "status 200 (Ok)", Self::BadRequest { .. } =>
         "status 400 (BadRequest)", Self::Forbidden(..) => "status 403 (Forbidden)",
@@ -737,6 +749,8 @@ pub mod delete_product {
         /// Not Found
         NotFound(NotFoundBody),
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(
         Response { Self::NoContent => "status 204 (NoContent)", Self::NotFound(..) =>
         "status 404 (NotFound)", }
@@ -793,6 +807,8 @@ pub mod copy_product {
         /// Not Found
         NotFound(NotFoundBody),
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(
         Response { Self::Created { .. } => "status 201 (Created)", Self::NotFound(..) =>
         "status 404 (NotFound)", }
@@ -903,6 +919,8 @@ pub mod upload_image {
         /// Not Found
         NotFound(NotFoundBody),
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(
         Response { Self::Ok { .. } => "status 200 (Ok)", Self::BadRequest { .. } =>
         "status 400 (BadRequest)", Self::Forbidden(..) => "status 403 (Forbidden)",
@@ -992,6 +1010,8 @@ pub mod stream_product_events {
             x_request_id: Option<runtime::UuidText>,
         },
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(Response { Self::Ok { .. } => "status 200 (Ok)", });
     /// The body and headers of the success, in order: what `Response::into_ok` gives.
     pub type Success = (OkBody, Option<runtime::UuidText>);
@@ -1057,6 +1077,8 @@ pub mod upload_photos {
         /// Not Found
         NotFound(NotFoundBody),
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(
         Response { Self::Accepted { .. } => "status 202 (Accepted)", Self::BadRequest {
         .. } => "status 400 (BadRequest)", Self::NotFound(..) => "status 404 (NotFound)",
@@ -1108,6 +1130,8 @@ pub mod create_item {
         /// Item created
         Created(types::Item),
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(Response { Self::Created(..) => "status 201 (Created)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
@@ -1201,6 +1225,8 @@ pub mod create_user {
         /// Unprocessable Entity
         UnprocessableEntity(UnprocessableEntityBody),
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(
         Response { Self::Created { .. } => "status 201 (Created)", Self::BadRequest { ..
         } => "status 400 (BadRequest)", Self::Unauthorized(..) =>
@@ -1331,6 +1357,8 @@ pub mod get_token {
             retry_after: Option<i64>,
         },
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(
         Response { Self::Created { .. } => "status 201 (Created)", Self::BadRequest { ..
         } => "status 400 (BadRequest)", Self::Unauthorized(..) =>
@@ -1434,6 +1462,8 @@ pub mod get_me {
         /// Forbidden
         Forbidden(ForbiddenBody),
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(
         Response { Self::Ok { .. } => "status 200 (Ok)", Self::Unauthorized(..) =>
         "status 401 (Unauthorized)", Self::Forbidden(..) => "status 403 (Forbidden)", }
@@ -1496,6 +1526,8 @@ pub mod new_product_post {
         /// Return a 200 status to indicate that the data was received successfully
         Ok,
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(Response { Self::Ok => "status 200 (Ok)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
@@ -1538,6 +1570,8 @@ pub mod create_product_product_created_post {
         /// Your server should return this HTTP status code if no longer interested in further updates
         NoContent,
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(
         Response { Self::Ok => "status 200 (Ok)", Self::NoContent =>
         "status 204 (NoContent)", }
@@ -1581,6 +1615,8 @@ pub mod create_product_product_creation_failed_post {
         /// Your server returns this code if it accepts the failure callback notification
         Ok,
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(Response { Self::Ok => "status 200 (Ok)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
@@ -1621,6 +1657,8 @@ pub mod create_product_product_discontinued_post {
         /// Your server returns this code if it accepts the discontinued product callback notification
         Ok,
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(Response { Self::Ok => "status 200 (Ok)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.

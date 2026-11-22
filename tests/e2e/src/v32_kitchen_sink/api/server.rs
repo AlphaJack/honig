@@ -34,22 +34,18 @@ pub trait Api: Send + Sync + 'static {
         &self,
         params: ops::submit_form::Params,
         ctx: &Context<'_, Option<Self::Principal>>,
-    ) -> impl Future<
-        Output = Result<ops::submit_form::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::submit_form::Result> + Send;
     fn put_blob(
         &self,
         params: ops::put_blob::Params,
         ctx: &Context<'_, Option<Self::Principal>>,
-    ) -> impl Future<Output = Result<ops::put_blob::Response, runtime::ApiError>> + Send;
+    ) -> impl Future<Output = ops::put_blob::Result> + Send;
     /// List products
     fn list_products(
         &self,
         params: ops::list_products::Params,
         ctx: &Context<'_, Option<Self::Principal>>,
-    ) -> impl Future<
-        Output = Result<ops::list_products::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::list_products::Result> + Send;
     /// Products collection
     ///
     /// All products
@@ -59,9 +55,7 @@ pub trait Api: Send + Sync + 'static {
         &self,
         params: ops::create_product::Params,
         ctx: &Context<'_, Self::Principal>,
-    ) -> impl Future<
-        Output = Result<ops::create_product::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::create_product::Result> + Send;
     /// Products collection
     ///
     /// All products
@@ -69,9 +63,7 @@ pub trait Api: Send + Sync + 'static {
         &self,
         params: ops::search_products::Params,
         ctx: &Context<'_, Option<Self::Principal>>,
-    ) -> impl Future<
-        Output = Result<ops::search_products::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::search_products::Result> + Send;
     /// Products collection
     ///
     /// All products
@@ -79,63 +71,47 @@ pub trait Api: Send + Sync + 'static {
         &self,
         params: ops::copy_products::Params,
         ctx: &Context<'_, Option<Self::Principal>>,
-    ) -> impl Future<
-        Output = Result<ops::copy_products::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::copy_products::Result> + Send;
     fn get_product(
         &self,
         params: ops::get_product::Params,
         ctx: &Context<'_, Option<Self::Principal>>,
-    ) -> impl Future<
-        Output = Result<ops::get_product::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::get_product::Result> + Send;
     fn put_product(
         &self,
         params: ops::put_product::Params,
         ctx: &Context<'_, Option<Self::Principal>>,
-    ) -> impl Future<
-        Output = Result<ops::put_product::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::put_product::Result> + Send;
     fn delete_product(
         &self,
         params: ops::delete_product::Params,
         ctx: &Context<'_, Option<Self::Principal>>,
-    ) -> impl Future<
-        Output = Result<ops::delete_product::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::delete_product::Result> + Send;
     fn options_product(
         &self,
         params: ops::options_product::Params,
         ctx: &Context<'_, Option<Self::Principal>>,
-    ) -> impl Future<
-        Output = Result<ops::options_product::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::options_product::Result> + Send;
     fn head_product(
         &self,
         params: ops::head_product::Params,
         ctx: &Context<'_, Option<Self::Principal>>,
-    ) -> impl Future<
-        Output = Result<ops::head_product::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::head_product::Result> + Send;
     fn patch_product(
         &self,
         params: ops::patch_product::Params,
         ctx: &Context<'_, Option<Self::Principal>>,
-    ) -> impl Future<
-        Output = Result<ops::patch_product::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::patch_product::Result> + Send;
     fn trace_product(
         &self,
         params: ops::trace_product::Params,
         ctx: &Context<'_, Option<Self::Principal>>,
-    ) -> impl Future<
-        Output = Result<ops::trace_product::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::trace_product::Result> + Send;
     fn search(
         &self,
         params: ops::search::Params,
         ctx: &Context<'_, Option<Self::Principal>>,
-    ) -> impl Future<Output = Result<ops::search::Response, runtime::ApiError>> + Send;
+    ) -> impl Future<Output = ops::search::Result> + Send;
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Operation {
@@ -283,23 +259,17 @@ pub trait Webhooks: Send + Sync + 'static {
         &self,
         params: ops::new_product_post::Params,
         ctx: &WebhookContext<'_, Option<Self::Principal>>,
-    ) -> impl Future<
-        Output = Result<ops::new_product_post::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::new_product_post::Result> + Send;
     fn create_product_on_adopt_post(
         &self,
         params: ops::create_product_on_adopt_post::Params,
         ctx: &WebhookContext<'_, Option<Self::Principal>>,
-    ) -> impl Future<
-        Output = Result<ops::create_product_on_adopt_post::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::create_product_on_adopt_post::Result> + Send;
     fn create_product_shared_post(
         &self,
         params: ops::create_product_shared_post::Params,
         ctx: &WebhookContext<'_, Option<Self::Principal>>,
-    ) -> impl Future<
-        Output = Result<ops::create_product_shared_post::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::create_product_shared_post::Result> + Send;
 }
 pub struct WebhookRoutes<A> {
     api: std::sync::Arc<A>,

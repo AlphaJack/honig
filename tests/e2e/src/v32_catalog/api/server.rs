@@ -15,23 +15,17 @@ pub trait Api: Send + Sync + 'static {
         &self,
         params: ops::list_products::Params,
         ctx: &Context<'_, Self::Principal>,
-    ) -> impl Future<
-        Output = Result<ops::list_products::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::list_products::Result> + Send;
     fn create_product(
         &self,
         params: ops::create_product::Params,
         ctx: &Context<'_, Self::Principal>,
-    ) -> impl Future<
-        Output = Result<ops::create_product::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::create_product::Result> + Send;
     fn get_product(
         &self,
         params: ops::get_product::Params,
         ctx: &Context<'_, Self::Principal>,
-    ) -> impl Future<
-        Output = Result<ops::get_product::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::get_product::Result> + Send;
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Operation {

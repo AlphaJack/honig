@@ -11,42 +11,32 @@ pub trait Api: Send + Sync + 'static {
         &self,
         params: ops::tile_stream::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::tile_stream::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::tile_stream::Result> + Send;
     fn tile_lines(
         &self,
         params: ops::tile_lines::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::tile_lines::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::tile_lines::Result> + Send;
     fn tile_updates(
         &self,
         params: ops::tile_updates::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::tile_updates::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::tile_updates::Result> + Send;
     fn chat_stream(
         &self,
         params: ops::chat_stream::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::chat_stream::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::chat_stream::Result> + Send;
     fn tile_batch(
         &self,
         params: ops::tile_batch::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::tile_batch::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::tile_batch::Result> + Send;
     fn tile_top(
         &self,
         params: ops::tile_top::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<Output = Result<ops::tile_top::Response, runtime::ApiError>> + Send;
+    ) -> impl Future<Output = ops::tile_top::Result> + Send;
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Operation {

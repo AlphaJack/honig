@@ -11,19 +11,17 @@ pub trait Api: Send + Sync + 'static {
         &self,
         params: ops::list_products::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::list_products::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::list_products::Result> + Send;
     fn tag_tree(
         &self,
         params: ops::tag_tree::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<Output = Result<ops::tag_tree::Response, runtime::ApiError>> + Send;
+    ) -> impl Future<Output = ops::tag_tree::Result> + Send;
     fn any_page(
         &self,
         params: ops::any_page::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<Output = Result<ops::any_page::Response, runtime::ApiError>> + Send;
+    ) -> impl Future<Output = ops::any_page::Result> + Send;
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Operation {

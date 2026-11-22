@@ -22,21 +22,17 @@ pub trait Api: Send + Sync + 'static {
         &self,
         params: ops::list_issues::Params,
         ctx: &Context<'_, Self::Principal>,
-    ) -> impl Future<
-        Output = Result<ops::list_issues::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::list_issues::Result> + Send;
     fn create_issue(
         &self,
         params: ops::create_issue::Params,
         ctx: &Context<'_, Self::Principal>,
-    ) -> impl Future<
-        Output = Result<ops::create_issue::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::create_issue::Result> + Send;
     fn open(
         &self,
         params: ops::open::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<Output = Result<ops::open::Response, runtime::ApiError>> + Send;
+    ) -> impl Future<Output = ops::open::Result> + Send;
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Operation {

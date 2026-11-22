@@ -37,6 +37,8 @@ pub mod list_products {
         /// Error
         Default { status: runtime::http::StatusCode, body: types::Error },
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(
         Response { Self::Ok { .. } => "status 200 (Ok)", Self::Default { status, .. } =>
         format_args!("status {} (Default)", status.as_u16()), }
@@ -83,6 +85,8 @@ pub mod create_product {
         /// Error
         Default { status: runtime::http::StatusCode, body: types::Error },
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(
         Response { Self::Created(..) => "status 201 (Created)", Self::Default { status,
         .. } => format_args!("status {} (Default)", status.as_u16()), }
@@ -126,6 +130,8 @@ pub mod get_product {
         /// Not found
         NotFound(types::Error),
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(
         Response { Self::Ok(..) => "status 200 (Ok)", Self::NotFound(..) =>
         "status 404 (NotFound)", }
