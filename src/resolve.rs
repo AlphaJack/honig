@@ -231,31 +231,45 @@ pub(crate) fn security_not_lists(root: &Value) -> Vec<String> {
     security_values(root).into_iter().filter(|(_, v)| !v.is_array()).map(|(p, _)| p).collect()
 }
 
-/// Returns every `security` as (its pointer, its value). They sit at the root and on operations (any method key or an
-/// entry of `additionalOperations`) wherever path items nest.
+/// Returns every `security` as (its pointer, its value). They sit at the root and on operations. The walk follows the
+/// structure: the path items of `paths`, `webhooks`, `components.pathItems` and `components.callbacks`, and the
+/// callbacks of each operation. A name that the description chose (a path item called `default`, `example` or `schema`)
+/// is not a keyword.
 fn security_values(root: &Value) -> Vec<(String, &Value)> {
     let mut out = vec![];
-    security_walk(root, "", &[], &mut out);
+    if let Some(security) = root.get("security") {
+        out.push(("/security".to_owned(), security));
+    }
+    for key in ["paths", "webhooks"] {
+        path_items(root.get(key), &format!("/{key}"), &mut out);
+    }
+    let components = root.get("components");
+    path_items(components.and_then(|c| c.get("pathItems")), "/components/pathItems", &mut out);
+    callbacks(components.and_then(|c| c.get("callbacks")), "/components/callbacks", &mut out);
     out
 }
 
-fn security_walk<'a>(v: &'a Value, ptr: &str, path: &[&'a str], out: &mut Vec<(String, &'a Value)>) {
+/// Visits the path items of a map of them at `ptr`.
+fn path_items<'a>(map: Option<&'a Value>, ptr: &str, out: &mut Vec<(String, &'a Value)>) {
     const METHODS: &[&str] = &["get", "put", "post", "delete", "options", "head", "patch", "trace", "query"];
-    let Value::Object(o) = v else { return };
-    let at_op = match path {
-        [] | [.., "additionalOperations", _] => true,
-        [.., m] => METHODS.contains(m) && path.len() >= 2,
-    };
-    if at_op && let Some(security) = o.get("security") {
-        out.push((crate::json::join(ptr, "security"), security));
-    }
-    for (k, c) in o {
-        if k == "security" || is_data(path.last().copied().unwrap_or(""), k) || k == "schemas" || k == "schema" {
-            continue;
+    for (name, item) in map.and_then(Value::as_object).into_iter().flatten() {
+        let item_ptr = crate::json::join(ptr, name);
+        let extra = item.get("additionalOperations").and_then(Value::as_object).into_iter().flatten();
+        let extra = extra.map(|(m, op)| (format!("{item_ptr}/additionalOperations/{}", escape_token(m)), op));
+        let methods = METHODS.iter().filter_map(|m| item.get(m).map(|op| (format!("{item_ptr}/{m}"), op)));
+        for (op_ptr, op) in methods.chain(extra) {
+            if let Some(security) = op.get("security") {
+                out.push((crate::json::join(&op_ptr, "security"), security));
+            }
+            callbacks(op.get("callbacks"), &format!("{op_ptr}/callbacks"), out);
         }
-        let mut next = path.to_vec();
-        next.push(k);
-        security_walk(c, &crate::json::join(ptr, k), &next, out);
+    }
+}
+
+/// Visits the callbacks of a map of them at `ptr`: each is a map of expressions to path items.
+fn callbacks<'a>(map: Option<&'a Value>, ptr: &str, out: &mut Vec<(String, &'a Value)>) {
+    for (name, callback) in map.and_then(Value::as_object).into_iter().flatten() {
+        path_items(Some(callback), &crate::json::join(ptr, name), out);
     }
 }
 
@@ -958,6 +972,20 @@ mod tests {
             out["security"].as_array().unwrap().iter().flat_map(|r| r.as_object().unwrap().keys()).collect();
         assert_eq!(names, ["key2", "key3", "key4"]);
         std::fs::remove_dir_all(dir).ok();
+    }
+
+    #[test]
+    fn a_name_that_is_a_keyword_still_holds_requirements() {
+        let op = |key: &str| json!({"get": {"security": [{key: []}], "responses": {}}});
+        let root = json!({
+            "openapi": "3.2.0",
+            "webhooks": {"default": op("hook")},
+            "paths": {"/a": {"get": {"responses": {}, "callbacks": {"example": {"{$url}": op("callback")}}}}},
+            "components": {"pathItems": {"schema": op("item")}, "callbacks": {"enum": {"{$url}": op("shared")}}}
+        });
+        let mut keys: Vec<String> = unresolved_security(&root).into_iter().map(|(_, k)| k).collect();
+        keys.sort();
+        assert_eq!(keys, ["callback", "hook", "item", "shared"]);
     }
 
     #[test]
