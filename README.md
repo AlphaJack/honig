@@ -21,15 +21,17 @@ cargo binstall cargo-honig
 ## Getting started
 
 <!-- ANCHOR: getting-started -->
-Two commands add honig to your crate:
+Three commands add honig to your crate:
 
 ```sh
 cargo honig init path/to/openapi.yaml
+cargo add honig@=x.y.z -F client,server
 cargo honig generate
 ```
 
-`init` adds the `[package.metadata.honig.api]` section and the `honig` dependency to your `Cargo.toml`.
-`generate` writes the module to `src/api` and toggles `honig` features as needed by the generated code.
+`init` adds the `[package.metadata.honig.api]` section to your `Cargo.toml` and prints the exact `cargo add` lines.
+`generate` writes the module to `src/api`. It never edits `Cargo.toml`.
+When the code needs a `honig` feature that is off, `generate` stops and prints the `cargo add` line that turns it on.
 
 Then you can declare the module in `src/lib.rs` or `src/main.rs`:
 

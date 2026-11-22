@@ -44,7 +44,7 @@ gloo-net = { version = "0.6", default-features = false, features = ["http"] }
     .unwrap();
     std::fs::write(
         out.join("Cargo.toml"),
-        crate::manifest::with_runtime(manifest, &[&generated.runtime_features[..], &["gloo-net"]].concat()).unwrap(),
+        super::common::with_runtime(manifest, &generated, &opts.rust.libs, &["gloo-net"]),
     )
     .unwrap();
     super::common::use_local_runtime(&out.join("Cargo.toml"));
@@ -110,14 +110,10 @@ jiff = { version = "1", features = ["serde"] }
     };
     let spec = super::common::write("jiff-dates", &doc, &[]);
     let generated = crate::generate::generate(&spec, &opts).unwrap_or_else(|d| panic!("generation failed: {:?}", d.0));
-    assert!(generated.runtime_features.contains(&"jiff"), "{:?}", generated.runtime_features);
     let api = out.join("src").join("api");
     crate::disk::write_module(&api, &api.join("mod.rs"), &generated.files).unwrap();
-    std::fs::write(
-        out.join("Cargo.toml"),
-        crate::manifest::with_runtime(manifest, &generated.runtime_features).unwrap(),
-    )
-    .unwrap();
+    std::fs::write(out.join("Cargo.toml"), super::common::with_runtime(manifest, &generated, &opts.rust.libs, &[]))
+        .unwrap();
     super::common::use_local_runtime(&out.join("Cargo.toml"));
     std::fs::write(
         out.join("src").join("lib.rs"),
@@ -303,7 +299,7 @@ fn build_validated(name: &str, lib: &str, libs: crate::settings::FormatLibs, kra
     let generated = crate::generate::generate(&spec, &opts).unwrap_or_else(|d| panic!("generation failed: {:?}", d.0));
     let api = out.join("src").join("api");
     crate::disk::write_module(&api, &api.join("mod.rs"), &generated.files).unwrap();
-    let manifest = crate::manifest::with_runtime(&manifest, &generated.runtime_features).unwrap();
+    let manifest = super::common::with_runtime(&manifest, &generated, &opts.rust.libs, &[]);
     std::fs::write(out.join("Cargo.toml"), manifest).unwrap();
     super::common::use_local_runtime(&out.join("Cargo.toml"));
     std::fs::write(out.join("src").join("lib.rs"), krate.test).unwrap();

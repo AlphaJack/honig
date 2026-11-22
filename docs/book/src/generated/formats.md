@@ -1,21 +1,21 @@
 <!-- Generated from src/emit/rust/syntax.rs by src/tests/docs_pages.rs. Edit the source, not this file. -->
 
-| Format | Without its library | With `uuid`, `url`, `ipnet` and `jiff` |
+| Format | Without its feature | With `uuid`, `url`, `ipnet` and `jiff` |
 |---|---|---|
-| `uuid` | `api::UuidStr` | `uuid::Uuid` |
-| `date-time` | `api::DateTimeStr` | `jiff::Timestamp` |
-| `date` | `api::DateStr` | `jiff::civil::Date` |
+| `uuid` | `api::UuidStr` | `api::uuid::Uuid` |
+| `date-time` | `api::DateTimeStr` | `api::jiff::Timestamp` |
+| `date` | `api::DateStr` | `api::jiff::civil::Date` |
 | `ipv4` | `std::net::Ipv4Addr` | `std::net::Ipv4Addr` |
 | `ipv6` | `std::net::Ipv6Addr` | `std::net::Ipv6Addr` |
 | `time` | `api::FullTime` | `api::FullTime` |
 | `base64url` | `api::Base64Url` | `api::Base64Url` |
 | `decimal` | `api::DecimalStr` | `api::DecimalStr` |
 | `char` | `char` | `char` |
-| `date-time-local` | `api::DateTimeLocalStr` | `jiff::civil::DateTime` |
-| `time-local` | `api::TimeLocalStr` | `jiff::civil::Time` |
-| `uri` | `api::UriStr` | `url::Url` |
-| `ipv4-cidr` | `api::Ipv4CidrStr` | `ipnet::Ipv4Net` |
-| `ipv6-cidr` | `api::Ipv6CidrStr` | `ipnet::Ipv6Net` |
+| `date-time-local` | `api::DateTimeLocalStr` | `api::jiff::civil::DateTime` |
+| `time-local` | `api::TimeLocalStr` | `api::jiff::civil::Time` |
+| `uri` | `api::UriStr` | `api::url::Url` |
+| `ipv4-cidr` | `api::Ipv4CidrStr` | `api::ipnet::Ipv4Net` |
+| `ipv6-cidr` | `api::Ipv6CidrStr` | `api::ipnet::Ipv6Net` |
 | `email` | `api::EmailStr` | `api::EmailStr` |
 | `idn-email` | `api::IdnEmailStr` | `api::IdnEmailStr` |
 | `hostname` | `api::HostnameStr` | `api::HostnameStr` |

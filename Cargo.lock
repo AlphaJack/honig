@@ -685,7 +685,6 @@ dependencies = [
  "http-cache-reqwest",
  "hyper",
  "hyper-util",
- "ipnet",
  "lambda_http",
  "opentelemetry",
  "opentelemetry_sdk",
@@ -707,7 +706,6 @@ dependencies = [
  "tracing-opentelemetry",
  "tracing-subscriber",
  "ureq",
- "url",
 ]
 
 [[package]]
@@ -1039,6 +1037,7 @@ dependencies = [
  "http-body",
  "icu_properties",
  "idna",
+ "ipnet",
  "itoa",
  "jiff",
  "js-sys",
@@ -1063,6 +1062,8 @@ dependencies = [
  "tracing",
  "tracing-opentelemetry",
  "ureq",
+ "url",
+ "uuid",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
@@ -1395,8 +1396,10 @@ checksum = "ed5d126d72eb017f10b302e73bdeca446bea405ee449af4d9e7866d6b082d83e"
 dependencies = [
  "jiff-core",
  "jiff-static",
+ "log",
  "portable-atomic",
  "portable-atomic-util",
+ "serde_core",
 ]
 
 [[package]]
@@ -3374,6 +3377,7 @@ checksum = "3c14b15dffa2f4bd712103e857140aa04a4f2ff6e955c77d7eb8e53ee02a3b64"
 dependencies = [
  "getrandom 0.4.3",
  "js-sys",
+ "serde_core",
  "wasm-bindgen",
 ]
 

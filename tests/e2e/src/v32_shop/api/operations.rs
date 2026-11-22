@@ -258,7 +258,7 @@ pub mod create_product {
             /// Unique identifier for the request
             x_request_id: Option<runtime::UuidStr>,
             /// The URL of the newly created resource
-            location: Option<url::Url>,
+            location: Option<runtime::url::Url>,
             /// The time spent to process the request in milliseconds
             x_processing_time: Option<i64>,
         },
@@ -282,7 +282,7 @@ pub mod create_product {
     pub type Success = (
         Box<types::Product>,
         Option<runtime::UuidStr>,
-        Option<url::Url>,
+        Option<runtime::url::Url>,
         Option<i64>,
     );
     impl Response {
@@ -802,7 +802,7 @@ pub mod copy_product {
         Created {
             body: Box<types::Product>,
             /// The URL of the newly created resource
-            location: Option<url::Url>,
+            location: Option<runtime::url::Url>,
         },
         /// Not Found
         NotFound(NotFoundBody),
@@ -814,7 +814,7 @@ pub mod copy_product {
         "status 404 (NotFound)", }
     );
     /// The body and headers of the success, in order: what `Response::into_result` gives.
-    pub type Success = (Box<types::Product>, Option<url::Url>);
+    pub type Success = (Box<types::Product>, Option<runtime::url::Url>);
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
         pub fn into_result(self) -> Result<Success, Box<Self>> {
@@ -1206,7 +1206,7 @@ pub mod create_user {
             /// Unique identifier for the request
             x_request_id: Option<runtime::UuidStr>,
             /// The URL of the newly created resource
-            location: Option<url::Url>,
+            location: Option<runtime::url::Url>,
             /// The time spent to process the request in milliseconds
             x_processing_time: Option<i64>,
         },
@@ -1238,7 +1238,7 @@ pub mod create_user {
     pub type Success = (
         types::User,
         Option<runtime::UuidStr>,
-        Option<url::Url>,
+        Option<runtime::url::Url>,
         Option<i64>,
     );
     impl Response {

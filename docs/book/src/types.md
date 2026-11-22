@@ -35,10 +35,10 @@ Two settings decide what happens to a property or a value that the description d
 
 | Setting | Applies to | What it does |
 |---|---|---|
-| `unknown_fields = "keep"` | objects without `additionalProperties`, both directions | keeps the undeclared properties in a map, so a value round-trips. The default `"drop"` ignores them |
-| `client = { strict = false }` | the responses of a client | accepts what a server added: an enum value or a union branch as `Other`, and a property of a closed object (`additionalProperties: false`) by ignoring it. Requests stay strict through `<Name>Request` copies |
+| `keep_unknown_fields = true` | objects without `additionalProperties`, both directions | keeps the undeclared properties in a map, so a value round-trips. The default `false` ignores them |
+| `client = { allow_unknown_values = true }` | the responses of a client | accepts what a server added: an enum value or a union branch as `Other`, and a property of a closed object (`additionalProperties: false`) by ignoring it. Requests stay strict through `<Name>Request` copies |
 
-An object without `additionalProperties` never refuses an undeclared property: the first setting only chooses whether to keep it. A closed object refuses it, unless `strict = false` applies to the response.
+An object without `additionalProperties` never refuses an undeclared property: the first setting only chooses whether to keep it. A closed object refuses it, unless `allow_unknown_values = true` applies to the response.
 
 ## Conditional schemas
 
@@ -98,34 +98,33 @@ honig uses it only when your crate depends on that crate. Otherwise it warns and
 
 ## String formats
 
-The `formats` table picks the library type of each string format:
+The type features of the `honig` dependency pick the type of each string format:
 
 ```toml
-[package.metadata.honig.api]
-formats = { uuid = true, url = true, ipnet = true, jiff = true }
+[dependencies]
+honig = { version = "=x.y.z", features = ["client", "server", "uuid", "url", "ipnet", "jiff"] }
 ```
 
-Each library set to `true` must be a dependency with its `serde` feature. `jiff` types the dates and times. `cargo honig init` writes the table from the dependencies the crate has then.
-
-The table is required. Without it, a dependency added for another reason would change the types of fields. `generate` stops and prints the line that keeps the types that the dependencies give today, such as `formats = { uuid = true }`.
+The runtime re-exports each crate. So generated code refers to `api::runtime::uuid::Uuid` and your crate needs no `uuid` dependency of its own. Your code can still write `uuid::Uuid` with its own `uuid` dependency of the same major version: cargo builds one copy.
 
 {{#include generated/formats.md}}
 
-A format with a check can also refer to a type of your own, or of a library that honig has no shorthand for:
+The `formats` table gives a format with a check a type of your own:
 
 ```toml
-formats = { jiff = true, date-time = "crate::Stamp", uuid = "crate::ids::OrderId" }
+[package.metadata.honig.api]
+formats = { date-time = "crate::Stamp", uuid = "crate::ids::OrderId" }
 ```
 
-The key is the name of the format. The value is the path of a type, without generic arguments. A named type wins over the shorthand for its format only: above, `date` stays `jiff::civil::Date`. The type must implement `Debug`, `Clone`, `PartialEq`, `Eq` and the serde traits. It parses text that honig checked first, as a library type does. honig knows the quirks of the shorthand libraries only. For any type of `date-time`, `date-time-local` and `time-local` it cuts a fraction of a second to nine digits. honig does not check the type: the compiler reports a wrong one. A struct with a required field of a named type derives no `Default`.
+The key is the name of the format. The value is the path of a type, without generic arguments. It wins over a feature for its format only: with `jiff` on, `date` above stays `jiff::civil::Date`. The type must implement `Debug`, `Clone`, `PartialEq`, `Eq` and the serde traits. It parses text that honig checked first, as a feature's type does. honig knows the quirks of its own feature types only. For any type of `date-time`, `date-time-local` and `time-local` it cuts a fraction of a second to nine digits. honig does not check the type: the compiler reports a wrong one. A struct with a required field of a type of yours derives no `Default`.
 
-`format: time` has an offset (`08:30:06+02:00`), and no `jiff` time type supports one. So it is `api::FullTime` with or without `jiff`: plain numbers (`hour`, `minute`, `second`, `nanosecond`, `offset_seconds`) and whether the second was a leap second. With `jiff = true`, `time()` and `offset()` return it as `jiff` types.
+`format: time` has an offset (`08:30:06+02:00`), and no `jiff` time type supports one. So it is `api::FullTime` with or without `jiff`: plain numbers (`hour`, `minute`, `second`, `nanosecond`, `offset_seconds`) and whether the second was a leap second. With `jiff` on, `time()` and `offset()` return it as `jiff` types.
 
-A format without its library is its checked text, such as `api::UuidStr` or `api::DateTimeStr`. Only text of the format is one: `try_from`, `parse` and decoding check it as the library would on parsing. It derefs to `str`. `generate` turns on the runtime feature that each check needs. [Adapters](adapters.md) lists the features.
+A format without its feature is its checked text, such as `api::UuidStr` or `api::DateTimeStr`. Only text of the format is one: `try_from`, `parse` and decoding check it as the library would on parsing. It derefs to `str`. Some checks need a runtime feature. `generate` stops and prints the `cargo add` line when it is off. [Adapters](adapters.md) lists the features.
 
 A library accepts more than its format allows. `jiff` accepts `2024-06-19 08:30Z` as a `date-time`. `uuid` accepts `{...}` and `url` accepts a space. So a library type in a property, a branch of a union, a newtype, a parameter or a body has its text validated first, as a `String` of that format is. The items of a body decoded as it arrives are validated one at a time. Then the library parses it. A server decoding a request and a client decoding a response check alike. A fraction of a second past nine digits is cut: `jiff` stores nanoseconds.
 
-Mail addresses and host names are types of the runtime. Only a valid value can be one of them. `try_from` and decoding check the value. They need the `idn` feature of the runtime. `generate` turns it on when the description uses them:
+Mail addresses and host names are types of the runtime. Only a valid value can be one of them. `try_from` and decoding check the value. They need the `idn` feature of the runtime when the description uses them:
 
 ```rust
 {{#include ../../../tests/e2e/tests/v32_catalog/schemas.rs:email}}
@@ -133,7 +132,7 @@ Mail addresses and host names are types of the runtime. Only a valid value can b
 
 {{#include generated/checked-text.md}}
 
-`http-date` is `api::HttpDateStr`, one of the three forms of RFC 9110 section 5.6.7. `duration` is `api::DurationStr`, an ISO 8601 duration of RFC 3339 Appendix A. No std type represents `P1M`: a month has no fixed length. `uri-reference`, `iri`, `iri-reference`, `json-pointer`, `relative-json-pointer`, `uri-template` and `regex` are checked text of their grammars (RFC 3986, 3987, 6901, 6570 and ECMA-262). `uuid` without its library accepts only the hyphenated form of RFC 9562.
+`http-date` is `api::HttpDateStr`, one of the three forms of RFC 9110 section 5.6.7. `duration` is `api::DurationStr`, an ISO 8601 duration of RFC 3339 Appendix A. No std type represents `P1M`: a month has no fixed length. `uri-reference`, `iri`, `iri-reference`, `json-pointer`, `relative-json-pointer`, `uri-template` and `regex` are checked text of their grammars (RFC 3986, 3987, 6901, 6570 and ECMA-262). `uuid` without its feature accepts only the hyphenated form of RFC 9562.
 
 `contentEncoding: base64url` gives `api::Base64Url`. It stores bytes in the URL-safe alphabet.
 
@@ -145,7 +144,7 @@ For arithmetic parse its digits into a decimal type with `d.as_str().parse::<rus
 
 JSON the description leaves untyped is a `serde_json::Value`:
 
-- the properties that an object does not declare with `unknown_fields = "keep"`
+- the properties that an object does not declare with `keep_unknown_fields = true`
 - a `{}` schema and an untyped `additionalProperties`
 - the `Other` of an open union
 
@@ -153,7 +152,7 @@ A number in such a value rounds when it is past `u64`. It also rounds when it ha
 
 ## Checked types
 
-A string with a `pattern`, `minLength` or `maxLength` is a type of its own. So is an integer or number with `minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum` or `multipleOf`. Only valid values can be that type: `try_from` and decoding check the keywords and return the first one that the value breaks. The `regress` feature of the runtime checks `pattern`. `generate` turns the feature on when the description uses it. A `pattern` that is not an ECMA-262 regular expression fails generation: its type could not check it:
+A string with a `pattern`, `minLength` or `maxLength` is a type of its own. So is an integer or number with `minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum` or `multipleOf`. Only valid values can be that type: `try_from` and decoding check the keywords and return the first one that the value breaks. The `regress` feature of the runtime checks `pattern`. The generated code needs it when the description uses `pattern`. A `pattern` that is not an ECMA-262 regular expression fails generation: its type could not check it:
 
 ```rust
 {{#include ../../../tests/e2e/tests/v32_catalog/schemas.rs:pattern}}

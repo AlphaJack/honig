@@ -114,9 +114,9 @@ fn registry_formats_take_their_library_types() {
         "net4": "192.0.2.0/24", "net6": "2001:db8::/32", "local": "2024-01-31T13:45:30", "clock": "13:45:30"});
     let e: types::Event = serde_json::from_value(wire.clone()).expect("decodes");
     let initial: char = e.initial.expect("present");
-    let home: url::Url = e.home.clone().expect("present");
-    let net4: ipnet::Ipv4Net = e.net4.expect("present");
-    let net6: ipnet::Ipv6Net = e.net6.expect("present");
+    let home: honig::url::Url = e.home.clone().expect("present");
+    let net4: honig::ipnet::Ipv4Net = e.net4.expect("present");
+    let net6: honig::ipnet::Ipv6Net = e.net6.expect("present");
     let local: api::DateTimeLocalStr = e.local.clone().expect("present");
     assert_eq!((initial, home.host_str(), net4.prefix_len(), net6.prefix_len()), ('Z', Some("example.com"), 24, 32));
     assert_eq!(local, "2024-01-31T13:45:30");

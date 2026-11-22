@@ -57,7 +57,7 @@ pub(crate) struct Builder<'a> {
     /// Nesting depth of `ty` calls: a guard against runaway inline expansion.
     depth: usize,
     /// Objects without `additionalProperties` keep unknown keys too (config
-    /// `unknown_fields = "keep"`); explicitly open objects always do.
+    /// `keep_unknown_fields = true`); explicitly open objects always do.
     pub keep_unknown: bool,
     /// The generated crate's dependencies (`-` as `_`): an object-form `x-rust-type` refers to one of them.
     pub crates: Vec<String>,

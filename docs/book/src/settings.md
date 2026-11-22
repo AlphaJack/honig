@@ -1,16 +1,15 @@
 # Settings
 
-`cargo honig init openapi.yaml` writes the module `api` with the settings that most crates change. Here the crate depends on `reqwest` and `uuid`:
+`cargo honig init openapi.yaml` writes the module `api` with the settings that most crates change. Here the runtime also sends through `reqwest` and types `format: uuid` as `uuid::Uuid`:
 
 ```toml
 [dependencies]
-honig = { version = "=x.y.z", features = ["simd"] }
+honig = { version = "=x.y.z", features = ["client", "server", "reqwest", "uuid"] }
 
 [package.metadata.honig.api]
-spec = "openapi.yaml"
-client = { adapters = ["reqwest"] }
+descriptions = ["openapi.yaml"]
+client = true
 server = true
-formats = { uuid = true }
 ```
 
 Each table `[package.metadata.honig.<module>]` is one module and sets what is generated into it. These are all its settings:
@@ -24,16 +23,15 @@ Each table `[package.metadata.honig.<module>]` is one module and sets what is ge
 | Value | What is generated | Runtime features |
 |---|---|---|
 | `client = false` | no client | none for the client |
-| `client = true` | the client; you bring a transport of your own | `client` |
-| `client = { adapters = ["reqwest"] }` | the client and `ReqwestTransport` | `client`, `reqwest` |
-| `client = { strict = false }` | the client; a response accepts what the server added: an enum value or a member of a tagged `oneOf` as `Other`, and a property of a closed object by ignoring it. Requests stay strict: each such type gets a `<Name>Request` copy that is closed | `client` |
-| `server = { adapters = ["axum", "tracing"] }` | the server, `into_axum` and a span per request | `server`, `axum`, `tracing` |
+| `client = true` | the client | `client` |
+| `client = { allow_unknown_values = true }` | the client; a response accepts what the server added: an enum value or a member of a tagged `oneOf` as `Other`, and a property of a closed object by ignoring it. Requests stay strict: each such type gets a `<Name>Request` copy that is closed | `client` |
+| `server = true` | the server | `server` |
 | `server = { allow_unimplemented = true }` | the server; a method you do not write answers 501 | `server` |
 
 `operations = ["getOrder"]` on the module table keeps only those operations, by `operationId`, for both halves: the
 client calls them, the server serves them, and the module contains only the types that they reach.
 
-An adapter serves one half, and `tracing-opentelemetry` serves both. Each adapter needs its library in `[dependencies]`. [Adapters](adapters.md) lists them all.
+An adapter is a feature of the runtime. `features = ["client", "reqwest"]` adds `ReqwestTransport` and `features = ["server", "axum"]` adds `into_axum`. [Adapters](adapters.md) lists them all.
 
 ## Several root documents
 
@@ -41,7 +39,7 @@ Some APIs describe themselves in many complete documents, one per area. List the
 
 ```toml
 [package.metadata.honig.api]
-spec = ["specs/*.yaml"]
+descriptions = ["specs/*.yaml"]
 ```
 
 Each file is bundled against its own directory and upgraded to 3.2 alone. Then paths, webhooks, components and tags merge into one module.
@@ -58,7 +56,7 @@ Overlays fix a description that you do not own without editing it. List [Overlay
 
 ```toml
 [package.metadata.honig.api]
-spec = "vendor/openapi.yaml"
+descriptions = ["vendor/openapi.yaml"]
 overlays = ["public.overlay.yaml"]
 ```
 
@@ -82,11 +80,11 @@ A crate often serves its own API and calls others. Add a table per module:
 
 ```toml
 [package.metadata.honig.api]
-spec = "own.yaml"
+descriptions = ["own.yaml"]
 client = false
 
 [package.metadata.honig.billing]
-spec = "vendor/billing.yaml"
+descriptions = ["vendor/billing.yaml"]
 server = false
 operations = ["createInvoice", "getInvoice"]
 ```
@@ -95,10 +93,10 @@ Then declare each module: `mod api;` and `mod billing;`.
 
 - The table name is the module name. It must be a Rust identifier and not a keyword.
 - The generated code of a module depends only on its description and its table.
-- The runtime features are the union of what every module needs. One module with XML bodies turns on `xml` for the crate.
+- The `honig` dependency needs the features of every module. One module with XML bodies needs `xml` for the crate.
 - Each module has its own types. Identical schemas in two descriptions are two types, so the APIs can change apart. Convert between them with `From` impls.
 
-`cargo honig generate` writes every module. `cargo honig generate billing` writes one, and `Cargo.toml` keeps the features of all of them. `check` and `validate` accept a module name the same way.
+`cargo honig generate` writes every module. `cargo honig generate billing` writes one and still checks the features of all of them. `check` and `validate` accept a module name the same way.
 
 ## Workspaces
 
@@ -106,4 +104,4 @@ Each member keeps its own `[package.metadata.honig.<module>]`. Run the commands 
 
 - `cargo honig generate` at a virtual workspace root runs for every member with module tables. `check` does too.
 - `cargo honig generate -p shop` runs for the member `shop` only. `cargo honig generate billing` runs for each member with the module `billing`.
-- A member with `honig = { workspace = true }` lists its features. `generate` pins the version in the root's `[workspace.dependencies]`.
+- A member with `honig = { workspace = true }` lists its features. The root's `[workspace.dependencies]` pins the version.

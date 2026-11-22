@@ -172,8 +172,8 @@ fn settings_page() -> String {
     page
 }
 
-/// The Rust type of each string format: with none of its libraries and with all of them. The generator's own choice
-/// makes each cell.
+/// The Rust type of each string format: without the type features of the runtime and with all of them. The generator's
+/// own choice makes each cell.
 fn formats_page() -> String {
     use crate::ir::types::Format;
     use crate::settings::FormatLibs;
@@ -184,7 +184,7 @@ fn formats_page() -> String {
         format!("`{}`", path.replace(' ', "").replace("runtime::", "api::"))
     };
     let mut page =
-        "| Format | Without its library | With `uuid`, `url`, `ipnet` and `jiff` |\n|---|---|---|\n".to_owned();
+        "| Format | Without its feature | With `uuid`, `url`, `ipnet` and `jiff` |\n|---|---|---|\n".to_owned();
     for f in Format::ALL {
         page.push_str(&format!("| `{}` | {} | {} |\n", f.name(), ty(&none, f), ty(&all, f)));
     }
@@ -277,28 +277,26 @@ fn methods_page(source: &str, item: &str, block: &str, elsewhere: &[&str]) -> Re
     Ok(page)
 }
 
-/// Who turns the runtime feature `name` on as [`crate::settings::FEATURES`] says.
+/// When generated code needs the runtime feature `name`, as [`crate::settings::FEATURES`] says.
 fn turned_on(name: &str) -> String {
     use crate::settings::{FEATURES, Side, Trigger};
     match FEATURES.iter().find(|(n, _)| *n == name).map(|(_, t)| t) {
-        Some(Trigger::Library(Side::Client)) => format!("`client = {{ adapters = [\"{name}\"] }}`"),
-        Some(Trigger::Library(Side::Server)) => format!("`server = {{ adapters = [\"{name}\"] }}`"),
-        Some(Trigger::Library(Side::Both)) => format!("`adapters = [\"{name}\"]` in `client` or `server`"),
         Some(Trigger::Half(Side::Client)) => "You generate the client".to_owned(),
         Some(Trigger::Half(Side::Server)) => "You generate the server".to_owned(),
         Some(Trigger::Half(Side::Both)) => "You generate either half".to_owned(),
         Some(Trigger::Description) => "The description calls for it".to_owned(),
-        Some(Trigger::Chosen) => "You or `cargo honig init` add it".to_owned(),
-        None => "Never: `generate` removes it".to_owned(),
+        Some(Trigger::Library(_)) => "Optional: you use this adapter".to_owned(),
+        Some(Trigger::Types) => "Optional: you want these types".to_owned(),
+        Some(Trigger::Chosen) | None => "Optional".to_owned(),
     }
 }
 
 /// A table of the `[features]` of `manifest`. It has the `##` comment of each feature, the first dependency that it
-/// turns on and `when` it is on. Not its version: a version bump would make the page stale. A feature without a `##`
+/// turns on and `when` generated code needs it. Not its version: a version bump would make the page stale. A feature without a `##`
 /// comment is an error.
 fn features_page(manifest: &str, when: impl Fn(&str) -> String) -> Result<String> {
     let doc: DocumentMut = manifest.parse()?;
-    let mut page = "| Feature | Crate | Adds | On when |\n|---|---|---|---|\n".to_owned();
+    let mut page = "| Feature | Crate | Adds | Needed when |\n|---|---|---|---|\n".to_owned();
     let mut docs = vec![];
     let section = manifest.lines().skip_while(|l| *l != "[features]").skip(1);
     for line in section.take_while(|l| !l.starts_with('[')) {
@@ -353,7 +351,7 @@ fn features_page_has_one_row_per_feature() {
     let page = features_page(manifest, |name| format!("{name} on")).unwrap();
     assert_eq!(
         page,
-        "| Feature | Crate | Adds | On when |\n|---|---|---|---|\n| `x` | x | Adds x. | x on |\n| `none` |  | Adds nothing. | none on |\n"
+        "| Feature | Crate | Adds | Needed when |\n|---|---|---|---|\n| `x` | x | Adds x. | x on |\n| `none` |  | Adds nothing. | none on |\n"
     );
 }
 

@@ -189,7 +189,7 @@ pub(crate) struct TypeDef {
     /// The keywords of the schema itself, as a value of the type meets them: with `$ref`s and `allOf` members
     /// followed. Keywords that no type enforces (`if`, `not`, `oneOf`'s one match) make it a checked type.
     pub own: Constraints,
-    /// A response type of a lenient client (`client = { strict = false }`): an enum accepts a value that it does not
+    /// A response type of a lenient client (`client = { allow_unknown_values = true }`): an enum accepts a value that it does not
     /// list as `Other`, a closed struct accepts a property that it does not declare, and a tagged union accepts a tag
     /// that matches no variant as `Other`. Its request copy is strict.
     pub lenient: bool,
@@ -753,7 +753,7 @@ impl TypeSpace {
     /// `writeOnly` properties are dropped and required `readOnly` ones stay
     /// required. The copy is the reverse. Returns the request type of each type.
     ///
-    /// With `lenient` (`client = { strict = false }`) every enum, closed struct and tagged union splits too, and every
+    /// With `lenient` (`client = { allow_unknown_values = true }`) every enum, closed struct and tagged union splits too, and every
     /// original is [`TypeDef::lenient`]: a response accepts a value that the server added, and a request stays strict.
     pub(crate) fn split_directions(&mut self, lenient: bool) -> Vec<Option<TypeId>> {
         let n = self.defs.len();

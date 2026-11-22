@@ -113,14 +113,14 @@ fn documented_examples_decode() {
         "\"2024-01-15T14:30:00Z\"",
     );
     value::<
-        url::Url,
+        runtime::url::Url,
     >(
         &mut bad,
         "/components/schemas/Product/properties/successCallbackUrl/examples/0",
         "\"https://example.com/webhook\"",
     );
     value::<
-        url::Url,
+        runtime::url::Url,
     >(
         &mut bad,
         "/components/schemas/Product/properties/failureCallbackUrl/examples/0",
@@ -833,14 +833,14 @@ fn documented_examples_decode() {
         "[\"office\",\"lighting\",\"in-stock\"]",
     );
     value::<
-        url::Url,
+        runtime::url::Url,
     >(
         &mut bad,
         "/components/schemas/Product/properties/successCallbackUrl/examples/0",
         "\"https://example.com/webhook\"",
     );
     value::<
-        url::Url,
+        runtime::url::Url,
     >(
         &mut bad,
         "/components/schemas/Product/properties/failureCallbackUrl/examples/0",

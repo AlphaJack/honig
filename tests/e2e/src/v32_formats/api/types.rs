@@ -48,19 +48,19 @@ runtime::object! {
             skip_serializing_if = "Option::is_none",
             deserialize_with = "runtime::formats::read::<_, _, runtime::formats::Present<runtime::formats::Text<runtime::formats::format::Uri>>>"
         )]
-        pub home: Option<url::Url>,
+        pub home: Option<runtime::url::Url>,
         #[serde(
             default,
             skip_serializing_if = "Option::is_none",
             deserialize_with = "runtime::formats::read::<_, _, runtime::formats::Present<runtime::formats::Text<runtime::formats::format::Ipv4Cidr>>>"
         )]
-        pub net4: Option<ipnet::Ipv4Net>,
+        pub net4: Option<runtime::ipnet::Ipv4Net>,
         #[serde(
             default,
             skip_serializing_if = "Option::is_none",
             deserialize_with = "runtime::formats::read::<_, _, runtime::formats::Present<runtime::formats::Text<runtime::formats::format::Ipv6Cidr>>>"
         )]
-        pub net6: Option<ipnet::Ipv6Net>,
+        pub net6: Option<runtime::ipnet::Ipv6Net>,
         #[optional]
         pub local: runtime::DateTimeLocalStr,
         #[optional]
@@ -344,19 +344,20 @@ pub mod builders {
         None, level(level) : i8 = "level" => some, None, port(port) : types::EventPort =
         "port" => some, None, amount(amount) : types::EventAmount = "amount" => some,
         None, sum(sum) : types::EventSum = "sum" => some, None, initial(initial) : char =
-        "initial" => some, None, home(home) : url::Url = "home" => some, None, net4(net4)
-        : ipnet::Ipv4Net = "net4" => some, None, net6(net6) : ipnet::Ipv6Net = "net6" =>
-        some, None, local(local) : runtime::DateTimeLocalStr = "local" => some, None,
-        clock(clock) : runtime::TimeLocalStr = "clock" => some, None, price(price) :
-        runtime::DecimalStr = "price" => some, None, total(total) :
-        runtime::Decimal128Str = "total" => some, None, opens(opens) : runtime::FullTime
-        = "opens" => some, None, expires(expires) : runtime::HttpDateStr = "expires" =>
-        some, None, lasts(lasts) : runtime::DurationStr = "lasts" => some, None,
-        link(link) : runtime::UriReferenceStr = "link" => some, None, page(page) :
-        runtime::IriStr = "page" => some, None, rel(rel) : runtime::IriReferenceStr =
-        "rel" => some, None, at_path(at_path) : runtime::JsonPointerStr = "at_path" =>
-        some, None, up(up) : runtime::RelativeJsonPointerStr = "up" => some, None,
-        filter(filter) : runtime::RegexStr = "filter" => some, None, search(search) :
+        "initial" => some, None, home(home) : runtime::url::Url = "home" => some, None,
+        net4(net4) : runtime::ipnet::Ipv4Net = "net4" => some, None, net6(net6) :
+        runtime::ipnet::Ipv6Net = "net6" => some, None, local(local) :
+        runtime::DateTimeLocalStr = "local" => some, None, clock(clock) :
+        runtime::TimeLocalStr = "clock" => some, None, price(price) : runtime::DecimalStr
+        = "price" => some, None, total(total) : runtime::Decimal128Str = "total" => some,
+        None, opens(opens) : runtime::FullTime = "opens" => some, None, expires(expires)
+        : runtime::HttpDateStr = "expires" => some, None, lasts(lasts) :
+        runtime::DurationStr = "lasts" => some, None, link(link) :
+        runtime::UriReferenceStr = "link" => some, None, page(page) : runtime::IriStr =
+        "page" => some, None, rel(rel) : runtime::IriReferenceStr = "rel" => some, None,
+        at_path(at_path) : runtime::JsonPointerStr = "at_path" => some, None, up(up) :
+        runtime::RelativeJsonPointerStr = "up" => some, None, filter(filter) :
+        runtime::RegexStr = "filter" => some, None, search(search) :
         runtime::UriTemplateStr = "search" => some, None, charge(charge) :
         types::EventCharge = "charge" => some, None, payment(payment) :
         types::EventPayment = "payment" => some, None, payload(payload) :

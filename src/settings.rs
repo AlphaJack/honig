@@ -1,8 +1,8 @@
 //! Settings from the `Cargo.toml` of the user. Each table `[package.metadata.<name>.<module>]` sets what is generated
 //! into one module with the keys of [`SETTINGS`]. `<name>` is the name of this package. See [`modules`].
 //!
-//! `generate` writes the `features` of the `honig` dependency: the halves, the adapters that `client` and `server`
-//! list and the codecs that the descriptions call for. Only `simd` is yours to list there.
+//! The `features` of the `honig` dependency are yours. Its type features pick the types of string formats.
+//! `generate` stops when the generated code needs a feature that the dependency does not list.
 //!
 //! Dependencies come as cargo resolves them: a `workspace = true` entry adds the features of the workspace
 //! root's `[workspace.dependencies]` entry to its own.
@@ -18,19 +18,19 @@ use crate::ir::types::Format;
 /// Every setting of a module as (key, default, what it does). A setting without a default is required. `--help` and
 /// the book show it.
 pub(crate) const SETTINGS: [(&str, Option<&str>, &str); 11] = [
-    ("spec", None, "the description relative to Cargo.toml; a list [\"a.yaml\", \"api/*.yaml\"] merges several"),
+    (
+        "descriptions",
+        None,
+        "the descriptions relative to Cargo.toml, like [\"openapi.yaml\"]; several, such as [\"a.yaml\", \"api/*.yaml\"], merge",
+    ),
     ("output", Some("\"src/<module>\""), "the module directory"),
     (
         "mod_rs",
         Some("the crate's clippy lints, else true"),
         "true writes the root of the module as `<output>/mod.rs`, false as `<output>.rs`",
     ),
-    ("client", Some("true"), "generate the client; a table sets its adapters = [\"reqwest\"] and strict = false"),
-    (
-        "server",
-        Some("true"),
-        "generate the server; a table sets its adapters = [\"axum\"] and allow_unimplemented = true",
-    ),
+    ("client", Some("true"), "generate the client; a table sets allow_unknown_values = true"),
+    ("server", Some("true"), "generate the server; a table sets allow_unimplemented = true"),
     (
         "operations",
         Some("every one"),
@@ -38,38 +38,15 @@ pub(crate) const SETTINGS: [(&str, Option<&str>, &str); 11] = [
          types that they reach",
     ),
     ("tests", Some("false"), "generate a test that the description's examples decode"),
-    ("unknown_fields", Some("\"drop\""), "\"keep\": objects without additionalProperties keep unknown keys"),
+    ("keep_unknown_fields", Some("false"), "objects without additionalProperties keep unknown keys in a map"),
     ("overlays", Some("[]"), "Overlays (1.0 to 1.2) applied in order to the spec"),
-    ("formats", None, "required: types of string formats, like { jiff = true, uuid = \"crate::Id\" } or {}"),
+    ("formats", Some("{}"), "your own types for formats with a check, like { uuid = \"crate::Id\" }"),
     ("derives", Some("{}"), "extra derives on every type or on one type by Rust name, like { \"*\" = [\"Hash\"] }"),
 ];
 
 /// Returns what `init` writes for the description `spec`: the module `api` with the settings that most crates change.
-/// Each half lists an adapter for every library of its side that the crate depends on. `formats` pins the libraries
-/// that the crate depends on now, so a new dependency changes no field type.
-pub(crate) fn init_table(manifest: &Manifest, spec: &str) -> String {
-    let half = |key: &str, side: Side| {
-        let found: Vec<String> = libraries()
-            .filter(|(library, s)| *s == side && manifest.has_dependency(library))
-            .map(|(library, _)| format!("\"{library}\""))
-            .collect();
-        if found.is_empty() {
-            format!("{key} = true")
-        } else {
-            format!("{key} = {{ adapters = [{}] }}", found.join(", "))
-        }
-    };
-    format!(
-        "[{ROOT}.{DEFAULT_MODULE}]\nspec = \"{spec}\"\n{}\n{}\n{}\n",
-        half("client", Side::Client),
-        half("server", Side::Server),
-        formats_line(&detected_format_libs(manifest))
-    )
-}
-
-/// Returns the runtime features that are yours and that `init` lists: `simd`.
-pub(crate) fn init_features() -> Vec<&'static str> {
-    FEATURES.into_iter().filter(|(_, trigger)| *trigger == Trigger::Chosen).map(|(name, _)| name).collect()
+pub(crate) fn init_table(spec: &str) -> String {
+    format!("[{ROOT}.{DEFAULT_MODULE}]\ndescriptions = [\"{spec}\"]\nclient = true\nserver = true\n")
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -92,16 +69,14 @@ pub(crate) struct Settings {
     pub server: bool,
     /// Generate a test that the description's examples decode into the generated types.
     pub tests: bool,
-    /// The runtime adapters that the `adapters` of `client` and `server` list.
-    pub adapters: Vec<&'static str>,
     /// `server = { allow_unimplemented = true }`: each `Api` method defaults to `501 Not Implemented`.
     pub allow_unimplemented: bool,
     /// Extra derives as (Rust type name or `*`, derive paths).
     pub derives: Vec<(String, Vec<String>)>,
-    /// `unknown_fields = "keep"`.
+    /// `keep_unknown_fields = true`.
     pub keep_unknown: bool,
-    /// `client = { strict = false }`: response types accept an enum value or a property that the description does not
-    /// list. `true` unless set: requests are always strict.
+    /// `false` with `client = { allow_unknown_values = true }`: response types accept an enum value or a property that
+    /// the description does not list. Requests are always strict.
     pub strict_client: bool,
     /// The crate has no library target (no `[lib]` and no `src/lib.rs`). The module is visible to the crate only.
     pub binary: bool,
@@ -130,7 +105,12 @@ impl Settings {
             let found: Vec<PathBuf> =
                 crate::disk::files_in(&dir)?.into_iter().filter(|p| matches_star(p, prefix, suffix)).collect();
             if found.is_empty() {
-                return Err(setting(&self.table, "spec", "a pattern that matches a file", spec.display().to_string()));
+                return Err(setting(
+                    &self.table,
+                    "descriptions",
+                    "patterns that match a file",
+                    spec.display().to_string(),
+                ));
             }
             out.extend(found);
         }
@@ -169,8 +149,6 @@ pub(crate) struct Manifest {
     deps: Vec<Dependency>,
     /// The package has a library target.
     lib: bool,
-    /// The workspace root's manifest when it is another file than this one.
-    workspace_path: Option<PathBuf>,
     /// The manifests of the workspace members when this is a virtual workspace manifest.
     members: Option<Vec<PathBuf>>,
     /// The workspace root's manifest when it is another file than this one: its `[workspace.lints]` apply to a
@@ -187,6 +165,8 @@ pub(crate) struct Dependency {
     pub package: String,
     /// Its `features`, with those of the workspace entry under `workspace = true`.
     pub features: Vec<String>,
+    /// Its version requirement, such as `=0.0.3`. `*` without one.
+    pub req: String,
 }
 
 impl Manifest {
@@ -222,6 +202,7 @@ impl Manifest {
                 name: d.rename.clone().unwrap_or_else(|| d.name.clone()),
                 package: d.name.clone(),
                 features: d.features.clone(),
+                req: d.req.to_string(),
             })
             .collect();
         Ok(Self {
@@ -229,7 +210,6 @@ impl Manifest {
             name: Some(package.name.to_string()),
             deps,
             lib: package.targets.iter().any(cargo_metadata::Target::is_lib),
-            workspace_path,
             members: None,
             workspace_doc,
         })
@@ -273,16 +253,12 @@ impl Manifest {
                     name: name.to_owned(),
                     package: entry.and_then(|e| e.get("package")?.as_str()).unwrap_or(name).to_owned(),
                     features: string_array(entry.and_then(|e| e.get("features"))).unwrap_or_default(),
+                    req: item.as_str().or_else(|| entry?.get("version")?.as_str()).unwrap_or("*").to_owned(),
                 });
             }
         }
         let name = doc.get("package").and_then(|p| p.get("name")?.as_str()).map(str::to_owned);
         Ok(Self { lib: doc.contains_key("lib"), doc, name, deps, ..Self::default() })
-    }
-
-    /// Returns the workspace root's manifest when it is another file than this one.
-    pub(crate) fn workspace_path(&self) -> Option<&Path> {
-        self.workspace_path.as_deref()
     }
 
     /// Returns the name of the package. `None` for a virtual workspace manifest.
@@ -325,14 +301,20 @@ impl Manifest {
         out
     }
 
+    /// Returns the dependency on the runtime, by package so a renamed one counts too.
+    pub(crate) fn runtime(&self) -> Option<&Dependency> {
+        self.deps.iter().find(|d| d.package == RUNTIME)
+    }
+
+    /// Does the dependency `name` take its version from `[workspace.dependencies]` (`workspace = true`)?
+    pub(crate) fn inherits(&self, name: &str) -> bool {
+        let entry = self.doc.get("dependencies").and_then(|d| d.get(name));
+        entry.and_then(|e| e.get("workspace")).and_then(Item::as_bool) == Some(true)
+    }
+
     /// Does the crate depend on `name`?
     pub(crate) fn has_dependency(&self, name: &str) -> bool {
         self.dependency(name).is_some()
-    }
-
-    /// Does the crate depend on `name` with its `serde` feature?
-    pub(crate) fn has_serde_dependency(&self, name: &str) -> bool {
-        self.dependency(name).is_some_and(|d| d.features.iter().any(|f| f == "serde"))
     }
 }
 
@@ -343,6 +325,9 @@ fn matches_star(path: &Path, prefix: &str, suffix: &str) -> bool {
         n.len() >= prefix.len() + suffix.len() && n.starts_with(prefix) && n.ends_with(suffix)
     })
 }
+
+/// The package of the runtime.
+pub(crate) const RUNTIME: &str = "honig";
 
 /// The table that contains one table per module.
 const ROOT: &str = "package.metadata.honig";
@@ -399,7 +384,7 @@ pub(crate) fn modules<'a>(manifest: &'a Manifest, path: &Path) -> Result<Vec<Mod
             } else if FEATURES.iter().any(|(f, _)| *f == name) {
                 format!("`{name}` is a feature of the runtime. List it in the `features` of the `honig` dependency")
             } else {
-                format!("`{name}` is not a module table. Write [{ROOT}.{name}] with its `spec`")
+                format!("`{name}` is not a module table. Write [{ROOT}.{name}] with its `descriptions`")
             };
             return Err(Error::Module { table: ROOT.to_owned(), problem });
         };
@@ -416,7 +401,7 @@ pub(crate) fn modules<'a>(manifest: &'a Manifest, path: &Path) -> Result<Vec<Mod
         return Err(Error::Module { table: module.path(), problem });
     }
     if out.is_empty() {
-        let problem = format!("has no module. Add [{ROOT}.{DEFAULT_MODULE}] with its `spec`");
+        let problem = format!("has no module. Add [{ROOT}.{DEFAULT_MODULE}] with its `descriptions`");
         return Err(Error::Module { table: ROOT.to_owned(), problem });
     }
     Ok(out)
@@ -475,22 +460,21 @@ pub(crate) fn settings<'a>(module: impl Into<Module<'a>>, path: &Path) -> Result
     }
     let manifest = module.manifest;
     let binary = !manifest.has_lib();
-    let wanted = "a path like \"openapi.yaml\" or a list of them";
-    let spec: Vec<PathBuf> = match table.get("spec") {
-        None => return Err(setting(&name, "spec", wanted, "nothing".to_owned())),
-        Some(item) => match (item.as_str(), string_array(Some(item))) {
-            (Some(one), _) => vec![one.into()],
-            (None, Some(many)) if !many.is_empty() => many.into_iter().map(PathBuf::from).collect(),
-            _ => return Err(setting(&name, "spec", wanted, shown(item))),
+    let wanted = "a list of paths like [\"openapi.yaml\"]";
+    let spec: Vec<PathBuf> = match table.get("descriptions") {
+        None => return Err(setting(&name, "descriptions", wanted, "nothing".to_owned())),
+        Some(item) => match string_array(Some(item)) {
+            Some(many) if !many.is_empty() => many.into_iter().map(PathBuf::from).collect(),
+            _ => return Err(setting(&name, "descriptions", wanted, shown(item))),
         },
     };
-    formats_setting(module)?;
+    named_types(module)?;
     let output = string("output")?.unwrap_or_else(|| format!("src/{}", module.name));
     let mod_rs = match table.get("mod_rs") {
         None => manifest.linted_mod_rs().unwrap_or(true),
         Some(item) => item.as_bool().ok_or_else(|| setting(&name, "mod_rs", "true or false", shown(item)))?,
     };
-    let Halves { client, server, allow_unimplemented, adapters, strict_client } = halves(manifest, table, &name)?;
+    let Halves { client, server, allow_unimplemented, strict_client } = halves(table, &name)?;
     let operations = table
         .get("operations")
         .map(|item| {
@@ -507,7 +491,6 @@ pub(crate) fn settings<'a>(module: impl Into<Module<'a>>, path: &Path) -> Result
         server,
         tests: flag("tests", false)?,
         allow_unimplemented,
-        adapters,
         derives: derives(table, &name)?,
         binary,
         operations,
@@ -520,13 +503,7 @@ pub(crate) fn settings<'a>(module: impl Into<Module<'a>>, path: &Path) -> Result
                 .map(PathBuf::from)
                 .collect(),
         },
-        keep_unknown: match string("unknown_fields")?.as_deref() {
-            None | Some("drop") => false,
-            Some("keep") => true,
-            Some(other) => {
-                return Err(setting(&name, "unknown_fields", "\"keep\" or \"drop\"", format!("\"{other}\"")));
-            }
-        },
+        keep_unknown: flag("keep_unknown_fields", false)?,
     })
 }
 
@@ -535,33 +512,26 @@ struct Halves {
     client: bool,
     server: bool,
     allow_unimplemented: bool,
-    adapters: Vec<&'static str>,
     strict_client: bool,
 }
 
 /// Returns `client` and `server` of the module table `name`.
-fn halves(manifest: &Manifest, table: &dyn TableLike, name: &str) -> Result<Halves, Error> {
-    let (client, client_table) = half(table, name, "client", &["adapters", "strict"])?;
-    let (server, server_table) = half(table, name, "server", &["adapters", "allow_unimplemented"])?;
-    let mut adapters = half_adapters(manifest, client_table, &format!("{name}.client"), Side::Client)?;
-    for adapter in half_adapters(manifest, server_table, &format!("{name}.server"), Side::Server)? {
-        if !adapters.contains(&adapter) {
-            adapters.push(adapter);
-        }
-    }
+fn halves(table: &dyn TableLike, name: &str) -> Result<Halves, Error> {
+    let (client, client_table) = half(table, name, "client", &["allow_unknown_values"])?;
+    let (server, server_table) = half(table, name, "server", &["allow_unimplemented"])?;
     let allow_unimplemented = match server_table.and_then(|t| t.get("allow_unimplemented")) {
         None => false,
         Some(item) => item
             .as_bool()
             .ok_or_else(|| setting(&format!("{name}.server"), "allow_unimplemented", "true or false", shown(item)))?,
     };
-    let strict_client = match client_table.and_then(|t| t.get("strict")) {
+    let strict_client = match client_table.and_then(|t| t.get("allow_unknown_values")) {
         None => true,
-        Some(item) => {
-            item.as_bool().ok_or_else(|| setting(&format!("{name}.client"), "strict", "true or false", shown(item)))?
-        }
+        Some(item) => !item
+            .as_bool()
+            .ok_or_else(|| setting(&format!("{name}.client"), "allow_unknown_values", "true or false", shown(item)))?,
     };
-    Ok(Halves { client, server, allow_unimplemented, adapters, strict_client })
+    Ok(Halves { client, server, allow_unimplemented, strict_client })
 }
 
 /// Returns the half `key` (`client` or `server`): whether it is generated and its table of settings. It is `true`,
@@ -586,34 +556,6 @@ fn half<'a>(
         });
     }
     Ok((true, Some(settings)))
-}
-
-/// Returns the `adapters` of the half `side` in its table `name`. Each one serves that side, or both, and its library
-/// is a dependency of the crate.
-fn half_adapters(
-    manifest: &Manifest,
-    table: Option<&dyn TableLike>,
-    name: &str,
-    side: Side,
-) -> Result<Vec<&'static str>, Error> {
-    let Some(item) = table.and_then(|t| t.get("adapters")) else { return Ok(vec![]) };
-    let names: Vec<&'static str> =
-        libraries().filter(|(_, s)| *s == side || *s == Side::Both).map(|(library, _)| library).collect();
-    let expected = format!("a list of adapters among {}", names.join(", "));
-    let list = string_array(Some(item)).ok_or_else(|| setting(name, "adapters", expected.clone(), shown(item)))?;
-    let mut out = vec![];
-    for adapter in &list {
-        let Some(known) = names.iter().find(|n| **n == adapter.as_str()) else {
-            return Err(setting(name, "adapters", expected, format!("\"{adapter}\"")));
-        };
-        // An adapter compiles against its library: you hand it a client or a router of that library.
-        if !manifest.has_dependency(adapter) {
-            let wanted = format!("adapters whose library is in [dependencies]: add `{adapter}` there");
-            return Err(setting(name, "adapters", wanted, format!("\"{adapter}\"")));
-        }
-        out.push(*known);
-    }
-    Ok(out)
 }
 
 /// Returns the `derives` table: `Type = ["Path", ...]` with `"*"` for all.
@@ -651,32 +593,27 @@ pub(crate) enum Side {
     Both,
 }
 
-/// Who turns a runtime feature on.
+/// When the generated code needs a runtime feature. Every feature is yours to list. `generate` stops when one that the
+/// code needs is missing.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Trigger {
-    /// `generate`: the crate generates the client or the server.
+    /// Needed: the crate generates the client or the server.
     Half(Side),
-    /// `generate`: an adapter for the library of the same name, listed in the `adapters` of the half it serves.
+    /// Optional: an adapter for the library of the same name.
     Library(Side),
-    /// `generate`: a codec or a check. The description has a body, parameter or scheme that it parses. Or it has a
-    /// format that it checks and that the crate has no library type for.
+    /// Needed: a codec or a check. The description has a body, parameter or scheme that it parses. Or it has a format
+    /// that it checks and that has no type of its own.
     Description,
-    /// You: `init` lists it.
+    /// Optional: the types of string formats.
+    Types,
+    /// Optional.
     Chosen,
 }
 
-impl Trigger {
-    /// Returns whether `generate` adds and removes the feature. Otherwise it is yours and `generate` leaves it as you
-    /// list it.
-    pub(crate) fn generated(self) -> bool {
-        self != Self::Chosen
-    }
-}
-
-/// Every runtime feature and what turns it on.
+/// Every runtime feature and when the generated code needs it.
 ///
 /// The book's table of features shows this one.
-pub(crate) const FEATURES: [(&str, Trigger); 19] = [
+pub(crate) const FEATURES: [(&str, Trigger); 22] = [
     (CLIENT, Trigger::Half(Side::Client)),
     (SERVER, Trigger::Half(Side::Server)),
     ("reqwest", Trigger::Library(Side::Client)),
@@ -689,7 +626,10 @@ pub(crate) const FEATURES: [(&str, Trigger); 19] = [
     (BASE64, Trigger::Description),
     (COOKIE, Trigger::Description),
     (IDN, Trigger::Description),
-    (JIFF, Trigger::Description),
+    (JIFF, Trigger::Types),
+    (UUID, Trigger::Types),
+    (URL, Trigger::Types),
+    (IPNET, Trigger::Types),
     (MULTIPART, Trigger::Description),
     (OAUTH, Trigger::Description),
     (PKCE, Trigger::Description),
@@ -706,8 +646,10 @@ pub(crate) const SERVER: &str = "server";
 pub(crate) const COOKIE: &str = "cookie";
 /// `email`, `idn-email`, `hostname` and `idn-hostname` checks (IDNA2008 and punycode).
 pub(crate) const IDN: &str = "idn";
-/// `ipv4-cidr` and `ipv6-cidr` checks written as a `String`.
+/// `ipv4-cidr` and `ipv6-cidr` as `ipnet` networks.
 pub(crate) const IPNET: &str = "ipnet";
+/// Dates and times as `jiff` types.
+pub(crate) const JIFF: &str = "jiff";
 /// `multipart/*` bodies.
 pub(crate) const MULTIPART: &str = "multipart";
 /// Binary data in JSON and `http basic` credentials: base64.
@@ -718,33 +660,25 @@ pub(crate) const OAUTH: &str = "oauth";
 pub(crate) const PKCE: &str = "pkce";
 /// `pattern` and `patternProperties` checks.
 pub(crate) const REGRESS: &str = "regress";
-/// `url` (with its `serde` feature): `format: uri` as `url::Url`.
+/// `format: uri` as `url::Url`.
 pub(crate) const URL: &str = "url";
-/// `uuid` checks written as a `String`.
+/// `format: uuid` as `uuid::Uuid`.
 pub(crate) const UUID: &str = "uuid";
 /// XML bodies and parts.
 pub(crate) const XML: &str = "xml";
-
-/// Returns the libraries that the runtime has an adapter for with the half that each serves.
-fn libraries() -> impl Iterator<Item = (&'static str, Side)> {
-    FEATURES.into_iter().filter_map(|(name, trigger)| match trigger {
-        Trigger::Library(side) => Some((name, side)),
-        Trigger::Half(_) | Trigger::Description | Trigger::Chosen => None,
-    })
-}
 
 /// Returns the keys of the table of a module.
 fn keys() -> impl Iterator<Item = &'static str> {
     SETTINGS.into_iter().map(|(key, _, _)| key)
 }
 
-/// A type that the `formats` table sets for a format: a path such as `crate::Stamp`. Only a path of Rust
-/// identifiers is one.
+/// A type that the `formats` table sets for a format: a path such as `crate::Stamp`. Only a path of Rust identifiers is
+/// one.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct NamedType(String);
 
 impl NamedType {
-    /// Returns the type that `path` names. `None` when it is not a path of identifiers.
+    /// Returns the type that `path` refers to. `None` when it is not a path of identifiers.
     pub(crate) fn new(path: &str) -> Option<Self> {
         let segments = path.strip_prefix("::").unwrap_or(path);
         segments.split("::").all(crate::text::is_identifier).then(|| Self(path.to_owned()))
@@ -756,115 +690,60 @@ impl NamedType {
     }
 }
 
-/// Libraries the target crate provides; `Ty::Format` falls back to `String`.
+/// The types of string formats: the type features of the runtime and the `formats` table. A format with neither is its
+/// checked text.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub(crate) struct FormatLibs {
-    /// `uuid` (with its `serde` feature).
+    /// `uuid`: `format: uuid` as `uuid::Uuid`.
     pub uuid: bool,
-    /// `url` (with its `serde` feature): `format: uri` as `url::Url`.
+    /// `url`: `format: uri` as `url::Url`.
     pub url: bool,
-    /// `ipnet` (with its `serde` feature): `format: ipv4-cidr` and `ipv6-cidr` as networks.
+    /// `ipnet`: `format: ipv4-cidr` and `ipv6-cidr` as networks.
     pub ipnet: bool,
-    /// `jiff` (with its `serde` feature): dates and timestamps.
+    /// `jiff`: dates and times.
     pub jiff: bool,
-    /// The types that the table sets for formats. Each wins over a library for its format.
+    /// The types that the table sets for formats. Each wins over a feature for its format.
     pub named: BTreeMap<Format, NamedType>,
 }
 
-/// `jiff` (with its `serde` feature): the dates and times. Also the runtime feature of `runtime::FullTime`.
-pub(crate) const JIFF: &str = "jiff";
-
-/// Returns the library types that string formats get: the `formats` table says them. Each library that it lists must
-/// be a dependency with its `serde` feature. Without the table a dependency added for another reason would change the
-/// types of fields, so the table is required. The error prints the line that keeps what the dependencies give today.
+/// Returns the types of string formats: the type features that the `honig` dependency lists and the `formats` table.
 ///
 /// # Errors
-/// There is no table, it has a value of the wrong kind or it refers to a library that the crate does not depend on with
-/// `serde`.
+/// The table has a value of the wrong kind or a key that is no format with a check.
 pub(crate) fn format_libs<'a>(module: impl Into<Module<'a>>) -> Result<FormatLibs, Error> {
     let module = module.into();
-    let manifest = module.manifest;
-    let Some(libs) = formats_setting(module)? else {
-        let pin = formats_line(&detected_format_libs(manifest));
-        return Err(setting(
-            &module.path(),
-            "formats",
-            format!("set: `{pin}` keeps the types of today"),
-            "none".into(),
-        ));
-    };
-    let formats = &format!("{}.formats", module.path());
-    let named =
-        [(UUID, "uuid", libs.uuid), (URL, "url", libs.url), (IPNET, "ipnet", libs.ipnet), (JIFF, "jiff", libs.jiff)];
-    for (lib, key, on) in named {
-        if on && !manifest.has_serde_dependency(lib) {
-            let found = format!("no `{lib}` dependency with its `serde` feature");
-            return Err(setting(formats, key, format!("`{lib}` in [dependencies] with features = [\"serde\"]"), found));
-        }
-    }
-    Ok(libs)
+    Ok(FormatLibs { named: named_types(module)?, ..feature_libs(module.manifest) })
 }
 
-/// Returns the `formats` table as written. `None` when the crate has none.
-fn formats_setting(module: Module<'_>) -> Result<Option<FormatLibs>, Error> {
-    let Some(item) = module.get("formats") else { return Ok(None) };
+/// Returns the types that the type features of the `honig` dependency give string formats.
+pub(crate) fn feature_libs(manifest: &Manifest) -> FormatLibs {
+    let on = |feature: &str| manifest.runtime().is_some_and(|d| d.features.iter().any(|f| f == feature));
+    FormatLibs { uuid: on(UUID), url: on(URL), ipnet: on(IPNET), jiff: on(JIFF), named: BTreeMap::new() }
+}
+
+/// Returns the types that the `formats` table sets, by format.
+fn named_types(module: Module<'_>) -> Result<BTreeMap<Format, NamedType>, Error> {
+    let mut named = BTreeMap::new();
+    let Some(item) = module.get("formats") else { return Ok(named) };
     let table = item.as_table_like().ok_or_else(|| setting(&module.path(), "formats", "a table", shown(item)))?;
     let formats = &format!("{}.formats", module.path());
-    let mut libs = FormatLibs::default();
     for (key, value) in table.iter() {
-        let flag = || value.as_bool().ok_or_else(|| setting(formats, key, "true or false", shown(value)));
-        match key {
-            "uuid" if value.is_str() => _ = libs.named.insert(Format::Uuid, named_type(formats, key, value)?),
-            "uuid" => libs.uuid = flag()?,
-            "url" => libs.url = flag()?,
-            "ipnet" => libs.ipnet = flag()?,
-            "jiff" => libs.jiff = flag()?,
-            _ => {
-                let Some(format) = Format::ALL.into_iter().find(|f| f.name() == key && f.marker().is_some()) else {
-                    return Err(setting(
-                        formats,
-                        key,
-                        "uuid, url, ipnet, jiff or a format with a check, such as date-time",
-                        "an unknown setting".to_owned(),
-                    ));
-                };
-                libs.named.insert(format, named_type(formats, key, value)?);
-            }
-        }
+        let Some(format) = Format::ALL.into_iter().find(|f| f.name() == key && f.marker().is_some()) else {
+            let found = if FEATURES.iter().any(|(f, _)| *f == key) {
+                format!("`{key}`, a feature of the runtime: list it in the `features` of the `honig` dependency")
+            } else {
+                "an unknown setting".to_owned()
+            };
+            return Err(setting(formats, key, "a format with a check, such as date-time", found));
+        };
+        let text = value
+            .as_str()
+            .ok_or_else(|| setting(formats, key, "the path of a type such as \"crate::Stamp\"", shown(value)))?;
+        let ty =
+            NamedType::new(text).ok_or_else(|| setting(formats, key, "the path of a type", format!("`{text}`")))?;
+        named.insert(format, ty);
     }
-    Ok(Some(libs))
-}
-
-/// Returns the type that `value` names for the format `key`. The compiler checks that it exists.
-fn named_type(formats: &str, key: &str, value: &Item) -> Result<NamedType, Error> {
-    let text = value
-        .as_str()
-        .ok_or_else(|| setting(formats, key, "the path of a type such as \"crate::Stamp\"", shown(value)))?;
-    NamedType::new(text).ok_or_else(|| setting(formats, key, "the path of a type", format!("`{text}`")))
-}
-
-/// Returns the `formats` line that keeps `libs`: only the libraries in use, `{}` for none.
-pub(crate) fn formats_line(libs: &FormatLibs) -> String {
-    let on = [
-        (libs.uuid, "uuid = true"),
-        (libs.url, "url = true"),
-        (libs.ipnet, "ipnet = true"),
-        (libs.jiff, "jiff = true"),
-    ];
-    let named = libs.named.iter().map(|(f, t)| format!("{} = \"{}\"", f.name(), t.path()));
-    let parts: Vec<String> = on.iter().filter(|(b, _)| *b).map(|(_, s)| (*s).to_owned()).chain(named).collect();
-    if parts.is_empty() { "formats = {}".to_owned() } else { format!("formats = {{ {} }}", parts.join(", ")) }
-}
-
-/// Returns the libraries that the crate depends on with their `serde` feature.
-pub(crate) fn detected_format_libs(manifest: &Manifest) -> FormatLibs {
-    FormatLibs {
-        uuid: manifest.has_serde_dependency(UUID),
-        url: manifest.has_serde_dependency(URL),
-        ipnet: manifest.has_serde_dependency(IPNET),
-        jiff: manifest.has_serde_dependency(JIFF),
-        named: BTreeMap::new(),
-    }
+    Ok(named)
 }
 
 #[cfg(test)]
@@ -877,88 +756,74 @@ mod tests {
     }
 
     #[test]
-    fn init_writes_the_defaults_and_your_adapters() {
-        let m = parse("[dependencies]\naxum = \"0.8\"\nuuid = { version = \"1\", features = [\"serde\"] }\n");
+    fn init_writes_the_defaults() {
         assert_eq!(
-            init_table(&m, "openapi.yaml"),
-            "[package.metadata.honig.api]\nspec = \"openapi.yaml\"\nclient = true\nserver = { adapters = [\"axum\"] }\n\
-             formats = { uuid = true }\n"
+            init_table("openapi.yaml"),
+            "[package.metadata.honig.api]\ndescriptions = [\"openapi.yaml\"]\nclient = true\nserver = true\n"
         );
-        assert_eq!(init_features(), ["simd"]);
         let read = |tables: &str| {
-            let m = parse(&format!("{tables}\n[dependencies]\naxum = \"0.8\"\n"));
             let path = Path::new("Cargo.toml");
-            settings(modules(&m, path).unwrap()[0], path).unwrap()
+            settings(modules(&parse(tables), path).unwrap()[0], path).unwrap()
         };
-        let (example, defaults) =
-            (read(&init_table(&m, "openapi.yaml")), read("[package.metadata.honig.api]\nspec = \"openapi.yaml\""));
+        let (example, defaults) = (
+            read(&init_table("openapi.yaml")),
+            read("[package.metadata.honig.api]\ndescriptions = [\"openapi.yaml\"]"),
+        );
         let shown =
             |c: Settings| (c.spec, c.output, c.client, c.server, c.tests, c.allow_unimplemented, c.keep_unknown);
         assert_eq!(shown(example), shown(defaults));
     }
 
-    #[test]
-    fn the_formats_table_decides_and_is_required() {
-        let serde = |lib: &str| format!("{lib} = {{ version = \"1\", features = [\"serde\"] }}\n");
-        let libs = |formats: &str, deps: &str| {
-            format_libs(&parse(&format!(
-                "[package.metadata.honig.api]\nspec = \"a.yaml\"\n{formats}\n[dependencies]\n{deps}"
-            )))
-        };
-        let all = [serde("uuid"), serde("url"), serde("ipnet"), serde("jiff")].concat();
-        // No table: a dependency added for another reason would change field types. The error says what to write.
-        let missing = libs("", &all).unwrap_err().to_string();
-        assert!(
-            missing
-                .contains("`formats` must be set: `formats = { uuid = true, url = true, ipnet = true, jiff = true }`"),
-            "{missing}"
-        );
-        assert_eq!(libs("formats = {}", &all).unwrap(), FormatLibs::default(), "a dependency alone types nothing");
-        assert_eq!(
-            libs("formats = { uuid = true, ipnet = true, jiff = true }", &all).unwrap(),
-            FormatLibs { uuid: true, ipnet: true, jiff: true, ..FormatLibs::default() }
-        );
-        assert_eq!(libs("formats = { jiff = false }", &all).unwrap(), FormatLibs::default());
-        let error = |formats: &str, deps: &str| libs(formats, deps).unwrap_err().to_string();
-        assert!(error("formats = { uuid = true }", "uuid = \"1\"\n").contains("features = [\"serde\"]"));
-        assert!(error("formats = { jiff = true }", "").contains("no `jiff` dependency with its `serde` feature"));
-        for gone in ["formats = { dates = \"jiff\" }", "formats = { chrono = true }", "formats = { decimals = true }"] {
-            assert!(error(gone, &all).contains("uuid, url, ipnet, jiff or a format with a check"), "{gone}");
-        }
-        assert!(error("formats = { url = \"yes\" }", &all).contains("true or false"));
+    fn libs(formats: &str, features: &str) -> Result<FormatLibs, Error> {
+        format_libs(&parse(&format!(
+            "[package.metadata.honig.api]\ndescriptions = [\"a.yaml\"]\n{formats}\n[dependencies]\n\
+             honig = {{ version = \"=0.0.1\", features = [{features}] }}\n"
+        )))
     }
 
     #[test]
-    fn the_formats_table_names_any_type() {
-        let libs = |formats: &str| {
-            format_libs(&parse(&format!(
-                "[package.metadata.honig.api]\nspec = \"a.yaml\"\n{formats}\n[dependencies]\n\
-                 jiff = {{ version = \"1\", features = [\"serde\"] }}\n"
-            )))
-        };
+    fn the_type_features_of_the_runtime_pick_the_types() {
+        assert_eq!(libs("", "").unwrap(), FormatLibs::default(), "without a type feature a format is its text");
+        assert_eq!(
+            libs("", "\"client\", \"uuid\", \"jiff\"").unwrap(),
+            FormatLibs { uuid: true, jiff: true, ..FormatLibs::default() }
+        );
+        let all = libs("", "\"uuid\", \"url\", \"ipnet\", \"jiff\"").unwrap();
+        assert_eq!(all, FormatLibs { uuid: true, url: true, ipnet: true, jiff: true, ..FormatLibs::default() });
+        let renamed = parse("[dependencies]\nrt = { package = \"honig\", version = \"1\", features = [\"uuid\"] }\n");
+        assert!(feature_libs(&renamed).uuid, "a renamed dependency counts");
+    }
+
+    #[test]
+    fn the_formats_table_sets_your_own_types() {
         let named = |libs: &FormatLibs, f: Format| libs.named.get(&f).map(|t| t.path().to_owned());
-        let stamp = libs("formats = { date-time = \"crate::Stamp\" }").unwrap();
+        let stamp = libs("formats = { date-time = \"crate::Stamp\" }", "").unwrap();
         assert_eq!(named(&stamp, Format::DateTime).as_deref(), Some("crate::Stamp"));
-        // A named format wins over the library for its format only.
-        let mixed = libs("formats = { jiff = true, date-time = \"crate::Stamp\" }").unwrap();
+        // A type of yours wins over a feature for its format only.
+        let mixed = libs("formats = { date-time = \"crate::Stamp\" }", "\"jiff\"").unwrap();
         assert_eq!(named(&mixed, Format::DateTime).as_deref(), Some("crate::Stamp"));
         assert_eq!((named(&mixed, Format::Date), mixed.jiff), (None, true));
-        let ids = libs("formats = { uuid = \"crate::ids::OrderId\" }").unwrap();
+        let ids = libs("formats = { uuid = \"crate::ids::OrderId\" }", "").unwrap();
         assert_eq!((named(&ids, Format::Uuid).as_deref(), ids.uuid), (Some("crate::ids::OrderId"), false));
-        assert_eq!(formats_line(&ids), "formats = { uuid = \"crate::ids::OrderId\" }");
-        let error = |formats: &str| libs(formats).unwrap_err().to_string();
+        let error = |formats: &str| libs(formats, "").unwrap_err().to_string();
         assert!(error("formats = { uuid = \"not a type(\" }").contains("`uuid`"), "the error points to the key");
         assert!(error("formats = { date = 1 }").contains("the path of a type"));
         assert!(error("formats = { date = \"jiff::Zoned<jiff::Tz>\" }").contains("the path of a type"));
+        assert!(error("formats = [\"uuid\"]").contains("a table"));
         // `time` accepts only valid values: no check to keep, so no type to set.
         assert!(error("formats = { time = \"crate::T\" }").contains("an unknown setting"));
+        assert!(error("formats = { uuid = true }").contains("the path of a type"), "a type feature is no setting here");
+        assert!(error("formats = { jiff = true }").contains("a feature of the runtime: list it in the `features`"));
     }
 
     #[test]
-    fn the_formats_line_names_only_the_libraries_in_use() {
-        assert_eq!(formats_line(&FormatLibs::default()), "formats = {}");
-        let libs = FormatLibs { uuid: true, ipnet: true, jiff: true, ..FormatLibs::default() };
-        assert_eq!(formats_line(&libs), "formats = { uuid = true, ipnet = true, jiff = true }");
+    fn keep_unknown_fields_is_a_flag() {
+        let one =
+            |module: &str| modules_of(&format!("[package.metadata.honig.api]\ndescriptions = [\"a.yaml\"]\n{module}"));
+        assert!(!one("").unwrap()[0].keep_unknown, "dropped unless set");
+        assert!(one("keep_unknown_fields = true\n").unwrap()[0].keep_unknown);
+        assert!(one("keep_unknown_fields = \"keep\"\n").unwrap_err().to_string().contains("true or false"));
+        assert!(one("unknown_fields = \"keep\"\n").unwrap_err().to_string().contains("no setting `unknown_fields`"));
     }
 
     #[test]
@@ -969,8 +834,11 @@ mod tests {
                 .map(|e| e.to_string())
                 .unwrap_or_default()
         };
-        assert!(err("spec = \"a.yaml\"\nstrcit = false").contains("no setting `strcit`"), "a typo is not ignored");
-        assert_eq!(err("spec = \"a.yaml\""), "");
+        assert!(
+            err("descriptions = [\"a.yaml\"]\nstrcit = false").contains("no setting `strcit`"),
+            "a typo is not ignored"
+        );
+        assert_eq!(err("descriptions = [\"a.yaml\"]"), "");
     }
 
     /// A workspace as cargo resolves it: a virtual root with `crates/*` and an excluded member. `shop` inherits `uuid`
@@ -1004,10 +872,12 @@ mod tests {
         assert_eq!(workspace.members().map(<[PathBuf]>::len), Some(1), "`exclude` drops `old`");
         let m = Manifest::load(&shop).unwrap();
         assert_eq!(m.package_name(), Some("shop"));
-        assert!(m.has_serde_dependency("uuid"), "`workspace = true` brings the root's features");
+        let uuid = m.dependency("uuid").unwrap();
+        assert_eq!(uuid.features, ["v7", "serde"], "`workspace = true` brings the root's features");
+        assert_eq!(uuid.req, "^1", "and its version");
         assert!(m.has_dependency("url") && !m.has_dependency("regress"), "target dependencies count, dev ones not");
         assert_eq!(m.dependency_names(), ["dates", "jiff", "uuid", "url"], "in the order cargo lists them");
-        assert!(m.has_lib() && m.workspace_path().is_some());
+        assert!(m.has_lib());
         std::fs::remove_dir_all(dir).ok();
     }
 
@@ -1022,7 +892,7 @@ mod tests {
     #[test]
     fn derives_and_overlays_are_read_in_order() {
         let configs = modules_of(
-            "[package.metadata.honig.api]\nspec = \"a.yaml\"\noverlays = [\"one.yaml\", \"fix/two.yaml\"]\n\
+            "[package.metadata.honig.api]\ndescriptions = [\"a.yaml\"]\noverlays = [\"one.yaml\", \"fix/two.yaml\"]\n\
              derives = { \"*\" = [\"Hash\"], Pet = [\"sqlx::FromRow\", \"Eq\"] }\n",
         )
         .unwrap();
@@ -1035,7 +905,8 @@ mod tests {
     #[test]
     fn a_derive_must_be_a_path() {
         for bad in ["\"\"", "\"not a path\"", "\"a::\"", "\"Hash\", 1"] {
-            let tables = format!("[package.metadata.honig.api]\nspec = \"a.yaml\"\nderives = {{ Pet = [{bad}] }}\n");
+            let tables =
+                format!("[package.metadata.honig.api]\ndescriptions = [\"a.yaml\"]\nderives = {{ Pet = [{bad}] }}\n");
             let err = modules_of(&tables).unwrap_err().to_string();
             assert!(err.contains("derives") && err.contains("Pet"), "{bad}: {err}");
         }
@@ -1053,9 +924,9 @@ mod tests {
     #[test]
     fn each_table_is_one_module_with_its_own_output() {
         let configs = modules_of(
-            "[package.metadata.honig.api]\nspec = \"own.yaml\"\nclient = false\n\n\
-             [package.metadata.honig.billing]\nspec = [\"vendor/*.yaml\"]\nserver = false\n\n\
-             [package.metadata.honig.identity]\nspec = \"id.yaml\"\noutput = \"src/id\"\n",
+            "[package.metadata.honig.api]\ndescriptions = [\"own.yaml\"]\nclient = false\n\n\
+             [package.metadata.honig.billing]\ndescriptions = [\"vendor/*.yaml\"]\nserver = false\n\n\
+             [package.metadata.honig.identity]\ndescriptions = [\"id.yaml\"]\noutput = \"src/id\"\n",
         )
         .unwrap();
         let shown: Vec<_> = configs.iter().map(|c| (c.table.as_str(), c.output.clone(), c.client, c.server)).collect();
@@ -1071,83 +942,77 @@ mod tests {
 
     #[test]
     fn client_and_server_take_a_table_of_their_own() {
-        let one = |module: &str| modules_of(&format!("[package.metadata.honig.api]\nspec = \"a.yaml\"\n{module}"));
+        let one =
+            |module: &str| modules_of(&format!("[package.metadata.honig.api]\ndescriptions = [\"a.yaml\"]\n{module}"));
         let s = one("server = { allow_unimplemented = true }\n").unwrap();
         assert_eq!((s[0].client, s[0].server, s[0].allow_unimplemented), (true, true, true));
         let s = one("client = false\n").unwrap();
         assert_eq!((s[0].client, s[0].server, s[0].allow_unimplemented), (false, true, false));
         assert_eq!(
-            one("server = { strict = false }\n").unwrap_err().to_string(),
-            "[package.metadata.honig.api.server] has no setting `strict`. The settings are adapters, allow_unimplemented"
+            one("server = { allow_unknown_values = true }\n").unwrap_err().to_string(),
+            "[package.metadata.honig.api.server] has no setting `allow_unknown_values`. The settings are \
+             allow_unimplemented"
         );
         assert_eq!(
             one("client = \"yes\"\n").unwrap_err().to_string(),
-            "[package.metadata.honig.api] `client` must be true, false or a table with adapters, strict, found \"yes\""
+            "[package.metadata.honig.api] `client` must be true, false or a table with allow_unknown_values, found \"yes\""
         );
         let strict = |client: &str| one(&format!("client = {client}\n")).unwrap()[0].strict_client;
         assert!(strict("true"), "strict unless set");
-        assert!(!strict("{ strict = false }"));
+        assert!(!strict("{ allow_unknown_values = true }"));
+        assert!(
+            one("client = { strict = false }\n").unwrap_err().to_string().contains("no setting `strict`"),
+            "the old name is an error"
+        );
     }
 
     /// One list of operations serves both halves. A list on a half is a setting that the half does not have.
     #[test]
     fn operations_are_one_list_for_both_halves() {
-        let one = |module: &str| modules_of(&format!("[package.metadata.honig.api]\nspec = \"a.yaml\"\n{module}"));
+        let one =
+            |module: &str| modules_of(&format!("[package.metadata.honig.api]\ndescriptions = [\"a.yaml\"]\n{module}"));
         let s = one("operations = [\"getOrder\"]\n").unwrap();
         assert_eq!(s[0].operations, Some(vec!["getOrder".to_owned()]));
         assert_eq!(one("client = true\n").unwrap()[0].operations, None);
         assert_eq!(
             one("client = { operations = [\"getOrder\"] }\n").unwrap_err().to_string(),
-            "[package.metadata.honig.api.client] has no setting `operations`. The settings are adapters, strict"
-        );
-    }
-
-    #[test]
-    fn each_half_lists_the_adapters_of_its_side() {
-        let one = |module: &str| modules_of(&format!("[package.metadata.honig.api]\nspec = \"a.yaml\"\n{module}"));
-        let s = one("client = { adapters = [\"reqwest\"] }\nserver = { adapters = [\"axum\"] }\n").unwrap();
-        assert_eq!(s[0].adapters, ["reqwest", "axum"]);
-        assert_eq!(
-            one("server = { adapters = [\"reqwest\"] }\n").unwrap_err().to_string(),
-            "[package.metadata.honig.api.server] `adapters` must be a list of adapters among axum, tracing, \
-             tracing-opentelemetry, found \"reqwest\""
-        );
-        assert_eq!(
-            one("client = { adapters = [\"ureq\"] }\n").unwrap_err().to_string(),
-            "[package.metadata.honig.api.client] `adapters` must be adapters whose library is in [dependencies]: add \
-             `ureq` there, found \"ureq\""
+            "[package.metadata.honig.api.client] has no setting `operations`. The settings are allow_unknown_values"
         );
     }
 
     #[test]
     fn a_setting_in_the_wrong_table_says_where_it_goes() {
         assert_eq!(
-            modules_of("[package.metadata.honig]\nspec = \"a.yaml\"\n").unwrap_err().to_string(),
-            "[package.metadata.honig] `spec` is a setting of one module. Move it to [package.metadata.honig.api] or \
+            modules_of("[package.metadata.honig]\ndescriptions = [\"a.yaml\"]\n").unwrap_err().to_string(),
+            "[package.metadata.honig] `descriptions` is a setting of one module. Move it to [package.metadata.honig.api] or \
              another module"
         );
         assert_eq!(
-            modules_of("[package.metadata.honig]\nsimd = false\n[package.metadata.honig.api]\nspec = \"a.yaml\"\n")
-                .unwrap_err()
-                .to_string(),
+            modules_of(
+                "[package.metadata.honig]\nsimd = false\n[package.metadata.honig.api]\ndescriptions = [\"a.yaml\"]\n"
+            )
+            .unwrap_err()
+            .to_string(),
             "[package.metadata.honig] `simd` is a feature of the runtime. List it in the `features` of the `honig` \
              dependency"
         );
         assert_eq!(
-            modules_of("[package.metadata.honig.api]\nspec = \"a.yaml\"\naxum = true\n").unwrap_err().to_string(),
+            modules_of("[package.metadata.honig.api]\ndescriptions = [\"a.yaml\"]\naxum = true\n")
+                .unwrap_err()
+                .to_string(),
             "[package.metadata.honig.api] `axum` is a feature of the runtime. List it in the `features` of the \
              `honig` dependency"
         );
         assert_eq!(
             modules_of("[package.metadata.honig]\n").unwrap_err().to_string(),
-            "[package.metadata.honig] has no module. Add [package.metadata.honig.api] with its `spec`"
+            "[package.metadata.honig] has no module. Add [package.metadata.honig.api] with its `descriptions`"
         );
     }
 
     #[test]
     fn a_wrong_module_table_is_named_in_its_error() {
         assert_eq!(
-            modules_of("[package.metadata.honig.billing]\nspec = \"b.yaml\"\nstrcit = false\n")
+            modules_of("[package.metadata.honig.billing]\ndescriptions = [\"b.yaml\"]\nstrcit = false\n")
                 .unwrap_err()
                 .to_string(),
             format!(
@@ -1156,21 +1021,26 @@ mod tests {
             )
         );
         assert_eq!(
-            modules_of("[package.metadata.honig.billing]\nspec = 3\n").unwrap_err().to_string(),
-            "[package.metadata.honig.billing] `spec` must be a path like \"openapi.yaml\" or a list of them, found 3"
+            modules_of("[package.metadata.honig.billing]\ndescriptions = 3\n").unwrap_err().to_string(),
+            "[package.metadata.honig.billing] `descriptions` must be a list of paths like [\"openapi.yaml\"], found 3"
         );
         assert_eq!(
-            modules_of("[package.metadata.honig.billing]\nspec = \"b.yaml\"\nformats = { uuid = 1 }\n")
+            modules_of("[package.metadata.honig.billing]\ndescriptions = \"b.yaml\"\n").unwrap_err().to_string(),
+            "[package.metadata.honig.billing] `descriptions` must be a list of paths like [\"openapi.yaml\"], found \
+             \"b.yaml\""
+        );
+        assert_eq!(
+            modules_of("[package.metadata.honig.billing]\ndescriptions = [\"b.yaml\"]\nformats = { uuid = 1 }\n")
                 .unwrap_err()
                 .to_string(),
-            "[package.metadata.honig.billing.formats] `uuid` must be true or false, found 1"
+            "[package.metadata.honig.billing.formats] `uuid` must be the path of a type such as \"crate::Stamp\", found 1"
         );
         assert_eq!(
-            modules_of("[package.metadata.honig.type]\nspec = \"t.yaml\"\n").unwrap_err().to_string(),
+            modules_of("[package.metadata.honig.type]\ndescriptions = [\"t.yaml\"]\n").unwrap_err().to_string(),
             "[package.metadata.honig.type] `type` is a Rust keyword. Name the table like a module, such as `billing`"
         );
         assert_eq!(
-            modules_of("[package.metadata.honig.ext-a]\nspec = \"t.yaml\"\n").unwrap_err().to_string(),
+            modules_of("[package.metadata.honig.ext-a]\ndescriptions = [\"t.yaml\"]\n").unwrap_err().to_string(),
             "[package.metadata.honig.ext-a] `ext-a` is not a Rust identifier. Name the table like a module, such as \
              `billing`"
         );
@@ -1179,7 +1049,7 @@ mod tests {
     #[test]
     fn a_module_name_on_the_command_line_must_be_a_table() {
         let m = parse(
-            "[package.metadata.honig.api]\nspec = \"a.yaml\"\n[package.metadata.honig.billing]\nspec = \"b.yaml\"\n",
+            "[package.metadata.honig.api]\ndescriptions = [\"a.yaml\"]\n[package.metadata.honig.billing]\ndescriptions = [\"b.yaml\"]\n",
         );
         let check =
             |only| ensure_module(&modules(&m, Path::new("Cargo.toml")).unwrap(), only).map_err(|e| e.to_string());
@@ -1194,7 +1064,7 @@ mod tests {
     #[test]
     fn the_root_of_a_module_follows_the_lints_of_the_crate_unless_set() {
         let root = |extra: &str| {
-            let table = format!("[package.metadata.honig.api]\nspec = \"a.yaml\"\n{extra}");
+            let table = format!("[package.metadata.honig.api]\ndescriptions = [\"a.yaml\"]\n{extra}");
             modules_of(&table).ok().map(|ms| ms[0].root_path())
         };
         let file = Some(Path::new("src").join("api.rs"));

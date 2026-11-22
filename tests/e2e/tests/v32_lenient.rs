@@ -1,4 +1,4 @@
-//! A lenient client (`client = { strict = false }`) accepts a response that contains what the server added: an enum
+//! A lenient client (`client = { allow_unknown_values = true }`) accepts a response that contains what the server added: an enum
 //! value that the description does not list and a property of a closed object. Its requests stay strict.
 
 use e2e::v32_lenient::api::{self, operations as ops, types};

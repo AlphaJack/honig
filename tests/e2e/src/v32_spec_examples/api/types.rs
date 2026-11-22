@@ -264,7 +264,7 @@ runtime::object! {
             skip_serializing_if = "Option::is_none",
             deserialize_with = "runtime::formats::read::<_, _, runtime::formats::Present<runtime::formats::Text<runtime::formats::format::Uri>>>"
         )]
-        pub anchor: Option<url::Url>,
+        pub anchor: Option<runtime::url::Url>,
         #[serde(flatten)]
         pub additional_properties: std::collections::BTreeMap<String, SimpleLinkContext>,
     }
@@ -1074,7 +1074,7 @@ pub mod builders {
     }
     runtime::typestate_builder! {
         CollectionLinksLinksetItem => super::CollectionLinksLinksetItem; required {}
-        optional { anchor(anchor) : url::Url = "anchor" => some, None } fixed {
+        optional { anchor(anchor) : runtime::url::Url = "anchor" => some, None } fixed {
         additional_properties : std::collections::BTreeMap::new(), }
     }
     runtime::typestate_builder! {

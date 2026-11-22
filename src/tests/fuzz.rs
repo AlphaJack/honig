@@ -1100,7 +1100,6 @@ fn generated_crates_compile_and_pass_their_tests() {
             let opts = crate::emit::Options { tests: true, ..api.opts };
             super::common::new_crate(&spec, &dir, &name, &opts);
             super::common::use_local_runtime(&dir.join("Cargo.toml"));
-            add_libs(&dir.join("Cargo.toml"), &opts.rust.libs);
             members.push(name);
         }
     }
@@ -1114,20 +1113,4 @@ fn generated_crates_compile_and_pass_their_tests() {
         .status()
         .unwrap();
     assert!(status.success(), "generated fuzz crates failed their tests");
-}
-
-/// Adds the libraries that the options give formats to.
-fn add_libs(manifest: &std::path::Path, libs: &crate::settings::FormatLibs) {
-    let mut doc: toml_edit::DocumentMut = std::fs::read_to_string(manifest).unwrap().parse().unwrap();
-    let wanted =
-        [(libs.uuid, "uuid", "1"), (libs.url, "url", "2"), (libs.ipnet, "ipnet", "2"), (libs.jiff, "jiff", "1")]
-            .into_iter()
-            .filter_map(|(on, name, version)| on.then_some((name, version)));
-    for (name, version) in wanted {
-        let mut dep = toml_edit::InlineTable::new();
-        dep.insert("version", version.into());
-        dep.insert("features", toml_edit::Array::from_iter(["serde"]).into());
-        doc["dependencies"][name] = toml_edit::value(dep);
-    }
-    std::fs::write(manifest, doc.to_string()).unwrap();
 }

@@ -71,6 +71,23 @@ fn scratch_crate(name: &str) -> PathBuf {
     dir
 }
 
+/// The runtime features that the code generated from the `shop` description needs.
+const SHOP: &[&str] = &["client", "server", "pkce", "oauth", "cookie", "base64", "idn", "multipart", "xml"];
+
+/// Adds the runtime of this checkout to the crate in `dir` with `features`, as `cargo add` would.
+fn add_runtime(dir: &Path, features: &[&str]) {
+    let manifest = dir.join("Cargo.toml");
+    let runtime = Path::new(env!("CARGO_MANIFEST_DIR")).join("runtime");
+    let features: Vec<String> = features.iter().map(|f| format!("\"{f}\"")).collect();
+    let line = format!(
+        "\n[dependencies]\nhonig = {{ version = \"={}\", path = {:?}, features = [{}] }}\n",
+        env!("CARGO_PKG_VERSION"),
+        runtime.display().to_string(),
+        features.join(", ")
+    );
+    std::fs::write(&manifest, std::fs::read_to_string(&manifest).unwrap() + &line).unwrap();
+}
+
 fn in_crate(dir: &Path, args: &[&str]) -> (Option<i32>, String, String) {
     let manifest = dir.join("Cargo.toml");
     let out = run(&[args, &["--manifest-path", manifest.to_str().unwrap()]].concat());
@@ -82,15 +99,29 @@ fn init_then_generate_writes_a_module_that_check_finds_up_to_date() {
     let dir = scratch_crate("cli_init");
     let (code, out, err) = in_crate(&dir, &["init", "openapi.yaml"]);
     assert_eq!(code, Some(0), "{err}");
-    assert!(out.contains("added [package.metadata.honig.api]") && out.contains("next: cargo honig generate"), "{out}");
-    let manifest = std::fs::read_to_string(dir.join("Cargo.toml")).unwrap();
-    for line in ["[package.metadata.honig.api]", "spec = \"openapi.yaml\"", "serde = ", "serde_json = ", "honig = "] {
-        assert!(manifest.contains(line), "{line} missing from:\n{manifest}");
+    let version = env!("CARGO_PKG_VERSION");
+    for line in [
+        "added [package.metadata.honig.api]".to_owned(),
+        format!("next: cargo add honig@={version} -F client,server"),
+        "next: cargo add serde -F derive".to_owned(),
+        "next: cargo add serde_json".to_owned(),
+        "next: cargo honig generate".to_owned(),
+    ] {
+        assert!(out.contains(&line), "{line} missing from:\n{out}");
     }
+    let manifest = std::fs::read_to_string(dir.join("Cargo.toml")).unwrap();
+    assert!(manifest.contains("[package.metadata.honig.api]\ndescriptions = [\"openapi.yaml\"]"), "{manifest}");
+    assert!(!manifest.contains("[dependencies]"), "init adds no dependency:\n{manifest}");
 
     let (code, _, err) = in_crate(&dir, &["init", "openapi.yaml"]);
     assert_eq!(code, Some(2));
     assert!(err.contains("already has [package.metadata.honig]"), "{err}");
+
+    // The description needs more features than `init` can know.
+    let (code, _, err) = in_crate(&dir, &["generate"]);
+    assert_eq!(code, Some(2));
+    assert!(err.contains(&format!("is missing. Run `cargo add honig@={version} -F client,server,")), "{err}");
+    add_runtime(&dir, SHOP);
 
     let (code, _, err) = in_crate(&dir, &["check"]);
     assert_eq!(code, Some(1), "check passed before generate");
@@ -111,6 +142,7 @@ fn init_then_generate_writes_a_module_that_check_finds_up_to_date() {
 fn quiet_prints_no_progress_and_no_hints() {
     let dir = scratch_crate("cli_quiet");
     assert_eq!(in_crate(&dir, &["init", "openapi.yaml", "--quiet"]), (Some(0), String::new(), String::new()));
+    add_runtime(&dir, SHOP);
     assert_eq!(in_crate(&dir, &["generate", "--quiet"]), (Some(0), String::new(), String::new()));
     assert_eq!(in_crate(&dir, &["check", "--quiet"]), (Some(0), String::new(), String::new()));
 }
@@ -119,6 +151,7 @@ fn quiet_prints_no_progress_and_no_hints() {
 fn check_finds_a_module_file_edited_after_generate() {
     let dir = scratch_crate("cli_edited");
     assert_eq!(in_crate(&dir, &["init", "openapi.yaml"]).0, Some(0));
+    add_runtime(&dir, SHOP);
     assert_eq!(in_crate(&dir, &["generate"]).0, Some(0));
     let types = dir.join("src").join("api").join("types.rs");
     let text = std::fs::read_to_string(&types).unwrap();
@@ -153,6 +186,7 @@ fn a_workspace_generates_its_members_and_names_a_missing_one() {
     std::fs::rename(&member, root.join("member")).unwrap();
     let member = root.join("member");
     assert_eq!(in_crate(&member, &["init", "openapi.yaml"]).0, Some(0));
+    add_runtime(&member, SHOP);
 
     let (code, _, err) = in_crate(&root, &["generate", "--package", "nope"]);
     assert_eq!(code, Some(2));
@@ -182,29 +216,33 @@ paths:
 ";
 
 #[test]
-fn generate_reports_errors_warnings_and_hints_and_adds_the_runtime() {
+fn generate_reports_errors_warnings_and_hints_and_never_edits_the_manifest() {
     let dir = scratch_crate("cli_hints");
     std::fs::write(dir.join("openapi.yaml"), SAME_TEMPLATE).unwrap();
     std::fs::write(dir.join("src").join("lib.rs"), "pub mod api;\n").unwrap();
-    let manifest = "[package]\nname = \"cli_hints\"\nedition = \"2024\"\n\n[package.metadata.honig.api]\n\
-                    spec = \"openapi.yaml\"\n\n[dependencies]\nuuid = \"1\"\n";
-    std::fs::write(dir.join("Cargo.toml"), manifest).unwrap();
-    // No `formats` table: a dependency added later would change field types. The error says what to write.
+    std::fs::write(
+        dir.join("Cargo.toml"),
+        "[package]\nname = \"cli_hints\"\nedition = \"2024\"\n\n[package.metadata.honig.api]\ndescriptions = [\"openapi.yaml\"]\n",
+    )
+    .unwrap();
+    add_runtime(&dir, &["client"]);
+    let manifest = std::fs::read_to_string(dir.join("Cargo.toml")).unwrap();
+    // A feature that the code needs is missing: nothing is written, and the error says the line that adds it.
     let (code, _, err) = in_crate(&dir, &["generate"]);
     assert_eq!(code, Some(2), "{err}");
-    assert!(err.contains("`formats` must be set: `formats = {}`"), "{err}");
-    let manifest = manifest.replace("spec = \"openapi.yaml\"\n", "spec = \"openapi.yaml\"\nformats = {}\n");
-    std::fs::write(dir.join("Cargo.toml"), manifest).unwrap();
+    assert!(err.contains("lacks the features that generated code needs. Run `cargo add honig -F server`"), "{err}");
+    assert!(!dir.join("src").join("api").exists(), "a module was written");
+    std::fs::write(dir.join("Cargo.toml"), manifest.replace("[\"client\"]", "[\"client\", \"server\"]")).unwrap();
+    let manifest = std::fs::read_to_string(dir.join("Cargo.toml")).unwrap();
 
-    let (code, out, err) = in_crate(&dir, &["generate"]);
+    let (code, _, err) = in_crate(&dir, &["generate"]);
     assert_eq!(code, Some(0), "{err}");
-    assert!(out.contains("Cargo.toml: honig ="), "{out}");
-    assert!(std::fs::read_to_string(dir.join("Cargo.toml")).unwrap().contains("honig = "));
+    assert_eq!(std::fs::read_to_string(dir.join("Cargo.toml")).unwrap(), manifest, "generate edited Cargo.toml");
     for line in [
         "are the same templated path",
         "generated anyway: 1 error(s) in the description",
-        "hint: add `serde = ",
-        "hint: add `serde_json = ",
+        "hint: run `cargo add serde -F derive`",
+        "hint: run `cargo add serde_json`",
     ] {
         assert!(err.contains(line), "{line} missing from:\n{err}");
     }
@@ -220,13 +258,15 @@ fn generate_reports_errors_warnings_and_hints_and_adds_the_runtime() {
 fn generate_names_a_package_or_output_that_does_not_fit() {
     let dir = scratch_crate("cli_misfit");
     assert_eq!(in_crate(&dir, &["init", "openapi.yaml"]).0, Some(0));
+    add_runtime(&dir, SHOP);
     let (code, _, err) = in_crate(&dir, &["generate", "--package", "other"]);
     assert_eq!(code, Some(2));
     assert!(err.contains("is `cli_misfit`, not `other`"), "{err}");
     assert_eq!(in_crate(&dir, &["check", "--package", "cli_misfit"]).0, Some(1), "its own name is fine");
 
     let manifest = std::fs::read_to_string(dir.join("Cargo.toml")).unwrap();
-    let twice = manifest + "\n[package.metadata.honig.again]\nspec = \"openapi.yaml\"\noutput = \"src/api\"\n";
+    let twice =
+        manifest + "\n[package.metadata.honig.again]\ndescriptions = [\"openapi.yaml\"]\noutput = \"src/api\"\n";
     std::fs::write(dir.join("Cargo.toml"), twice).unwrap();
     let (code, _, err) = in_crate(&dir, &["generate"]);
     assert_eq!(code, Some(2));

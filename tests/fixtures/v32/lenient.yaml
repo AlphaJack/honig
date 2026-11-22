@@ -1,6 +1,6 @@
 openapi: 3.2.0
 info: {title: Lenient client, version: "1"}
-# `lenient.toml` sets `client = { strict = false }`: responses accept what the server added, requests stay strict.
+# `lenient.toml` sets `client = { allow_unknown_values = true }`: responses accept what the server added, requests stay strict.
 paths:
   /orders/{id}:
     get:

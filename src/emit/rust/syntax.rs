@@ -205,10 +205,11 @@ fn library_ty(libs: &FormatLibs, f: Format) -> Option<TokenStream> {
     }
     match (f, libs.uuid, libs.jiff) {
         (Format::Char, ..) => Some(quote!(char)),
-        (Format::Uri, ..) if libs.url => Some(quote!(url::Url)),
-        (Format::Ipv4Cidr, ..) if libs.ipnet => Some(quote!(ipnet::Ipv4Net)),
-        (Format::Ipv6Cidr, ..) if libs.ipnet => Some(quote!(ipnet::Ipv6Net)),
-        (Format::DateTimeLocal, _, true) => Some(quote!(jiff::civil::DateTime)),
+        // The type features of the runtime re-export their crates.
+        (Format::Uri, ..) if libs.url => Some(quote!(runtime::url::Url)),
+        (Format::Ipv4Cidr, ..) if libs.ipnet => Some(quote!(runtime::ipnet::Ipv4Net)),
+        (Format::Ipv6Cidr, ..) if libs.ipnet => Some(quote!(runtime::ipnet::Ipv6Net)),
+        (Format::DateTimeLocal, _, true) => Some(quote!(runtime::jiff::civil::DateTime)),
         // The standard library's addresses (de)serialize as their text form.
         (Format::Ipv4, ..) => Some(quote!(std::net::Ipv4Addr)),
         (Format::Ipv6, ..) => Some(quote!(std::net::Ipv6Addr)),
@@ -218,12 +219,12 @@ fn library_ty(libs: &FormatLibs, f: Format) -> Option<TokenStream> {
         (Format::IdnEmail, ..) => Some(quote!(runtime::IdnEmailStr)),
         (Format::Hostname, ..) => Some(quote!(runtime::HostnameStr)),
         (Format::IdnHostname, ..) => Some(quote!(runtime::IdnHostnameStr)),
-        // `jiff` has no time with an offset. The runtime's stores plain numbers, with any setting.
+        // `jiff` has no time with an offset. The runtime's stores plain numbers, with or without `jiff`.
         (Format::Time, ..) => Some(quote!(runtime::FullTime)),
-        (Format::TimeLocal, _, true) => Some(quote!(jiff::civil::Time)),
-        (Format::Uuid, true, _) => Some(quote!(uuid::Uuid)),
-        (Format::DateTime, _, true) => Some(quote!(jiff::Timestamp)),
-        (Format::Date, _, true) => Some(quote!(jiff::civil::Date)),
+        (Format::TimeLocal, _, true) => Some(quote!(runtime::jiff::civil::Time)),
+        (Format::Uuid, true, _) => Some(quote!(runtime::uuid::Uuid)),
+        (Format::DateTime, _, true) => Some(quote!(runtime::jiff::Timestamp)),
+        (Format::Date, _, true) => Some(quote!(runtime::jiff::civil::Date)),
         // Without its library a format is its text. Nothing is lost and nothing is added to the crate.
         (Format::Uuid, false, _)
         | (

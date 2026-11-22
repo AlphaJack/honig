@@ -1,10 +1,10 @@
 # Adapters
 
-The cargo features of the runtime turn on its adapters and codecs. The table lists what turns each one on. `generate` writes them all but `simd`, which is yours to list or leave out. `cargo honig check` reports them when they are out of date.
+The cargo features of the `honig` dependency are yours to list. Some are needed: the generated code calls them. `generate` and `check` stop and print the `cargo add honig -F ...` line when one is off. The others are optional: an adapter, the types of string formats or `simd`. The table says when the generated code needs each one.
 
 {{#include generated/features.md}}
 
-An adapter is compiled whenever its half lists it, also when its library is an optional dependency that is off. Depend on the major version that the table lists. Otherwise cargo builds two copies whose types do not match.
+An adapter is compiled whenever its feature is on. Depend on the major version of its library that the table lists. Otherwise cargo builds two copies whose types do not match.
 
 ## axum
 

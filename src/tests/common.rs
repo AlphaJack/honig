@@ -48,6 +48,26 @@ pub(crate) fn file<'a>(files: &'a [(String, String)], name: &str) -> &'a str {
     files.iter().find(|(n, _)| n.ends_with(name)).map_or_else(|| panic!("no {name}"), |(_, t)| t.as_str())
 }
 
+/// Returns `manifest` with the runtime at the version of the generator and the features that `generated` needs and
+/// that pick the types of `libs`, as a user lists them.
+pub(crate) fn with_runtime(
+    manifest: &str,
+    generated: &crate::generate::Generated,
+    libs: &crate::settings::FormatLibs,
+    extra: &[&str],
+) -> String {
+    let types = [("uuid", libs.uuid), ("url", libs.url), ("ipnet", libs.ipnet), ("jiff", libs.jiff)];
+    let mut features: Vec<&str> = generated.runtime_features.clone();
+    features.extend(types.into_iter().filter(|(_, on)| *on).map(|(f, _)| f));
+    features.extend(extra);
+    let mut doc: toml_edit::DocumentMut = manifest.parse().unwrap();
+    let mut dep = toml_edit::InlineTable::new();
+    dep.insert("version", format!("={}", crate::emit::rust::RUNTIME_VERSION).into());
+    dep.insert("features", features.into_iter().collect::<toml_edit::Array>().into());
+    doc["dependencies"]["honig"] = toml_edit::value(dep);
+    doc.to_string()
+}
+
 /// Points the crate whose manifest is at `manifest` at the runtime of this checkout next to the pinned version.
 /// Otherwise generated crates get the runtime from crates.io.
 pub(crate) fn use_local_runtime(manifest: &Path) {
@@ -86,7 +106,7 @@ reqwest = ["dep:reqwest", "honig/reqwest"]
 axum = ["dep:axum", "honig/axum"]
 
 [package.metadata.honig.api]
-spec = "{spec_file}"
+descriptions = ["{spec_file}"]
 output = "src/api"
 formats = {{}}
 "#
@@ -98,7 +118,7 @@ pub(crate) fn new_crate(spec: &Path, dir: &Path, name: &str, opts: &crate::emit:
     let spec_file = spec.file_name().unwrap().to_str().unwrap();
     let manifest = crate_manifest(name, spec_file);
     let generated = crate::generate::generate(spec, opts).unwrap_or_else(|d| panic!("{name}: {:?}", d.0));
-    let manifest = crate::manifest::with_runtime(&manifest, &generated.runtime_features).unwrap();
+    let manifest = with_runtime(&manifest, &generated, &opts.rust.libs, &[]);
     std::fs::write(dir.join("Cargo.toml"), manifest).unwrap();
     std::fs::create_dir_all(dir.join("src")).unwrap();
     std::fs::write(dir.join("src").join("lib.rs"), "pub mod api;\npub use api::*;\n").unwrap();

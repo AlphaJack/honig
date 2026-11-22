@@ -1,1 +1,1 @@
-client = { strict = false }
+client = { allow_unknown_values = true }

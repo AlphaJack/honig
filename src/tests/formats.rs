@@ -102,7 +102,10 @@ fn local_date_time_formats_use_the_date_library() {
         common::file(&common::generate(test, &doc, &opts), "types.rs").to_owned()
     };
     let jiff = with(true, "local-jiff");
-    assert!(jiff.contains("pub starts: jiff::civil::DateTime") && jiff.contains("pub ends: jiff::civil::Time"));
+    assert!(
+        jiff.contains("pub starts: runtime::jiff::civil::DateTime")
+            && jiff.contains("pub ends: runtime::jiff::civil::Time")
+    );
     assert!(with(false, "local-none").contains("pub starts: runtime::DateTimeLocalStr"));
 }
 
@@ -146,7 +149,7 @@ fn a_named_type_holds_its_format_with_the_text_checked() {
         crate::emit::Options { rust: crate::emit::rust::Options { libs, ..Default::default() }, ..Default::default() };
     let t = common::file(&common::generate("named-format", &doc, &opts), "types.rs").to_owned();
     assert!(t.contains("pub placed: crate::Stamp"), "{t}");
-    assert!(t.contains("pub day: jiff::civil::Date"), "the other date formats keep the library: {t}");
+    assert!(t.contains("pub day: runtime::jiff::civil::Date"), "the other date formats keep the library: {t}");
     assert!(t.contains("pub contact: Option<crate::Mail>"), "{t}");
     assert!(t.contains("format::DateTime") && t.contains("format::Email"), "each text is checked: {t}");
 }

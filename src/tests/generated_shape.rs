@@ -125,7 +125,7 @@ fn params_always_have_new_and_default_only_without_arguments() {
     assert!(module("e").contains("pub const fn new(body: "), "a body with two media types too: {ops}");
 }
 
-/// A string with a `pattern` is always a checked newtype. The description uses `pattern`. So `generate` turns on the
+/// A string with a `pattern` is always a checked newtype. The description uses `pattern`. So generated code needs the
 /// `regress` feature of the runtime.
 #[test]
 fn pattern_strings_are_always_checked_newtypes() {
@@ -317,9 +317,9 @@ fn formats_turn_on_the_features_that_check_them() {
     assert!(has(json!({"format": "hostname"}), crate::settings::IDN), "a format without `type` is checked at run time");
     assert!(!has(json!({"type": "object", "properties": {"format": {"type": "string"}}}), crate::settings::IDN));
     assert!(has(json!({"type": "string", "format": "regex"}), crate::settings::REGRESS));
+    // A type feature is yours: the code builds with or without it.
     let jiff = crate::settings::FormatLibs { jiff: true, ..none() };
-    assert!(features(json!({"type": "string", "format": "time"}), jiff).contains(&crate::settings::JIFF));
-    assert!(!has(json!({"type": "string", "format": "time"}), crate::settings::JIFF));
+    assert!(!features(json!({"type": "string", "format": "time"}), jiff).contains(&crate::settings::JIFF));
 }
 
 /// A path variable that no parameter declares stays literal text; a tag whose `parent` is no tag is a root; a server

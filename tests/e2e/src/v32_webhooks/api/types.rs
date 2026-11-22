@@ -66,12 +66,12 @@ runtime::object! {
         #[serde(
             deserialize_with = "runtime::formats::read::<_, _, runtime::formats::Text<runtime::formats::format::Uri>>"
         )]
-        pub callback_url: url::Url,
+        pub callback_url: runtime::url::Url,
     }
 }
 impl SubscribeBody {
     #[must_use]
-    pub const fn new(callback_url: url::Url) -> Self {
+    pub const fn new(callback_url: runtime::url::Url) -> Self {
         Self { callback_url }
     }
 }
@@ -89,7 +89,7 @@ pub mod builders {
         optional { at(at) : runtime::DateTimeStr = "at" => some, None } fixed {}
     }
     runtime::typestate_builder! {
-        SubscribeBody => super::SubscribeBody; required { callback_url : R0 : url::Url =
-        "callbackUrl" } optional {} fixed {}
+        SubscribeBody => super::SubscribeBody; required { callback_url : R0 :
+        runtime::url::Url = "callbackUrl" } optional {} fixed {}
     }
 }
