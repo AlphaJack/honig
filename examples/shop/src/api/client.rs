@@ -60,7 +60,7 @@ impl<T: runtime::Transport> Client<T> {
                     x_next: runtime::from_param(
                             runtime::decode_header(
                                 runtime::joined_header(&head.headers, "X-Next").as_deref(),
-                                runtime::Shape::Prim,
+                                runtime::Shape::Primitive,
                                 false,
                             ),
                             "/header/X-Next",

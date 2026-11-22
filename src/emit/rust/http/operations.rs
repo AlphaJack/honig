@@ -755,7 +755,7 @@ pub(crate) fn response_enum(items: &mut Vec<TokenStream>, space: &Space<'_>, op:
         pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     });
     items.push(response_error(op));
-    items.extend(into_ok(space, op, bx));
+    items.extend(into_result(space, op, bx));
     for (i, r) in op.responses.iter().enumerate() {
         if r.contents.len() < 2 || crate::emit::rust::http::shared::collapses(space, r) {
             continue;
@@ -817,11 +817,11 @@ fn response_error(op: &Operation) -> TokenStream {
 /// A response of an operation and its index among the responses.
 type Numbered<'a> = (usize, &'a Resp);
 
-/// Returns `into_ok`: the response as `Ok` when it is the success, else itself, boxed, as `Err`. One success gives what
+/// Returns `into_result`: the response as `Ok` when it is the success, else itself, boxed, as `Err`. One success gives what
 /// it carries: nothing, its body, or its body and headers in order. Several successes, or the `2XX` range, give the
 /// response itself. The `Err` is boxed: only a failure pays for it, and a large response would make every `Result` as
 /// large.
-fn into_ok(space: &Space<'_>, op: &Operation, bx: &Boxing) -> Option<TokenStream> {
+fn into_result(space: &Space<'_>, op: &Operation, bx: &Boxing) -> Option<TokenStream> {
     let (successes, failures): (Vec<Numbered<'_>>, Vec<Numbered<'_>>) =
         op.responses.iter().enumerate().partition(|(_, r)| is_success(r));
     let failed = (!failures.is_empty()).then(|| {
@@ -842,14 +842,14 @@ fn into_ok(space: &Space<'_>, op: &Operation, bx: &Boxing) -> Option<TokenStream
         #alias
         impl Response {
             #[doc = #doc]
-            pub fn into_ok(self) -> Result<#success, Box<Self>> {
+            pub fn into_result(self) -> Result<#success, Box<Self>> {
                 match self { #arm #failed }
             }
         }
     })
 }
 
-/// Returns the type that the one success `resp` gives from `into_ok`, the match arm that destructures it and the alias
+/// Returns the type that the one success `resp` gives from `into_result`, the match arm that destructures it and the alias
 /// that stands for a tuple: nothing, its body, its one header, or its body and headers as `Success` in order.
 fn one_success(space: &Space<'_>, resp: &Resp, boxed_body: bool) -> (TokenStream, TokenStream, Option<TokenStream>) {
     let variant = pascal_ident(&resp.variant);
@@ -875,7 +875,7 @@ fn one_success(space: &Space<'_>, resp: &Resp, boxed_body: bool) -> (TokenStream
                 return (single.clone(), quote!(Self::#variant { #name, .. } => Ok(#name),), None);
             }
             let alias = quote! {
-                /// The body and headers of the success, in order: what `Response::into_ok` gives.
+                /// The body and headers of the success, in order: what `Response::into_result` gives.
                 pub type Success = (#(#types),*);
             };
             (quote!(Success), quote!(Self::#variant { #(#names),* } => Ok((#(#names),*)),), Some(alias))

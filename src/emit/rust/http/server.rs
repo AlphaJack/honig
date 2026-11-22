@@ -205,6 +205,7 @@ fn webhooks(api: &Api, allow_unimplemented: bool, filled: bool) -> Option<TokenS
         quote!((#key, #method) => #f(api, routed, call).await,)
     });
     quote! {
+        /// Answers the webhooks of the API and the callbacks (`callbacks`) of its operations: the requests that it sends.
         pub trait Webhooks: Send + Sync + 'static {
             #principal
             #error_response
@@ -217,6 +218,7 @@ fn webhooks(api: &Api, allow_unimplemented: bool, filled: bool) -> Option<TokenS
             name: &'static str,
         }
 
+        /// Returns the server of the webhook or callback `name`, answered by `api`.
         #[must_use]
         pub fn webhook<A: Webhooks>(api: std::sync::Arc<A>, name: &'static str) -> runtime::Server<WebhookRoutes<A>> {
             runtime::Server::new(WebhookRoutes { api, name })

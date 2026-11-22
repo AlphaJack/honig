@@ -14,7 +14,7 @@ use crate::{ClientError, Reason, coerce::Coerce, coerce::CoerceError, json::to_v
 
 fn split_value(raw: &str, shape: Shape, explode: bool, sep: char) -> Value {
     match shape {
-        Shape::Prim => Value::String(raw.to_owned()),
+        Shape::Primitive => Value::String(raw.to_owned()),
         // An empty value is the empty (RFC 6570 "undefined") list. Inside a
         // list an empty item is the empty string. `a,,b` has three items.
         Shape::Array if raw.is_empty() => Value::Array(vec![]),
@@ -130,8 +130,8 @@ pub fn decode_query(
 ) -> Result<Option<Value>, Reason> {
     // The values of the parameter are found again where needed. Nothing is collected.
     let values = || pairs.iter().filter(|(k, _)| k == name).map(|(_, v)| v.as_ref());
-    let one_value =
-        shape == Shape::Prim || matches!(style, Style::SpaceDelimited | Style::PipeDelimited | Style::TabDelimited);
+    let one_value = shape == Shape::Primitive
+        || matches!(style, Style::SpaceDelimited | Style::PipeDelimited | Style::TabDelimited);
     if style != Style::DeepObject && one_value && values().nth(1).is_some() {
         return Err(repeated(at));
     }
@@ -147,7 +147,7 @@ pub fn decode_query(
             }
             any.then_some(Value::Object(root))
         }
-        (_, Shape::Prim) => values().next().map(|v| Value::String(v.to_owned())),
+        (_, Shape::Primitive) => values().next().map(|v| Value::String(v.to_owned())),
         (Style::SpaceDelimited, Shape::Array | Shape::Object) => {
             values().next().map(|v| split_value(v, shape, false, ' '))
         }
@@ -256,7 +256,7 @@ pub fn decode_cookie(header: Option<&str>, name: &str, style: Style, shape: Shap
             Some(Value::Object(pairs().map(|(k, v)| (k.to_owned(), Value::String(dec(v)))).collect()))
         }
         // One string. It is decoded straight into the value and not split first.
-        (Shape::Prim, _) => pairs().find(|(k, _)| *k == name).map(|(_, v)| Value::String(pct_decode(v))),
+        (Shape::Primitive, _) => pairs().find(|(k, _)| *k == name).map(|(_, v)| Value::String(pct_decode(v))),
         _ => pairs().find(|(k, _)| *k == name).map(|(_, v)| decode_parts(split_value(v, shape, false, ','))),
     }
 }
@@ -481,7 +481,7 @@ mod tests {
     #[cfg(feature = "cookie")]
     #[test]
     fn a_cookie_is_found_by_its_name() {
-        assert_eq!(super::decode_cookie(Some("a=1; b=2"), "b", Style::Form, Shape::Prim, true), Some(json!("2")));
+        assert_eq!(super::decode_cookie(Some("a=1; b=2"), "b", Style::Form, Shape::Primitive, true), Some(json!("2")));
     }
 
     #[test]

@@ -32,7 +32,7 @@ pub mod a {
     runtime::response_error!(Response { Self::NoContent => "status 204 (NoContent)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<(), Box<Self>> {
+        pub fn into_result(self) -> Result<(), Box<Self>> {
             match self {
                 Self::NoContent => Ok(()),
             }
@@ -72,7 +72,7 @@ pub mod b {
     runtime::response_error!(Response { Self::NoContent => "status 204 (NoContent)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<(), Box<Self>> {
+        pub fn into_result(self) -> Result<(), Box<Self>> {
             match self {
                 Self::NoContent => Ok(()),
             }
@@ -112,7 +112,7 @@ pub mod c {
     runtime::response_error!(Response { Self::NoContent => "status 204 (NoContent)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<(), Box<Self>> {
+        pub fn into_result(self) -> Result<(), Box<Self>> {
             match self {
                 Self::NoContent => Ok(()),
             }

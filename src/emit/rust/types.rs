@@ -966,7 +966,7 @@ fn newtype(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, def: &Ty
 fn checked_type(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, def: &TypeDef, c: &Checked) {
     let n = pascal_ident(&def.name);
     let doc = doc_opt(def.doc.as_deref());
-    let path = quote!(&runtime::InstancePath::Root);
+    let path = quote!(&runtime::InstanceLocation::Root);
     let base = ty(space, &c.base, false);
     let kind = Base::of(c);
     // A scalar's own checks leave out `not`: it is checked here. `checks::checks` checks it for any other base.

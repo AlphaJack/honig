@@ -3,7 +3,7 @@
 
 use divan::Bencher;
 use honig::__private::check_format;
-use honig::{EmailText, HostnameText, IdnEmailText, IdnHostnameText, InstancePath};
+use honig::{EmailText, HostnameText, IdnEmailText, IdnHostnameText, InstanceLocation};
 
 fn main() {
     // Without its runtime feature a format is not checked. Its bench would then time nothing.
@@ -16,7 +16,7 @@ fn main() {
 /// A `String` that the crate has no library type for. It is checked as such.
 fn text(format: &str, value: &str) -> bool {
     let mut out = Vec::new();
-    check_format(&mut out, &InstancePath::Root, value, format);
+    check_format(&mut out, &InstanceLocation::Root, value, format);
     out.is_empty()
 }
 

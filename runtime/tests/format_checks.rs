@@ -9,7 +9,7 @@
 use std::alloc::{GlobalAlloc, Layout, System};
 use std::cell::Cell;
 
-use honig::__private::{InstancePath, check_format};
+use honig::__private::{InstanceLocation, check_format};
 
 /// Allocations of this thread. The test harness allocates on threads of its own.
 struct Counting;
@@ -53,7 +53,7 @@ fn a_common_format_allocates_nothing() {
         ("duration", "p2w"),
     ] {
         let before = ALLOCATIONS.with(Cell::get);
-        check_format(&mut out, &InstancePath::Root, value, format);
+        check_format(&mut out, &InstanceLocation::Root, value, format);
         assert_eq!(ALLOCATIONS.with(Cell::get) - before, 0, "{format}: {value}");
     }
     assert!(out.is_empty(), "{out:?}");

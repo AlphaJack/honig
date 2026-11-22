@@ -22,7 +22,7 @@ pub mod search_orders {
     runtime::response_error!(Response { Self::NoContent => "status 204 (NoContent)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<(), Box<Self>> {
+        pub fn into_result(self) -> Result<(), Box<Self>> {
             match self {
                 Self::NoContent => Ok(()),
             }
@@ -60,7 +60,7 @@ pub mod update_order {
     runtime::response_error!(Response { Self::NoContent => "status 204 (NoContent)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<(), Box<Self>> {
+        pub fn into_result(self) -> Result<(), Box<Self>> {
             match self {
                 Self::NoContent => Ok(()),
             }
@@ -90,7 +90,7 @@ pub mod status_at {
     runtime::response_error!(Response { Self::NoContent => "status 204 (NoContent)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<(), Box<Self>> {
+        pub fn into_result(self) -> Result<(), Box<Self>> {
             match self {
                 Self::NoContent => Ok(()),
             }
@@ -128,7 +128,7 @@ pub mod status_by_key {
     runtime::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<String, Box<Self>> {
+        pub fn into_result(self) -> Result<String, Box<Self>> {
             match self {
                 Self::Ok(body) => Ok(body),
             }
@@ -158,7 +158,7 @@ pub mod latest_meta {
     runtime::response_error!(Response { Self::NoContent => "status 204 (NoContent)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<(), Box<Self>> {
+        pub fn into_result(self) -> Result<(), Box<Self>> {
             match self {
                 Self::NoContent => Ok(()),
             }
@@ -196,7 +196,7 @@ pub mod file_raw {
     runtime::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<String, Box<Self>> {
+        pub fn into_result(self) -> Result<String, Box<Self>> {
             match self {
                 Self::Ok(body) => Ok(body),
             }
@@ -229,7 +229,7 @@ pub mod file_ext {
     runtime::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<String, Box<Self>> {
+        pub fn into_result(self) -> Result<String, Box<Self>> {
             match self {
                 Self::Ok(body) => Ok(body),
             }
@@ -267,7 +267,7 @@ pub mod mix_literal_tail {
     runtime::response_error!(Response { Self::NoContent => "status 204 (NoContent)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<(), Box<Self>> {
+        pub fn into_result(self) -> Result<(), Box<Self>> {
             match self {
                 Self::NoContent => Ok(()),
             }
@@ -301,7 +301,7 @@ pub mod mix_mixed_tail {
     runtime::response_error!(Response { Self::Ok(..) => "status 200 (Ok)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<String, Box<Self>> {
+        pub fn into_result(self) -> Result<String, Box<Self>> {
             match self {
                 Self::Ok(body) => Ok(body),
             }
@@ -334,7 +334,7 @@ pub mod mix_var_tail {
     runtime::response_error!(Response { Self::Accepted => "status 202 (Accepted)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
-        pub fn into_ok(self) -> Result<(), Box<Self>> {
+        pub fn into_result(self) -> Result<(), Box<Self>> {
             match self {
                 Self::Accepted => Ok(()),
             }

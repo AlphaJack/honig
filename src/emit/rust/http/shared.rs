@@ -63,7 +63,7 @@ pub(crate) fn shape(space: &Space<'_>, t: &Ty) -> TokenStream {
         JsonKind::Array => quote!(runtime::Shape::Array),
         JsonKind::Object => quote!(runtime::Shape::Object),
         JsonKind::Null | JsonKind::Bool | JsonKind::Integer | JsonKind::Number | JsonKind::String | JsonKind::Any => {
-            quote!(runtime::Shape::Prim)
+            quote!(runtime::Shape::Primitive)
         }
     }
 }

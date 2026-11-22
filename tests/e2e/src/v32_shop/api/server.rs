@@ -262,6 +262,7 @@ const fn error_schema(
 ) -> Option<&'static runtime::ProblemSchema> {
     None
 }
+/// Answers the webhooks of the API and the callbacks (`callbacks`) of its operations: the requests that it sends.
 pub trait Webhooks: Send + Sync + 'static {
     type Principal: Clone + Send + Sync + 'static;
     /// Answers a request that the server refuses itself (no route, bad input, missing credentials, a handler `Err`) in the error body of the description. No standard defines its fields, so this maps them: `rejection.json(&body)` sends `body` with the status of the reason, and `rejection.message()` is the detail.
@@ -297,6 +298,7 @@ pub struct WebhookRoutes<A> {
     api: std::sync::Arc<A>,
     name: &'static str,
 }
+/// Returns the server of the webhook or callback `name`, answered by `api`.
 #[must_use]
 pub fn webhook<A: Webhooks>(
     api: std::sync::Arc<A>,
@@ -691,7 +693,7 @@ fn get_all_data_params(
                     "limit",
                     "/query/limit",
                     runtime::Style::Form,
-                    runtime::Shape::Prim,
+                    runtime::Shape::Primitive,
                     true,
                 )?
                 .or_else(|| Some(serde_json::Value::from(10i64))),
@@ -703,7 +705,7 @@ fn get_all_data_params(
                     "offset",
                     "/query/offset",
                     runtime::Style::Form,
-                    runtime::Shape::Prim,
+                    runtime::Shape::Primitive,
                     true,
                 )?
                 .or_else(|| Some(serde_json::Value::from(0i64))),

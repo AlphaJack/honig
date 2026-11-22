@@ -33,6 +33,7 @@ const fn error_schema(
 ) -> Option<&'static runtime::ProblemSchema> {
     None
 }
+/// Answers the webhooks of the API and the callbacks (`callbacks`) of its operations: the requests that it sends.
 pub trait Webhooks: Send + Sync + 'static {
     type Principal: Clone + Send + Sync + 'static;
     /// Answers a request that the server refuses itself (no route, bad input, missing credentials, a handler `Err`). Default: RFC 9457 `problem+json`, or the error body of the description that it fills by name.
@@ -56,6 +57,7 @@ pub struct WebhookRoutes<A> {
     api: std::sync::Arc<A>,
     name: &'static str,
 }
+/// Returns the server of the webhook or callback `name`, answered by `api`.
 #[must_use]
 pub fn webhook<A: Webhooks>(
     api: std::sync::Arc<A>,

@@ -70,7 +70,7 @@ pub use binary::Binary;
 pub use builder::BuildError;
 pub use builder_typestate::{Set, Unset, put};
 pub use bytes::Bytes;
-pub use checks::{InstancePath, Violation};
+pub use checks::{InstanceLocation, Violation};
 #[cfg(feature = "oauth")]
 pub use client::oauth::{AuthMetadata, DeviceCode, DevicePoll, Token};
 #[cfg(feature = "pkce")]

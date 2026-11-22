@@ -28,7 +28,11 @@ impl Product {
             let out = &mut violations;
             {
                 if let Err(e) = json.decode_ref::<Not>() {
-                    runtime::violation(out, &runtime::InstancePath::Root, e.to_string());
+                    runtime::violation(
+                        out,
+                        &runtime::InstanceLocation::Root,
+                        e.to_string(),
+                    );
                 }
             }
         }

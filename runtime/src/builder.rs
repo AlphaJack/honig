@@ -16,7 +16,7 @@ impl BuildError {
     /// empty.
     #[must_use]
     pub const fn value(message: String) -> Self {
-        Self(Violation { path: String::new(), message })
+        Self(Violation { instance_location: String::new(), message })
     }
 
     /// Returns where and why: the path is a JSON pointer into the value (`/age`), empty for a rule of the whole value.
@@ -34,11 +34,11 @@ impl From<BuildError> for Violation {
 
 impl fmt::Display for BuildError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let Violation { path, message } = &self.0;
-        if path.is_empty() {
+        let Violation { instance_location, message } = &self.0;
+        if instance_location.is_empty() {
             return f.write_str(message);
         }
-        write!(f, "{path}: {message}")
+        write!(f, "{instance_location}: {message}")
     }
 }
 
@@ -56,7 +56,7 @@ where
 {
     value.try_into().map_err(|e| {
         let path = format!("/{}", field.replace('~', "~0").replace('/', "~1"));
-        BuildError(Violation { path, message: e.to_string() })
+        BuildError(Violation { instance_location: path, message: e.to_string() })
     })
 }
 
@@ -114,20 +114,23 @@ mod tests {
         let bad =
             Builder::start(|| Ok(Pair::default())).set("a", 300_i64, |p, v| p.a = v).set("b", -1_i64, |p, v| p.b = v);
         let err = bad.build().expect_err("300 is past u8");
-        assert_eq!(err.violation().path, "/a");
+        assert_eq!(err.violation().instance_location, "/a");
         assert_eq!(err.to_string(), format!("/a: {}", u8::try_from(300_i64).expect_err("past u8")));
     }
 
     #[test]
     fn a_rule_of_the_whole_value_has_an_empty_path() {
         let err = BuildError::value("`customs` is required".to_owned());
-        assert_eq!((err.violation().path.as_str(), err.to_string()), ("", "`customs` is required".to_owned()));
+        assert_eq!(
+            (err.violation().instance_location.as_str(), err.to_string()),
+            ("", "`customs` is required".to_owned())
+        );
     }
 
     #[test]
     fn a_required_field_that_does_not_convert_skips_the_setters() {
         let start = || Ok(Pair { a: field("a", 256_i64)?, b: 0 });
         let err = Builder::start(start).set("b", 1_i64, |p, v| p.b = v).build().expect_err("256 is past u8");
-        assert_eq!(err.violation().path, "/a");
+        assert_eq!(err.violation().instance_location, "/a");
     }
 }

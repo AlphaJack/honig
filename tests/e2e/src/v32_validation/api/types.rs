@@ -58,12 +58,16 @@ impl Tagged {
                 if !(json.matches::<TaggedLabel>() || json.matches::<TaggedColour>()) {
                     runtime::violation(
                         out,
-                        &runtime::InstancePath::Root,
+                        &runtime::InstanceLocation::Root,
                         "matches none of `anyOf`",
                     );
                 }
                 if let Err(e) = json.decode_ref::<Not>() {
-                    runtime::violation(out, &runtime::InstancePath::Root, e.to_string());
+                    runtime::violation(
+                        out,
+                        &runtime::InstanceLocation::Root,
+                        e.to_string(),
+                    );
                 }
                 if let Some(object) = json.as_object() {
                     let matched_0 = json.matches::<Not2>();
@@ -75,8 +79,8 @@ impl Tagged {
                         {
                             runtime::violation(
                                 out,
-                                &runtime::InstancePath::Key(
-                                    &runtime::InstancePath::Root,
+                                &runtime::InstanceLocation::Key(
+                                    &runtime::InstanceLocation::Root,
                                     name,
                                 ),
                                 "is not allowed (unevaluatedProperties)",
@@ -112,7 +116,7 @@ impl Implied {
                         let n = text.chars().count();
                         runtime::check_len(
                             out,
-                            &runtime::InstancePath::Root,
+                            &runtime::InstanceLocation::Root,
                             n,
                             Some(2),
                             None,
@@ -125,7 +129,7 @@ impl Implied {
                         let text = n.number_text();
                         runtime::check_decimal_range(
                             out,
-                            &runtime::InstancePath::Root,
+                            &runtime::InstanceLocation::Root,
                             text.as_str(),
                             runtime::Bounds {
                                 min: Some("1"),
@@ -136,14 +140,14 @@ impl Implied {
                     runtime::Content::Seq(n) => {
                         runtime::check_unique_content(
                             out,
-                            &runtime::InstancePath::Root,
+                            &runtime::InstanceLocation::Root,
                             n,
                         );
                     }
                     runtime::Content::Map(n) => {
                         runtime::check_required(
                             out,
-                            &runtime::InstancePath::Root,
+                            &runtime::InstanceLocation::Root,
                             |name| n.iter().any(|(k, _)| k == name),
                             &["name"],
                         );
@@ -779,7 +783,7 @@ impl Shipment {
                 if json.matches::<Not8>() {
                     runtime::violation(
                         out,
-                        &runtime::InstancePath::Root,
+                        &runtime::InstanceLocation::Root,
                         "matches `not`",
                     );
                 }
@@ -832,7 +836,7 @@ impl Voucher {
                 if json.get("code").is_some() && let Err(e) = json.decode_ref::<Not9>() {
                     runtime::violation(
                         out,
-                        &runtime::InstancePath::Root,
+                        &runtime::InstanceLocation::Root,
                         format!("{}{e}", "`code` is present: "),
                     );
                 }
@@ -857,13 +861,13 @@ impl TryFrom<PaymentFields> for Payment {
             let out = &mut violations;
             runtime::check(
                 out,
-                &runtime::InstancePath::Root,
+                &runtime::InstanceLocation::Root,
                 value.card.is_none() || value.cvc.is_some(),
                 "`cvc` is required when `card` is present",
             );
             runtime::check(
                 out,
-                &runtime::InstancePath::Root,
+                &runtime::InstanceLocation::Root,
                 value.card.is_none() || !value.holder.is_absent(),
                 "`holder` is required when `card` is present",
             );
@@ -914,7 +918,10 @@ impl TryFrom<std::collections::BTreeMap<String, String>> for Labels {
                 let n = name.chars().count();
                 runtime::check_len(
                     out,
-                    &runtime::InstancePath::Key(&runtime::InstancePath::Root, name),
+                    &runtime::InstanceLocation::Key(
+                        &runtime::InstanceLocation::Root,
+                        name,
+                    ),
                     n,
                     None,
                     Some(8),
@@ -923,7 +930,10 @@ impl TryFrom<std::collections::BTreeMap<String, String>> for Labels {
                 if n <= 8 {
                     runtime::check_pattern(
                         out,
-                        &runtime::InstancePath::Key(&runtime::InstancePath::Root, name),
+                        &runtime::InstanceLocation::Key(
+                            &runtime::InstanceLocation::Root,
+                            name,
+                        ),
                         {
                             static RE: runtime::Pattern = runtime::Pattern::new(
                                 "^[a-z]+$",
@@ -953,7 +963,7 @@ impl TryFrom<PairFields> for Pair {
             let out = &mut violations;
             runtime::check_len(
                 out,
-                &runtime::InstancePath::Root,
+                &runtime::InstanceLocation::Root,
                 usize::from(value.a.is_some()) + usize::from(value.b.is_some())
                     + value.additional_properties.len(),
                 Some(1),
@@ -1041,7 +1051,10 @@ impl TryFrom<ProfileFields> for Profile {
                     let name = "name";
                     runtime::check_pattern(
                         out,
-                        &runtime::InstancePath::Key(&runtime::InstancePath::Root, name),
+                        &runtime::InstanceLocation::Key(
+                            &runtime::InstanceLocation::Root,
+                            name,
+                        ),
                         {
                             static RE: runtime::Pattern = runtime::Pattern::new(
                                 "^[a-z]+$",
@@ -1057,7 +1070,10 @@ impl TryFrom<ProfileFields> for Profile {
                     let name = "Nick-Name";
                     runtime::check_pattern(
                         out,
-                        &runtime::InstancePath::Key(&runtime::InstancePath::Root, name),
+                        &runtime::InstanceLocation::Key(
+                            &runtime::InstanceLocation::Root,
+                            name,
+                        ),
                         {
                             static RE: runtime::Pattern = runtime::Pattern::new(
                                 "^[a-z]+$",
@@ -1071,7 +1087,10 @@ impl TryFrom<ProfileFields> for Profile {
             for name in value.additional_properties.keys() {
                 runtime::check_pattern(
                     out,
-                    &runtime::InstancePath::Key(&runtime::InstancePath::Root, name),
+                    &runtime::InstanceLocation::Key(
+                        &runtime::InstanceLocation::Root,
+                        name,
+                    ),
                     {
                         static RE: runtime::Pattern = runtime::Pattern::new("^[a-z]+$");
                         &RE
@@ -1127,7 +1146,10 @@ impl TryFrom<std::collections::BTreeMap<String, ScoresValue>> for Scores {
             for name in value.keys() {
                 runtime::check_pattern(
                     out,
-                    &runtime::InstancePath::Key(&runtime::InstancePath::Root, name),
+                    &runtime::InstanceLocation::Key(
+                        &runtime::InstanceLocation::Root,
+                        name,
+                    ),
                     {
                         static RE: runtime::Pattern = runtime::Pattern::new("^[a-z]+$");
                         &RE
@@ -1369,7 +1391,7 @@ impl TryFrom<String> for SlugVariant2 {
             let out = &mut violations;
             runtime::check_pattern(
                 out,
-                &runtime::InstancePath::Root,
+                &runtime::InstanceLocation::Root,
                 {
                     static RE: runtime::Pattern = runtime::Pattern::new("^[a-z]+$");
                     &RE
@@ -1395,7 +1417,7 @@ impl TryFrom<String> for NarrowStampAt {
             let n = (value.as_str()).chars().count();
             runtime::check_len(
                 out,
-                &runtime::InstancePath::Root,
+                &runtime::InstanceLocation::Root,
                 n,
                 None,
                 Some(5),
@@ -1420,7 +1442,7 @@ impl TryFrom<String> for CodeVariant1 {
             let n = (value.as_str()).chars().count();
             runtime::check_len(
                 out,
-                &runtime::InstancePath::Root,
+                &runtime::InstanceLocation::Root,
                 n,
                 None,
                 Some(3),
@@ -1445,7 +1467,7 @@ impl TryFrom<runtime::Decimal> for ExactTenth {
             let out = &mut violations;
             runtime::check_decimal_range(
                 out,
-                &runtime::InstancePath::Root,
+                &runtime::InstanceLocation::Root,
                 value.as_str(),
                 runtime::Bounds {
                     min: Some("0.1"),
@@ -1470,7 +1492,7 @@ impl TryFrom<runtime::Decimal> for ExactCents {
             let out = &mut violations;
             runtime::check_multiple_text(
                 out,
-                &runtime::InstancePath::Root,
+                &runtime::InstanceLocation::Root,
                 value.as_str(),
                 "0.01",
             );
@@ -1494,7 +1516,7 @@ impl TryFrom<u8> for DegenerateNever {
                 let got = value;
                 runtime::violation(
                     out,
-                    &runtime::InstancePath::Root,
+                    &runtime::InstanceLocation::Root,
                     format!(
                         "`maximum: -1` leaves no value of this integer type, not even {got}"
                     ),
@@ -1520,7 +1542,7 @@ impl TryFrom<i64> for DegenerateHuge {
                 let got = value;
                 runtime::violation(
                     out,
-                    &runtime::InstancePath::Root,
+                    &runtime::InstanceLocation::Root,
                     format!(
                         "`minimum: 1e+40` leaves no value of this integer type, not even {got}"
                     ),
@@ -1544,7 +1566,7 @@ impl TryFrom<i64> for DegenerateFives {
             let out = &mut violations;
             runtime::check(
                 out,
-                &runtime::InstancePath::Root,
+                &runtime::InstanceLocation::Root,
                 i128::from(value) % 5 == 0,
                 "is not a multiple of 2.5",
             );
@@ -1566,7 +1588,7 @@ impl TryFrom<u8> for DegenerateZero {
             let out = &mut violations;
             runtime::check(
                 out,
-                &runtime::InstancePath::Root,
+                &runtime::InstanceLocation::Root,
                 value == 0,
                 "is not a multiple of 1000",
             );
@@ -1588,7 +1610,7 @@ impl TryFrom<i64> for DegenerateHalf {
             let out = &mut violations;
             runtime::check_range(
                 out,
-                &runtime::InstancePath::Root,
+                &runtime::InstanceLocation::Root,
                 value,
                 runtime::Bounds {
                     min: Some(1),
@@ -1731,7 +1753,7 @@ impl TryFrom<String> for LoginPassword {
             let n = (value.as_str()).chars().count();
             runtime::check_len(
                 out,
-                &runtime::InstancePath::Root,
+                &runtime::InstanceLocation::Root,
                 n,
                 Some(8),
                 None,
@@ -1760,14 +1782,14 @@ impl ShipmentInternational {
                 if json.matches::<Not6>() {
                     runtime::violation(
                         out,
-                        &runtime::InstancePath::Root,
+                        &runtime::InstanceLocation::Root,
                         "matches `not`",
                     );
                 }
             }
             runtime::check(
                 out,
-                &runtime::InstancePath::Root,
+                &runtime::InstanceLocation::Root,
                 value.insured.is_none() || value.insurer.is_some(),
                 "`insurer` is required when `insured` is present",
             );
@@ -1828,7 +1850,7 @@ impl TryFrom<String> for ShipmentInternationalLabel {
             let n = (value.as_str()).chars().count();
             runtime::check_len(
                 out,
-                &runtime::InstancePath::Root,
+                &runtime::InstanceLocation::Root,
                 n,
                 Some(4),
                 None,
@@ -1876,7 +1898,7 @@ impl TryFrom<i64> for ShipmentInternationalScoresValue {
             let out = &mut violations;
             runtime::check_range(
                 out,
-                &runtime::InstancePath::Root,
+                &runtime::InstanceLocation::Root,
                 value,
                 runtime::Bounds {
                     min: Some(0),
@@ -1901,7 +1923,7 @@ impl TryFrom<f64> for ShipmentInternationalPriority {
             let out = &mut violations;
             runtime::check_range(
                 out,
-                &runtime::InstancePath::Root,
+                &runtime::InstanceLocation::Root,
                 value,
                 runtime::Bounds {
                     min: Some(0.0),
@@ -1927,7 +1949,7 @@ impl TryFrom<i64> for ShipmentInternationalWeight {
             let out = &mut violations;
             runtime::check_range(
                 out,
-                &runtime::InstancePath::Root,
+                &runtime::InstanceLocation::Root,
                 value,
                 runtime::Bounds {
                     min: Some(256),
@@ -1954,7 +1976,10 @@ impl TryFrom<LabelsFields> for ShipmentInternationalLabels {
             for name in value.additional_properties.keys() {
                 runtime::check_pattern(
                     out,
-                    &runtime::InstancePath::Key(&runtime::InstancePath::Root, name),
+                    &runtime::InstanceLocation::Key(
+                        &runtime::InstanceLocation::Root,
+                        name,
+                    ),
                     {
                         static RE: runtime::Pattern = runtime::Pattern::new("^[a-z]+$");
                         &RE
@@ -1965,7 +1990,10 @@ impl TryFrom<LabelsFields> for ShipmentInternationalLabels {
             for name in value.pattern_1.keys() {
                 runtime::check_pattern(
                     out,
-                    &runtime::InstancePath::Key(&runtime::InstancePath::Root, name),
+                    &runtime::InstanceLocation::Key(
+                        &runtime::InstanceLocation::Root,
+                        name,
+                    ),
                     {
                         static RE: runtime::Pattern = runtime::Pattern::new("^[a-z]+$");
                         &RE
@@ -2001,14 +2029,14 @@ impl ShipmentOtherwise {
                 if json.matches::<Not7>() {
                     runtime::violation(
                         out,
-                        &runtime::InstancePath::Root,
+                        &runtime::InstanceLocation::Root,
                         "matches `not`",
                     );
                 }
             }
             runtime::check(
                 out,
-                &runtime::InstancePath::Root,
+                &runtime::InstanceLocation::Root,
                 value.insured.is_none() || value.insurer.is_some(),
                 "`insurer` is required when `insured` is present",
             );
@@ -2073,7 +2101,10 @@ impl TryFrom<ShipmentOtherwiseLabelsFields> for ShipmentOtherwiseLabels {
             for name in value.additional_properties.keys() {
                 runtime::check_pattern(
                     out,
-                    &runtime::InstancePath::Key(&runtime::InstancePath::Root, name),
+                    &runtime::InstanceLocation::Key(
+                        &runtime::InstanceLocation::Root,
+                        name,
+                    ),
                     {
                         static RE: runtime::Pattern = runtime::Pattern::new("^[a-z]+$");
                         &RE
@@ -2084,7 +2115,10 @@ impl TryFrom<ShipmentOtherwiseLabelsFields> for ShipmentOtherwiseLabels {
             for name in value.pattern_1.keys() {
                 runtime::check_pattern(
                     out,
-                    &runtime::InstancePath::Key(&runtime::InstancePath::Root, name),
+                    &runtime::InstanceLocation::Key(
+                        &runtime::InstanceLocation::Root,
+                        name,
+                    ),
                     {
                         static RE: runtime::Pattern = runtime::Pattern::new("^[a-z]+$");
                         &RE
@@ -2116,7 +2150,12 @@ impl TryFrom<f64> for PriceAmount {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
-            runtime::check_multiple(out, &runtime::InstancePath::Root, value, "0.01");
+            runtime::check_multiple(
+                out,
+                &runtime::InstanceLocation::Root,
+                value,
+                "0.01",
+            );
         }
         runtime::first(violations)
             .map(|()| Self(value))
@@ -2139,7 +2178,7 @@ impl TryFrom<String> for UserName {
             let n = (value.as_str()).chars().count();
             runtime::check_len(
                 out,
-                &runtime::InstancePath::Root,
+                &runtime::InstanceLocation::Root,
                 n,
                 Some(2),
                 Some(10),
@@ -2148,7 +2187,7 @@ impl TryFrom<String> for UserName {
             if n <= 10 {
                 runtime::check_pattern(
                     out,
-                    &runtime::InstancePath::Root,
+                    &runtime::InstanceLocation::Root,
                     {
                         static RE: runtime::Pattern = runtime::Pattern::new("^\\p{Lu}");
                         &RE
@@ -2178,7 +2217,7 @@ impl TryFrom<String> for UserHandle {
             let n = (value.as_str()).chars().count();
             runtime::check_len(
                 out,
-                &runtime::InstancePath::Root,
+                &runtime::InstanceLocation::Root,
                 n,
                 None,
                 Some(20),
@@ -2187,7 +2226,7 @@ impl TryFrom<String> for UserHandle {
             if n <= 20 {
                 runtime::check_pattern(
                     out,
-                    &runtime::InstancePath::Root,
+                    &runtime::InstanceLocation::Root,
                     {
                         static RE: runtime::Pattern = runtime::Pattern::new("^(a+)+$");
                         &RE
@@ -2213,7 +2252,7 @@ impl TryFrom<i64> for UserAge {
             let out = &mut violations;
             runtime::check_range(
                 out,
-                &runtime::InstancePath::Root,
+                &runtime::InstanceLocation::Root,
                 value,
                 runtime::Bounds {
                     min: Some(0),
@@ -2237,7 +2276,7 @@ impl TryFrom<f64> for UserScore {
         let mut violations: Vec<runtime::Violation> = Vec::new();
         {
             let out = &mut violations;
-            runtime::check_multiple(out, &runtime::InstancePath::Root, value, "0.5");
+            runtime::check_multiple(out, &runtime::InstanceLocation::Root, value, "0.5");
         }
         runtime::first(violations)
             .map(|()| Self(value))
@@ -2314,7 +2353,7 @@ impl TryFrom<i64> for UserLoyaltyVariant1 {
             let out = &mut violations;
             runtime::check_range(
                 out,
-                &runtime::InstancePath::Root,
+                &runtime::InstanceLocation::Root,
                 value,
                 runtime::Bounds {
                     min: Some(1),
@@ -2351,7 +2390,7 @@ impl TryFrom<i64> for CreateUserLimit {
             let out = &mut violations;
             runtime::check_range(
                 out,
-                &runtime::InstancePath::Root,
+                &runtime::InstanceLocation::Root,
                 value,
                 runtime::Bounds {
                     min: Some(1),
@@ -2420,7 +2459,7 @@ impl Not2 {
                 if let runtime::Content::Map(n) = json {
                     runtime::check_required(
                         out,
-                        &runtime::InstancePath::Root,
+                        &runtime::InstanceLocation::Root,
                         |name| n.iter().any(|(k, _)| k == name),
                         &["label"],
                     );
@@ -2485,7 +2524,7 @@ impl Not3 {
                 if let runtime::Content::Map(n) = json {
                     runtime::check_required(
                         out,
-                        &runtime::InstancePath::Root,
+                        &runtime::InstanceLocation::Root,
                         |name| n.iter().any(|(k, _)| k == name),
                         &["colour"],
                     );
@@ -2556,7 +2595,7 @@ impl Not5 {
                 if let runtime::Content::Map(n) = json {
                     runtime::check_required(
                         out,
-                        &runtime::InstancePath::Root,
+                        &runtime::InstanceLocation::Root,
                         |name| n.iter().any(|(k, _)| k == name),
                         &["fragile"],
                     );
@@ -2626,7 +2665,7 @@ impl Not6 {
                 if let runtime::Content::Map(n) = json {
                     runtime::check_required(
                         out,
-                        &runtime::InstancePath::Root,
+                        &runtime::InstanceLocation::Root,
                         |name| n.iter().any(|(k, _)| k == name),
                         &["customs", "insurer"],
                     );
@@ -2696,7 +2735,7 @@ impl Not7 {
                 if let runtime::Content::Map(n) = json {
                     runtime::check_required(
                         out,
-                        &runtime::InstancePath::Root,
+                        &runtime::InstanceLocation::Root,
                         |name| n.iter().any(|(k, _)| k == name),
                         &["customs", "insurer"],
                     );
@@ -2728,7 +2767,7 @@ impl Not8 {
                 if let runtime::Content::Map(n) = json {
                     runtime::check_required(
                         out,
-                        &runtime::InstancePath::Root,
+                        &runtime::InstanceLocation::Root,
                         |name| n.iter().any(|(k, _)| k == name),
                         &["customs", "insurer"],
                     );
@@ -2760,7 +2799,7 @@ impl Not9 {
                 if let runtime::Content::Map(n) = json {
                     runtime::check_required(
                         out,
-                        &runtime::InstancePath::Root,
+                        &runtime::InstanceLocation::Root,
                         |name| n.iter().any(|(k, _)| k == name),
                         &["amount"],
                     );
@@ -3379,7 +3418,7 @@ impl TryFrom<EntryLines> for EntryLinesChecked {
             let out = &mut violations;
             runtime::check_len(
                 out,
-                &runtime::InstancePath::Root,
+                &runtime::InstanceLocation::Root,
                 value.len(),
                 None,
                 Some(2),
@@ -3410,7 +3449,7 @@ impl BadgeHolders {
                 if hits < 1 {
                     runtime::violation(
                         out,
-                        &runtime::InstancePath::Root,
+                        &runtime::InstanceLocation::Root,
                         format!(
                             "must contain at least {} matching item(s), found {hits}", 1
                         ),
@@ -3440,7 +3479,7 @@ impl TryFrom<serde_json::Value> for LooseV {
                     let n = (text.as_str()).chars().count();
                     runtime::check_len(
                         out,
-                        &runtime::InstancePath::Root,
+                        &runtime::InstanceLocation::Root,
                         n,
                         None,
                         Some(3),
@@ -3451,7 +3490,7 @@ impl TryFrom<serde_json::Value> for LooseV {
                     let text = n.to_string();
                     runtime::check_decimal_range(
                         out,
-                        &runtime::InstancePath::Root,
+                        &runtime::InstanceLocation::Root,
                         text.as_str(),
                         runtime::Bounds {
                             min: Some("1"),
@@ -3483,13 +3522,13 @@ impl TryFrom<Vec<UserTagsItem>> for UserTags {
             let out = &mut violations;
             runtime::check_len(
                 out,
-                &runtime::InstancePath::Root,
+                &runtime::InstanceLocation::Root,
                 value.len(),
                 Some(1),
                 None,
                 "items",
             );
-            runtime::check_unique(out, &runtime::InstancePath::Root, &value);
+            runtime::check_unique(out, &runtime::InstanceLocation::Root, &value);
         }
         runtime::first(violations)
             .map(|()| Self(value))
@@ -3511,7 +3550,7 @@ impl TryFrom<std::collections::BTreeMap<String, String>> for UserMeta {
             let out = &mut violations;
             runtime::check_len(
                 out,
-                &runtime::InstancePath::Root,
+                &runtime::InstanceLocation::Root,
                 value.len(),
                 None,
                 Some(2),
@@ -3538,7 +3577,7 @@ impl TryFrom<serde_json::Value> for Not9ObjectAmount {
                 let text = n.to_string();
                 runtime::check_decimal_range(
                     out,
-                    &runtime::InstancePath::Root,
+                    &runtime::InstanceLocation::Root,
                     text.as_str(),
                     runtime::Bounds {
                         max: Some("100"),
@@ -3568,7 +3607,7 @@ impl TryFrom<serde_json::Value> for ShipmentInternationalRating {
                 let text = n.to_string();
                 runtime::check_decimal_range(
                     out,
-                    &runtime::InstancePath::Root,
+                    &runtime::InstanceLocation::Root,
                     text.as_str(),
                     runtime::Bounds {
                         min: Some("1"),
@@ -3601,7 +3640,7 @@ impl ShipmentInternationalParcels {
                 if hits < 1 {
                     runtime::violation(
                         out,
-                        &runtime::InstancePath::Root,
+                        &runtime::InstanceLocation::Root,
                         format!(
                             "must contain at least {} matching item(s), found {hits}", 1
                         ),
@@ -3610,7 +3649,7 @@ impl ShipmentInternationalParcels {
                 if hits > 2 {
                     runtime::violation(
                         out,
-                        &runtime::InstancePath::Root,
+                        &runtime::InstanceLocation::Root,
                         format!("contains {hits} matching items, more than allowed"),
                     );
                 }
@@ -3644,7 +3683,10 @@ for ShipmentInternationalScores {
             for name in value.keys() {
                 runtime::check_pattern(
                     out,
-                    &runtime::InstancePath::Key(&runtime::InstancePath::Root, name),
+                    &runtime::InstanceLocation::Key(
+                        &runtime::InstanceLocation::Root,
+                        name,
+                    ),
                     {
                         static RE: runtime::Pattern = runtime::Pattern::new("^[a-z]+$");
                         &RE
@@ -3683,7 +3725,7 @@ impl ShipmentOtherwiseParcels {
                 if hits < 1 {
                     runtime::violation(
                         out,
-                        &runtime::InstancePath::Root,
+                        &runtime::InstanceLocation::Root,
                         format!(
                             "must contain at least {} matching item(s), found {hits}", 1
                         ),
@@ -3692,7 +3734,7 @@ impl ShipmentOtherwiseParcels {
                 if hits > 2 {
                     runtime::violation(
                         out,
-                        &runtime::InstancePath::Root,
+                        &runtime::InstanceLocation::Root,
                         format!("contains {hits} matching items, more than allowed"),
                     );
                 }
@@ -3726,7 +3768,10 @@ for ShipmentOtherwiseScores {
             for name in value.keys() {
                 runtime::check_pattern(
                     out,
-                    &runtime::InstancePath::Key(&runtime::InstancePath::Root, name),
+                    &runtime::InstanceLocation::Key(
+                        &runtime::InstanceLocation::Root,
+                        name,
+                    ),
                     {
                         static RE: runtime::Pattern = runtime::Pattern::new("^[a-z]+$");
                         &RE
