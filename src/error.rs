@@ -48,13 +48,9 @@ pub enum Error {
         /// What is wrong and how to fix it.
         problem: String,
     },
-    /// The runtime dependency lists a feature that the runtime does not have.
-    Feature {
-        /// The feature.
-        feature: String,
-        /// Why it is not set and what sets it.
-        why: String,
-    },
+    /// The runtime dependency is missing, requires another version or lacks a feature that generated code needs. It
+    /// says the `cargo add` line that fixes it.
+    Runtime(String),
     /// A setting has the wrong kind of value.
     Setting {
         /// The table: `[package.metadata.<name>]` or its `derives`.
@@ -112,7 +108,7 @@ impl fmt::Display for Error {
                 write!(f, "[{table}] has no setting `{key}`. The settings are {}", known.join(", "))
             }
             Self::Module { table, problem } => write!(f, "[{table}] {problem}"),
-            Self::Feature { feature, why } => write!(f, "the honig dependency lists feature `{feature}`: {why}"),
+            Self::Runtime(problem) => write!(f, "Cargo.toml: the honig dependency {problem}"),
             Self::Fetch { url, problem } => write!(f, "{url}: {problem}"),
             Self::Scheme(uri) => write!(f, "unsupported URI scheme in `{uri}`"),
             Self::Unparsable { file, source } => write!(f, "{file}: generated code does not parse: {source}"),
@@ -136,7 +132,7 @@ impl std::error::Error for Error {
             | Self::Setting { .. }
             | Self::UnknownSetting { .. }
             | Self::Module { .. }
-            | Self::Feature { .. }
+            | Self::Runtime(_)
             | Self::Fetch { .. }
             | Self::Scheme(_)
             | Self::Fixture { .. } => None,

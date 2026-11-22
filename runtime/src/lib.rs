@@ -92,6 +92,10 @@ pub use formatted::{RelativeJsonPointerText, TimeLocalText, UriReferenceText, Ur
 pub use full_time::FullTime;
 /// The `http` crate that [`Request`], [`Response`] and their parts come from.
 pub use http;
+#[cfg(feature = "ipnet")]
+pub use ipnet;
+#[cfg(feature = "jiff")]
+pub use jiff;
 pub use links::Exchange;
 /// The string header helpers that generated code calls. Your code uses the `headers()` of `http`.
 #[doc(hidden)]
@@ -117,6 +121,10 @@ pub use stream::{Framing, ItemStream, Items, Streamed};
 #[cfg(any(feature = "client", feature = "server"))]
 pub use tower_service::Service;
 pub use transport::block_on;
+#[cfg(feature = "url")]
+pub use url;
+#[cfg(feature = "uuid")]
+pub use uuid;
 
 /// What generated code calls: codecs, parameter styles, routing, validation checks and `serve`. It is not for your
 /// code. It changes with the generator. The version of the runtime is pinned to the version of the generator.

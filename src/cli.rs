@@ -283,24 +283,19 @@ struct Plan {
 
 /// Generates or checks every module, or only the module `only`.
 ///
-/// The runtime dependency serves every module. So its features are the union of what each module needs, also when
-/// `only` writes one module.
+/// The runtime dependency serves every module. So it needs the features of every module, also when `only` writes one
+/// module. Nothing is written when it lacks one.
 fn generate_or_check(check: bool, only: Option<&str>, args: &Args) -> Result<ExitCode, Failure> {
     let manifest = settings::Manifest::load(&args.manifest)?;
-    let manifest_text = crate::disk::read(&args.manifest)?;
     let Some(Plan { runtime, selected }) = generate_modules(&manifest, only, args)? else {
         return Ok(ExitCode::FAILURE);
     };
-    // `honig = { workspace = true }`: the version is pinned in the workspace root.
-    let root = match manifest.workspace_path().filter(|_| crate::manifest::inherits_runtime(&manifest_text)) {
-        Some(path) => Some((path.to_path_buf(), crate::disk::read(path)?)),
-        None => None,
-    };
     print_diagnostics(&selected, args);
+    crate::manifest::check_runtime(&manifest, &runtime)?;
     if check {
-        return Ok(check_modules(&selected, &manifest_text, root.as_ref(), &runtime, args));
+        return Ok(check_modules(&selected, args));
     }
-    write_modules(&selected, &manifest_text, root.as_ref(), &runtime, args)
+    write_modules(&selected, args)
 }
 
 /// Returns every module generated in memory, and the runtime features that all of them need. Only the module `only` is
@@ -352,8 +347,8 @@ fn generate_modules(manifest: &settings::Manifest, only: Option<&str>, args: &Ar
                 return Ok(None);
             }
         };
-        // The runtime features every module needs: the halves, its adapters and the codecs of its description.
-        for feature in generated.runtime_features.iter().chain(&cfg.adapters) {
+        // The runtime features every module needs: the halves and the codecs of its description.
+        for feature in &generated.runtime_features {
             if !runtime.contains(feature) {
                 runtime.push(feature);
             }
@@ -372,20 +367,12 @@ fn print_diagnostics(selected: &[Module], args: &Args) {
     }
 }
 
-/// Runs `check`: fails when a module or the runtime dependency differs from what `generate` would write.
-fn check_modules(
-    selected: &[Module],
-    manifest_text: &str,
-    root: Option<&(PathBuf, String)>,
-    runtime: &[&str],
-    args: &Args,
-) -> ExitCode {
-    let mut stale: Vec<String> = selected
+/// Runs `check`: fails when a module differs from what `generate` would write.
+fn check_modules(selected: &[Module], args: &Args) -> ExitCode {
+    let stale: Vec<String> = selected
         .iter()
         .flat_map(|m| generate::stale(&m.cfg.output_path(), &m.cfg.root_path(), &m.generated.files))
         .collect();
-    stale.extend(crate::manifest::stale(manifest_text, runtime));
-    stale.extend(root.and_then(|(_, text)| crate::manifest::stale_workspace(text)));
     let outputs: Vec<String> = selected.iter().map(|m| m.cfg.output_path().display().to_string()).collect();
     if stale.is_empty() {
         args.say(format_args!("up to date: {}", outputs.join(", ")));
@@ -399,14 +386,8 @@ fn check_modules(
     ExitCode::FAILURE
 }
 
-/// Runs `generate`: writes each module and the runtime dependency.
-fn write_modules(
-    selected: &[Module],
-    manifest_text: &str,
-    root: Option<&(PathBuf, String)>,
-    runtime: &[&str],
-    args: &Args,
-) -> Result<ExitCode, Failure> {
+/// Runs `generate`: writes each module.
+fn write_modules(selected: &[Module], args: &Args) -> Result<ExitCode, Failure> {
     // A file `src/<module>.rs` of yours next to the directory would make `mod <module>;` ambiguous. Nothing is written
     // then. One that honig wrote is the root of the module, or a root that an earlier run wrote there.
     let beside = |m: &&Module| m.cfg.output_path().with_extension("rs");
@@ -424,18 +405,6 @@ fn write_modules(
     }
     for m in selected {
         crate::disk::write_module(&m.cfg.output_path(), &m.cfg.root_path(), &m.generated.files)?;
-    }
-    let synced = crate::manifest::with_runtime(manifest_text, runtime)?;
-    if synced != manifest_text {
-        crate::disk::write(&args.manifest, &synced)?;
-        args.say(format_args!("updated {}: honig ={}", args.manifest.display(), crate::emit::rust::RUNTIME_VERSION));
-    }
-    if let Some((path, text)) = root {
-        let pinned = crate::manifest::with_pinned_workspace(text)?;
-        if pinned != *text {
-            crate::disk::write(path, &pinned)?;
-            args.say(format_args!("updated {}: honig ={}", path.display(), crate::emit::rust::RUNTIME_VERSION));
-        }
     }
     for m in selected {
         args.say(format_args!(
@@ -455,15 +424,8 @@ fn write_modules(
 /// Tells the user what is still missing in their crate.
 fn hints(cfgs: &[&settings::Settings], manifest: &Path) {
     let deps = settings::Manifest::load(manifest).unwrap_or_default();
-    for dep in ["serde", "serde_json"] {
-        if !deps.has_dependency(dep) {
-            let line = if dep == "serde" {
-                "serde = { version = \"1\", features = [\"derive\"] }"
-            } else {
-                "serde_json = \"1\""
-            };
-            eprintln!("hint: add `{line}` to [dependencies]");
-        }
+    for line in serde_lines(&deps) {
+        eprintln!("hint: run `{line}`");
     }
     for cfg in cfgs {
         let module = cfg.output.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
@@ -477,20 +439,13 @@ fn hints(cfgs: &[&settings::Settings], manifest: &Path) {
     }
 }
 
-/// Returns the manifest `text` with each of the `lines` added to its `[dependencies]`. It parses the TOML, so a
-/// header with CRLF or a comment after it is found too.
-///
-/// # Errors
-/// `text` or a line is not valid TOML.
-fn with_dependencies(text: &str, lines: &[&str]) -> Result<String, crate::error::Error> {
-    let mut doc: toml_edit::DocumentMut = text.parse()?;
-    let added: toml_edit::DocumentMut = lines.join("\n").parse()?;
-    if let Some(deps) = doc.entry("dependencies").or_insert_with(toml_edit::table).as_table_like_mut() {
-        for (name, item) in added.iter() {
-            deps.insert(name, item.clone());
-        }
-    }
-    Ok(doc.to_string())
+/// Returns the `cargo add` lines of the serde crates that generated code needs and the crate lacks.
+fn serde_lines(manifest: &settings::Manifest) -> Vec<&'static str> {
+    [("serde", "cargo add serde -F derive"), ("serde_json", "cargo add serde_json")]
+        .into_iter()
+        .filter(|(dep, _)| !manifest.has_dependency(dep))
+        .map(|(_, line)| line)
+        .collect()
 }
 
 fn init(spec: &str, args: &Args) -> Result<ExitCode, Failure> {
@@ -499,20 +454,16 @@ fn init(spec: &str, args: &Args) -> Result<ExitCode, Failure> {
     if manifest.table().is_some() {
         return Err(Failure::AlreadySet(args.manifest.clone()));
     }
-    let mut out = text.trim_end().to_owned();
-    out.push_str("\n\n");
-    out.push_str(&settings::init_table(&manifest, &spec.replace('\\', "/")));
-    let mut missing = vec![];
-    if !manifest.has_dependency("serde") {
-        missing.push("serde = { version = \"1\", features = [\"derive\"] }");
-    }
-    if !manifest.has_dependency("serde_json") {
-        missing.push("serde_json = \"1\"");
-    }
-    let out = with_dependencies(&(out + "\n"), &missing)?;
-    let out = crate::manifest::with_new_runtime(&out, &settings::init_features())?;
+    let out = format!("{}\n\n{}", text.trim_end(), settings::init_table(&spec.replace('\\', "/")));
     crate::disk::write(&args.manifest, &out)?;
     args.say(format_args!("added [package.metadata.honig.api] to {}", args.manifest.display()));
+    if manifest.runtime().is_none() {
+        let version = crate::emit::rust::RUNTIME_VERSION;
+        args.say(format_args!("next: cargo add {}@={version} -F client,server", crate::manifest::RUNTIME));
+    }
+    for line in serde_lines(&manifest) {
+        args.say(format_args!("next: {line}"));
+    }
     args.say(format_args!("next: cargo honig generate"));
     Ok(ExitCode::SUCCESS)
 }
@@ -554,23 +505,13 @@ pub fn usage() -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::with_dependencies;
-
-    const SERDE: &str = "serde = { version = \"1\", features = [\"derive\"] }";
-
-    #[test]
-    fn dependencies_go_into_a_crlf_manifest_once() {
-        let crlf = "[package]\r\nname = \"x\"\r\n\r\n[dependencies]\r\naxum = \"0.8\"\r\n";
-        let out = with_dependencies(crlf, &[SERDE]).unwrap();
-        assert_eq!(out.matches("[dependencies]").count(), 1, "{out}");
-        let doc: toml_edit::DocumentMut = out.parse().unwrap();
-        assert!(doc["dependencies"].get("axum").is_some() && doc["dependencies"].get("serde").is_some(), "{out}");
-    }
+    use super::serde_lines;
+    use crate::settings::Manifest;
 
     #[test]
-    fn a_manifest_without_dependencies_gets_the_table() {
-        let out = with_dependencies("[package]\nname = \"x\"\n", &[SERDE, "serde_json = \"1\""]).unwrap();
-        let doc: toml_edit::DocumentMut = out.parse().unwrap();
-        assert!(doc["dependencies"].get("serde").is_some() && doc["dependencies"].get("serde_json").is_some(), "{out}");
+    fn init_says_the_cargo_add_lines_of_the_missing_serde_crates() {
+        let lines = |deps: &str| serde_lines(&Manifest::parse(&format!("[dependencies]\n{deps}")).unwrap());
+        assert_eq!(lines(""), ["cargo add serde -F derive", "cargo add serde_json"]);
+        assert_eq!(lines("serde = \"1\"\nserde_json = \"1\"\n"), Vec::<&str>::new());
     }
 }

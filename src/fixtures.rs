@@ -47,15 +47,14 @@ pub fn fixtures(root: &Path) -> Result<Vec<(String, PathBuf)>, Error> {
 }
 
 /// Returns what the crate at `e2e` must contain for the descriptions under `root`, as (path relative to it, contents).
-/// Its manifest gets the runtime of this checkout with the features that the fixtures need.
 ///
 /// # Errors
-/// A file cannot be opened or a fixture does not generate.
+/// A file cannot be opened, a fixture does not generate or the `honig` dependency of the crate lacks a feature that
+/// the fixtures need.
 pub fn e2e_files(e2e: &Path, root: &Path) -> Result<Vec<(PathBuf, String)>, Error> {
-    let text = crate::disk::read(&e2e.join("Cargo.toml"))?;
-    let parsed = crate::settings::Manifest::load(&e2e.join("Cargo.toml"))?;
-    // The fixtures pick their libraries through the dependencies of the crate, as `init` does.
-    let libs = crate::settings::detected_format_libs(&parsed);
+    let manifest = crate::settings::Manifest::load(&e2e.join("Cargo.toml"))?;
+    // The type features of the crate's `honig` dependency pick the types, as in the crate of a user.
+    let libs = crate::settings::feature_libs(&manifest);
     let opts = crate::emit::Options {
         rust: crate::emit::rust::Options { libs, ..Default::default() },
         tests: true,
@@ -86,10 +85,9 @@ pub fn e2e_files(e2e: &Path, root: &Path) -> Result<Vec<(PathBuf, String)>, Erro
         lib.push_str(&format!("pub mod {module} {{\n    pub mod api;\n}}\n"));
     }
     files.push((Path::new("src").join("lib.rs"), lib));
-    let manifest = crate::manifest::with_runtime(&text, &features)?;
-    let mut doc: toml_edit::DocumentMut = manifest.parse()?;
-    doc["dependencies"]["honig"]["path"] = toml_edit::value("../../runtime");
-    files.push((PathBuf::from("Cargo.toml"), doc.to_string()));
+    features.sort_unstable();
+    features.dedup();
+    crate::manifest::check_runtime(&manifest, &features)?;
     Ok(files)
 }
 

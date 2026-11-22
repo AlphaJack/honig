@@ -3,10 +3,10 @@
 use super::common;
 
 use crate::ir::types::Format;
-use crate::settings::{DateLib, FormatLibs};
+use crate::settings::FormatLibs;
 use serde_json::json;
 
-fn types_rs(test: &str, dates: Option<DateLib>) -> String {
+fn types_rs(test: &str, jiff: bool) -> String {
     let doc = common::spec(
         "3.1.0",
         &json!({}),
@@ -17,20 +17,18 @@ fn types_rs(test: &str, dates: Option<DateLib>) -> String {
         }}}),
     );
     let opts = crate::emit::Options {
-        rust: crate::emit::rust::Options { libs: FormatLibs { dates, ..FormatLibs::default() }, ..Default::default() },
+        rust: crate::emit::rust::Options { libs: FormatLibs { jiff, ..FormatLibs::default() }, ..Default::default() },
         ..Default::default()
     };
     common::file(&common::generate(test, &doc, &opts), "types.rs").to_owned()
 }
 
-/// `time` has an offset (`08:30:06Z`) that no date library's time type represents. It is the runtime's `FullTime`,
-/// plain numbers, whatever the date library.
+/// `time` has an offset (`08:30:06Z`) that no `jiff` time type represents. It is the runtime's `FullTime`, plain
+/// numbers, with or without `jiff`.
 #[test]
 fn time_is_a_full_time_with_any_date_library() {
-    for (test, dates) in
-        [("time-chrono", Some(DateLib::Chrono)), ("time-jiff", Some(DateLib::Jiff)), ("time-none", None)]
-    {
-        let t = types_rs(test, dates);
+    for (test, jiff) in [("time-jiff", true), ("time-none", false)] {
+        let t = types_rs(test, jiff);
         assert!(t.contains("pub opens: runtime::FullTime"), "{test}: {t}");
     }
 }
@@ -93,21 +91,22 @@ fn local_date_time_formats_use_the_date_library() {
             "ends": {"type": "string", "format": "time-local"}
         }}}}),
     );
-    let with = |dates: Option<DateLib>, test: &str| {
+    let with = |jiff: bool, test: &str| {
         let opts = crate::emit::Options {
             rust: crate::emit::rust::Options {
-                libs: FormatLibs { dates, ..FormatLibs::default() },
+                libs: FormatLibs { jiff, ..FormatLibs::default() },
                 ..Default::default()
             },
             ..Default::default()
         };
         common::file(&common::generate(test, &doc, &opts), "types.rs").to_owned()
     };
-    let chrono = with(Some(DateLib::Chrono), "local-chrono");
-    assert!(chrono.contains("pub starts: chrono::NaiveDateTime") && chrono.contains("pub ends: chrono::NaiveTime"));
-    let jiff = with(Some(DateLib::Jiff), "local-jiff");
-    assert!(jiff.contains("pub starts: jiff::civil::DateTime") && jiff.contains("pub ends: jiff::civil::Time"));
-    assert!(with(None, "local-none").contains("pub starts: runtime::DateTimeLocalText"));
+    let jiff = with(true, "local-jiff");
+    assert!(
+        jiff.contains("pub starts: runtime::jiff::civil::DateTime")
+            && jiff.contains("pub ends: runtime::jiff::civil::Time")
+    );
+    assert!(with(false, "local-none").contains("pub starts: runtime::DateTimeLocalText"));
 }
 
 /// A `pattern` beside a format that has a type of its own is not checked: the type decides the value. Generation says
@@ -143,14 +142,14 @@ fn a_named_type_holds_its_format_with_the_text_checked() {
         }}}}),
     );
     let named = |text: &str| crate::settings::NamedType::new(text).unwrap();
-    let mut libs = FormatLibs { dates: Some(DateLib::Chrono), ..FormatLibs::default() };
-    libs.named.insert(Format::DateTime, named("time::OffsetDateTime"));
+    let mut libs = FormatLibs { jiff: true, ..FormatLibs::default() };
+    libs.named.insert(Format::DateTime, named("crate::Stamp"));
     libs.named.insert(Format::Email, named("crate::Mail"));
     let opts =
         crate::emit::Options { rust: crate::emit::rust::Options { libs, ..Default::default() }, ..Default::default() };
     let t = common::file(&common::generate("named-format", &doc, &opts), "types.rs").to_owned();
-    assert!(t.contains("pub placed: time::OffsetDateTime"), "{t}");
-    assert!(t.contains("pub day: chrono::NaiveDate"), "the other date formats keep the library: {t}");
+    assert!(t.contains("pub placed: crate::Stamp"), "{t}");
+    assert!(t.contains("pub day: runtime::jiff::civil::Date"), "the other date formats keep the library: {t}");
     assert!(t.contains("pub contact: Option<crate::Mail>"), "{t}");
     assert!(t.contains("format::DateTime") && t.contains("format::Email"), "each text is checked: {t}");
 }

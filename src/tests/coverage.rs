@@ -431,14 +431,7 @@ fn fixtures() -> Vec<(String, Value, crate::emit::Options, std::path::PathBuf)> 
         for path in entries.into_iter().filter(|p| p.extension().is_some_and(|e| e == "yaml")) {
             let loaded = crate::load::load_path(&path);
             let Some(doc) = loaded.value else { continue };
-            let deps = std::fs::read_to_string(path.with_extension("deps")).unwrap_or_default();
             let opts = crate::emit::Options {
-                rust: crate::emit::rust::Options {
-                    libs: crate::settings::detected_format_libs(
-                        &crate::settings::Manifest::parse(&format!("[dependencies]\n{deps}")).unwrap(),
-                    ),
-                    ..Default::default()
-                },
                 // The examples test is where examples reach the generated code.
                 tests: true,
                 ..crate::emit::Options::default()

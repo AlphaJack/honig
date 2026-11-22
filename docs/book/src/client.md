@@ -119,7 +119,7 @@ One success gives what it carries: nothing, its body, or its body and headers in
 The client compiles for `wasm32-unknown-unknown` and sends through the browser's `fetch`:
 
 1. Depend on `gloo-net` with its `http` feature under `[target.'cfg(target_arch = "wasm32")'.dependencies]`. Native builds then skip it, as the adapter compiles on wasm32 only.
-2. Set `client = { adapters = ["gloo-net"] }` and `server = false`.
+2. Turn on the `gloo-net` feature of `honig` and set `server = false`.
 3. Build the client on `api::GlooTransport::new("/api")`.
 
 Futures on wasm32 are not `Send`. A transport service of your own writes `+ api::MaybeSend` instead of `+ Send` on its futures, so it compiles for both targets.

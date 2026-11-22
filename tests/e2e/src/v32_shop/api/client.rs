@@ -460,7 +460,7 @@ impl<T: runtime::Transport> Client<T> {
                         )
                         .map(
                             runtime::formats::Validated::<
-                                Option<url::Url>,
+                                Option<runtime::url::Url>,
                                 runtime::formats::Maybe<
                                     runtime::formats::Text<runtime::formats::format::Uri>,
                                 >,
@@ -1112,7 +1112,7 @@ impl<T: runtime::Transport> Client<T> {
                         )
                         .map(
                             runtime::formats::Validated::<
-                                Option<url::Url>,
+                                Option<runtime::url::Url>,
                                 runtime::formats::Maybe<
                                     runtime::formats::Text<runtime::formats::format::Uri>,
                                 >,
@@ -1766,7 +1766,7 @@ impl<T: runtime::Transport> Client<T> {
                         )
                         .map(
                             runtime::formats::Validated::<
-                                Option<url::Url>,
+                                Option<runtime::url::Url>,
                                 runtime::formats::Maybe<
                                     runtime::formats::Text<runtime::formats::format::Uri>,
                                 >,

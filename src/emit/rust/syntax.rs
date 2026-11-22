@@ -7,7 +7,7 @@ use crate::emit::rust::names::{pascal, snake};
 use crate::emit::rust::space::{Space, WORD};
 use crate::ir::names::Name;
 use crate::ir::types::{Format, Ty, TypeId};
-use crate::settings::{DateLib, FormatLibs};
+use crate::settings::FormatLibs;
 
 /// Returns a Rust string literal with every special character escaped.
 pub(crate) fn lit(s: &str) -> Literal {
@@ -176,13 +176,13 @@ fn library_ty(libs: &FormatLibs, f: Format) -> Option<TokenStream> {
     if let Some(named) = libs.named.get(&f) {
         return Some(path(named.path()));
     }
-    match (f, libs.uuid, libs.dates) {
+    match (f, libs.uuid, libs.jiff) {
         (Format::Char, ..) => Some(quote!(char)),
-        (Format::Uri, ..) if libs.url => Some(quote!(url::Url)),
-        (Format::Ipv4Cidr, ..) if libs.ipnet => Some(quote!(ipnet::Ipv4Net)),
-        (Format::Ipv6Cidr, ..) if libs.ipnet => Some(quote!(ipnet::Ipv6Net)),
-        (Format::DateTimeLocal, _, Some(DateLib::Chrono)) => Some(quote!(chrono::NaiveDateTime)),
-        (Format::DateTimeLocal, _, Some(DateLib::Jiff)) => Some(quote!(jiff::civil::DateTime)),
+        // The type features of the runtime re-export their crates.
+        (Format::Uri, ..) if libs.url => Some(quote!(runtime::url::Url)),
+        (Format::Ipv4Cidr, ..) if libs.ipnet => Some(quote!(runtime::ipnet::Ipv4Net)),
+        (Format::Ipv6Cidr, ..) if libs.ipnet => Some(quote!(runtime::ipnet::Ipv6Net)),
+        (Format::DateTimeLocal, _, true) => Some(quote!(runtime::jiff::civil::DateTime)),
         // The standard library's addresses (de)serialize as their text form.
         (Format::Ipv4, ..) => Some(quote!(std::net::Ipv4Addr)),
         (Format::Ipv6, ..) => Some(quote!(std::net::Ipv6Addr)),
@@ -192,16 +192,12 @@ fn library_ty(libs: &FormatLibs, f: Format) -> Option<TokenStream> {
         (Format::IdnEmail, ..) => Some(quote!(runtime::IdnEmailText)),
         (Format::Hostname, ..) => Some(quote!(runtime::HostnameText)),
         (Format::IdnHostname, ..) => Some(quote!(runtime::IdnHostnameText)),
-        // `time` has an offset: neither library has a type for it. The runtime stores it in `jiff` types.
-        // Neither date library has a time with an offset. The runtime's stores plain numbers, with any setting.
+        // `jiff` has no time with an offset. The runtime's stores plain numbers, with or without `jiff`.
         (Format::Time, ..) => Some(quote!(runtime::FullTime)),
-        (Format::TimeLocal, _, Some(DateLib::Chrono)) => Some(quote!(chrono::NaiveTime)),
-        (Format::TimeLocal, _, Some(DateLib::Jiff)) => Some(quote!(jiff::civil::Time)),
-        (Format::Uuid, true, _) => Some(quote!(uuid::Uuid)),
-        (Format::DateTime, _, Some(DateLib::Chrono)) => Some(quote!(chrono::DateTime<chrono::Utc>)),
-        (Format::Date, _, Some(DateLib::Chrono)) => Some(quote!(chrono::NaiveDate)),
-        (Format::DateTime, _, Some(DateLib::Jiff)) => Some(quote!(jiff::Timestamp)),
-        (Format::Date, _, Some(DateLib::Jiff)) => Some(quote!(jiff::civil::Date)),
+        (Format::TimeLocal, _, true) => Some(quote!(runtime::jiff::civil::Time)),
+        (Format::Uuid, true, _) => Some(quote!(runtime::uuid::Uuid)),
+        (Format::DateTime, _, true) => Some(quote!(runtime::jiff::Timestamp)),
+        (Format::Date, _, true) => Some(quote!(runtime::jiff::civil::Date)),
         // Without its library a format is its text. Nothing is lost and nothing is added to the crate.
         (Format::Uuid, false, _)
         | (
@@ -221,7 +217,7 @@ fn library_ty(libs: &FormatLibs, f: Format) -> Option<TokenStream> {
             | Format::Ipv6Cidr,
             ..,
         )
-        | (Format::DateTime | Format::Date | Format::DateTimeLocal | Format::TimeLocal, _, None) => None,
+        | (Format::DateTime | Format::Date | Format::DateTimeLocal | Format::TimeLocal, _, false) => None,
     }
 }
 
@@ -231,8 +227,7 @@ fn library_ty(libs: &FormatLibs, f: Format) -> Option<TokenStream> {
 /// text that honig checked first.
 fn validated_format(libs: &FormatLibs, f: Format) -> Option<Ident> {
     let checked = libs.named.contains_key(&f)
-        || (libs.dates.is_some()
-            && matches!(f, Format::DateTime | Format::DateTimeLocal | Format::TimeLocal | Format::Date))
+        || (libs.jiff && matches!(f, Format::DateTime | Format::DateTimeLocal | Format::TimeLocal | Format::Date))
         || (libs.uuid && f == Format::Uuid)
         || (libs.url && f == Format::Uri)
         || (libs.ipnet && matches!(f, Format::Ipv4Cidr | Format::Ipv6Cidr));

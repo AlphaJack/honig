@@ -16,15 +16,12 @@ serde = { version = "1", features = ["derive"] }
 # `preserve_order`: the generator turns it on in the workspace. On here too, the crate builds the same in `-p e2e` as in
 # `--workspace`, and its allocation counts with it.
 serde_json = { version = "1", features = ["preserve_order"] }
-# `format: uri` as `url::Url`. `ipv4-cidr` and `ipv6-cidr` as `ipnet` networks.
-url = { version = "2", default-features = false, features = ["std", "serde"] }
-ipnet = { version = "2", default-features = false, features = ["serde"] }
 # Optional adapters: each feature also turns on its `honig` feature.
 reqwest = { version = "0.13", optional = true, default-features = false, features = ["rustls"] }
 axum = { version = "0.8", optional = true, default-features = false }
 ureq = { version = "3", optional = true, default-features = false }
 reqwest-middleware = { version = "0.5", optional = true }
-honig = { version = "=0.0.3", features = ["client", "server", "base64", "cookie", "idn", "multipart", "oauth", "pkce", "regress", "xml", "simd"], path = "../../runtime" }
+honig = { version = "=0.0.3", features = ["client", "server", "base64", "cookie", "idn", "multipart", "oauth", "pkce", "regress", "xml", "simd", "url", "ipnet"], path = "../../runtime" }
 
 [features]
 # On by default so that the tests of the workspace serve and call through them. Optional so that the generated

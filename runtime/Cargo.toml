@@ -59,7 +59,11 @@ tracing = { version = "0.1", optional = true, default-features = false, features
 # `traceparent` and `tracestate`: the OpenTelemetry span context of a `tracing` span.
 opentelemetry = { version = "0.33", optional = true, default-features = false, features = ["trace"] }
 tracing-opentelemetry = { version = "0.34", optional = true, default-features = false }
-jiff = { version = "1", optional = true, default-features = false }
+# The types of string formats. Generated code refers to them through the runtime.
+jiff = { version = "1", optional = true, default-features = false, features = ["std", "serde"] }
+uuid = { version = "1", optional = true, features = ["serde"] }
+url = { version = "2", optional = true, features = ["serde"] }
+ipnet = { version = "2", optional = true, features = ["serde"] }
 # `email`, `idn-email`, `hostname` and `idn-hostname` checks: IDNA2008 and punycode.
 idna = { version = "1", optional = true }
 # The general category of a code point (RFC 5892 section 2.1). `idna` depends on it already.
@@ -93,7 +97,7 @@ wasm-bindgen = { version = "0.2", optional = true }
 wasm-bindgen-futures = { version = "0.4", optional = true }
 
 # A `##` comment documents the feature below it. A test turns them into the table in the book. The table also says
-# when `cargo honig generate` turns each one on (`config::FEATURES` in the generator).
+# when generated code needs each one (`settings::FEATURES` in the generator).
 [features]
 ## The generated client: the `Transport` bound over tower services and `TowerTransport`
 client = ["dep:tower-service"]
@@ -114,8 +118,14 @@ axum = ["server", "dep:axum", "axum/tokio"]
 tracing = ["server", "dep:tracing"]
 ## W3C Trace Context: `traceparent` and `tracestate`
 tracing-opentelemetry = ["dep:opentelemetry", "dep:tracing-opentelemetry", "dep:tracing"]
-## `FullTime`: `format: time` with its offset in `jiff` types
+## `date-time`, `date`, `date-time-local` and `time-local` as `jiff` types, and `FullTime` in them
 jiff = ["dep:jiff"]
+## `uuid` as `uuid::Uuid`
+uuid = ["dep:uuid"]
+## `uri` as `url::Url`
+url = ["dep:url"]
+## `ipv4-cidr` and `ipv6-cidr` as `ipnet` networks
+ipnet = ["dep:ipnet"]
 ## `email`, `idn-email`, `hostname` and `idn-hostname` checks
 idn = ["dep:idna", "dep:icu_properties"]
 ## `pattern` and `patternProperties` checks (ECMA-262)

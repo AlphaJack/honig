@@ -204,7 +204,7 @@ runtime::object! {
             skip_serializing_if = "Option::is_none",
             deserialize_with = "runtime::formats::read::<_, _, runtime::formats::Present<runtime::formats::Text<runtime::formats::format::Uri>>>"
         )]
-        pub success_callback_url: Option<url::Url>,
+        pub success_callback_url: Option<runtime::url::Url>,
         /// URL which gets invoked upon a failed operation
         #[serde(rename = "failureCallbackUrl")]
         #[serde(
@@ -212,7 +212,7 @@ runtime::object! {
             skip_serializing_if = "Option::is_none",
             deserialize_with = "runtime::formats::read::<_, _, runtime::formats::Present<runtime::formats::Text<runtime::formats::format::Uri>>>"
         )]
-        pub failure_callback_url: Option<url::Url>,
+        pub failure_callback_url: Option<runtime::url::Url>,
     }
 }
 impl Product {
@@ -1947,7 +1947,7 @@ runtime::object! {
             skip_serializing_if = "Option::is_none",
             deserialize_with = "runtime::formats::read::<_, _, runtime::formats::Present<runtime::formats::Text<runtime::formats::format::Uri>>>"
         )]
-        pub success_callback_url: Option<url::Url>,
+        pub success_callback_url: Option<runtime::url::Url>,
         /// URL which gets invoked upon a failed operation
         #[serde(rename = "failureCallbackUrl")]
         #[serde(
@@ -1955,7 +1955,7 @@ runtime::object! {
             skip_serializing_if = "Option::is_none",
             deserialize_with = "runtime::formats::read::<_, _, runtime::formats::Present<runtime::formats::Text<runtime::formats::format::Uri>>>"
         )]
-        pub failure_callback_url: Option<url::Url>,
+        pub failure_callback_url: Option<runtime::url::Url>,
     }
 }
 impl ProductRequest {
@@ -2545,9 +2545,9 @@ pub mod builders {
         creator(creator) : types::User = "creator" => some, None, tags(tags) : Vec <
         String > = "tags" => some, None, last_updated(last_updated) :
         runtime::DateTimeText = "lastUpdated" => some, None,
-        success_callback_url(success_callback_url) : url::Url = "successCallbackUrl" =>
-        some, None, failure_callback_url(failure_callback_url) : url::Url =
-        "failureCallbackUrl" => some, None } fixed {}
+        success_callback_url(success_callback_url) : runtime::url::Url =
+        "successCallbackUrl" => some, None, failure_callback_url(failure_callback_url) :
+        runtime::url::Url = "failureCallbackUrl" => some, None } fixed {}
     }
     runtime::typestate_builder! {
         Variant => super::Variant; required { name : R0 : String = "name" } optional {
@@ -2750,9 +2750,9 @@ pub mod builders {
         variants(variants) : Vec < types::VariantRequest > = "variants" => some, None,
         creator(creator) : types::UserRequest = "creator" => some, None, tags(tags) : Vec
         < String > = "tags" => some, None, success_callback_url(success_callback_url) :
-        url::Url = "successCallbackUrl" => some, None,
-        failure_callback_url(failure_callback_url) : url::Url = "failureCallbackUrl" =>
-        some, None } fixed {}
+        runtime::url::Url = "successCallbackUrl" => some, None,
+        failure_callback_url(failure_callback_url) : runtime::url::Url =
+        "failureCallbackUrl" => some, None } fixed {}
     }
     runtime::typestate_builder! {
         VariantRequest => super::VariantRequest; required { name : R0 : String = "name" }
