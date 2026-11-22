@@ -173,6 +173,21 @@ fn into_result_gives_no_tuple_of_two_values_of_one_type() {
     assert!(different.contains("pub type Success"), "{different}");
 }
 
+/// The `then` of a conditional keeps every limit: `maxProperties` is checked, and the `name` that the base and the
+/// `then` both describe meets both. A branch of a union that took only the `then` would drop the other.
+#[test]
+fn a_then_keeps_its_limits_beside_those_of_the_base() {
+    let person = json!({"type": "object",
+        "properties": {"kind": {"type": "string"}, "name": {"type": "string", "maxLength": 5}},
+        "if": {"properties": {"kind": {"const": "person"}}},
+        "then": {"properties": {"name": {"minLength": 1}}, "maxProperties": 2}});
+    let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Person": person}}));
+    let types =
+        common::file(&common::generate("then-limits", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
+    assert!(types.contains("`then`: "), "the `then` is checked as written: {types}");
+    assert!(!types.contains("pub enum Person"), "no union that drops the limits of the `then`: {types}");
+}
+
 /// Every `Params` has `new` accepting what is required; `Default` only when that is nothing.
 #[test]
 fn params_always_have_new_and_default_only_without_arguments() {
