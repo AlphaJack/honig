@@ -86,6 +86,16 @@ pub fn load(specs: &[std::path::PathBuf], opts: &Options) -> Result<Loaded, Diag
         }
         return Err(diagnostics);
     }
+    let not_lists = crate::resolve::security_not_lists(&doc.root);
+    if opts.server && !not_lists.is_empty() {
+        for ptr in not_lists {
+            diagnostics.error(
+                ptr,
+                "`security` must be a list: write `[]` for a public operation or remove the key to use the root's",
+            );
+        }
+        return Err(diagnostics);
+    }
     // A `pattern` that does not compile cannot be checked: its type would accept every value.
     if crate::validate::v32::has_uncompilable_pattern(&doc.root, "") {
         return Err(diagnostics);

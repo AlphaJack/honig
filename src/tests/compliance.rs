@@ -122,21 +122,21 @@ fn no_security_shape_turns_a_secured_operation_public() {
     }
 }
 
-/// A scheme that refers to a schema, to itself or to nothing defines no check: a server would skip it.
+/// A `security` that is not a list cannot be told apart from a missing one: a bare `security:` in YAML would make an
+/// operation public under a root requirement.
 #[test]
-fn a_scheme_reference_to_no_scheme_refuses_a_server() {
-    let refs = ["#/components/schemas/S", "#/components/securitySchemes/local", "#/components/securitySchemes/nope"];
-    for r in refs {
-        let components = json!({"schemas": {"S": {"type": "string"}}, "securitySchemes": {"local": {"$ref": r}}});
-        let path = common::write("sec-scheme-ref", &doc(&secured_op(&json!([{"local": []}])), &components), &[]);
-        crate::generate::generate(&path, &Options::default()).expect_err(r);
+fn a_security_that_is_not_a_list_refuses_a_server() {
+    let op =
+        json!({"/a": {"get": {"operationId": "a", "security": null, "responses": {"204": {"description": "ok"}}}}});
+    let mut v32 = doc(&op, &bearer());
+    v32["security"] = json!([{"local": []}]);
+    let v20 = json!({"swagger": "2.0", "info": {"title": "t", "version": "1"}, "paths": op,
+        "securityDefinitions": {"local": {"type": "apiKey", "in": "header", "name": "K"}}, "security": [{"local": []}]});
+    for (name, d) in [("sec-null-32", v32), ("sec-null-20", v20)] {
+        let path = common::write(name, &d, &[]);
+        let err = crate::generate::generate(&path, &Options::default()).expect_err(name);
+        assert!(err.iter().any(|d| d.pointer == "/paths/~1a/get/security"), "{name}: {:#?}", err.0);
     }
-    let components = json!({"securitySchemes": {"local": {"$ref": "#/components/securitySchemes/real"},
-        "real": {"type": "http", "scheme": "bearer"}}});
-    let d = doc(&secured_op(&json!([{"local": []}])), &components);
-    let consts = security_consts(&common::generate("sec-scheme-ref-real", &d, &Options::default()));
-    assert_eq!(consts.len(), 1);
-    assert!(!is_public(&consts[0]), "{}", consts[0]);
 }
 
 // `content` (3.2 Request Body / Response): "For requests that match multiple
