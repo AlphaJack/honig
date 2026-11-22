@@ -360,6 +360,18 @@ impl TryFrom<i32> for ListOrdersLimit {
             .map_err(runtime::BuildError::value)
     }
 }
+impl ListOrdersLimit {
+    /// Returns the value for a constant: it panics when the value breaks the limits, which is a build error
+    /// in a `const` and a panic when it runs. Convert a value that is not a literal with `try_from`.
+    ///
+    /// # Panics
+    /// The value breaks a limit.
+    #[must_use]
+    pub const fn from_literal(value: i32) -> Self {
+        assert!(value >= 1 && value <= 100, "a literal outside the limits of this type");
+        Self(value)
+    }
+}
 runtime::checked_num_impls!(ListOrdersLimit, i32);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum ListOrdersSort {

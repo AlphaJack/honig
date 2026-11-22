@@ -815,3 +815,12 @@ fn a_builder_checks_the_rules_across_fields() {
     let both = types::ShipmentInternational::builder().customs("none").parcels(parcels()).insurer("acme").build();
     assert!(both.is_err(), "not: customs `none` together with an insurer");
 }
+
+/// A bounded integer has a `const fn from_literal`: in a constant a literal that breaks its limits is a build error,
+/// and with a value only known when it runs it panics.
+#[test]
+fn a_literal_of_a_bounded_integer_is_built_in_a_constant() {
+    const AGE: types::UserAge = types::UserAge::from_literal(30);
+    assert_eq!(AGE.get(), 30);
+    assert!(std::panic::catch_unwind(|| types::UserAge::from_literal(-1)).is_err());
+}

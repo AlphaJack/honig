@@ -213,11 +213,35 @@ impl TryFrom<i64> for LogEntryLevel {
             .map_err(runtime::BuildError::value)
     }
 }
+impl LogEntryLevel {
+    /// Returns the value for a constant: it panics when the value breaks the limits, which is a build error
+    /// in a `const` and a panic when it runs. Convert a value that is not a literal with `try_from`.
+    ///
+    /// # Panics
+    /// The value breaks a limit.
+    #[must_use]
+    pub const fn from_literal(value: i64) -> Self {
+        assert!(value >= 0, "a literal outside the limits of this type");
+        Self(value)
+    }
+}
 runtime::checked_num_impls!(LogEntryLevel, i64);
 #[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct EventRetry(pub(super) i64);
 runtime::checked_twin!(EventRetry, LogEntryLevel, i64);
+impl EventRetry {
+    /// Returns the value for a constant: it panics when the value breaks the limits, which is a build error
+    /// in a `const` and a panic when it runs. Convert a value that is not a literal with `try_from`.
+    ///
+    /// # Panics
+    /// The value breaks a limit.
+    #[must_use]
+    pub const fn from_literal(value: i64) -> Self {
+        assert!(value >= 0, "a literal outside the limits of this type");
+        Self(value)
+    }
+}
 runtime::checked_num_impls!(EventRetry, i64);
 runtime::object! {
     #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -267,6 +291,18 @@ impl ParameterExamplesCookie {
 #[serde(transparent)]
 pub struct ParameterExamplesCookieCode(pub(super) i64);
 runtime::checked_twin!(ParameterExamplesCookieCode, LogEntryLevel, i64);
+impl ParameterExamplesCookieCode {
+    /// Returns the value for a constant: it panics when the value breaks the limits, which is a build error
+    /// in a `const` and a panic when it runs. Convert a value that is not a literal with `try_from`.
+    ///
+    /// # Panics
+    /// The value breaks a limit.
+    #[must_use]
+    pub const fn from_literal(value: i64) -> Self {
+        assert!(value >= 0, "a literal outside the limits of this type");
+        Self(value)
+    }
+}
 runtime::checked_num_impls!(ParameterExamplesCookieCode, i64);
 runtime::object! {
     #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]

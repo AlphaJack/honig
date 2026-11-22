@@ -135,6 +135,18 @@ impl TryFrom<u16> for EventPort {
             .map_err(runtime::BuildError::value)
     }
 }
+impl EventPort {
+    /// Returns the value for a constant: it panics when the value breaks the limits, which is a build error
+    /// in a `const` and a panic when it runs. Convert a value that is not a literal with `try_from`.
+    ///
+    /// # Panics
+    /// The value breaks a limit.
+    #[must_use]
+    pub const fn from_literal(value: u16) -> Self {
+        assert!(value >= 1024, "a literal outside the limits of this type");
+        Self(value)
+    }
+}
 runtime::checked_num_impls!(EventPort, u16);
 #[derive(Debug, Clone, PartialEq, Eq, Hash, serde::Serialize)]
 #[serde(transparent)]
