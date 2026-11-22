@@ -112,7 +112,7 @@ impl TryFrom<Vec<LogEntry>> for Log {
 }
 runtime::checked_impls!(Log, Vec < LogEntry >);
 runtime::object! {
-    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct Event {
         #[optional]
         pub event: String,
@@ -136,7 +136,7 @@ impl Event {
 }
 pub type SimpleLinkContext = Vec<SimpleLinkContextItem>;
 runtime::object! {
-    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct CollectionLinks {
         pub linkset: Vec<CollectionLinksLinksetItem>,
     }
@@ -269,7 +269,7 @@ pub struct ParameterExamplesCookieCode(pub(super) i64);
 runtime::checked_twin!(ParameterExamplesCookieCode, LogEntryLevel, i64);
 runtime::checked_num_impls!(ParameterExamplesCookieCode, i64);
 runtime::object! {
-    #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
     pub struct ParameterExamplesCoordinates {
         pub lat: f64,
         pub long: f64,
@@ -486,7 +486,7 @@ runtime::checked_impls!(
 );
 runtime::object! {
     /// event
-    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct ServerSentEventStreamsBodyItemEvent {
         #[optional]
         pub event: ServerSentEventStreamsBodyItemEventEvent,
@@ -516,7 +516,7 @@ impl ServerSentEventStreamsBodyItemEventEvent {
 runtime::const_impls!(ServerSentEventStreamsBodyItemEventEvent, VALUE);
 pub type ServerSentEventStreamsBodyItemEventRetry = EventRetry;
 runtime::object! {
-    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct ServerSentEventStreamsBodyItemAddInt64 {
         #[optional]
         pub event: ServerSentEventStreamsBodyItemAddInt64Event,
@@ -582,7 +582,7 @@ pub struct ServerSentEventStreamsBodyItemAddJsonData2(
 );
 runtime::json_text_impls!(ServerSentEventStreamsBodyItemAddJsonData2);
 runtime::object! {
-    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct ServerSentEventStreamsBodyItemAddJsonData2Content {
         pub foo: i64,
     }
@@ -771,7 +771,7 @@ pub struct Not6ObjectData(pub Not6ObjectDataContent);
 runtime::json_text_impls!(Not6ObjectData);
 runtime::object! {
     #[unique_keys]
-    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct Not6ObjectDataContent {
         pub foo: i64,
         #[serde(flatten)]

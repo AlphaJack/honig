@@ -100,14 +100,14 @@ impl Delivery {
 runtime::checked_json!(Delivery, DeliveryVariants);
 runtime::checked_impls!(Delivery, DeliveryVariants);
 runtime::object! {
-    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct Pickup {
         pub kind: String,
         pub store: String,
     }
 }
 runtime::object! {
-    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct Courier {
         pub kind: String,
         pub address: String,

@@ -3,7 +3,7 @@ use super::runtime;
 pub type Str = String;
 pub type Arr = Vec<String>;
 runtime::object! {
-    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct Obj {
         #[serde(rename = "R")]
         pub r: i64,

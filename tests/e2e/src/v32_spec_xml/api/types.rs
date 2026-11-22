@@ -318,7 +318,7 @@ impl runtime::XmlShape for ElementsWithAttributesAndTextOkItemObject {
     }
 }
 runtime::object! {
-    #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
     pub struct XmlWithNullValuesOk {
         #[serde(deserialize_with = "runtime::required_nullable")]
         pub count: Option<f64>,

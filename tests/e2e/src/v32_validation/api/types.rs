@@ -571,7 +571,7 @@ impl runtime::XmlShape for Line {
     }
 }
 runtime::object! {
-    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct Refusal {
         pub detail: String,
         pub object: RefusalObject,
@@ -646,7 +646,7 @@ impl runtime::XmlShape for Problem {
     }
 }
 runtime::object! {
-    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     #[serde(deny_unknown_fields)]
     pub struct Closed {
         pub name: String,
@@ -729,7 +729,7 @@ impl runtime::XmlShape for Badge {
     }
 }
 runtime::object! {
-    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct Login {
         pub user: String,
         pub token: String,
@@ -1333,7 +1333,7 @@ impl TaggedColourColour {
 }
 runtime::const_impls!(TaggedColourColour, VALUE);
 runtime::object! {
-    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct ImpliedObject {
         pub name: String,
     }
@@ -1361,7 +1361,7 @@ impl runtime::XmlShape for ImpliedObject {
     }
 }
 runtime::object! {
-    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct ReachVariant1 {
         pub email: String,
         #[optional]
@@ -1392,7 +1392,7 @@ impl runtime::XmlShape for ReachVariant1 {
     }
 }
 runtime::object! {
-    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct ReachVariant2 {
         #[optional]
         pub email: String,
@@ -1677,7 +1677,7 @@ impl TryFrom<i64> for DegenerateHalf {
 }
 runtime::checked_num_impls!(DegenerateHalf, i64);
 runtime::object! {
-    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct TreeVariant2 {
         pub items: Vec<Tree>,
         pub x: String,
@@ -1711,7 +1711,7 @@ impl runtime::XmlShape for TreeVariant2 {
     }
 }
 runtime::object! {
-    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct TreeVariant1 {
         pub items: Vec<Tree>,
         pub x: i64,

@@ -37,7 +37,7 @@ impl<'de> runtime::TaggedUnion<'de> for Product {
     }
 }
 runtime::object! {
-    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct Physical {
         pub kind: PhysicalKind,
         pub name: String,
@@ -60,7 +60,7 @@ impl Physical {
     }
 }
 runtime::object! {
-    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct Digital {
         pub kind: DigitalKind,
         pub name: String,
@@ -79,7 +79,7 @@ impl Digital {
     }
 }
 runtime::object! {
-    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct Error {
         pub code: i32,
         pub message: String,

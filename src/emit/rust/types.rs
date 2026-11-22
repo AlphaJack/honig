@@ -650,7 +650,7 @@ fn structure(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, s: &St
     // impl that uses them instead of the own default of each type.
     let defaults: Vec<(&Field, TokenStream)> =
         s.fields.iter().filter_map(|f| field_default(space, f).map(|e| (f, e))).collect();
-    let can_default = struct_default(space, s, &mut vec![id]);
+    let can_default = struct_default(space, s);
     let derive = derives(space, id, can_default && defaults.is_empty());
     let fields = s.fields.iter().map(|f| field(space, f, &pascal(&def.name)));
     let extra = ident(&super::syntax::extra_field(s));

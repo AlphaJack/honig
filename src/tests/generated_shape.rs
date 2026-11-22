@@ -133,6 +133,28 @@ fn twin_types_share_runtime_macros() {
     assert!(types.contains("runtime::union_serialize!(B {"), "{types}");
 }
 
+/// A struct with a required field has no `Default`: `Error { code, ..Default::default() }` would still compile after the
+/// description adds a required field, and the new field would start as an empty value. One without has it.
+#[test]
+fn a_struct_with_a_required_field_has_no_default() {
+    let doc = common::spec(
+        "3.2.0",
+        &json!({}),
+        &json!({"schemas": {
+            "Error": {"type": "object", "required": ["code"], "properties": {"code": {"type": "string"}}},
+            "Filter": {"type": "object", "properties": {"q": {"type": "string"}}}
+        }}),
+    );
+    let types = common::file(&common::generate("shape-no-default", &doc, &crate::emit::Options::default()), "types.rs")
+        .to_owned();
+    let derive_of = |name: &str| {
+        let (before, _) = types.split_once(&format!("pub struct {name} ")).expect("the struct");
+        before.rsplit_once("#[derive(").expect("a derive").1.split(")]").next().unwrap_or_default().to_owned()
+    };
+    assert!(!derive_of("Error").contains("Default"), "{types}");
+    assert!(derive_of("Filter").contains("Default"), "{types}");
+}
+
 /// Every `Params` has `new` accepting what is required; `Default` only when that is nothing.
 #[test]
 fn params_always_have_new_and_default_only_without_arguments() {

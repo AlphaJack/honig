@@ -7,7 +7,7 @@ use super::super::syntax::{ident, lit, ty};
 
 use crate::emit::rust::names::pascal;
 use crate::emit::rust::space::Space;
-use crate::ir::types::{Field, Kind, Struct, Ty, TypeId};
+use crate::ir::types::{Field, Kind, Struct, Ty};
 
 /// Returns the literal `v` as an expression of type `t` (`qualify`: `types::` paths)
 /// if it fits. That is scalars and string/integer enums through aliases.
@@ -153,10 +153,10 @@ pub(super) fn const_default(space: &Space<'_>, f: &Field) -> bool {
     !matches!(space.types.unalias(&f.ty), Ty::String | Ty::Named(_))
 }
 
-/// Does every required field of `s` have a `Default`? (`seen` guards cycles.)
-pub(super) fn struct_default(space: &Space<'_>, s: &Struct, seen: &mut Vec<TypeId>) -> bool {
-    // A field with a spec default is filled by its `default_<field>` function.
-    s.fields.iter().filter(|f| is_arg(space, f)).all(|f| ty_default(space, &f.ty, seen))
+/// Does `s` take no required argument? Then it has a `Default`. With one it has none: `..Default::default()` would
+/// still compile after the description adds a required field, and the new field would start as an empty value.
+pub(super) fn struct_default(space: &Space<'_>, s: &Struct) -> bool {
+    !s.fields.iter().any(|f| is_arg(space, f))
 }
 
 /// Is `f` required with no spec default and more than one value? Then `new` accepts it as an argument.
@@ -168,47 +168,4 @@ pub(super) fn is_arg(space: &Space<'_>, f: &Field) -> bool {
 pub(super) fn is_unit(space: &Space<'_>, f: &Field) -> bool {
     f.required
         && matches!(space.types.unalias(&f.ty), Ty::Named(c) if matches!(space.types.get(*c).kind, Kind::Const(_)))
-}
-
-/// Does the Rust type of `t` implement `Default` as generated?
-pub(super) fn ty_default(space: &Space<'_>, t: &Ty, seen: &mut Vec<TypeId>) -> bool {
-    use crate::ir::types::Format;
-    if let Ty::Named(id) = t {
-        // Your own type (`x-rust-type`) may not implement `Default`.
-        if seen.contains(id) || space.types.get(*id).rust_type.is_some() {
-            return false;
-        }
-        seen.push(*id);
-        let ok = match &space.types.get(*id).kind {
-            Kind::Struct(st) => struct_default(space, st, seen),
-            Kind::Alias(x) => ty_default(space, x, seen),
-            // The unit struct's only value.
-            Kind::Const(_) => true,
-            // A checked newtype has no valid empty value.
-            Kind::Checked(_)
-            | Kind::StrEnum(_)
-            | Kind::IntEnum(_)
-            | Kind::Union(_)
-            | Kind::Newtype(_)
-            | Kind::Pending => false,
-        };
-        seen.pop();
-        return ok;
-    }
-    if let Ty::Format(f) = t {
-        // `url::Url` and `std::net`'s `Ipv4Addr` and `Ipv6Addr` have no `Default`. A mail address and a host name
-        // have no value that every one of their kind could start from either. The uuid, jiff and ipnet format
-        // types all implement it. So does `runtime::FullTime`.
-        // Nor has the text of a format without its library: an empty one is not of the format.
-        // Nor has a type that the table sets: honig cannot know.
-        return !(super::super::syntax::untyped(space.libs, *f)
-            || space.libs.named.contains_key(f)
-            || (*f == Format::Uri && space.libs.url)
-            || matches!(
-                f,
-                Format::Email | Format::IdnEmail | Format::Hostname | Format::IdnHostname | Format::Ipv4 | Format::Ipv6
-            ));
-    }
-    // A list, a map and an option start empty. `[T; N]` is `Default` up to 32 items. `fixed_len` guarantees that.
-    matches!(t, Ty::Vec(_) | Ty::Map(_) | Ty::Option(_)) || t.children().iter().all(|x| ty_default(space, x, seen))
 }

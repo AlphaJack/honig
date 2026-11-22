@@ -36,7 +36,7 @@ runtime::object! {
     }
 }
 runtime::object! {
-    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct Sepa {
         pub iban: String,
     }
@@ -48,7 +48,7 @@ impl Sepa {
     }
 }
 runtime::object! {
-    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct Car {
         pub kind: String,
         pub seats: i64,
@@ -61,7 +61,7 @@ impl Car {
     }
 }
 runtime::object! {
-    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct Van {
         pub kind: String,
         #[serde(rename = "cargoLitres")]
@@ -131,7 +131,7 @@ runtime::object! {
     }
 }
 runtime::object! {
-    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct OrderPage {
         pub items: Vec<Order>,
         #[optional]
@@ -172,16 +172,6 @@ impl Problem {
     #[must_use]
     pub fn default_type_() -> String {
         "about:blank".to_owned()
-    }
-}
-impl Default for Problem {
-    fn default() -> Self {
-        Self {
-            type_: Self::default_type_(),
-            title: <String>::default(),
-            status: <i64>::default(),
-            detail: <runtime::Nullable<String>>::default(),
-        }
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
@@ -450,7 +440,7 @@ runtime::object! {
     }
 }
 runtime::object! {
-    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct OrderPageRequest {
         pub items: Vec<OrderRequest>,
         #[optional]

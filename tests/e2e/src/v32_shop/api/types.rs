@@ -112,7 +112,7 @@ runtime::checked_json!(Item, ItemVariants);
 runtime::checked_impls!(Item, ItemVariants);
 runtime::object! {
     /// A product in the shop
-    #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
     pub struct Product {
         pub id: i64,
         pub name: String,
@@ -246,7 +246,7 @@ impl runtime::XmlShape for Product {
 }
 runtime::object! {
     /// Every variant in the shop
-    #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
     pub struct Variant {
         #[optional]
         pub id: i64,
@@ -453,7 +453,7 @@ impl runtime::XmlShape for ShopMessage {
 }
 runtime::object! {
     /// Metadata describing a batch of uploaded photos
-    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct PhotoBatchMeta {
         /// Who captured the photos
         pub photographer: String,
@@ -1758,7 +1758,7 @@ runtime::checked_json!(ItemRequest, ItemRequestVariants);
 runtime::checked_impls!(ItemRequest, ItemRequestVariants);
 runtime::object! {
     /// A product in the shop
-    #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
     pub struct ProductRequest {
         pub name: String,
         #[nullable]
@@ -1880,7 +1880,7 @@ impl runtime::XmlShape for ProductRequest {
 }
 runtime::object! {
     /// Every variant in the shop
-    #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
     pub struct VariantRequest {
         pub name: String,
         #[nullable]

@@ -114,12 +114,11 @@ pub fn at(size: usize) -> (Head, Base) {
     let (generated, baseline) = cost::at(size);
     let over = |prefix: &str| honig::TowerTransport::new(generated.clone(), prefix);
     let raw = cost::upload_body(size);
-    let book = xml::api::types::Book {
-        id: 1,
-        title: "Dune".to_owned(),
-        authors: authors(size).map(|(name, born)| xml::api::types::Author { name, born: Some(born) }).collect(),
-        ..Default::default()
-    };
+    let book = xml::api::types::Book::new(
+        1,
+        "Dune".to_owned(),
+        authors(size).map(|(name, born)| xml::api::types::Author { name, born: Some(born) }).collect(),
+    );
     let user = val::api::types::User {
         name: "Alice".try_into().expect("a valid name"),
         handle: None,
