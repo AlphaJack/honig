@@ -121,6 +121,9 @@ pub(crate) const DUPLICATE_HOOK: &str = "also described by";
 /// `deleteUser`). `generate` fails on it: the later would be numbered by its place in the document, so a reorder would
 /// swap the two.
 pub(crate) const SAME_ITEM: &str = "map to the same item in Rust";
+/// The end of the message about a required `Authorization` header parameter. OAS ignores it, so a server would never
+/// ask for it: a description states authentication with a security scheme. A server is not generated.
+pub(crate) const AUTH_PARAM: &str = "describe authentication with a security scheme";
 /// The start of the message about a field that its object does not have. A server is not generated from a description
 /// that has one: it may be a misspelt `security`.
 pub(crate) const UNKNOWN_FIELD: &str = "unknown field";

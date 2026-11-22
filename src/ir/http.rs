@@ -611,6 +611,18 @@ fn param_value(
 }
 
 /// Returns parameters: operation-level ones override path-level ones (name + in).
+/// Is the header parameter one that OAS says "SHALL be ignored"? The runtime manages `Content-Type`, `Accept` and
+/// `Authorization`. A required `Authorization` is an error: a server would never ask for it.
+fn ignored_header(b: &mut Builder<'_>, wire: &str, param: &Value, ptr: &str) -> bool {
+    if !["content-type", "accept", "authorization"].contains(&wire.to_ascii_lowercase().as_str()) {
+        return false;
+    }
+    if wire.eq_ignore_ascii_case("authorization") && json::flag(param, "required") {
+        b.diags.error(ptr, format!("a required `{wire}` header parameter is ignored: {}", crate::diag::AUTH_PARAM));
+    }
+    true
+}
+
 fn params(b: &mut Builder<'_>, site: &Site<'_>, prefix: &Name) -> Vec<Param> {
     let mut raw: Vec<(Value, String)> = vec![];
     let lists = [
@@ -643,10 +655,7 @@ fn params(b: &mut Builder<'_>, site: &Site<'_>, prefix: &Name) -> Vec<Param> {
             b.diags.warning(&pptr, format!("path parameter `{wire}` is not in `{}`; ignoring it", site.path));
             continue;
         }
-        // Content-Type, Accept and Authorization headers are managed by the runtime.
-        if location == Location::Header
-            && ["content-type", "accept", "authorization"].contains(&wire.to_ascii_lowercase().as_str())
-        {
+        if location == Location::Header && ignored_header(b, &wire, &p, &pptr) {
             continue;
         }
         // A parameter of `components/parameters` gets its type name as a component schema does: after its key and not

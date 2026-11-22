@@ -252,6 +252,18 @@ fn two_scopes_of_one_variant_refuse_a_server() {
         common::write("sec-scope-variants", &doc(&secured_op(&json!([{"oauth": ["read:user"]}])), &components), &[]);
     let err = crate::generate::generate(&path, &Options::default()).expect_err("must refuse");
     assert!(err.iter().any(|d| d.pointer == "/components/securitySchemes/oauth"), "{:#?}", err.0);
+}
+
+/// A required `Authorization` header parameter is ignored by OAS: a server built from it would never ask for the
+/// header. The description states authentication with a security scheme.
+#[test]
+fn an_authorization_header_parameter_refuses_a_server() {
+    let param = json!({"name": "Authorization", "in": "header", "required": true, "schema": {"type": "string"}});
+    let paths = json!({"/a": {"get": {"operationId": "a", "parameters": [param],
+        "responses": {"204": {"description": "ok"}}}}});
+    let path = common::write("sec-auth-param", &doc(&paths, &json!({})), &[]);
+    let err = crate::generate::generate(&path, &Options::default()).expect_err("must refuse");
+    assert!(err.iter().any(|d| d.message.contains("security scheme")), "{:#?}", err.0);
     let client = Options { server: false, tests: false, ..Options::default() };
     crate::generate::generate(&path, &client).expect("a client is still generated");
 }
