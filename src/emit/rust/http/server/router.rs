@@ -3,7 +3,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use proc_macro2::TokenStream;
-use quote::{format_ident, quote};
+use quote::{ToTokens, format_ident, quote};
 
 use crate::emit::rust::http::paths::specificity;
 use crate::emit::rust::http::paths::{Seg, template_segs};
@@ -56,20 +56,24 @@ pub(crate) fn dispatch_fns(path_ops: &[&Operation]) -> TokenStream {
             }
         };
     }
+    // Each chunk matches the position of the operation in it: the last position takes the rest of the integers.
     let chunks: Vec<&[&Operation]> = path_ops.chunks(DISPATCH_CHUNK).collect();
     let fs: Vec<_> = (0..chunks.len()).map(|ci| format_ident!("dispatch_{ci}")).collect();
-    let groups = chunks.iter().zip(&fs).map(|(ops, f)| {
-        let vs = ops.iter().map(|op| operation_variant(op));
-        quote!(#(Operation::#vs)|* => #f(api, op, routed, call).await,)
+    let groups = chunks.iter().zip(&fs).flat_map(|(ops, f)| {
+        ops.iter().enumerate().map(move |(i, op)| {
+            let (v, i) = (operation_variant(op), num(i));
+            quote!(Operation::#v => #f(api, #i, routed, call).await,)
+        })
     });
     let parts = chunks.iter().zip(&fs).map(|(ops, f)| {
-        let arms = ops.iter().map(arm);
+        let arms = ops.iter().enumerate().map(|(i, op)| {
+            let name = snake_ident(&op.name);
+            let at = if i + 1 == ops.len() { quote!(_) } else { num(i).into_token_stream() };
+            quote!(#at => Box::pin(#name(api, routed, call)).await,)
+        });
         quote! {
-            async fn #f<A: Api>(api: &A, op: Operation, #sig) -> runtime::Response {
-                match op {
-                    #(#arms)*
-                    _ => unreachable!("`dispatch` passes only the operations of this chunk"),
-                }
+            async fn #f<A: Api>(api: &A, at: usize, #sig) -> runtime::Response {
+                match at { #(#arms)* }
             }
         }
     });
@@ -216,6 +220,40 @@ pub(crate) fn base_paths(servers: &[crate::ir::Server]) -> Vec<String> {
     out
 }
 
+/// Returns the body of `Operations::route`: the operation of the method on the leaf of the path, and where the variables
+/// of its template are. `strip_base` binds `found` without the base path when it has one.
+fn route_body(strip_base: &TokenStream) -> TokenStream {
+    quote! {
+        let (path, _) = runtime::split_target(target);
+        let path = runtime::normalize_path(path);
+        let path: &str = &path;
+        #strip_base
+        let Some((methods, caps)) = found.and_then(|(leaf, caps)| Some((*METHODS.get(leaf)?, caps))) else {
+            return Err(runtime::Reason::NotFound);
+        };
+        runtime::find_method(methods, method)
+            .map(|(_, op)| (*op, runtime::Spans::of(path, &caps)))
+            .ok_or_else(|| runtime::Reason::MethodNotAllowed(runtime::allowed_methods(methods)))
+    }
+}
+
+/// Returns the body of `Operations::call`: the server routed the request, so its operation and the variables of the
+/// path that it routed come along.
+fn call_body() -> TokenStream {
+    quote! {
+        Box::pin(async move {
+            let mut req = req;
+            let uri = call.uri().clone();
+            let (path, raw_query) = runtime::split_target(runtime::path_and_query(&uri));
+            let path = runtime::normalize_path(path);
+            let caps = call.captures(&path);
+            let query = runtime::parse_query(raw_query);
+            let routed = runtime::Routed { request: &mut req, caps: &caps, raw_query, query: &query };
+            dispatch(&*self.0, call.operation(), routed, call).await
+        })
+    }
+}
+
 pub(crate) fn router(api: &Api) -> TokenStream {
     let bases = served_bases(api);
     let strip_base = (!bases.is_empty()).then(|| {
@@ -247,32 +285,7 @@ pub(crate) fn router(api: &Api) -> TokenStream {
     let (nodes, groups) = route_trie(&routes);
     let nodes = trie_nodes(&nodes);
     let groups = groups.iter().map(|g| quote!(&[#(#g),*]));
-    // The leaf of the path with its (method, operation) pairs and the variables of the template.
-    let route = quote! {
-        let (path, _) = runtime::split_target(target);
-        let path = runtime::normalize_path(path);
-        let path: &str = &path;
-        #strip_base
-        let Some((methods, caps)) = found.and_then(|(leaf, caps)| Some((*METHODS.get(leaf)?, caps))) else {
-            return Err(runtime::Reason::NotFound);
-        };
-        runtime::find_method(methods, method)
-            .map(|(_, op)| (*op, runtime::Spans::of(path, &caps)))
-            .ok_or_else(|| runtime::Reason::MethodNotAllowed(runtime::allowed_methods(methods)))
-    };
-    // The server routed the request: its operation and the variables of the path that it routed come along.
-    let call = quote! {
-        Box::pin(async move {
-            let mut req = req;
-            let uri = call.uri().clone();
-            let (path, raw_query) = runtime::split_target(runtime::path_and_query(&uri));
-            let path = runtime::normalize_path(path);
-            let caps = call.captures(&path);
-            let query = runtime::parse_query(raw_query);
-            let routed = runtime::Routed { request: &mut req, caps: &caps, raw_query, query: &query };
-            dispatch(&*self.0, call.operation(), routed, call).await
-        })
-    };
+    let (route, call) = (route_body(&strip_base), call_body());
     let dispatch = dispatch_fns(&path_ops);
     let verify = super::verify_fn(api, &path_ops, &quote!(&*self.0), &quote!(A::Principal));
     quote! {

@@ -501,92 +501,90 @@ async fn dispatch<A: Api>(
     call: runtime::Call<'_, Option<A::Principal>, Operation>,
 ) -> runtime::Response {
     match op {
-        Operation::MatrixFs
-        | Operation::MatrixFa
-        | Operation::MatrixFo
-        | Operation::MatrixTa
-        | Operation::MatrixTo
-        | Operation::LabelFs
-        | Operation::LabelFa
-        | Operation::LabelFo
-        | Operation::LabelTa
-        | Operation::LabelTo
-        | Operation::SimpleFa
-        | Operation::SimpleFo
-        | Operation::SimpleTa
-        | Operation::SimpleTo
-        | Operation::FormFa
-        | Operation::FormFo
-        | Operation::FormTa
-        | Operation::FormTo
-        | Operation::SpaceFa
-        | Operation::SpaceFo
-        | Operation::PipeFa
-        | Operation::PipeFo
-        | Operation::DeepO
-        | Operation::HeaderFa
-        | Operation::HeaderFo => dispatch_0(api, op, routed, call).await,
-        Operation::HeaderTa
-        | Operation::HeaderTo
-        | Operation::CookieFormFa
-        | Operation::CookieFormFo
-        | Operation::CookieFa
-        | Operation::CookieFo
-        | Operation::CookieTa
-        | Operation::CookieTo => dispatch_1(api, op, routed, call).await,
+        Operation::MatrixFs => dispatch_0(api, 0, routed, call).await,
+        Operation::MatrixFa => dispatch_0(api, 1, routed, call).await,
+        Operation::MatrixFo => dispatch_0(api, 2, routed, call).await,
+        Operation::MatrixTa => dispatch_0(api, 3, routed, call).await,
+        Operation::MatrixTo => dispatch_0(api, 4, routed, call).await,
+        Operation::LabelFs => dispatch_0(api, 5, routed, call).await,
+        Operation::LabelFa => dispatch_0(api, 6, routed, call).await,
+        Operation::LabelFo => dispatch_0(api, 7, routed, call).await,
+        Operation::LabelTa => dispatch_0(api, 8, routed, call).await,
+        Operation::LabelTo => dispatch_0(api, 9, routed, call).await,
+        Operation::SimpleFa => dispatch_0(api, 10, routed, call).await,
+        Operation::SimpleFo => dispatch_0(api, 11, routed, call).await,
+        Operation::SimpleTa => dispatch_0(api, 12, routed, call).await,
+        Operation::SimpleTo => dispatch_0(api, 13, routed, call).await,
+        Operation::FormFa => dispatch_0(api, 14, routed, call).await,
+        Operation::FormFo => dispatch_0(api, 15, routed, call).await,
+        Operation::FormTa => dispatch_0(api, 16, routed, call).await,
+        Operation::FormTo => dispatch_0(api, 17, routed, call).await,
+        Operation::SpaceFa => dispatch_0(api, 18, routed, call).await,
+        Operation::SpaceFo => dispatch_0(api, 19, routed, call).await,
+        Operation::PipeFa => dispatch_0(api, 20, routed, call).await,
+        Operation::PipeFo => dispatch_0(api, 21, routed, call).await,
+        Operation::DeepO => dispatch_0(api, 22, routed, call).await,
+        Operation::HeaderFa => dispatch_0(api, 23, routed, call).await,
+        Operation::HeaderFo => dispatch_0(api, 24, routed, call).await,
+        Operation::HeaderTa => dispatch_1(api, 0, routed, call).await,
+        Operation::HeaderTo => dispatch_1(api, 1, routed, call).await,
+        Operation::CookieFormFa => dispatch_1(api, 2, routed, call).await,
+        Operation::CookieFormFo => dispatch_1(api, 3, routed, call).await,
+        Operation::CookieFa => dispatch_1(api, 4, routed, call).await,
+        Operation::CookieFo => dispatch_1(api, 5, routed, call).await,
+        Operation::CookieTa => dispatch_1(api, 6, routed, call).await,
+        Operation::CookieTo => dispatch_1(api, 7, routed, call).await,
     }
 }
 async fn dispatch_0<A: Api>(
     api: &A,
-    op: Operation,
+    at: usize,
     routed: runtime::Routed<'_>,
     call: runtime::Call<'_, Option<A::Principal>, Operation>,
 ) -> runtime::Response {
-    match op {
-        Operation::MatrixFs => Box::pin(matrix_fs(api, routed, call)).await,
-        Operation::MatrixFa => Box::pin(matrix_fa(api, routed, call)).await,
-        Operation::MatrixFo => Box::pin(matrix_fo(api, routed, call)).await,
-        Operation::MatrixTa => Box::pin(matrix_ta(api, routed, call)).await,
-        Operation::MatrixTo => Box::pin(matrix_to(api, routed, call)).await,
-        Operation::LabelFs => Box::pin(label_fs(api, routed, call)).await,
-        Operation::LabelFa => Box::pin(label_fa(api, routed, call)).await,
-        Operation::LabelFo => Box::pin(label_fo(api, routed, call)).await,
-        Operation::LabelTa => Box::pin(label_ta(api, routed, call)).await,
-        Operation::LabelTo => Box::pin(label_to(api, routed, call)).await,
-        Operation::SimpleFa => Box::pin(simple_fa(api, routed, call)).await,
-        Operation::SimpleFo => Box::pin(simple_fo(api, routed, call)).await,
-        Operation::SimpleTa => Box::pin(simple_ta(api, routed, call)).await,
-        Operation::SimpleTo => Box::pin(simple_to(api, routed, call)).await,
-        Operation::FormFa => Box::pin(form_fa(api, routed, call)).await,
-        Operation::FormFo => Box::pin(form_fo(api, routed, call)).await,
-        Operation::FormTa => Box::pin(form_ta(api, routed, call)).await,
-        Operation::FormTo => Box::pin(form_to(api, routed, call)).await,
-        Operation::SpaceFa => Box::pin(space_fa(api, routed, call)).await,
-        Operation::SpaceFo => Box::pin(space_fo(api, routed, call)).await,
-        Operation::PipeFa => Box::pin(pipe_fa(api, routed, call)).await,
-        Operation::PipeFo => Box::pin(pipe_fo(api, routed, call)).await,
-        Operation::DeepO => Box::pin(deep_o(api, routed, call)).await,
-        Operation::HeaderFa => Box::pin(header_fa(api, routed, call)).await,
-        Operation::HeaderFo => Box::pin(header_fo(api, routed, call)).await,
-        _ => unreachable!("`dispatch` passes only the operations of this chunk"),
+    match at {
+        0 => Box::pin(matrix_fs(api, routed, call)).await,
+        1 => Box::pin(matrix_fa(api, routed, call)).await,
+        2 => Box::pin(matrix_fo(api, routed, call)).await,
+        3 => Box::pin(matrix_ta(api, routed, call)).await,
+        4 => Box::pin(matrix_to(api, routed, call)).await,
+        5 => Box::pin(label_fs(api, routed, call)).await,
+        6 => Box::pin(label_fa(api, routed, call)).await,
+        7 => Box::pin(label_fo(api, routed, call)).await,
+        8 => Box::pin(label_ta(api, routed, call)).await,
+        9 => Box::pin(label_to(api, routed, call)).await,
+        10 => Box::pin(simple_fa(api, routed, call)).await,
+        11 => Box::pin(simple_fo(api, routed, call)).await,
+        12 => Box::pin(simple_ta(api, routed, call)).await,
+        13 => Box::pin(simple_to(api, routed, call)).await,
+        14 => Box::pin(form_fa(api, routed, call)).await,
+        15 => Box::pin(form_fo(api, routed, call)).await,
+        16 => Box::pin(form_ta(api, routed, call)).await,
+        17 => Box::pin(form_to(api, routed, call)).await,
+        18 => Box::pin(space_fa(api, routed, call)).await,
+        19 => Box::pin(space_fo(api, routed, call)).await,
+        20 => Box::pin(pipe_fa(api, routed, call)).await,
+        21 => Box::pin(pipe_fo(api, routed, call)).await,
+        22 => Box::pin(deep_o(api, routed, call)).await,
+        23 => Box::pin(header_fa(api, routed, call)).await,
+        _ => Box::pin(header_fo(api, routed, call)).await,
     }
 }
 async fn dispatch_1<A: Api>(
     api: &A,
-    op: Operation,
+    at: usize,
     routed: runtime::Routed<'_>,
     call: runtime::Call<'_, Option<A::Principal>, Operation>,
 ) -> runtime::Response {
-    match op {
-        Operation::HeaderTa => Box::pin(header_ta(api, routed, call)).await,
-        Operation::HeaderTo => Box::pin(header_to(api, routed, call)).await,
-        Operation::CookieFormFa => Box::pin(cookie_form_fa(api, routed, call)).await,
-        Operation::CookieFormFo => Box::pin(cookie_form_fo(api, routed, call)).await,
-        Operation::CookieFa => Box::pin(cookie_fa(api, routed, call)).await,
-        Operation::CookieFo => Box::pin(cookie_fo(api, routed, call)).await,
-        Operation::CookieTa => Box::pin(cookie_ta(api, routed, call)).await,
-        Operation::CookieTo => Box::pin(cookie_to(api, routed, call)).await,
-        _ => unreachable!("`dispatch` passes only the operations of this chunk"),
+    match at {
+        0 => Box::pin(header_ta(api, routed, call)).await,
+        1 => Box::pin(header_to(api, routed, call)).await,
+        2 => Box::pin(cookie_form_fa(api, routed, call)).await,
+        3 => Box::pin(cookie_form_fo(api, routed, call)).await,
+        4 => Box::pin(cookie_fa(api, routed, call)).await,
+        5 => Box::pin(cookie_fo(api, routed, call)).await,
+        6 => Box::pin(cookie_ta(api, routed, call)).await,
+        _ => Box::pin(cookie_to(api, routed, call)).await,
     }
 }
 static MATRIX_FS_OP: runtime::Op = runtime::Op::new(

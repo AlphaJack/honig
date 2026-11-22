@@ -179,7 +179,7 @@ impl<C, Id: Copy> Call<'_, C, Id> {
         &self.uri
     }
 
-    /// Returns the path variables in `path`, the routed path as [`crate::normalize_path`] gives it.
+    /// Returns the path variables in `path`, the routed path as [`normalize_path`](crate::server::route::normalize_path) gives it.
     #[must_use]
     pub fn captures<'p>(&self, path: &'p str) -> crate::server::route::Captures<'p> {
         self.spans.captures(path)
