@@ -149,6 +149,8 @@ fn expected(requirements: &[&[api::runtime::Requirement]], creds: &Creds) -> Out
 #[derive(Default)]
 struct Server {
     seen: Mutex<Option<Seen>>,
+    /// The credentials that the handler of `read` found with `credentials`.
+    presented: Mutex<Vec<String>>,
 }
 
 type Answer<T> = Result<T, api::ApiError>;
@@ -223,6 +225,7 @@ impl api::Api for Server {
     }
     async fn read(&self, _: ops::read::Params, ctx: &api::Context<'_, String>) -> Answer<ops::read::Response> {
         self.record(Seen::Principal(ctx.principal.clone()));
+        *self.presented.lock().unwrap() = api::server::credentials(ctx).iter().map(|c| format!("{c:?}")).collect();
         Ok(ops::read::Response::NoContent)
     }
     async fn write(&self, _: ops::write::Params, ctx: &api::Context<'_, String>) -> Answer<ops::write::Response> {
@@ -406,6 +409,30 @@ fn an_extension_of_the_principal_type_is_not_the_caller() {
     let resp = api::block_on(api::Server::new(Arc::clone(&server)).into_service().handle(req));
     assert_eq!(resp.status().as_u16(), 204);
     assert_eq!(server.seen.lock().unwrap().clone(), Some(Seen::Anonymous));
+}
+
+/// A handler gets the credentials that a `verify_` method accepted. A forged one beside a valid one of another
+/// alternative is not among them.
+#[test]
+fn a_handler_gets_only_the_credentials_that_passed() {
+    let read = |creds: Creds| {
+        let mut req = api::runtime::new_request("GET", "/read".to_owned(), vec![]).unwrap();
+        if let Auth::Bearer(t) = creds.auth {
+            req.headers_mut()
+                .append("authorization", honig::http::HeaderValue::try_from(format!("Bearer {t}")).unwrap());
+        }
+        if let Some(k) = creds.key {
+            req.headers_mut().append("x-key", honig::http::HeaderValue::try_from(k).unwrap());
+        }
+        let server = Arc::new(Server::default());
+        let resp = api::block_on(api::Server::new(Arc::clone(&server)).into_service().handle(req));
+        let presented = server.presented.lock().unwrap().clone();
+        (resp.status().as_u16(), presented)
+    };
+    let valid_oauth = read(Creds { auth: Auth::Bearer("o-read"), key: Some("forged"), ..NONE });
+    assert_eq!(valid_oauth, (204, vec![r#"Oauth("o-read")"#.to_owned()]));
+    let valid_key = read(Creds { auth: Auth::Bearer("forged"), key: Some("k-bob"), ..NONE });
+    assert_eq!(valid_key, (204, vec![r#"Key("k-bob")"#.to_owned()]));
 }
 
 // ANCHOR: optional-rate-limit

@@ -454,10 +454,12 @@ where
     let ranges = Ranges::of(&head, op.ranges);
     let remote = Remote::of(&head.headers);
     let mut req = Request::from_parts(head, body);
-    let principal = match authorize(&shared.ops, &req, op.security, &satisfied.auth).await {
-        Ok(principal) => principal,
+    let (principal, alternative) = match authorize(&shared.ops, &req, op.security, &satisfied.auth).await {
+        Ok(passed) => passed,
         Err(reason) => return refused(config, operation, method, reason, req.headers().clone(), started),
     };
+    let mut satisfied = satisfied;
+    satisfied.keep(alternative);
     let event = RequestEvent::new(Some(operation), method);
     event.security(&satisfied);
     let extensions = req.extensions_mut();
@@ -521,14 +523,14 @@ fn refused<Id: crate::Operation>(
 /// - 401 when no alternative passes.
 /// - 403 when one would pass but its credentials lack a scope.
 /// - The `Err` of a `verify_` method as it is.
-async fn authorize<O: Operations>(
+async fn authorize<'r, O: Operations>(
     ops: &O,
     req: &Request,
-    requirements: &[&[Requirement]],
+    requirements: &'r [&'r [Requirement]],
     presented: &[(Scheme, String)],
-) -> Result<Option<O::Principal>, Reason> {
+) -> Result<(Option<O::Principal>, &'r [Requirement]), Reason> {
     if requirements.is_empty() {
-        return Ok(None);
+        return Ok((None, &[]));
     }
     let mut verified: Vec<(&'static str, Option<Verified<O::Principal>>)> = Vec::new();
     let (mut refused, mut lacking) = (false, false);
@@ -561,7 +563,7 @@ async fn authorize<O: Operations>(
                 }
             }
         }
-        return Ok(principal);
+        return Ok((principal, alt));
     }
     if lacking {
         let insufficient =
@@ -573,7 +575,7 @@ async fn authorize<O: Operations>(
         return Err(Reason::Denied(insufficient));
     }
     if !refused && requirements.iter().any(|alt| alt.is_empty()) {
-        return Ok(None);
+        return Ok((None, &[]));
     }
     Err(Reason::Unauthorized)
 }
