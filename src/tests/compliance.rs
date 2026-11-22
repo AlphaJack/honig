@@ -303,6 +303,26 @@ fn enum_names_of_another_length_fail_generation() {
     crate::generate::generate(&ok, &Options::default()).expect("one name for each value generates");
 }
 
+/// A name in `operations` that no operation has fails generation: it would give an empty module. The count is of the
+/// operations that stay.
+#[test]
+fn an_unknown_operation_id_fails_generation() {
+    let ok = json!({"204": {"description": "ok"}});
+    let paths = json!({"/a": {"get": {"operationId": "getA", "responses": ok}},
+        "/b": {"get": {"operationId": "getB", "responses": ok}}});
+    let path = common::write("unknown-operation", &doc(&paths, &json!({})), &[]);
+    let only = |names: &[&str]| Options {
+        operations: Some(names.iter().map(|n| (*n).to_owned()).collect()),
+        ..Options::default()
+    };
+    let err = crate::generate::generate(&path, &only(&["getA", "getZ"])).expect_err("must fail");
+    assert!(err.iter().any(|d| d.message.contains("`getZ`")), "{:#?}", err.0);
+    let listed = crate::generate::generate(&path, &only(&["getA"])).expect("generates");
+    assert_eq!(listed.operations, 1, "the count is after the filter");
+    let all = crate::generate::generate(&path, &Options::default()).expect("generates");
+    assert_eq!(all.operations, 2);
+}
+
 // `content` (3.2 Request Body / Response): "For requests that match multiple
 // keys, only the most specific key is applicable."
 
