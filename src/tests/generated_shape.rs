@@ -118,6 +118,21 @@ fn a_required_only_branch_is_counted_by_its_names() {
     assert!(!types.contains("NotChecked"), "{types}");
 }
 
+/// Twin types, two enums of the same values or two unions of the same variants, each write their impls through runtime
+/// macros that take their variants: no file writes a macro of its own.
+#[test]
+fn twin_types_share_runtime_macros() {
+    let kind = json!({"type": "string", "enum": ["a", "b"]});
+    let union = json!({"oneOf": [{"type": "string"}, {"type": "integer"}]});
+    let doc =
+        common::spec("3.2.0", &json!({}), &json!({"schemas": {"Kind": kind, "Sort": kind, "A": union, "B": union}}));
+    let types =
+        common::file(&common::generate("twin-macros", &doc, &crate::emit::Options::default()), "types.rs").to_owned();
+    assert!(!types.contains("macro_rules!"), "{types}");
+    assert!(types.contains(r#"runtime::str_enum_impls!(Sort { A => "a", B => "b" });"#), "{types}");
+    assert!(types.contains("runtime::union_serialize!(B {"), "{types}");
+}
+
 /// Every `Params` has `new` accepting what is required; `Default` only when that is nothing.
 #[test]
 fn params_always_have_new_and_default_only_without_arguments() {
@@ -822,20 +837,6 @@ fn a_body_of_your_own_type_is_left_to_it() {
     assert!(types.contains("pub struct Note(pub(super) NoteFields);") && types.contains("matches `not`"), "{types}");
     let (types, _) = generate("shape-own-body-yours", Some("crate::Note"));
     assert!(!types.contains("matches `not`"), "{types}");
-}
-
-/// The body of a generated `macro_rules!` is printed as the items it expands to, one per line, and not as one line of
-/// tokens.
-#[test]
-fn a_macro_body_reads_as_items() {
-    let union = json!({"oneOf": [{"type": "string"}, {"type": "integer"}]});
-    let doc = common::spec("3.1.0", &json!({}), &json!({"schemas": {"A": union, "B": union}}));
-    let files = common::generate("shape-macro-body", &doc, &crate::emit::Options::default());
-    let types = common::file(&files, "types.rs");
-    assert!(
-        types.contains("macro_rules! serialize_impl {\n    ($t:ty) => {\n        impl serde::Serialize for $t {\n"),
-        "{types}"
-    );
 }
 
 /// A response of a union of unions: each layer contains the two before it, so 2^40 paths reach the bottom. Its size is
@@ -2154,9 +2155,11 @@ fn shared_impls_are_runtime_macros_and_not_copies() {
     let files = common::generate("shared-impls", &doc, &crate::emit::Options::default());
     let types = common::file(&files, "types.rs");
     assert!(!types.contains("macro_rules!"), "{types}");
-    for call in
-        ["runtime::str_enum_impls!(Kind)", "runtime::int_enum_impls!(Level)", "runtime::checked_str_impls!(Code)"]
-    {
+    for call in [
+        r#"runtime::str_enum_impls!(Kind { A => "a", B => "b" })"#,
+        "runtime::int_enum_impls!(Level)",
+        "runtime::checked_str_impls!(Code)",
+    ] {
         assert!(types.contains(call), "{call} in {types}");
     }
     assert!(types.contains("runtime::checked_num_impls!(Count, i64)"), "{types}");
@@ -2359,7 +2362,7 @@ fn a_reorder_of_any_of_branches_decodes_the_same() {
         let files =
             common::generate(if flip { "any-of-b" } else { "any-of-a" }, &doc, &crate::emit::Options::default());
         let types = common::file(&files, "types.rs");
-        let body = types.split("for Any {").nth(2).unwrap_or_else(|| panic!("{types}")).to_owned();
+        let body = types.split("for Any {").nth(1).unwrap_or_else(|| panic!("{types}")).to_owned();
         body.split("decode_ref::<")
             .skip(1)
             .filter_map(|t| t.split_once('>'))

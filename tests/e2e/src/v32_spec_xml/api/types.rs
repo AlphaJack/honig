@@ -277,28 +277,11 @@ pub enum ElementsWithAttributesAndTextOkItem {
     Object(ElementsWithAttributesAndTextOkItemObject),
     Other(serde_json::Value),
 }
-impl serde::Serialize for ElementsWithAttributesAndTextOkItem {
-    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        match self {
-            Self::Object(v) => serde::Serialize::serialize(v, s),
-            Self::Other(v) => serde::Serialize::serialize(v, s),
-        }
-    }
-}
-impl<'de> serde::Deserialize<'de> for ElementsWithAttributesAndTextOkItem {
-    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
-        let v = <runtime::Content<'de> as serde::Deserialize>::deserialize(d)?;
-        match v.kind() {
-            runtime::Kind::Object => v.decode_into(Self::Object),
-            runtime::Kind::Null
-            | runtime::Kind::Bool
-            | runtime::Kind::Integer
-            | runtime::Kind::Number
-            | runtime::Kind::String
-            | runtime::Kind::Array => Ok(Self::Other(v.into_value())),
-        }
-    }
-}
+runtime::union_serialize!(ElementsWithAttributesAndTextOkItem { Object, Other });
+runtime::by_kind_deserialize!(
+    ElementsWithAttributesAndTextOkItem { Object => Object }; Null | Bool | Integer |
+    Number | String | Array => Other
+);
 runtime::object! {
     #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
     pub struct ElementsWithAttributesAndTextOkItemObject {

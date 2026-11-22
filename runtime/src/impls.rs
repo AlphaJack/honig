@@ -5,7 +5,24 @@
 #[doc(hidden)]
 #[macro_export]
 macro_rules! str_enum_impls {
-    ($n:ident) => {
+    ($n:ident { $($v:ident => $w:literal),* $(,)? }) => {
+        impl $n {
+            #[must_use]
+            pub const fn as_str(&self) -> &'static str {
+                match self {
+                    $(Self::$v => $w,)*
+                }
+            }
+        }
+        impl TryFrom<&str> for $n {
+            type Error = $crate::BuildError;
+            fn try_from(s: &str) -> Result<Self, $crate::BuildError> {
+                match s {
+                    $($w => Ok(Self::$v),)*
+                    other => Err($crate::__private::not_one_of(other, &[$($w),*])),
+                }
+            }
+        }
         impl std::fmt::Display for $n {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 f.write_str(self.as_str())
@@ -417,5 +434,46 @@ macro_rules! checked_twin {
             }
         }
         $crate::checked_json!($n, $base);
+    };
+}
+
+/// `Serialize` of a union: each variant as its value. Each variant after the property name is an object that gets the
+/// property with its tag put in.
+#[doc(hidden)]
+#[macro_export]
+macro_rules! union_serialize {
+    ($n:ident { $($v:ident),* $(,)? } $($property:literal { $($t:ident => $tag:literal),* $(,)? })?) => {
+        impl ::serde::Serialize for $n {
+            fn serialize<S: ::serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                match self {
+                    $(Self::$v(v) => ::serde::Serialize::serialize(v, s),)*
+                    $($(Self::$t(v) => $crate::__private::serialize_tagged(v, $property, $tag, s),)*)?
+                }
+            }
+        }
+    };
+}
+
+/// `Deserialize` of a union told apart by the JSON kind of its value: each kind decodes as its variant. A kind that no
+/// variant takes is `Other`, or `none` of them: an error.
+#[doc(hidden)]
+#[macro_export]
+macro_rules! by_kind_deserialize {
+    ($n:ident { $($($k:ident)|+ => $v:ident),* $(,)? } $(; $($r:ident)|+ => $fallback:ident)?) => {
+        impl<'de> ::serde::Deserialize<'de> for $n {
+            fn deserialize<D: ::serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                let v = <$crate::__private::Content<'de> as ::serde::Deserialize>::deserialize(d)?;
+                match v.kind() {
+                    $($($crate::__private::Kind::$k)|+ => v.decode_into(Self::$v),)*
+                    $($($crate::__private::Kind::$r)|+ => $crate::by_kind_deserialize!(@rest v $fallback),)?
+                }
+            }
+        }
+    };
+    (@rest $v:ident Other) => {
+        Ok(Self::Other($v.into_value()))
+    };
+    (@rest $v:ident none) => {
+        Err(::serde::de::Error::custom("matches no variant"))
     };
 }

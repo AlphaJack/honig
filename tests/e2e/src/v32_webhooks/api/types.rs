@@ -33,32 +33,7 @@ pub enum EventKind {
     Created,
     Deleted,
 }
-impl EventKind {
-    #[must_use]
-    pub const fn as_str(&self) -> &'static str {
-        match self {
-            Self::Created => "created",
-            Self::Deleted => "deleted",
-        }
-    }
-}
-impl TryFrom<&str> for EventKind {
-    type Error = runtime::BuildError;
-    fn try_from(s: &str) -> Result<Self, runtime::BuildError> {
-        match s {
-            "created" => Ok(Self::Created),
-            "deleted" => Ok(Self::Deleted),
-            other => {
-                Err(
-                    runtime::BuildError::value(
-                        format!("`{other}` is not one of `created`, `deleted`"),
-                    ),
-                )
-            }
-        }
-    }
-}
-runtime::str_enum_impls!(EventKind);
+runtime::str_enum_impls!(EventKind { Created => "created", Deleted => "deleted" });
 runtime::object! {
     #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct SubscribeBody {

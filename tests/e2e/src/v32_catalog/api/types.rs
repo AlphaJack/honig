@@ -5,14 +5,7 @@ pub enum Product {
     Physical(Physical),
     Digital(Digital),
 }
-impl serde::Serialize for Product {
-    fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
-        match self {
-            Self::Physical(v) => serde::Serialize::serialize(v, s),
-            Self::Digital(v) => serde::Serialize::serialize(v, s),
-        }
-    }
-}
+runtime::union_serialize!(Product { Digital, Physical });
 runtime::tagged_deserialize!(Product);
 impl<'de> runtime::TaggedUnion<'de> for Product {
     const TAG: &'static str = "kind";
