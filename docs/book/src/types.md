@@ -35,7 +35,7 @@ Two settings decide what happens to a property or a value that the description d
 
 | Setting | Applies to | What it does |
 |---|---|---|
-| `unknown_fields = "keep"` | objects without `additionalProperties`, both directions | keeps the undeclared properties in a map, so a value round-trips. The default `"drop"` ignores them |
+| `keep_unknown_fields = true` | objects without `additionalProperties`, both directions | keeps the undeclared properties in a map, so a value round-trips. The default `false` ignores them |
 | `client = { allow_unknown_values = true }` | the responses of a client | accepts what a server added: an enum value or a union branch as `Other`, and a property of a closed object (`additionalProperties: false`) by ignoring it. Requests stay strict through `<Name>Request` copies |
 
 An object without `additionalProperties` never refuses an undeclared property: the first setting only chooses whether to keep it. A closed object refuses it, unless `allow_unknown_values = true` applies to the response.
@@ -144,7 +144,7 @@ For arithmetic parse its digits into a decimal type with `d.as_str().parse::<rus
 
 JSON the description leaves untyped is a `serde_json::Value`:
 
-- the properties that an object does not declare with `unknown_fields = "keep"`
+- the properties that an object does not declare with `keep_unknown_fields = true`
 - a `{}` schema and an untyped `additionalProperties`
 - the `Other` of an open union
 

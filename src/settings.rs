@@ -38,7 +38,7 @@ pub(crate) const SETTINGS: [(&str, Option<&str>, &str); 11] = [
          types that they reach",
     ),
     ("tests", Some("false"), "generate a test that the description's examples decode"),
-    ("unknown_fields", Some("\"drop\""), "\"keep\": objects without additionalProperties keep unknown keys"),
+    ("keep_unknown_fields", Some("false"), "objects without additionalProperties keep unknown keys in a map"),
     ("overlays", Some("[]"), "Overlays (1.0 to 1.2) applied in order to the spec"),
     ("formats", Some("{}"), "your own types for formats with a check, like { uuid = \"crate::Id\" }"),
     ("derives", Some("{}"), "extra derives on every type or on one type by Rust name, like { \"*\" = [\"Hash\"] }"),
@@ -73,7 +73,7 @@ pub(crate) struct Settings {
     pub allow_unimplemented: bool,
     /// Extra derives as (Rust type name or `*`, derive paths).
     pub derives: Vec<(String, Vec<String>)>,
-    /// `unknown_fields = "keep"`.
+    /// `keep_unknown_fields = true`.
     pub keep_unknown: bool,
     /// `false` with `client = { allow_unknown_values = true }`: response types accept an enum value or a property that
     /// the description does not list. Requests are always strict.
@@ -500,13 +500,7 @@ pub(crate) fn settings<'a>(module: impl Into<Module<'a>>, path: &Path) -> Result
                 .map(PathBuf::from)
                 .collect(),
         },
-        keep_unknown: match string("unknown_fields")?.as_deref() {
-            None | Some("drop") => false,
-            Some("keep") => true,
-            Some(other) => {
-                return Err(setting(&name, "unknown_fields", "\"keep\" or \"drop\"", format!("\"{other}\"")));
-            }
-        },
+        keep_unknown: flag("keep_unknown_fields", false)?,
     })
 }
 
@@ -817,6 +811,16 @@ mod tests {
         assert!(error("formats = { time = \"crate::T\" }").contains("an unknown setting"));
         assert!(error("formats = { uuid = true }").contains("the path of a type"), "a type feature is no setting here");
         assert!(error("formats = { jiff = true }").contains("a feature of the runtime: list it in the `features`"));
+    }
+
+    #[test]
+    fn keep_unknown_fields_is_a_flag() {
+        let one =
+            |module: &str| modules_of(&format!("[package.metadata.honig.api]\ndescriptions = [\"a.yaml\"]\n{module}"));
+        assert!(!one("").unwrap()[0].keep_unknown, "dropped unless set");
+        assert!(one("keep_unknown_fields = true\n").unwrap()[0].keep_unknown);
+        assert!(one("keep_unknown_fields = \"keep\"\n").unwrap_err().to_string().contains("true or false"));
+        assert!(one("unknown_fields = \"keep\"\n").unwrap_err().to_string().contains("no setting `unknown_fields`"));
     }
 
     #[test]
