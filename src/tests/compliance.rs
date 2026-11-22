@@ -378,6 +378,31 @@ fn a_security_scheme_that_is_read_as_another_refuses_a_server() {
     }
 }
 
+/// A link that sets a parameter its target does not have would have the value skipped: `generate` fails and points at
+/// the key. `name` and `in.name` both name a parameter.
+#[test]
+#[expect(clippy::literal_string_with_formatting_args, reason = "a path template of the description")]
+fn a_link_parameter_that_the_target_lacks_fails_generation() {
+    let id = json!({"in": "path", "name": "id", "required": true, "schema": {"type": "string"}});
+    let link = |key: &str| json!({"next": {"operationId": "get_item", "parameters": {key: "$response.body#/id"}}});
+    let paths = |key: &str| {
+        json!({"/start": {"get": {"operationId": "start",
+            "responses": {"200": {"description": "ok", "links": link(key)}}}},
+            "/items/{id}": {"get": {"operationId": "get_item", "parameters": [id],
+            "responses": {"204": {"description": "ok"}}}}})
+    };
+    for (key, fine) in [("id", true), ("path.id", true), ("idd", false)] {
+        let path = common::write(&format!("link-key-{key}"), &doc(&paths(key), &json!({})), &[]);
+        let made = crate::generate::generate(&path, &Options::default());
+        if fine {
+            made.expect(key);
+        } else {
+            let err = made.expect_err(key);
+            assert!(err.iter().any(|d| d.pointer.ends_with("/links/next/parameters/idd")), "{:#?}", err.0);
+        }
+    }
+}
+
 // `content` (3.2 Request Body / Response): "For requests that match multiple
 // keys, only the most specific key is applicable."
 
