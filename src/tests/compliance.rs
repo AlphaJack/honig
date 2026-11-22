@@ -72,6 +72,22 @@ fn security_scheme_named_by_local_uri_is_enforced() {
     }
 }
 
+/// A requirement that lists a scheme by its name and by its URI has one entry too many: renaming one would replace the
+/// scopes of the other.
+#[test]
+fn a_scheme_listed_by_name_and_by_uri_refuses_a_server() {
+    let components = json!({"securitySchemes": {"oauth": {"type": "oauth2", "flows": {"implicit": {
+        "authorizationUrl": "https://example.com/auth", "scopes": {"read": "r", "write": "w"}}}}}});
+    let uri = "#/components/securitySchemes/oauth";
+    for (i, security) in
+        [json!([{"oauth": ["write"], uri: []}]), json!([{uri: [], "oauth": ["write"]}])].iter().enumerate()
+    {
+        let path = common::write(&format!("sec-twice-{i}"), &doc(&secured_op(security), &components), &[]);
+        let err = crate::generate::generate(&path, &Options::default()).expect_err("must refuse");
+        assert!(err.iter().any(|d| d.pointer == "/paths/~1a/get/security/0"), "{security}: {:#?}", err.0);
+    }
+}
+
 #[test]
 fn security_scheme_named_by_external_uri_is_bundled_and_enforced() {
     let other =
