@@ -357,6 +357,27 @@ fn an_enum_value_outside_the_type_fails_generation() {
     std::fs::remove_dir_all(&dir).ok();
 }
 
+/// A scheme that the generator would read as another refuses a server: an API key `in` another place than `header`,
+/// `query` or `cookie` meant the header, and a missing `scheme` or `flows` meant a bearer token.
+#[test]
+fn a_security_scheme_that_is_read_as_another_refuses_a_server() {
+    let schemes = [
+        json!({"type": "apiKey", "name": "K", "in": "body"}),
+        json!({"type": "apiKey", "name": "K"}),
+        json!({"type": "http"}),
+        json!({"type": "oauth2"}),
+    ];
+    for (i, scheme) in schemes.into_iter().enumerate() {
+        let components = json!({"securitySchemes": {"local": scheme}});
+        let path =
+            common::write(&format!("scheme-read-as-{i}"), &doc(&secured_op(&json!([{"local": []}])), &components), &[]);
+        let err = crate::generate::generate(&path, &Options::default()).expect_err("must refuse");
+        assert!(err.iter().any(|d| d.pointer == "/components/securitySchemes/local"), "{i}: {:#?}", err.0);
+        let client = Options { server: false, tests: false, ..Options::default() };
+        crate::generate::generate(&path, &client).expect("a client is still generated");
+    }
+}
+
 // `content` (3.2 Request Body / Response): "For requests that match multiple
 // keys, only the most specific key is applicable."
 
