@@ -107,8 +107,7 @@ pub(crate) fn apply(doc: &mut Value, overlay: &Value, name: &str, diags: &mut Di
             // Not an error ("the action has no effect"). But a target that matches
             // nothing is most often a JSONPath that does not say what was meant.
             // RFC 9535 filters test the children of the node before them.
-            Ok(0) => diags
-                .warning(at(&format!("/actions/{i}/target")), "the target selects no nodes: the action does nothing"),
+            Ok(0) => diags.warning(at(&format!("/actions/{i}/target")), crate::diag::NO_NODES),
             Ok(_) => {}
         }
     }

@@ -118,6 +118,10 @@ impl Diagnostics {
 /// generated from a description that has them: the first would answer for both.
 pub(crate) const DUPLICATE_HOOK: &str = "also described by";
 
+/// The end of the warning for an overlay action whose target selects nothing. `generate` fails on it: after a rewrite
+/// of the description the overlay's fix would stop applying.
+pub(crate) const NO_NODES: &str = "the target selects no nodes: the action does nothing";
+
 #[cfg(test)]
 mod tests {
     use super::*;
