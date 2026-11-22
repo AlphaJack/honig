@@ -191,10 +191,15 @@ fn security_scheme_uris(
             name
         };
         let Some(name) = name else { continue };
-        if let Some(Value::Object(req)) = root.pointer_mut(&ptr)
-            && let Some(scopes) = req.shift_remove(&key)
-        {
-            req.insert(name, scopes);
+        if let Some(Value::Object(req)) = root.pointer_mut(&ptr) {
+            // Renaming would replace the scopes of the entry that already has this name. Same scopes lose nothing. Else
+            // the key stays: it is unresolved, so a server is refused.
+            let same = req.get(&name).is_some_and(|own| req.get(&key) == Some(own));
+            if req.contains_key(&name) && !same {
+                diags.error(ptr, format!("`{key}` and `{name}` are one scheme with different scopes"));
+            } else if let Some(scopes) = req.shift_remove(&key) {
+                req.insert(name, scopes);
+            }
         }
     }
 }
