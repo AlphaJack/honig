@@ -168,7 +168,7 @@ pub mod list_products {
         #[deprecated]
         pub x_rate: Option<i64>,
         pub empty: Option<String>,
-        pub x_trace: Option<runtime::UuidText>,
+        pub x_trace: Option<runtime::UuidStr>,
         pub media: Media,
     }
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -218,7 +218,7 @@ pub mod list_products {
             = "tags" => some, None, filter(filter) : std::collections::BTreeMap < String,
             String > = "filter" => some, None, session(session) : String = "session" =>
             some, None, x_rate(x_rate) : i64 = "X-Rate" => some, None, empty(empty) :
-            String = "empty" => some, None, x_trace(x_trace) : runtime::UuidText =
+            String = "empty" => some, None, x_trace(x_trace) : runtime::UuidStr =
             "X-Trace" => some, None } fixed { media : super::Media::ALL[0] }
         }
     }
@@ -297,7 +297,7 @@ pub mod create_product {
     ];
     #[derive(Debug, Clone, PartialEq)]
     pub struct Params {
-        pub x_trace: Option<runtime::UuidText>,
+        pub x_trace: Option<runtime::UuidStr>,
         pub meta_x_part: Option<String>,
         /// New product
         pub body: Body,
@@ -316,7 +316,7 @@ pub mod create_product {
         use super::runtime;
         runtime::typestate_builder! {
             Params => super::Params; required { body : R0 : super::Body = "body" }
-            optional { x_trace(x_trace) : runtime::UuidText = "X-Trace" => some, None,
+            optional { x_trace(x_trace) : runtime::UuidStr = "X-Trace" => some, None,
             meta_x_part(meta_x_part) : String = "X-Part" => some, None } fixed {}
         }
     }
@@ -382,7 +382,7 @@ pub mod search_products {
     ];
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct Params {
-        pub x_trace: Option<runtime::UuidText>,
+        pub x_trace: Option<runtime::UuidStr>,
         pub body: Option<std::collections::BTreeMap<String, serde_json::Value>>,
     }
     impl Params {
@@ -396,7 +396,7 @@ pub mod search_products {
         use super::runtime;
         runtime::typestate_builder! {
             Params => super::Params; required {} optional { x_trace(x_trace) :
-            runtime::UuidText = "X-Trace" => some, None, body(body) :
+            runtime::UuidStr = "X-Trace" => some, None, body(body) :
             std::collections::BTreeMap < String, serde_json::Value > = "body" => some,
             None } fixed {}
         }
@@ -434,7 +434,7 @@ pub mod copy_products {
     ];
     #[derive(Debug, Clone, PartialEq, Eq)]
     pub struct Params {
-        pub x_trace: Option<runtime::UuidText>,
+        pub x_trace: Option<runtime::UuidStr>,
     }
     impl Params {
         #[must_use]
@@ -447,7 +447,7 @@ pub mod copy_products {
         use super::runtime;
         runtime::typestate_builder! {
             Params => super::Params; required {} optional { x_trace(x_trace) :
-            runtime::UuidText = "X-Trace" => some, None } fixed {}
+            runtime::UuidStr = "X-Trace" => some, None } fixed {}
         }
     }
     #[derive(Debug, Clone, PartialEq, Eq)]

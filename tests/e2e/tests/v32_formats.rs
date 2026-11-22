@@ -117,7 +117,7 @@ fn registry_formats_take_their_library_types() {
     let home: url::Url = e.home.clone().expect("present");
     let net4: ipnet::Ipv4Net = e.net4.expect("present");
     let net6: ipnet::Ipv6Net = e.net6.expect("present");
-    let local: api::DateTimeLocalText = e.local.clone().expect("present");
+    let local: api::DateTimeLocalStr = e.local.clone().expect("present");
     assert_eq!((initial, home.host_str(), net4.prefix_len(), net6.prefix_len()), ('Z', Some("example.com"), 24, 32));
     assert_eq!(local, "2024-01-31T13:45:30");
     let back = serde_json::to_value(&e).expect("encodes");

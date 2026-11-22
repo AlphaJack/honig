@@ -158,52 +158,52 @@ impl<'de, F: Format> Deserialize<'de> for Formatted<F> {
 }
 
 /// `format: uuid` without the `uuid` crate.
-pub type UuidText = Formatted<format::Uuid>;
+pub type UuidStr = Formatted<format::Uuid>;
 /// `format: date-time` without a date library.
-pub type DateTimeText = Formatted<format::DateTime>;
+pub type DateTimeStr = Formatted<format::DateTime>;
 /// `format: date` without a date library.
-pub type DateText = Formatted<format::Date>;
+pub type DateStr = Formatted<format::Date>;
 /// `format: date-time-local` without a date library.
-pub type DateTimeLocalText = Formatted<format::DateTimeLocal>;
+pub type DateTimeLocalStr = Formatted<format::DateTimeLocal>;
 /// `format: time-local` without a date library.
-pub type TimeLocalText = Formatted<format::TimeLocal>;
+pub type TimeLocalStr = Formatted<format::TimeLocal>;
 /// `format: uri` without the `url` crate.
-pub type UriText = Formatted<format::Uri>;
+pub type UriStr = Formatted<format::Uri>;
 /// `format: uri-reference`.
-pub type UriReferenceText = Formatted<format::UriReference>;
+pub type UriReferenceStr = Formatted<format::UriReference>;
 /// `format: iri`.
-pub type IriText = Formatted<format::Iri>;
+pub type IriStr = Formatted<format::Iri>;
 /// `format: iri-reference`.
-pub type IriReferenceText = Formatted<format::IriReference>;
+pub type IriReferenceStr = Formatted<format::IriReference>;
 /// `format: ipv4-cidr` as its text.
-pub type Ipv4CidrText = Formatted<format::Ipv4Cidr>;
+pub type Ipv4CidrStr = Formatted<format::Ipv4Cidr>;
 /// `format: ipv6-cidr` as its text.
-pub type Ipv6CidrText = Formatted<format::Ipv6Cidr>;
+pub type Ipv6CidrStr = Formatted<format::Ipv6Cidr>;
 /// `format: email`. Checking it needs the `idn` feature.
-pub type EmailText = Formatted<format::Email>;
+pub type EmailStr = Formatted<format::Email>;
 /// `format: idn-email`. Checking it needs the `idn` feature.
-pub type IdnEmailText = Formatted<format::IdnEmail>;
+pub type IdnEmailStr = Formatted<format::IdnEmail>;
 /// `format: hostname`. Checking it needs the `idn` feature.
-pub type HostnameText = Formatted<format::Hostname>;
+pub type HostnameStr = Formatted<format::Hostname>;
 /// `format: idn-hostname`. Checking it needs the `idn` feature.
-pub type IdnHostnameText = Formatted<format::IdnHostname>;
+pub type IdnHostnameStr = Formatted<format::IdnHostname>;
 /// `{type: string, format: decimal}`: every digit, past what a decimal type supports.
-pub type DecimalText = Formatted<format::Decimal>;
+pub type DecimalStr = Formatted<format::Decimal>;
 /// `{type: string, format: decimal128}`: a decimal that IEEE 754 decimal128 represents exactly, at most 34 significant
 /// digits within its exponent range.
-pub type Decimal128Text = Formatted<format::Decimal128>;
+pub type Decimal128Str = Formatted<format::Decimal128>;
 /// `format: http-date`.
-pub type HttpDateText = Formatted<format::HttpDate>;
+pub type HttpDateStr = Formatted<format::HttpDate>;
 /// `format: duration`: no std type represents `P1M`, a month has no fixed length.
-pub type DurationText = Formatted<format::Duration>;
+pub type DurationStr = Formatted<format::Duration>;
 /// `format: json-pointer`.
-pub type JsonPointerText = Formatted<format::JsonPointer>;
+pub type JsonPointerStr = Formatted<format::JsonPointer>;
 /// `format: relative-json-pointer`.
-pub type RelativeJsonPointerText = Formatted<format::RelativeJsonPointer>;
+pub type RelativeJsonPointerStr = Formatted<format::RelativeJsonPointer>;
 /// `format: regex`. Checking it needs the `regress` feature.
-pub type RegexText = Formatted<format::Regex>;
+pub type RegexStr = Formatted<format::Regex>;
 /// `format: uri-template`.
-pub type UriTemplateText = Formatted<format::UriTemplate>;
+pub type UriTemplateStr = Formatted<format::UriTemplate>;
 
 #[cfg(test)]
 mod tests {
@@ -211,22 +211,22 @@ mod tests {
 
     #[test]
     fn only_text_of_the_format_is_one() {
-        let id = UuidText::try_from("01234567-89ab-4def-8123-456789abcdef").expect("hyphenated");
+        let id = UuidStr::try_from("01234567-89ab-4def-8123-456789abcdef").expect("hyphenated");
         assert_eq!(id, "01234567-89ab-4def-8123-456789abcdef");
         assert_eq!(id.len(), 36, "derefs to `str`");
         assert_eq!(
-            UuidText::try_from("{01234567-89ab-4def-8123-456789abcdef}"),
+            UuidStr::try_from("{01234567-89ab-4def-8123-456789abcdef}"),
             Err(BuildError::value("`{01234567-89ab-4def-8123-456789abcdef}` is not a valid uuid".to_owned()))
         );
-        assert!("P1M".parse::<DurationText>().is_ok());
-        assert!("1 month".parse::<DurationText>().is_err());
+        assert!("P1M".parse::<DurationStr>().is_ok());
+        assert!("1 month".parse::<DurationStr>().is_err());
     }
 
     #[test]
     fn decoding_checks_the_text_and_encoding_writes_it_back() {
-        let day: DateText = serde_json::from_str(r#""2024-06-19""#).expect("a date");
+        let day: DateStr = serde_json::from_str(r#""2024-06-19""#).expect("a date");
         assert_eq!(serde_json::to_string(&day).expect("encodes"), r#""2024-06-19""#);
-        let err = serde_json::from_str::<DateText>(r#""2024-6-19""#).expect_err("not a full-date");
+        let err = serde_json::from_str::<DateStr>(r#""2024-6-19""#).expect_err("not a full-date");
         assert!(err.to_string().starts_with("`2024-6-19` is not a valid date"), "{err}");
     }
 }

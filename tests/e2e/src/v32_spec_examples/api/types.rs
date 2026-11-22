@@ -30,6 +30,7 @@ macro_rules! deserialize_impl {
     };
 }
 use super::runtime;
+pub use runtime::{DateTimeStr, UriReferenceStr, UuidStr};
 runtime::object! {
     #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
     pub struct Address {
@@ -98,7 +99,7 @@ runtime::object! {
     #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
     pub struct LogEntry {
         #[optional]
-        pub timestamp: runtime::DateTimeText,
+        pub timestamp: runtime::DateTimeStr,
         #[optional]
         pub level: LogEntryLevel,
         #[optional]
@@ -251,7 +252,7 @@ runtime::checked_num_impls!(EventRetry, i64);
 runtime::object! {
     #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct SimpleLinkContextItem {
-        pub href: runtime::UriReferenceText,
+        pub href: runtime::UriReferenceStr,
     }
 }
 runtime::object! {
@@ -341,7 +342,7 @@ runtime::object! {
     #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
     pub struct BasicMultipartFormBody {
         #[optional]
-        pub id: runtime::UuidText,
+        pub id: runtime::UuidStr,
         #[optional]
         #[serde(rename = "profileImage")]
         pub profile_image: runtime::Binary,
@@ -363,7 +364,7 @@ runtime::object! {
     #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
     pub struct MultipartFormWithEncodingObjectsBody {
         #[optional]
-        pub id: runtime::UuidText,
+        pub id: runtime::UuidStr,
         #[optional]
         pub alias: MultipartFormWithEncodingObjectsBodyAlias,
         #[optional]
@@ -1050,7 +1051,7 @@ pub mod builders {
     }
     runtime::typestate_builder! {
         LogEntry => super::LogEntry; required {} optional { timestamp(timestamp) :
-        runtime::DateTimeText = "timestamp" => some, None, level(level) :
+        runtime::DateTimeStr = "timestamp" => some, None, level(level) :
         types::LogEntryLevel = "level" => some, None, message(message) : String =
         "message" => some, None } fixed {}
     }
@@ -1069,7 +1070,7 @@ pub mod builders {
     }
     runtime::typestate_builder! {
         SimpleLinkContextItem => super::SimpleLinkContextItem; required { href : R0 :
-        runtime::UriReferenceText = "href" } optional {} fixed {}
+        runtime::UriReferenceStr = "href" } optional {} fixed {}
     }
     runtime::typestate_builder! {
         CollectionLinksLinksetItem => super::CollectionLinksLinksetItem; required {}
@@ -1097,14 +1098,14 @@ pub mod builders {
     }
     runtime::typestate_builder! {
         BasicMultipartFormBody => super::BasicMultipartFormBody; required {} optional {
-        id(id) : runtime::UuidText = "id" => some, None, profile_image(profile_image) :
+        id(id) : runtime::UuidStr = "id" => some, None, profile_image(profile_image) :
         runtime::Binary = "profileImage" => some, None, addresses(addresses) : Vec <
         types::Address > = "addresses" => some, None } fixed {}
     }
     runtime::typestate_builder! {
         MultipartFormWithEncodingObjectsBody =>
         super::MultipartFormWithEncodingObjectsBody; required {} optional { id(id) :
-        runtime::UuidText = "id" => some, None, alias(alias) :
+        runtime::UuidStr = "id" => some, None, alias(alias) :
         types::MultipartFormWithEncodingObjectsBodyAlias = "alias" => some, None,
         addresses(addresses) : Vec < types::Address > = "addresses" => some, None,
         profile_image(profile_image) : runtime::Binary = "profileImage" => some, None }

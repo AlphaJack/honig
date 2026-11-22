@@ -92,6 +92,20 @@ fn a_handler_returns_its_operations_result() {
     assert!(server.contains("Output = ops::a::Result>"), "{server}");
 }
 
+/// The runtime's checked text of a format sits beside the types that hold it: `types::UuidStr`. A schema of that name
+/// keeps it.
+#[test]
+fn format_strs_sit_beside_the_types() {
+    let types = |schemas: serde_json::Value| {
+        let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": schemas}));
+        common::file(&common::generate("format-strs", &doc, &crate::emit::Options::default()), "types.rs").to_owned()
+    };
+    let id = json!({"type": "object", "properties": {"id": {"type": "string", "format": "uuid"}}});
+    assert!(types(json!({"Item": id})).contains("pub use runtime::UuidStr;"));
+    let own = types(json!({"Item": id, "UuidStr": {"type": "integer"}}));
+    assert!(!own.contains("pub use runtime::UuidStr"), "{own}");
+}
+
 /// Every `Params` has `new` accepting what is required; `Default` only when that is nothing.
 #[test]
 fn params_always_have_new_and_default_only_without_arguments() {
