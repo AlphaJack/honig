@@ -423,7 +423,52 @@ fn operations(b: &mut Builder<'_>, schemes: &[SecurityScheme]) -> Vec<Operation>
         add_item(b, "", &ptr, &kind, &mut ops, &mut taken);
     }
     one_operation_per_hook(b, &ops);
+    links_name_parameters(b, &ops);
     ops
+}
+
+/// Reports a link that sets a parameter which its target operation does not have: the value would be skipped. A key is
+/// the name of the parameter or `in.name` (`path.id`).
+fn links_name_parameters(b: &mut Builder<'_>, ops: &[Operation]) {
+    let place = |l: &Location| match l {
+        Location::Path => "path",
+        Location::Query => "query",
+        Location::Header => "header",
+        Location::Cookie => "cookie",
+        Location::QueryString | Location::Part => "",
+    };
+    for op in ops {
+        for resp in &op.responses {
+            let code = match resp.status {
+                Status::Code(c) => c.to_string(),
+                Status::Range(n) => format!("{n}XX"),
+                Status::Default => "default".to_owned(),
+            };
+            for link in &resp.links {
+                let target = ops.iter().find(|t| match &link.target {
+                    LinkTarget::Id(id) => t.operation_id.as_deref() == Some(id.as_str()),
+                    LinkTarget::Pointer(ptr) => t.pointer == *ptr,
+                });
+                let Some(target) = target else { continue };
+                for (key, _) in &link.params {
+                    let has = target
+                        .params
+                        .iter()
+                        .any(|p| p.wire == *key || format!("{}.{}", place(&p.location), p.wire) == *key);
+                    if !has {
+                        let at = join(&join(&join(&join(&op.pointer, "responses"), &code), "links"), &link.name);
+                        b.diags.refuse(
+                            join(&join(&at, "parameters"), key),
+                            format!(
+                                "the link `{}` sets `{key}`, a parameter that its target operation does not have",
+                                link.name
+                            ),
+                        );
+                    }
+                }
+            }
+        }
+    }
 }
 
 /// Reports a webhook or callback with the name and the method of an earlier one: a server routes them by both.
