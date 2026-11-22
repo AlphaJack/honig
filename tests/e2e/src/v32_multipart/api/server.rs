@@ -11,24 +11,22 @@ pub trait Api: Send + Sync + 'static {
         &self,
         params: ops::upload::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<Output = Result<ops::upload::Response, runtime::ApiError>> + Send;
+    ) -> impl Future<Output = ops::upload::Result> + Send;
     fn put_icon(
         &self,
         params: ops::put_icon::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<Output = Result<ops::put_icon::Response, runtime::ApiError>> + Send;
+    ) -> impl Future<Output = ops::put_icon::Result> + Send;
     fn upload_scan(
         &self,
         params: ops::upload_scan::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::upload_scan::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::upload_scan::Result> + Send;
     fn deploy(
         &self,
         params: ops::deploy::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<Output = Result<ops::deploy::Response, runtime::ApiError>> + Send;
+    ) -> impl Future<Output = ops::deploy::Result> + Send;
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Operation {

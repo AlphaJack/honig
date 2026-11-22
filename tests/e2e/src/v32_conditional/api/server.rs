@@ -11,17 +11,17 @@ pub trait Api: Send + Sync + 'static {
         &self,
         params: ops::a::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<Output = Result<ops::a::Response, runtime::ApiError>> + Send;
+    ) -> impl Future<Output = ops::a::Result> + Send;
     fn b(
         &self,
         params: ops::b::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<Output = Result<ops::b::Response, runtime::ApiError>> + Send;
+    ) -> impl Future<Output = ops::b::Result> + Send;
     fn c(
         &self,
         params: ops::c::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<Output = Result<ops::c::Response, runtime::ApiError>> + Send;
+    ) -> impl Future<Output = ops::c::Result> + Send;
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Operation {

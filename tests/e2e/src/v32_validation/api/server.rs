@@ -9,42 +9,32 @@ pub trait Api: Send + Sync + 'static {
         &self,
         params: ops::create_user::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::create_user::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::create_user::Result> + Send;
     fn create_shipment(
         &self,
         params: ops::create_shipment::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::create_shipment::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::create_shipment::Result> + Send;
     fn login(
         &self,
         params: ops::login::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<Output = Result<ops::login::Response, runtime::ApiError>> + Send;
+    ) -> impl Future<Output = ops::login::Result> + Send;
     fn add_member(
         &self,
         params: ops::add_member::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::add_member::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::add_member::Result> + Send;
     fn add_closed(
         &self,
         params: ops::add_closed::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::add_closed::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::add_closed::Result> + Send;
     fn add_badge(
         &self,
         params: ops::add_badge::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::add_badge::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::add_badge::Result> + Send;
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Operation {

@@ -11,9 +11,7 @@ pub trait Api: Send + Sync + 'static {
         &self,
         params: ops::subscribe::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::subscribe::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::subscribe::Result> + Send;
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Operation {
@@ -47,16 +45,12 @@ pub trait Webhooks: Send + Sync + 'static {
         &self,
         params: ops::new_product::Params,
         ctx: &WebhookContext<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::new_product::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::new_product::Result> + Send;
     fn subscribe_on_event_post(
         &self,
         params: ops::subscribe_on_event_post::Params,
         ctx: &WebhookContext<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::subscribe_on_event_post::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::subscribe_on_event_post::Result> + Send;
 }
 pub struct WebhookRoutes<A> {
     api: std::sync::Arc<A>,

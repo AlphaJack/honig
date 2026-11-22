@@ -16,7 +16,7 @@ use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
 use super::security::Securities;
-use super::shared::{boxing, hook_name, is_path, is_success, op_path, op_static, operation_variant, user_types};
+use super::shared::{boxing, hook_name, is_path, is_success, op_path, op_static, operation_variant};
 use crate::emit::rust::names::snake;
 use crate::emit::rust::space::Space;
 use crate::emit::rust::syntax::{doc_opt, snake_ident};
@@ -49,7 +49,8 @@ fn needs(op: &Operation) -> Needs {
 /// Returns one `Api` trait method. With `allow_unimplemented` it has a default that answers 501.
 pub(crate) fn api_method(op: &Operation, allow_unimplemented: bool) -> TokenStream {
     let (doc, name) = (doc_opt(op.doc.as_deref()), snake_ident(&op.name));
-    let (params_ty, response_ty) = user_types(op);
+    let m = op_path(op);
+    let (params_ty, response_ty) = (quote!(#m::Params), quote!(#m::Result));
     let principal = match needs(op) {
         Needs::Nobody => quote!(()),
         Needs::Optional => quote!(Option<Self::Principal>),
@@ -72,7 +73,7 @@ pub(crate) fn api_method(op: &Operation, allow_unimplemented: bool) -> TokenStre
     quote! {
         #doc
         fn #name(&self, params: #params_ty, ctx: &#context<'_, #principal>)
-            -> impl Future<Output = Result<#response_ty, runtime::ApiError>> + Send #body
+            -> impl Future<Output = #response_ty> + Send #body
     }
 }
 

@@ -11,16 +11,12 @@ pub trait Api: Send + Sync + 'static {
         &self,
         params: ops::get_order::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::get_order::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::get_order::Result> + Send;
     fn put_order(
         &self,
         params: ops::put_order::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::put_order::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::put_order::Result> + Send;
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Operation {

@@ -68,47 +68,47 @@ pub trait Api: Send + Sync + 'static {
         &self,
         params: ops::public::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<Output = Result<ops::public::Response, runtime::ApiError>> + Send;
+    ) -> impl Future<Output = ops::public::Result> + Send;
     fn me(
         &self,
         params: ops::me::Params,
         ctx: &Context<'_, Self::Principal>,
-    ) -> impl Future<Output = Result<ops::me::Response, runtime::ApiError>> + Send;
+    ) -> impl Future<Output = ops::me::Result> + Send;
     fn optional(
         &self,
         params: ops::optional::Params,
         ctx: &Context<'_, Option<Self::Principal>>,
-    ) -> impl Future<Output = Result<ops::optional::Response, runtime::ApiError>> + Send;
+    ) -> impl Future<Output = ops::optional::Result> + Send;
     fn read(
         &self,
         params: ops::read::Params,
         ctx: &Context<'_, Self::Principal>,
-    ) -> impl Future<Output = Result<ops::read::Response, runtime::ApiError>> + Send;
+    ) -> impl Future<Output = ops::read::Result> + Send;
     fn write(
         &self,
         params: ops::write::Params,
         ctx: &Context<'_, Self::Principal>,
-    ) -> impl Future<Output = Result<ops::write::Response, runtime::ApiError>> + Send;
+    ) -> impl Future<Output = ops::write::Result> + Send;
     fn both(
         &self,
         params: ops::both::Params,
         ctx: &Context<'_, Self::Principal>,
-    ) -> impl Future<Output = Result<ops::both::Response, runtime::ApiError>> + Send;
+    ) -> impl Future<Output = ops::both::Result> + Send;
     fn login(
         &self,
         params: ops::login::Params,
         ctx: &Context<'_, Self::Principal>,
-    ) -> impl Future<Output = Result<ops::login::Response, runtime::ApiError>> + Send;
+    ) -> impl Future<Output = ops::login::Result> + Send;
     fn cert(
         &self,
         params: ops::cert::Params,
         ctx: &Context<'_, Self::Principal>,
-    ) -> impl Future<Output = Result<ops::cert::Response, runtime::ApiError>> + Send;
+    ) -> impl Future<Output = ops::cert::Result> + Send;
     fn oidc(
         &self,
         params: ops::oidc::Params,
         ctx: &Context<'_, Self::Principal>,
-    ) -> impl Future<Output = Result<ops::oidc::Response, runtime::ApiError>> + Send;
+    ) -> impl Future<Output = ops::oidc::Result> + Send;
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Operation {

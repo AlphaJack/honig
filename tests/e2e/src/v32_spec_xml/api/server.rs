@@ -11,99 +11,67 @@ pub trait Api: Send + Sync + 'static {
         &self,
         params: ops::no_xml_object::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::no_xml_object::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::no_xml_object::Result> + Send;
     fn no_xml_object_array(
         &self,
         params: ops::no_xml_object_array::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::no_xml_object_array::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::no_xml_object_array::Result> + Send;
     fn xml_attribute_prefix_and_namespace(
         &self,
         params: ops::xml_attribute_prefix_and_namespace::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<
-            ops::xml_attribute_prefix_and_namespace::Response,
-            runtime::ApiError,
-        >,
-    > + Send;
+    ) -> impl Future<Output = ops::xml_attribute_prefix_and_namespace::Result> + Send;
     fn xml_array_item_names(
         &self,
         params: ops::xml_array_item_names::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::xml_array_item_names::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::xml_array_item_names::Result> + Send;
     fn xml_array_name_without_wrapper(
         &self,
         params: ops::xml_array_name_without_wrapper::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::xml_array_name_without_wrapper::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::xml_array_name_without_wrapper::Result> + Send;
     fn xml_array_wrapped(
         &self,
         params: ops::xml_array_wrapped::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::xml_array_wrapped::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::xml_array_wrapped::Result> + Send;
     fn xml_array_wrapped_item_names(
         &self,
         params: ops::xml_array_wrapped_item_names::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::xml_array_wrapped_item_names::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::xml_array_wrapped_item_names::Result> + Send;
     fn xml_array_wrapped_renamed(
         &self,
         params: ops::xml_array_wrapped_renamed::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::xml_array_wrapped_renamed::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::xml_array_wrapped_renamed::Result> + Send;
     fn elements_with_attributes_and_text(
         &self,
         params: ops::elements_with_attributes_and_text::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<
-            ops::elements_with_attributes_and_text::Response,
-            runtime::ApiError,
-        >,
-    > + Send;
+    ) -> impl Future<Output = ops::elements_with_attributes_and_text::Result> + Send;
     fn referenced_element_with_cdata(
         &self,
         params: ops::referenced_element_with_cdata::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::referenced_element_with_cdata::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::referenced_element_with_cdata::Result> + Send;
     fn ordered_elements(
         &self,
         params: ops::ordered_elements::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::ordered_elements::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::ordered_elements::Result> + Send;
     fn ordered_elements_and_text(
         &self,
         params: ops::ordered_elements_and_text::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::ordered_elements_and_text::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::ordered_elements_and_text::Result> + Send;
     fn xml_with_null_values(
         &self,
         params: ops::xml_with_null_values::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::xml_with_null_values::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::xml_with_null_values::Result> + Send;
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Operation {

@@ -34,17 +34,17 @@ pub trait Api: Send + Sync + 'static {
         &self,
         params: ops::private::Params,
         ctx: &Context<'_, Self::Principal>,
-    ) -> impl Future<Output = Result<ops::private::Response, runtime::ApiError>> + Send;
+    ) -> impl Future<Output = ops::private::Result> + Send;
     fn token(
         &self,
         params: ops::token::Params,
         ctx: &Context<'_, Self::Principal>,
-    ) -> impl Future<Output = Result<ops::token::Response, runtime::ApiError>> + Send;
+    ) -> impl Future<Output = ops::token::Result> + Send;
     fn keyed(
         &self,
         params: ops::keyed::Params,
         ctx: &Context<'_, Self::Principal>,
-    ) -> impl Future<Output = Result<ops::keyed::Response, runtime::ApiError>> + Send;
+    ) -> impl Future<Output = ops::keyed::Result> + Send;
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Operation {

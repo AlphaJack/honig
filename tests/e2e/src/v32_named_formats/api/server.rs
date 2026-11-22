@@ -11,9 +11,7 @@ pub trait Api: Send + Sync + 'static {
         &self,
         params: ops::put_stamp::Params,
         ctx: &Context<'_, ()>,
-    ) -> impl Future<
-        Output = Result<ops::put_stamp::Response, runtime::ApiError>,
-    > + Send;
+    ) -> impl Future<Output = ops::put_stamp::Result> + Send;
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Operation {

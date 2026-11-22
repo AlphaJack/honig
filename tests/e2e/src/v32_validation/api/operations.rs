@@ -36,6 +36,8 @@ pub mod create_user {
         /// Refused.
         ClientError { status: runtime::http::StatusCode, body: types::Problem },
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(
         Response { Self::Created(..) => "status 201 (Created)", Self::ClientError {
         status, .. } => format_args!("status {} (ClientError)", status.as_u16()), }
@@ -80,6 +82,8 @@ pub mod create_shipment {
         /// Refused.
         BadRequest(types::Refusal),
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(
         Response { Self::Created => "status 201 (Created)", Self::BadRequest(..) =>
         "status 400 (BadRequest)", }
@@ -122,6 +126,8 @@ pub mod login {
         /// Created.
         Created(types::Login),
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(Response { Self::Created(..) => "status 201 (Created)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
@@ -164,6 +170,8 @@ pub mod add_member {
         /// Created.
         Created,
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(Response { Self::Created => "status 201 (Created)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
@@ -207,6 +215,8 @@ pub mod add_closed {
         /// Created.
         Created,
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(Response { Self::Created => "status 201 (Created)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
@@ -250,6 +260,8 @@ pub mod add_badge {
         /// Created.
         Created,
     }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     runtime::response_error!(Response { Self::Created => "status 201 (Created)", });
     impl Response {
         /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
