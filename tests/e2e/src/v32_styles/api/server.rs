@@ -257,40 +257,40 @@ const fn error_schema(
 ) -> Option<&'static runtime::ProblemSchema> {
     None
 }
-static METHODS: &[&[(&str, (Op, Operation))]] = &[
-    &[("GET", (Op::C0(Op0::O14), Operation::FormFa))],
-    &[("GET", (Op::C0(Op0::O15), Operation::FormFo))],
-    &[("GET", (Op::C0(Op0::O16), Operation::FormTa))],
-    &[("GET", (Op::C0(Op0::O17), Operation::FormTo))],
-    &[("GET", (Op::C0(Op0::O18), Operation::SpaceFa))],
-    &[("GET", (Op::C0(Op0::O19), Operation::SpaceFo))],
-    &[("GET", (Op::C0(Op0::O20), Operation::PipeFa))],
-    &[("GET", (Op::C0(Op0::O21), Operation::PipeFo))],
-    &[("GET", (Op::C0(Op0::O22), Operation::DeepO))],
-    &[("GET", (Op::C0(Op0::O23), Operation::HeaderFa))],
-    &[("GET", (Op::C0(Op0::O24), Operation::HeaderFo))],
-    &[("GET", (Op::C1(Op1::O25), Operation::HeaderTa))],
-    &[("GET", (Op::C1(Op1::O26), Operation::HeaderTo))],
-    &[("GET", (Op::C1(Op1::O27), Operation::CookieFormFa))],
-    &[("GET", (Op::C1(Op1::O28), Operation::CookieFormFo))],
-    &[("GET", (Op::C1(Op1::O29), Operation::CookieFa))],
-    &[("GET", (Op::C1(Op1::O30), Operation::CookieFo))],
-    &[("GET", (Op::C1(Op1::O31), Operation::CookieTa))],
-    &[("GET", (Op::C1(Op1::O32), Operation::CookieTo))],
-    &[("GET", (Op::C0(Op0::O0), Operation::MatrixFs))],
-    &[("GET", (Op::C0(Op0::O1), Operation::MatrixFa))],
-    &[("GET", (Op::C0(Op0::O2), Operation::MatrixFo))],
-    &[("GET", (Op::C0(Op0::O3), Operation::MatrixTa))],
-    &[("GET", (Op::C0(Op0::O4), Operation::MatrixTo))],
-    &[("GET", (Op::C0(Op0::O5), Operation::LabelFs))],
-    &[("GET", (Op::C0(Op0::O6), Operation::LabelFa))],
-    &[("GET", (Op::C0(Op0::O7), Operation::LabelFo))],
-    &[("GET", (Op::C0(Op0::O8), Operation::LabelTa))],
-    &[("GET", (Op::C0(Op0::O9), Operation::LabelTo))],
-    &[("GET", (Op::C0(Op0::O10), Operation::SimpleFa))],
-    &[("GET", (Op::C0(Op0::O11), Operation::SimpleFo))],
-    &[("GET", (Op::C0(Op0::O12), Operation::SimpleTa))],
-    &[("GET", (Op::C0(Op0::O13), Operation::SimpleTo))],
+static METHODS: &[&[(&str, Operation)]] = &[
+    &[("GET", Operation::FormFa)],
+    &[("GET", Operation::FormFo)],
+    &[("GET", Operation::FormTa)],
+    &[("GET", Operation::FormTo)],
+    &[("GET", Operation::SpaceFa)],
+    &[("GET", Operation::SpaceFo)],
+    &[("GET", Operation::PipeFa)],
+    &[("GET", Operation::PipeFo)],
+    &[("GET", Operation::DeepO)],
+    &[("GET", Operation::HeaderFa)],
+    &[("GET", Operation::HeaderFo)],
+    &[("GET", Operation::HeaderTa)],
+    &[("GET", Operation::HeaderTo)],
+    &[("GET", Operation::CookieFormFa)],
+    &[("GET", Operation::CookieFormFo)],
+    &[("GET", Operation::CookieFa)],
+    &[("GET", Operation::CookieFo)],
+    &[("GET", Operation::CookieTa)],
+    &[("GET", Operation::CookieTo)],
+    &[("GET", Operation::MatrixFs)],
+    &[("GET", Operation::MatrixFa)],
+    &[("GET", Operation::MatrixFo)],
+    &[("GET", Operation::MatrixTa)],
+    &[("GET", Operation::MatrixTo)],
+    &[("GET", Operation::LabelFs)],
+    &[("GET", Operation::LabelFa)],
+    &[("GET", Operation::LabelFo)],
+    &[("GET", Operation::LabelTa)],
+    &[("GET", Operation::LabelTo)],
+    &[("GET", Operation::SimpleFa)],
+    &[("GET", Operation::SimpleFo)],
+    &[("GET", Operation::SimpleTa)],
+    &[("GET", Operation::SimpleTo)],
 ];
 static ROUTES: &[runtime::Node] = &[
     runtime::node(
@@ -439,15 +439,21 @@ impl<A: Api> runtime::Operations for Routes<A> {
     fn paths(&self) -> &'static [&'static str] {
         PATHS
     }
-    fn route(&self, method: &str, target: &str) -> Result<Operation, runtime::Reason> {
+    fn route(
+        &self,
+        method: &str,
+        target: &str,
+    ) -> Result<(Operation, runtime::Spans), runtime::Reason> {
         let (path, _) = runtime::split_target(target);
         let path = runtime::normalize_path(path);
         let path: &str = &path;
         let found = runtime::route(ROUTES, path);
-        let found = found.and_then(|(leaf, caps)| Some((*METHODS.get(leaf)?, caps)));
-        let Some((methods, _)) = found else { return Err(runtime::Reason::NotFound) };
+        let Some((methods, caps)) = found
+            .and_then(|(leaf, caps)| Some((*METHODS.get(leaf)?, caps))) else {
+            return Err(runtime::Reason::NotFound);
+        };
         runtime::find_method(methods, method)
-            .map(|(_, (_, info))| *info)
+            .map(|(_, op)| (*op, runtime::Spans::of(path, &caps)))
             .ok_or_else(|| runtime::Reason::MethodNotAllowed(
                 runtime::allowed_methods(methods),
             ))
@@ -473,133 +479,114 @@ impl<A: Api> runtime::Operations for Routes<A> {
     ) -> runtime::BoxFuture<'r, runtime::Response> {
         Box::pin(async move {
             let mut req = req;
-            let uri = req.uri().clone();
-            let target = runtime::path_and_query(&uri);
-            let (path, raw_query) = runtime::split_target(target);
+            let uri = call.uri().clone();
+            let (path, raw_query) = runtime::split_target(runtime::path_and_query(&uri));
             let path = runtime::normalize_path(path);
-            let path: &str = &path;
-            let found = runtime::route(ROUTES, path);
-            let found = found.and_then(|(leaf, caps)| Some((*METHODS.get(leaf)?, caps)));
+            let caps = call.captures(&path);
             let query = runtime::parse_query(raw_query);
-            let Some((methods, caps)) = found else { return runtime::new_response(404) };
-            let Some((_, (op, _))) = runtime::find_method(methods, req.method().as_str())
-            else {
-                return runtime::new_response(405);
-            };
             let routed = runtime::Routed {
                 request: &mut req,
                 caps: &caps,
                 raw_query,
                 query: &query,
             };
-            dispatch(&*self.0, *op, routed, call).await
+            dispatch(&*self.0, call.operation(), routed, call).await
         })
     }
 }
-#[derive(Clone, Copy)]
-enum Op {
-    C0(Op0),
-    C1(Op1),
-}
 async fn dispatch<A: Api>(
     api: &A,
-    op: Op,
+    op: Operation,
     routed: runtime::Routed<'_>,
     call: runtime::Call<'_, Option<A::Principal>, Operation>,
 ) -> runtime::Response {
     match op {
-        Op::C0(o) => dispatch_0(api, o, routed, call).await,
-        Op::C1(o) => dispatch_1(api, o, routed, call).await,
+        Operation::MatrixFs
+        | Operation::MatrixFa
+        | Operation::MatrixFo
+        | Operation::MatrixTa
+        | Operation::MatrixTo
+        | Operation::LabelFs
+        | Operation::LabelFa
+        | Operation::LabelFo
+        | Operation::LabelTa
+        | Operation::LabelTo
+        | Operation::SimpleFa
+        | Operation::SimpleFo
+        | Operation::SimpleTa
+        | Operation::SimpleTo
+        | Operation::FormFa
+        | Operation::FormFo
+        | Operation::FormTa
+        | Operation::FormTo
+        | Operation::SpaceFa
+        | Operation::SpaceFo
+        | Operation::PipeFa
+        | Operation::PipeFo
+        | Operation::DeepO
+        | Operation::HeaderFa
+        | Operation::HeaderFo => dispatch_0(api, op, routed, call).await,
+        Operation::HeaderTa
+        | Operation::HeaderTo
+        | Operation::CookieFormFa
+        | Operation::CookieFormFo
+        | Operation::CookieFa
+        | Operation::CookieFo
+        | Operation::CookieTa
+        | Operation::CookieTo => dispatch_1(api, op, routed, call).await,
     }
-}
-#[derive(Clone, Copy)]
-enum Op0 {
-    O0,
-    O1,
-    O2,
-    O3,
-    O4,
-    O5,
-    O6,
-    O7,
-    O8,
-    O9,
-    O10,
-    O11,
-    O12,
-    O13,
-    O14,
-    O15,
-    O16,
-    O17,
-    O18,
-    O19,
-    O20,
-    O21,
-    O22,
-    O23,
-    O24,
 }
 async fn dispatch_0<A: Api>(
     api: &A,
-    op: Op0,
+    op: Operation,
     routed: runtime::Routed<'_>,
     call: runtime::Call<'_, Option<A::Principal>, Operation>,
 ) -> runtime::Response {
     match op {
-        Op0::O0 => Box::pin(matrix_fs(api, routed, call)).await,
-        Op0::O1 => Box::pin(matrix_fa(api, routed, call)).await,
-        Op0::O2 => Box::pin(matrix_fo(api, routed, call)).await,
-        Op0::O3 => Box::pin(matrix_ta(api, routed, call)).await,
-        Op0::O4 => Box::pin(matrix_to(api, routed, call)).await,
-        Op0::O5 => Box::pin(label_fs(api, routed, call)).await,
-        Op0::O6 => Box::pin(label_fa(api, routed, call)).await,
-        Op0::O7 => Box::pin(label_fo(api, routed, call)).await,
-        Op0::O8 => Box::pin(label_ta(api, routed, call)).await,
-        Op0::O9 => Box::pin(label_to(api, routed, call)).await,
-        Op0::O10 => Box::pin(simple_fa(api, routed, call)).await,
-        Op0::O11 => Box::pin(simple_fo(api, routed, call)).await,
-        Op0::O12 => Box::pin(simple_ta(api, routed, call)).await,
-        Op0::O13 => Box::pin(simple_to(api, routed, call)).await,
-        Op0::O14 => Box::pin(form_fa(api, routed, call)).await,
-        Op0::O15 => Box::pin(form_fo(api, routed, call)).await,
-        Op0::O16 => Box::pin(form_ta(api, routed, call)).await,
-        Op0::O17 => Box::pin(form_to(api, routed, call)).await,
-        Op0::O18 => Box::pin(space_fa(api, routed, call)).await,
-        Op0::O19 => Box::pin(space_fo(api, routed, call)).await,
-        Op0::O20 => Box::pin(pipe_fa(api, routed, call)).await,
-        Op0::O21 => Box::pin(pipe_fo(api, routed, call)).await,
-        Op0::O22 => Box::pin(deep_o(api, routed, call)).await,
-        Op0::O23 => Box::pin(header_fa(api, routed, call)).await,
-        Op0::O24 => Box::pin(header_fo(api, routed, call)).await,
+        Operation::MatrixFs => Box::pin(matrix_fs(api, routed, call)).await,
+        Operation::MatrixFa => Box::pin(matrix_fa(api, routed, call)).await,
+        Operation::MatrixFo => Box::pin(matrix_fo(api, routed, call)).await,
+        Operation::MatrixTa => Box::pin(matrix_ta(api, routed, call)).await,
+        Operation::MatrixTo => Box::pin(matrix_to(api, routed, call)).await,
+        Operation::LabelFs => Box::pin(label_fs(api, routed, call)).await,
+        Operation::LabelFa => Box::pin(label_fa(api, routed, call)).await,
+        Operation::LabelFo => Box::pin(label_fo(api, routed, call)).await,
+        Operation::LabelTa => Box::pin(label_ta(api, routed, call)).await,
+        Operation::LabelTo => Box::pin(label_to(api, routed, call)).await,
+        Operation::SimpleFa => Box::pin(simple_fa(api, routed, call)).await,
+        Operation::SimpleFo => Box::pin(simple_fo(api, routed, call)).await,
+        Operation::SimpleTa => Box::pin(simple_ta(api, routed, call)).await,
+        Operation::SimpleTo => Box::pin(simple_to(api, routed, call)).await,
+        Operation::FormFa => Box::pin(form_fa(api, routed, call)).await,
+        Operation::FormFo => Box::pin(form_fo(api, routed, call)).await,
+        Operation::FormTa => Box::pin(form_ta(api, routed, call)).await,
+        Operation::FormTo => Box::pin(form_to(api, routed, call)).await,
+        Operation::SpaceFa => Box::pin(space_fa(api, routed, call)).await,
+        Operation::SpaceFo => Box::pin(space_fo(api, routed, call)).await,
+        Operation::PipeFa => Box::pin(pipe_fa(api, routed, call)).await,
+        Operation::PipeFo => Box::pin(pipe_fo(api, routed, call)).await,
+        Operation::DeepO => Box::pin(deep_o(api, routed, call)).await,
+        Operation::HeaderFa => Box::pin(header_fa(api, routed, call)).await,
+        Operation::HeaderFo => Box::pin(header_fo(api, routed, call)).await,
+        _ => unreachable!("`dispatch` passes only the operations of this chunk"),
     }
-}
-#[derive(Clone, Copy)]
-enum Op1 {
-    O25,
-    O26,
-    O27,
-    O28,
-    O29,
-    O30,
-    O31,
-    O32,
 }
 async fn dispatch_1<A: Api>(
     api: &A,
-    op: Op1,
+    op: Operation,
     routed: runtime::Routed<'_>,
     call: runtime::Call<'_, Option<A::Principal>, Operation>,
 ) -> runtime::Response {
     match op {
-        Op1::O25 => Box::pin(header_ta(api, routed, call)).await,
-        Op1::O26 => Box::pin(header_to(api, routed, call)).await,
-        Op1::O27 => Box::pin(cookie_form_fa(api, routed, call)).await,
-        Op1::O28 => Box::pin(cookie_form_fo(api, routed, call)).await,
-        Op1::O29 => Box::pin(cookie_fa(api, routed, call)).await,
-        Op1::O30 => Box::pin(cookie_fo(api, routed, call)).await,
-        Op1::O31 => Box::pin(cookie_ta(api, routed, call)).await,
-        Op1::O32 => Box::pin(cookie_to(api, routed, call)).await,
+        Operation::HeaderTa => Box::pin(header_ta(api, routed, call)).await,
+        Operation::HeaderTo => Box::pin(header_to(api, routed, call)).await,
+        Operation::CookieFormFa => Box::pin(cookie_form_fa(api, routed, call)).await,
+        Operation::CookieFormFo => Box::pin(cookie_form_fo(api, routed, call)).await,
+        Operation::CookieFa => Box::pin(cookie_fa(api, routed, call)).await,
+        Operation::CookieFo => Box::pin(cookie_fo(api, routed, call)).await,
+        Operation::CookieTa => Box::pin(cookie_ta(api, routed, call)).await,
+        Operation::CookieTo => Box::pin(cookie_to(api, routed, call)).await,
+        _ => unreachable!("`dispatch` passes only the operations of this chunk"),
     }
 }
 static MATRIX_FS_OP: runtime::Op = runtime::Op::new(

@@ -59,14 +59,11 @@ const fn error_schema(
 ) -> Option<&'static runtime::ProblemSchema> {
     None
 }
-static METHODS: &[&[(&str, (Op, Operation))]] = &[
-    &[("GET", (Op::O0, Operation::Ping))],
-    &[
-        ("POST", (Op::O1, Operation::Archive)),
-        ("DELETE", (Op::O2, Operation::Unarchive)),
-    ],
-    &[("POST", (Op::O3, Operation::AddNote))],
-    &[("GET", (Op::O4, Operation::FindBox))],
+static METHODS: &[&[(&str, Operation)]] = &[
+    &[("GET", Operation::Ping)],
+    &[("POST", Operation::Archive), ("DELETE", Operation::Unarchive)],
+    &[("POST", Operation::AddNote)],
+    &[("GET", Operation::FindBox)],
 ];
 static ROUTES: &[runtime::Node] = &[
     runtime::node(
@@ -104,15 +101,21 @@ impl<A: Api> runtime::Operations for Routes<A> {
     fn paths(&self) -> &'static [&'static str] {
         PATHS
     }
-    fn route(&self, method: &str, target: &str) -> Result<Operation, runtime::Reason> {
+    fn route(
+        &self,
+        method: &str,
+        target: &str,
+    ) -> Result<(Operation, runtime::Spans), runtime::Reason> {
         let (path, _) = runtime::split_target(target);
         let path = runtime::normalize_path(path);
         let path: &str = &path;
         let found = runtime::route(ROUTES, path);
-        let found = found.and_then(|(leaf, caps)| Some((*METHODS.get(leaf)?, caps)));
-        let Some((methods, _)) = found else { return Err(runtime::Reason::NotFound) };
+        let Some((methods, caps)) = found
+            .and_then(|(leaf, caps)| Some((*METHODS.get(leaf)?, caps))) else {
+            return Err(runtime::Reason::NotFound);
+        };
         runtime::find_method(methods, method)
-            .map(|(_, (_, info))| *info)
+            .map(|(_, op)| (*op, runtime::Spans::of(path, &caps)))
             .ok_or_else(|| runtime::Reason::MethodNotAllowed(
                 runtime::allowed_methods(methods),
             ))
@@ -138,49 +141,33 @@ impl<A: Api> runtime::Operations for Routes<A> {
     ) -> runtime::BoxFuture<'r, runtime::Response> {
         Box::pin(async move {
             let mut req = req;
-            let uri = req.uri().clone();
-            let target = runtime::path_and_query(&uri);
-            let (path, raw_query) = runtime::split_target(target);
+            let uri = call.uri().clone();
+            let (path, raw_query) = runtime::split_target(runtime::path_and_query(&uri));
             let path = runtime::normalize_path(path);
-            let path: &str = &path;
-            let found = runtime::route(ROUTES, path);
-            let found = found.and_then(|(leaf, caps)| Some((*METHODS.get(leaf)?, caps)));
+            let caps = call.captures(&path);
             let query = runtime::parse_query(raw_query);
-            let Some((methods, caps)) = found else { return runtime::new_response(404) };
-            let Some((_, (op, _))) = runtime::find_method(methods, req.method().as_str())
-            else {
-                return runtime::new_response(405);
-            };
             let routed = runtime::Routed {
                 request: &mut req,
                 caps: &caps,
                 raw_query,
                 query: &query,
             };
-            dispatch(&*self.0, *op, routed, call).await
+            dispatch(&*self.0, call.operation(), routed, call).await
         })
     }
 }
-#[derive(Clone, Copy)]
-enum Op {
-    O0,
-    O1,
-    O2,
-    O3,
-    O4,
-}
 async fn dispatch<A: Api>(
     api: &A,
-    op: Op,
+    op: Operation,
     routed: runtime::Routed<'_>,
     call: runtime::Call<'_, Option<A::Principal>, Operation>,
 ) -> runtime::Response {
     match op {
-        Op::O0 => Box::pin(ping(api, routed, call)).await,
-        Op::O1 => Box::pin(archive(api, routed, call)).await,
-        Op::O2 => Box::pin(unarchive(api, routed, call)).await,
-        Op::O3 => Box::pin(add_note(api, routed, call)).await,
-        Op::O4 => Box::pin(find_box(api, routed, call)).await,
+        Operation::Ping => Box::pin(ping(api, routed, call)).await,
+        Operation::Archive => Box::pin(archive(api, routed, call)).await,
+        Operation::Unarchive => Box::pin(unarchive(api, routed, call)).await,
+        Operation::AddNote => Box::pin(add_note(api, routed, call)).await,
+        Operation::FindBox => Box::pin(find_box(api, routed, call)).await,
     }
 }
 static PING_OP: runtime::Op = runtime::Op::new(

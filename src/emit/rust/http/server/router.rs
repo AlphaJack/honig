@@ -37,78 +37,45 @@ pub(crate) fn axum_paths(api: &Api) -> BTreeSet<String> {
     out
 }
 
-/// Returns variant names of `Op` with one per path operation in `path_ops` order. They go by
-/// position because operation names may share a word (`CreateUser`,
-/// `CreateOrder`) that the `enum_variant_names` of clippy rejects.
-pub(crate) fn op_variants(path_ops: &[&Operation]) -> Vec<proc_macro2::Ident> {
-    (0..path_ops.len()).map(|i| format_ident!("O{i}")).collect::<Vec<_>>()
-}
-
-/// Returns `Op::<Variant>` for the operation at `i` through the enum of its chunk when
-/// there is more than one chunk.
-pub(crate) fn op_variant_path(variants: &[proc_macro2::Ident], i: usize) -> TokenStream {
-    let v = &variants[i];
-    if variants.len() <= DISPATCH_CHUNK {
-        quote!(Op::#v)
-    } else {
-        let ci = i / DISPATCH_CHUNK;
-        let (c, e) = (format_ident!("C{ci}"), format_ident!("Op{ci}"));
-        quote!(Op::#c(#e::#v))
-    }
-}
-
-/// Returns `enum Op` and `dispatch`: the matched operation to its handler. Past
-/// `DISPATCH_CHUNK` operations each chunk gets its own enum and function.
-/// One level of chunks and not a chain. Nested futures would grow with the
-/// operation count and hit the layout depth limit of the compiler.
-pub(crate) fn dispatch_fns(path_ops: &[&Operation], variants: &[proc_macro2::Ident]) -> TokenStream {
+/// Returns `dispatch`: the routed operation to its handler. Past `DISPATCH_CHUNK` operations each chunk of them gets a
+/// function of its own. One level of chunks and not a chain: nested futures would grow with the operation count and hit
+/// the layout depth limit of the compiler.
+pub(crate) fn dispatch_fns(path_ops: &[&Operation]) -> TokenStream {
     let sig = quote!(routed: runtime::Routed<'_>, call: runtime::Call<'_, Option<A::Principal>, Operation>);
     // The future of each operation is boxed. So `dispatch` stays a small match. Otherwise it would be one state
     // machine that contains every operation (and your handler) inline. That is large in code and on the stack.
-    let call = |op: &Operation| {
-        let name = snake_ident(&op.name);
-        quote!(Box::pin(#name(api, routed, call)).await)
+    let arm = |op: &&Operation| {
+        let (v, name) = (operation_variant(op), snake_ident(&op.name));
+        quote!(Operation::#v => Box::pin(#name(api, routed, call)).await,)
     };
     if path_ops.len() <= DISPATCH_CHUNK {
-        let arms = path_ops.iter().zip(variants).map(|(op, v)| {
-            let c = call(op);
-            quote!(Op::#v => #c,)
-        });
+        let arms = path_ops.iter().map(arm);
         return quote! {
-            #[derive(Clone, Copy)]
-            enum Op { #(#variants),* }
-
-            async fn dispatch<A: Api>(api: &A, op: Op, #sig) -> runtime::Response {
+            async fn dispatch<A: Api>(api: &A, op: Operation, #sig) -> runtime::Response {
                 match op { #(#arms)* }
             }
         };
     }
-    let chunks: Vec<(&[&Operation], &[proc_macro2::Ident])> =
-        path_ops.chunks(DISPATCH_CHUNK).zip(variants.chunks(DISPATCH_CHUNK)).collect();
-    let cs: Vec<_> = (0..chunks.len()).map(|ci| format_ident!("C{ci}")).collect();
-    let es: Vec<_> = (0..chunks.len()).map(|ci| format_ident!("Op{ci}")).collect();
+    let chunks: Vec<&[&Operation]> = path_ops.chunks(DISPATCH_CHUNK).collect();
     let fs: Vec<_> = (0..chunks.len()).map(|ci| format_ident!("dispatch_{ci}")).collect();
-    let parts = chunks.iter().enumerate().map(|(ci, (ops, vs))| {
-        let (e, f) = (&es[ci], &fs[ci]);
-        let arms = ops.iter().zip(vs.iter()).map(|(op, v)| {
-            let c = call(op);
-            quote!(#e::#v => #c,)
-        });
+    let groups = chunks.iter().zip(&fs).map(|(ops, f)| {
+        let vs = ops.iter().map(|op| operation_variant(op));
+        quote!(#(Operation::#vs)|* => #f(api, op, routed, call).await,)
+    });
+    let parts = chunks.iter().zip(&fs).map(|(ops, f)| {
+        let arms = ops.iter().map(arm);
         quote! {
-            #[derive(Clone, Copy)]
-            enum #e { #(#vs),* }
-
-            async fn #f<A: Api>(api: &A, op: #e, #sig) -> runtime::Response {
-                match op { #(#arms)* }
+            async fn #f<A: Api>(api: &A, op: Operation, #sig) -> runtime::Response {
+                match op {
+                    #(#arms)*
+                    _ => unreachable!("`dispatch` passes only the operations of this chunk"),
+                }
             }
         }
     });
     quote! {
-        #[derive(Clone, Copy)]
-        enum Op { #(#cs(#es)),* }
-
-        async fn dispatch<A: Api>(api: &A, op: Op, #sig) -> runtime::Response {
-            match op { #(Op::#cs(o) => #fs(api, o, routed, call).await,)* }
+        async fn dispatch<A: Api>(api: &A, op: Operation, #sig) -> runtime::Response {
+            match op { #(#groups)* }
         }
         #(#parts)*
     }
@@ -130,13 +97,10 @@ pub(crate) struct TrieNode {
 /// node (`/a/{id}`, `/a/{name}`) their methods join one group with the first first.
 /// Group numbers follow specificity. `runtime::route` picks the lowest leaf
 /// among mixed siblings that both match.
-pub(crate) fn route_trie(
-    routes: &[(usize, &Operation)],
-    variants: &[proc_macro2::Ident],
-) -> (Vec<TrieNode>, Vec<Vec<TokenStream>>) {
+pub(crate) fn route_trie(routes: &[&Operation]) -> (Vec<TrieNode>, Vec<Vec<TokenStream>>) {
     let mut nodes = vec![TrieNode::default()];
     let mut groups: Vec<Vec<TokenStream>> = vec![];
-    for (i, op) in routes {
+    for op in routes {
         let mut cur = 0;
         for seg in template_segs(op) {
             let next = nodes.len();
@@ -159,8 +123,8 @@ pub(crate) fn route_trie(
             groups.push(vec![]);
             groups.len() - 1
         });
-        let (method, o, v) = (lit(&op.method), op_variant_path(variants, *i), operation_variant(op));
-        groups[g].push(quote!((#method, (#o, Operation::#v))));
+        let (method, v) = (lit(&op.method), operation_variant(op));
+        groups[g].push(quote!((#method, Operation::#v)));
     }
     (nodes, groups)
 }
@@ -252,39 +216,6 @@ pub(crate) fn base_paths(servers: &[crate::ir::Server]) -> Vec<String> {
     out
 }
 
-/// Returns the bodies of `Operations::route` and `Operations::call` around `locate`. It finds the leaf of the path and
-/// binds the query to the pattern that it is given. `route` has no use for that.
-fn route_and_call(locate: impl Fn(TokenStream) -> TokenStream) -> (TokenStream, TokenStream) {
-    let (route_locate, call_locate) = (locate(quote!(_)), locate(quote!(raw_query)));
-    (
-        quote! {
-            #route_locate
-            let Some((methods, _)) = found else { return Err(runtime::Reason::NotFound) };
-            runtime::find_method(methods, method)
-                .map(|(_, (_, info))| *info)
-                .ok_or_else(|| runtime::Reason::MethodNotAllowed(runtime::allowed_methods(methods)))
-        },
-        quote! {
-            Box::pin(async move {
-                // Routing borrows the target. The request goes on as mutable. So an operation can move its body out
-                // and does not copy it.
-                let mut req = req;
-                let uri = req.uri().clone();
-                let target = runtime::path_and_query(&uri);
-                #call_locate
-                let query = runtime::parse_query(raw_query);
-                // `route` found the operation first: the same target finds it again.
-                let Some((methods, caps)) = found else { return runtime::new_response(404) };
-                let Some((_, (op, _))) = runtime::find_method(methods, req.method().as_str()) else {
-                    return runtime::new_response(405);
-                };
-                let routed = runtime::Routed { request: &mut req, caps: &caps, raw_query, query: &query };
-                dispatch(&*self.0, *op, routed, call).await
-            })
-        },
-    )
-}
-
 pub(crate) fn router(api: &Api) -> TokenStream {
     let bases = served_bases(api);
     let strip_base = (!bases.is_empty()).then(|| {
@@ -311,27 +242,41 @@ pub(crate) fn router(api: &Api) -> TokenStream {
     if path_ops.is_empty() {
         return TokenStream::new();
     }
-    let variants = op_variants(&path_ops);
-    let mut routes: Vec<(usize, &Operation)> = path_ops.iter().copied().enumerate().collect();
-    routes.sort_by_key(|(_, op)| specificity(op));
-    let (nodes, groups) = route_trie(&routes, &variants);
+    let mut routes = path_ops.clone();
+    routes.sort_by_key(|op| specificity(op));
+    let (nodes, groups) = route_trie(&routes);
     let nodes = trie_nodes(&nodes);
     let groups = groups.iter().map(|g| quote!(&[#(#g),*]));
     // The leaf of the path with its (method, operation) pairs and the variables of the template.
-    let locate = |query: TokenStream| {
-        quote! {
-            let (path, #query) = runtime::split_target(target);
-            let path = runtime::normalize_path(path);
-            let path: &str = &path;
-            #strip_base
-            let found = found.and_then(|(leaf, caps)| Some((*METHODS.get(leaf)?, caps)));
-        }
+    let route = quote! {
+        let (path, _) = runtime::split_target(target);
+        let path = runtime::normalize_path(path);
+        let path: &str = &path;
+        #strip_base
+        let Some((methods, caps)) = found.and_then(|(leaf, caps)| Some((*METHODS.get(leaf)?, caps))) else {
+            return Err(runtime::Reason::NotFound);
+        };
+        runtime::find_method(methods, method)
+            .map(|(_, op)| (*op, runtime::Spans::of(path, &caps)))
+            .ok_or_else(|| runtime::Reason::MethodNotAllowed(runtime::allowed_methods(methods)))
     };
-    let (route, call) = route_and_call(locate);
-    let dispatch = dispatch_fns(&path_ops, &variants);
+    // The server routed the request: its operation and the variables of the path that it routed come along.
+    let call = quote! {
+        Box::pin(async move {
+            let mut req = req;
+            let uri = call.uri().clone();
+            let (path, raw_query) = runtime::split_target(runtime::path_and_query(&uri));
+            let path = runtime::normalize_path(path);
+            let caps = call.captures(&path);
+            let query = runtime::parse_query(raw_query);
+            let routed = runtime::Routed { request: &mut req, caps: &caps, raw_query, query: &query };
+            dispatch(&*self.0, call.operation(), routed, call).await
+        })
+    };
+    let dispatch = dispatch_fns(&path_ops);
     let verify = super::verify_fn(api, &path_ops, &quote!(&*self.0), &quote!(A::Principal));
     quote! {
-        static METHODS: &[&[(&str, (Op, Operation))]] = &[#(#groups),*];
+        static METHODS: &[&[(&str, Operation)]] = &[#(#groups),*];
 
         static ROUTES: &[runtime::Node] = &[#(#nodes),*];
 
@@ -369,7 +314,7 @@ pub(crate) fn router(api: &Api) -> TokenStream {
                 PATHS
             }
 
-            fn route(&self, method: &str, target: &str) -> Result<Operation, runtime::Reason> {
+            fn route(&self, method: &str, target: &str) -> Result<(Operation, runtime::Spans), runtime::Reason> {
                 #route
             }
 

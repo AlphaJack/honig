@@ -119,20 +119,20 @@ const fn error_schema(
 ) -> Option<&'static runtime::ProblemSchema> {
     None
 }
-static METHODS: &[&[(&str, (Op, Operation))]] = &[
-    &[("GET", (Op::O0, Operation::NoXmlObject))],
-    &[("POST", (Op::O2, Operation::XmlAttributePrefixAndNamespace))],
-    &[("GET", (Op::O8, Operation::ElementsWithAttributesAndText))],
-    &[("GET", (Op::O9, Operation::ReferencedElementWithCdata))],
-    &[("GET", (Op::O10, Operation::OrderedElements))],
-    &[("GET", (Op::O11, Operation::OrderedElementsAndText))],
-    &[("GET", (Op::O12, Operation::XmlWithNullValues))],
-    &[("GET", (Op::O1, Operation::NoXmlObjectArray))],
-    &[("GET", (Op::O3, Operation::XmlArrayItemNames))],
-    &[("GET", (Op::O4, Operation::XmlArrayNameWithoutWrapper))],
-    &[("GET", (Op::O5, Operation::XmlArrayWrapped))],
-    &[("GET", (Op::O6, Operation::XmlArrayWrappedItemNames))],
-    &[("GET", (Op::O7, Operation::XmlArrayWrappedRenamed))],
+static METHODS: &[&[(&str, Operation)]] = &[
+    &[("GET", Operation::NoXmlObject)],
+    &[("POST", Operation::XmlAttributePrefixAndNamespace)],
+    &[("GET", Operation::ElementsWithAttributesAndText)],
+    &[("GET", Operation::ReferencedElementWithCdata)],
+    &[("GET", Operation::OrderedElements)],
+    &[("GET", Operation::OrderedElementsAndText)],
+    &[("GET", Operation::XmlWithNullValues)],
+    &[("GET", Operation::NoXmlObjectArray)],
+    &[("GET", Operation::XmlArrayItemNames)],
+    &[("GET", Operation::XmlArrayNameWithoutWrapper)],
+    &[("GET", Operation::XmlArrayWrapped)],
+    &[("GET", Operation::XmlArrayWrappedItemNames)],
+    &[("GET", Operation::XmlArrayWrappedRenamed)],
 ];
 static ROUTES: &[runtime::Node] = &[
     runtime::node(
@@ -214,15 +214,21 @@ impl<A: Api> runtime::Operations for Routes<A> {
     fn paths(&self) -> &'static [&'static str] {
         PATHS
     }
-    fn route(&self, method: &str, target: &str) -> Result<Operation, runtime::Reason> {
+    fn route(
+        &self,
+        method: &str,
+        target: &str,
+    ) -> Result<(Operation, runtime::Spans), runtime::Reason> {
         let (path, _) = runtime::split_target(target);
         let path = runtime::normalize_path(path);
         let path: &str = &path;
         let found = runtime::route(ROUTES, path);
-        let found = found.and_then(|(leaf, caps)| Some((*METHODS.get(leaf)?, caps)));
-        let Some((methods, _)) = found else { return Err(runtime::Reason::NotFound) };
+        let Some((methods, caps)) = found
+            .and_then(|(leaf, caps)| Some((*METHODS.get(leaf)?, caps))) else {
+            return Err(runtime::Reason::NotFound);
+        };
         runtime::find_method(methods, method)
-            .map(|(_, (_, info))| *info)
+            .map(|(_, op)| (*op, runtime::Spans::of(path, &caps)))
             .ok_or_else(|| runtime::Reason::MethodNotAllowed(
                 runtime::allowed_methods(methods),
             ))
@@ -248,65 +254,63 @@ impl<A: Api> runtime::Operations for Routes<A> {
     ) -> runtime::BoxFuture<'r, runtime::Response> {
         Box::pin(async move {
             let mut req = req;
-            let uri = req.uri().clone();
-            let target = runtime::path_and_query(&uri);
-            let (path, raw_query) = runtime::split_target(target);
+            let uri = call.uri().clone();
+            let (path, raw_query) = runtime::split_target(runtime::path_and_query(&uri));
             let path = runtime::normalize_path(path);
-            let path: &str = &path;
-            let found = runtime::route(ROUTES, path);
-            let found = found.and_then(|(leaf, caps)| Some((*METHODS.get(leaf)?, caps)));
+            let caps = call.captures(&path);
             let query = runtime::parse_query(raw_query);
-            let Some((methods, caps)) = found else { return runtime::new_response(404) };
-            let Some((_, (op, _))) = runtime::find_method(methods, req.method().as_str())
-            else {
-                return runtime::new_response(405);
-            };
             let routed = runtime::Routed {
                 request: &mut req,
                 caps: &caps,
                 raw_query,
                 query: &query,
             };
-            dispatch(&*self.0, *op, routed, call).await
+            dispatch(&*self.0, call.operation(), routed, call).await
         })
     }
 }
-#[derive(Clone, Copy)]
-enum Op {
-    O0,
-    O1,
-    O2,
-    O3,
-    O4,
-    O5,
-    O6,
-    O7,
-    O8,
-    O9,
-    O10,
-    O11,
-    O12,
-}
 async fn dispatch<A: Api>(
     api: &A,
-    op: Op,
+    op: Operation,
     routed: runtime::Routed<'_>,
     call: runtime::Call<'_, Option<A::Principal>, Operation>,
 ) -> runtime::Response {
     match op {
-        Op::O0 => Box::pin(no_xml_object(api, routed, call)).await,
-        Op::O1 => Box::pin(no_xml_object_array(api, routed, call)).await,
-        Op::O2 => Box::pin(xml_attribute_prefix_and_namespace(api, routed, call)).await,
-        Op::O3 => Box::pin(xml_array_item_names(api, routed, call)).await,
-        Op::O4 => Box::pin(xml_array_name_without_wrapper(api, routed, call)).await,
-        Op::O5 => Box::pin(xml_array_wrapped(api, routed, call)).await,
-        Op::O6 => Box::pin(xml_array_wrapped_item_names(api, routed, call)).await,
-        Op::O7 => Box::pin(xml_array_wrapped_renamed(api, routed, call)).await,
-        Op::O8 => Box::pin(elements_with_attributes_and_text(api, routed, call)).await,
-        Op::O9 => Box::pin(referenced_element_with_cdata(api, routed, call)).await,
-        Op::O10 => Box::pin(ordered_elements(api, routed, call)).await,
-        Op::O11 => Box::pin(ordered_elements_and_text(api, routed, call)).await,
-        Op::O12 => Box::pin(xml_with_null_values(api, routed, call)).await,
+        Operation::NoXmlObject => Box::pin(no_xml_object(api, routed, call)).await,
+        Operation::NoXmlObjectArray => {
+            Box::pin(no_xml_object_array(api, routed, call)).await
+        }
+        Operation::XmlAttributePrefixAndNamespace => {
+            Box::pin(xml_attribute_prefix_and_namespace(api, routed, call)).await
+        }
+        Operation::XmlArrayItemNames => {
+            Box::pin(xml_array_item_names(api, routed, call)).await
+        }
+        Operation::XmlArrayNameWithoutWrapper => {
+            Box::pin(xml_array_name_without_wrapper(api, routed, call)).await
+        }
+        Operation::XmlArrayWrapped => {
+            Box::pin(xml_array_wrapped(api, routed, call)).await
+        }
+        Operation::XmlArrayWrappedItemNames => {
+            Box::pin(xml_array_wrapped_item_names(api, routed, call)).await
+        }
+        Operation::XmlArrayWrappedRenamed => {
+            Box::pin(xml_array_wrapped_renamed(api, routed, call)).await
+        }
+        Operation::ElementsWithAttributesAndText => {
+            Box::pin(elements_with_attributes_and_text(api, routed, call)).await
+        }
+        Operation::ReferencedElementWithCdata => {
+            Box::pin(referenced_element_with_cdata(api, routed, call)).await
+        }
+        Operation::OrderedElements => Box::pin(ordered_elements(api, routed, call)).await,
+        Operation::OrderedElementsAndText => {
+            Box::pin(ordered_elements_and_text(api, routed, call)).await
+        }
+        Operation::XmlWithNullValues => {
+            Box::pin(xml_with_null_values(api, routed, call)).await
+        }
     }
 }
 static NO_XML_OBJECT_OP: runtime::Op = runtime::Op {

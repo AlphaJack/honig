@@ -311,11 +311,27 @@ impl<A: Webhooks> runtime::Operations for WebhookRoutes<A> {
     fn paths(&self) -> &'static [&'static str] {
         &[]
     }
-    fn route(&self, method: &str, _: &str) -> Result<WebhookOperation, runtime::Reason> {
+    fn route(
+        &self,
+        method: &str,
+        _: &str,
+    ) -> Result<(WebhookOperation, runtime::Spans), runtime::Reason> {
         match (self.name, method) {
-            ("newProduct", "POST") => Ok(WebhookOperation::NewProductPost),
-            ("onAdopt", "POST") => Ok(WebhookOperation::CreateProductOnAdoptPost),
-            ("shared", "POST") => Ok(WebhookOperation::CreateProductSharedPost),
+            ("newProduct", "POST") => {
+                Ok((WebhookOperation::NewProductPost, runtime::Spans::default()))
+            }
+            ("onAdopt", "POST") => {
+                Ok((
+                    WebhookOperation::CreateProductOnAdoptPost,
+                    runtime::Spans::default(),
+                ))
+            }
+            ("shared", "POST") => {
+                Ok((
+                    WebhookOperation::CreateProductSharedPost,
+                    runtime::Spans::default(),
+                ))
+            }
             (name, _) => {
                 let allowed: Vec<&'static str> = WEBHOOK_METHODS
                     .iter()
@@ -415,24 +431,24 @@ static WEBHOOK_METHODS: &[(&str, &str)] = &[
     ("onAdopt", "POST"),
     ("shared", "POST"),
 ];
-static METHODS: &[&[(&str, (Op, Operation))]] = &[
-    &[("POST", (Op::O0, Operation::SubmitForm))],
+static METHODS: &[&[(&str, Operation)]] = &[
+    &[("POST", Operation::SubmitForm)],
     &[
-        ("GET", (Op::O2, Operation::ListProducts)),
-        ("POST", (Op::O3, Operation::CreateProduct)),
-        ("QUERY", (Op::O4, Operation::SearchProducts)),
-        ("COPY", (Op::O5, Operation::CopyProducts)),
+        ("GET", Operation::ListProducts),
+        ("POST", Operation::CreateProduct),
+        ("QUERY", Operation::SearchProducts),
+        ("COPY", Operation::CopyProducts),
     ],
-    &[("GET", (Op::O13, Operation::Search))],
-    &[("PUT", (Op::O1, Operation::PutBlob))],
+    &[("GET", Operation::Search)],
+    &[("PUT", Operation::PutBlob)],
     &[
-        ("GET", (Op::O6, Operation::GetProduct)),
-        ("PUT", (Op::O7, Operation::PutProduct)),
-        ("DELETE", (Op::O8, Operation::DeleteProduct)),
-        ("OPTIONS", (Op::O9, Operation::OptionsProduct)),
-        ("HEAD", (Op::O10, Operation::HeadProduct)),
-        ("PATCH", (Op::O11, Operation::PatchProduct)),
-        ("TRACE", (Op::O12, Operation::TraceProduct)),
+        ("GET", Operation::GetProduct),
+        ("PUT", Operation::PutProduct),
+        ("DELETE", Operation::DeleteProduct),
+        ("OPTIONS", Operation::OptionsProduct),
+        ("HEAD", Operation::HeadProduct),
+        ("PATCH", Operation::PatchProduct),
+        ("TRACE", Operation::TraceProduct),
     ],
 ];
 static ROUTES: &[runtime::Node] = &[
@@ -485,7 +501,11 @@ impl<A: Api> runtime::Operations for Routes<A> {
     fn paths(&self) -> &'static [&'static str] {
         PATHS
     }
-    fn route(&self, method: &str, target: &str) -> Result<Operation, runtime::Reason> {
+    fn route(
+        &self,
+        method: &str,
+        target: &str,
+    ) -> Result<(Operation, runtime::Spans), runtime::Reason> {
         let (path, _) = runtime::split_target(target);
         let path = runtime::normalize_path(path);
         let path: &str = &path;
@@ -499,10 +519,12 @@ impl<A: Api> runtime::Operations for Routes<A> {
             .map(|rest| if rest.is_empty() { "/" } else { rest })
             .and_then(|rest| runtime::route(ROUTES, rest))
             .or_else(|| runtime::route(ROUTES, path));
-        let found = found.and_then(|(leaf, caps)| Some((*METHODS.get(leaf)?, caps)));
-        let Some((methods, _)) = found else { return Err(runtime::Reason::NotFound) };
+        let Some((methods, caps)) = found
+            .and_then(|(leaf, caps)| Some((*METHODS.get(leaf)?, caps))) else {
+            return Err(runtime::Reason::NotFound);
+        };
         runtime::find_method(methods, method)
-            .map(|(_, (_, info))| *info)
+            .map(|(_, op)| (*op, runtime::Spans::of(path, &caps)))
             .ok_or_else(|| runtime::Reason::MethodNotAllowed(
                 runtime::allowed_methods(methods),
             ))
@@ -564,76 +586,42 @@ impl<A: Api> runtime::Operations for Routes<A> {
     ) -> runtime::BoxFuture<'r, runtime::Response> {
         Box::pin(async move {
             let mut req = req;
-            let uri = req.uri().clone();
-            let target = runtime::path_and_query(&uri);
-            let (path, raw_query) = runtime::split_target(target);
+            let uri = call.uri().clone();
+            let (path, raw_query) = runtime::split_target(runtime::path_and_query(&uri));
             let path = runtime::normalize_path(path);
-            let path: &str = &path;
-            let found = BASE_PATHS
-                .iter()
-                .find_map(|b| {
-                    path
-                        .strip_prefix(b)
-                        .filter(|rest| rest.is_empty() || rest.starts_with('/'))
-                })
-                .map(|rest| if rest.is_empty() { "/" } else { rest })
-                .and_then(|rest| runtime::route(ROUTES, rest))
-                .or_else(|| runtime::route(ROUTES, path));
-            let found = found.and_then(|(leaf, caps)| Some((*METHODS.get(leaf)?, caps)));
+            let caps = call.captures(&path);
             let query = runtime::parse_query(raw_query);
-            let Some((methods, caps)) = found else { return runtime::new_response(404) };
-            let Some((_, (op, _))) = runtime::find_method(methods, req.method().as_str())
-            else {
-                return runtime::new_response(405);
-            };
             let routed = runtime::Routed {
                 request: &mut req,
                 caps: &caps,
                 raw_query,
                 query: &query,
             };
-            dispatch(&*self.0, *op, routed, call).await
+            dispatch(&*self.0, call.operation(), routed, call).await
         })
     }
 }
-#[derive(Clone, Copy)]
-enum Op {
-    O0,
-    O1,
-    O2,
-    O3,
-    O4,
-    O5,
-    O6,
-    O7,
-    O8,
-    O9,
-    O10,
-    O11,
-    O12,
-    O13,
-}
 async fn dispatch<A: Api>(
     api: &A,
-    op: Op,
+    op: Operation,
     routed: runtime::Routed<'_>,
     call: runtime::Call<'_, Option<A::Principal>, Operation>,
 ) -> runtime::Response {
     match op {
-        Op::O0 => Box::pin(submit_form(api, routed, call)).await,
-        Op::O1 => Box::pin(put_blob(api, routed, call)).await,
-        Op::O2 => Box::pin(list_products(api, routed, call)).await,
-        Op::O3 => Box::pin(create_product(api, routed, call)).await,
-        Op::O4 => Box::pin(search_products(api, routed, call)).await,
-        Op::O5 => Box::pin(copy_products(api, routed, call)).await,
-        Op::O6 => Box::pin(get_product(api, routed, call)).await,
-        Op::O7 => Box::pin(put_product(api, routed, call)).await,
-        Op::O8 => Box::pin(delete_product(api, routed, call)).await,
-        Op::O9 => Box::pin(options_product(api, routed, call)).await,
-        Op::O10 => Box::pin(head_product(api, routed, call)).await,
-        Op::O11 => Box::pin(patch_product(api, routed, call)).await,
-        Op::O12 => Box::pin(trace_product(api, routed, call)).await,
-        Op::O13 => Box::pin(search(api, routed, call)).await,
+        Operation::SubmitForm => Box::pin(submit_form(api, routed, call)).await,
+        Operation::PutBlob => Box::pin(put_blob(api, routed, call)).await,
+        Operation::ListProducts => Box::pin(list_products(api, routed, call)).await,
+        Operation::CreateProduct => Box::pin(create_product(api, routed, call)).await,
+        Operation::SearchProducts => Box::pin(search_products(api, routed, call)).await,
+        Operation::CopyProducts => Box::pin(copy_products(api, routed, call)).await,
+        Operation::GetProduct => Box::pin(get_product(api, routed, call)).await,
+        Operation::PutProduct => Box::pin(put_product(api, routed, call)).await,
+        Operation::DeleteProduct => Box::pin(delete_product(api, routed, call)).await,
+        Operation::OptionsProduct => Box::pin(options_product(api, routed, call)).await,
+        Operation::HeadProduct => Box::pin(head_product(api, routed, call)).await,
+        Operation::PatchProduct => Box::pin(patch_product(api, routed, call)).await,
+        Operation::TraceProduct => Box::pin(trace_product(api, routed, call)).await,
+        Operation::Search => Box::pin(search(api, routed, call)).await,
     }
 }
 static SUBMIT_FORM_OP: runtime::Op = runtime::Op {

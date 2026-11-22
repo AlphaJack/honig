@@ -60,9 +60,15 @@ impl<A: Webhooks> runtime::Operations for WebhookRoutes<A> {
     fn paths(&self) -> &'static [&'static str] {
         &[]
     }
-    fn route(&self, method: &str, _: &str) -> Result<WebhookOperation, runtime::Reason> {
+    fn route(
+        &self,
+        method: &str,
+        _: &str,
+    ) -> Result<(WebhookOperation, runtime::Spans), runtime::Reason> {
         match (self.name, method) {
-            ("orderShipped", "POST") => Ok(WebhookOperation::OrderShippedPost),
+            ("orderShipped", "POST") => {
+                Ok((WebhookOperation::OrderShippedPost, runtime::Spans::default()))
+            }
             (name, _) => {
                 let allowed: Vec<&'static str> = WEBHOOK_METHODS
                     .iter()

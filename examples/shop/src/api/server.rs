@@ -66,12 +66,9 @@ const fn error_schema(
 ) -> Option<&'static runtime::ProblemSchema> {
     None
 }
-static METHODS: &[&[(&str, (Op, Operation))]] = &[
-    &[
-        ("GET", (Op::O0, Operation::ListProducts)),
-        ("POST", (Op::O1, Operation::CreateProduct)),
-    ],
-    &[("GET", (Op::O2, Operation::GetProduct))],
+static METHODS: &[&[(&str, Operation)]] = &[
+    &[("GET", Operation::ListProducts), ("POST", Operation::CreateProduct)],
+    &[("GET", Operation::GetProduct)],
 ];
 static ROUTES: &[runtime::Node] = &[
     runtime::node(&[("products", 1)], &[], runtime::Node::NONE, runtime::Node::NONE),
@@ -108,7 +105,11 @@ impl<A: Api> runtime::Operations for Routes<A> {
     fn paths(&self) -> &'static [&'static str] {
         PATHS
     }
-    fn route(&self, method: &str, target: &str) -> Result<Operation, runtime::Reason> {
+    fn route(
+        &self,
+        method: &str,
+        target: &str,
+    ) -> Result<(Operation, runtime::Spans), runtime::Reason> {
         let (path, _) = runtime::split_target(target);
         let path = runtime::normalize_path(path);
         let path: &str = &path;
@@ -122,10 +123,12 @@ impl<A: Api> runtime::Operations for Routes<A> {
             .map(|rest| if rest.is_empty() { "/" } else { rest })
             .and_then(|rest| runtime::route(ROUTES, rest))
             .or_else(|| runtime::route(ROUTES, path));
-        let found = found.and_then(|(leaf, caps)| Some((*METHODS.get(leaf)?, caps)));
-        let Some((methods, _)) = found else { return Err(runtime::Reason::NotFound) };
+        let Some((methods, caps)) = found
+            .and_then(|(leaf, caps)| Some((*METHODS.get(leaf)?, caps))) else {
+            return Err(runtime::Reason::NotFound);
+        };
         runtime::find_method(methods, method)
-            .map(|(_, (_, info))| *info)
+            .map(|(_, op)| (*op, runtime::Spans::of(path, &caps)))
             .ok_or_else(|| runtime::Reason::MethodNotAllowed(
                 runtime::allowed_methods(methods),
             ))
@@ -164,54 +167,31 @@ impl<A: Api> runtime::Operations for Routes<A> {
     ) -> runtime::BoxFuture<'r, runtime::Response> {
         Box::pin(async move {
             let mut req = req;
-            let uri = req.uri().clone();
-            let target = runtime::path_and_query(&uri);
-            let (path, raw_query) = runtime::split_target(target);
+            let uri = call.uri().clone();
+            let (path, raw_query) = runtime::split_target(runtime::path_and_query(&uri));
             let path = runtime::normalize_path(path);
-            let path: &str = &path;
-            let found = BASE_PATHS
-                .iter()
-                .find_map(|b| {
-                    path
-                        .strip_prefix(b)
-                        .filter(|rest| rest.is_empty() || rest.starts_with('/'))
-                })
-                .map(|rest| if rest.is_empty() { "/" } else { rest })
-                .and_then(|rest| runtime::route(ROUTES, rest))
-                .or_else(|| runtime::route(ROUTES, path));
-            let found = found.and_then(|(leaf, caps)| Some((*METHODS.get(leaf)?, caps)));
+            let caps = call.captures(&path);
             let query = runtime::parse_query(raw_query);
-            let Some((methods, caps)) = found else { return runtime::new_response(404) };
-            let Some((_, (op, _))) = runtime::find_method(methods, req.method().as_str())
-            else {
-                return runtime::new_response(405);
-            };
             let routed = runtime::Routed {
                 request: &mut req,
                 caps: &caps,
                 raw_query,
                 query: &query,
             };
-            dispatch(&*self.0, *op, routed, call).await
+            dispatch(&*self.0, call.operation(), routed, call).await
         })
     }
 }
-#[derive(Clone, Copy)]
-enum Op {
-    O0,
-    O1,
-    O2,
-}
 async fn dispatch<A: Api>(
     api: &A,
-    op: Op,
+    op: Operation,
     routed: runtime::Routed<'_>,
     call: runtime::Call<'_, Option<A::Principal>, Operation>,
 ) -> runtime::Response {
     match op {
-        Op::O0 => Box::pin(list_products(api, routed, call)).await,
-        Op::O1 => Box::pin(create_product(api, routed, call)).await,
-        Op::O2 => Box::pin(get_product(api, routed, call)).await,
+        Operation::ListProducts => Box::pin(list_products(api, routed, call)).await,
+        Operation::CreateProduct => Box::pin(create_product(api, routed, call)).await,
+        Operation::GetProduct => Box::pin(get_product(api, routed, call)).await,
     }
 }
 static LIST_PRODUCTS_OP: runtime::Op = runtime::Op {

@@ -25,6 +25,7 @@ use crate::server::adapter::unread;
 use crate::server::conditional::Conditions;
 use crate::server::operation::{Op, ProblemSchemas};
 use crate::server::range::Ranges;
+use crate::server::route::Spans;
 use crate::server::serve::{Call, Config, challenge, for_method};
 use crate::trace_context::Remote;
 use crate::{
@@ -50,7 +51,7 @@ pub trait Operations: Send + Sync + 'static {
     ///
     /// # Errors
     /// No operation matches the request.
-    fn route(&self, method: &str, target: &str) -> Result<Self::Operation, Reason>;
+    fn route(&self, method: &str, target: &str) -> Result<(Self::Operation, Spans), Reason>;
 
     /// Returns the error schemas that the description declares for a request that no operation matches.
     fn errors(&self) -> ProblemSchemas;
@@ -115,6 +116,9 @@ pub struct MatchedOperation {
     name: &'static str,
     satisfied: SatisfiedSecurity,
     body_limit: usize,
+    /// The target that was routed and where its path variables are: the operation reads them as routed.
+    uri: http::Uri,
+    spans: Spans,
 }
 
 impl MatchedOperation {
@@ -334,9 +338,12 @@ impl<O: Operations> Service<Request> for Endpoint<O> {
         let extensions = req.extensions_mut();
         let routed =
             extensions.get::<O::Operation>().copied().zip(extensions.get::<RequestEvent<O::Operation>>().cloned());
-        let satisfied =
-            extensions.remove::<MatchedOperation>().map_or_else(SatisfiedSecurity::default, |r| r.satisfied);
+        let matched = extensions.remove::<MatchedOperation>();
         let principal = extensions.remove::<O::Principal>();
+        let (satisfied, uri, spans) = match matched {
+            Some(m) => (m.satisfied, m.uri, m.spans),
+            None => (SatisfiedSecurity::default(), req.uri().clone(), Spans::default()),
+        };
         Box::pin(async move {
             let Some((operation, event)) = routed else {
                 return Err(ApiError::new(
@@ -344,7 +351,7 @@ impl<O: Operations> Service<Request> for Endpoint<O> {
                     "a request that the server did not route",
                 ));
             };
-            let call = Call { config: &shared.config, operation, satisfied, principal, event: &event };
+            let call = Call { config: &shared.config, operation, satisfied, principal, event: &event, uri, spans };
             Ok(shared.ops.call(req, call).await)
         })
     }
@@ -424,10 +431,10 @@ where
 {
     let started = std::time::Instant::now();
     let config = &shared.config;
-    let (operation, op, satisfied, method) = {
+    let (operation, spans, op, satisfied, method) = {
         let target = head.uri.path_and_query().map_or("/", http::uri::PathAndQuery::as_str);
-        let operation = match shared.ops.route(head.method.as_str(), target) {
-            Ok(operation) => operation,
+        let (operation, spans) = match shared.ops.route(head.method.as_str(), target) {
+            Ok(routed) => routed,
             Err(rejection) => return config.unrouted(shared.ops.errors(), &head, rejection),
         };
         let op = crate::Operation::op(operation);
@@ -436,12 +443,13 @@ where
         let satisfied =
             crate::server::auth::check_auth(&head.headers, &crate::params::parse_query(raw_query), op.security);
         match satisfied {
-            Some(satisfied) => (operation, op, satisfied, method),
+            Some(satisfied) => (operation, spans, op, satisfied, method),
             None => return refused(config, operation, method, Reason::Unauthorized, head.headers.clone(), started),
         }
     };
     // The head moves into the layers. A refusal renders by `Accept` alone (a shared buffer and not a copy).
     let accept = head.headers.get(http::header::ACCEPT).cloned();
+    let uri = head.uri.clone();
     let conditions = Conditions::of(&head);
     let ranges = Ranges::of(&head, op.ranges);
     let remote = Remote::of(&head.headers);
@@ -458,7 +466,7 @@ where
     }
     extensions.insert(operation);
     extensions.insert(event.clone());
-    extensions.insert(MatchedOperation { name: op.name, satisfied, body_limit: config.max_body_bytes });
+    extensions.insert(MatchedOperation { name: op.name, satisfied, body_limit: config.max_body_bytes, uri, spans });
     let through = async {
         std::future::poll_fn(|cx| stack.poll_ready(cx)).await.map_err(Into::into)?;
         stack.call(req).await.map_err(Into::into)
