@@ -74,38 +74,18 @@ pub fn load(specs: &[std::path::PathBuf], opts: &Options) -> Result<Loaded, Diag
         return Err(diagnostics);
     }
     let Some(doc) = loaded.doc() else { return Err(diagnostics) };
+    // A requirement on a scheme the generator cannot see cannot be checked: code from it would skip it.
+    for (ptr, key) in crate::resolve::unresolved_security(&doc.root) {
+        diagnostics.error(ptr, format!("security scheme `{key}` does not resolve: generated code would skip it"));
+    }
+    for ptr in crate::resolve::security_not_lists(&doc.root) {
+        diagnostics.error(
+            ptr,
+            "`security` must be a list: write `[]` for a public operation or remove the key to use the root's",
+        );
+    }
     // Code from a description with an error would differ from what it says.
-    if diagnostics.refused(opts.server) || diagnostics.has_errors() {
-        return Err(diagnostics);
-    }
-    // A requirement on a scheme the generator cannot see cannot be checked: generating
-    // anyway would serve the operation without it.
-    let unresolved = crate::resolve::unresolved_security(&doc.root);
-    if opts.server && !unresolved.is_empty() {
-        for (ptr, key) in unresolved {
-            diagnostics.error(
-                ptr,
-                format!("security scheme `{key}` does not resolve: refusing to generate a server that would skip it"),
-            );
-        }
-        return Err(diagnostics);
-    }
-    let not_lists = crate::resolve::security_not_lists(&doc.root);
-    if opts.server && !not_lists.is_empty() {
-        for ptr in not_lists {
-            diagnostics.error(
-                ptr,
-                "`security` must be a list: write `[]` for a public operation or remove the key to use the root's",
-            );
-        }
-        return Err(diagnostics);
-    }
-    // A schema that cannot be what its author meant: its type would refuse every value.
-    if !crate::validate::schema_rules::errors(&doc.root).is_empty() {
-        return Err(diagnostics);
-    }
-    // A `pattern` that does not compile cannot be checked: its type would accept every value.
-    if crate::validate::v32::has_uncompilable_pattern(&doc.root, "") {
+    if diagnostics.refused() {
         return Err(diagnostics);
     }
     let from_v20 = loaded.source == Some(crate::version::Version::V20);
@@ -141,12 +121,12 @@ pub fn print(loaded: &Loaded, built: Ir, trees: Trees, opts: &Options) -> Result
     diagnostics.0.extend(built.diagnostics.0);
     let api = &built.api;
     for name in rust::unknown_operations(api, opts) {
-        diagnostics.refuse("", format!("`{name}` is not an operation of the description: check `operations`"));
+        diagnostics.error("", format!("`{name}` is not an operation of the description: check `operations`"));
     }
     for key in rust::unknown_derives(api, opts) {
-        diagnostics.refuse("", format!("`derives` names `{key}`, which is no generated type: check the name"));
+        diagnostics.error("", format!("`derives` names `{key}`, which is no generated type: check the name"));
     }
-    if diagnostics.refused(opts.server) || diagnostics.has_errors() {
+    if diagnostics.refused() {
         return Err(diagnostics);
     }
     let files = match rust::print(trees.0, opts.rust.binary) {

@@ -155,7 +155,7 @@ impl<'a> Builder<'a> {
         for key in keywords::ENUM_NAMES {
             let Some(Value::Array(names)) = o.get(*key) else { continue };
             if names.len() != values || names.iter().any(|n| !n.is_string()) {
-                self.diags.refuse(
+                self.diags.error(
                     join(ptr, key),
                     format!("`{key}` has {} entries for {values} values: list one name for each value", names.len()),
                 );
@@ -181,7 +181,7 @@ impl<'a> Builder<'a> {
         if ptr.strip_prefix("/components/schemas/").is_some_and(|t| !t.contains('/'))
             && !self.components.insert(name.key())
         {
-            self.diags.refuse(
+            self.diags.error(
                 ptr,
                 format!(
                     "this component and an earlier one map to the same item in Rust: rename one (`{}`)",

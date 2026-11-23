@@ -75,7 +75,7 @@ fn security_scheme_named_by_local_uri_is_enforced() {
 /// A requirement that lists a scheme by its name and by its URI has one entry too many: renaming one would replace the
 /// scopes of the other.
 #[test]
-fn a_scheme_listed_by_name_and_by_uri_refuses_a_server() {
+fn a_scheme_listed_by_name_and_by_uri_fails_generation() {
     let components = json!({"securitySchemes": {"oauth": {"type": "oauth2", "flows": {"implicit": {
         "authorizationUrl": "https://example.com/auth", "scopes": {"read": "r", "write": "w"}}}}}});
     let uri = "#/components/securitySchemes/oauth";
@@ -100,13 +100,13 @@ fn security_scheme_named_by_external_uri_is_bundled_and_enforced() {
 }
 
 #[test]
-fn unresolvable_security_scheme_refuses_a_server_but_not_a_client() {
+fn unresolvable_security_scheme_fails_generation() {
     let d = doc(&secured_op(&json!([{"missing.json#/components/securitySchemes/x": []}])), &bearer());
     let path = common::write("sec-unresolvable", &d, &[]);
     let err = crate::generate::generate(&path, &Options::default()).expect_err("must refuse");
     assert!(err.iter().any(|d| d.message.contains("does not resolve")), "{:#?}", err.0);
     let client_only = Options { server: false, tests: false, ..Options::default() };
-    crate::generate::generate(&path, &client_only).expect("a client sends no credential it cannot know");
+    crate::generate::generate(&path, &client_only).expect_err("a client would not send the credential");
 }
 
 /// Every combination of known names, URIs, unknown names, AND, OR and
@@ -141,7 +141,7 @@ fn no_security_shape_turns_a_secured_operation_public() {
 /// A `security` that is not a list cannot be told apart from a missing one: a bare `security:` in YAML would make an
 /// operation public under a root requirement.
 #[test]
-fn a_security_that_is_not_a_list_refuses_a_server() {
+fn a_security_that_is_not_a_list_fails_generation() {
     let op =
         json!({"/a": {"get": {"operationId": "a", "security": null, "responses": {"204": {"description": "ok"}}}}});
     let mut v32 = doc(&op, &bearer());
@@ -254,6 +254,18 @@ fn any_error_fails_generation() {
     }
 }
 
+/// `generate` reports every error in one run: a check that finds one does not hide the others.
+#[test]
+fn every_error_is_reported_in_one_run() {
+    let op =
+        json!({"/a": {"get": {"operationId": "a", "security": null, "responses": {"204": {"description": "ok"}}}}});
+    let components = json!({"schemas": {"Range": {"type": "integer", "minimum": 5, "maximum": 1}}});
+    let path = common::write("every-error", &doc(&op, &components), &[]);
+    let err = crate::generate::generate(&path, &Options::default()).expect_err("two errors");
+    let at = |p: &str| err.iter().any(|d| d.pointer.starts_with(p));
+    assert!(at("/paths/~1a/get/security") && at("/components/schemas/Range"), "{:#?}", err.0);
+}
+
 /// Media types that give one variant name are numbered in the sorted order of the types: a reorder of `content`
 /// changes no name.
 #[test]
@@ -278,10 +290,10 @@ fn a_reorder_of_media_types_changes_no_variant() {
     assert_eq!(variants(false), variants(true));
 }
 
-/// Two scopes that are one variant of the scope enum refuse a server: numbered by their place in the sorted list, an
+/// Two scopes that are one variant of the scope enum fail generation: numbered by their place in the sorted list, an
 /// added scope would rename the others and a `verify_` method would grant another scope than it names.
 #[test]
-fn two_scopes_of_one_variant_refuse_a_server() {
+fn two_scopes_of_one_variant_fail_generation() {
     let components = json!({"securitySchemes": {"oauth": {"type": "oauth2", "flows": {"implicit": {
         "authorizationUrl": "https://example.com/auth", "scopes": {"read:user": "a", "read_user": "b"}}}}}});
     let path =
@@ -477,7 +489,7 @@ fn a_limit_on_a_binary_body_is_a_warning_and_on_a_text_body_a_check() {
 
 /// A scheme that refers to a schema, to itself or to nothing defines no check: a server would skip it.
 #[test]
-fn a_scheme_reference_to_no_scheme_refuses_a_server() {
+fn a_scheme_reference_to_no_scheme_fails_generation() {
     let refs = ["#/components/schemas/S", "#/components/securitySchemes/local", "#/components/securitySchemes/nope"];
     for r in refs {
         let components = json!({"schemas": {"S": {"type": "string"}}, "securitySchemes": {"local": {"$ref": r}}});

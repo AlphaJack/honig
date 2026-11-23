@@ -108,7 +108,7 @@ pub(crate) fn apply(doc: &mut Value, overlay: &Value, name: &str, diags: &mut Di
             // nothing is most often a JSONPath that does not say what was meant.
             // RFC 9535 filters test the children of the node before them.
             Ok(0) => diags.push(crate::diag::Diagnostic {
-                refuses: crate::diag::Refuses::Everything,
+                refuses: true,
                 ..crate::diag::Diagnostic::warning(
                     at(&format!("/actions/{i}/target")),
                     "the target selects no nodes: the action does nothing",
@@ -134,7 +134,7 @@ fn identity(doc: &Value, overlay: &Value, at: &dyn Fn(&str) -> String, diags: &m
         && extends != own
     {
         diags.push(crate::diag::Diagnostic {
-            refuses: crate::diag::Refuses::Everything,
+            refuses: true,
             ..crate::diag::Diagnostic::warning(
                 at("/extends"),
                 format!("`extends` is `{extends}` but the description's `$self` is `{own}`"),
