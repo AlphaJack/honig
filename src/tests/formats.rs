@@ -109,10 +109,10 @@ fn local_date_time_formats_use_the_date_library() {
     assert!(with(false, "local-none").contains("pub starts: runtime::DateTimeLocalStr"));
 }
 
-/// A `pattern` beside a format that has a type of its own is not checked: the type decides the value. Generation says
-/// so, once, at the pattern. A pattern on a plain string is checked and needs no word.
+/// A `pattern` beside a format that has a type of its own cannot be checked: the type decides the value. That is an
+/// error, once, at the pattern. A pattern on a plain string is checked and needs no word.
 #[test]
-fn a_pattern_beside_a_typed_format_is_reported_unchecked() {
+fn a_pattern_beside_a_typed_format_is_an_error() {
     let doc = common::spec(
         "3.2.0",
         &json!({}),
@@ -122,7 +122,7 @@ fn a_pattern_beside_a_typed_format_is_reported_unchecked() {
         }}}}),
     );
     let (_, w) = common::build("pattern-format", &doc, &[]);
-    let at: Vec<&String> = w.iter().filter(|m| m.contains("is not checked")).collect();
+    let at: Vec<&String> = w.iter().filter(|m| m.contains("cannot check pattern")).collect();
     assert_eq!(at.len(), 1, "{w:#?}");
     assert!(at[0].starts_with("/components/schemas/Order/properties/id/pattern:"), "{at:?}");
     assert!(at[0].contains("format: uuid"), "{at:?}");

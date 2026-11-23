@@ -1042,11 +1042,11 @@ impl<'a> Builder<'a> {
             }
             Some("string") => match string_format(format) {
                 Some(f) => {
-                    // The format's type decides the value: `generate` does not check a `pattern` beside it.
+                    // The format's type decides the value: generated code does not check a `pattern` beside it.
                     if let Some(p) = o.get("pattern").and_then(Value::as_str) {
-                        self.diags.warning(
+                        self.diags.error(
                             join(ptr, "pattern"),
-                            format!("pattern `{p}` is not checked: the value is the type of `format: {format}`"),
+                            format!("honig cannot check pattern `{p}` on the type of `format: {format}`: remove one"),
                         );
                     }
                     Ty::Format(f)
@@ -1090,7 +1090,7 @@ impl<'a> Builder<'a> {
 
     fn ty_ref(&mut self, r: &str, at: &str) -> Ty {
         let Some(target) = self.doc.local_pointer(r) else {
-            self.diags.warning(at, format!("`{r}` does not resolve; using an untyped value"));
+            self.diags.error(at, format!("`{r}` does not resolve"));
             return Ty::Any;
         };
         if let Some(id) = self.by_ptr.get(&target).copied() {

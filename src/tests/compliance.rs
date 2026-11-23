@@ -266,6 +266,31 @@ fn every_error_is_reported_in_one_run() {
     assert!(at("/paths/~1a/get/security") && at("/components/schemas/Range"), "{:#?}", err.0);
 }
 
+/// A keyword that generated code would drop fails generation at its pointer: a `$ref` that does not resolve, a 3.1
+/// `nullable`, an unknown `type`, a `pattern` beside a typed `format` and a path parameter missing from its path.
+#[test]
+fn a_keyword_that_would_lose_its_meaning_fails_generation() {
+    let schema = |s: Value| doc(&json!({}), &json!({"schemas": {"S": s}}));
+    let mut nullable = schema(json!({"type": "string", "nullable": true}));
+    nullable["openapi"] = json!("3.1.0");
+    let stray = json!({"/a": {"get": {"operationId": "a", "responses": {"204": {"description": "ok"}},
+        "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "string"}}]}}});
+    for (d, at) in [
+        (
+            schema(json!({"properties": {"a": {"$ref": "#/components/schemas/Gone"}}})),
+            "/components/schemas/S/properties/a",
+        ),
+        (nullable, "/components/schemas/S/nullable"),
+        (schema(json!({"type": "text"})), "/components/schemas/S/type"),
+        (schema(json!({"type": "string", "format": "uuid", "pattern": "^0"})), "/components/schemas/S/pattern"),
+        (doc(&stray, &json!({})), "/paths/~1a/get"),
+    ] {
+        let path = common::write("lost-meaning", &d, &[]);
+        let err = crate::generate::generate(&path, &Options::default()).expect_err(at);
+        assert!(err.iter().any(|d| d.pointer.starts_with(at)), "{at}: {:#?}", err.0);
+    }
+}
+
 /// Media types that give one variant name are numbered in the sorted order of the types: a reorder of `content`
 /// changes no name.
 #[test]
