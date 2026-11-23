@@ -214,15 +214,11 @@ impl TryFrom<i64> for LogEntryLevel {
     }
 }
 impl LogEntryLevel {
-    /// Returns the value for a constant: it panics when the value breaks the limits, which is a build error
-    /// in a `const` and a panic when it runs. Convert a value that is not a literal with `try_from`.
-    ///
-    /// # Panics
-    /// The value breaks a limit.
+    /// Returns the value, or `None` when it breaks a limit. In a constant, `.expect(..)` on it makes a
+    /// literal outside the limits a build error.
     #[must_use]
-    pub const fn from_literal(value: i64) -> Self {
-        assert!(value >= 0, "a literal outside the limits of this type");
-        Self(value)
+    pub const fn new(value: i64) -> Option<Self> {
+        if value >= 0 { Some(Self(value)) } else { None }
     }
 }
 runtime::checked_num_impls!(LogEntryLevel, i64);
@@ -231,15 +227,11 @@ runtime::checked_num_impls!(LogEntryLevel, i64);
 pub struct EventRetry(pub(super) i64);
 runtime::checked_twin!(EventRetry, LogEntryLevel, i64);
 impl EventRetry {
-    /// Returns the value for a constant: it panics when the value breaks the limits, which is a build error
-    /// in a `const` and a panic when it runs. Convert a value that is not a literal with `try_from`.
-    ///
-    /// # Panics
-    /// The value breaks a limit.
+    /// Returns the value, or `None` when it breaks a limit. In a constant, `.expect(..)` on it makes a
+    /// literal outside the limits a build error.
     #[must_use]
-    pub const fn from_literal(value: i64) -> Self {
-        assert!(value >= 0, "a literal outside the limits of this type");
-        Self(value)
+    pub const fn new(value: i64) -> Option<Self> {
+        if value >= 0 { Some(Self(value)) } else { None }
     }
 }
 runtime::checked_num_impls!(EventRetry, i64);
@@ -292,15 +284,11 @@ impl ParameterExamplesCookie {
 pub struct ParameterExamplesCookieCode(pub(super) i64);
 runtime::checked_twin!(ParameterExamplesCookieCode, LogEntryLevel, i64);
 impl ParameterExamplesCookieCode {
-    /// Returns the value for a constant: it panics when the value breaks the limits, which is a build error
-    /// in a `const` and a panic when it runs. Convert a value that is not a literal with `try_from`.
-    ///
-    /// # Panics
-    /// The value breaks a limit.
+    /// Returns the value, or `None` when it breaks a limit. In a constant, `.expect(..)` on it makes a
+    /// literal outside the limits a build error.
     #[must_use]
-    pub const fn from_literal(value: i64) -> Self {
-        assert!(value >= 0, "a literal outside the limits of this type");
-        Self(value)
+    pub const fn new(value: i64) -> Option<Self> {
+        if value >= 0 { Some(Self(value)) } else { None }
     }
 }
 runtime::checked_num_impls!(ParameterExamplesCookieCode, i64);

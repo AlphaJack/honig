@@ -1941,15 +1941,11 @@ impl TryFrom<i64> for ShipmentInternationalScoresValue {
     }
 }
 impl ShipmentInternationalScoresValue {
-    /// Returns the value for a constant: it panics when the value breaks the limits, which is a build error
-    /// in a `const` and a panic when it runs. Convert a value that is not a literal with `try_from`.
-    ///
-    /// # Panics
-    /// The value breaks a limit.
+    /// Returns the value, or `None` when it breaks a limit. In a constant, `.expect(..)` on it makes a
+    /// literal outside the limits a build error.
     #[must_use]
-    pub const fn from_literal(value: i64) -> Self {
-        assert!(value >= 0, "a literal outside the limits of this type");
-        Self(value)
+    pub const fn new(value: i64) -> Option<Self> {
+        if value >= 0 { Some(Self(value)) } else { None }
     }
 }
 runtime::checked_num_impls!(ShipmentInternationalScoresValue, i64);
@@ -2004,15 +2000,11 @@ impl TryFrom<i64> for ShipmentInternationalWeight {
     }
 }
 impl ShipmentInternationalWeight {
-    /// Returns the value for a constant: it panics when the value breaks the limits, which is a build error
-    /// in a `const` and a panic when it runs. Convert a value that is not a literal with `try_from`.
-    ///
-    /// # Panics
-    /// The value breaks a limit.
+    /// Returns the value, or `None` when it breaks a limit. In a constant, `.expect(..)` on it makes a
+    /// literal outside the limits a build error.
     #[must_use]
-    pub const fn from_literal(value: i64) -> Self {
-        assert!(value >= 256, "a literal outside the limits of this type");
-        Self(value)
+    pub const fn new(value: i64) -> Option<Self> {
+        if value >= 256 { Some(Self(value)) } else { None }
     }
 }
 runtime::checked_num_impls!(ShipmentInternationalWeight, i64);
@@ -2170,15 +2162,11 @@ pub type SettingsPattern1 = LabelsPattern1;
 pub struct SettingsPattern2(pub(super) i64);
 runtime::checked_twin!(SettingsPattern2, ShipmentInternationalScoresValue, i64);
 impl SettingsPattern2 {
-    /// Returns the value for a constant: it panics when the value breaks the limits, which is a build error
-    /// in a `const` and a panic when it runs. Convert a value that is not a literal with `try_from`.
-    ///
-    /// # Panics
-    /// The value breaks a limit.
+    /// Returns the value, or `None` when it breaks a limit. In a constant, `.expect(..)` on it makes a
+    /// literal outside the limits a build error.
     #[must_use]
-    pub const fn from_literal(value: i64) -> Self {
-        assert!(value >= 0, "a literal outside the limits of this type");
-        Self(value)
+    pub const fn new(value: i64) -> Option<Self> {
+        if value >= 0 { Some(Self(value)) } else { None }
     }
 }
 runtime::checked_num_impls!(SettingsPattern2, i64);
@@ -2309,15 +2297,11 @@ impl TryFrom<i64> for UserAge {
     }
 }
 impl UserAge {
-    /// Returns the value for a constant: it panics when the value breaks the limits, which is a build error
-    /// in a `const` and a panic when it runs. Convert a value that is not a literal with `try_from`.
-    ///
-    /// # Panics
-    /// The value breaks a limit.
+    /// Returns the value, or `None` when it breaks a limit. In a constant, `.expect(..)` on it makes a
+    /// literal outside the limits a build error.
     #[must_use]
-    pub const fn from_literal(value: i64) -> Self {
-        assert!(value >= 0 && value < 150, "a literal outside the limits of this type");
-        Self(value)
+    pub const fn new(value: i64) -> Option<Self> {
+        if value >= 0 && value < 150 { Some(Self(value)) } else { None }
     }
 }
 runtime::checked_num_impls!(UserAge, i64);
@@ -2385,15 +2369,11 @@ impl TryFrom<i64> for UserLoyaltyVariant1 {
     }
 }
 impl UserLoyaltyVariant1 {
-    /// Returns the value for a constant: it panics when the value breaks the limits, which is a build error
-    /// in a `const` and a panic when it runs. Convert a value that is not a literal with `try_from`.
-    ///
-    /// # Panics
-    /// The value breaks a limit.
+    /// Returns the value, or `None` when it breaks a limit. In a constant, `.expect(..)` on it makes a
+    /// literal outside the limits a build error.
     #[must_use]
-    pub const fn from_literal(value: i64) -> Self {
-        assert!(value >= 1 && value <= 10, "a literal outside the limits of this type");
-        Self(value)
+    pub const fn new(value: i64) -> Option<Self> {
+        if value >= 1 && value <= 10 { Some(Self(value)) } else { None }
     }
 }
 runtime::checked_num_impls!(UserLoyaltyVariant1, i64);
@@ -2434,15 +2414,11 @@ impl TryFrom<i64> for CreateUserLimit {
     }
 }
 impl CreateUserLimit {
-    /// Returns the value for a constant: it panics when the value breaks the limits, which is a build error
-    /// in a `const` and a panic when it runs. Convert a value that is not a literal with `try_from`.
-    ///
-    /// # Panics
-    /// The value breaks a limit.
+    /// Returns the value, or `None` when it breaks a limit. In a constant, `.expect(..)` on it makes a
+    /// literal outside the limits a build error.
     #[must_use]
-    pub const fn from_literal(value: i64) -> Self {
-        assert!(value >= 1 && value <= 100, "a literal outside the limits of this type");
-        Self(value)
+    pub const fn new(value: i64) -> Option<Self> {
+        if value >= 1 && value <= 100 { Some(Self(value)) } else { None }
     }
 }
 runtime::checked_num_impls!(CreateUserLimit, i64);
