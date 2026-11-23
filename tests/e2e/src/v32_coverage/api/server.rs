@@ -300,9 +300,12 @@ fn add_note_params(
 fn add_note_encode(
     resp: ops::add_note::Response,
 ) -> Result<runtime::Response, runtime::ClientError> {
-    let ops::add_note::Response::Created { body, x_tags } = resp;
+    let ops::add_note::Response::Created { body, x_count, x_tags } = resp;
     Ok({
         let mut r = runtime::new_response(201);
+        if let Some(h) = runtime::encode_header(&x_count, false)? {
+            runtime::Message::set_header(&mut r, "X-Count", h)?;
+        }
         if let Some(h) = runtime::encode_header(&x_tags, true)? {
             runtime::Message::set_header(&mut r, "X-Tags", h)?;
         }

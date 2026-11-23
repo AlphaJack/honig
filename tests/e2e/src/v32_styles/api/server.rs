@@ -142,26 +142,6 @@ pub trait Api: Send + Sync + 'static {
         params: ops::header_to::Params,
         ctx: &Context<'_, ()>,
     ) -> impl Future<Output = ops::header_to::Result> + Send;
-    fn cookie_form_fa(
-        &self,
-        params: ops::cookie_form_fa::Params,
-        ctx: &Context<'_, ()>,
-    ) -> impl Future<Output = ops::cookie_form_fa::Result> + Send;
-    fn cookie_form_fo(
-        &self,
-        params: ops::cookie_form_fo::Params,
-        ctx: &Context<'_, ()>,
-    ) -> impl Future<Output = ops::cookie_form_fo::Result> + Send;
-    fn cookie_fa(
-        &self,
-        params: ops::cookie_fa::Params,
-        ctx: &Context<'_, ()>,
-    ) -> impl Future<Output = ops::cookie_fa::Result> + Send;
-    fn cookie_fo(
-        &self,
-        params: ops::cookie_fo::Params,
-        ctx: &Context<'_, ()>,
-    ) -> impl Future<Output = ops::cookie_fo::Result> + Send;
     fn cookie_ta(
         &self,
         params: ops::cookie_ta::Params,
@@ -202,10 +182,6 @@ pub enum Operation {
     HeaderFo,
     HeaderTa,
     HeaderTo,
-    CookieFormFa,
-    CookieFormFo,
-    CookieFa,
-    CookieFo,
     CookieTa,
     CookieTo,
 }
@@ -239,10 +215,6 @@ impl runtime::Operation for Operation {
             Self::HeaderFo => &HEADER_FO_OP,
             Self::HeaderTa => &HEADER_TA_OP,
             Self::HeaderTo => &HEADER_TO_OP,
-            Self::CookieFormFa => &COOKIE_FORM_FA_OP,
-            Self::CookieFormFo => &COOKIE_FORM_FO_OP,
-            Self::CookieFa => &COOKIE_FA_OP,
-            Self::CookieFo => &COOKIE_FO_OP,
             Self::CookieTa => &COOKIE_TA_OP,
             Self::CookieTo => &COOKIE_TO_OP,
         }
@@ -271,10 +243,6 @@ static METHODS: &[&[(&str, Operation)]] = &[
     &[("GET", Operation::HeaderFo)],
     &[("GET", Operation::HeaderTa)],
     &[("GET", Operation::HeaderTo)],
-    &[("GET", Operation::CookieFormFa)],
-    &[("GET", Operation::CookieFormFo)],
-    &[("GET", Operation::CookieFa)],
-    &[("GET", Operation::CookieFo)],
     &[("GET", Operation::CookieTa)],
     &[("GET", Operation::CookieTo)],
     &[("GET", Operation::MatrixFs)],
@@ -302,32 +270,28 @@ static ROUTES: &[runtime::Node] = &[
             ("form-t-o", 4),
             ("pipe-f-a", 7),
             ("pipe-f-o", 8),
-            ("label-f-a", 32),
-            ("label-f-o", 34),
-            ("label-f-s", 30),
-            ("label-t-a", 36),
-            ("label-t-o", 38),
+            ("label-f-a", 28),
+            ("label-f-o", 30),
+            ("label-f-s", 26),
+            ("label-t-a", 32),
+            ("label-t-o", 34),
             ("space-f-a", 5),
             ("space-f-o", 6),
-            ("cookie-f-a", 16),
-            ("cookie-f-o", 17),
-            ("cookie-t-a", 18),
-            ("cookie-t-o", 19),
+            ("cookie-t-a", 14),
+            ("cookie-t-o", 15),
             ("header-f-a", 10),
             ("header-f-o", 11),
             ("header-t-a", 12),
             ("header-t-o", 13),
-            ("matrix-f-a", 22),
-            ("matrix-f-o", 24),
-            ("matrix-f-s", 20),
-            ("matrix-t-a", 26),
-            ("matrix-t-o", 28),
-            ("simple-f-a", 40),
-            ("simple-f-o", 42),
-            ("simple-t-a", 44),
-            ("simple-t-o", 46),
-            ("cookie-form-f-a", 14),
-            ("cookie-form-f-o", 15),
+            ("matrix-f-a", 18),
+            ("matrix-f-o", 20),
+            ("matrix-f-s", 16),
+            ("matrix-t-a", 22),
+            ("matrix-t-o", 24),
+            ("simple-f-a", 36),
+            ("simple-f-o", 38),
+            ("simple-t-a", 40),
+            ("simple-t-o", 42),
         ],
         &[],
         runtime::Node::NONE,
@@ -348,44 +312,36 @@ static ROUTES: &[runtime::Node] = &[
     runtime::node(&[], &[], runtime::Node::NONE, 12),
     runtime::node(&[], &[], runtime::Node::NONE, 13),
     runtime::node(&[], &[], runtime::Node::NONE, 14),
+    runtime::node(&[], &[], 17, runtime::Node::NONE),
     runtime::node(&[], &[], runtime::Node::NONE, 15),
+    runtime::node(&[], &[], 19, runtime::Node::NONE),
     runtime::node(&[], &[], runtime::Node::NONE, 16),
-    runtime::node(&[], &[], runtime::Node::NONE, 17),
-    runtime::node(&[], &[], runtime::Node::NONE, 18),
     runtime::node(&[], &[], 21, runtime::Node::NONE),
-    runtime::node(&[], &[], runtime::Node::NONE, 19),
+    runtime::node(&[], &[], runtime::Node::NONE, 17),
     runtime::node(&[], &[], 23, runtime::Node::NONE),
-    runtime::node(&[], &[], runtime::Node::NONE, 20),
+    runtime::node(&[], &[], runtime::Node::NONE, 18),
     runtime::node(&[], &[], 25, runtime::Node::NONE),
-    runtime::node(&[], &[], runtime::Node::NONE, 21),
+    runtime::node(&[], &[], runtime::Node::NONE, 19),
     runtime::node(&[], &[], 27, runtime::Node::NONE),
-    runtime::node(&[], &[], runtime::Node::NONE, 22),
+    runtime::node(&[], &[], runtime::Node::NONE, 20),
     runtime::node(&[], &[], 29, runtime::Node::NONE),
-    runtime::node(&[], &[], runtime::Node::NONE, 23),
+    runtime::node(&[], &[], runtime::Node::NONE, 21),
     runtime::node(&[], &[], 31, runtime::Node::NONE),
-    runtime::node(&[], &[], runtime::Node::NONE, 24),
+    runtime::node(&[], &[], runtime::Node::NONE, 22),
     runtime::node(&[], &[], 33, runtime::Node::NONE),
-    runtime::node(&[], &[], runtime::Node::NONE, 25),
+    runtime::node(&[], &[], runtime::Node::NONE, 23),
     runtime::node(&[], &[], 35, runtime::Node::NONE),
-    runtime::node(&[], &[], runtime::Node::NONE, 26),
+    runtime::node(&[], &[], runtime::Node::NONE, 24),
     runtime::node(&[], &[], 37, runtime::Node::NONE),
-    runtime::node(&[], &[], runtime::Node::NONE, 27),
+    runtime::node(&[], &[], runtime::Node::NONE, 25),
     runtime::node(&[], &[], 39, runtime::Node::NONE),
-    runtime::node(&[], &[], runtime::Node::NONE, 28),
+    runtime::node(&[], &[], runtime::Node::NONE, 26),
     runtime::node(&[], &[], 41, runtime::Node::NONE),
-    runtime::node(&[], &[], runtime::Node::NONE, 29),
+    runtime::node(&[], &[], runtime::Node::NONE, 27),
     runtime::node(&[], &[], 43, runtime::Node::NONE),
-    runtime::node(&[], &[], runtime::Node::NONE, 30),
-    runtime::node(&[], &[], 45, runtime::Node::NONE),
-    runtime::node(&[], &[], runtime::Node::NONE, 31),
-    runtime::node(&[], &[], 47, runtime::Node::NONE),
-    runtime::node(&[], &[], runtime::Node::NONE, 32),
+    runtime::node(&[], &[], runtime::Node::NONE, 28),
 ];
 static PATHS: &[&str] = &[
-    "/cookie-f-a",
-    "/cookie-f-o",
-    "/cookie-form-f-a",
-    "/cookie-form-f-o",
     "/cookie-t-a",
     "/cookie-t-o",
     "/deep-o",
@@ -528,12 +484,8 @@ async fn dispatch<A: Api>(
         Operation::HeaderFo => dispatch_0(api, 24, routed, call).await,
         Operation::HeaderTa => dispatch_1(api, 0, routed, call).await,
         Operation::HeaderTo => dispatch_1(api, 1, routed, call).await,
-        Operation::CookieFormFa => dispatch_1(api, 2, routed, call).await,
-        Operation::CookieFormFo => dispatch_1(api, 3, routed, call).await,
-        Operation::CookieFa => dispatch_1(api, 4, routed, call).await,
-        Operation::CookieFo => dispatch_1(api, 5, routed, call).await,
-        Operation::CookieTa => dispatch_1(api, 6, routed, call).await,
-        Operation::CookieTo => dispatch_1(api, 7, routed, call).await,
+        Operation::CookieTa => dispatch_1(api, 2, routed, call).await,
+        Operation::CookieTo => dispatch_1(api, 3, routed, call).await,
     }
 }
 async fn dispatch_0<A: Api>(
@@ -579,11 +531,7 @@ async fn dispatch_1<A: Api>(
     match at {
         0 => Box::pin(header_ta(api, routed, call)).await,
         1 => Box::pin(header_to(api, routed, call)).await,
-        2 => Box::pin(cookie_form_fa(api, routed, call)).await,
-        3 => Box::pin(cookie_form_fo(api, routed, call)).await,
-        4 => Box::pin(cookie_fa(api, routed, call)).await,
-        5 => Box::pin(cookie_fo(api, routed, call)).await,
-        6 => Box::pin(cookie_ta(api, routed, call)).await,
+        2 => Box::pin(cookie_ta(api, routed, call)).await,
         _ => Box::pin(cookie_to(api, routed, call)).await,
     }
 }
@@ -1702,170 +1650,6 @@ fn header_to_params(
 }
 fn header_to_encode(resp: &ops::header_to::Response) -> runtime::Response {
     let ops::header_to::Response::NoContent = resp;
-    runtime::new_response(204)
-}
-static COOKIE_FORM_FA_OP: runtime::Op = runtime::Op::new(
-    "cookie_form_fa",
-    "GET",
-    "/cookie-form-f-a",
-    "GET /cookie-form-f-a",
-    error_schema,
-);
-async fn cookie_form_fa<A: Api>(
-    api: &A,
-    routed: runtime::Routed<'_>,
-    call: runtime::Call<'_, Option<A::Principal>, Operation>,
-) -> runtime::Response {
-    let steps = runtime::Steps {
-        api,
-        decode: |i| cookie_form_fa_params(&i),
-        call: |a, p, c| Box::pin(a.cookie_form_fa(p, c)),
-        encode: |r, _| Ok(cookie_form_fa_encode(&r)),
-    };
-    runtime::serve(routed, call.public(), &steps).await
-}
-fn cookie_form_fa_params(
-    incoming: &runtime::Incoming<'_>,
-) -> Result<ops::cookie_form_fa::Params, runtime::Reason> {
-    let runtime::Incoming { request: req, .. } = *incoming;
-    Ok(ops::cookie_form_fa::Params {
-        color: runtime::from_param(
-            runtime::decode_cookie(
-                runtime::Message::header(req, "cookie").as_deref(),
-                "color",
-                runtime::Style::Form,
-                runtime::Shape::Array,
-                false,
-            ),
-            "/cookie/color",
-        )?,
-    })
-}
-fn cookie_form_fa_encode(resp: &ops::cookie_form_fa::Response) -> runtime::Response {
-    let ops::cookie_form_fa::Response::NoContent = resp;
-    runtime::new_response(204)
-}
-static COOKIE_FORM_FO_OP: runtime::Op = runtime::Op::new(
-    "cookie_form_fo",
-    "GET",
-    "/cookie-form-f-o",
-    "GET /cookie-form-f-o",
-    error_schema,
-);
-async fn cookie_form_fo<A: Api>(
-    api: &A,
-    routed: runtime::Routed<'_>,
-    call: runtime::Call<'_, Option<A::Principal>, Operation>,
-) -> runtime::Response {
-    let steps = runtime::Steps {
-        api,
-        decode: |i| cookie_form_fo_params(&i),
-        call: |a, p, c| Box::pin(a.cookie_form_fo(p, c)),
-        encode: |r, _| Ok(cookie_form_fo_encode(&r)),
-    };
-    runtime::serve(routed, call.public(), &steps).await
-}
-fn cookie_form_fo_params(
-    incoming: &runtime::Incoming<'_>,
-) -> Result<ops::cookie_form_fo::Params, runtime::Reason> {
-    let runtime::Incoming { request: req, .. } = *incoming;
-    Ok(ops::cookie_form_fo::Params {
-        color: runtime::from_param(
-            runtime::decode_cookie(
-                runtime::Message::header(req, "cookie").as_deref(),
-                "color",
-                runtime::Style::Form,
-                runtime::Shape::Object,
-                false,
-            ),
-            "/cookie/color",
-        )?,
-    })
-}
-fn cookie_form_fo_encode(resp: &ops::cookie_form_fo::Response) -> runtime::Response {
-    let ops::cookie_form_fo::Response::NoContent = resp;
-    runtime::new_response(204)
-}
-static COOKIE_FA_OP: runtime::Op = runtime::Op::new(
-    "cookie_fa",
-    "GET",
-    "/cookie-f-a",
-    "GET /cookie-f-a",
-    error_schema,
-);
-async fn cookie_fa<A: Api>(
-    api: &A,
-    routed: runtime::Routed<'_>,
-    call: runtime::Call<'_, Option<A::Principal>, Operation>,
-) -> runtime::Response {
-    let steps = runtime::Steps {
-        api,
-        decode: |i| cookie_fa_params(&i),
-        call: |a, p, c| Box::pin(a.cookie_fa(p, c)),
-        encode: |r, _| Ok(cookie_fa_encode(&r)),
-    };
-    runtime::serve(routed, call.public(), &steps).await
-}
-fn cookie_fa_params(
-    incoming: &runtime::Incoming<'_>,
-) -> Result<ops::cookie_fa::Params, runtime::Reason> {
-    let runtime::Incoming { request: req, .. } = *incoming;
-    Ok(ops::cookie_fa::Params {
-        color: runtime::from_param(
-            runtime::decode_cookie(
-                runtime::Message::header(req, "cookie").as_deref(),
-                "color",
-                runtime::Style::Cookie,
-                runtime::Shape::Array,
-                false,
-            ),
-            "/cookie/color",
-        )?,
-    })
-}
-fn cookie_fa_encode(resp: &ops::cookie_fa::Response) -> runtime::Response {
-    let ops::cookie_fa::Response::NoContent = resp;
-    runtime::new_response(204)
-}
-static COOKIE_FO_OP: runtime::Op = runtime::Op::new(
-    "cookie_fo",
-    "GET",
-    "/cookie-f-o",
-    "GET /cookie-f-o",
-    error_schema,
-);
-async fn cookie_fo<A: Api>(
-    api: &A,
-    routed: runtime::Routed<'_>,
-    call: runtime::Call<'_, Option<A::Principal>, Operation>,
-) -> runtime::Response {
-    let steps = runtime::Steps {
-        api,
-        decode: |i| cookie_fo_params(&i),
-        call: |a, p, c| Box::pin(a.cookie_fo(p, c)),
-        encode: |r, _| Ok(cookie_fo_encode(&r)),
-    };
-    runtime::serve(routed, call.public(), &steps).await
-}
-fn cookie_fo_params(
-    incoming: &runtime::Incoming<'_>,
-) -> Result<ops::cookie_fo::Params, runtime::Reason> {
-    let runtime::Incoming { request: req, .. } = *incoming;
-    Ok(ops::cookie_fo::Params {
-        color: runtime::from_param(
-            runtime::decode_cookie(
-                runtime::Message::header(req, "cookie").as_deref(),
-                "color",
-                runtime::Style::Cookie,
-                runtime::Shape::Object,
-                false,
-            ),
-            "/cookie/color",
-        )?,
-    })
-}
-fn cookie_fo_encode(resp: &ops::cookie_fo::Response) -> runtime::Response {
-    let ops::cookie_fo::Response::NoContent = resp;
     runtime::new_response(204)
 }
 static COOKIE_TA_OP: runtime::Op = runtime::Op::new(
