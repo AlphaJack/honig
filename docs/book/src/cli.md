@@ -17,7 +17,7 @@ $ cargo honig validate broken.yaml
 error: /info: missing field `version`
 ```
 
-Each diagnostic starts with a JSON pointer into the document.
+Each diagnostic starts with a JSON pointer into the document. `generate` fails on the same errors: code from a description with an error would differ from what it says. Warnings do not stop it.
 
 ## See what honig generates from
 

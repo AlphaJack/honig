@@ -202,8 +202,17 @@ fn a_workspace_generates_its_members_and_names_a_missing_one() {
     assert_eq!(in_crate(&root, &["check", "api"]).0, Some(0));
 }
 
-/// Two path templates that differ only in their parameter names: an error in the description that does not stop
-/// `generate`.
+/// A description with a warning: a link to an operation that no file of it describes.
+const WITH_WARNING: &str = "openapi: 3.2.0
+info: {title: t, version: \"1\"}
+paths:
+  /a:
+    get:
+      operationId: one
+      responses: {\"200\": {description: ok, links: {next: {operationId: elsewhere}}}}
+";
+
+/// Two path templates that differ only in their parameter names: an error in the description.
 const SAME_TEMPLATE: &str = "openapi: 3.2.0
 info: {title: t, version: \"1\"}
 paths:
@@ -218,7 +227,7 @@ paths:
 #[test]
 fn generate_reports_errors_warnings_and_hints_and_never_edits_the_manifest() {
     let dir = scratch_crate("cli_hints");
-    std::fs::write(dir.join("openapi.yaml"), SAME_TEMPLATE).unwrap();
+    std::fs::write(dir.join("openapi.yaml"), WITH_WARNING).unwrap();
     std::fs::write(dir.join("src").join("lib.rs"), "pub mod api;\n").unwrap();
     std::fs::write(
         dir.join("Cargo.toml"),
@@ -239,8 +248,7 @@ fn generate_reports_errors_warnings_and_hints_and_never_edits_the_manifest() {
     assert_eq!(code, Some(0), "{err}");
     assert_eq!(std::fs::read_to_string(dir.join("Cargo.toml")).unwrap(), manifest, "generate edited Cargo.toml");
     for line in [
-        "are the same templated path",
-        "generated anyway: 1 error(s) in the description",
+        "no operation has operationId `elsewhere`",
         "hint: run `cargo add serde -F derive`",
         "hint: run `cargo add serde_json`",
     ] {
@@ -252,6 +260,14 @@ fn generate_reports_errors_warnings_and_hints_and_never_edits_the_manifest() {
     assert_eq!(code, Some(0), "{err}");
     assert!(out.is_empty(), "{out}");
     assert!(!err.contains("warning:") && !err.contains("hint:"), "{err}");
+
+    // An error in the description fails `generate` and leaves the module as it was.
+    let module = std::fs::read_to_string(dir.join("src").join("api").join("operations.rs")).unwrap();
+    std::fs::write(dir.join("openapi.yaml"), SAME_TEMPLATE).unwrap();
+    let (code, _, err) = in_crate(&dir, &["generate"]);
+    assert_eq!(code, Some(1), "{err}");
+    assert!(err.contains("are the same templated path"), "{err}");
+    assert_eq!(std::fs::read_to_string(dir.join("src").join("api").join("operations.rs")).unwrap(), module);
 }
 
 #[test]
