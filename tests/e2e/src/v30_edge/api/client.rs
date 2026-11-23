@@ -257,4 +257,74 @@ impl<T: runtime::Transport> Client<T> {
             })
         }
     }
+    pub async fn cookie_form_fa(
+        &self,
+        p: impl runtime::IntoArg<'_, ops::cookie_form_fa::Params>,
+    ) -> Result<ops::cookie_form_fa::Response, runtime::ClientError> {
+        let p = runtime::IntoArg::into_arg(p);
+        let path = String::from("/cookie-form-f-a");
+        let query = Vec::new();
+        let mut req = runtime::new_request("GET", path, query)?;
+        let mut cookies: Vec<String> = Vec::new();
+        runtime::encode_cookie(
+            &mut cookies,
+            "color",
+            &p.color,
+            runtime::Enc {
+                style: runtime::Style::Form,
+                explode: false,
+                allow_reserved: false,
+            },
+        )?;
+        runtime::set_cookies(&mut req, cookies)?;
+        runtime::apply_auth(&mut req, &self.credentials, &[])?;
+        runtime::propagate_trace(&mut req);
+        let resp = runtime::send(&self.transport, req).await?;
+        let (head, body) = resp.into_parts();
+        let (body, _) = body.into_parts();
+        let status = head.status.as_u16();
+        if status == 204 {
+            Ok(ops::cookie_form_fa::Response::NoContent)
+        } else {
+            Err(runtime::ClientError::UnexpectedStatus {
+                status: head.status,
+                body,
+            })
+        }
+    }
+    pub async fn cookie_form_fo(
+        &self,
+        p: impl runtime::IntoArg<'_, ops::cookie_form_fo::Params>,
+    ) -> Result<ops::cookie_form_fo::Response, runtime::ClientError> {
+        let p = runtime::IntoArg::into_arg(p);
+        let path = String::from("/cookie-form-f-o");
+        let query = Vec::new();
+        let mut req = runtime::new_request("GET", path, query)?;
+        let mut cookies: Vec<String> = Vec::new();
+        runtime::encode_cookie(
+            &mut cookies,
+            "color",
+            &p.color,
+            runtime::Enc {
+                style: runtime::Style::Form,
+                explode: false,
+                allow_reserved: false,
+            },
+        )?;
+        runtime::set_cookies(&mut req, cookies)?;
+        runtime::apply_auth(&mut req, &self.credentials, &[])?;
+        runtime::propagate_trace(&mut req);
+        let resp = runtime::send(&self.transport, req).await?;
+        let (head, body) = resp.into_parts();
+        let (body, _) = body.into_parts();
+        let status = head.status.as_u16();
+        if status == 204 {
+            Ok(ops::cookie_form_fo::Response::NoContent)
+        } else {
+            Err(runtime::ClientError::UnexpectedStatus {
+                status: head.status,
+                body,
+            })
+        }
+    }
 }

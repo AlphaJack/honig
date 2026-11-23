@@ -159,6 +159,9 @@ fn process(value: Value, base: resolve::Base<'_>, mut diagnostics: Diagnostics) 
     let externals = resolve::read_externals(&value, dir);
     // The upgrade reports what is wrong with the version: this only remembers it.
     let source = upgrade::detect(&value, &mut Diagnostics::default());
+    if let Some(version) = source {
+        validate::newer_fields(&value, version, &mut diagnostics);
+    }
     let Some(value) = upgrade::to_v32(value, &mut diagnostics) else {
         return Loaded::failed(diagnostics);
     };
@@ -170,6 +173,7 @@ fn process(value: Value, base: resolve::Base<'_>, mut diagnostics: Diagnostics) 
         }
     };
     let doc = Doc::new(value.clone());
-    validate::v32::validate(&model, &doc, &mut diagnostics);
+    let version = source.unwrap_or(crate::version::Version::V32);
+    validate::v32::validate_as(&model, &doc, version, &mut diagnostics);
     Loaded { value: Some(value), model: Some(model), diagnostics, externals, source }
 }
