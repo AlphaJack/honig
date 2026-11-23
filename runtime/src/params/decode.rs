@@ -273,6 +273,14 @@ pub fn from_text<T: DeserializeOwned>(v: Option<Cow<'_, str>>, at: &str) -> Resu
     }
 }
 
+/// Decodes a text body as `T`, the type of its schema, as [`from_text`] decodes a parameter. Invalid UTF-8 is replaced.
+///
+/// # Errors
+/// The text is not a value of `T`: a string outside its limits, or not one of its values.
+pub fn text_decode_as<T: DeserializeOwned>(status: Option<u16>, body: &[u8]) -> Result<T, ClientError> {
+    T::deserialize(Text(crate::text::lossy(body))).map_err(|e| crate::text::decode_err(status, body, e))
+}
+
 /// Returns the scalar path parameter at `at` (`/path/id`) as `T`. It is the `index`th variable of the matched
 /// template.
 ///

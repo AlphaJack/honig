@@ -84,6 +84,9 @@ pub mod v32_sse_items {
 pub mod v32_styles {
     pub mod api;
 }
+pub mod v32_text_bodies {
+    pub mod api;
+}
 pub mod v32_tuples {
     pub mod api;
 }
