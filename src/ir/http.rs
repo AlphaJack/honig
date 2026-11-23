@@ -693,11 +693,6 @@ fn params(b: &mut Builder<'_>, site: &Site<'_>, prefix: &Name) -> Vec<Param> {
             Some("querystring") => Location::QueryString,
             _ => Location::Query,
         };
-        // A path parameter missing from the template can never be sent.
-        if location == Location::Path && !site.path.contains(&format!("{{{wire}}}")) {
-            b.diags.warning(&pptr, format!("path parameter `{wire}` is not in `{}`; ignoring it", site.path));
-            continue;
-        }
         if location == Location::Header && ignored_header(b, &wire, &p, &pptr) {
             continue;
         }

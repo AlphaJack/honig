@@ -162,9 +162,9 @@ fn repair(s: &mut Obj, ptr: &str, diags: &mut Diagnostics) {
     // `nullable` is OpenAPI 3.0 only. In 3.1 and later it is an unknown keyword: `null` is not allowed. Generators
     // that emit 3.1 keep writing it, so the generated type rejecting `null` comes as a surprise.
     if s.get("nullable") == Some(&Value::Bool(true)) {
-        diags.warning(
+        diags.error(
             join(ptr, "nullable"),
-            "`nullable` is not an OpenAPI 3.1 keyword and has no effect; to allow null, add \"null\" to `type`",
+            "`nullable` is not an OpenAPI 3.1 keyword: to allow null, add \"null\" to `type`",
         );
     }
     // `type: file` is Swagger 2.0 only but leaks into 3.x documents.
@@ -184,7 +184,7 @@ fn repair(s: &mut Obj, ptr: &str, diags: &mut Diagnostics) {
         }
         s.entry("format").or_insert_with(|| json!("binary"));
     }
-    // Unknown type names (e.g. `type: application/json`) are dropped.
+    // An unknown type name such as `type: application/json`.
     let known = |v: &Value| v.as_str().is_some_and(|t| KNOWN_TYPES.contains(&t));
     let bad = match s.get("type") {
         Some(Value::Array(ts)) => ts.iter().any(|t| !known(t)),
@@ -192,20 +192,7 @@ fn repair(s: &mut Obj, ptr: &str, diags: &mut Diagnostics) {
         None => false,
     };
     if bad {
-        diags.warning(join(ptr, "type"), format!("unknown type {}; ignoring it", s["type"]));
-        let kept: Vec<Value> = match s.remove("type") {
-            Some(Value::Array(ts)) => ts.into_iter().filter(known).collect(),
-            _ => vec![],
-        };
-        match <[Value; 1]>::try_from(kept) {
-            Ok([one]) => {
-                s.insert("type".into(), one);
-            }
-            Err(kept) if !kept.is_empty() => {
-                s.insert("type".into(), Value::Array(kept));
-            }
-            Err(_) => {}
-        }
+        diags.error(join(ptr, "type"), format!("unknown type {}: use one of {}", s["type"], KNOWN_TYPES.join(", ")));
     }
     // Draft-04 positional `items: [A, B]` to `prefixItems`.
     if matches!(s.get("items"), Some(Value::Array(_)))
@@ -375,8 +362,8 @@ mod tests {
         assert_eq!(doc["components"]["schemas"]["Page"]["properties"]["iterator"]["type"], "string");
     }
 
-    /// A `type` list repairs as a single `type` does: `file` becomes a binary string, unknown names go, and a list of
-    /// known names stays without a warning.
+    /// A `type` list repairs as a single `type` does: `file` becomes a binary string, an unknown name is an error, and a
+    /// list of known names stays without a word.
     #[test]
     fn a_type_list_is_repaired_like_one_type() {
         let (doc, d) = up(json!({"openapi": "3.1.0", "components": {"schemas": {
@@ -387,7 +374,7 @@ mod tests {
         let warned: Vec<&str> = d.iter().map(|x| x.pointer.as_str()).collect();
         assert_eq!(warned, ["/components/schemas/F/type", "/components/schemas/U/type"]);
         assert_eq!(doc["components"]["schemas"]["F"], json!({"type": ["string", "null"], "format": "binary"}));
-        assert_eq!(doc["components"]["schemas"]["U"], json!({"type": "string"}));
+        assert_eq!(d.iter().last().map(|x| x.level), Some(crate::diag::Level::Error));
     }
 
     #[test]

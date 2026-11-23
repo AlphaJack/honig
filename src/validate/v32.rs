@@ -448,7 +448,7 @@ impl V<'_> {
         }
         for p in &declared {
             if !names.contains(&p.name.as_str()) {
-                self.diags.warning(ptr, format!("path parameter `{}` does not appear in the path", p.name));
+                self.diags.error(ptr, format!("path parameter `{}` does not appear in the path", p.name));
             }
         }
     }
@@ -732,21 +732,33 @@ impl V<'_> {
                 }
             }
         }
-        let subs =
-            [&o.not, &o.if_, &o.then, &o.else_, &o.items, &o.contains, &o.additional_properties, &o.property_names]
-                .into_iter()
-                .flatten();
-        for sub in subs {
-            self.schema(sub, ptr);
-        }
-        for list in [&o.all_of, &o.any_of, &o.one_of, &o.prefix_items].into_iter().flatten() {
-            for sub in list {
-                self.schema(sub, ptr);
+        let subs = [
+            ("not", &o.not),
+            ("if", &o.if_),
+            ("then", &o.then),
+            ("else", &o.else_),
+            ("items", &o.items),
+            ("contains", &o.contains),
+            ("additionalProperties", &o.additional_properties),
+            ("propertyNames", &o.property_names),
+        ];
+        for (key, sub) in subs {
+            if let Some(sub) = sub {
+                self.schema(sub, &join(ptr, key));
             }
         }
-        for map in [&o.properties, &o.pattern_properties, &o.defs].into_iter().flatten() {
-            for (k, sub) in map {
-                self.schema(sub, &join(ptr, k));
+        for (key, list) in
+            [("allOf", &o.all_of), ("anyOf", &o.any_of), ("oneOf", &o.one_of), ("prefixItems", &o.prefix_items)]
+        {
+            for (i, sub) in list.iter().flatten().enumerate() {
+                self.schema(sub, &join(&join(ptr, key), &i.to_string()));
+            }
+        }
+        for (key, map) in
+            [("properties", &o.properties), ("patternProperties", &o.pattern_properties), ("$defs", &o.defs)]
+        {
+            for (k, sub) in map.iter().flatten() {
+                self.schema(sub, &join(&join(ptr, key), k));
             }
         }
     }
