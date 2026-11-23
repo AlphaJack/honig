@@ -975,9 +975,9 @@ fn newtype(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, def: &Ty
     });
 }
 
-/// Returns `from_literal` for a checked integer whose only limits are its bounds: a `const fn` that panics when a
-/// value breaks them. In a constant that is a build error. `None` when another keyword also limits the value, or a
-/// bound is negative for an unsigned base.
+/// Returns `new` for a checked integer whose only limits are its bounds: a `const fn` that returns `None` for a value
+/// outside them, as `NonZeroU8::new` does. `None` when another keyword also limits the value, or a bound is negative
+/// for an unsigned base.
 fn literal_constructor(
     n: &proc_macro2::Ident,
     base: &TokenStream,
@@ -1004,15 +1004,11 @@ fn literal_constructor(
     (!tests.is_empty()).then(|| {
         quote! {
             impl #n {
-                /// Returns the value for a constant: it panics when the value breaks the limits, which is a build error
-                /// in a `const` and a panic when it runs. Convert a value that is not a literal with `try_from`.
-                ///
-                /// # Panics
-                /// The value breaks a limit.
+                /// Returns the value, or `None` when it breaks a limit. In a constant, `.expect(..)` on it makes a
+                /// literal outside the limits a build error.
                 #[must_use]
-                pub const fn from_literal(value: #base) -> Self {
-                    assert!(#(#tests)&&*, "a literal outside the limits of this type");
-                    Self(value)
+                pub const fn new(value: #base) -> Option<Self> {
+                    if #(#tests)&&* { Some(Self(value)) } else { None }
                 }
             }
         }
