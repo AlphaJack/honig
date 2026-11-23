@@ -202,23 +202,20 @@ fn a_workspace_generates_its_members_and_names_a_missing_one() {
     assert_eq!(in_crate(&root, &["check", "api"]).0, Some(0));
 }
 
-/// Two path templates that differ only in their parameter names: an error in the description that does not stop
-/// `generate`.
-const SAME_TEMPLATE: &str = "openapi: 3.2.0
+/// A tag whose parent is not defined: an error in the description that does not stop `generate`.
+const MISSING_PARENT: &str = "openapi: 3.2.0
 info: {title: t, version: \"1\"}
+tags: [{name: a, parent: ghost}]
 paths:
   /a/{x}:
     parameters: [{name: x, in: path, required: true, schema: {type: string}}]
-    get: {operationId: one, responses: {\"204\": {description: ok}}}
-  /a/{y}:
-    parameters: [{name: y, in: path, required: true, schema: {type: string}}]
-    get: {operationId: two, responses: {\"204\": {description: ok}}}
+    get: {operationId: one, tags: [a], responses: {\"204\": {description: ok}}}
 ";
 
 #[test]
 fn generate_reports_errors_warnings_and_hints_and_never_edits_the_manifest() {
     let dir = scratch_crate("cli_hints");
-    std::fs::write(dir.join("openapi.yaml"), SAME_TEMPLATE).unwrap();
+    std::fs::write(dir.join("openapi.yaml"), MISSING_PARENT).unwrap();
     std::fs::write(dir.join("src").join("lib.rs"), "pub mod api;\n").unwrap();
     std::fs::write(
         dir.join("Cargo.toml"),
@@ -239,7 +236,7 @@ fn generate_reports_errors_warnings_and_hints_and_never_edits_the_manifest() {
     assert_eq!(code, Some(0), "{err}");
     assert_eq!(std::fs::read_to_string(dir.join("Cargo.toml")).unwrap(), manifest, "generate edited Cargo.toml");
     for line in [
-        "are the same templated path",
+        "parent tag `ghost` is not defined",
         "generated anyway: 1 error(s) in the description",
         "hint: run `cargo add serde -F derive`",
         "hint: run `cargo add serde_json`",
