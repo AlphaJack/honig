@@ -19,8 +19,13 @@ use crate::spec::{
     SecurityScheme, SecuritySchemeType, Server, from_value_as,
 };
 
-/// Checks the rules parsing cannot enforce in a document written as `version` and upgraded to 3.2, and records every
-/// violation. The `openapi` field of an older document is checked by [`super::newer_fields`] on the original instead.
+/// Checks the rules parsing cannot enforce and records every violation.
+pub(crate) fn validate(doc: &OpenApi, resolved: &Doc, diags: &mut Diagnostics) {
+    validate_as(doc, resolved, Version::V32, diags);
+}
+
+/// Runs [`validate`] for a document written as `version` and upgraded to 3.2:
+/// the `openapi` field is checked by [`super::newer_fields`] on the original instead.
 pub(crate) fn validate_as(doc: &OpenApi, resolved: &Doc, version: Version, diags: &mut Diagnostics) {
     let mut v = V { diags, resolved, op_ids: BTreeMap::new(), links: vec![], version };
     v.root(doc);
@@ -158,13 +163,13 @@ impl V<'_> {
                 shape.push_str("{}");
                 let Some((var, tail)) = after.split_once('}') else { break };
                 if !vars.insert(var) {
-                    self.diags.refuse(join("/paths", path), format!("path variable `{var}` appears twice"));
+                    self.diags.error(join("/paths", path), format!("path variable `{var}` appears twice"));
                 }
                 rest = tail;
             }
             shape.push_str(rest);
             if let Some(other) = shapes.insert(shape, path) {
-                self.diags.refuse(join("/paths", path), format!("`{path}` and `{other}` are the same templated path"));
+                self.diags.error(join("/paths", path), format!("`{path}` and `{other}` are the same templated path"));
             }
         }
     }

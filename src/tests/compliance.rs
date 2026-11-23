@@ -158,7 +158,7 @@ fn a_security_that_is_not_a_list_refuses_a_server() {
 /// Two webhooks or callbacks with one name and method are routed to the first: a public one in front of a secured one
 /// would answer for both.
 #[test]
-fn two_callbacks_of_one_name_and_method_fail_generation() {
+fn two_callbacks_of_one_name_and_method_refuse_a_server() {
     let callback = |security: Value| json!({"done": {"{$request.body#/url}": {"post": {"security": security, "responses": {"204": {"description": "ok"}}}}}});
     let op = |id: &str, security: Value| json!({"operationId": id, "callbacks": callback(security), "responses": {"204": {"description": "ok"}}});
     let paths = json!({"/a": {"get": op("a", json!([]))}, "/b": {"get": op("b", json!([{"local": []}]))}});
@@ -166,13 +166,13 @@ fn two_callbacks_of_one_name_and_method_fail_generation() {
     let err = crate::generate::generate(&path, &Options::default()).expect_err("must refuse");
     assert!(err.iter().any(|d| d.message.contains("also described by")), "{:#?}", err.0);
     let client = Options { server: false, tests: false, ..Options::default() };
-    crate::generate::generate(&path, &client).expect_err("a client fails too");
+    crate::generate::generate(&path, &client).expect("a client is still generated");
 }
 
-/// A description with an unknown field generates nothing: `securty` on an operation, so the operation would be
+/// A description with an unknown field generates no server: `securty` on an operation, so the operation would be
 /// served without the requirement that its author meant.
 #[test]
-fn a_description_with_an_unknown_field_fails_generation() {
+fn a_description_with_an_unknown_field_refuses_a_server() {
     let get = |extra: (&str, Value)| {
         let mut op = json!({"operationId": "a", "responses": {"204": {"description": "ok"}}});
         op[extra.0] = extra.1;
@@ -192,7 +192,7 @@ fn a_description_with_an_unknown_field_fails_generation() {
         let err = crate::generate::generate(&path, &Options::default()).expect_err(ptr);
         assert!(err.iter().any(|d| d.pointer == *ptr), "{ptr}: {:#?}", err.0);
         let client = Options { server: false, tests: false, ..Options::default() };
-        crate::generate::generate(&path, &client).expect_err("a client fails too");
+        crate::generate::generate(&path, &client).expect("a client is still generated");
     }
 }
 
@@ -201,10 +201,9 @@ fn a_description_with_an_unknown_field_fails_generation() {
 #[test]
 fn two_names_of_one_rust_item_fail_generation() {
     let ok = json!({"204": {"description": "ok"}});
-    let params = json!([{"in": "path", "name": "id", "required": true, "schema": {"type": "string"}}]);
     let operations = json!({
-        "/live/users/{id}": {"delete": {"operationId": "delete-user", "parameters": params, "responses": ok}},
-        "/archive/users/{id}": {"delete": {"operationId": "deleteUser", "parameters": params, "responses": ok}}
+        "/live/users/{id}": {"delete": {"operationId": "delete-user", "responses": ok}},
+        "/archive/users/{id}": {"delete": {"operationId": "deleteUser", "responses": ok}}
     });
     let schema = json!({"type": "object"});
     let components = json!({"schemas": {"billing_address": schema, "BillingAddress": schema}});
@@ -216,41 +215,6 @@ fn two_names_of_one_rust_item_fail_generation() {
             let err = crate::generate::generate(&path, &options).expect_err(name);
             assert!(err.iter().any(|d| d.message.contains("map to the same item in Rust")), "{name}: {:#?}", err.0);
         }
-    }
-}
-
-/// OAS 3.2 Paths Object: "Templated paths with the same hierarchy but different templated names MUST NOT exist as they
-/// are identical." Both would map one URL to two operations and the first would answer every request, also for the
-/// secured one: `generate` fails for a client and a server. A template that repeats a variable fails the same way.
-#[test]
-fn two_templated_paths_that_are_the_same_fail_generation() {
-    let op = |id: &str, var: &str, security: &Value| {
-        json!({"get": {"operationId": id, "security": security,
-            "parameters": [{"in": "path", "name": var, "required": true, "schema": {"type": "string"}}],
-            "responses": {"204": {"description": "ok"}}}})
-    };
-    let same = json!({"/a/{x}": op("get_a_x", "x", &json!([])), "/a/{y}": op("get_a_y", "y", &json!([{"local": []}]))});
-    let repeated = json!({"/a/{x}/b/{x}": op("get_a_x_b", "x", &json!([]))});
-    for (name, paths, pointer) in
-        [("same-template", same, "/paths/~1a~1{y}"), ("repeated-variable", repeated, "/paths/~1a~1{x}~1b~1{x}")]
-    {
-        let path = common::write(name, &doc(&paths, &bearer()), &[]);
-        for options in [Options::default(), Options { server: false, tests: false, ..Options::default() }] {
-            let err = crate::generate::generate(&path, &options).expect_err(name);
-            assert!(err.iter().any(|d| d.pointer == pointer), "{name}: {:#?}", err.0);
-        }
-    }
-}
-
-/// Any error of the description fails `generate`, for a client and a server: code from it would differ from what it
-/// says. A path variable that no parameter declares is one.
-#[test]
-fn any_error_fails_generation() {
-    let paths = json!({"/a/{x}": {"get": {"operationId": "a", "responses": {"204": {"description": "ok"}}}}});
-    let path = common::write("any-error", &doc(&paths, &json!({})), &[]);
-    for options in [Options::default(), Options { server: false, tests: false, ..Options::default() }] {
-        let err = crate::generate::generate(&path, &options).expect_err("an error stops generation");
-        assert!(err.iter().any(|d| d.pointer == "/paths/~1a~1{x}/get"), "{:#?}", err.0);
     }
 }
 
@@ -291,9 +255,9 @@ fn two_scopes_of_one_variant_refuse_a_server() {
 }
 
 /// A required `Authorization` header parameter is ignored by OAS: a server built from it would never ask for the
-/// header, and a client would send it beside its credentials. The description states authentication with a security scheme.
+/// header. The description states authentication with a security scheme.
 #[test]
-fn an_authorization_header_parameter_fails_generation() {
+fn an_authorization_header_parameter_refuses_a_server() {
     let param = json!({"name": "Authorization", "in": "header", "required": true, "schema": {"type": "string"}});
     let paths = json!({"/a": {"get": {"operationId": "a", "parameters": [param],
         "responses": {"204": {"description": "ok"}}}}});
@@ -301,7 +265,7 @@ fn an_authorization_header_parameter_fails_generation() {
     let err = crate::generate::generate(&path, &Options::default()).expect_err("must refuse");
     assert!(err.iter().any(|d| d.message.contains("security scheme")), "{:#?}", err.0);
     let client = Options { server: false, tests: false, ..Options::default() };
-    crate::generate::generate(&path, &client).expect_err("a client fails too");
+    crate::generate::generate(&path, &client).expect("a client is still generated");
 }
 
 /// A schema that no value of its type meets generates a type that refuses every value: `generate` fails and points at
@@ -393,10 +357,10 @@ fn an_enum_value_outside_the_type_fails_generation() {
     std::fs::remove_dir_all(&dir).ok();
 }
 
-/// A scheme that the generator would read as another fails generation: an API key `in` another place than `header`,
+/// A scheme that the generator would read as another refuses a server: an API key `in` another place than `header`,
 /// `query` or `cookie` meant the header, and a missing `scheme` or `flows` meant a bearer token.
 #[test]
-fn a_security_scheme_that_is_read_as_another_fails_generation() {
+fn a_security_scheme_that_is_read_as_another_refuses_a_server() {
     let schemes = [
         json!({"type": "apiKey", "name": "K", "in": "body"}),
         json!({"type": "apiKey", "name": "K"}),
@@ -410,7 +374,7 @@ fn a_security_scheme_that_is_read_as_another_fails_generation() {
         let err = crate::generate::generate(&path, &Options::default()).expect_err("must refuse");
         assert!(err.iter().any(|d| d.pointer == "/components/securitySchemes/local"), "{i}: {:#?}", err.0);
         let client = Options { server: false, tests: false, ..Options::default() };
-        crate::generate::generate(&path, &client).expect_err("a client fails too");
+        crate::generate::generate(&path, &client).expect("a client is still generated");
     }
 }
 
@@ -454,23 +418,24 @@ fn a_default_that_no_value_writes_is_a_warning() {
     assert!(!at("/components/schemas/Holder/properties/limit/default"), "{warned:?}");
 }
 
-/// A keyword that no check runs is a warning, not silence: a `text/plain` body is a `String` and an upload is bytes.
+/// A keyword that no check runs is a warning, not silence: an upload is bytes. A `text/plain` body takes the type of its
+/// schema, which checks it, so it needs none.
 #[test]
-fn a_limit_on_a_text_or_binary_body_is_a_warning() {
+fn a_limit_on_a_binary_body_is_a_warning_and_on_a_text_body_a_check() {
     let body = |media: &str, schema: Value| {
         json!({"/a": {"post": {"operationId": "a", "requestBody": {"content": {media: {"schema": schema}}},
             "responses": {"204": {"description": "ok"}}}}})
     };
     let text = body("text/plain", json!({"type": "string", "maxLength": 140}));
     let upload = body("application/octet-stream", json!({"type": "string", "format": "byte", "maxLength": 1000}));
-    for (name, paths, key) in [("text", text, "maxLength"), ("upload", upload, "maxLength")] {
+    for (name, paths, warns) in [("text", text, false), ("upload", upload, true)] {
         let path = common::write(&format!("unchecked-{name}"), &doc(&paths, &json!({})), &[]);
         let made = crate::generate::generate(&path, &Options::default()).expect("generates");
         let warned = made
             .diagnostics
             .iter()
-            .any(|d| d.pointer.ends_with(&format!("/schema/{key}")) && d.message.contains("not checked"));
-        assert!(warned, "{name}: {:#?}", made.diagnostics);
+            .any(|d| d.pointer.ends_with("/schema/maxLength") && d.message.contains("not checked"));
+        assert_eq!(warned, warns, "{name}: {:#?}", made.diagnostics);
     }
 }
 

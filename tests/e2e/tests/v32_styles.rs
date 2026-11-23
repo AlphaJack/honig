@@ -39,9 +39,39 @@ macro_rules! server {
 }
 
 server!(
-    matrix_fs, matrix_fa, matrix_fo, matrix_ta, matrix_to, label_fs, label_fa, label_fo, label_ta, label_to, simple_fa,
-    simple_fo, simple_ta, simple_to, form_fa, form_fo, form_ta, form_to, space_fa, space_fo, pipe_fa, pipe_fo, deep_o,
-    header_fa, header_fo, header_ta, header_to, cookie_ta, cookie_to,
+    matrix_fs,
+    matrix_fa,
+    matrix_fo,
+    matrix_ta,
+    matrix_to,
+    label_fs,
+    label_fa,
+    label_fo,
+    label_ta,
+    label_to,
+    simple_fa,
+    simple_fo,
+    simple_ta,
+    simple_to,
+    form_fa,
+    form_fo,
+    form_ta,
+    form_to,
+    space_fa,
+    space_fo,
+    pipe_fa,
+    pipe_fo,
+    deep_o,
+    header_fa,
+    header_fo,
+    header_ta,
+    header_to,
+    cookie_form_fa,
+    cookie_form_fo,
+    cookie_fa,
+    cookie_fo,
+    cookie_ta,
+    cookie_to,
 );
 
 fn client() -> Client<impl api::Transport> {
@@ -146,5 +176,9 @@ row!(header_false_object, header_fo, obj(), At::Header, "/header-f-o", "R,100,G,
 row!(header_true_array, header_ta, arr(), At::Header, "/header-t-a", "blue,black,brown");
 row!(header_true_object, header_to, obj(), At::Header, "/header-t-o", "R=100,G=200,B=150");
 
+row!(cookie_form_false_array, cookie_form_fa, arr(), At::Cookie, "/cookie-form-f-a", "color=blue,black,brown");
+row!(cookie_form_false_object, cookie_form_fo, obj(), At::Cookie, "/cookie-form-f-o", "color=R,100,G,200,B,150");
+row!(cookie_false_array, cookie_fa, arr(), At::Cookie, "/cookie-f-a", "color=blue,black,brown");
+row!(cookie_false_object, cookie_fo, obj(), At::Cookie, "/cookie-f-o", "color=R,100,G,200,B,150");
 row!(cookie_true_array, cookie_ta, arr(), At::Cookie, "/cookie-t-a", "color=blue; color=black; color=brown");
 row!(cookie_true_object, cookie_to, obj(), At::Cookie, "/cookie-t-o", "R=100; G=200; B=150");

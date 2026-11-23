@@ -101,55 +101,6 @@ impl api::Api for Seen {
     ) -> impl Future<Output = Result<ops::upload_document::Response, api::ApiError>> + Send {
         std::future::ready(Err(api::ApiError::new(api::http::StatusCode::NOT_IMPLEMENTED, "not used by this test")))
     }
-    fn cookie_form_fa(
-        &self,
-        p: ops::cookie_form_fa::Params,
-        _: &api::Context<'_>,
-    ) -> impl Future<Output = Result<ops::cookie_form_fa::Response, api::ApiError>> + Send {
-        COOKIE.with(|c| *c.borrow_mut() = Some(format!("{:?}", p.color)));
-        std::future::ready(Ok(ops::cookie_form_fa::Response::NoContent))
-    }
-    fn cookie_form_fo(
-        &self,
-        p: ops::cookie_form_fo::Params,
-        _: &api::Context<'_>,
-    ) -> impl Future<Output = Result<ops::cookie_form_fo::Response, api::ApiError>> + Send {
-        COOKIE.with(|c| *c.borrow_mut() = Some(format!("{:?}", p.color)));
-        std::future::ready(Ok(ops::cookie_form_fo::Response::NoContent))
-    }
-}
-
-thread_local! {
-    /// The `color` cookie that the server decoded last, as `Debug` text.
-    static COOKIE: std::cell::RefCell<Option<String>> = const { std::cell::RefCell::new(None) };
-}
-
-/// A client whose `Cookie` header goes to the returned slot. Its server records what it decoded in `COOKIE`.
-fn cookie_client() -> (api::Client<impl api::Transport>, std::sync::Arc<Mutex<Option<String>>>) {
-    let sent = std::sync::Arc::new(Mutex::new(None::<String>));
-    let log = std::sync::Arc::clone(&sent);
-    let client = api::Client::new(support::loopback(move |req: api::Request| {
-        *log.lock().unwrap() = req.headers().get("cookie").and_then(|v| v.to_str().ok()).map(String::from);
-        api::Server::new(Seen::default()).into_service().handle(req)
-    }));
-    (client, sent)
-}
-
-/// 3.0 allows `explode: false` on a cookie: items are joined with commas as in the query.
-#[test]
-fn a_cookie_with_explode_false_joins_its_items_with_commas() {
-    let (client, sent) = cookie_client();
-    let colors = ["blue", "black", "brown"].map(String::from).to_vec();
-    let want = format!("{colors:?}");
-    api::block_on(client.cookie_form_fa(ops::cookie_form_fa::Params { color: colors })).expect("204");
-    assert_eq!(sent.lock().unwrap().take().as_deref(), Some("color=blue,black,brown"));
-    assert_eq!(COOKIE.with(|c| c.borrow_mut().take()), Some(want), "the server decodes what the client wrote");
-
-    let rgb: types::CookieFormFoColor = serde_json::from_value(json!({"R": 100, "G": 200, "B": 150})).expect("R, G, B");
-    let want = format!("{rgb:?}");
-    api::block_on(client.cookie_form_fo(ops::cookie_form_fo::Params { color: rgb })).expect("204");
-    assert_eq!(sent.lock().unwrap().take().as_deref(), Some("color=R,100,G,200,B,150"));
-    assert_eq!(COOKIE.with(|c| c.borrow_mut().take()), Some(want), "the server decodes what the client wrote");
 }
 
 #[test]

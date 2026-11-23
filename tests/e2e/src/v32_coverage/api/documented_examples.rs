@@ -36,8 +36,12 @@ fn documented_examples_decode() {
     );
     value::<String>(&mut bad, "#/x-honig-not/5/properties/text/examples/0", "\"hello\"");
     param::<
-        i64,
-    >(&mut bad, "/paths/~1notes/post/responses/201/headers/X-Count/example", "3");
+        types::AddNoteCreatedXTags,
+    >(
+        &mut bad,
+        "/paths/~1notes/post/responses/201/headers/X-Tags/example",
+        "{\"a\":\"x\",\"b\":\"y\"}",
+    );
     param::<
         types::AddNoteCreatedXTags,
     >(
@@ -49,7 +53,7 @@ fn documented_examples_decode() {
         types::Note,
     >(
         &mut bad,
-        "/components/requestBodies/NoteBody/content/application~1json/example",
+        "/paths/~1notes/post/responses/201/content/application~1json/example",
         "{\"kind\":\"text\",\"text\":\"hi\"}",
     );
     value::<

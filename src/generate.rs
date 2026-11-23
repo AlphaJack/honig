@@ -24,8 +24,8 @@ pub struct Generated {
 
 /// Loads, validates, builds the IR and emits formatted files.
 ///
-/// Fails when the document cannot be parsed or has any error: code from it would differ from what it says. Warnings
-/// are reported beside the files.
+/// Fails when the document cannot be parsed, or when generated code could not represent it: a `pattern` that does not
+/// compile, or a server whose security scheme does not resolve. Other validation errors are reported but not fatal.
 pub fn generate(spec: &Path, opts: &Options) -> Result<Generated, Diagnostics> {
     generate_all(&[spec.to_path_buf()], opts)
 }
@@ -74,8 +74,8 @@ pub fn load(specs: &[std::path::PathBuf], opts: &Options) -> Result<Loaded, Diag
         return Err(diagnostics);
     }
     let Some(doc) = loaded.doc() else { return Err(diagnostics) };
-    // Code from a description with an error would differ from what it says.
-    if diagnostics.refused(opts.server) || diagnostics.has_errors() {
+    // What the description says and the generated code would not (`Diagnostic::refuses`).
+    if diagnostics.refused(opts.server) {
         return Err(diagnostics);
     }
     // A requirement on a scheme the generator cannot see cannot be checked: generating
@@ -146,7 +146,7 @@ pub fn print(loaded: &Loaded, built: Ir, trees: Trees, opts: &Options) -> Result
     for key in rust::unknown_derives(api, opts) {
         diagnostics.refuse("", format!("`derives` names `{key}`, which is no generated type: check the name"));
     }
-    if diagnostics.refused(opts.server) || diagnostics.has_errors() {
+    if diagnostics.refused(opts.server) {
         return Err(diagnostics);
     }
     let files = match rust::print(trees.0, opts.rust.binary) {

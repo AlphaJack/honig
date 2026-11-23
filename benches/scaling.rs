@@ -126,14 +126,10 @@ fn all_of_chain(count: usize) -> Value {
     })
 }
 
-/// How many `anyOf` levels an [`unevaluated_chain`] nests before it starts again: past that depth generated code cannot
-/// check `unevaluatedProperties` and generation fails.
-const UNEVALUATED_RUN: usize = 5;
-
-/// Products whose `anyOf` contains the product before and an object of their own, with `unevaluatedProperties: false`,
-/// in runs of [`UNEVALUATED_RUN`]: checked whole, with the properties that any matching branch evaluates.
+/// Products whose `anyOf` contains the product before and an object of their own, with `unevaluatedProperties: false`:
+/// checked whole, with the properties that any matching branch evaluates.
 fn unevaluated_chain(count: usize) -> Value {
-    products(count, |i| match i.checked_sub(1).filter(|_| i % UNEVALUATED_RUN != 0) {
+    products(count, |i| match i.checked_sub(1) {
         Some(before) => json!({"anyOf": [{"$ref": format!("#/components/schemas/Product{before}")}, own(i)],
             "unevaluatedProperties": false}),
         None => own(i),

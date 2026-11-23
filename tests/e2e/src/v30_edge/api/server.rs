@@ -45,16 +45,6 @@ pub trait Api: Send + Sync + 'static {
         params: ops::upload_document::Params,
         ctx: &Context<'_, Self::Principal>,
     ) -> impl Future<Output = ops::upload_document::Result> + Send;
-    fn cookie_form_fa(
-        &self,
-        params: ops::cookie_form_fa::Params,
-        ctx: &Context<'_, ()>,
-    ) -> impl Future<Output = ops::cookie_form_fa::Result> + Send;
-    fn cookie_form_fo(
-        &self,
-        params: ops::cookie_form_fo::Params,
-        ctx: &Context<'_, ()>,
-    ) -> impl Future<Output = ops::cookie_form_fo::Result> + Send;
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Operation {
@@ -62,8 +52,6 @@ pub enum Operation {
     CreateOrder,
     GetOrder,
     UploadDocument,
-    CookieFormFa,
-    CookieFormFo,
 }
 impl runtime::Operation for Operation {
     fn op(self) -> &'static runtime::Op {
@@ -72,8 +60,6 @@ impl runtime::Operation for Operation {
             Self::CreateOrder => &CREATE_ORDER_OP,
             Self::GetOrder => &GET_ORDER_OP,
             Self::UploadDocument => &UPLOAD_DOCUMENT_OP,
-            Self::CookieFormFa => &COOKIE_FORM_FA_OP,
-            Self::CookieFormFo => &COOKIE_FORM_FO_OP,
         }
     }
 }
@@ -118,31 +104,16 @@ const fn error_schema(
 }
 static METHODS: &[&[(&str, Operation)]] = &[
     &[("GET", Operation::ListOrders), ("POST", Operation::CreateOrder)],
-    &[("GET", Operation::CookieFormFa)],
-    &[("GET", Operation::CookieFormFo)],
     &[("GET", Operation::GetOrder)],
     &[("POST", Operation::UploadDocument)],
 ];
 static ROUTES: &[runtime::Node] = &[
-    runtime::node(
-        &[("orders", 1), ("cookie-form-f-a", 2), ("cookie-form-f-o", 3)],
-        &[],
-        runtime::Node::NONE,
-        runtime::Node::NONE,
-    ),
-    runtime::node(&[], &[], 4, 0),
-    runtime::node(&[], &[], runtime::Node::NONE, 1),
+    runtime::node(&[("orders", 1)], &[], runtime::Node::NONE, runtime::Node::NONE),
+    runtime::node(&[], &[], 2, 0),
+    runtime::node(&[("documents", 3)], &[], runtime::Node::NONE, 1),
     runtime::node(&[], &[], runtime::Node::NONE, 2),
-    runtime::node(&[("documents", 5)], &[], runtime::Node::NONE, 3),
-    runtime::node(&[], &[], runtime::Node::NONE, 4),
 ];
-static PATHS: &[&str] = &[
-    "/cookie-form-f-a",
-    "/cookie-form-f-o",
-    "/orders",
-    "/orders/{s1}",
-    "/orders/{s1}/documents",
-];
+static PATHS: &[&str] = &["/orders", "/orders/{s1}", "/orders/{s1}/documents"];
 pub struct Routes<A>(std::sync::Arc<A>);
 /// The server of this API: `Server::new(your_api)`, or `Server::new(arc)` to keep a handle on it. Add layers,
 /// then `into_axum` or `into_service`.
@@ -261,8 +232,6 @@ async fn dispatch<A: Api>(
         Operation::CreateOrder => Box::pin(create_order(api, routed, call)).await,
         Operation::GetOrder => Box::pin(get_order(api, routed, call)).await,
         Operation::UploadDocument => Box::pin(upload_document(api, routed, call)).await,
-        Operation::CookieFormFa => Box::pin(cookie_form_fa(api, routed, call)).await,
-        Operation::CookieFormFo => Box::pin(cookie_form_fo(api, routed, call)).await,
     }
 }
 static LIST_ORDERS_OP: runtime::Op = runtime::Op {
@@ -524,87 +493,5 @@ fn upload_document_params(
 }
 fn upload_document_encode(resp: &ops::upload_document::Response) -> runtime::Response {
     let ops::upload_document::Response::NoContent = resp;
-    runtime::new_response(204)
-}
-static COOKIE_FORM_FA_OP: runtime::Op = runtime::Op::new(
-    "cookie_form_fa",
-    "GET",
-    "/cookie-form-f-a",
-    "GET /cookie-form-f-a",
-    error_schema,
-);
-async fn cookie_form_fa<A: Api>(
-    api: &A,
-    routed: runtime::Routed<'_>,
-    call: runtime::Call<'_, Option<A::Principal>, Operation>,
-) -> runtime::Response {
-    let steps = runtime::Steps {
-        api,
-        decode: |i| cookie_form_fa_params(&i),
-        call: |a, p, c| Box::pin(a.cookie_form_fa(p, c)),
-        encode: |r, _| Ok(cookie_form_fa_encode(&r)),
-    };
-    runtime::serve(routed, call.public(), &steps).await
-}
-fn cookie_form_fa_params(
-    incoming: &runtime::Incoming<'_>,
-) -> Result<ops::cookie_form_fa::Params, runtime::Reason> {
-    let runtime::Incoming { request: req, .. } = *incoming;
-    Ok(ops::cookie_form_fa::Params {
-        color: runtime::from_param(
-            runtime::decode_cookie(
-                runtime::Message::header(req, "cookie").as_deref(),
-                "color",
-                runtime::Style::Form,
-                runtime::Shape::Array,
-                false,
-            ),
-            "/cookie/color",
-        )?,
-    })
-}
-fn cookie_form_fa_encode(resp: &ops::cookie_form_fa::Response) -> runtime::Response {
-    let ops::cookie_form_fa::Response::NoContent = resp;
-    runtime::new_response(204)
-}
-static COOKIE_FORM_FO_OP: runtime::Op = runtime::Op::new(
-    "cookie_form_fo",
-    "GET",
-    "/cookie-form-f-o",
-    "GET /cookie-form-f-o",
-    error_schema,
-);
-async fn cookie_form_fo<A: Api>(
-    api: &A,
-    routed: runtime::Routed<'_>,
-    call: runtime::Call<'_, Option<A::Principal>, Operation>,
-) -> runtime::Response {
-    let steps = runtime::Steps {
-        api,
-        decode: |i| cookie_form_fo_params(&i),
-        call: |a, p, c| Box::pin(a.cookie_form_fo(p, c)),
-        encode: |r, _| Ok(cookie_form_fo_encode(&r)),
-    };
-    runtime::serve(routed, call.public(), &steps).await
-}
-fn cookie_form_fo_params(
-    incoming: &runtime::Incoming<'_>,
-) -> Result<ops::cookie_form_fo::Params, runtime::Reason> {
-    let runtime::Incoming { request: req, .. } = *incoming;
-    Ok(ops::cookie_form_fo::Params {
-        color: runtime::from_param(
-            runtime::decode_cookie(
-                runtime::Message::header(req, "cookie").as_deref(),
-                "color",
-                runtime::Style::Form,
-                runtime::Shape::Object,
-                false,
-            ),
-            "/cookie/color",
-        )?,
-    })
-}
-fn cookie_form_fo_encode(resp: &ops::cookie_form_fo::Response) -> runtime::Response {
-    let ops::cookie_form_fo::Response::NoContent = resp;
     runtime::new_response(204)
 }
