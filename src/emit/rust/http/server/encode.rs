@@ -20,9 +20,9 @@ pub(crate) fn carries_data(op: &Operation) -> bool {
 }
 
 pub(crate) fn encode_fallible(op: &Operation) -> bool {
-    op.responses.iter().any(|r| {
-        status_code(r).is_none() || !r.headers.is_empty() || r.contents.iter().any(|c| fallible_encode(c.kind))
-    })
+    op.responses
+        .iter()
+        .any(|r| status_code(r).is_none() || !r.headers.is_empty() || r.contents.iter().any(fallible_encode))
 }
 
 /// Returns `arm` behind the check of the status of `r` when it is a range or `default`: a handler picks that status.

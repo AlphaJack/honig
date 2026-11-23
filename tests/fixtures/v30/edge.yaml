@@ -114,31 +114,6 @@ paths:
       responses:
         '204':
           description: Stored.
-  # A comma-joined cookie: allowed up to 3.2.0, forbidden by 3.2.1 (a warning here).
-  /cookie-form-f-a:
-    get:
-      operationId: cookieFormFA
-      security: []
-      parameters:
-        - {name: color, in: cookie, required: true, style: form, explode: false, schema: {type: array, items: {type: string}}}
-      responses:
-        '204': {description: Seen.}
-  /cookie-form-f-o:
-    get:
-      operationId: cookieFormFO
-      security: []
-      parameters:
-        - name: color
-          in: cookie
-          required: true
-          style: form
-          explode: false
-          schema:
-            type: object
-            properties: {R: {type: integer}, G: {type: integer}, B: {type: integer}}
-            required: [R, G, B]
-      responses:
-        '204': {description: Seen.}
 components:
   securitySchemes:
     bearer: {type: http, scheme: bearer}

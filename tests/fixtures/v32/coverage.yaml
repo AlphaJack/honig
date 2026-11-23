@@ -33,17 +33,18 @@ paths:
         "201":
           description: Stored.
           headers:
-            X-Count: {description: Notes stored so far., schema: {type: integer}, example: 3}
             X-Tags:
               description: Tags of the note.
               deprecated: true
               explode: true
               schema: {type: object, properties: {a: {type: string}, b: {type: string}}}
+              example: {a: x, b: y}
               examples: {two: {description: Two tags, value: {a: x, b: z}}}
           content:
             application/json:
               description: The stored note.
               schema: {$ref: '#/components/schemas/Note'}
+              example: {kind: text, text: hi}
               examples:
                 ref: {$ref: '#/components/examples/Hi'}
                 file: {$ref: '#/components/examples/HiFile'}
@@ -68,7 +69,7 @@ components:
   requestBodies:
     NoteBody:
       required: true
-      content: {application/json: {schema: {$ref: '#/components/schemas/Note'}, example: {kind: text, text: hi}}}
+      content: {application/json: {schema: {$ref: '#/components/schemas/Note'}}}
   examples:
     Hi: {summary: A text note, description: The smallest note, value: {kind: text, text: hi}}
     HiFile: {summary: 'The same, from a file', externalValue: examples/note.json}

@@ -72,7 +72,15 @@ paths:
     get: {operationId: headerTA, parameters: [{name: color, in: header, required: true, style: simple, explode: true, schema: {$ref: "#/components/schemas/Arr"}}], responses: {"204": {$ref: "#/components/responses/Done"}}}
   /header-t-o:
     get: {operationId: headerTO, parameters: [{name: color, in: header, required: true, style: simple, explode: true, schema: {$ref: "#/components/schemas/Obj"}}], responses: {"204": {$ref: "#/components/responses/Done"}}}
-  # cookie: 3.2 cookie (form with explode false is in the 3.0 fixture: 3.2 forbids it)
+  # cookie: form (explode false) and 3.2 cookie
+  /cookie-form-f-a:
+    get: {operationId: cookieFormFA, parameters: [{name: color, in: cookie, required: true, style: form, explode: false, schema: {$ref: "#/components/schemas/Arr"}}], responses: {"204": {$ref: "#/components/responses/Done"}}}
+  /cookie-form-f-o:
+    get: {operationId: cookieFormFO, parameters: [{name: color, in: cookie, required: true, style: form, explode: false, schema: {$ref: "#/components/schemas/Obj"}}], responses: {"204": {$ref: "#/components/responses/Done"}}}
+  /cookie-f-a:
+    get: {operationId: cookieFA, parameters: [{name: color, in: cookie, required: true, style: cookie, explode: false, schema: {$ref: "#/components/schemas/Arr"}}], responses: {"204": {$ref: "#/components/responses/Done"}}}
+  /cookie-f-o:
+    get: {operationId: cookieFO, parameters: [{name: color, in: cookie, required: true, style: cookie, explode: false, schema: {$ref: "#/components/schemas/Obj"}}], responses: {"204": {$ref: "#/components/responses/Done"}}}
   /cookie-t-a:
     get: {operationId: cookieTA, parameters: [{name: color, in: cookie, required: true, style: cookie, explode: true, schema: {$ref: "#/components/schemas/Arr"}}], responses: {"204": {$ref: "#/components/responses/Done"}}}
   /cookie-t-o:

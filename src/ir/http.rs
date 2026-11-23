@@ -1162,16 +1162,22 @@ fn media_variants(content: &serde_json::Map<String, Value>) -> BTreeMap<&str, Na
     content.keys().map(String::as_str).zip(names).collect()
 }
 
-/// Warns about each validation keyword of the schema of a text or binary body: the body is a `String` or bytes, and
-/// no check of the keyword runs.
+/// The keywords that the type of a schema checks on a string: a text body with one of them takes that type.
+const TEXT_KEYWORDS: [&str; 5] = ["minLength", "maxLength", "pattern", "enum", "const"];
+
+/// Is any of [`TEXT_KEYWORDS`] in `schema`?
+fn limits_text(schema: Option<&Value>) -> bool {
+    schema.is_some_and(|s| TEXT_KEYWORDS.iter().any(|k| s.get(*k).is_some()))
+}
+
+/// Warns about each of [`TEXT_KEYWORDS`] in the schema of a binary body: the body is bytes, which no check of the keyword
+/// reads.
 fn unchecked_keywords(b: &mut Builder<'_>, kind: MediaKind, schema: Option<&Value>, ptr: &str, media: &str) {
-    const KEYWORDS: [&str; 5] = ["minLength", "maxLength", "pattern", "enum", "const"];
-    if !matches!(kind, MediaKind::Text | MediaKind::Bytes) {
+    if kind != MediaKind::Bytes {
         return;
     }
-    for key in KEYWORDS.iter().filter(|k| schema.is_some_and(|s| s.get(**k).is_some())) {
-        b.diags
-            .warning(join(ptr, key), format!("`{key}` is not checked on a `{media}` body: it is plain text or bytes"));
+    for key in TEXT_KEYWORDS.iter().filter(|k| schema.is_some_and(|s| s.get(**k).is_some())) {
+        b.diags.warning(join(ptr, key), format!("`{key}` is not checked on a `{media}` body: it is bytes"));
     }
 }
 
@@ -1195,6 +1201,7 @@ fn contents(b: &mut Builder<'_>, holder: &Value, ptr: &str, hint: &Name) -> Vec<
         let item_hint = hint.and(&Name::new("Item"));
         let mut open_prefix = None;
         let ty = match kind {
+            MediaKind::Text if limits_text(schema) => schema_ty(b),
             MediaKind::Text => Ty::String,
             MediaKind::Bytes => Ty::Bytes,
             MediaKind::JsonLines | MediaKind::JsonSeq | MediaKind::Sse => {

@@ -430,17 +430,6 @@ pub enum UploadDocumentBodyKind {
 runtime::str_enum_impls!(
     UploadDocumentBodyKind { Contract => "contract", Invoice => "invoice" }
 );
-runtime::object! {
-    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-    pub struct CookieFormFoColor {
-        #[serde(rename = "R")]
-        pub r: i64,
-        #[serde(rename = "G")]
-        pub g: i64,
-        #[serde(rename = "B")]
-        pub b: i64,
-    }
-}
 pub type Not = Customer;
 runtime::object! {
     #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
@@ -599,10 +588,6 @@ pub mod builders {
         UploadDocumentBody => super::UploadDocumentBody; required { file : R0 :
         runtime::Binary = "file", kind : R1 : types::UploadDocumentBodyKind = "kind" }
         optional {} fixed {}
-    }
-    runtime::typestate_builder! {
-        CookieFormFoColor => super::CookieFormFoColor; required { r : R0 : i64 = "R", g :
-        R1 : i64 = "G", b : R2 : i64 = "B" } optional {} fixed {}
     }
     runtime::typestate_builder! {
         OrderRequest => super::OrderRequest; required { status : R0 : types::Status =

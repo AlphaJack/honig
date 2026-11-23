@@ -5,7 +5,7 @@ use std::process::ExitCode;
 
 use clap::{CommandFactory, Parser, Subcommand};
 
-use crate::diag::Diagnostics;
+use crate::diag::{Diagnostics, Level};
 use crate::emit::Options;
 use crate::generate::{self, generate_all};
 use crate::settings;
@@ -141,6 +141,16 @@ impl Args {
 fn print(d: &Diagnostics, quiet: bool) {
     for line in d.lines(quiet) {
         eprintln!("{line}");
+    }
+}
+
+/// Prints the diagnostics of a generation that succeeded. Errors in a description from elsewhere (such as a duplicate
+/// path template) do not stop it. So the last line says why the `error:` lines above did not fail the command.
+fn print_generated(d: &Diagnostics, quiet: bool) {
+    print(d, quiet);
+    let errors = d.iter().filter(|d| d.level == Level::Error).count();
+    if errors > 0 {
+        eprintln!("generated anyway: {errors} error(s) in the description; `cargo honig validate` fails on them");
     }
 }
 
@@ -353,7 +363,7 @@ fn generate_modules(manifest: &settings::Manifest, only: Option<&str>, args: &Ar
 /// Prints the diagnostics of each module.
 fn print_diagnostics(selected: &[Module], args: &Args) {
     for module in selected {
-        print(&module.generated.diagnostics, args.quiet);
+        print_generated(&module.generated.diagnostics, args.quiet);
     }
 }
 

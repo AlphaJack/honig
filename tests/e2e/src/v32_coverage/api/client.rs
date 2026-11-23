@@ -116,20 +116,6 @@ impl<T: runtime::Transport> Client<T> {
                 runtime::check_media_of(&head, &body, &["application/json"])?;
                 Ok(ops::add_note::Response::Created {
                     body: runtime::json_decode(Some(status), &body)?,
-                    x_count: runtime::from_param(
-                            runtime::decode_header(
-                                runtime::joined_header(&head.headers, "X-Count").as_deref(),
-                                runtime::Shape::Primitive,
-                                false,
-                            ),
-                            "/header/X-Count",
-                        )
-                        .map_err(|e| runtime::ClientError::Decode {
-                            status: Some(status),
-                            message: e.to_string(),
-                            body: body.clone(),
-                            pointer: String::new(),
-                        })?,
                     x_tags: runtime::from_param(
                             runtime::decode_header(
                                 runtime::joined_header(&head.headers, "X-Tags").as_deref(),

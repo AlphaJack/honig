@@ -431,35 +431,26 @@ fn formats_turn_on_the_features_that_check_them() {
     assert!(!features(json!({"type": "string", "format": "time"}), jiff).contains(&crate::settings::JIFF));
 }
 
-/// A tag with a `parent` is a module of its own, and a server URL that is a path is the base path of the server. A path
-/// variable that no parameter declares and a `parent` that is no tag are errors: `generate` fails at their pointers.
+/// A path variable that no parameter declares stays literal text; a tag whose `parent` is no tag is a root; a server
+/// URL that is a path is the base path of the server.
 #[test]
-#[expect(clippy::literal_string_with_formatting_args, reason = "path templates of the description")]
-fn child_tags_and_relative_servers() {
-    let y = json!([{"name": "y", "in": "path", "required": true, "schema": {"type": "string"}}]);
-    let with = |path: &str, parent: &str| {
-        let mut doc = common::spec(
-            "3.2.0",
-            &json!({path: {"get": {"operationId": "a", "tags": ["child"], "parameters": y,
-                "responses": {"204": {"description": "ok"}}}}}),
-            &json!({}),
-        );
-        doc["tags"] = json!([{"name": "root"}, {"name": "child", "parent": parent}]);
-        doc["servers"] = json!([{"url": "/v1"}, {"url": "v2"}]);
-        doc
-    };
-    let files = common::generate("shape-child-tags", &with("/a/{y}", "root"), &crate::emit::Options::default());
-    let (server, ops) = (common::file(&files, "server.rs"), common::file(&files, "operations.rs"));
+fn literal_path_variables_orphan_tags_and_relative_servers() {
+    let mut doc = common::spec(
+        "3.2.0",
+        &json!({"/a/{x}/{y}": {"get": {"operationId": "a", "tags": ["child"],
+            "parameters": [{"name": "y", "in": "path", "required": true, "schema": {"type": "string"}}],
+            "responses": {"204": {"description": "ok"}}}}}),
+        &json!({}),
+    );
+    doc["tags"] = json!([{"name": "child", "parent": "missing"}]);
+    doc["servers"] = json!([{"url": "/v1"}, {"url": "v2"}]);
+    let files = common::generate("shape-literal-paths", &doc, &crate::emit::Options::default());
+    let (client, server, ops) =
+        (common::file(&files, "client.rs"), common::file(&files, "server.rs"), common::file(&files, "operations.rs"));
+    assert!(client.contains(r#"path.push_str("{x}");"#), "{client}");
     assert!(server.contains(r#"static BASE_PATHS: &[&str] = &["/v1"];"#), "{server}");
+    assert!(server.contains(r#""/a/{{x}}/{s2}""#), "a literal brace is escaped in the route: {server}");
     assert!(ops.contains("pub mod child"), "{ops}");
-    for (name, doc, pointer) in [
-        ("shape-undeclared-variable", with("/a/{x}/{y}", "root"), "/paths/~1a~1{x}~1{y}/get"),
-        ("shape-missing-parent", with("/a/{y}", "missing"), "/tags/1/parent"),
-    ] {
-        let path = common::write(name, &doc, &[]);
-        let err = crate::generate::generate(&path, &crate::emit::Options::default()).expect_err(name);
-        assert!(err.iter().any(|d| d.pointer == pointer), "{name}: {:#?}", err.0);
-    }
 }
 
 /// A header parameter other than `Range` leaves ranges to the server: only a `Range` parameter of its own handles them.

@@ -12,10 +12,11 @@ paths:
       operationId: getFile
       tags: [files]
       parameters:
-        - {name: path, in: path, required: true, schema: {type: string}}
-        # Reserved characters go through as written.
+        # Inactive outside the query in 3.1, so dropped: the path is percent-encoded.
+        - {name: path, in: path, required: true, allowReserved: true, schema: {type: string}}
+        # Kept: reserved characters go through as written.
         - {name: filter, in: query, allowReserved: true, schema: {type: string}}
-        - {name: X-Trace, in: header, schema: {type: string}}
+        - {name: X-Trace, in: header, allowReserved: true, schema: {type: string}}
       responses:
         "200":
           description: The file.

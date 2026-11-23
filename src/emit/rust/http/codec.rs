@@ -11,8 +11,9 @@ use crate::ir::http::{Content, ItemLimits};
 use crate::ir::media::MediaKind;
 use crate::ir::types::Ty;
 
-pub(crate) fn fallible_encode(kind: MediaKind) -> bool {
-    !matches!(kind, MediaKind::Text | MediaKind::Bytes)
+/// Can encoding body `c` fail? Only a plain `String` text body and bytes cannot.
+pub(crate) fn fallible_encode(c: &Content) -> bool {
+    !matches!((c.kind, &c.ty), (MediaKind::Text, Ty::String) | (MediaKind::Bytes, _))
 }
 
 /// Returns `runtime::Framing` of a sequential media kind.
@@ -117,7 +118,7 @@ pub(crate) fn body_bytes(e: &TokenStream, c: &Content, by_ref: bool) -> Option<T
         // An owned `String` body moves into the response (no copy). A named string type converts first. The
         // function form also accepts `*body` (the body of a boxed variant). `*body.into_bytes()` would misparse that.
         MediaKind::Text if matches!(c.ty, Ty::String) => quote!(String::into_bytes(#e)),
-        MediaKind::Text => quote!(String::from(#e).into_bytes()),
+        MediaKind::Text => quote!(runtime::text_encode_as(#e)?),
         MediaKind::Xml => quote!(runtime::xml_encode(#arg)?),
         MediaKind::Bytes if !blob(c) => e.clone(),
         MediaKind::Form if !form_types(c).is_empty() => {
@@ -246,7 +247,8 @@ pub(crate) fn decode_body(space: &Space<'_>, c: &Content, d: &Decode) -> (TokenS
             (quote!(runtime::json_decode(#status, &#body) #checked), true)
         }
         MediaKind::Linkset => (quote!(runtime::linkset_decode(#status, &String::from_utf8_lossy(&#body))), true),
-        MediaKind::Text => (quote!(runtime::text_decode(&#body)), false),
+        MediaKind::Text if matches!(c.ty, Ty::String) => (quote!(runtime::text_decode(&#body)), false),
+        MediaKind::Text => (quote!(runtime::text_decode_as(#status, &#body)), true),
         MediaKind::Xml => (quote!(runtime::xml_decode(#status, &#body)), true),
         MediaKind::Bytes => {
             let bytes = match d.held {

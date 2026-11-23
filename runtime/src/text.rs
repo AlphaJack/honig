@@ -20,6 +20,15 @@ pub fn text_encode(s: &str) -> Vec<u8> {
     s.as_bytes().to_vec()
 }
 
+/// Encodes a text body from `T`, the type of its schema: a string as it is, any other value as its JSON text.
+///
+/// # Errors
+/// `T` does not serialize.
+pub fn text_encode_as<T: serde::Serialize>(value: T) -> Result<Vec<u8>, ClientError> {
+    let value = serde_json::to_value(value).map_err(|e| ClientError::Encode(e.to_string()))?;
+    Ok(value.as_str().map_or_else(|| value.to_string(), str::to_owned).into_bytes())
+}
+
 /// Decodes a text body. Invalid UTF-8 is replaced.
 pub fn text_decode(body: &[u8]) -> String {
     lossy(body).into_owned()
