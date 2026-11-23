@@ -163,13 +163,13 @@ impl V<'_> {
                 shape.push_str("{}");
                 let Some((var, tail)) = after.split_once('}') else { break };
                 if !vars.insert(var) {
-                    self.diags.error(join("/paths", path), format!("path variable `{var}` appears twice"));
+                    self.diags.refuse(join("/paths", path), format!("path variable `{var}` appears twice"));
                 }
                 rest = tail;
             }
             shape.push_str(rest);
             if let Some(other) = shapes.insert(shape, path) {
-                self.diags.error(join("/paths", path), format!("`{path}` and `{other}` are the same templated path"));
+                self.diags.refuse(join("/paths", path), format!("`{path}` and `{other}` are the same templated path"));
             }
         }
     }

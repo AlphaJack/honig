@@ -218,6 +218,29 @@ fn two_names_of_one_rust_item_fail_generation() {
     }
 }
 
+/// OAS 3.2 Paths Object: "Templated paths with the same hierarchy but different templated names MUST NOT exist as they
+/// are identical." Both would map one URL to two operations and the first would answer every request, also for the
+/// secured one: `generate` fails for a client and a server. A template that repeats a variable fails the same way.
+#[test]
+fn two_templated_paths_that_are_the_same_fail_generation() {
+    let op = |id: &str, var: &str, security: &Value| {
+        json!({"get": {"operationId": id, "security": security,
+            "parameters": [{"in": "path", "name": var, "required": true, "schema": {"type": "string"}}],
+            "responses": {"204": {"description": "ok"}}}})
+    };
+    let same = json!({"/a/{x}": op("get_a_x", "x", &json!([])), "/a/{y}": op("get_a_y", "y", &json!([{"local": []}]))});
+    let repeated = json!({"/a/{x}/b/{x}": op("get_a_x_b", "x", &json!([]))});
+    for (name, paths, pointer) in
+        [("same-template", same, "/paths/~1a~1{y}"), ("repeated-variable", repeated, "/paths/~1a~1{x}~1b~1{x}")]
+    {
+        let path = common::write(name, &doc(&paths, &bearer()), &[]);
+        for options in [Options::default(), Options { server: false, tests: false, ..Options::default() }] {
+            let err = crate::generate::generate(&path, &options).expect_err(name);
+            assert!(err.iter().any(|d| d.pointer == pointer), "{name}: {:#?}", err.0);
+        }
+    }
+}
+
 /// Media types that give one variant name are numbered in the sorted order of the types: a reorder of `content`
 /// changes no name.
 #[test]
