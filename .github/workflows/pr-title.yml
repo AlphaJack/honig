@@ -32,3 +32,20 @@ jobs:
           subjectPattern: ^(?!(?:a|an|the|this|that|each|every|all|no|one)\s)(?![a-z]*[^su]s\s)(?![a-z]{3,}ing\s)(?![a-z]+[^eb]ed\s)[a-z]+\s.+$
           subjectPatternError: |
             The subject "{subject}" must start with a lowercase imperative verb, such as "add typed links".
+      - name: Check that a breaking title and a BREAKING CHANGE line come together
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+          BODY: ${{ github.event.pull_request.body }}
+        run: |
+          breaking_title=false
+          if printf '%s' "$TITLE" | grep -Eq '^[a-z]+(\([a-z]+\))?!:'; then breaking_title=true; fi
+          breaking_body=false
+          if printf '%s\n' "$BODY" | grep -Eq '^BREAKING CHANGE: .+'; then breaking_body=true; fi
+          if [ "$breaking_title" = true ] && [ "$breaking_body" = false ]; then
+            echo "::error::The title has \`!\`: end the body with a line \`BREAKING CHANGE: <what users must do>\`."
+            exit 1
+          fi
+          if [ "$breaking_title" = false ] && [ "$breaking_body" = true ]; then
+            echo "::error::The body has a \`BREAKING CHANGE:\` line: add \`!\` after the type or scope of the title."
+            exit 1
+          fi
