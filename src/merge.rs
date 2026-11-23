@@ -71,7 +71,7 @@ pub(crate) fn merge(specs: &[PathBuf], diags: &mut Diagnostics) -> Option<Value>
                 // Two files that differ in the dialect of their schemas or in the identity of the description would
                 // be read as the first's: a schema written for the other would mean something else.
                 ("jsonSchemaDialect" | "$self", Some(first)) if *first != value => {
-                    diags.refuse(
+                    diags.error(
                         format!("{file}#/{key}"),
                         format!("`{key}` is `{value}` here and `{first}` in an earlier file: merged files share one"),
                     );
@@ -361,9 +361,9 @@ mod tests {
                 diags
             };
             let mut differing = merged(["login.json", "media.json"], [first, second]);
-            assert!(differing.refused(false), "{key}: {differing:?}");
+            assert!(differing.refused(), "{key}: {differing:?}");
             let mut agreeing = merged(["login2.json", "media2.json"], [first, first]);
-            assert!(!agreeing.refused(false), "{key} agrees: {agreeing:?}");
+            assert!(!agreeing.refused(), "{key} agrees: {agreeing:?}");
         }
     }
 

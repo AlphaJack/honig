@@ -52,7 +52,7 @@ impl V<'_> {
     fn unknown(&mut self, extra: &Extra, ptr: &str) {
         for k in extra.keys() {
             if !k.starts_with("x-") {
-                self.diags.refuse_server(join(ptr, k), format!("unknown field `{k}`"));
+                self.diags.error(join(ptr, k), format!("unknown field `{k}`"));
             }
         }
     }
@@ -158,13 +158,13 @@ impl V<'_> {
                 shape.push_str("{}");
                 let Some((var, tail)) = after.split_once('}') else { break };
                 if !vars.insert(var) {
-                    self.diags.refuse(join("/paths", path), format!("path variable `{var}` appears twice"));
+                    self.diags.error(join("/paths", path), format!("path variable `{var}` appears twice"));
                 }
                 rest = tail;
             }
             shape.push_str(rest);
             if let Some(other) = shapes.insert(shape, path) {
-                self.diags.refuse(join("/paths", path), format!("`{path}` and `{other}` are the same templated path"));
+                self.diags.error(join("/paths", path), format!("`{path}` and `{other}` are the same templated path"));
             }
         }
     }
@@ -681,7 +681,7 @@ impl V<'_> {
         self.unknown(&s.extra, ptr);
         let need = |v: &mut Self, ok: bool, field: &str| {
             if !ok {
-                v.diags.refuse_server(ptr, format!("`{field}` is required for this security scheme type"));
+                v.diags.error(ptr, format!("`{field}` is required for this security scheme type"));
             }
         };
         match s.kind {
@@ -691,10 +691,8 @@ impl V<'_> {
                 if let Some(place) =
                     s.location.as_ref().filter(|p| !matches!(p.as_str(), "header" | "query" | "cookie"))
                 {
-                    self.diags.refuse_server(
-                        ptr,
-                        format!("`in` is `{place}`: an API key goes in `header`, `query` or `cookie`"),
-                    );
+                    self.diags
+                        .error(ptr, format!("`in` is `{place}`: an API key goes in `header`, `query` or `cookie`"));
                 }
             }
             SecuritySchemeType::Http => need(self, s.scheme.is_some(), "scheme"),
@@ -711,19 +709,6 @@ impl V<'_> {
     fn schema(&mut self, s: &Schema, ptr: &str) {
         let Schema::Object(o) = s else { return };
         self.check_ref(o.reference.as_deref(), ptr);
-        // JSON Schema 2020-12 section 6.3.3: `pattern` SHOULD be an ECMA-262 regular
-        // expression. Generated code compiles it with `regress` (ECMA-262 with the
-        // `u` flag or else without it). One that compiles neither way cannot be checked.
-        let patterns =
-            o.pattern.iter().map(|p| (join(ptr, "pattern"), p)).chain(
-                o.pattern_properties.iter().flatten().map(|(p, _)| (join(&join(ptr, "patternProperties"), p), p)),
-            );
-        // A type that claims a pattern it cannot check would accept every value: `generate` refuses the document.
-        for (at, p) in patterns {
-            if let Some(e) = pattern_error(p) {
-                self.diags.error(at, format!("pattern `{p}` is not an ECMA-262 regular expression ({e})"));
-            }
-        }
         if let Some(x) = &o.xml {
             let xptr = join(ptr, "xml");
             self.unknown(&x.extra, &xptr);
@@ -770,26 +755,4 @@ impl V<'_> {
 /// Returns the items of an optional list with their index.
 pub(crate) fn indexed<T>(items: Option<&[T]>) -> impl Iterator<Item = (usize, &T)> {
     items.into_iter().flatten().enumerate()
-}
-
-/// Returns why `pattern` does not compile as generated code compiles it: with `regress`, as ECMA-262 with the `u` flag
-/// or else without it. `None` when it compiles.
-pub(crate) fn pattern_error(pattern: &str) -> Option<String> {
-    regress::Regex::with_flags(pattern, "u").or_else(|_| regress::Regex::new(pattern)).err().map(|e| e.to_string())
-}
-
-/// Does a schema of the document contain a `pattern` or a `patternProperties` key that does not compile? Generated code
-/// could not check it: a value of that schema would pass whatever it is. Data (examples, enums, defaults) does not
-/// count.
-pub(crate) fn has_uncompilable_pattern(v: &Value, parent: &str) -> bool {
-    match v {
-        Value::Object(o) => o.iter().any(|(k, c)| {
-            (k == "pattern" && parent != "properties" && c.as_str().is_some_and(|p| pattern_error(p).is_some()))
-                || (k == "patternProperties"
-                    && c.as_object().is_some_and(|ps| ps.keys().any(|p| pattern_error(p).is_some())))
-                || (!crate::json::is_data(parent, k) && has_uncompilable_pattern(c, k))
-        }),
-        Value::Array(a) => a.iter().any(|c| has_uncompilable_pattern(c, parent)),
-        Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_) => false,
-    }
 }

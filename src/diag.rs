@@ -23,33 +23,19 @@ pub struct Diagnostic {
     pub pointer: String,
     /// What is wrong for humans.
     pub message: String,
-    /// Whether `generate` stops for it.
-    pub(crate) refuses: Refuses,
-}
-
-/// What a diagnostic makes `generate` do besides report it. A description may have a meaning that the generator reads
-/// otherwise than its author: a misspelt `security` key, two names that become one item. The generated code would still
-/// compile and differ from what the description says.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub(crate) enum Refuses {
-    /// It is reported and generation goes on.
-    #[default]
-    Nothing,
-    /// A server is not generated. A client is.
-    Server,
-    /// Nothing is generated.
-    Everything,
+    /// Whether `generate` stops for this warning. It stops for every error.
+    pub(crate) refuses: bool,
 }
 
 impl Diagnostic {
     /// Returns an error at `pointer`.
     pub fn error(pointer: impl Into<String>, message: impl Into<String>) -> Self {
-        Self { level: Level::Error, pointer: pointer.into(), message: message.into(), refuses: Refuses::Nothing }
+        Self { level: Level::Error, pointer: pointer.into(), message: message.into(), refuses: false }
     }
 
     /// Returns a warning at `pointer`.
     pub fn warning(pointer: impl Into<String>, message: impl Into<String>) -> Self {
-        Self { level: Level::Warning, pointer: pointer.into(), message: message.into(), refuses: Refuses::Nothing }
+        Self { level: Level::Warning, pointer: pointer.into(), message: message.into(), refuses: false }
     }
 }
 
@@ -84,27 +70,12 @@ impl Diagnostics {
         self.push(Diagnostic::warning(pointer, message));
     }
 
-    /// Records an error that stops `generate`, for a client too.
-    pub(crate) fn refuse(&mut self, pointer: impl Into<String>, message: impl Into<String>) {
-        self.push(Diagnostic { refuses: Refuses::Everything, ..Diagnostic::error(pointer, message) });
-    }
-
-    /// Records an error that stops `generate` for a server.
-    pub(crate) fn refuse_server(&mut self, pointer: impl Into<String>, message: impl Into<String>) {
-        self.push(Diagnostic { refuses: Refuses::Server, ..Diagnostic::error(pointer, message) });
-    }
-
-    /// Makes an error of every diagnostic that stops `generate` and says whether any does. `server`: a server is
-    /// generated.
-    pub(crate) fn refused(&mut self, server: bool) -> bool {
-        let mut any = false;
-        for d in &mut self.0 {
-            if d.refuses == Refuses::Everything || (server && d.refuses == Refuses::Server) {
-                d.level = Level::Error;
-                any = true;
-            }
+    /// Makes an error of every warning that stops `generate` and says whether any diagnostic is an error.
+    pub(crate) fn refused(&mut self) -> bool {
+        for d in self.0.iter_mut().filter(|d| d.refuses) {
+            d.level = Level::Error;
         }
-        any
+        self.has_errors()
     }
 
     /// Is any diagnostic an error?
@@ -158,18 +129,16 @@ mod tests {
     use super::*;
 
     #[test]
-    fn a_refusing_diagnostic_stops_generation_for_what_it_names() {
+    fn an_error_or_a_refusing_warning_stops_generation() {
         let mut d = Diagnostics::default();
-        d.refuse_server("/a", "only a server");
-        assert!(!d.clone().refused(false), "a client is generated");
-        assert!(d.refused(true));
-        let mut d = Diagnostics::default();
-        d.push(Diagnostic { refuses: Refuses::Everything, ..Diagnostic::warning("/b", "a warning that stops it") });
-        assert!(d.refused(false));
+        d.warning("/a", "reported only");
+        assert!(!d.refused());
+        d.push(Diagnostic { refuses: true, ..Diagnostic::warning("/b", "a warning that stops it") });
+        assert!(d.refused());
         assert!(d.has_errors(), "it is an error once it stops generation");
         let mut d = Diagnostics::default();
-        d.error("/c", "reported only");
-        assert!(!d.refused(true));
+        d.error("/c", "an error");
+        assert!(d.refused());
     }
 
     #[test]

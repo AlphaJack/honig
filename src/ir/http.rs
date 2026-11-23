@@ -380,7 +380,7 @@ fn operations(b: &mut Builder<'_>, schemes: &[SecurityScheme]) -> Vec<Operation>
             };
             let base = Name::new(op.get("operationId").and_then(Value::as_str).unwrap_or(&fallback));
             if taken.contains(&base.key()) && !b.reserved_operations.contains(&base.key()) {
-                b.diags.refuse(
+                b.diags.error(
                     &op_ptr,
                     format!(
                         "this operation and an earlier one map to the same item in Rust: rename one (`{}`)",
@@ -457,7 +457,7 @@ fn links_name_parameters(b: &mut Builder<'_>, ops: &[Operation]) {
                         .any(|p| p.wire == *key || format!("{}.{}", place(&p.location), p.wire) == *key);
                     if !has {
                         let at = join(&join(&join(&join(&op.pointer, "responses"), &code), "links"), &link.name);
-                        b.diags.refuse(
+                        b.diags.error(
                             join(&join(&at, "parameters"), key),
                             format!(
                                 "the link `{}` sets `{key}`, a parameter that its target operation does not have",
@@ -480,7 +480,7 @@ fn one_operation_per_hook(b: &mut Builder<'_>, ops: &[Operation]) {
             OpKind::Webhook { name } | OpKind::Callback { name, .. } => name.as_str(),
         };
         if let Some(first) = seen.insert((name, op.method.as_str()), op.pointer.as_str()) {
-            b.diags.refuse_server(
+            b.diags.error(
                 &op.pointer,
                 format!("`{} {name}` is also described by `{first}`: a server answers with the first", op.method),
             );
@@ -658,7 +658,7 @@ fn ignored_header(b: &mut Builder<'_>, wire: &str, param: &Value, ptr: &str) -> 
         return false;
     }
     if wire.eq_ignore_ascii_case("authorization") && json::flag(param, "required") {
-        b.diags.refuse_server(
+        b.diags.error(
             ptr,
             format!("a required `{wire}` header parameter is ignored: describe authentication with a security scheme"),
         );
