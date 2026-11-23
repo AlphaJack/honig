@@ -620,9 +620,6 @@ pub(crate) fn client_response(
         && r.status == Status::Default
     {
         // A response with neither a body nor headers decodes only its status, and only as the variant's field.
-        if r.contents.is_empty() && r.headers.is_empty() {
-            return quote! { let (head, _) = resp.into_parts(); #guard #ct #only };
-        }
         return quote! { #parts #guard let status = head.status.as_u16(); #ct #only };
     }
     let dispatch = dispatch(&arms, ct.as_ref(), &unexpected);
@@ -680,7 +677,15 @@ fn response_arm(
             (pat, quote!({ #check Ok(#op_mod::Response::#variant(#e)) }))
         }
         VariantShape::Struct => {
-            let status = status_code(r).is_none().then(|| quote!(status: head.status,));
+            let typed = status_code(r).is_none().then(|| {
+                let e = crate::emit::rust::http::shared::status_enum(r);
+                quote! {
+                    let Ok(typed) = #op_mod::#e::try_from(status) else {
+                        return Err(runtime::ClientError::UnexpectedStatus { status: head.status, body });
+                    };
+                }
+            });
+            let status = typed.is_some().then(|| quote!(status: typed,));
             let body = (!r.contents.is_empty()).then(|| {
                 let e = decoded();
                 quote!(body: #e,)
@@ -706,7 +711,7 @@ fn response_arm(
                         .map_err(|e| runtime::ClientError::Decode { status: Some(status), message: e.to_string(), body: body.clone(), pointer: String::new() })?,
                 }
             });
-            (pat, quote!({ #check Ok(#op_mod::Response::#variant { #status #body #(#headers)* }) }))
+            (pat, quote!({ #typed #check Ok(#op_mod::Response::#variant { #status #body #(#headers)* }) }))
         }
     }
 }

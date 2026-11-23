@@ -42,16 +42,10 @@ impl api::Api for Server {
     }
     fn get_item(
         &self,
-        params: ops::get_item::Params,
+        _: ops::get_item::Params,
         _: &api::Context<'_>,
     ) -> impl Future<Output = Result<ops::get_item::Response, api::ApiError>> + Send {
-        use api::http::StatusCode;
-        // The id picks a response that stands for a status it does not: `2XX` with a 404, `default` with a 2XX.
-        ok(match params.id.as_str() {
-            "range-404" => ops::get_item::Response::Success { status: StatusCode::NOT_FOUND, body: "x".into() },
-            "default-201" => ops::get_item::Response::Default { status: StatusCode::CREATED, body: Default::default() },
-            _ => ops::get_item::Response::Success { status: StatusCode::CREATED, body: "x".into() },
-        })
+        ok(ops::get_item::Response::Success { status: ops::get_item::SuccessStatus::Created, body: "x".into() })
     }
     fn post_closed(
         &self,
@@ -235,7 +229,7 @@ fn the_client_reads_a_status_range_with_its_actual_status() {
     let got = api::block_on(client.get_item(ops::get_item::Params::new("1".to_owned())));
     assert_eq!(
         got.ok(),
-        Some(ops::get_item::Response::Success { status: api::http::StatusCode::CREATED, body: "x".to_owned() })
+        Some(ops::get_item::Response::Success { status: ops::get_item::SuccessStatus::Created, body: "x".to_owned() })
     );
     let missing = Client::new(support::loopback(|_| {
         let mut r = api::runtime::new_response(404);
@@ -249,25 +243,8 @@ fn the_client_reads_a_status_range_with_its_actual_status() {
     assert_eq!(
         got.ok(),
         Some(ops::get_item::Response::Default {
-            status: api::http::StatusCode::NOT_FOUND,
+            status: ops::get_item::DefaultStatus::NotFound,
             body: std::collections::BTreeMap::new()
         })
     );
-}
-
-/// A response variant stands for the statuses that its description gives it: `2XX` for the 2xx and `default` for the
-/// others. A handler that returns `Success` with a 404 or `Default` with a 201 would have a client decode it as the
-/// other variant, so the server answers with a server error instead.
-#[test]
-fn a_status_outside_its_variant_is_a_server_error() {
-    let service = api::Server::new(Server).into_service();
-    let get = |id: &str| {
-        let req = api::runtime::new_request("GET", format!("/items/{id}"), vec![]).unwrap();
-        let mut req = req;
-        req.headers_mut().append("authorization", honig::http::HeaderValue::from_static("Bearer t"));
-        api::block_on(service.handle(req)).status().as_u16()
-    };
-    assert_eq!(get("fine"), 201);
-    assert_eq!(get("range-404"), 500);
-    assert_eq!(get("default-201"), 500);
 }

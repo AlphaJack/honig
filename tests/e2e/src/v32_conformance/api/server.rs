@@ -363,7 +363,6 @@ fn get_item_encode(
     Ok(
         match resp {
             ops::get_item::Response::Success { status, body } => {
-                runtime::check_status(status.as_u16(), Some(2), &[], &[2])?;
                 runtime::body_response(
                     status.as_u16(),
                     "application/json",
@@ -371,7 +370,6 @@ fn get_item_encode(
                 )
             }
             ops::get_item::Response::Default { status, body } => {
-                runtime::check_status(status.as_u16(), None, &[], &[2])?;
                 runtime::body_response(
                     status.as_u16(),
                     "application/json",

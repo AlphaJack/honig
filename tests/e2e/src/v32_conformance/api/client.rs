@@ -88,17 +88,29 @@ impl<T: runtime::Transport> Client<T> {
         let status = head.status.as_u16();
         if (200..300).contains(&status) {
             {
+                let Ok(typed) = ops::get_item::SuccessStatus::try_from(status) else {
+                    return Err(runtime::ClientError::UnexpectedStatus {
+                        status: head.status,
+                        body,
+                    });
+                };
                 runtime::check_media_of(&head, &body, &["application/json"])?;
                 Ok(ops::get_item::Response::Success {
-                    status: head.status,
+                    status: typed,
                     body: runtime::json_decode(Some(status), &body)?,
                 })
             }
         } else {
             {
+                let Ok(typed) = ops::get_item::DefaultStatus::try_from(status) else {
+                    return Err(runtime::ClientError::UnexpectedStatus {
+                        status: head.status,
+                        body,
+                    });
+                };
                 runtime::check_media_of(&head, &body, &["application/json"])?;
                 Ok(ops::get_item::Response::Default {
-                    status: head.status,
+                    status: typed,
                     body: runtime::json_decode(Some(status), &body)?,
                 })
             }

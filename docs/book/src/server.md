@@ -8,6 +8,8 @@ A server is your type that implements the generated `server::Api`. It has one me
 
 `api::Server::new(Catalog::default())` builds the server. `into_axum()` serves it as an axum `Router`. `into_service()` serves it as a tower `Service` for hyper and other servers. See [Adapters](adapters.md).
 
+A handler answers with a variant of the operation's `Response`. A `2XX` range or a `default` response carries a `status` of its own enum, such as `DefaultStatus::Conflict`, with the registered codes that no other response of the operation declares. A status that a client would decode as another variant does not compile.
+
 The server keeps your `Api` in an `Arc` and shares it across requests without cloning it. To share the same state with code outside the server, such as a websocket route or a background job, pass an `Arc` you keep a clone of: `api::Server::new(Arc::clone(&catalog))`.
 
 {{#include generated/server-steps.md}}

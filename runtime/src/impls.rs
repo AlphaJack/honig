@@ -477,3 +477,50 @@ macro_rules! by_kind_deserialize {
         Err(::serde::de::Error::custom("matches no variant"))
     };
 }
+
+/// Declares the status of a range or `default` response: an enum of the registered codes that it stands for.
+#[macro_export]
+#[doc(hidden)]
+macro_rules! status_enum {
+    ($(#[$m:meta])* $n:ident {}) => {
+        $(#[$m])*
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+        pub enum $n {}
+        impl $n {
+            #[must_use]
+            pub const fn as_u16(self) -> u16 {
+                match self {}
+            }
+        }
+        impl TryFrom<u16> for $n {
+            type Error = u16;
+            fn try_from(code: u16) -> Result<Self, u16> {
+                Err(code)
+            }
+        }
+    };
+    ($(#[$m:meta])* $n:ident { $($v:ident = $c:literal),* $(,)? }) => {
+        $(#[$m])*
+        #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+        #[repr(u16)]
+        pub enum $n {
+            $($v = $c,)*
+        }
+        impl $n {
+            /// Returns the code.
+            #[must_use]
+            pub const fn as_u16(self) -> u16 {
+                self as u16
+            }
+        }
+        impl TryFrom<u16> for $n {
+            type Error = u16;
+            fn try_from(code: u16) -> Result<Self, u16> {
+                match code {
+                    $($c => Ok(Self::$v),)*
+                    other => Err(other),
+                }
+            }
+        }
+    };
+}

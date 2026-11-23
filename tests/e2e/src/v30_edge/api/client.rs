@@ -109,9 +109,16 @@ impl<T: runtime::Transport> Client<T> {
                 })
             }
             s if (400..500).contains(&s) => {
+                let Ok(typed) = ops::list_orders::ClientErrorStatus::try_from(status)
+                else {
+                    return Err(runtime::ClientError::UnexpectedStatus {
+                        status: head.status,
+                        body,
+                    });
+                };
                 runtime::check_media_of(&head, &body, &["application/problem+json"])?;
                 Ok(ops::list_orders::Response::ClientError {
-                    status: head.status,
+                    status: typed,
                     body: runtime::json_decode(Some(status), &body)?,
                 })
             }
@@ -162,9 +169,15 @@ impl<T: runtime::Transport> Client<T> {
                     .map(ops::create_order::Response::UnprocessableEntity)
             }
             _ => {
+                let Ok(typed) = ops::create_order::DefaultStatus::try_from(status) else {
+                    return Err(runtime::ClientError::UnexpectedStatus {
+                        status: head.status,
+                        body,
+                    });
+                };
                 runtime::check_media_of(&head, &body, &["application/problem+json"])?;
                 Ok(ops::create_order::Response::Default {
-                    status: head.status,
+                    status: typed,
                     body: runtime::json_decode(Some(status), &body)?,
                 })
             }
@@ -220,9 +233,15 @@ impl<T: runtime::Transport> Client<T> {
                     .map(ops::get_order::Response::NotFound)
             }
             _ => {
+                let Ok(typed) = ops::get_order::DefaultStatus::try_from(status) else {
+                    return Err(runtime::ClientError::UnexpectedStatus {
+                        status: head.status,
+                        body,
+                    });
+                };
                 runtime::check_media_of(&head, &body, &["application/problem+json"])?;
                 Ok(ops::get_order::Response::Default {
-                    status: head.status,
+                    status: typed,
                     body: runtime::json_decode(Some(status), &body)?,
                 })
             }

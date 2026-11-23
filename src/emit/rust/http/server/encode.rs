@@ -10,7 +10,7 @@ use crate::emit::rust::names::{pascal, snake};
 use crate::emit::rust::space::Space;
 use crate::emit::rust::syntax::{ident, lit};
 use crate::emit::rust::syntax::{pascal_ident, snake_ident};
-use crate::ir::http::{Content, Operation, Resp, Status};
+use crate::ir::http::{Content, Operation};
 use crate::ir::names::Name;
 use crate::ir::types::Ty;
 
@@ -20,35 +20,7 @@ pub(crate) fn carries_data(op: &Operation) -> bool {
 }
 
 pub(crate) fn encode_fallible(op: &Operation) -> bool {
-    op.responses
-        .iter()
-        .any(|r| status_code(r).is_none() || !r.headers.is_empty() || r.contents.iter().any(fallible_encode))
-}
-
-/// Returns `arm` behind the check of the status of `r` when it is a range or `default`: a handler picks that status.
-fn checked_status(op: &Operation, r: &Resp, arm: TokenStream) -> TokenStream {
-    if status_code(r).is_some() {
-        return arm;
-    }
-    let check = status_check(op, r);
-    quote!({ #check #arm })
-}
-
-/// Returns the check that the status of `r`, a range or `default`, is one it stands for: the statuses of another variant
-/// would be decoded by a client as that variant.
-fn status_check(op: &Operation, r: &Resp) -> TokenStream {
-    let codes = op.responses.iter().filter_map(status_code).map(code);
-    let ranges = op
-        .responses
-        .iter()
-        .filter_map(|x| if let Status::Range(n) = x.status { Some(num(usize::from(n))) } else { None });
-    let own = if let Status::Range(n) = r.status {
-        let n = num(usize::from(n));
-        quote!(Some(#n))
-    } else {
-        quote!(None)
-    };
-    quote!(runtime::check_status(status.as_u16(), #own, &[#(#codes),*], &[#(#ranges),*])?;)
+    op.responses.iter().any(|r| !r.headers.is_empty() || r.contents.iter().any(fallible_encode))
 }
 
 /// Does the encoder receive the media type `Accept` chose? When a response carries one type in several media types.
@@ -87,7 +59,7 @@ pub(crate) fn server_encode(space: &Space<'_>, op: &Operation, op_mod: &TokenStr
             },
         );
         let tys: Vec<&Ty> = r.contents.iter().map(|c| &c.ty).chain(r.headers.iter().map(|h| &h.ty)).collect();
-        let shape = format!("{fields:?} {tys:?} {}", bx.resp[i]);
+        let shape = format!("{fields:?} {tys:?} {} {:?}", bx.resp[i], r.status);
         let headers = r.headers.iter().map(|h| {
             let (n, wire) = (snake_ident(&h.name), lit(&h.wire));
             if h.wire.eq_ignore_ascii_case("set-cookie") {
@@ -131,7 +103,6 @@ pub(crate) fn server_encode(space: &Space<'_>, op: &Operation, op_mod: &TokenStr
                 r
             }}
         };
-        let arm = checked_status(op, r, arm);
         let key = format!("{shape} {arm}");
         match groups.iter_mut().find(|(k, ..)| *k == key) {
             Some((_, pats, _)) => pats.push(pat),

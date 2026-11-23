@@ -115,7 +115,7 @@ async fn the_client_sends_a_failed_post_once() {
     let created = retrying(&base_url).create_product(ops::create_product::Params::new(lamp())).await.unwrap();
     assert_matches!(
         created,
-        ops::create_product::Response::Default { status: api::http::StatusCode::SERVICE_UNAVAILABLE, .. }
+        ops::create_product::Response::Default { status: ops::create_product::DefaultStatus::ServiceUnavailable, .. }
     );
     assert_eq!(calls.load(std::sync::atomic::Ordering::Relaxed), 1, "a POST is not idempotent: no retry");
 }

@@ -61,7 +61,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             let params = ops::list_products::Params { limit, ..ops::list_products::Params::new() };
             match client().list_products(params).await? {
                 ops::list_products::Response::Ok { body, .. } => println!("{}", serde_json::to_string_pretty(&body)?),
-                ops::list_products::Response::Default { status, body } => return Err(answer(status, &body).into()),
+                ops::list_products::Response::Default { status, body } => {
+                    return Err(answer(status.as_u16(), &body).into());
+                }
             }
         }
         Command::AddPhysical { name, sku, fragile } => {
@@ -99,12 +101,12 @@ async fn add(
 ) -> Result<(), Box<dyn std::error::Error>> {
     match client.create_product(ops::create_product::Params::new(product)).await? {
         ops::create_product::Response::Created(product) => println!("{}", serde_json::to_string_pretty(&product)?),
-        ops::create_product::Response::Default { status, body } => return Err(answer(status, &body).into()),
+        ops::create_product::Response::Default { status, body } => return Err(answer(status.as_u16(), &body).into()),
     }
     Ok(())
 }
 
 /// An error that the server answered with.
-fn answer(status: api::http::StatusCode, error: &types::Error) -> String {
+fn answer(status: u16, error: &types::Error) -> String {
     format!("{status}: {}", error.message)
 }
