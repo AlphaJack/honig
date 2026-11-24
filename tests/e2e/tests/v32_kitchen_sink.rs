@@ -200,11 +200,12 @@ fn lamp_numbered(id: i64) -> Result<types::Product, api::BuildError> {
     Ok(lamp)
 }
 
-type Ctx<'a> = api::Context<'a, Option<()>>;
 type Answer<R> = Result<R, api::ApiError>;
 
 impl api::Api for Products {
-    type Principal = ();
+    type Bearer = ();
+    type ApiKey = ();
+    type Oauth = ();
 
     async fn verify_bearer(&self, _: &str, _: &api::Request) -> Answer<Option<()>> {
         Ok(Some(()))
@@ -218,23 +219,35 @@ impl api::Api for Products {
         _: &api::Request,
     ) -> Answer<Option<api::Granted<(), api::server::OauthScope>>> {
         Ok(Some(api::Granted {
-            principal: (),
+            value: (),
             scopes: vec![api::server::OauthScope::Read, api::server::OauthScope::Write],
         }))
     }
 
-    async fn submit_form(&self, p: ops::submit_form::Params, _: &Ctx<'_>) -> Answer<ops::submit_form::Response> {
+    async fn submit_form(
+        &self,
+        p: ops::submit_form::Params,
+        _: &api::Context<'_, ops::submit_form::Security<Self>>,
+    ) -> Answer<ops::submit_form::Response> {
         self.keep(&p);
         Ok(ops::submit_form::Response::NoContent)
     }
 
-    async fn put_blob(&self, p: ops::put_blob::Params, _: &Ctx<'_>) -> Answer<ops::put_blob::Response> {
+    async fn put_blob(
+        &self,
+        p: ops::put_blob::Params,
+        _: &api::Context<'_, ops::put_blob::Security<Self>>,
+    ) -> Answer<ops::put_blob::Response> {
         let bytes = p.body.collect().await?;
         let size = i64::try_from(bytes.len()).ok();
         Ok(ops::put_blob::Response::Ok { body: bytes.into(), x_size: size, x_quota: types::PutBlobOkXQuota::new(10) })
     }
 
-    async fn list_products(&self, p: ops::list_products::Params, _: &Ctx<'_>) -> Answer<ops::list_products::Response> {
+    async fn list_products(
+        &self,
+        p: ops::list_products::Params,
+        _: &api::Context<'_, ops::list_products::Security<Self>>,
+    ) -> Answer<ops::list_products::Response> {
         self.keep(&p);
         let body = match p.media {
             ops::list_products::Media::Json => ops::list_products::OkBody::Json(vec![lamp()]),
@@ -246,7 +259,7 @@ impl api::Api for Products {
     async fn create_product(
         &self,
         p: ops::create_product::Params,
-        _: &api::Context<'_>,
+        _: &api::Context<'_, ops::create_product::Security<Self>>,
     ) -> Answer<ops::create_product::Response> {
         self.keep(&p);
         Ok(ops::create_product::Response::Created)
@@ -255,25 +268,37 @@ impl api::Api for Products {
     async fn search_products(
         &self,
         p: ops::search_products::Params,
-        _: &Ctx<'_>,
+        _: &api::Context<'_, ops::search_products::Security<Self>>,
     ) -> Answer<ops::search_products::Response> {
         self.keep(&p);
         Ok(ops::search_products::Response::Ok(vec![lamp()]))
     }
 
-    async fn copy_products(&self, p: ops::copy_products::Params, _: &Ctx<'_>) -> Answer<ops::copy_products::Response> {
+    async fn copy_products(
+        &self,
+        p: ops::copy_products::Params,
+        _: &api::Context<'_, ops::copy_products::Security<Self>>,
+    ) -> Answer<ops::copy_products::Response> {
         self.keep(&p);
         Ok(ops::copy_products::Response::NoContent)
     }
 
-    async fn get_product(&self, p: ops::get_product::Params, _: &Ctx<'_>) -> Answer<ops::get_product::Response> {
+    async fn get_product(
+        &self,
+        p: ops::get_product::Params,
+        _: &api::Context<'_, ops::get_product::Security<Self>>,
+    ) -> Answer<ops::get_product::Response> {
         self.keep(&p);
         let product = lamp_numbered(p.product_id)
             .map_err(|e| api::ApiError::new(api::http::StatusCode::BAD_REQUEST, e.to_string()))?;
         Ok(ops::get_product::Response::Ok(product))
     }
 
-    async fn put_product(&self, p: ops::put_product::Params, _: &Ctx<'_>) -> Answer<ops::put_product::Response> {
+    async fn put_product(
+        &self,
+        p: ops::put_product::Params,
+        _: &api::Context<'_, ops::put_product::Security<Self>>,
+    ) -> Answer<ops::put_product::Response> {
         self.keep(&p);
         Ok(ops::put_product::Response::Ok)
     }
@@ -281,7 +306,7 @@ impl api::Api for Products {
     async fn delete_product(
         &self,
         p: ops::delete_product::Params,
-        _: &Ctx<'_>,
+        _: &api::Context<'_, ops::delete_product::Security<Self>>,
     ) -> Answer<ops::delete_product::Response> {
         self.keep(&p);
         Ok(ops::delete_product::Response::NoContent)
@@ -290,28 +315,44 @@ impl api::Api for Products {
     async fn options_product(
         &self,
         p: ops::options_product::Params,
-        _: &Ctx<'_>,
+        _: &api::Context<'_, ops::options_product::Security<Self>>,
     ) -> Answer<ops::options_product::Response> {
         self.keep(&p);
         Ok(ops::options_product::Response::Ok)
     }
 
-    async fn head_product(&self, p: ops::head_product::Params, _: &Ctx<'_>) -> Answer<ops::head_product::Response> {
+    async fn head_product(
+        &self,
+        p: ops::head_product::Params,
+        _: &api::Context<'_, ops::head_product::Security<Self>>,
+    ) -> Answer<ops::head_product::Response> {
         self.keep(&p);
         Ok(ops::head_product::Response::Ok)
     }
 
-    async fn patch_product(&self, p: ops::patch_product::Params, _: &Ctx<'_>) -> Answer<ops::patch_product::Response> {
+    async fn patch_product(
+        &self,
+        p: ops::patch_product::Params,
+        _: &api::Context<'_, ops::patch_product::Security<Self>>,
+    ) -> Answer<ops::patch_product::Response> {
         self.keep(&p);
         Ok(ops::patch_product::Response::Ok)
     }
 
-    async fn trace_product(&self, p: ops::trace_product::Params, _: &Ctx<'_>) -> Answer<ops::trace_product::Response> {
+    async fn trace_product(
+        &self,
+        p: ops::trace_product::Params,
+        _: &api::Context<'_, ops::trace_product::Security<Self>>,
+    ) -> Answer<ops::trace_product::Response> {
         self.keep(&p);
         Ok(ops::trace_product::Response::Ok)
     }
 
-    async fn search(&self, p: ops::search::Params, _: &Ctx<'_>) -> Answer<ops::search::Response> {
+    async fn search(
+        &self,
+        p: ops::search::Params,
+        _: &api::Context<'_, ops::search::Security<Self>>,
+    ) -> Answer<ops::search::Response> {
         self.keep(&p);
         Ok(ops::search::Response::Ok(vec![types::SearchOkItem::new(types::SearchOkItemData(lamp()))].into()))
     }

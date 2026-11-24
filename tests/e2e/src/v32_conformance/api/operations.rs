@@ -67,6 +67,11 @@ pub mod inherits {
             }
         }
     }
+    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    pub enum Security<A: super::super::server::Api> {
+        /// The alternative of `Bearer`, with what each `verify_` method found.
+        Bearer(A::Bearer),
+    }
 }
 pub mod get_item {
     use super::super::runtime;
@@ -139,6 +144,11 @@ pub mod get_item {
             }
         }
     }
+    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    pub enum Security<A: super::super::server::Api> {
+        /// The alternative of `Bearer`, with what each `verify_` method found.
+        Bearer(A::Bearer),
+    }
 }
 pub mod post_closed {
     use super::super::types;
@@ -178,6 +188,11 @@ pub mod post_closed {
                 Self::NoContent => Ok(()),
             }
         }
+    }
+    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    pub enum Security<A: super::super::server::Api> {
+        /// The alternative of `Bearer`, with what each `verify_` method found.
+        Bearer(A::Bearer),
     }
 }
 pub mod optional_body {
@@ -219,6 +234,11 @@ pub mod optional_body {
             }
         }
     }
+    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    pub enum Security<A: super::super::server::Api> {
+        /// The alternative of `Bearer`, with what each `verify_` method found.
+        Bearer(A::Bearer),
+    }
 }
 pub mod post_product {
     use super::super::types;
@@ -258,6 +278,11 @@ pub mod post_product {
                 Self::NoContent => Ok(()),
             }
         }
+    }
+    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    pub enum Security<A: super::super::server::Api> {
+        /// The alternative of `Bearer`, with what each `verify_` method found.
+        Bearer(A::Bearer),
     }
 }
 pub mod upload {
@@ -299,6 +324,11 @@ pub mod upload {
             }
         }
     }
+    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    pub enum Security<A: super::super::server::Api> {
+        /// The alternative of `Bearer`, with what each `verify_` method found.
+        Bearer(A::Bearer),
+    }
 }
 pub mod cookies {
     use super::super::runtime;
@@ -330,6 +360,11 @@ pub mod cookies {
                 Self::NoContent { set_cookie, .. } => Ok(set_cookie),
             }
         }
+    }
+    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    pub enum Security<A: super::super::server::Api> {
+        /// The alternative of `CookieKey`, with what each `verify_` method found.
+        CookieKey(A::CookieKey),
     }
 }
 pub mod filter {
@@ -373,5 +408,10 @@ pub mod filter {
                 Self::NoContent => Ok(()),
             }
         }
+    }
+    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    pub enum Security<A: super::super::server::Api> {
+        /// The alternative of `Bearer`, with what each `verify_` method found.
+        Bearer(A::Bearer),
     }
 }

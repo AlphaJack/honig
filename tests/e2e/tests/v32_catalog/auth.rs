@@ -1,4 +1,4 @@
-//! Who is calling. `verify_api_key` finds the principal from the key or from what outer layers attached.
+//! Who is calling. `verify_api_key` finds them from the key or from what outer layers attached.
 
 use std::net::SocketAddr;
 
@@ -25,7 +25,7 @@ impl api::Api for Server {
     fn error_response(rejection: api::Rejection) -> api::Response {
         super::error_body(rejection)
     }
-    type Principal = String;
+    type ApiKey = String;
 
     /// Who is calling, as the function of the server finds it. 401 for nobody.
     async fn verify_api_key(&self, key: &str, req: &api::Request) -> Result<Option<String>, api::ApiError> {
@@ -35,21 +35,22 @@ impl api::Api for Server {
     async fn list_products(
         &self,
         _: ops::list_products::Params,
-        ctx: &api::Context<'_, String>,
+        ctx: &api::Context<'_, ops::list_products::Security<Self>>,
     ) -> Result<ops::list_products::Response, api::ApiError> {
-        Ok(ops::list_products::Response::Ok { body: vec![], x_next: Some(ctx.principal.clone()) })
+        let ops::list_products::Security::ApiKey(who) = &ctx.security;
+        Ok(ops::list_products::Response::Ok { body: vec![], x_next: Some(who.clone()) })
     }
     async fn create_product(
         &self,
         _: ops::create_product::Params,
-        _: &api::Context<'_, String>,
+        _: &api::Context<'_, ops::create_product::Security<Self>>,
     ) -> Result<ops::create_product::Response, api::ApiError> {
         Err(api::ApiError::new(api::http::StatusCode::NOT_IMPLEMENTED, "not here"))
     }
     async fn get_product(
         &self,
         _: ops::get_product::Params,
-        _: &api::Context<'_, String>,
+        _: &api::Context<'_, ops::get_product::Security<Self>>,
     ) -> Result<ops::get_product::Response, api::ApiError> {
         Err(api::ApiError::new(api::http::StatusCode::NOT_IMPLEMENTED, "not here"))
     }
@@ -83,7 +84,7 @@ fn without_the_layer_authentication_refuses() {
 }
 
 // ANCHOR: credentials
-/// The principal that an API key belongs to. Nobody for a key that nobody has.
+/// Who an API key belongs to. Nobody for a key that nobody has.
 fn holder(key: &str, _: &api::Request) -> Option<String> {
     (key == "secret").then(|| "ann".to_owned())
 }

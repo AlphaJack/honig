@@ -74,6 +74,11 @@ pub mod list_products {
             }
         }
     }
+    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    pub enum Security<A: super::super::server::Api> {
+        /// The alternative of `ApiKey`, with what each `verify_` method found.
+        ApiKey(A::ApiKey),
+    }
 }
 pub mod create_product {
     use super::super::types;
@@ -140,6 +145,11 @@ pub mod create_product {
             }
         }
     }
+    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    pub enum Security<A: super::super::server::Api> {
+        /// The alternative of `ApiKey`, with what each `verify_` method found.
+        ApiKey(A::ApiKey),
+    }
 }
 pub mod get_product {
     use super::super::types;
@@ -184,5 +194,10 @@ pub mod get_product {
                 other @ Self::NotFound(..) => Err(Box::new(other)),
             }
         }
+    }
+    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    pub enum Security<A: super::super::server::Api> {
+        /// The alternative of `ApiKey`, with what each `verify_` method found.
+        ApiKey(A::ApiKey),
     }
 }

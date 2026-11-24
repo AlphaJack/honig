@@ -304,6 +304,25 @@ pub mod create_product {
     }
     pub type BadRequestBody = super::responses::BadRequest;
     pub type ForbiddenBody = super::responses::Forbidden;
+    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    pub enum Security<A: super::super::server::Api> {
+        /// The alternative of `BearerAuth`, with what each `verify_` method found.
+        BearerAuth(A::BearerAuth),
+        /// The alternative of `BasicAuth`, with what each `verify_` method found.
+        BasicAuth(A::BasicAuth),
+        /// The alternative of `ApiKeyQuery`, with what each `verify_` method found.
+        ApiKeyQuery(A::ApiKeyQuery),
+        /// The alternative of `ApiKeyHeader`, with what each `verify_` method found.
+        ApiKeyHeader(A::ApiKeyHeader),
+        /// The alternative of `ApiKeyHeader` and `ApiKeyQuery`, with what each `verify_` method found.
+        ApiKeyHeaderAndApiKeyQuery(A::ApiKeyHeader, A::ApiKeyQuery),
+        /// The alternative of `ApiKeyCookie`, with what each `verify_` method found.
+        ApiKeyCookie(A::ApiKeyCookie),
+        /// The alternative of `OAuth2`, with what each `verify_` method found.
+        OAuth2(A::OAuth2),
+        /// The alternative of `OpenIdConnect`, with what each `verify_` method found.
+        OpenIdConnect(A::OpenIdConnect),
+    }
     pub mod links {
         use super::super::super::runtime;
         /// Retrieve the product using the ID returned in the response.
@@ -691,6 +710,25 @@ pub mod update_product {
     pub type BadRequestBody = super::responses::BadRequest;
     pub type ForbiddenBody = super::responses::Forbidden;
     pub type NotFoundBody = super::responses::NotFound;
+    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    pub enum Security<A: super::super::server::Api> {
+        /// The alternative of `BearerAuth`, with what each `verify_` method found.
+        BearerAuth(A::BearerAuth),
+        /// The alternative of `BasicAuth`, with what each `verify_` method found.
+        BasicAuth(A::BasicAuth),
+        /// The alternative of `ApiKeyQuery`, with what each `verify_` method found.
+        ApiKeyQuery(A::ApiKeyQuery),
+        /// The alternative of `ApiKeyHeader`, with what each `verify_` method found.
+        ApiKeyHeader(A::ApiKeyHeader),
+        /// The alternative of `ApiKeyHeader` and `ApiKeyQuery`, with what each `verify_` method found.
+        ApiKeyHeaderAndApiKeyQuery(A::ApiKeyHeader, A::ApiKeyQuery),
+        /// The alternative of `ApiKeyCookie`, with what each `verify_` method found.
+        ApiKeyCookie(A::ApiKeyCookie),
+        /// The alternative of `OAuth2`, with what each `verify_` method found.
+        OAuth2(A::OAuth2),
+        /// The alternative of `OpenIdConnect`, with what each `verify_` method found.
+        OpenIdConnect(A::OpenIdConnect),
+    }
     pub mod links {
         use super::super::super::runtime;
         /// Retrieve the product using the ID returned in the response.
@@ -755,6 +793,25 @@ pub mod delete_product {
         }
     }
     pub type NotFoundBody = super::responses::NotFound;
+    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    pub enum Security<A: super::super::server::Api> {
+        /// The alternative of `BearerAuth`, with what each `verify_` method found.
+        BearerAuth(A::BearerAuth),
+        /// The alternative of `BasicAuth`, with what each `verify_` method found.
+        BasicAuth(A::BasicAuth),
+        /// The alternative of `ApiKeyQuery`, with what each `verify_` method found.
+        ApiKeyQuery(A::ApiKeyQuery),
+        /// The alternative of `ApiKeyHeader`, with what each `verify_` method found.
+        ApiKeyHeader(A::ApiKeyHeader),
+        /// The alternative of `ApiKeyHeader` and `ApiKeyQuery`, with what each `verify_` method found.
+        ApiKeyHeaderAndApiKeyQuery(A::ApiKeyHeader, A::ApiKeyQuery),
+        /// The alternative of `ApiKeyCookie`, with what each `verify_` method found.
+        ApiKeyCookie(A::ApiKeyCookie),
+        /// The alternative of `OAuth2`, with what each `verify_` method found.
+        OAuth2(A::OAuth2),
+        /// The alternative of `OpenIdConnect`, with what each `verify_` method found.
+        OpenIdConnect(A::OpenIdConnect),
+    }
 }
 /// Duplicate an existing product using the `WebDAV-style` COPY method. This demonstrates how `OpenAPI` 3.2 describes custom HTTP methods.
 pub mod copy_product {
@@ -815,6 +872,25 @@ pub mod copy_product {
         }
     }
     pub type NotFoundBody = super::responses::NotFound;
+    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    pub enum Security<A: super::super::server::Api> {
+        /// The alternative of `BearerAuth`, with what each `verify_` method found.
+        BearerAuth(A::BearerAuth),
+        /// The alternative of `BasicAuth`, with what each `verify_` method found.
+        BasicAuth(A::BasicAuth),
+        /// The alternative of `ApiKeyQuery`, with what each `verify_` method found.
+        ApiKeyQuery(A::ApiKeyQuery),
+        /// The alternative of `ApiKeyHeader`, with what each `verify_` method found.
+        ApiKeyHeader(A::ApiKeyHeader),
+        /// The alternative of `ApiKeyHeader` and `ApiKeyQuery`, with what each `verify_` method found.
+        ApiKeyHeaderAndApiKeyQuery(A::ApiKeyHeader, A::ApiKeyQuery),
+        /// The alternative of `ApiKeyCookie`, with what each `verify_` method found.
+        ApiKeyCookie(A::ApiKeyCookie),
+        /// The alternative of `OAuth2`, with what each `verify_` method found.
+        OAuth2(A::OAuth2),
+        /// The alternative of `OpenIdConnect`, with what each `verify_` method found.
+        OpenIdConnect(A::OpenIdConnect),
+    }
     pub mod links {
         use super::super::super::runtime;
         /// Retrieve the product using the ID returned in the response.
@@ -935,6 +1011,25 @@ pub mod upload_image {
     pub type BadRequestBody = super::responses::BadRequest;
     pub type ForbiddenBody = super::responses::Forbidden;
     pub type NotFoundBody = super::responses::NotFound;
+    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    pub enum Security<A: super::super::server::Api> {
+        /// The alternative of `BearerAuth`, with what each `verify_` method found.
+        BearerAuth(A::BearerAuth),
+        /// The alternative of `BasicAuth`, with what each `verify_` method found.
+        BasicAuth(A::BasicAuth),
+        /// The alternative of `ApiKeyQuery`, with what each `verify_` method found.
+        ApiKeyQuery(A::ApiKeyQuery),
+        /// The alternative of `ApiKeyHeader`, with what each `verify_` method found.
+        ApiKeyHeader(A::ApiKeyHeader),
+        /// The alternative of `ApiKeyHeader` and `ApiKeyQuery`, with what each `verify_` method found.
+        ApiKeyHeaderAndApiKeyQuery(A::ApiKeyHeader, A::ApiKeyQuery),
+        /// The alternative of `ApiKeyCookie`, with what each `verify_` method found.
+        ApiKeyCookie(A::ApiKeyCookie),
+        /// The alternative of `OAuth2`, with what each `verify_` method found.
+        OAuth2(A::OAuth2),
+        /// The alternative of `OpenIdConnect`, with what each `verify_` method found.
+        OpenIdConnect(A::OpenIdConnect),
+    }
 }
 /// Subscribe to a live feed of product changes. The response is an open stream rather than a single document, so each media type uses `itemSchema` (new in `OpenAPI` 3.2) to describe one event at a time. Server-Sent Events (`text/event-stream`), JSON Lines (`application/jsonl`) and JSON Text Sequences (`application/json-seq`) are all offered.
 pub mod stream_product_events {
@@ -1089,6 +1184,25 @@ pub mod upload_photos {
     }
     pub type BadRequestBody = super::responses::BadRequest;
     pub type NotFoundBody = super::responses::NotFound;
+    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    pub enum Security<A: super::super::server::Api> {
+        /// The alternative of `BearerAuth`, with what each `verify_` method found.
+        BearerAuth(A::BearerAuth),
+        /// The alternative of `BasicAuth`, with what each `verify_` method found.
+        BasicAuth(A::BasicAuth),
+        /// The alternative of `ApiKeyQuery`, with what each `verify_` method found.
+        ApiKeyQuery(A::ApiKeyQuery),
+        /// The alternative of `ApiKeyHeader`, with what each `verify_` method found.
+        ApiKeyHeader(A::ApiKeyHeader),
+        /// The alternative of `ApiKeyHeader` and `ApiKeyQuery`, with what each `verify_` method found.
+        ApiKeyHeaderAndApiKeyQuery(A::ApiKeyHeader, A::ApiKeyQuery),
+        /// The alternative of `ApiKeyCookie`, with what each `verify_` method found.
+        ApiKeyCookie(A::ApiKeyCookie),
+        /// The alternative of `OAuth2`, with what each `verify_` method found.
+        OAuth2(A::OAuth2),
+        /// The alternative of `OpenIdConnect`, with what each `verify_` method found.
+        OpenIdConnect(A::OpenIdConnect),
+    }
 }
 /// Add a product or a variant, anything the shop sells.
 pub mod create_item {
@@ -1130,6 +1244,25 @@ pub mod create_item {
                 Self::Created(body) => Ok(body),
             }
         }
+    }
+    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    pub enum Security<A: super::super::server::Api> {
+        /// The alternative of `BearerAuth`, with what each `verify_` method found.
+        BearerAuth(A::BearerAuth),
+        /// The alternative of `BasicAuth`, with what each `verify_` method found.
+        BasicAuth(A::BasicAuth),
+        /// The alternative of `ApiKeyQuery`, with what each `verify_` method found.
+        ApiKeyQuery(A::ApiKeyQuery),
+        /// The alternative of `ApiKeyHeader`, with what each `verify_` method found.
+        ApiKeyHeader(A::ApiKeyHeader),
+        /// The alternative of `ApiKeyHeader` and `ApiKeyQuery`, with what each `verify_` method found.
+        ApiKeyHeaderAndApiKeyQuery(A::ApiKeyHeader, A::ApiKeyQuery),
+        /// The alternative of `ApiKeyCookie`, with what each `verify_` method found.
+        ApiKeyCookie(A::ApiKeyCookie),
+        /// The alternative of `OAuth2`, with what each `verify_` method found.
+        OAuth2(A::OAuth2),
+        /// The alternative of `OpenIdConnect`, with what each `verify_` method found.
+        OpenIdConnect(A::OpenIdConnect),
     }
 }
 /// Create a user account.
@@ -1449,6 +1582,21 @@ pub mod get_me {
     }
     pub type UnauthorizedBody = super::responses::Unauthorized;
     pub type ForbiddenBody = super::responses::Forbidden;
+    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    pub enum Security<A: super::super::server::Api> {
+        /// The alternative of `BasicAuth`, with what each `verify_` method found.
+        BasicAuth(A::BasicAuth),
+        /// The alternative of `OAuth2`, with what each `verify_` method found.
+        OAuth2(A::OAuth2),
+        /// The alternative of `BearerAuth`, with what each `verify_` method found.
+        BearerAuth(A::BearerAuth),
+        /// The alternative of `ApiKeyHeader`, with what each `verify_` method found.
+        ApiKeyHeader(A::ApiKeyHeader),
+        /// The alternative of `ApiKeyQuery`, with what each `verify_` method found.
+        ApiKeyQuery(A::ApiKeyQuery),
+        /// The alternative of `ApiKeyHeader` and `ApiKeyQuery`, with what each `verify_` method found.
+        ApiKeyHeaderAndApiKeyQuery(A::ApiKeyHeader, A::ApiKeyQuery),
+    }
 }
 pub mod new_product_post {
     use super::super::types;

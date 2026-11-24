@@ -169,8 +169,6 @@ fn full_event() -> types::Event {
 struct Events(std::sync::Mutex<Option<ops::get_event::Params>>);
 
 impl api::Api for Events {
-    type Principal = ();
-
     async fn get_event(
         &self,
         p: ops::get_event::Params,

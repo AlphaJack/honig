@@ -30,8 +30,6 @@ fn all_of_with_a_one_of_member_is_one_of_its_branches() {
 struct Accept;
 
 impl api::Api for Accept {
-    type Principal = ();
-
     fn a(
         &self,
         _: ops::a::Params,

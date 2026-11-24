@@ -61,6 +61,11 @@ pub mod list_issues {
             }
         }
     }
+    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    pub enum Security<A: super::super::server::Api> {
+        /// The alternative of `Pat`, with what each `verify_` method found.
+        Pat(A::Pat),
+    }
 }
 pub mod create_issue {
     use super::super::runtime;
@@ -90,6 +95,11 @@ pub mod create_issue {
                 Self::NoContent => Ok(()),
             }
         }
+    }
+    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    pub enum Security<A: super::super::server::Api> {
+        /// The alternative of `Pat`, with what each `verify_` method found.
+        Pat(A::Pat),
     }
 }
 pub mod open {

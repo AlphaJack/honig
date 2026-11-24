@@ -13,8 +13,6 @@ struct Seen {
 }
 
 impl api::Api for Seen {
-    type Principal = ();
-
     fn list_items(
         &self,
         p: ops::list_items::Params,

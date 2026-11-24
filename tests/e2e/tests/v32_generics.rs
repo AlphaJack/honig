@@ -43,8 +43,6 @@ fn any() -> types::Page {
 }
 
 impl api::Api for Fixed {
-    type Principal = ();
-
     async fn list_products(
         &self,
         _: ops::list_products::Params,

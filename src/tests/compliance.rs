@@ -1122,11 +1122,8 @@ fn every_scope_and_role_is_a_variant_of_its_schemes_enum() {
         assert!(ops.contains(&format!("\"{name}\"=>Some(Self::{v})")), "{v} from_name");
     }
     assert!(!ops.contains("pubenumScope{"), "no enum that merges the schemes");
-    assert!(server.contains("Option<runtime::Granted<Self::Principal,PatScope>>"), "verify_pat grants `PatScope`");
-    assert!(
-        server.contains("Option<runtime::Granted<Self::Principal,OauthScope>>"),
-        "verify_oauth grants `OauthScope`"
-    );
+    assert!(server.contains("Option<runtime::Granted<Self::Pat,PatScope>>"), "verify_pat grants `PatScope`");
+    assert!(server.contains("Option<runtime::Granted<Self::Oauth,OauthScope>>"), "verify_oauth grants `OauthScope`");
 }
 
 #[test]
@@ -1145,7 +1142,7 @@ fn or_of_roles_on_one_scheme_keeps_both_alternatives() {
 fn no_scopes_means_no_scope_enum() {
     let server = squash(&server_of("scope-none", &doc(&secured_op(&json!([{"local": []}])), &bearer())));
     assert!(!server.contains("pubenumLocalScope"), "an empty enum would be uninhabited noise");
-    assert!(server.contains("Option<Self::Principal>"), "a scheme without scopes returns the principal alone");
+    assert!(server.contains("Option<Self::Local>"), "a scheme without scopes returns its value alone");
 }
 
 /// JSON Schema 2020-12 section 6.1.3: a `const` property is valid only at its value. The error body that the server

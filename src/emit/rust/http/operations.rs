@@ -26,7 +26,7 @@ use crate::ir::types::{Kind, Ty};
 pub(crate) fn operations(api: &Api, space: &Space<'_>, opts: &crate::emit::Options) -> TokenStream {
     let (binary, serves) = (opts.rust.binary, opts.server);
     let conveniences = !binary || opts.client;
-    let mods = api.http.operations.iter().map(|op| operation_mod(api, space, op, conveniences));
+    let mods = api.http.operations.iter().map(|op| operation_mod(api, space, op, conveniences, serves));
     let dead_code = match (binary, serves, conveniences) {
         (false, ..) => None,
         (true, true, _) => Some("a handler may build only some of the responses of its operation"),
@@ -161,7 +161,13 @@ fn runtime_import(uses: bool) -> Option<TokenStream> {
 }
 
 /// Returns `pub mod <operation>` with constants, `Params`, `Response` and body enums.
-pub(crate) fn operation_mod(api: &Api, space: &Space<'_>, op: &Operation, conveniences: bool) -> TokenStream {
+pub(crate) fn operation_mod(
+    api: &Api,
+    space: &Space<'_>,
+    op: &Operation,
+    conveniences: bool,
+    serves: bool,
+) -> TokenStream {
     let bx = boxing(space, op);
     let params = params_struct(space, op, conveniences);
     let mut items = vec![params];
@@ -171,6 +177,7 @@ pub(crate) fn operation_mod(api: &Api, space: &Space<'_>, op: &Operation, conven
         items.push(content_enum(space, "Body", &body.contents, &bx.body_enum));
     }
     response_enum(&mut items, space, op, &bx);
+    items.extend(serves.then(|| super::server::security_enum(api, op)).flatten());
     // `Params`, the bodies and the responses refer to the runtime when they need one of its types or helpers. The links
     // and callbacks below import it for themselves.
     let uses_runtime = quote!(#(#items)*).to_string().contains("runtime ::");

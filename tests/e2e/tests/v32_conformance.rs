@@ -14,10 +14,11 @@ fn ok<T: Send>(r: T) -> impl Future<Output = Result<T, api::ApiError>> + Send {
 }
 
 impl api::Api for Server {
+    type Bearer = ();
+    type CookieKey = ();
     fn error_response(rejection: api::Rejection) -> api::Response {
         rejection.response()
     }
-    type Principal = ();
 
     async fn verify_bearer(&self, _: &str, _: &api::Request) -> Result<Option<()>, api::ApiError> {
         Ok(Some(()))
@@ -36,49 +37,49 @@ impl api::Api for Server {
     fn inherits(
         &self,
         _: ops::inherits::Params,
-        _: &api::Context<'_>,
+        _: &api::Context<'_, ops::inherits::Security<Self>>,
     ) -> impl Future<Output = Result<ops::inherits::Response, api::ApiError>> + Send {
         ok(ops::inherits::Response::NoContent)
     }
     fn get_item(
         &self,
         _: ops::get_item::Params,
-        _: &api::Context<'_>,
+        _: &api::Context<'_, ops::get_item::Security<Self>>,
     ) -> impl Future<Output = Result<ops::get_item::Response, api::ApiError>> + Send {
         ok(ops::get_item::Response::Success { status: ops::get_item::SuccessStatus::Created, body: "x".into() })
     }
     fn post_closed(
         &self,
         _: ops::post_closed::Params,
-        _: &api::Context<'_>,
+        _: &api::Context<'_, ops::post_closed::Security<Self>>,
     ) -> impl Future<Output = Result<ops::post_closed::Response, api::ApiError>> + Send {
         ok(ops::post_closed::Response::NoContent)
     }
     fn optional_body(
         &self,
         _: ops::optional_body::Params,
-        _: &api::Context<'_>,
+        _: &api::Context<'_, ops::optional_body::Security<Self>>,
     ) -> impl Future<Output = Result<ops::optional_body::Response, api::ApiError>> + Send {
         ok(ops::optional_body::Response::NoContent)
     }
     fn post_product(
         &self,
         _: ops::post_product::Params,
-        _: &api::Context<'_>,
+        _: &api::Context<'_, ops::post_product::Security<Self>>,
     ) -> impl Future<Output = Result<ops::post_product::Response, api::ApiError>> + Send {
         ok(ops::post_product::Response::NoContent)
     }
     fn upload(
         &self,
         _: ops::upload::Params,
-        _: &api::Context<'_>,
+        _: &api::Context<'_, ops::upload::Security<Self>>,
     ) -> impl Future<Output = Result<ops::upload::Response, api::ApiError>> + Send {
         ok(ops::upload::Response::NoContent)
     }
     fn filter(
         &self,
         p: ops::filter::Params,
-        _: &api::Context<'_>,
+        _: &api::Context<'_, ops::filter::Security<Self>>,
     ) -> impl Future<Output = Result<ops::filter::Response, api::ApiError>> + Send {
         assert_eq!(p.page, Some(2));
         assert_eq!(p.where_.map(|w| w.a), Some(Some("x".to_owned())));
@@ -87,7 +88,7 @@ impl api::Api for Server {
     fn cookies(
         &self,
         _: ops::cookies::Params,
-        _: &api::Context<'_>,
+        _: &api::Context<'_, ops::cookies::Security<Self>>,
     ) -> impl Future<Output = Result<ops::cookies::Response, api::ApiError>> + Send {
         let cookies = vec!["a=1; Expires=Wed, 21 Oct 2015 07:28:00 GMT".to_owned(), "b=2".to_owned()];
         ok(ops::cookies::Response::NoContent { set_cookie: Some(cookies) })

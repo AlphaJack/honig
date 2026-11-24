@@ -41,7 +41,7 @@ pub(crate) fn axum_paths(api: &Api) -> BTreeSet<String> {
 /// function of its own. One level of chunks and not a chain: nested futures would grow with the operation count and hit
 /// the layout depth limit of the compiler.
 pub(crate) fn dispatch_fns(path_ops: &[&Operation]) -> TokenStream {
-    let sig = quote!(routed: runtime::Routed<'_>, call: runtime::Call<'_, Option<A::Principal>, Operation>);
+    let sig = quote!(routed: runtime::Routed<'_>, call: runtime::Call<'_, Option<runtime::Passed<<Routes<A> as runtime::Operations>::Value>>, Operation>);
     // The future of each operation is boxed. So `dispatch` stays a small match. Otherwise it would be one state
     // machine that contains every operation (and your handler) inline. That is large in code and on the stack.
     let arm = |op: &&Operation| {
@@ -287,7 +287,8 @@ pub(crate) fn router(api: &Api) -> TokenStream {
     let groups = groups.iter().map(|g| quote!(&[#(#g),*]));
     let (route, call) = (route_body(&strip_base), call_body());
     let dispatch = dispatch_fns(&path_ops);
-    let verify = super::verify_fn(api, &path_ops, &quote!(&*self.0), &quote!(A::Principal));
+    let verify = super::verify_fn(api, &path_ops, &quote!(&*self.0), &quote!(SchemeValue));
+    let value = super::value_type(api, &path_ops, "SchemeValue");
     quote! {
         static METHODS: &[&[(&str, Operation)]] = &[#(#groups),*];
 
@@ -316,7 +317,7 @@ pub(crate) fn router(api: &Api) -> TokenStream {
         }
 
         impl<A: Api> runtime::Operations for Routes<A> {
-            type Principal = A::Principal;
+            type Value = #value;
             type Operation = Operation;
 
             fn error_response(&self) -> fn(runtime::Rejection<Operation>) -> runtime::Response {
@@ -337,7 +338,7 @@ pub(crate) fn router(api: &Api) -> TokenStream {
 
             #verify
 
-            fn call<'r>(&'r self, req: runtime::Request, call: runtime::Call<'r, Option<A::Principal>, Operation>) -> runtime::BoxFuture<'r, runtime::Response> {
+            fn call<'r>(&'r self, req: runtime::Request, call: runtime::Call<'r, Option<runtime::Passed<#value>>, Operation>) -> runtime::BoxFuture<'r, runtime::Response> {
                 #call
             }
         }

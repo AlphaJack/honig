@@ -34,7 +34,7 @@ fn web_app() -> axum::Router {
 
 // ANCHOR: claims
 /// What an auth layer that you already run puts in the extensions, such as the claims of a JWT. Its fields are its
-/// own, not your principal.
+/// own, not the value of your scheme.
 #[derive(Clone)]
 struct Claims {
     sub: String,
@@ -49,7 +49,7 @@ fn claims_layer(mut req: axum::extract::Request) -> axum::extract::Request {
     req
 }
 
-/// The `verify_` method of the scheme maps the claims to the principal of the `Api`. A request without claims is
+/// The `verify_` method of the scheme maps the claims to the value of its scheme. A request without claims is
 /// nobody.
 fn subject(_: &str, req: &api::Request) -> Option<String> {
     req.extensions().get::<Claims>().map(|claims| claims.sub.clone())
@@ -91,9 +91,11 @@ fn full_stack() -> axum::Router {
         // Inside the server, after routing and the check of the credentials that the description asks for. Their
         // errors go out in the error schema.
         .operation_layer(tower::timeout::TimeoutLayer::new(Duration::from_secs(10)))
-        // The principal is in the extensions already: this layer sees it.
+        // The alternative that passed is in the extensions already: this layer sees who is calling.
         .operation_layer(tower::filter::AsyncFilterLayer::new(|req: api::Request| {
-            let blocked = req.extensions().get::<String>().is_some_and(|who| who == "mallory");
+            let passed = req.extensions().get::<api::Passed<api::server::SchemeValue<super::auth::Server>>>();
+            let mut keys = passed.into_iter().flat_map(|p| p.values.iter().cloned().filter_map(|v| v.api_key()));
+            let blocked = keys.any(|who| who == "mallory");
             let refusal = api::ApiError::new(api::http::StatusCode::FORBIDDEN, "blocked");
             std::future::ready(if blocked { Err(refusal) } else { Ok(req) })
         }))
@@ -133,7 +135,7 @@ async fn the_web_app_and_its_api_share_one_port() {
 }
 
 #[tokio::test]
-async fn claims_become_the_principal() {
+async fn claims_become_who_is_calling() {
     let ann = get(with_claims(), "/v1/products", Some("ann")).await;
     assert_eq!(ann.status(), 200);
     assert_eq!(ann.headers()["x-next"], "ann");
@@ -156,6 +158,6 @@ async fn the_full_stack_runs_in_order() {
     assert_eq!(ann.headers()["access-control-allow-origin"], "*");
     assert_eq!(ann.headers()["x-next"], "ann");
     let mallory = get(full_stack(), "/v1/products", Some("mallory")).await;
-    assert_eq!(mallory.status(), 403, "the filter sees the principal");
+    assert_eq!(mallory.status(), 403, "the filter sees who is calling");
     assert!(text(mallory).await.contains("\"code\":403"));
 }

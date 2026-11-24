@@ -5,10 +5,10 @@
 //!    gets its headers without the body.
 //! 2. **Credentials**: the `security` of the operation. If none of its requirements are present then the answer is
 //!    401. Otherwise the `verify_` method of the `Api` for each scheme checks its credential, and the server checks
-//!    the scopes that it grants (403). The principal goes in the extensions.
+//!    the scopes that it grants (403). The alternative that passed goes in the extensions ([`Passed`]).
 //! 3. **Your layers** as an `http::Request<Body>` in the order that you add them. The first one is the outermost.
 //!    Its extensions contain the generated `Operation`, the `RequestEvent`, the credentials ([`Secured`]) and the
-//!    principal. The body is not consumed yet. So a refused request never consumes its body. [`read_body`] buffers it
+//!    [`Passed`] alternative. The body is not consumed yet. So a refused request never consumes its body. [`read_body`] buffers it
 //!    for a layer that needs it.
 //! 4. **The body**: buffered whole up to `max_body_bytes` (413). An operation that streams its body skips this step.
 //! 5. **Decoding and validation** (400 and 415). Then your handler runs and its response is encoded.
@@ -29,8 +29,8 @@ use crate::server::route::Spans;
 use crate::server::serve::{Call, Config, challenge, for_method};
 use crate::trace_context::Remote;
 use crate::{
-    ApiError, Body, Reason, Rejection, Request, RequestEvent, Response, Verified, auth::Requirement, auth::Scheme,
-    server::auth::SatisfiedSecurity,
+    ApiError, Body, Passed, Reason, Rejection, Request, RequestEvent, Response, Verified, auth::Requirement,
+    auth::Scheme, server::auth::SatisfiedSecurity,
 };
 
 /// A boxed future the server's services return. It is the one `futures_util` names.
@@ -38,8 +38,8 @@ pub use futures_util::future::BoxFuture;
 
 /// What generated code implements for an API or for one of its webhooks. That is routing and the operations.
 pub trait Operations: Send + Sync + 'static {
-    /// Who is calling as the handlers see it. That is the `Principal` of your `Api`.
-    type Principal: Clone + Send + Sync + 'static;
+    /// What a `verify_` method found for one scheme: the generated `SchemeValue`, one variant per scheme.
+    type Value: Clone + Send + Sync + 'static;
 
     /// The generated `Operation`: one variant per operation.
     type Operation: crate::Operation;
@@ -66,14 +66,14 @@ pub trait Operations: Send + Sync + 'static {
         scheme: &'static str,
         credential: &'r str,
         request: &'r Request,
-    ) -> BoxFuture<'r, Result<Option<Verified<Self::Principal>>, ApiError>>;
+    ) -> BoxFuture<'r, Result<Option<Verified<Self::Value>>, ApiError>>;
 
-    /// Serves a request that [`Operations::route`] found an operation for. `call` carries the principal that the
-    /// `verify_` methods found if there is one. Each operation gets what its `security` asks for.
+    /// Serves a request that [`Operations::route`] found an operation for. `call` carries the alternative that passed
+    /// and what the `verify_` methods found if one did. Each operation gets what its `security` asks for.
     fn call<'r>(
         &'r self,
         request: Request,
-        call: Call<'r, Option<Self::Principal>, Self::Operation>,
+        call: Call<'r, Option<Passed<Self::Value>>, Self::Operation>,
     ) -> BoxFuture<'r, Response>;
 }
 
@@ -191,8 +191,8 @@ impl<O: Operations, L> Server<O, L> {
     /// A layer here and one on the axum `Router` that `into_axum` returns differ:
     ///
     /// - An `operation_layer` runs once routing found the operation and its credentials passed. Its extensions contain
-    ///   the operation, the credentials and the principal. Its errors go out in the error
-    ///   schema of the description. It fits per-principal limits, permissions, signatures and timeouts.
+    ///   the operation, the credentials and the [`Passed`] alternative. Its errors go out in the error
+    ///   schema of the description. It fits per-caller limits, permissions, signatures and timeouts.
     /// - An axum `Router::layer` runs on every request, also to unknown paths. It knows no operation yet, and its
     ///   errors go out with the body that it writes. It fits CORS, compression and request IDs.
     pub fn operation_layer<T>(self, layer: T) -> Server<O, Stack<T, L>> {
@@ -306,8 +306,8 @@ impl<Id: crate::Operation> ErrorResponses<Id> {
 
 /// The operation at the end of your layers.
 ///
-/// It buffers the body, decodes, validates, runs your handler and encodes its response. It gets the principal that the
-/// server put in the request's extensions.
+/// It buffers the body, decodes, validates, runs your handler and encodes its response. It gets the [`Passed`] alternative that
+/// the server put in the request's extensions.
 pub struct Endpoint<O: Operations> {
     shared: Arc<Shared<O>>,
 }
@@ -339,7 +339,7 @@ impl<O: Operations> Service<Request> for Endpoint<O> {
         let routed =
             extensions.get::<O::Operation>().copied().zip(extensions.get::<RequestEvent<O::Operation>>().cloned());
         let matched = extensions.remove::<MatchedOperation>();
-        let principal = extensions.remove::<O::Principal>();
+        let security = extensions.remove::<Passed<O::Value>>();
         let (satisfied, uri, spans) = match matched {
             Some(m) => (m.satisfied, m.uri, m.spans),
             None => (SatisfiedSecurity::default(), req.uri().clone(), Spans::default()),
@@ -351,7 +351,7 @@ impl<O: Operations> Service<Request> for Endpoint<O> {
                     "a request that the server did not route",
                 ));
             };
-            let call = Call { config: &shared.config, operation, satisfied, principal, event: &event, uri, spans };
+            let call = Call { config: &shared.config, operation, satisfied, security, event: &event, uri, spans };
             Ok(shared.ops.call(req, call).await)
         })
     }
@@ -454,7 +454,7 @@ where
     let ranges = Ranges::of(&head, op.ranges);
     let remote = Remote::of(&head.headers);
     let mut req = Request::from_parts(head, body);
-    let (principal, alternative) = match authorize(&shared.ops, &req, op.security, &satisfied.auth).await {
+    let (passed, alternative) = match authorize(&shared.ops, &req, op.security, &satisfied.auth).await {
         Ok(passed) => passed,
         Err(reason) => return refused(config, operation, method, reason, req.headers().clone(), started),
     };
@@ -463,9 +463,9 @@ where
     let event = RequestEvent::new(Some(operation), method);
     event.security(&satisfied);
     let extensions = req.extensions_mut();
-    extensions.remove::<O::Principal>();
-    if let Some(principal) = principal {
-        extensions.insert(principal);
+    extensions.remove::<Passed<O::Value>>();
+    if let Some(passed) = passed {
+        extensions.insert(passed);
     }
     extensions.insert(operation);
     extensions.insert(event.clone());
@@ -514,10 +514,9 @@ fn refused<Id: crate::Operation>(
     resp
 }
 
-/// Returns who is calling: the principal of the first alternative of `requirements` whose every scheme the `Api`
-/// accepts and whose scopes its credentials grant. The principal is the one of its first scheme. `None` when no
-/// alternative passes but an empty one (`{}`) lets an anonymous request in. A credential that the `Api` refuses never
-/// falls back to anonymous.
+/// Returns who is calling: the first alternative of `requirements` whose every scheme the `Api` accepts and whose
+/// scopes its credentials grant, with the value of each of its schemes. `None` when no alternative passes but an empty
+/// one (`{}`) lets an anonymous request in. A credential that the `Api` refuses never falls back to anonymous.
 ///
 /// # Errors
 /// - 401 when no alternative passes.
@@ -528,14 +527,14 @@ async fn authorize<'r, O: Operations>(
     req: &Request,
     requirements: &'r [&'r [Requirement]],
     presented: &[(Scheme, String)],
-) -> Result<(Option<O::Principal>, &'r [Requirement]), Reason> {
+) -> Result<(Option<Passed<O::Value>>, &'r [Requirement]), Reason> {
     if requirements.is_empty() {
         return Ok((None, &[]));
     }
-    let mut verified: Vec<(&'static str, Option<Verified<O::Principal>>)> = Vec::new();
+    let mut verified: Vec<(&'static str, Option<Verified<O::Value>>)> = Vec::new();
     let (mut refused, mut lacking) = (false, false);
-    'alternative: for alt in requirements.iter().filter(|alt| !alt.is_empty()) {
-        let mut principal = None;
+    'alternative: for (alternative, alt) in requirements.iter().enumerate().filter(|(_, alt)| !alt.is_empty()) {
+        let mut values = Vec::with_capacity(alt.len());
         for (scheme, required) in *alt {
             let name = scheme.name();
             let Some((_, credential)) = presented.iter().find(|(s, _)| s.name() == name) else {
@@ -558,12 +557,10 @@ async fn authorize<'r, O: Operations>(
                     lacking = true;
                     continue 'alternative;
                 }
-                Some(v) => {
-                    principal.get_or_insert_with(|| v.principal.clone());
-                }
+                Some(v) => values.push(v.value.clone()),
             }
         }
-        return Ok((principal, alt));
+        return Ok((Some(Passed { alternative, values }), alt));
     }
     if lacking {
         let insufficient =

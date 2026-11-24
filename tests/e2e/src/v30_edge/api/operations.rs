@@ -83,6 +83,13 @@ pub mod list_orders {
             }
         }
     }
+    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    pub enum Security<A: super::super::server::Api> {
+        /// The alternative of `Bearer`, with what each `verify_` method found.
+        Bearer(A::Bearer),
+        /// The alternative of `ApiKey` and `Tenant`, with what each `verify_` method found.
+        ApiKeyAndTenant(A::ApiKey, A::Tenant),
+    }
 }
 pub mod create_order {
     use super::super::types;
@@ -153,6 +160,13 @@ pub mod create_order {
                 }
             }
         }
+    }
+    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    pub enum Security<A: super::super::server::Api> {
+        /// The alternative of `Bearer`, with what each `verify_` method found.
+        Bearer(A::Bearer),
+        /// The alternative of `ApiKey` and `Tenant`, with what each `verify_` method found.
+        ApiKeyAndTenant(A::ApiKey, A::Tenant),
     }
 }
 pub mod get_order {
@@ -225,6 +239,13 @@ pub mod get_order {
             }
         }
     }
+    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    pub enum Security<A: super::super::server::Api> {
+        /// The alternative of `Bearer`, with what each `verify_` method found.
+        Bearer(A::Bearer),
+        /// The alternative of `ApiKey` and `Tenant`, with what each `verify_` method found.
+        ApiKeyAndTenant(A::ApiKey, A::Tenant),
+    }
     pub mod links {
         use super::super::super::types;
         use super::super::super::runtime;
@@ -286,6 +307,13 @@ pub mod upload_document {
                 Self::NoContent => Ok(()),
             }
         }
+    }
+    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    pub enum Security<A: super::super::server::Api> {
+        /// The alternative of `Bearer`, with what each `verify_` method found.
+        Bearer(A::Bearer),
+        /// The alternative of `ApiKey` and `Tenant`, with what each `verify_` method found.
+        ApiKeyAndTenant(A::ApiKey, A::Tenant),
     }
 }
 pub mod cookie_form_fa {

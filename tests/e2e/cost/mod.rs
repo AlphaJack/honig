@@ -76,8 +76,6 @@ fn unused<T>() -> std::future::Ready<Result<T, mp::api::ApiError>> {
 struct Scans;
 
 impl mp::api::Api for Scans {
-    type Principal = ();
-
     fn upload(
         &self,
         _: mp::api::operations::upload::Params,
@@ -112,8 +110,6 @@ impl mp::api::Api for Scans {
 struct Files;
 
 impl up::api::Api for Files {
-    type Principal = ();
-
     async fn put_file(
         &self,
         p: up::api::operations::put_file::Params,
@@ -133,8 +129,6 @@ impl up::api::Api for Files {
 struct Exports;
 
 impl dl::api::Api for Exports {
-    type Principal = ();
-
     async fn get_export(
         &self,
         _: dl::api::operations::get_export::Params,
@@ -170,8 +164,6 @@ impl dl::api::Api for Exports {
 struct Tiles;
 
 impl sse::api::Api for Tiles {
-    type Principal = ();
-
     async fn tile_stream(
         &self,
         _: sse::api::operations::tile_stream::Params,
@@ -221,8 +213,6 @@ impl sse::api::Api for Tiles {
 struct Books;
 
 impl xml::api::Api for Books {
-    type Principal = ();
-
     async fn add_book(
         &self,
         p: xml::api::operations::add_book::Params,
@@ -245,7 +235,6 @@ impl val::api::Api for Members {
     fn error_response(rejection: val::api::Rejection) -> val::api::Response {
         rejection.response()
     }
-    type Principal = ();
 
     fn create_user(
         &self,

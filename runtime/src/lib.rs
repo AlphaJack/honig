@@ -102,7 +102,7 @@ pub use message::{Request, Response};
 pub use nullable::Nullable;
 pub use reject::{Problem, ProblemError, ProblemMember, ProblemSchema, Reason, Rejection};
 #[cfg(feature = "server")]
-pub use server::auth::{Basic, Granted, Verified};
+pub use server::auth::{Basic, Granted, Passed, Verified};
 #[cfg(feature = "server")]
 pub use server::conditional::CacheValidators;
 #[cfg(feature = "server")]

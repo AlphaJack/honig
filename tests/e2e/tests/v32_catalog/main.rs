@@ -40,10 +40,10 @@ impl Catalog {
 }
 
 impl api::Api for Catalog {
+    type ApiKey = ();
     fn error_response(rejection: api::Rejection) -> api::Response {
         error_body(rejection)
     }
-    type Principal = ();
 
     /// The catalog's one key is `secret`. Any other key is nobody.
     async fn verify_api_key(&self, credential: &str, _: &api::Request) -> Result<Option<()>, api::ApiError> {
@@ -53,7 +53,7 @@ impl api::Api for Catalog {
     async fn list_products(
         &self,
         _: ops::list_products::Params,
-        _: &api::Context<'_>,
+        _: &api::Context<'_, ops::list_products::Security<Self>>,
     ) -> Result<ops::list_products::Response, api::ApiError> {
         Ok(ops::list_products::Response::Ok { body: self.products()?.clone(), x_next: None })
     }
@@ -61,7 +61,7 @@ impl api::Api for Catalog {
     async fn create_product(
         &self,
         params: ops::create_product::Params,
-        _: &api::Context<'_>,
+        _: &api::Context<'_, ops::create_product::Security<Self>>,
     ) -> Result<ops::create_product::Response, api::ApiError> {
         self.products()?.push(params.body.clone());
         Ok(ops::create_product::Response::Created(params.body))
@@ -70,7 +70,7 @@ impl api::Api for Catalog {
     async fn get_product(
         &self,
         params: ops::get_product::Params,
-        _: &api::Context<'_>,
+        _: &api::Context<'_, ops::get_product::Security<Self>>,
     ) -> Result<ops::get_product::Response, api::ApiError> {
         let found = usize::try_from(params.product_id).ok().and_then(|i| self.products().ok()?.get(i).cloned());
         Ok(match found {

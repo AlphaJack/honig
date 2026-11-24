@@ -10,8 +10,6 @@ use e2e::v32_text_bodies::api::{self, Client, operations as ops, types};
 struct Notes;
 
 impl api::Api for Notes {
-    type Principal = ();
-
     fn add_note(
         &self,
         p: ops::add_note::Params,

@@ -25,37 +25,12 @@ use crate::ir::Api;
 use crate::ir::http::{Location, Operation, Status};
 use crate::ir::media::MediaKind;
 
-/// What an operation's `security` asks of who is calling.
-#[derive(Clone, Copy)]
-enum Needs {
-    /// No `security`: the handler sees no principal.
-    Nobody,
-    /// An empty alternative (`{}`) allows anonymous requests: the handler sees an `Option`.
-    Optional,
-    /// Credentials are required. The handler sees the principal. A request without one gets 401.
-    SignedIn,
-}
-
-fn needs(op: &Operation) -> Needs {
-    if op.security.is_empty() {
-        Needs::Nobody
-    } else if op.security.iter().any(Vec::is_empty) {
-        Needs::Optional
-    } else {
-        Needs::SignedIn
-    }
-}
-
 /// Returns one `Api` trait method. With `allow_unimplemented` it has a default that answers 501.
 pub(crate) fn api_method(op: &Operation, allow_unimplemented: bool) -> TokenStream {
     let (doc, name) = (doc_opt(op.doc.as_deref()), snake_ident(&op.name));
     let m = op_path(op);
     let (params_ty, response_ty) = (quote!(#m::Params), quote!(#m::Result));
-    let principal = match needs(op) {
-        Needs::Nobody => quote!(()),
-        Needs::Optional => quote!(Option<Self::Principal>),
-        Needs::SignedIn => quote!(Self::Principal),
-    };
+    let security = security_type(op, &m);
     // `allow_unimplemented`: operations added to the description
     // answer 501 until implemented instead of failing the build.
     let body = if allow_unimplemented {
@@ -72,7 +47,7 @@ pub(crate) fn api_method(op: &Operation, allow_unimplemented: bool) -> TokenStre
     let context = ident(if is_path(op) { "Context" } else { "WebhookContext" });
     quote! {
         #doc
-        fn #name(&self, params: #params_ty, ctx: &#context<'_, #principal>)
+        fn #name(&self, params: #params_ty, ctx: &#context<'_, #security>)
             -> impl Future<Output = #response_ty> + Send #body
     }
 }
@@ -132,13 +107,6 @@ fn error_response_method(operation: &TokenStream, filled: bool) -> TokenStream {
     }
 }
 
-/// Returns the `Principal` associated type of `Api` and `Webhooks`.
-fn caller_type() -> TokenStream {
-    quote! {
-        type Principal: Clone + Send + Sync + 'static;
-    }
-}
-
 pub(crate) fn server(api: &Api, space: &Space<'_>, allow_unimplemented: bool) -> TokenStream {
     let methods = api.http.operations.iter().filter(|o| is_path(o)).map(|op| api_method(op, allow_unimplemented));
     let filled = all_filled(api, space);
@@ -149,9 +117,10 @@ pub(crate) fn server(api: &Api, space: &Space<'_>, allow_unimplemented: bool) ->
     let error_schemas = error_schema_fn(api, space);
     let sec = Securities::new(api);
     let ops = api.http.operations.iter().map(|op| server_op(space, api, &sec, op));
-    let principal = caller_type();
     let webhooks = webhooks(api, allow_unimplemented, filled);
     let path_ops: Vec<&Operation> = api.http.operations.iter().filter(|o| is_path(o)).collect();
+    let schemes = scheme_types(api, &path_ops);
+    let values = scheme_value_enum(api, &path_ops, "SchemeValue", "Api");
     let verify = verify_methods(api, &path_ops, allow_unimplemented);
     let operations = (!path_ops.is_empty()).then(|| {
         operation_enum(
@@ -165,8 +134,8 @@ pub(crate) fn server(api: &Api, space: &Space<'_>, allow_unimplemented: bool) ->
         use super::{operations as ops, runtime};
         use std::future::Future;
 
-        pub trait Api: Send + Sync + 'static {
-            #principal
+        pub trait Api: Send + Sync + Sized + 'static {
+            #schemes
             #error_response
             #verify
             #(#methods)*
@@ -174,6 +143,7 @@ pub(crate) fn server(api: &Api, space: &Space<'_>, allow_unimplemented: bool) ->
 
         #operations
         #credential
+        #values
         #scope
         #error_schemas
 
@@ -185,13 +155,15 @@ pub(crate) fn server(api: &Api, space: &Space<'_>, allow_unimplemented: bool) ->
 
 /// Returns the `Webhooks` trait and the server of each webhook or callback when the description declares any.
 fn webhooks(api: &Api, allow_unimplemented: bool, filled: bool) -> Option<TokenStream> {
-    let principal = caller_type();
     let hooks: Vec<&Operation> = api.http.operations.iter().filter(|o| !is_path(o)).collect();
     (!hooks.is_empty()).then(|| {
     let methods = hooks.iter().map(|op| api_method(op, allow_unimplemented));
+    let schemes = scheme_types(api, &hooks);
+    let values = scheme_value_enum(api, &hooks, "WebhookSchemeValue", "Webhooks");
+    let value = value_type(api, &hooks, "WebhookSchemeValue");
     let error_response = error_response_method(&quote!(WebhookOperation), filled);
     let verify = verify_methods(api, &hooks, allow_unimplemented);
-    let dispatch = verify_fn(api, &hooks, &quote!(&*self.api), &quote!(A::Principal));
+    let dispatch = verify_fn(api, &hooks, &quote!(&*self.api), &quote!(WebhookSchemeValue));
     let found = hooks.iter().map(|op| {
         let (key, method, v) = (lit(&hook_name(op)), lit(&op.method), operation_variant(op));
         quote!((#key, #method) => Ok((WebhookOperation::#v, runtime::Spans::default())),)
@@ -207,8 +179,8 @@ fn webhooks(api: &Api, allow_unimplemented: bool, filled: bool) -> Option<TokenS
     });
     quote! {
         /// Answers the webhooks of the API and the callbacks (`callbacks`) of its operations: the requests that it sends.
-        pub trait Webhooks: Send + Sync + 'static {
-            #principal
+        pub trait Webhooks: Send + Sync + Sized + 'static {
+            #schemes
             #error_response
             #verify
             #(#methods)*
@@ -226,9 +198,10 @@ fn webhooks(api: &Api, allow_unimplemented: bool, filled: bool) -> Option<TokenS
         }
 
         #operations
+        #values
 
         impl<A: Webhooks> runtime::Operations for WebhookRoutes<A> {
-            type Principal = A::Principal;
+            type Value = #value;
             type Operation = WebhookOperation;
 
             fn error_response(&self) -> fn(runtime::Rejection<WebhookOperation>) -> runtime::Response {
@@ -255,7 +228,7 @@ fn webhooks(api: &Api, allow_unimplemented: bool, filled: bool) -> Option<TokenS
 
             #dispatch
 
-            fn call<'r>(&'r self, req: runtime::Request, call: runtime::Call<'r, Option<A::Principal>, WebhookOperation>) -> runtime::BoxFuture<'r, runtime::Response> {
+            fn call<'r>(&'r self, req: runtime::Request, call: runtime::Call<'r, Option<runtime::Passed<#value>>, WebhookOperation>) -> runtime::BoxFuture<'r, runtime::Response> {
                 Box::pin(async move {
                     let api = &*self.api;
                     let mut req = req;
@@ -327,11 +300,13 @@ pub(crate) fn server_op(space: &Space<'_>, api: &Api, sec: &Securities, op: &Ope
     let info = op_static(op);
     let produces = crate::emit::rust::http::shared::produces(op).into_iter().map(|(m, _)| lit(m));
     let ranges = serves_ranges(op);
-    let serve = match needs(op) {
-        Needs::Nobody => quote!(runtime::serve(routed, call.public(), &steps).await),
-        Needs::Optional => quote!(runtime::serve(routed, call, &steps).await),
-        Needs::SignedIn => quote!(runtime::serve_signed_in(routed, call, &steps).await),
+    let serve = if op.security.is_empty() {
+        quote!(runtime::serve(routed, call.map(|_| ()), &steps).await)
+    } else {
+        let security = security_of(api, op, &m);
+        quote!(runtime::serve_signed_in(routed, call.map(#security), &steps).await)
     };
+    let routes = ident(if is_path(op) { "Routes" } else { "WebhookRoutes" });
     let id = operation_type(op);
     // Only what differs from `Op::new`.
     let produces: Vec<proc_macro2::Literal> = produces.collect();
@@ -346,7 +321,7 @@ pub(crate) fn server_op(space: &Space<'_>, api: &Api, sec: &Securities, op: &Ope
     let op_value = if set.is_empty() { new } else { quote!(runtime::Op { #(#set)* ..#new }) };
     quote! {
         static #info: runtime::Op = #op_value;
-        async fn #name<A: #tr>(api: &A, routed: runtime::Routed<'_>, call: runtime::Call<'_, Option<A::Principal>, #id>) -> runtime::Response {
+        async fn #name<A: #tr>(api: &A, routed: runtime::Routed<'_>, call: runtime::Call<'_, Option<runtime::Passed<<#routes<A> as runtime::Operations>::Value>>, #id>) -> runtime::Response {
             let steps = runtime::Steps { api, decode: #decode, call: |a, p, c| Box::pin(a.#name(p, c)), encode: #encode };
             #serve
         }

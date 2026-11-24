@@ -15,8 +15,7 @@ fn ok<T: Send>(r: T) -> impl Future<Output = Result<T, api::ApiError>> + Send {
 struct Server;
 
 impl api::Api for Server {
-    type Principal = ();
-
+    type Pat = ();
     // ANCHOR: scopes
     /// Who owns the token and the permissions that it grants. The server checks them against the operation.
     async fn verify_pat(
@@ -35,21 +34,21 @@ impl api::Api for Server {
                 _ => None,
             })
             .collect();
-        Ok(Some(api::Granted { principal: (), scopes }))
+        Ok(Some(api::Granted { value: (), scopes }))
     }
     // ANCHOR_END: scopes
 
     fn list_issues(
         &self,
         _: ops::list_issues::Params,
-        _: &api::Context<'_>,
+        _: &api::Context<'_, ops::list_issues::Security<Self>>,
     ) -> impl Future<Output = Result<ops::list_issues::Response, api::ApiError>> + Send {
         ok(ops::list_issues::Response::NoContent)
     }
     fn create_issue(
         &self,
         _: ops::create_issue::Params,
-        _: &api::Context<'_>,
+        _: &api::Context<'_, ops::create_issue::Security<Self>>,
     ) -> impl Future<Output = Result<ops::create_issue::Response, api::ApiError>> + Send {
         ok(ops::create_issue::Response::NoContent)
     }
@@ -124,7 +123,7 @@ fn scopes_roundtrip_their_names() {
 struct Named;
 
 impl api::Api for Named {
-    type Principal = String;
+    type Pat = String;
 
     async fn verify_pat(
         &self,
@@ -132,22 +131,23 @@ impl api::Api for Named {
         _: &api::Request,
     ) -> Result<Option<api::Granted<String, PatScope>>, api::ApiError> {
         let scopes = vec![PatScope::IssuesRead, PatScope::IssuesWrite];
-        Ok((token != "anon").then(|| api::Granted { principal: token.to_owned(), scopes }))
+        Ok((token != "anon").then(|| api::Granted { value: token.to_owned(), scopes }))
     }
 
     fn list_issues(
         &self,
         _: ops::list_issues::Params,
-        ctx: &api::Context<'_, String>,
+        ctx: &api::Context<'_, ops::list_issues::Security<Self>>,
     ) -> impl Future<Output = Result<ops::list_issues::Response, api::ApiError>> + Send {
-        // A secured operation sees the principal itself and not an `Option`.
-        assert!(!ctx.principal.is_empty());
+        // A secured operation sees who is calling and not an `Option`.
+        let ops::list_issues::Security::Pat(who) = &ctx.security;
+        assert!(!who.is_empty());
         ok(ops::list_issues::Response::NoContent)
     }
     fn create_issue(
         &self,
         _: ops::create_issue::Params,
-        _: &api::Context<'_, String>,
+        _: &api::Context<'_, ops::create_issue::Security<Self>>,
     ) -> impl Future<Output = Result<ops::create_issue::Response, api::ApiError>> + Send {
         ok(ops::create_issue::Response::NoContent)
     }
@@ -156,7 +156,7 @@ impl api::Api for Named {
         _: ops::open::Params,
         _: &api::Context<'_>,
     ) -> impl Future<Output = Result<ops::open::Response, api::ApiError>> + Send {
-        // An operation without `security` sees no principal.
+        // An operation without `security` sees no caller.
         ok(ops::open::Response::NoContent)
     }
 }
@@ -172,23 +172,22 @@ fn each_operation_takes_the_caller_its_security_asks_for() {
 struct Revoked;
 
 impl api::Api for Revoked {
-    type Principal = ();
-
+    type Pat = ();
     async fn verify_pat(&self, _: &str, _: &api::Request) -> Result<Option<api::Granted<(), PatScope>>, api::ApiError> {
-        Ok(Some(api::Granted { principal: (), scopes: vec![PatScope::IssuesRead, PatScope::IssuesWrite] }))
+        Ok(Some(api::Granted { value: (), scopes: vec![PatScope::IssuesRead, PatScope::IssuesWrite] }))
     }
 
     fn list_issues(
         &self,
         _: ops::list_issues::Params,
-        _: &api::Context<'_>,
+        _: &api::Context<'_, ops::list_issues::Security<Self>>,
     ) -> impl Future<Output = Result<ops::list_issues::Response, api::ApiError>> + Send {
         std::future::ready(Err(api::ApiError::new(api::http::StatusCode::UNAUTHORIZED, "the token was revoked")))
     }
     fn create_issue(
         &self,
         _: ops::create_issue::Params,
-        _: &api::Context<'_>,
+        _: &api::Context<'_, ops::create_issue::Security<Self>>,
     ) -> impl Future<Output = Result<ops::create_issue::Response, api::ApiError>> + Send {
         ok(ops::create_issue::Response::NoContent)
     }

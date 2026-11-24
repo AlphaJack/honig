@@ -12,8 +12,6 @@ use tower::Service;
 struct Server;
 
 impl api::Api for Server {
-    type Principal = ();
-
     async fn get_item(
         &self,
         params: ops::get_item::Params,

@@ -26,7 +26,6 @@ struct Server;
 macro_rules! server {
     ($($op:ident),* $(,)?) => {
         impl api::Api for Server {
-            type Principal = ();
 
             $(
                 fn $op(&self, p: ops::$op::Params, _: &api::Context<'_>) -> impl Future<Output = Result<ops::$op::Response, api::ApiError>> + Send {

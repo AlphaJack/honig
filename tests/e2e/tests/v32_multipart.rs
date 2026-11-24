@@ -17,8 +17,6 @@ struct Store {
 }
 
 impl api::Api for Store {
-    type Principal = ();
-
     fn upload(
         &self,
         p: ops::upload::Params,

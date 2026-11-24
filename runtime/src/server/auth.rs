@@ -25,44 +25,56 @@ impl SatisfiedSecurity {
     }
 }
 
-/// Who is calling and the scopes that their credential grants: what a `verify_` method of the `Api` found.
+/// What a `verify_` method of the `Api` found for a credential and the scopes that the credential grants.
 ///
-/// The `Api` has one `verify_` method per security scheme that its operations use, and does not compile without it.
-/// The server checks that a request presents the credentials that its operation declares. It calls the method of each
-/// scheme of an alternative, at most once per request, and checks the scopes that the credentials grant. Each
-/// operation then gets what its `security` asks for:
+/// The `Api` has one `verify_` method and one associated type per security scheme that its operations use, and does
+/// not compile without them. The server checks that a request presents the credentials that its operation declares.
+/// It calls the method of each scheme of an alternative, at most once per request, and checks the scopes that the
+/// credentials grant. Each operation then gets what its `security` asks for in `ctx.security`:
 ///
-/// | The operation's `security` | `ctx.principal` | When no alternative passes |
+/// | The operation's `security` | `ctx.security` | When no alternative passes |
 /// |---|---|---|
 /// | none (`security: []`) | `()` | the handler runs |
-/// | an empty alternative (`[{}, {apiKey: []}]`) | `Option<Principal>` | `None`; 401 when a method refused a credential |
-/// | credentials required | `Principal` | 401; 403 when only a scope is missing |
+/// | an empty alternative (`[{}, {apiKey: []}]`) | its `Security`, `Anonymous` for none | `Anonymous`; 401 when a method refused a credential |
+/// | credentials required | its `Security` | 401; 403 when only a scope is missing |
 ///
-/// The principal is the one of the first scheme of the alternative that passes. Layers get it from the request's
-/// extensions.
+/// The `Security` of an operation has one variant per alternative with the value of each of its schemes: an
+/// alternative of two schemes gives both values, which the handler can compare.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Verified<P> {
-    /// Who is calling.
-    pub principal: P,
+pub struct Verified<V> {
+    /// What the `verify_` method returned.
+    pub value: V,
     /// The scopes or roles that the credential grants.
     pub scopes: Vec<&'static str>,
 }
 
-impl<P> Verified<P> {
-    /// Returns `principal` with no scopes: what a scheme without scopes or roles grants.
-    pub const fn new(principal: P) -> Self {
-        Self { principal, scopes: Vec::new() }
+impl<V> Verified<V> {
+    /// Returns `value` with no scopes: what a scheme without scopes or roles grants.
+    pub const fn new(value: V) -> Self {
+        Self { value, scopes: Vec::new() }
     }
 }
 
-/// What a scheme with scopes or roles grants: who is calling and the scopes of the credential, as the generated scope
-/// enum of the scheme.
+/// What a scheme with scopes or roles grants: what the `verify_` method found and the scopes of the credential, as
+/// the generated scope enum of the scheme.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Granted<P, S> {
+pub struct Granted<V, S> {
     /// Who is calling.
-    pub principal: P,
+    pub value: V,
     /// The scopes or roles that the credential grants.
     pub scopes: Vec<S>,
+}
+
+/// The alternative of an operation's `security` that a request passed.
+///
+/// Its index and the value of each of its schemes in its order. The generated code makes the `Security` of the
+/// operation of it. Layers find it in the request's extensions.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Passed<V> {
+    /// The index of the alternative in the operation's `security`.
+    pub alternative: usize,
+    /// What the `verify_` method of each scheme of the alternative found.
+    pub values: Vec<V>,
 }
 
 /// The credentials of an `http basic` scheme.
