@@ -170,7 +170,32 @@ impl Visit for Found<'_> {
             .filter(|(_, b)| !self.pins(b, prop, &mut vec![]))
             .map(|(i, b)| name(b, i))
             .collect();
-        if !loose.is_empty() {
+        // Two branches that only the tag tells apart, and one leaves it open: a value can match both.
+        let rest = |b: &Value| {
+            self.object(b, &mut vec![]).map(|mut o| {
+                o.properties.remove(prop);
+                o.required.remove(prop);
+                o.consts.remove(prop);
+                o.types.remove(prop);
+                o
+            })
+        };
+        let objects: Vec<(String, Option<Object>)> =
+            branches.iter().enumerate().map(|(i, b)| (name(b, i), rest(b))).collect();
+        let tied = objects.iter().enumerate().find_map(|(i, (a, x))| {
+            objects[i + 1..].iter().find_map(|(b, y)| {
+                let open = loose.contains(a) || loose.contains(b);
+                (open && x.as_ref().zip(y.as_ref()).is_some_and(|(x, y)| !x.apart(y))).then(|| (a.clone(), b.clone()))
+            })
+        });
+        if let Some((a, b)) = tied {
+            self.errors.push((
+                join(ptr, "oneOf"),
+                format!(
+                    "{a} and {b} differ only by `{prop}`, which is not fixed: pin `{prop}` with `const` in each branch"
+                ),
+            ));
+        } else if !loose.is_empty() {
             self.out.push((
                 join(ptr, "oneOf"),
                 format!(
@@ -201,7 +226,8 @@ mod tests {
         let loose = json!({"openapi": "3.2.0", "components": {"schemas": {
             "Pet": {"oneOf": [{"$ref": "#/components/schemas/Cat"}, {"$ref": "#/components/schemas/Dog"}],
                     "discriminator": {"propertyName": "petType"}},
-            "Cat": pet(json!({"type": "string"})), "Dog": pet(json!({"const": "dog"}))
+            "Cat": pet(json!({"type": "string"})),
+            "Dog": {"allOf": [pet(json!({"const": "dog"})), {"required": ["bark"], "properties": {"bark": {"type": "boolean"}}}]}
         }}});
         let w = warnings(loose);
         assert_eq!(w.len(), 1, "{w:?}");
