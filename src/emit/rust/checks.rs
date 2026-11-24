@@ -769,8 +769,8 @@ fn opt_u64(v: Option<u64>) -> TokenStream {
 /// fraction rounds inward. A bound that every value of the type meets is left out. One that no value meets refuses
 /// every value: `maximum: -1` on a `uint8` leaves none. `multipleOf` is exact too, through its decimal text: an
 /// integer is a multiple of `2.5` when it is one of `5`.
-pub(super) fn integer_checks(t: &Ty, c: &Constraints, value: &TokenStream, path: &TokenStream) -> TokenStream {
-    let val = deref(value);
+/// Returns the least and the greatest value of integer type `t`. Any type that is no smaller integer is an `i64`.
+pub(super) fn integer_range(t: &Ty) -> (i128, i128) {
     let ranges: [(Ty, i128, i128); 7] = [
         (Ty::I8, i8::MIN.into(), i8::MAX.into()),
         (Ty::I16, i16::MIN.into(), i16::MAX.into()),
@@ -780,11 +780,18 @@ pub(super) fn integer_checks(t: &Ty, c: &Constraints, value: &TokenStream, path:
         (Ty::U32, 0, u32::MAX.into()),
         (Ty::U64, 0, u64::MAX.into()),
     ];
-    // Any other integer is an `i64`.
-    let (lo, hi) = ranges
-        .iter()
-        .find(|(k, ..)| k == t)
-        .map_or_else(|| (i64::MIN.into(), i64::MAX.into()), |&(_, lo, hi)| (lo, hi));
+    ranges.iter().find(|(k, ..)| k == t).map_or_else(|| (i64::MIN.into(), i64::MAX.into()), |&(_, lo, hi)| (lo, hi))
+}
+
+/// Returns what `given`, a bound of kind `bound`, leaves of the values of integer type `t`.
+pub(super) fn integer_bound(given: &Number, bound: Bound, t: &Ty) -> Within {
+    let (lo, hi) = integer_range(t);
+    bound.within(whole_bound(given, bound.rounds_up()), lo, hi)
+}
+
+pub(super) fn integer_checks(t: &Ty, c: &Constraints, value: &TokenStream, path: &TokenStream) -> TokenStream {
+    let val = deref(value);
+    let (lo, hi) = integer_range(t);
     let mut none = None;
     let mut bounds: [Option<TokenStream>; 4] = [None, None, None, None];
     let keywords = [
@@ -795,7 +802,7 @@ pub(super) fn integer_checks(t: &Ty, c: &Constraints, value: &TokenStream, path:
     ];
     for (slot, (keyword, given, bound)) in bounds.iter_mut().zip(keywords) {
         let Some(given) = given else { continue };
-        match bound.within(whole_bound(given, bound.rounds_up()), lo, hi) {
+        match integer_bound(given, bound, t) {
             Within::Every => {}
             Within::No => {
                 none.get_or_insert_with(|| {
@@ -836,7 +843,7 @@ pub(super) fn integer_checks(t: &Ty, c: &Constraints, value: &TokenStream, path:
 
 /// Which side of a value a bound keyword limits, and whether it includes the bound itself.
 #[derive(Clone, Copy)]
-enum Bound {
+pub(super) enum Bound {
     /// `minimum`: the value is the bound or more.
     AtLeast,
     /// `maximum`: the value is the bound or less.
@@ -848,7 +855,7 @@ enum Bound {
 }
 
 /// What a bound leaves of the values of an integer type.
-enum Within {
+pub(super) enum Within {
     /// Every value meets it: it needs no check.
     Every,
     /// No value meets it.

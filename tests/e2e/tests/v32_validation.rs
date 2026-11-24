@@ -872,3 +872,14 @@ fn a_value_without_an_unrequired_tag_decodes() {
         assert!(serde_json::from_value::<types::LooseKind>(v.clone()).is_ok(), "{v}");
     }
 }
+
+/// A bound past the range of the integer type compiles: every value meets it, or none does.
+#[test]
+fn a_bound_outside_the_integer_type_compiles() {
+    assert!(types::WideMax::try_from(i32::MAX).is_ok());
+    assert!(types::WideMax::new(i32::MAX).is_some());
+    assert!(types::WideMin::try_from(i8::MIN).is_ok());
+    assert!(types::WideByte::try_from(u8::MAX).is_ok());
+    assert!(types::NoByte::new(i8::MAX).is_none());
+    assert!(types::NoByte::try_from(i8::MAX).is_err());
+}
