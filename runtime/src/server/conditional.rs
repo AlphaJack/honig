@@ -6,7 +6,7 @@
 //! [`Context::preconditions`]. It refuses with `412 Precondition Failed`.
 
 use crate::http_date::{
-    DAY_HOURS, DAY_SECONDS, HOUR_MINUTES, HOUR_SECONDS, MINUTE_SECONDS, MONTHS, YEAR_DIGITS, days_from_civil,
+    DAY_HOURS, DAY_SECONDS, HOUR_MINUTES, HOUR_SECONDS, MINUTE_SECONDS, MONTHS, YEAR_DIGITS, days_from_civil, digits,
     two_digit_year,
 };
 use crate::{ApiError, Context, Message, Response, message::joined_header};
@@ -189,21 +189,21 @@ const MAX_MONTH_DAY: i64 = 31;
 pub(crate) fn http_date(text: &str) -> Option<i64> {
     let words: Vec<&str> = text.split([' ', ',']).filter(|w| !w.is_empty()).collect();
     let (day, month, year, time) = match words.as_slice() {
-        // `Sun, 06 Nov 1994 08:49:37 GMT`
-        [_, day, month, year, time, "GMT"] if year.len() == YEAR_DIGITS => (*day, *month, year.parse().ok()?, *time),
+        // `Sun, 06 Nov 1994 08:49:37 GMT` and `Sun Nov  6 08:49:37 1994`
+        [_, day, month, year, time, "GMT"] | [_, month, day, time, year] => {
+            (*day, *month, digits(year, YEAR_DIGITS)?, *time)
+        }
         // `Sunday, 06-Nov-94 08:49:37 GMT`
         [_, date, time, "GMT"] => {
             let mut parts = date.split('-');
             let (day, month, yy) = (parts.next()?, parts.next()?, parts.next()?);
-            (day, month, two_digit_year(yy.parse().ok()?), *time)
+            (day, month, two_digit_year(digits(yy, 2)?), *time)
         }
-        // `Sun Nov  6 08:49:37 1994`
-        [_, month, day, time, year] => (*day, *month, year.parse().ok()?, *time),
         _ => return None,
     };
-    let day: i64 = day.parse().ok()?;
+    let day = digits(day, 2).or_else(|| digits(day, 1))?;
     let month = MONTHS.iter().position(|m| *m == month)?;
-    let mut clock = time.split(':').map(|n| n.parse::<i64>().ok());
+    let mut clock = time.split(':').map(|n| digits(n, 2));
     let (h, m, s) = (clock.next()??, clock.next()??, clock.next()??);
     if !(1..=MAX_MONTH_DAY).contains(&day) || h >= DAY_HOURS || m >= HOUR_MINUTES || s > MINUTE_SECONDS {
         return None;
@@ -230,6 +230,8 @@ mod tests {
             "Sun, 06 Nov 1994 08:49:37 CET",
             "Sun, 32 Nov 1994 08:49:37 GMT",
             "Sun, 06 Foo 1994 08:49:37 GMT",
+            "Sun Nov 6 08:49:37 99999999999999999",
+            "Sun, 06 Nov 1994 -8:49:37 GMT",
         ] {
             assert_eq!(http_date(bad), None, "{bad}");
         }
