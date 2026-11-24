@@ -22,7 +22,7 @@ enum Seen {
     Public,
     /// An operation with an empty alternative and no credential that passed.
     Anonymous,
-    /// The principal: the scheme that passed first in its alternative and the subject.
+    /// Who is calling: the scheme and the subject.
     Principal(String),
 }
 
@@ -59,7 +59,7 @@ const NONE: Creds = Creds { auth: Auth::None, key: None, query_key: None, sessio
 enum Verdict {
     Absent,
     Refused,
-    Valid { principal: String, scopes: Vec<&'static str> },
+    Valid { value: String, scopes: Vec<&'static str> },
 }
 
 /// The identity provider: the subject and scopes that each credential stands for. A token of one scheme is not valid
@@ -76,9 +76,9 @@ fn verdict(scheme: &str, creds: &Creds) -> Verdict {
         Auth::Bearer(t) => match t.strip_prefix(prefix) {
             Some(rest) if scoped => {
                 let scopes = rest.split('+').filter(|s| !s.is_empty()).collect();
-                Verdict::Valid { principal: principal(rest), scopes }
+                Verdict::Valid { value: principal(rest), scopes }
             }
-            Some(rest) => Verdict::Valid { principal: principal(rest), scopes: vec![] },
+            Some(rest) => Verdict::Valid { value: principal(rest), scopes: vec![] },
             None => Verdict::Refused,
         },
         Auth::None | Auth::Basic(_) => Verdict::Absent,
@@ -87,7 +87,7 @@ fn verdict(scheme: &str, creds: &Creds) -> Verdict {
         None => Verdict::Absent,
         Some(v) => v
             .strip_prefix(prefix)
-            .map_or(Verdict::Refused, |sub| Verdict::Valid { principal: format!("{scheme}:{sub}"), scopes: vec![] }),
+            .map_or(Verdict::Refused, |sub| Verdict::Valid { value: format!("{scheme}:{sub}"), scopes: vec![] }),
     };
     match scheme {
         "bearer" => token("b-", &|sub| format!("bearer:{sub}"), false),
@@ -97,14 +97,12 @@ fn verdict(scheme: &str, creds: &Creds) -> Verdict {
         "query_key" => keyed(creds.query_key, "q-"),
         "session" => keyed(creds.session, "s-"),
         "login" => match creds.auth {
-            Auth::Basic("ann:pw") => Verdict::Valid { principal: "login:ann".to_owned(), scopes: vec![] },
+            Auth::Basic("ann:pw") => Verdict::Valid { value: "login:ann".to_owned(), scopes: vec![] },
             Auth::Basic(_) => Verdict::Refused,
             Auth::None | Auth::Bearer(_) => Verdict::Absent,
         },
         // A mutualTLS scheme has no credential in the request: its method always decides.
-        "cert" if creds.cert == Some("SUCCESS") => {
-            Verdict::Valid { principal: "cert:client".to_owned(), scopes: vec![] }
-        }
+        "cert" if creds.cert == Some("SUCCESS") => Verdict::Valid { value: "cert:client".to_owned(), scopes: vec![] },
         "cert" => Verdict::Refused,
         other => panic!("no scheme {other}"),
     }
@@ -117,7 +115,7 @@ fn expected(requirements: &[&[api::runtime::Requirement]], creds: &Creds) -> Out
     }
     let (mut refused, mut lacking) = (false, false);
     'alternative: for alt in requirements.iter().filter(|alt| !alt.is_empty()) {
-        let mut principal = None;
+        let mut values = vec![];
         for (scheme, required) in *alt {
             match verdict(scheme.name(), creds) {
                 Verdict::Absent => continue 'alternative,
@@ -129,12 +127,15 @@ fn expected(requirements: &[&[api::runtime::Requirement]], creds: &Creds) -> Out
                     lacking = true;
                     continue 'alternative;
                 }
-                Verdict::Valid { principal: p, .. } => {
-                    principal.get_or_insert(p);
-                }
+                Verdict::Valid { value, .. } => values.push(value),
             }
         }
-        return Outcome::Ran(principal.map_or(Seen::Anonymous, Seen::Principal));
+        // The handler of an alternative of several schemes refuses values of two subjects.
+        let subject = |v: &String| v.split_once(':').map(|(_, who)| who.to_owned());
+        if values.iter().any(|v| subject(v) != values.first().and_then(subject)) {
+            return Outcome::Refused(401);
+        }
+        return Outcome::Ran(values.into_iter().next().map_or(Seen::Anonymous, Seen::Principal));
     }
     if lacking {
         return Outcome::Refused(403);
@@ -164,15 +165,15 @@ impl Server {
 
     fn check(scheme: &str, request: &api::Request) -> Option<String> {
         match verdict(scheme, &creds_of(request)) {
-            Verdict::Valid { principal, .. } => Some(principal),
+            Verdict::Valid { value, .. } => Some(value),
             Verdict::Absent | Verdict::Refused => None,
         }
     }
 
     fn scopes<S>(scheme: &str, request: &api::Request, from: fn(&str) -> Option<S>) -> Option<api::Granted<String, S>> {
         match verdict(scheme, &creds_of(request)) {
-            Verdict::Valid { principal, scopes } => {
-                Some(api::Granted { principal, scopes: scopes.into_iter().filter_map(from).collect() })
+            Verdict::Valid { value, scopes } => {
+                Some(api::Granted { value, scopes: scopes.into_iter().filter_map(from).collect() })
             }
             Verdict::Absent | Verdict::Refused => None,
         }
@@ -180,7 +181,14 @@ impl Server {
 }
 
 impl api::Api for Server {
-    type Principal = String;
+    type Bearer = String;
+    type Oauth = String;
+    type Oidc = String;
+    type Key = String;
+    type QueryKey = String;
+    type Session = String;
+    type Login = String;
+    type Cert = String;
 
     async fn verify_bearer(&self, _: &str, request: &api::Request) -> Answer<Option<String>> {
         Ok(Self::check("bearer", request))
@@ -211,41 +219,89 @@ impl api::Api for Server {
         self.record(Seen::Public);
         Ok(ops::public::Response::NoContent)
     }
-    async fn me(&self, _: ops::me::Params, ctx: &api::Context<'_, String>) -> Answer<ops::me::Response> {
-        self.record(Seen::Principal(ctx.principal.clone()));
+    async fn me(
+        &self,
+        _: ops::me::Params,
+        ctx: &api::Context<'_, ops::me::Security<Self>>,
+    ) -> Answer<ops::me::Response> {
+        let ops::me::Security::Bearer(who) = &ctx.security;
+        self.record(Seen::Principal(who.clone()));
         Ok(ops::me::Response::NoContent)
     }
     async fn optional(
         &self,
         _: ops::optional::Params,
-        ctx: &api::Context<'_, Option<String>>,
+        ctx: &api::Context<'_, ops::optional::Security<Self>>,
     ) -> Answer<ops::optional::Response> {
-        self.record(ctx.principal.clone().map_or(Seen::Anonymous, Seen::Principal));
+        self.record(match &ctx.security {
+            ops::optional::Security::Anonymous => Seen::Anonymous,
+            ops::optional::Security::Bearer(who) => Seen::Principal(who.clone()),
+        });
         Ok(ops::optional::Response::NoContent)
     }
-    async fn read(&self, _: ops::read::Params, ctx: &api::Context<'_, String>) -> Answer<ops::read::Response> {
-        self.record(Seen::Principal(ctx.principal.clone()));
+    async fn read(
+        &self,
+        _: ops::read::Params,
+        ctx: &api::Context<'_, ops::read::Security<Self>>,
+    ) -> Answer<ops::read::Response> {
+        let (ops::read::Security::Oauth(who) | ops::read::Security::Key(who)) = &ctx.security;
+        self.record(Seen::Principal(who.clone()));
         *self.presented.lock().unwrap() = api::server::credentials(ctx).iter().map(|c| format!("{c:?}")).collect();
         Ok(ops::read::Response::NoContent)
     }
-    async fn write(&self, _: ops::write::Params, ctx: &api::Context<'_, String>) -> Answer<ops::write::Response> {
-        self.record(Seen::Principal(ctx.principal.clone()));
+    async fn write(
+        &self,
+        _: ops::write::Params,
+        ctx: &api::Context<'_, ops::write::Security<Self>>,
+    ) -> Answer<ops::write::Response> {
+        let ops::write::Security::Oauth(who) = &ctx.security;
+        self.record(Seen::Principal(who.clone()));
         Ok(ops::write::Response::NoContent)
     }
-    async fn both(&self, _: ops::both::Params, ctx: &api::Context<'_, String>) -> Answer<ops::both::Response> {
-        self.record(Seen::Principal(ctx.principal.clone()));
+    // ANCHOR: both
+    async fn both(
+        &self,
+        _: ops::both::Params,
+        ctx: &api::Context<'_, ops::both::Security<Self>>,
+    ) -> Answer<ops::both::Response> {
+        // Both credentials must be of one caller: a key of one and a session of another is no one.
+        let ops::both::Security::KeyAndSession(key, session) = &ctx.security;
+        let subject = |value: &str| value.split_once(':').map(|(_, who)| who.to_owned());
+        if subject(key) != subject(session) {
+            return Err(api::ApiError::new(
+                api::http::StatusCode::UNAUTHORIZED,
+                "the key and the session are of two callers",
+            ));
+        }
+        self.record(Seen::Principal(key.clone()));
         Ok(ops::both::Response::NoContent)
     }
-    async fn login(&self, _: ops::login::Params, ctx: &api::Context<'_, String>) -> Answer<ops::login::Response> {
-        self.record(Seen::Principal(ctx.principal.clone()));
+    // ANCHOR_END: both
+    async fn login(
+        &self,
+        _: ops::login::Params,
+        ctx: &api::Context<'_, ops::login::Security<Self>>,
+    ) -> Answer<ops::login::Response> {
+        let (ops::login::Security::Login(who) | ops::login::Security::QueryKey(who)) = &ctx.security;
+        self.record(Seen::Principal(who.clone()));
         Ok(ops::login::Response::NoContent)
     }
-    async fn cert(&self, _: ops::cert::Params, ctx: &api::Context<'_, String>) -> Answer<ops::cert::Response> {
-        self.record(Seen::Principal(ctx.principal.clone()));
+    async fn cert(
+        &self,
+        _: ops::cert::Params,
+        ctx: &api::Context<'_, ops::cert::Security<Self>>,
+    ) -> Answer<ops::cert::Response> {
+        let ops::cert::Security::Cert(who) = &ctx.security;
+        self.record(Seen::Principal(who.clone()));
         Ok(ops::cert::Response::NoContent)
     }
-    async fn oidc(&self, _: ops::oidc::Params, ctx: &api::Context<'_, String>) -> Answer<ops::oidc::Response> {
-        self.record(Seen::Principal(ctx.principal.clone()));
+    async fn oidc(
+        &self,
+        _: ops::oidc::Params,
+        ctx: &api::Context<'_, ops::oidc::Security<Self>>,
+    ) -> Answer<ops::oidc::Response> {
+        let ops::oidc::Security::Oidc(who) = &ctx.security;
+        self.record(Seen::Principal(who.clone()));
         Ok(ops::oidc::Response::NoContent)
     }
 }
@@ -343,6 +399,7 @@ fn each_rule_answers_as_stated() {
         ("POST", "/write", bearer("o-read+write"), principal("oauth:app")),
         ("GET", "/both", Creds { key: Some("k-bob"), session: Some("s-bob"), ..NONE }, principal("key:bob")),
         ("GET", "/both", Creds { key: Some("forged"), session: Some("s-bob"), ..NONE }, Outcome::Refused(401)),
+        ("GET", "/both", Creds { key: Some("k-bob"), session: Some("s-eve"), ..NONE }, Outcome::Refused(401)),
         ("GET", "/both", Creds { key: Some("k-bob"), ..NONE }, Outcome::Refused(401)),
         ("GET", "/login", Creds { auth: Auth::Basic("ann:pw"), ..NONE }, principal("login:ann")),
         ("GET", "/login", Creds { auth: Auth::Basic("ann:guess"), ..NONE }, Outcome::Refused(401)),
@@ -399,10 +456,10 @@ proptest! {
     }
 }
 
-/// A value of the principal's type that sits in the extensions before the server, a request id stored as `String`, is
-/// not the caller: an anonymous request reaches the handler without a principal.
+/// A value of a scheme's type that sits in the extensions before the server, a request id stored as `String`, is not
+/// the caller: an anonymous request reaches the handler as `Anonymous`.
 #[test]
-fn an_extension_of_the_principal_type_is_not_the_caller() {
+fn an_extension_of_a_scheme_type_is_not_the_caller() {
     let mut req = api::runtime::new_request("GET", "/optional".to_owned(), vec![]).unwrap();
     req.extensions_mut().insert("request-id-123".to_owned());
     let server = Arc::new(Server::default());
@@ -439,12 +496,12 @@ fn a_handler_gets_only_the_credentials_that_passed() {
 type Filter = std::future::Ready<Result<api::Request, api::ApiError>>;
 
 /// Anonymous callers of `/optional` get at most `limit` requests. A caller whose token passed is never limited: the
-/// layer runs after the server checked the credentials, so the principal is in the extensions. A real limiter keys the
+/// layer runs after the server checked the credentials, so the alternative that passed is in the extensions. A real limiter keys the
 /// anonymous count by the client's address (`api::peer`) and a time window.
 fn limit_anonymous(limit: u32) -> tower::filter::AsyncFilterLayer<impl Fn(api::Request) -> Filter + Clone> {
     let used = Arc::new(std::sync::atomic::AtomicU32::new(0));
     tower::filter::AsyncFilterLayer::new(move |req: api::Request| {
-        let signed_in = req.extensions().get::<String>().is_some();
+        let signed_in = req.extensions().get::<api::Passed<api::server::SchemeValue<Server>>>().is_some();
         let over = !signed_in && used.fetch_add(1, std::sync::atomic::Ordering::Relaxed) >= limit;
         let refusal = api::ApiError::new(api::http::StatusCode::TOO_MANY_REQUESTS, "sign in for more requests");
         std::future::ready(if over { Err(refusal) } else { Ok(req) })

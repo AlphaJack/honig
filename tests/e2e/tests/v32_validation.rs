@@ -88,7 +88,6 @@ impl api::Api for Users {
     fn error_response(rejection: api::Rejection) -> api::Response {
         rejection.response()
     }
-    type Principal = ();
 
     fn login(
         &self,
@@ -252,7 +251,6 @@ impl api::Api for Recording {
     fn error_response(rejection: api::Rejection) -> api::Response {
         rejection.response()
     }
-    type Principal = ();
 
     fn login(
         &self,

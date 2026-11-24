@@ -213,22 +213,23 @@ pub struct Context<'a, C = (), Id = ()> {
     pub operation: Id,
     /// The request's wide event: add fields with [`RequestEvent::set`].
     pub event: &'a RequestEvent<Id>,
-    /// Who is calling: what the `verify_` method of the `Api` for the scheme found.
-    pub principal: C,
+    /// Who is calling: the generated `Security` of the operation, with what the `verify_` method of each scheme of
+    /// the alternative that passed found.
+    pub security: C,
 }
 
 impl<'a, Id> Context<'a, (), Id> {
     /// Creates context of a request for `operation` with the credentials that satisfied
     /// its security requirement. It records into `event`.
     pub fn new(req: &'a Request, operation: Id, satisfied: SatisfiedSecurity, event: &'a RequestEvent<Id>) -> Self {
-        Self { request: req, auth: satisfied.auth, operation, event, principal: () }
+        Self { request: req, auth: satisfied.auth, operation, event, security: () }
     }
 
     /// Returns the context with who is calling.
     #[must_use]
-    pub fn with_principal<C>(self, principal: C) -> Context<'a, C, Id> {
-        let Self { request, auth, operation, event, principal: () } = self;
-        Context { request, auth, operation, event, principal }
+    pub fn with_security<C>(self, security: C) -> Context<'a, C, Id> {
+        let Self { request, auth, operation, event, security: () } = self;
+        Context { request, auth, operation, event, security }
     }
 }
 

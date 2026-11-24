@@ -30,8 +30,6 @@ fn cdata_and_inline_nodes_on_the_wire() {
 struct Books;
 
 impl api::Api for Books {
-    type Principal = ();
-
     async fn add_book(
         &self,
         p: ops::add_book::Params,
@@ -96,8 +94,6 @@ fn the_server_writes_the_media_type_accept_prefers() {
 struct MediaSeen(std::sync::Mutex<Option<ops::add_book::Media>>);
 
 impl api::Api for MediaSeen {
-    type Principal = ();
-
     async fn add_book(
         &self,
         p: ops::add_book::Params,

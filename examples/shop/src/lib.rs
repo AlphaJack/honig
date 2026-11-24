@@ -26,7 +26,8 @@ impl Catalog {
 }
 
 impl api::Api for Catalog {
-    type Principal = ();
+    /// Who a valid key is: the shop has one caller.
+    type ApiKey = ();
 
     /// Checks the `X-API-Key` of a request: the shop's key is someone, any other key is nobody (401).
     async fn verify_api_key(&self, key: &str, _: &api::Request) -> Result<Option<()>, api::ApiError> {
@@ -45,7 +46,7 @@ impl api::Api for Catalog {
     async fn list_products(
         &self,
         params: ops::list_products::Params,
-        _: &api::Context<'_>,
+        _: &api::Context<'_, ops::list_products::Security<Self>>,
     ) -> Result<ops::list_products::Response, api::ApiError> {
         let limit = params.limit.and_then(|n| usize::try_from(n.get()).ok()).unwrap_or(usize::MAX);
         let body = self.products()?.iter().take(limit).cloned().collect();
@@ -55,7 +56,7 @@ impl api::Api for Catalog {
     async fn create_product(
         &self,
         params: ops::create_product::Params,
-        _: &api::Context<'_>,
+        _: &api::Context<'_, ops::create_product::Security<Self>>,
     ) -> Result<ops::create_product::Response, api::ApiError> {
         self.products()?.push(params.body.clone());
         Ok(ops::create_product::Response::Created(params.body))
@@ -64,7 +65,7 @@ impl api::Api for Catalog {
     async fn get_product(
         &self,
         params: ops::get_product::Params,
-        _: &api::Context<'_>,
+        _: &api::Context<'_, ops::get_product::Security<Self>>,
     ) -> Result<ops::get_product::Response, api::ApiError> {
         let found = usize::try_from(params.product_id).ok().and_then(|i| self.products().ok()?.get(i).cloned());
         Ok(match found {

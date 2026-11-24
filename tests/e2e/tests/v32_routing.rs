@@ -15,8 +15,6 @@ struct Server {
 }
 
 impl api::Api for Server {
-    type Principal = ();
-
     fn search_orders(
         &self,
         _: ops::search_orders::Params,

@@ -152,18 +152,19 @@ pub struct Call<'r, C, Id> {
     pub(crate) config: &'r Config<Id>,
     pub(crate) operation: Id,
     pub(crate) satisfied: SatisfiedSecurity,
-    pub(crate) principal: C,
+    pub(crate) security: C,
     pub(crate) event: &'r RequestEvent<Id>,
     /// The target that was routed and where its path variables are.
     pub(crate) uri: http::Uri,
     pub(crate) spans: crate::server::route::Spans,
 }
 
-impl<'r, C, Id> Call<'r, Option<C>, Id> {
-    /// Drops the principal for an operation without `security`: its handler sees none.
-    pub fn public(self) -> Call<'r, (), Id> {
-        let Self { config, operation, satisfied, principal: _, event, uri, spans } = self;
-        Call { config, operation, satisfied, principal: (), event, uri, spans }
+impl<'r, C, Id> Call<'r, C, Id> {
+    /// Returns the call with `f` of what the server verified: the generated code makes the `Security` of the operation
+    /// of it, or `()` for an operation without `security`.
+    pub fn map<D>(self, f: impl FnOnce(C) -> D) -> Call<'r, D, Id> {
+        let Self { config, operation, satisfied, security, event, uri, spans } = self;
+        Call { config, operation, satisfied, security: f(security), event, uri, spans }
     }
 }
 
@@ -257,7 +258,7 @@ impl<A: Sync, C: Sync, P: Send, R, Id: Send + Sync> OpSteps<C, Id> for Steps<'_,
     }
 }
 
-/// Serves `routed` as the operation of `call` for the principal that your layers found.
+/// Serves `routed` as the operation of `call` for who your layers found.
 ///
 /// Read the body, decode, validate, run your handler and encode its response. Every failure goes through the error
 /// renderer.
@@ -267,7 +268,7 @@ pub async fn serve<C, Id: Operation>(
     steps: &dyn OpSteps<C, Id>,
 ) -> Response {
     let Routed { request, caps, raw_query, query } = routed;
-    let Call { config, operation, satisfied, principal, event, .. } = call;
+    let Call { config, operation, satisfied, security, event, .. } = call;
     let op = operation.op();
     // The headers of the request go along for the error renderer. They are moved out at the failure and not up front.
     let fail = |headers: http::HeaderMap, reason: Reason| {
@@ -301,7 +302,7 @@ pub async fn serve<C, Id: Operation>(
     event.received(request.body().len());
     let taken = op.takes_body.then(|| std::mem::take(request.body_mut()));
     let request: &Request = request;
-    let ctx = Context::new(request, operation, satisfied, event).with_principal(principal);
+    let ctx = Context::new(request, operation, satisfied, event).with_security(security);
     let (body, stream) = match taken {
         Some(taken) => {
             let (bytes, stream) = taken.into_parts();
@@ -316,20 +317,20 @@ pub async fn serve<C, Id: Operation>(
     }
 }
 
-/// Serves `routed` as the operation of `call` for the principal that your layers found. Its `security` requires
-/// credentials. Without a principal the answer is 401.
+/// Serves `routed` as the operation of `call` for who your layers found. Its `security` requires credentials. Without
+/// them the answer is 401.
 pub async fn serve_signed_in<C, Id: Operation>(
     routed: Routed<'_>,
     call: Call<'_, Option<C>, Id>,
     steps: &dyn OpSteps<C, Id>,
 ) -> Response {
-    let Call { config, operation, satisfied, principal, event, uri, spans } = call;
-    let Some(principal) = principal else {
+    let Call { config, operation, satisfied, security, event, uri, spans } = call;
+    let Some(security) = security else {
         event.fail(&Reason::Unauthorized);
         let errors = operation.op().errors;
         return config.reject(errors, Some(operation), Reason::Unauthorized, routed.request.headers().clone());
     };
-    serve(routed, Call { config, operation, satisfied, principal, event, uri, spans }, steps).await
+    serve(routed, Call { config, operation, satisfied, security, event, uri, spans }, steps).await
 }
 
 /// Adds the `WWW-Authenticate` challenge of a 401 (RFC 9110 section 11.6.1). There is one per HTTP scheme that

@@ -142,6 +142,11 @@ pub mod me {
             }
         }
     }
+    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    pub enum Security<A: super::super::server::Api> {
+        /// The alternative of `Bearer`, with what each `verify_` method found.
+        Bearer(A::Bearer),
+    }
 }
 pub mod optional {
     use super::super::runtime;
@@ -171,6 +176,13 @@ pub mod optional {
                 Self::NoContent => Ok(()),
             }
         }
+    }
+    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    pub enum Security<A: super::super::server::Api> {
+        /// No credentials: the `security` of the operation allows an anonymous request.
+        Anonymous,
+        /// The alternative of `Bearer`, with what each `verify_` method found.
+        Bearer(A::Bearer),
     }
 }
 pub mod read {
@@ -202,6 +214,13 @@ pub mod read {
             }
         }
     }
+    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    pub enum Security<A: super::super::server::Api> {
+        /// The alternative of `Oauth`, with what each `verify_` method found.
+        Oauth(A::Oauth),
+        /// The alternative of `Key`, with what each `verify_` method found.
+        Key(A::Key),
+    }
 }
 pub mod write {
     use super::super::runtime;
@@ -231,6 +250,11 @@ pub mod write {
                 Self::NoContent => Ok(()),
             }
         }
+    }
+    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    pub enum Security<A: super::super::server::Api> {
+        /// The alternative of `Oauth`, with what each `verify_` method found.
+        Oauth(A::Oauth),
     }
 }
 pub mod both {
@@ -262,6 +286,11 @@ pub mod both {
             }
         }
     }
+    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    pub enum Security<A: super::super::server::Api> {
+        /// The alternative of `Key` and `Session`, with what each `verify_` method found.
+        KeyAndSession(A::Key, A::Session),
+    }
 }
 pub mod login {
     use super::super::runtime;
@@ -291,6 +320,13 @@ pub mod login {
                 Self::NoContent => Ok(()),
             }
         }
+    }
+    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    pub enum Security<A: super::super::server::Api> {
+        /// The alternative of `Login`, with what each `verify_` method found.
+        Login(A::Login),
+        /// The alternative of `QueryKey`, with what each `verify_` method found.
+        QueryKey(A::QueryKey),
     }
 }
 pub mod cert {
@@ -322,6 +358,11 @@ pub mod cert {
             }
         }
     }
+    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    pub enum Security<A: super::super::server::Api> {
+        /// The alternative of `Cert`, with what each `verify_` method found.
+        Cert(A::Cert),
+    }
 }
 pub mod oidc {
     use super::super::runtime;
@@ -351,5 +392,10 @@ pub mod oidc {
                 Self::NoContent => Ok(()),
             }
         }
+    }
+    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    pub enum Security<A: super::super::server::Api> {
+        /// The alternative of `Oidc`, with what each `verify_` method found.
+        Oidc(A::Oidc),
     }
 }

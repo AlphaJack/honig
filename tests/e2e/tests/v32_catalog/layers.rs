@@ -23,7 +23,7 @@ fn limited() -> axum::Router {
 // ANCHOR_END: inside
 
 // ANCHOR: rate-limit
-/// At most `limit` requests. A real limiter keys its count by principal and time window. It keeps it in the same way in
+/// At most `limit` requests. A real limiter keys its count by caller and time window. It keeps it in the same way in
 /// an `Arc` because the layer is cloned for every request.
 fn rate_limited(limit: u32) -> axum::Router {
     let used = Arc::new(AtomicU32::new(0));
@@ -244,8 +244,7 @@ impl<S: tower::Service<honig::Request>> tower::Service<honig::Request> for Count
 struct Issues;
 
 impl e2e::v32_scopes::api::Api for Issues {
-    type Principal = ();
-
+    type Pat = ();
     /// The one token is `read`, and it grants `issues:read`.
     async fn verify_pat(
         &self,
@@ -253,20 +252,20 @@ impl e2e::v32_scopes::api::Api for Issues {
         _: &e2e::v32_scopes::api::Request,
     ) -> Result<Option<api::Granted<(), e2e::v32_scopes::api::server::PatScope>>, api::ApiError> {
         let scopes = vec![e2e::v32_scopes::api::server::PatScope::IssuesRead];
-        Ok((token == "read").then_some(api::Granted { principal: (), scopes }))
+        Ok((token == "read").then_some(api::Granted { value: (), scopes }))
     }
 
     async fn list_issues(
         &self,
         _: e2e::v32_scopes::api::operations::list_issues::Params,
-        _: &e2e::v32_scopes::api::Context<'_>,
+        _: &e2e::v32_scopes::api::Context<'_, e2e::v32_scopes::api::operations::list_issues::Security<Self>>,
     ) -> Result<e2e::v32_scopes::api::operations::list_issues::Response, api::ApiError> {
         Ok(e2e::v32_scopes::api::operations::list_issues::Response::NoContent)
     }
     async fn create_issue(
         &self,
         _: e2e::v32_scopes::api::operations::create_issue::Params,
-        _: &e2e::v32_scopes::api::Context<'_>,
+        _: &e2e::v32_scopes::api::Context<'_, e2e::v32_scopes::api::operations::create_issue::Security<Self>>,
     ) -> Result<e2e::v32_scopes::api::operations::create_issue::Response, api::ApiError> {
         Ok(e2e::v32_scopes::api::operations::create_issue::Response::NoContent)
     }

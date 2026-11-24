@@ -58,7 +58,9 @@ fn spec_defaults_fill_absent_values() {
 struct Seen(Mutex<Option<i32>>);
 
 impl api::Api for Seen {
-    type Principal = ();
+    type Bearer = ();
+    type ApiKey = ();
+    type Tenant = ();
 
     async fn verify_bearer(&self, _: &str, _: &api::Request) -> Result<Option<()>, api::ApiError> {
         Ok(Some(()))
@@ -73,7 +75,7 @@ impl api::Api for Seen {
     fn list_orders(
         &self,
         p: ops::list_orders::Params,
-        _: &api::Context<'_>,
+        _: &api::Context<'_, ops::list_orders::Security<Self>>,
     ) -> impl Future<Output = Result<ops::list_orders::Response, api::ApiError>> + Send {
         if let Ok(mut s) = self.0.lock() {
             *s = Some(p.limit.get());
@@ -83,21 +85,21 @@ impl api::Api for Seen {
     fn create_order(
         &self,
         _: ops::create_order::Params,
-        _: &api::Context<'_>,
+        _: &api::Context<'_, ops::create_order::Security<Self>>,
     ) -> impl Future<Output = Result<ops::create_order::Response, api::ApiError>> + Send {
         std::future::ready(Err(api::ApiError::new(api::http::StatusCode::IM_A_TEAPOT, "seen")))
     }
     fn get_order(
         &self,
         _: ops::get_order::Params,
-        _: &api::Context<'_>,
+        _: &api::Context<'_, ops::get_order::Security<Self>>,
     ) -> impl Future<Output = Result<ops::get_order::Response, api::ApiError>> + Send {
         std::future::ready(Err(api::ApiError::new(api::http::StatusCode::NOT_IMPLEMENTED, "not used by this test")))
     }
     fn upload_document(
         &self,
         _: ops::upload_document::Params,
-        _: &api::Context<'_>,
+        _: &api::Context<'_, ops::upload_document::Security<Self>>,
     ) -> impl Future<Output = Result<ops::upload_document::Response, api::ApiError>> + Send {
         std::future::ready(Err(api::ApiError::new(api::http::StatusCode::NOT_IMPLEMENTED, "not used by this test")))
     }

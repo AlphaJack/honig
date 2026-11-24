@@ -13,8 +13,6 @@ struct Receiver {
 }
 
 impl api::Webhooks for Receiver {
-    type Principal = ();
-
     async fn new_product(
         &self,
         p: ops::new_product::Params,

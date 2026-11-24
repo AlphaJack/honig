@@ -48,8 +48,6 @@ fn heartbeats_are_skipped_in_a_buffered_body() {
 struct Tiles;
 
 impl api::Api for Tiles {
-    type Principal = ();
-
     async fn tile_stream(
         &self,
         _: ops::tile_stream::Params,

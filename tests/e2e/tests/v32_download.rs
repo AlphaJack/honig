@@ -30,8 +30,6 @@ struct Server {
 const LAST_MODIFIED: &str = "Sun, 06 Nov 2026 08:49:37 GMT";
 
 impl api::Api for Server {
-    type Principal = ();
-
     // ANCHOR: download
     fn get_export(
         &self,

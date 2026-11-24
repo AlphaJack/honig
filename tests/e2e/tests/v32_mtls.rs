@@ -19,8 +19,10 @@ where
 struct Server;
 
 impl api::Api for Server {
-    type Principal = ();
-
+    type Cert = ();
+    type Bearer = ();
+    type ApiKey = ();
+    type BasicAuth = ();
     async fn verify_cert(&self, request: &api::Request) -> Result<Option<()>, api::ApiError> {
         let vouched = request.headers().get("x-client-verify").and_then(|v| v.to_str().ok()) == Some("SUCCESS");
         Ok(vouched.then_some(()))
@@ -38,21 +40,21 @@ impl api::Api for Server {
     fn keyed(
         &self,
         _: ops::keyed::Params,
-        _: &api::Context<'_>,
+        _: &api::Context<'_, ops::keyed::Security<Self>>,
     ) -> impl Future<Output = Result<ops::keyed::Response, api::ApiError>> + Send {
         ok(ops::keyed::Response::NoContent)
     }
     fn private(
         &self,
         _: ops::private::Params,
-        _: &api::Context<'_>,
+        _: &api::Context<'_, ops::private::Security<Self>>,
     ) -> impl Future<Output = Result<ops::private::Response, api::ApiError>> + Send {
         ok(ops::private::Response::NoContent)
     }
     fn token(
         &self,
         _: ops::token::Params,
-        _: &api::Context<'_>,
+        _: &api::Context<'_, ops::token::Security<Self>>,
     ) -> impl Future<Output = Result<ops::token::Response, api::ApiError>> + Send {
         ok(ops::token::Response::NoContent)
     }
@@ -89,7 +91,10 @@ fn the_verify_method_of_the_scheme_decides() {
 struct Strict;
 
 impl api::Api for Strict {
-    type Principal = &'static str;
+    type Cert = &'static str;
+    type Bearer = &'static str;
+    type ApiKey = &'static str;
+    type BasicAuth = &'static str;
 
     async fn verify_cert(&self, _: &api::Request) -> Result<Option<&'static str>, api::ApiError> {
         Ok(None)
@@ -111,22 +116,23 @@ impl api::Api for Strict {
     async fn keyed(
         &self,
         _: ops::keyed::Params,
-        ctx: &api::Context<'_, &'static str>,
+        ctx: &api::Context<'_, ops::keyed::Security<Self>>,
     ) -> Result<ops::keyed::Response, api::ApiError> {
-        assert_eq!(ctx.principal, "key holder", "the principal of the first scheme of the alternative");
+        let ops::keyed::Security::ApiKeyAndBasicAuth(key, login) = &ctx.security;
+        assert_eq!((*key, *login), ("key holder", "ann"), "the value of each scheme of the alternative");
         Ok(ops::keyed::Response::NoContent)
     }
     async fn private(
         &self,
         _: ops::private::Params,
-        _: &api::Context<'_, &'static str>,
+        _: &api::Context<'_, ops::private::Security<Self>>,
     ) -> Result<ops::private::Response, api::ApiError> {
         Ok(ops::private::Response::NoContent)
     }
     async fn token(
         &self,
         _: ops::token::Params,
-        _: &api::Context<'_, &'static str>,
+        _: &api::Context<'_, ops::token::Security<Self>>,
     ) -> Result<ops::token::Response, api::ApiError> {
         Ok(ops::token::Response::NoContent)
     }

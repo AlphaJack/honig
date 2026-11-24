@@ -11,8 +11,6 @@ use futures_util::StreamExt;
 struct Server;
 
 impl api::Api for Server {
-    type Principal = ();
-
     async fn put_file(
         &self,
         params: ops::put_file::Params,

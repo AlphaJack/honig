@@ -84,6 +84,15 @@ pub mod submit_form {
             }
         }
     }
+    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    pub enum Security<A: super::super::server::Api> {
+        /// No credentials: the `security` of the operation allows an anonymous request.
+        Anonymous,
+        /// The alternative of `Bearer`, with what each `verify_` method found.
+        Bearer(A::Bearer),
+        /// The alternative of `Oauth` and `ApiKey`, with what each `verify_` method found.
+        OauthAndApiKey(A::Oauth, A::ApiKey),
+    }
 }
 pub mod put_blob {
     use super::super::types;
@@ -169,6 +178,15 @@ pub mod put_blob {
                 Self::Ok { body, x_size, x_quota } => Ok((body, x_size, x_quota)),
             }
         }
+    }
+    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    pub enum Security<A: super::super::server::Api> {
+        /// No credentials: the `security` of the operation allows an anonymous request.
+        Anonymous,
+        /// The alternative of `Bearer`, with what each `verify_` method found.
+        Bearer(A::Bearer),
+        /// The alternative of `Oauth` and `ApiKey`, with what each `verify_` method found.
+        OauthAndApiKey(A::Oauth, A::ApiKey),
     }
 }
 /// List products
@@ -306,6 +324,15 @@ pub mod list_products {
         Json(Vec<types::Product>),
         Jsonl(runtime::Items<types::Product>),
     }
+    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    pub enum Security<A: super::super::server::Api> {
+        /// No credentials: the `security` of the operation allows an anonymous request.
+        Anonymous,
+        /// The alternative of `Bearer`, with what each `verify_` method found.
+        Bearer(A::Bearer),
+        /// The alternative of `Oauth` and `ApiKey`, with what each `verify_` method found.
+        OauthAndApiKey(A::Oauth, A::ApiKey),
+    }
     pub mod links {
         use super::super::super::runtime;
         /// First product
@@ -389,6 +416,11 @@ pub mod create_product {
             }
         }
     }
+    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    pub enum Security<A: super::super::server::Api> {
+        /// The alternative of `Oauth`, with what each `verify_` method found.
+        Oauth(A::Oauth),
+    }
     pub mod callbacks {
         use super::super::super::runtime;
         #[must_use]
@@ -464,6 +496,15 @@ pub mod search_products {
             }
         }
     }
+    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    pub enum Security<A: super::super::server::Api> {
+        /// No credentials: the `security` of the operation allows an anonymous request.
+        Anonymous,
+        /// The alternative of `Bearer`, with what each `verify_` method found.
+        Bearer(A::Bearer),
+        /// The alternative of `Oauth` and `ApiKey`, with what each `verify_` method found.
+        OauthAndApiKey(A::Oauth, A::ApiKey),
+    }
 }
 /// Products collection
 ///
@@ -513,6 +554,15 @@ pub mod copy_products {
             }
         }
     }
+    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    pub enum Security<A: super::super::server::Api> {
+        /// No credentials: the `security` of the operation allows an anonymous request.
+        Anonymous,
+        /// The alternative of `Bearer`, with what each `verify_` method found.
+        Bearer(A::Bearer),
+        /// The alternative of `Oauth` and `ApiKey`, with what each `verify_` method found.
+        OauthAndApiKey(A::Oauth, A::ApiKey),
+    }
 }
 pub mod get_product {
     use super::super::types;
@@ -552,6 +602,15 @@ pub mod get_product {
             }
         }
     }
+    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    pub enum Security<A: super::super::server::Api> {
+        /// No credentials: the `security` of the operation allows an anonymous request.
+        Anonymous,
+        /// The alternative of `Bearer`, with what each `verify_` method found.
+        Bearer(A::Bearer),
+        /// The alternative of `Oauth` and `ApiKey`, with what each `verify_` method found.
+        OauthAndApiKey(A::Oauth, A::ApiKey),
+    }
 }
 pub mod put_product {
     use super::super::runtime;
@@ -589,6 +648,15 @@ pub mod put_product {
                 Self::Ok => Ok(()),
             }
         }
+    }
+    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    pub enum Security<A: super::super::server::Api> {
+        /// No credentials: the `security` of the operation allows an anonymous request.
+        Anonymous,
+        /// The alternative of `Bearer`, with what each `verify_` method found.
+        Bearer(A::Bearer),
+        /// The alternative of `Oauth` and `ApiKey`, with what each `verify_` method found.
+        OauthAndApiKey(A::Oauth, A::ApiKey),
     }
 }
 pub mod delete_product {
@@ -628,6 +696,15 @@ pub mod delete_product {
             }
         }
     }
+    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    pub enum Security<A: super::super::server::Api> {
+        /// No credentials: the `security` of the operation allows an anonymous request.
+        Anonymous,
+        /// The alternative of `Bearer`, with what each `verify_` method found.
+        Bearer(A::Bearer),
+        /// The alternative of `Oauth` and `ApiKey`, with what each `verify_` method found.
+        OauthAndApiKey(A::Oauth, A::ApiKey),
+    }
 }
 pub mod options_product {
     use super::super::runtime;
@@ -665,6 +742,15 @@ pub mod options_product {
                 Self::Ok => Ok(()),
             }
         }
+    }
+    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    pub enum Security<A: super::super::server::Api> {
+        /// No credentials: the `security` of the operation allows an anonymous request.
+        Anonymous,
+        /// The alternative of `Bearer`, with what each `verify_` method found.
+        Bearer(A::Bearer),
+        /// The alternative of `Oauth` and `ApiKey`, with what each `verify_` method found.
+        OauthAndApiKey(A::Oauth, A::ApiKey),
     }
 }
 pub mod head_product {
@@ -704,6 +790,15 @@ pub mod head_product {
             }
         }
     }
+    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    pub enum Security<A: super::super::server::Api> {
+        /// No credentials: the `security` of the operation allows an anonymous request.
+        Anonymous,
+        /// The alternative of `Bearer`, with what each `verify_` method found.
+        Bearer(A::Bearer),
+        /// The alternative of `Oauth` and `ApiKey`, with what each `verify_` method found.
+        OauthAndApiKey(A::Oauth, A::ApiKey),
+    }
 }
 pub mod patch_product {
     use super::super::runtime;
@@ -742,6 +837,15 @@ pub mod patch_product {
             }
         }
     }
+    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    pub enum Security<A: super::super::server::Api> {
+        /// No credentials: the `security` of the operation allows an anonymous request.
+        Anonymous,
+        /// The alternative of `Bearer`, with what each `verify_` method found.
+        Bearer(A::Bearer),
+        /// The alternative of `Oauth` and `ApiKey`, with what each `verify_` method found.
+        OauthAndApiKey(A::Oauth, A::ApiKey),
+    }
 }
 pub mod trace_product {
     use super::super::runtime;
@@ -779,6 +883,15 @@ pub mod trace_product {
                 Self::Ok => Ok(()),
             }
         }
+    }
+    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    pub enum Security<A: super::super::server::Api> {
+        /// No credentials: the `security` of the operation allows an anonymous request.
+        Anonymous,
+        /// The alternative of `Bearer`, with what each `verify_` method found.
+        Bearer(A::Bearer),
+        /// The alternative of `Oauth` and `ApiKey`, with what each `verify_` method found.
+        OauthAndApiKey(A::Oauth, A::ApiKey),
     }
 }
 pub mod search {
@@ -823,6 +936,15 @@ pub mod search {
             }
         }
     }
+    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    pub enum Security<A: super::super::server::Api> {
+        /// No credentials: the `security` of the operation allows an anonymous request.
+        Anonymous,
+        /// The alternative of `Bearer`, with what each `verify_` method found.
+        Bearer(A::Bearer),
+        /// The alternative of `Oauth` and `ApiKey`, with what each `verify_` method found.
+        OauthAndApiKey(A::Oauth, A::ApiKey),
+    }
 }
 pub mod new_product_post {
     use super::super::types;
@@ -863,6 +985,15 @@ pub mod new_product_post {
                 Self::Ok => Ok(()),
             }
         }
+    }
+    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    pub enum Security<A: super::super::server::Webhooks> {
+        /// No credentials: the `security` of the operation allows an anonymous request.
+        Anonymous,
+        /// The alternative of `Bearer`, with what each `verify_` method found.
+        Bearer(A::Bearer),
+        /// The alternative of `Oauth` and `ApiKey`, with what each `verify_` method found.
+        OauthAndApiKey(A::Oauth, A::ApiKey),
     }
 }
 pub mod create_product_on_adopt_post {
@@ -905,6 +1036,15 @@ pub mod create_product_on_adopt_post {
             }
         }
     }
+    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    pub enum Security<A: super::super::server::Webhooks> {
+        /// No credentials: the `security` of the operation allows an anonymous request.
+        Anonymous,
+        /// The alternative of `Bearer`, with what each `verify_` method found.
+        Bearer(A::Bearer),
+        /// The alternative of `Oauth` and `ApiKey`, with what each `verify_` method found.
+        OauthAndApiKey(A::Oauth, A::ApiKey),
+    }
 }
 pub mod create_product_shared_post {
     use super::super::runtime;
@@ -934,6 +1074,15 @@ pub mod create_product_shared_post {
                 Self::Ok => Ok(()),
             }
         }
+    }
+    /// Who is calling: the alternative of the operation's `security` that the request passed.
+    pub enum Security<A: super::super::server::Webhooks> {
+        /// No credentials: the `security` of the operation allows an anonymous request.
+        Anonymous,
+        /// The alternative of `Bearer`, with what each `verify_` method found.
+        Bearer(A::Bearer),
+        /// The alternative of `Oauth` and `ApiKey`, with what each `verify_` method found.
+        OauthAndApiKey(A::Oauth, A::ApiKey),
     }
 }
 pub mod tags {

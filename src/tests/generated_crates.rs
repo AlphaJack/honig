@@ -375,7 +375,6 @@ const ID: &str = "01234567-89ab-4def-8123-456789abcdef";
 struct Items;
 
 impl api::Api for Items {
-    type Principal = ();
 
     async fn get_item(&self, _: ops::get_item::Params, _: &api::Context<'_>) -> Result<ops::get_item::Response, api::ApiError> {
         Ok(ops::get_item::Response::Ok { body: "2024-06-19T08:30:06Z".parse().unwrap(), location: None })
@@ -518,8 +517,9 @@ fn declared_security_needs_a_verify_method() {
     super::common::use_local_runtime(&out.join("Cargo.toml"));
     let build = |verify: &str| {
         let lib = format!(
-            "pub mod api;\npub use api::*;\nstruct Shop;\nimpl api::Api for Shop {{\n    type Principal = ();\n{verify}\n\
-             async fn list_items(&self, _: api::operations::list_items::Params, _: &api::Context<'_>) \
+            "pub mod api;\npub use api::*;\nstruct Shop;\nimpl api::Api for Shop {{\n    type Key = ();\n{verify}\n\
+             async fn list_items(&self, _: api::operations::list_items::Params, \
+             _: &api::Context<'_, api::operations::list_items::Security<Self>>) \
              -> Result<api::operations::list_items::Response, api::ApiError> {{\n\
              Ok(api::operations::list_items::Response::NoContent)\n}}\n}}\n\
              pub fn service() -> impl Sized {{\n    api::Server::new(Shop).into_service()\n}}\n"
