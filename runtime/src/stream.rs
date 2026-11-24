@@ -873,7 +873,7 @@ impl<T: DeserializeOwned> Decoder<T> {
             // A record is decoded where it lies in the buffer. It is never copied out.
             if let Some(at) = self.take_record() {
                 if self.framing == Framing::Sse {
-                    let text = String::from_utf8_lossy(self.buf.get(at).unwrap_or_default());
+                    let text = String::from_utf8_lossy(self.buf.get(at.clone()).unwrap_or_default());
                     let (id, retry) = sse_state(&text);
                     if let Some(id) = id {
                         id.clone_into(&mut self.last_event_id);
@@ -884,7 +884,7 @@ impl<T: DeserializeOwned> Decoder<T> {
                     if crate::codec::blank_record(text.as_bytes()) || sse_comment_only(&text) {
                         continue;
                     }
-                    return Poll::Ready(Some(sse_item(self.status, &text)));
+                    return Poll::Ready(Some((self.item)(&self.record(self.buf.get(at).unwrap_or_default()))));
                 }
                 let record = self.buf.get(at).unwrap_or_default();
                 if self.skips(record) {
@@ -1124,6 +1124,19 @@ mod tests {
 
     fn body(text: &'static str) -> ByteStream {
         ByteStream::chunks(futures_util::stream::iter([Ok(Bytes::from_static(text.as_bytes()))]), None)
+    }
+
+    /// A streamed event has the formats of its item checked as a buffered one has.
+    #[test]
+    fn a_streamed_event_has_its_formats_checked() {
+        let stream = body("data: \"not-a-date\"\n\n");
+        let items = Items::<String>::received_validated::<crate::formats::Text<crate::formats::format::Date>>(
+            b"",
+            &stream,
+            Framing::Sse,
+        );
+        let Ok(Items::Stream(mut items)) = items else { panic!("a stream") };
+        assert!(crate::block_on(items.next()).is_some_and(|i| i.is_err()));
     }
 
     #[test]
