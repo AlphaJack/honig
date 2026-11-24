@@ -235,10 +235,26 @@ pub(super) fn untyped(
         ("`enum` or `const` beside an implied shape", shapes[1]),
     ];
     (s.as_object().into_iter())
-        .flat_map(|o| UNTYPED_KEYWORDS.iter().filter(|k| o.contains_key(**k) && !conditional_key(k)))
+        .flat_map(|o| UNTYPED_KEYWORDS.iter().filter(|k| o.contains_key(**k) && !conditional_key(k) && applies(o, k)))
         .copied()
         .chain(reasons.iter().filter(|(_, on)| *on).map(|(why, _)| *why))
         .collect()
+}
+
+/// Can keyword `k` of `o` judge a value? A keyword of objects or arrays only (JSON Schema 2020-12 section 7.6) passes
+/// every value of another kind, so beside a `type` that lists no such kind it is no assertion and needs no check.
+fn applies(o: &serde_json::Map<String, Value>, k: &str) -> bool {
+    let kind = match k {
+        "contains" | "minContains" | "maxContains" | "unevaluatedItems" => "array",
+        "if" | "then" | "else" | "not" => return true,
+        _ => "object",
+    };
+    let types: Vec<String> = match o.get("type") {
+        Some(Value::String(t)) => vec![t.clone()],
+        Some(Value::Array(ts)) => json::strings(ts),
+        _ => return true,
+    };
+    types.iter().any(|t| t == kind)
 }
 
 /// Whether the schema `o` accepts an object: its `type` lists `object`.
