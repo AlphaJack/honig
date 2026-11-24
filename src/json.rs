@@ -138,10 +138,10 @@ fn array_index(token: &str) -> Option<usize> {
     (digits && (token == "0" || !token.starts_with('0'))).then(|| token.parse().ok()).flatten()
 }
 
-/// Percent-decodes `%XX` escapes of a URI fragment (`#/paths/~1a%7Bb%7D`) as the runtime decodes paths and queries. A
+/// Percent-decodes `%XX` escapes of a URI fragment (`#/paths/~1a%7Bb%7D`) as honig decodes paths and queries. A
 /// fragment that does not decode to UTF-8 stays as written: it then refers to nothing, which is an error.
 pub(crate) fn percent_decode(s: &str) -> String {
-    runtime::__private::pct_decode(s).unwrap_or_else(|| s.to_owned())
+    honig::__private::pct_decode(s).unwrap_or_else(|| s.to_owned())
 }
 
 /// A bundled document with an index of anchors and `$id`s.

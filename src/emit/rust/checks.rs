@@ -1,7 +1,7 @@
 //! The checks of a checked type: the keywords of its schema that its base type does not enforce, run by its `try_from`.
 //!
 //! Numeric bounds are typed per value at generation time (integers get integer bounds). So generated code compares in
-//! the own type of the value and never casts. The `regress` feature of the runtime checks `pattern`. Generated code
+//! the own type of the value and never casts. The `regress` feature of honig checks `pattern`. Generated code
 //! needs it when the description has one.
 
 use proc_macro2::{Literal, TokenStream};

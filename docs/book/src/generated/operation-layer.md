@@ -1,4 +1,4 @@
-<!-- Generated from runtime/src/server/service.rs by src/tests/docs_pages.rs. Edit the source, not this file. -->
+<!-- Generated from honig/src/server/service.rs by src/tests/docs_pages.rs. Edit the source, not this file. -->
 
 Adds a tower layer between routing and the operations. It goes inside the layers added before. The first one
 added is the outermost as with the `ServiceBuilder` of tower. Pass one `ServiceBuilder` to see the order top

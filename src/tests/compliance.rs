@@ -732,7 +732,7 @@ fn most_specific_request_media_type_is_tried_first_in_any_order() {
     }
 }
 
-// `pattern` (JSON Schema 2020-12 section 6.3.3): checked by the runtime's `regress` feature; one it cannot compile
+// `pattern` (JSON Schema 2020-12 section 6.3.3): checked by honig's `regress` feature; one it cannot compile
 // is an error, and generation refuses the document.
 
 #[test]

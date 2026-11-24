@@ -46,21 +46,21 @@ fn out_dir() -> PathBuf {
 /// Each page's file name and text:
 ///
 /// - `cli-help.txt`: the command's `--help`
-/// - `server-options.md`: the rustdoc of the `Server` builder of the runtime with one section per method
-/// - `features.md`: the cargo features of the runtime from the `##` comments of its `Cargo.toml`
+/// - `server-options.md`: the rustdoc of the `Server` builder of honig with one section per method
+/// - `features.md`: the cargo features of honig from the `##` comments of its `Cargo.toml`
 /// - `server-steps.md`, `ranges.md`: the module docs of the server and of its range requests
 /// - `reconnect.md`: the rustdoc of `ItemStream::reconnecting`
 /// - `errors.md`, `error-fields.md`: the variants of `ClientError` and of `ProblemMember` with their rustdoc
 /// - `error-rendering.md`: the rustdoc of `Rejection::response`
 /// - `settings.md`: every setting of a module from `SETTINGS`
 /// - `formats.md`: the Rust type of each string format as the generator picks it
-/// - `checked-text.md`: the runtime's text types that only a valid value of their format can be
+/// - `checked-text.md`: honig's text types that only a valid value of their format can be
 /// - `module-files.md`: the files of a generated module from `emit::rust::FILES`
 /// - `principals.md`, `operation-layer.md`: the rustdoc of `Verified` and of `Server::operation_layer`
 /// - `upgrade-v20.md`, `upgrade-v30.md`, `upgrade-v31.md`, `upgrade-any.md`: the module docs of the upgrade passes
 fn pages() -> Result<Vec<(&'static str, PathBuf, String)>> {
     let root = super::root();
-    let src = root.join("runtime").join("src");
+    let src = root.join("honig").join("src");
     let (service_rs, range_rs, reconnect_rs) = (
         src.join("server").join("service.rs"),
         src.join("server").join("range.rs"),
@@ -69,7 +69,7 @@ fn pages() -> Result<Vec<(&'static str, PathBuf, String)>> {
     let (error_rs, reject_rs) = (src.join("error.rs"), src.join("reject.rs"));
     let auth_rs = src.join("server").join("auth.rs");
     let (formats_rs, formatted_rs) = (src.join("formats.rs"), src.join("formatted.rs"));
-    let runtime_toml = root.join("runtime").join("Cargo.toml");
+    let runtime_toml = root.join("honig").join("Cargo.toml");
     let upgrade = root.join("src").join("upgrade");
     let (v20, v30, v31, any) = (
         upgrade.join("v20_to_v30.rs"),
@@ -172,7 +172,7 @@ fn settings_page() -> String {
     page
 }
 
-/// The Rust type of each string format: without the type features of the runtime and with all of them. The generator's
+/// The Rust type of each string format: without the type features of honig and with all of them. The generator's
 /// own choice makes each cell.
 fn formats_page() -> String {
     use crate::ir::types::Format;
@@ -191,7 +191,7 @@ fn formats_page() -> String {
     page
 }
 
-/// One row per checked text type of the runtime: its format, its `Formatted` alias in `formatted` and the rustdoc of
+/// One row per checked text type of honig: its format, its `Formatted` alias in `formatted` and the rustdoc of
 /// its marker in `formats`.
 fn checked_text_page(formats: &str, formatted: &str) -> String {
     let mut page = "| Format | Type | Accepts |\n|---|---|---|\n".to_owned();
@@ -277,7 +277,7 @@ fn methods_page(source: &str, item: &str, block: &str, elsewhere: &[&str]) -> Re
     Ok(page)
 }
 
-/// When generated code needs the runtime feature `name`, as [`crate::settings::FEATURES`] says.
+/// When generated code needs honig feature `name`, as [`crate::settings::FEATURES`] says.
 fn turned_on(name: &str) -> String {
     use crate::settings::{FEATURES, Side, Trigger};
     match FEATURES.iter().find(|(n, _)| *n == name).map(|(_, t)| t) {
@@ -330,12 +330,12 @@ fn plain_links(text: &str) -> String {
 
 #[test]
 fn the_generator_lists_every_runtime_feature() {
-    let manifest: DocumentMut = read(&super::root().join("runtime").join("Cargo.toml")).unwrap().parse().unwrap();
+    let manifest: DocumentMut = read(&super::root().join("honig").join("Cargo.toml")).unwrap().parse().unwrap();
     let mut runtime: Vec<&str> = manifest["features"].as_table().unwrap().iter().map(|(name, _)| name).collect();
     let mut listed: Vec<&str> = crate::settings::FEATURES.iter().map(|(name, _)| *name).collect();
     runtime.sort_unstable();
     listed.sort_unstable();
-    assert_eq!(runtime, listed, "runtime/Cargo.toml and crate::settings::FEATURES");
+    assert_eq!(runtime, listed, "honig/Cargo.toml and crate::settings::FEATURES");
 }
 
 #[test]
@@ -343,6 +343,22 @@ fn methods_page_has_one_section_per_method() {
     let source = "/// The type.\npub struct T;\n\nimpl T {\n    /// Does a.\n    #[must_use]\n    pub fn a(&self) {}\n\n    pub fn b(&self) {}\n}\n";
     let page = methods_page(source, "pub struct T", "impl T {", &[]).unwrap();
     assert_eq!(page, "The type.\n\n### `a`\n\nDoes a.\n\n### `b`\n\n\n");
+}
+
+/// The crates.io README of `honig` lists every feature of its `Cargo.toml` and no other. A stale table is rewritten,
+/// and the test fails so that the change is committed.
+#[test]
+fn the_readme_lists_every_feature() {
+    let root = super::root().join("honig");
+    let table = features_page(&read(&root.join("Cargo.toml")).unwrap(), turned_on).unwrap();
+    let readme = read(&root.join("README.md")).unwrap();
+    let (start, end) = ("written from Cargo.toml by src/tests/docs_pages.rs -->\n", "<!-- end features -->");
+    let (head, rest) = readme.split_once(start).expect("the start marker");
+    let (old, tail) = rest.split_once(end).expect("the end marker");
+    if old != table {
+        fs::write(root.join("README.md"), [head, start, &table, end, tail].concat()).unwrap();
+    }
+    assert_eq!(old, table, "rewrote the feature table of honig/README.md");
 }
 
 #[test]

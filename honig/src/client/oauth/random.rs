@@ -25,7 +25,7 @@ mod tests {
         assert_ne!(a.unwrap(), b.unwrap());
     }
 
-    /// The error is the runtime's own: a new major version of `getrandom` does not change the signature.
+    /// The error is honig's own: a new major version of `getrandom` does not change the signature.
     #[test]
     fn the_error_names_no_dependency() {
         let made: Result<crate::Pkce, crate::NoRandomness> = crate::Pkce::new();

@@ -28,4 +28,4 @@ The `tracing-opentelemetry` adapter adds W3C Trace Context. The span of a reques
 {{#include ../../../tests/e2e/tests/v32_catalog/observability.rs:trace-context}}
 ```
 
-The runtime is built against `opentelemetry` 0.33 and `tracing-opentelemetry` 0.34. Depend on the same versions. A span from another version carries no context that the runtime can use.
+honig is built against `opentelemetry` 0.33 and `tracing-opentelemetry` 0.34. Depend on the same versions. A span from another version carries no context that honig can use.

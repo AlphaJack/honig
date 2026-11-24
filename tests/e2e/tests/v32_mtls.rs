@@ -153,7 +153,7 @@ fn an_and_requirement_needs_every_credential_valid() {
     assert_eq!(keyed("k1", "ann:guess"), 401, "a valid key with a wrong password");
 }
 
-/// RFC 7636, Appendix B: the PKCE challenge is the own SHA-256 of the runtime.
+/// RFC 7636, Appendix B: the PKCE challenge is the own SHA-256 of honig.
 #[test]
 fn pkce_challenge_matches_the_rfc() {
     let p = api::Pkce::from_verifier("dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk");

@@ -725,9 +725,9 @@ fn not_modified_guard(op: &Operation) -> Option<TokenStream> {
         matches!(p.location, Location::Header)
             && (p.wire.eq_ignore_ascii_case("if-none-match") || p.wire.eq_ignore_ascii_case("if-modified-since"))
     });
-    let not_modified = runtime::http::StatusCode::NOT_MODIFIED.as_u16();
+    let not_modified = honig::http::StatusCode::NOT_MODIFIED.as_u16();
     let declared = op.responses.iter().any(|r| {
-        r.status == Status::Code(not_modified) || r.status == Status::Range(not_modified / runtime::__private::CLASS)
+        r.status == Status::Code(not_modified) || r.status == Status::Range(not_modified / honig::__private::CLASS)
     });
     (conditional && !declared).then(|| {
         quote!(if head.status == 304 {

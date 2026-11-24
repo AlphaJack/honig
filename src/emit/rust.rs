@@ -21,7 +21,7 @@ use crate::error::Error;
 use crate::ir::Api;
 use space::Space;
 
-/// Version of the runtime crate the generated code needs: always the generator's own.
+/// Version of honig the generated code needs: always the generator's own.
 pub(crate) const RUNTIME_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[derive(Debug, Clone, Default)]
@@ -51,7 +51,7 @@ pub(crate) fn warnings(api: &Api, opts: &super::Options) -> Vec<crate::diag::Dia
 pub(crate) const FILES: [(&str, &str); 7] = [
     (
         "mod.rs",
-        "The root of the module, or `<output>.rs` with `mod_rs = false`. It declares the other files and re-exports the client, the server and the runtime.",
+        "The root of the module, or `<output>.rs` with `mod_rs = false`. It declares the other files and re-exports the client, the server and honig.",
     ),
     ("types.rs", "The schemas of the description as Rust types: structs, enums and newtypes."),
     ("operations.rs", "One module per operation with its `Params`, its `Response` enum and their body types."),
@@ -60,7 +60,7 @@ pub(crate) const FILES: [(&str, &str); 7] = [
         "The `Client` with one method per operation, and the `WebhookClient` when the description has webhooks.",
     ),
     ("server.rs", "The `Api` trait with one method per operation, the router and the `Server` of this API."),
-    ("runtime.rs", "The runtime items that the generated code calls, re-exported from `honig`."),
+    ("runtime.rs", "honig items that the generated code calls, re-exported from `honig`."),
     (
         "documented_examples.rs",
         "With `tests = true`: a test that decodes each example of the description into its type.",
@@ -252,7 +252,7 @@ fn root(api: &Api, opts: &super::Options, tests: bool) -> TokenStream {
                 pub use server::{webhook, Webhooks, WebhookOperation, WebhookContext};
             )
         });
-        // The runtime's types typed by the generated `Operation`. They shadow the runtime's own names that the root
+        // honig's types typed by the generated `Operation`. They shadow honig's own names that the root
         // re-exports, so `api::Context` and `api::RequestEvent` are this API's.
         let typed = api.http.operations.iter().any(http::is_path).then(|| {
             quote!(
@@ -263,12 +263,12 @@ fn root(api: &Api, opts: &super::Options, tests: bool) -> TokenStream {
         quote! { #[rustfmt::skip] pub mod server; #[rustfmt::skip] pub use server::Api; #typed #extra }
     });
     let test_mod = tests.then(|| quote! { #[cfg(test)] #[rustfmt::skip] mod documented_examples; });
-    // The API of the runtime at the root of the module. Your code refers to `api::Context` as it refers to
+    // The API of honig at the root of the module. Your code refers to `api::Context` as it refers to
     // `api::types`. A binary may refer to none of it there (only through `runtime::`). rustc reports that as an unused
     // import. `runtime` is what generated code calls: hidden, so that each item has one path in the docs of your crate.
     let runtime_crate = syntax::ident("honig");
     let unused = opts.rust.binary.then(
-        || quote!(#![allow(unused_imports, reason = "a binary may refer to the runtime's items only through `runtime`, and the client or the server by its path")]),
+        || quote!(#![allow(unused_imports, reason = "a binary may refer to honig's items only through `runtime`, and the client or the server by its path")]),
     );
     // The `#![allow]`s of `syntax::file_allow`, each with its reason, apply to every file of the module. Otherwise the
     // code passes strict clippy and rustdoc lint sets.
@@ -299,7 +299,7 @@ fn one_line(s: &str) -> String {
     s.replace(['\n', '\r', '`'], " ")
 }
 
-/// Returns the generated `runtime.rs`: its docs and the runtime crate's items.
+/// Returns the generated `runtime.rs`: its docs and honig's items.
 fn runtime_reexport(binary: bool) -> Result<String, Error> {
     let runtime = syntax::ident("honig");
     let reexport = quote!(pub use #runtime::*; #[doc(hidden)] pub use #runtime::__private::*;);

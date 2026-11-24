@@ -21,7 +21,7 @@ remote-refs = ["dep:ureq", "dep:rustls"]
 overlays = ["dep:serde_json_path"]
 
 [workspace]
-members = ["runtime", "tests/e2e", "tests/bench-support", "examples/shop"]
+members = ["honig", "tests/e2e", "tests/bench-support", "examples/shop"]
 exclude = ["reference", "target"]
 
 [workspace.package]
@@ -46,7 +46,7 @@ indexmap = { version = "2", features = ["serde"] }
 # What generated code and the generator must agree on: status phrases, percent escapes.
 # Released together at one version: release-plz bumps the pin with it. `regress`: checking an example against its
 # schema checks its `pattern` too.
-runtime = { package = "honig", version = "=0.0.3", path = "runtime", features = ["regress"] }
+honig = { version = "=0.0.3", path = "honig", features = ["regress"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
 serde_path_to_error = "0.1"
@@ -87,7 +87,7 @@ bin-dir = "{ bin }{ binary-ext }"
 # `assert_matches!`: the macro of std is unstable at the oldest Rust supported.
 assert_matches = "1"
 anyhow = "1"
-# `benches/scaling.rs`: the callgrind check that the runtime's benches run too.
+# `benches/scaling.rs`: the callgrind check that honig's benches run too.
 bench-support = { path = "tests/bench-support" }
 # `src/tests/fuzz.rs`: random APIs. A failure shrinks to the smallest API that fails.
 proptest = { version = "1", default-features = false, features = ["std"] }

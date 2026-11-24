@@ -1,4 +1,4 @@
-//! Every path that the runtime follows through a body or a header. Each is a function from a size to the work it times:
+//! Every path that honig follows through a body or a header. Each is a function from a size to the work it times:
 //! JSON, XML, multipart, form and percent encoding, cookies, streams, queries and `uniqueItems`. `codecs` times them
 //! and `scaling` counts how their cost grows.
 

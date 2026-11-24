@@ -48,7 +48,7 @@ pub(crate) fn file<'a>(files: &'a [(String, String)], name: &str) -> &'a str {
     files.iter().find(|(n, _)| n.ends_with(name)).map_or_else(|| panic!("no {name}"), |(_, t)| t.as_str())
 }
 
-/// Returns `manifest` with the runtime at the version of the generator and the features that `generated` needs and
+/// Returns `manifest` with honig at the version of the generator and the features that `generated` needs and
 /// that pick the types of `libs`, as a user lists them.
 pub(crate) fn with_runtime(
     manifest: &str,
@@ -68,11 +68,11 @@ pub(crate) fn with_runtime(
     doc.to_string()
 }
 
-/// Points the crate whose manifest is at `manifest` at the runtime of this checkout next to the pinned version.
-/// Otherwise generated crates get the runtime from crates.io.
+/// Points the crate whose manifest is at `manifest` at honig of this checkout next to the pinned version.
+/// Otherwise generated crates get honig from crates.io.
 pub(crate) fn use_local_runtime(manifest: &Path) {
     let mut doc: toml_edit::DocumentMut = std::fs::read_to_string(manifest).unwrap().parse().unwrap();
-    let runtime = Path::new(env!("CARGO_MANIFEST_DIR")).join("runtime");
+    let runtime = Path::new(env!("CARGO_MANIFEST_DIR")).join("honig");
     doc["dependencies"]["honig"]["path"] = toml_edit::value(runtime.display().to_string());
     std::fs::write(manifest, doc.to_string()).unwrap();
 }
@@ -97,7 +97,7 @@ doctest = false
 [dependencies]
 serde = {{ version = "1", features = ["derive"] }}
 serde_json = "1"
-# Optional adapters: each feature also turns on the adapter of the runtime.
+# Optional adapters: each feature also turns on the adapter of honig.
 reqwest = {{ version = "0.13", optional = true, default-features = false, features = ["rustls"] }}
 axum = {{ version = "0.8", optional = true, default-features = false, features = ["http1", "tokio"] }}
 

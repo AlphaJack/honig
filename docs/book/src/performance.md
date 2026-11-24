@@ -28,4 +28,4 @@ The span and log line of the `tracing` adapter cost a fixed amount per request. 
 
 ## Benches
 
-`cargo bench -p honig --all-features` times the runtime from 256 B to 16 MiB. CI also counts instructions under Valgrind. It fails when a path costs more than n^1.3 (`--bench scaling`). To see what SIMD gives, compare `--bench simd --features multipart` with `--bench simd --features multipart,simd`.
+`cargo bench -p honig --all-features` times honig from 256 B to 16 MiB. CI also counts instructions under Valgrind. It fails when a path costs more than n^1.3 (`--bench scaling`). To see what SIMD gives, compare `--bench simd --features multipart` with `--bench simd --features multipart,simd`.

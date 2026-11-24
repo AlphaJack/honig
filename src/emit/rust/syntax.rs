@@ -126,7 +126,7 @@ pub(crate) fn format_ty(libs: &FormatLibs, f: Format) -> TokenStream {
     library_ty(libs, f).unwrap_or_else(|| text_ty(f))
 }
 
-/// The runtime's checked text types of the formats: `runtime::UuidStr` and the rest.
+/// honig's checked text types of the formats: `runtime::UuidStr` and the rest.
 pub(crate) const FORMAT_STRS: [&str; 23] = [
     "DateStr",
     "DateTimeLocalStr",
@@ -153,14 +153,14 @@ pub(crate) const FORMAT_STRS: [&str; 23] = [
     "UuidStr",
 ];
 
-/// Returns the runtime type of the text of a format that the crate has no library type for: `runtime::UuidStr` and so
+/// Returns honig type of the text of a format that the crate has no library type for: `runtime::UuidStr` and so
 /// on. Only text of the format is one.
 fn text_ty(f: Format) -> TokenStream {
     let name = match f {
         Format::Uuid => "UuidStr",
         Format::DateTime => "DateTimeStr",
         Format::Date => "DateStr",
-        // The runtime's `FullTime` stores a time with its offset with any date library (`library_ty`).
+        // honig's `FullTime` stores a time with its offset with any date library (`library_ty`).
         Format::Time => "FullTime",
         Format::DateTimeLocal => "DateTimeLocalStr",
         Format::TimeLocal => "TimeLocalStr",
@@ -197,7 +197,7 @@ pub(crate) fn untyped(libs: &FormatLibs, f: Format) -> bool {
     library_ty(libs, f).is_none()
 }
 
-/// Returns the type that a format gets from the standard library, the runtime or the library of the target crate.
+/// Returns the type that a format gets from the standard library, honig or the library of the target crate.
 /// `None` for its text.
 fn library_ty(libs: &FormatLibs, f: Format) -> Option<TokenStream> {
     if let Some(named) = libs.named.get(&f) {
@@ -205,7 +205,7 @@ fn library_ty(libs: &FormatLibs, f: Format) -> Option<TokenStream> {
     }
     match (f, libs.uuid, libs.jiff) {
         (Format::Char, ..) => Some(quote!(char)),
-        // The type features of the runtime re-export their crates.
+        // The type features of honig re-export their crates.
         (Format::Uri, ..) if libs.url => Some(quote!(runtime::url::Url)),
         (Format::Ipv4Cidr, ..) if libs.ipnet => Some(quote!(runtime::ipnet::Ipv4Net)),
         (Format::Ipv6Cidr, ..) if libs.ipnet => Some(quote!(runtime::ipnet::Ipv6Net)),
@@ -214,12 +214,12 @@ fn library_ty(libs: &FormatLibs, f: Format) -> Option<TokenStream> {
         (Format::Ipv4, ..) => Some(quote!(std::net::Ipv4Addr)),
         (Format::Ipv6, ..) => Some(quote!(std::net::Ipv6Addr)),
         (Format::Base64Url, ..) => Some(quote!(runtime::Base64Url)),
-        // Types that only a valid value can be. The `idn` feature of the runtime has them. The description turns it on.
+        // Types that only a valid value can be. The `idn` feature of honig has them. The description turns it on.
         (Format::Email, ..) => Some(quote!(runtime::EmailStr)),
         (Format::IdnEmail, ..) => Some(quote!(runtime::IdnEmailStr)),
         (Format::Hostname, ..) => Some(quote!(runtime::HostnameStr)),
         (Format::IdnHostname, ..) => Some(quote!(runtime::IdnHostnameStr)),
-        // `jiff` has no time with an offset. The runtime's stores plain numbers, with or without `jiff`.
+        // `jiff` has no time with an offset. honig's stores plain numbers, with or without `jiff`.
         (Format::Time, ..) => Some(quote!(runtime::FullTime)),
         (Format::TimeLocal, _, true) => Some(quote!(runtime::jiff::civil::Time)),
         (Format::Uuid, true, _) => Some(quote!(runtime::uuid::Uuid)),
@@ -250,7 +250,7 @@ fn library_ty(libs: &FormatLibs, f: Format) -> Option<TokenStream> {
 
 /// Returns the marker in `runtime::formats::format` of a format whose library type accepts more than the format allows.
 /// `jiff` accepts `2024-06-19 08:30Z` as a `date-time` and `uuid` accepts `{...}`. `None` for text, the standard
-/// library's addresses and the runtime's own types: those accept only valid values. A type that the table sets parses
+/// library's addresses and honig's own types: those accept only valid values. A type that the table sets parses
 /// text that honig checked first.
 fn validated_format(libs: &FormatLibs, f: Format) -> Option<Ident> {
     let checked = libs.named.contains_key(&f)
@@ -357,7 +357,7 @@ pub(crate) fn unparse(mut file: syn::File) -> String {
     out
 }
 
-/// Returns a call of a runtime macro whose body is items, `runtime::object! { .. }`, with the body printed as those
+/// Returns a call of a honig macro whose body is items, `runtime::object! { .. }`, with the body printed as those
 /// items. `None` for any other macro or a body that does not parse as items.
 fn items_macro_text(m: &syn::ItemMacro) -> Option<String> {
     let path = &m.mac.path;

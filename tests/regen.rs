@@ -94,7 +94,7 @@ fn snapshot(dir: &Path) -> Vec<(PathBuf, String)> {
 
 /// `examples/shop` contains what `cargo honig generate` writes for the two module tables of its `Cargo.toml`. Its
 /// `openapi.yaml` is the `catalog` fixture and its `supplier.yaml` the `xml` fixture. Then `check` of every module and
-/// of one module finds nothing stale, and generating one module keeps the runtime features the other needs.
+/// of one module finds nothing stale, and generating one module keeps honig features the other needs.
 #[test]
 fn example_is_fresh() {
     let dir = root().join("examples").join("shop");

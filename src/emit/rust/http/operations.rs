@@ -79,7 +79,7 @@ fn responses_mod(space: &Space<'_>, ops: &[Operation]) -> Option<TokenStream> {
             }
             shapes.push((key, shared.clone()));
             uses_types |= r.contents.iter().any(|c| mentions(&c.ty).0);
-            // A sequential or binary body is a runtime type.
+            // A sequential or binary body is a honig type.
             uses_runtime |= r.contents.iter().any(|c| mentions(&c.ty).1 || c.streams() || blob(c));
             items.push(content_enum(space, &shared, &r.contents, &bx.resp_enums[i]));
         }
@@ -151,7 +151,7 @@ pub(crate) fn tags_mod(api: &Api) -> Option<TokenStream> {
     })
 }
 
-/// Returns `use super::super::runtime;` for a module of an operation that refers to the runtime.
+/// Returns `use super::super::runtime;` for a module of an operation that refers to honig.
 fn runtime_import(uses: bool) -> Option<TokenStream> {
     uses.then(|| {
         quote!(
@@ -178,7 +178,7 @@ pub(crate) fn operation_mod(
     }
     response_enum(&mut items, space, op, &bx);
     items.extend(serves.then(|| super::server::security_enum(api, op)).flatten());
-    // `Params`, the bodies and the responses refer to the runtime when they need one of its types or helpers. The links
+    // `Params`, the bodies and the responses refer to honig when they need one of its types or helpers. The links
     // and callbacks below import it for themselves.
     let uses_runtime = quote!(#(#items)*).to_string().contains("runtime ::");
     items.extend(links_mod(api, space, op));
@@ -771,7 +771,7 @@ pub(crate) fn response_enum(items: &mut Vec<TokenStream>, space: &Space<'_>, op:
             lit(&format!("The statuses of `{}`.", pascal(&r.variant))),
         );
         let variants = crate::emit::rust::http::shared::variant_codes(op, r).into_iter().map(|c| {
-            let v = format_ident!("{}", pascal(&Name::new(runtime::__private::reason(c).unwrap_or_default())));
+            let v = format_ident!("{}", pascal(&Name::new(honig::__private::reason(c).unwrap_or_default())));
             let c = proc_macro2::Literal::u16_unsuffixed(c);
             quote!(#v = #c)
         });

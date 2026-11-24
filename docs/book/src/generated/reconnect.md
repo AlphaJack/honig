@@ -1,4 +1,4 @@
-<!-- Generated from runtime/src/client/reconnect.rs by src/tests/docs_pages.rs. Edit the source, not this file. -->
+<!-- Generated from honig/src/client/reconnect.rs by src/tests/docs_pages.rs. Edit the source, not this file. -->
 
 Reconnects the stream through `transport` when it ends or breaks off, as the `EventSource` of a browser
 does.

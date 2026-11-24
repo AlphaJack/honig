@@ -382,7 +382,7 @@ where
     S::Error: Into<ApiError>,
     S::Future: Send + 'static,
 {
-    /// Serves a request in the types of the runtime without a framework. A generated client also sends to the
+    /// Serves a request in the types of honig without a framework. A generated client also sends to the
     /// service itself: `Client::new(server.into_service())` runs both in memory.
     pub fn handle(&self, req: Request) -> BoxFuture<'static, Response> {
         let (head, body) = req.into_parts();

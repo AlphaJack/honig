@@ -1,4 +1,4 @@
-<!-- Generated from runtime/src/server/service.rs by src/tests/docs_pages.rs. Edit the source, not this file. -->
+<!-- Generated from honig/src/server/service.rs by src/tests/docs_pages.rs. Edit the source, not this file. -->
 
 A request goes through these steps. When a step refuses the request it answers in the error schema of the
 description:

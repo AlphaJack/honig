@@ -6,9 +6,9 @@ use honig::__private::check_format;
 use honig::{EmailStr, HostnameStr, IdnEmailStr, IdnHostnameStr, InstanceLocation};
 
 fn main() {
-    // Without its runtime feature a format is not checked. Its bench would then time nothing.
+    // Without its honig feature a format is not checked. Its bench would then time nothing.
     for (format, check) in CASES {
-        assert!(!check("-x-@"), "{format} is not checked: turn on its runtime feature");
+        assert!(!check("-x-@"), "{format} is not checked: turn on its honig feature");
     }
     divan::Divan::default().sample_count(50).max_time(std::time::Duration::from_millis(200)).config_with_args().main();
 }
@@ -23,7 +23,7 @@ fn text(format: &str, value: &str) -> bool {
 /// How a value of a format is checked.
 type Check = fn(&str) -> bool;
 
-/// A format and how a value of it is checked: the text checks of the runtime, those that `url` and `ipnet` add, and the
+/// A format and how a value of it is checked: the text checks of honig, those that `url` and `ipnet` add, and the
 /// types of mail addresses and host names (`idn`).
 const CASES: [(&str, Check); 8] = [
     ("uuid", |v| text("uuid", v)),

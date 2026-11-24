@@ -679,7 +679,7 @@ fn param_value(
 }
 
 /// Returns parameters: operation-level ones override path-level ones (name + in).
-/// Is the header parameter one that OAS says "SHALL be ignored"? The runtime manages `Content-Type`, `Accept` and
+/// Is the header parameter one that OAS says "SHALL be ignored"? honig manages `Content-Type`, `Accept` and
 /// `Authorization`. A required `Authorization` is an error: a server would never ask for it.
 fn ignored_header(b: &mut Builder<'_>, wire: &str, param: &Value, ptr: &str) -> bool {
     if !["content-type", "accept", "authorization"].contains(&wire.to_ascii_lowercase().as_str()) {
@@ -789,7 +789,7 @@ fn part_headers(b: &mut Builder<'_>, site: &Site<'_>, prefix: &Name, params: &[P
     for (prop, e) in encoding {
         let Some(Value::Object(hs)) = e.get("headers") else { continue };
         let eptr = join(&join(&mptr, "encoding"), prop);
-        // `Content-Type` is `encoding.contentType`'s; `Content-Disposition` is the runtime's.
+        // `Content-Type` is `encoding.contentType`'s; `Content-Disposition` is honig's.
         for (hname, h) in hs
             .iter()
             .filter(|(n, _)| !n.eq_ignore_ascii_case("content-type") && !n.eq_ignore_ascii_case("content-disposition"))
@@ -1104,12 +1104,12 @@ fn response_headers(b: &mut Builder<'_>, r: &Value, rptr: &str, prefix: &Name) -
 /// Returns the variant name of a status code: its RFC 9110 reason phrase (`NotFound`), or `Status{code}` for a code
 /// without one.
 fn status_name(c: u16) -> Name {
-    Name::new(&runtime::__private::reason(c).map_or_else(|| format!("Status{c}"), str::to_owned))
+    Name::new(&honig::__private::reason(c).map_or_else(|| format!("Status{c}"), str::to_owned))
 }
 
 /// Returns the variant name of a `nXX` range: its class (`ClientError`).
 fn range_name(n: u16) -> Name {
-    Name::new(&runtime::__private::class(n).map_or_else(|| format!("Status{n}XX"), str::to_owned))
+    Name::new(&honig::__private::class(n).map_or_else(|| format!("Status{n}XX"), str::to_owned))
 }
 
 /// Returns the media type of each part of a content of `kind`: by position for `multipart/mixed`, by property

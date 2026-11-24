@@ -1,5 +1,5 @@
 //! How the cost of decoding into generated types grows with the body: a body of `n` bytes must not cost more than
-//! `n^1.3`. The runtime's scaling bench uses hand-written types only. Here the types are the ones the generator
+//! `n^1.3`. honig's scaling bench uses hand-written types only. Here the types are the ones the generator
 //! writes, so a union that tries each branch on every level of a recursive value shows. Counted by callgrind: see
 //! `tests/bench-support/src/callgrind.rs`.
 

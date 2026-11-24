@@ -442,9 +442,9 @@ fn a_typed_error_is_sent_as_it_is() {
     assert_eq!(body, json!({"code": "TAKEN", "status": 409, "detail": "the name is taken"}));
 }
 
-/// `Problem` requires a `code` from a closed list and accepts no other property. The runtime cannot fill it for a
+/// `Problem` requires a `code` from a closed list and accepts no other property. honig cannot fill it for a
 /// request that it refuses itself. So it answers RFC 9457 and not a body that breaks the schema. Nor does it borrow
-/// `Refusal`, which `createShipment` declares and the runtime can fill.
+/// `Refusal`, which `createShipment` declares and honig can fill.
 #[test]
 fn an_unfillable_error_schema_falls_back_to_rfc_9457() {
     let r = create_user(&json!({"name": "Ann", "role": "user", "age": 200}));

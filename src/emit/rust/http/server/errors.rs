@@ -245,7 +245,7 @@ pub(crate) fn status_match(by_status: &[(Status, TokenStream)], otherwise: &Toke
                 add(if covering.is_some() { &mut codes } else { &mut ranges }, n, (c, c));
             }
             Status::Range(d) if !same(Some(fallback), n) => {
-                add(&mut ranges, n, (d * runtime::__private::CLASS, (d + 1) * runtime::__private::CLASS - 1));
+                add(&mut ranges, n, (d * honig::__private::CLASS, (d + 1) * honig::__private::CLASS - 1));
             }
             Status::Range(_) | Status::Default => {}
         }

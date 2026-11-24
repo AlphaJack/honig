@@ -1,4 +1,4 @@
-//! The codecs of the runtime from 256 B to 16 MiB with one bench per path of [`paths::PATHS`]. Throughput is per input
+//! The codecs of honig from 256 B to 16 MiB with one bench per path of [`paths::PATHS`]. Throughput is per input
 //! byte.
 
 #[path = "support/paths.rs"]

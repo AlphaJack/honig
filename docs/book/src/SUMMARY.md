@@ -23,4 +23,4 @@
 # Reference
 
 - [Generated module](generated-module.md)
-- [Runtime crate](runtime.md)
+- [The honig library](runtime.md)

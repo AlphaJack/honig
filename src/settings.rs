@@ -301,7 +301,7 @@ impl Manifest {
         out
     }
 
-    /// Returns the dependency on the runtime, by package so a renamed one counts too.
+    /// Returns the dependency on honig, by package so a renamed one counts too.
     pub(crate) fn runtime(&self) -> Option<&Dependency> {
         self.deps.iter().find(|d| d.package == RUNTIME)
     }
@@ -326,7 +326,7 @@ fn matches_star(path: &Path, prefix: &str, suffix: &str) -> bool {
     })
 }
 
-/// The package of the runtime.
+/// The package of honig.
 pub(crate) const RUNTIME: &str = "honig";
 
 /// The table that contains one table per module.
@@ -382,7 +382,7 @@ pub(crate) fn modules<'a>(manifest: &'a Manifest, path: &Path) -> Result<Vec<Mod
             let problem = if keys().any(|k| k == name) {
                 format!("`{name}` is a setting of one module. Move it to [{ROOT}.{DEFAULT_MODULE}] or another module")
             } else if FEATURES.iter().any(|(f, _)| *f == name) {
-                format!("`{name}` is a feature of the runtime. List it in the `features` of the `honig` dependency")
+                format!("`{name}` is a feature of honig. List it in the `features` of the `honig` dependency")
             } else {
                 format!("`{name}` is not a module table. Write [{ROOT}.{name}] with its `descriptions`")
             };
@@ -452,8 +452,7 @@ pub(crate) fn settings<'a>(module: impl Into<Module<'a>>, path: &Path) -> Result
     };
     if let Some((key, _)) = table.iter().find(|(k, _)| !keys().any(|known| known == *k)) {
         if FEATURES.iter().any(|(f, _)| *f == key) {
-            let problem =
-                format!("`{key}` is a feature of the runtime. List it in the `features` of the `honig` dependency");
+            let problem = format!("`{key}` is a feature of honig. List it in the `features` of the `honig` dependency");
             return Err(Error::Module { table: name, problem });
         }
         return Err(Error::UnknownSetting { table: name, key: key.to_owned(), known: keys().collect() });
@@ -593,7 +592,7 @@ pub(crate) enum Side {
     Both,
 }
 
-/// When the generated code needs a runtime feature. Every feature is yours to list. `generate` stops when one that the
+/// When the generated code needs a honig feature. Every feature is yours to list. `generate` stops when one that the
 /// code needs is missing.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Trigger {
@@ -610,7 +609,7 @@ pub(crate) enum Trigger {
     Chosen,
 }
 
-/// Every runtime feature and when the generated code needs it.
+/// Every honig feature and when the generated code needs it.
 ///
 /// The book's table of features shows this one.
 pub(crate) const FEATURES: [(&str, Trigger); 22] = [
@@ -638,9 +637,9 @@ pub(crate) const FEATURES: [(&str, Trigger); 22] = [
     ("simd", Trigger::Chosen),
 ];
 
-/// The generated client's half of the runtime.
+/// The generated client's half of honig.
 pub(crate) const CLIENT: &str = "client";
-/// The generated server's half of the runtime.
+/// The generated server's half of honig.
 pub(crate) const SERVER: &str = "server";
 /// `Cookie` parameters and API keys.
 pub(crate) const COOKIE: &str = "cookie";
@@ -690,7 +689,7 @@ impl NamedType {
     }
 }
 
-/// The types of string formats: the type features of the runtime and the `formats` table. A format with neither is its
+/// The types of string formats: the type features of honig and the `formats` table. A format with neither is its
 /// checked text.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub(crate) struct FormatLibs {
@@ -730,7 +729,7 @@ fn named_types(module: Module<'_>) -> Result<BTreeMap<Format, NamedType>, Error>
     for (key, value) in table.iter() {
         let Some(format) = Format::ALL.into_iter().find(|f| f.name() == key && f.marker().is_some()) else {
             let found = if FEATURES.iter().any(|(f, _)| *f == key) {
-                format!("`{key}`, a feature of the runtime: list it in the `features` of the `honig` dependency")
+                format!("`{key}`, a feature of honig: list it in the `features` of the `honig` dependency")
             } else {
                 "an unknown setting".to_owned()
             };
@@ -813,7 +812,7 @@ mod tests {
         // `time` accepts only valid values: no check to keep, so no type to set.
         assert!(error("formats = { time = \"crate::T\" }").contains("an unknown setting"));
         assert!(error("formats = { uuid = true }").contains("the path of a type"), "a type feature is no setting here");
-        assert!(error("formats = { jiff = true }").contains("a feature of the runtime: list it in the `features`"));
+        assert!(error("formats = { jiff = true }").contains("a feature of honig: list it in the `features`"));
     }
 
     #[test]
@@ -993,14 +992,14 @@ mod tests {
             )
             .unwrap_err()
             .to_string(),
-            "[package.metadata.honig] `simd` is a feature of the runtime. List it in the `features` of the `honig` \
+            "[package.metadata.honig] `simd` is a feature of honig. List it in the `features` of the `honig` \
              dependency"
         );
         assert_eq!(
             modules_of("[package.metadata.honig.api]\ndescriptions = [\"a.yaml\"]\naxum = true\n")
                 .unwrap_err()
                 .to_string(),
-            "[package.metadata.honig.api] `axum` is a feature of the runtime. List it in the `features` of the \
+            "[package.metadata.honig.api] `axum` is a feature of honig. List it in the `features` of the \
              `honig` dependency"
         );
         assert_eq!(

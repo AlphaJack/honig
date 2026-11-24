@@ -48,7 +48,7 @@ pub enum Error {
         /// What is wrong and how to fix it.
         problem: String,
     },
-    /// The runtime dependency is missing, requires another version or lacks a feature that generated code needs. It
+    /// the honig dependency is missing, requires another version or lacks a feature that generated code needs. It
     /// says the `cargo add` line that fixes it.
     Runtime(String),
     /// A setting has the wrong kind of value.

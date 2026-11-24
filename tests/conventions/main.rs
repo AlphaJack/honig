@@ -26,9 +26,9 @@ fn root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
 }
 
-/// The source folders of every package: `src`, `tests` and `benches` of the generator and of the runtime.
+/// The source folders of every package: `src`, `tests` and `benches` of the generator and of honig.
 fn source_dirs() -> Vec<PathBuf> {
-    let packages = [root(), root().join("runtime")];
+    let packages = [root(), root().join("honig")];
     packages.iter().flat_map(|p| [p.join("src"), p.join("tests"), p.join("benches")]).filter(|d| d.is_dir()).collect()
 }
 
