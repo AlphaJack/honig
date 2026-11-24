@@ -354,6 +354,20 @@ pub(crate) const PATHS: &[Path] = &[
         },
     },
     Path {
+        name: "multipart_stream",
+        prepare: |size| {
+            // One part that arrives a piece at a time: a decoder that searches it again for each piece is quadratic.
+            let body = ["--b\r\nContent-Type: text/plain\r\n\r\n", &"x".repeat(size), "\r\n--b--\r\n"].concat();
+            let decode = |b: &String| {
+                let pieces: Vec<_> = b.as_bytes().chunks(PIECE).map(|p| Ok(honig::Bytes::copy_from_slice(p))).collect();
+                let pieces = honig::ByteStream::chunks(futures_util::stream::iter(pieces), None);
+                let mut parts = runtime::ItemStream::<Value>::multipart(None, pieces, "multipart/mixed; boundary=b");
+                runtime::block_on(futures_util::StreamExt::next(&mut parts)).is_some()
+            };
+            (body.len(), on(body, decode))
+        },
+    },
+    Path {
         name: "sse_stream",
         prepare: |size| {
             let body = built(runtime::sse_encode(&items(size)));
