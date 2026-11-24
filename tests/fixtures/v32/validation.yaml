@@ -165,6 +165,18 @@ components:
         x: {type: string}
       if: {properties: {kind: {const: a}}}
       then: {required: [x]}
+    # Two conditionals with an `else` each: the `else` of one applies to the values of the other.
+    TwoElses:
+      type: object
+      required: [kind]
+      properties: {kind: {type: string}, x: {type: string}, y: {type: string}, z: {type: string}}
+      allOf:
+        - if: {properties: {kind: {const: a}}}
+          then: {required: [x]}
+          else: {required: [z]}
+        - if: {properties: {kind: {const: b}}}
+          then: {required: [y]}
+          else: {required: [z]}
     Tree:
       oneOf:
         - type: object

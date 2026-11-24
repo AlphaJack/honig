@@ -855,3 +855,12 @@ fn an_if_on_an_absent_property_applies_its_then() {
     assert!(serde_json::from_value::<types::Kinded>(json!({"kind": "a", "x": "1"})).is_ok());
     assert!(serde_json::from_value::<types::Kinded>(json!({"kind": "b"})).is_ok());
 }
+
+/// With two conditionals the `else` of each applies to the values of the other: `a` needs the `z` of the second.
+#[test]
+fn an_else_applies_beside_another_conditional() {
+    let decodes = |v| serde_json::from_value::<types::TwoElses>(v).is_ok();
+    assert!(!decodes(json!({"kind": "a", "x": "1"})));
+    assert!(!decodes(json!({"kind": "c"})));
+    assert!(decodes(json!({"kind": "a", "x": "1", "z": "1"})));
+}
