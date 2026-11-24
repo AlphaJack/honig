@@ -824,3 +824,11 @@ fn a_literal_of_a_bounded_integer_is_built_in_a_constant() {
     assert_eq!(AGE.get(), 30);
     assert_eq!(types::UserAge::new(-1), None);
 }
+
+/// A `pattern` beside a format is checked on the text: a uuid that does not start with `0` is refused.
+#[test]
+fn a_pattern_beside_a_format_is_checked() {
+    let id = |text: &str| serde_json::from_value::<types::LegacyId>(serde_json::json!(text));
+    assert!(id("01234567-89ab-cdef-0123-456789abcdef").is_ok());
+    assert!(id("11234567-89ab-cdef-0123-456789abcdef").is_err());
+}

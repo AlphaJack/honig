@@ -109,23 +109,29 @@ fn local_date_time_formats_use_the_date_library() {
     assert!(with(false, "local-none").contains("pub starts: runtime::DateTimeLocalStr"));
 }
 
-/// A `pattern` beside a format that has a type of its own cannot be checked: the type decides the value. That is an
-/// error, once, at the pattern. A pattern on a plain string is checked and needs no word.
+/// A `pattern` beside a format with a type of its own runs on the text that the value writes: the type keeps no text.
+/// The description generates with no word about it.
 #[test]
-fn a_pattern_beside_a_typed_format_is_an_error() {
+fn a_pattern_beside_a_typed_format_is_checked_on_its_text() {
     let doc = common::spec(
         "3.2.0",
         &json!({}),
         &json!({"schemas": {"Order": {"type": "object", "properties": {
-            "id": {"type": "string", "format": "uuid", "pattern": "^0"},
-            "code": {"type": "string", "pattern": "^[A-Z]+$"}
+            "id": {"type": "string", "format": "uuid", "pattern": "^0"}
         }}}}),
     );
-    let (_, w) = common::build("pattern-format", &doc, &[]);
-    let at: Vec<&String> = w.iter().filter(|m| m.contains("cannot check pattern")).collect();
-    assert_eq!(at.len(), 1, "{w:#?}");
-    assert!(at[0].starts_with("/components/schemas/Order/properties/id/pattern:"), "{at:?}");
-    assert!(at[0].contains("format: uuid"), "{at:?}");
+    let opts = crate::emit::Options {
+        rust: crate::emit::rust::Options {
+            libs: FormatLibs { uuid: true, ..FormatLibs::default() },
+            ..Default::default()
+        },
+        ..crate::emit::Options::default()
+    };
+    let path = common::write("pattern-format", &doc, &[]);
+    let made = crate::generate::generate(&path, &opts).expect("a valid description generates");
+    let types = common::file(&made.files, "types.rs").split_whitespace().collect::<String>();
+    assert!(types.contains("lettext=runtime::format_text(&value);runtime::check_pattern("), "{types}");
+    assert!(!made.diagnostics.iter().any(|d| d.pointer.ends_with("/pattern")), "{:#?}", made.diagnostics);
 }
 
 /// A type that the `formats` table sets replaces a library for its format. Its text is checked first, as a
