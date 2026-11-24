@@ -541,19 +541,19 @@ runtime::const_impls!(ServerSentEventStreamsBodyItemEventEvent, VALUE);
 pub type ServerSentEventStreamsBodyItemEventRetry = EventRetry;
 runtime::object! {
     #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-    pub struct ServerSentEventStreamsBodyItemAddInt64 {
+    pub struct ServerSentEventStreamsBodyItemVariant1 {
         #[optional]
-        pub event: ServerSentEventStreamsBodyItemAddInt64Event,
-        pub data: ServerSentEventStreamsBodyItemAddInt64Data,
+        pub event: ServerSentEventStreamsBodyItemVariant1Event,
+        pub data: ServerSentEventStreamsBodyItemVariant1Data,
         #[optional]
         pub id: String,
         #[optional]
-        pub retry: ServerSentEventStreamsBodyItemAddInt64Retry,
+        pub retry: ServerSentEventStreamsBodyItemVariant1Retry,
     }
 }
-impl ServerSentEventStreamsBodyItemAddInt64 {
+impl ServerSentEventStreamsBodyItemVariant1 {
     #[must_use]
-    pub const fn new(data: ServerSentEventStreamsBodyItemAddInt64Data) -> Self {
+    pub const fn new(data: ServerSentEventStreamsBodyItemVariant1Data) -> Self {
         Self {
             event: None,
             data,
@@ -563,28 +563,28 @@ impl ServerSentEventStreamsBodyItemAddInt64 {
     }
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
-pub struct ServerSentEventStreamsBodyItemAddInt64Event;
-impl ServerSentEventStreamsBodyItemAddInt64Event {
+pub struct ServerSentEventStreamsBodyItemVariant1Event;
+impl ServerSentEventStreamsBodyItemVariant1Event {
     pub const VALUE: &'static str = "addInt64";
 }
-runtime::const_impls!(ServerSentEventStreamsBodyItemAddInt64Event, VALUE);
-pub type ServerSentEventStreamsBodyItemAddInt64Data = String;
-pub type ServerSentEventStreamsBodyItemAddInt64Retry = EventRetry;
+runtime::const_impls!(ServerSentEventStreamsBodyItemVariant1Event, VALUE);
+pub type ServerSentEventStreamsBodyItemVariant1Data = String;
+pub type ServerSentEventStreamsBodyItemVariant1Retry = EventRetry;
 runtime::object! {
     #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-    pub struct ServerSentEventStreamsBodyItemAddJson {
+    pub struct ServerSentEventStreamsBodyItemVariant2 {
         #[optional]
-        pub event: ServerSentEventStreamsBodyItemAddJsonEvent,
-        pub data: ServerSentEventStreamsBodyItemAddJsonData,
+        pub event: ServerSentEventStreamsBodyItemVariant2Event,
+        pub data: ServerSentEventStreamsBodyItemVariant2Data,
         #[optional]
         pub id: String,
         #[optional]
-        pub retry: ServerSentEventStreamsBodyItemAddJsonRetry,
+        pub retry: ServerSentEventStreamsBodyItemVariant2Retry,
     }
 }
-impl ServerSentEventStreamsBodyItemAddJson {
+impl ServerSentEventStreamsBodyItemVariant2 {
     #[must_use]
-    pub const fn new(data: ServerSentEventStreamsBodyItemAddJsonData) -> Self {
+    pub const fn new(data: ServerSentEventStreamsBodyItemVariant2Data) -> Self {
         Self {
             event: None,
             data,
@@ -594,30 +594,30 @@ impl ServerSentEventStreamsBodyItemAddJson {
     }
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
-pub struct ServerSentEventStreamsBodyItemAddJsonEvent;
-impl ServerSentEventStreamsBodyItemAddJsonEvent {
+pub struct ServerSentEventStreamsBodyItemVariant2Event;
+impl ServerSentEventStreamsBodyItemVariant2Event {
     pub const VALUE: &'static str = "addJSON";
 }
-runtime::const_impls!(ServerSentEventStreamsBodyItemAddJsonEvent, VALUE);
-pub type ServerSentEventStreamsBodyItemAddJsonData = ServerSentEventStreamsBodyItemAddJsonData2;
+runtime::const_impls!(ServerSentEventStreamsBodyItemVariant2Event, VALUE);
+pub type ServerSentEventStreamsBodyItemVariant2Data = ServerSentEventStreamsBodyItemVariant2Data2;
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ServerSentEventStreamsBodyItemAddJsonData2(
-    pub ServerSentEventStreamsBodyItemAddJsonData2Content,
+pub struct ServerSentEventStreamsBodyItemVariant2Data2(
+    pub ServerSentEventStreamsBodyItemVariant2Data2Content,
 );
-runtime::json_text_impls!(ServerSentEventStreamsBodyItemAddJsonData2);
+runtime::json_text_impls!(ServerSentEventStreamsBodyItemVariant2Data2);
 runtime::object! {
     #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
-    pub struct ServerSentEventStreamsBodyItemAddJsonData2Content {
+    pub struct ServerSentEventStreamsBodyItemVariant2Data2Content {
         pub foo: i64,
     }
 }
-impl ServerSentEventStreamsBodyItemAddJsonData2Content {
+impl ServerSentEventStreamsBodyItemVariant2Data2Content {
     #[must_use]
     pub const fn new(foo: i64) -> Self {
         Self { foo }
     }
 }
-pub type ServerSentEventStreamsBodyItemAddJsonRetry = EventRetry;
+pub type ServerSentEventStreamsBodyItemVariant2Retry = EventRetry;
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
 pub struct Not(pub(super) String);
@@ -757,7 +757,7 @@ impl Not5Object {
         }
     }
 }
-pub use ServerSentEventStreamsBodyItemAddInt64Event as Not5ObjectEvent;
+pub use ServerSentEventStreamsBodyItemVariant1Event as Not5ObjectEvent;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Not6 {
     Object(Not6Object),
@@ -789,7 +789,7 @@ impl Not6Object {
         }
     }
 }
-pub use ServerSentEventStreamsBodyItemAddJsonEvent as Not6ObjectEvent;
+pub use ServerSentEventStreamsBodyItemVariant2Event as Not6ObjectEvent;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Not6ObjectData(pub Not6ObjectDataContent);
 runtime::json_text_impls!(Not6ObjectData);
@@ -814,55 +814,121 @@ impl Not6ObjectDataContent {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ServerSentEventStreamsBodyItemVariants {
     Event(ServerSentEventStreamsBodyItemEvent),
-    AddInt64(ServerSentEventStreamsBodyItemAddInt64),
-    AddJson(ServerSentEventStreamsBodyItemAddJson),
+    Variant1(ServerSentEventStreamsBodyItemVariant1),
+    Variant2(ServerSentEventStreamsBodyItemVariant2),
 }
 runtime::union_serialize!(
-    ServerSentEventStreamsBodyItemVariants {} "event" { AddInt64 => "addInt64", AddJson
-    => "addJSON", Event => "addString" }
+    ServerSentEventStreamsBodyItemVariants { Event, Variant1, Variant2 }
 );
-runtime::tagged_deserialize!(ServerSentEventStreamsBodyItemVariants);
-impl<'de> runtime::TaggedUnion<'de> for ServerSentEventStreamsBodyItemVariants {
-    const TAG: &'static str = "event";
-    fn knows(tag: &str) -> bool {
-        matches!(tag, "addString" | "addInt64" | "addJSON")
-    }
-    fn from_tag<D: serde::Deserializer<'de>>(tag: &str, d: D) -> Result<Self, D::Error> {
-        match tag {
-            "addString" => {
-                <ServerSentEventStreamsBodyItemEvent as serde::Deserialize>::deserialize(
-                        d,
-                    )
-                    .map(Self::Event)
+impl<'de> serde::Deserialize<'de> for ServerSentEventStreamsBodyItemVariants {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let v = <runtime::Content<'de> as serde::Deserialize>::deserialize(d)?;
+        let fit_0 = v.kind() == runtime::Kind::Object
+            && runtime::fits(
+                &v,
+                &[
+                    ("event", false, &[runtime::Kind::String, runtime::Kind::Null]),
+                    ("data", true, &[runtime::Kind::String]),
+                    ("id", false, &[runtime::Kind::String, runtime::Kind::Null]),
+                    (
+                        "retry",
+                        false,
+                        &[
+                            runtime::Kind::Integer,
+                            runtime::Kind::Number,
+                            runtime::Kind::Null,
+                        ],
+                    ),
+                ],
+            );
+        let fit_1 = v.kind() == runtime::Kind::Object
+            && runtime::fits(
+                &v,
+                &[
+                    ("event", false, &[runtime::Kind::String, runtime::Kind::Null]),
+                    ("data", true, &[runtime::Kind::String]),
+                    ("id", false, &[runtime::Kind::String, runtime::Kind::Null]),
+                    (
+                        "retry",
+                        false,
+                        &[
+                            runtime::Kind::Integer,
+                            runtime::Kind::Number,
+                            runtime::Kind::Null,
+                        ],
+                    ),
+                ],
+            );
+        let fit_2 = v.kind() == runtime::Kind::Object
+            && runtime::fits(
+                &v,
+                &[
+                    ("event", false, &[runtime::Kind::String, runtime::Kind::Null]),
+                    ("data", true, &[runtime::Kind::Object]),
+                    ("id", false, &[runtime::Kind::String, runtime::Kind::Null]),
+                    (
+                        "retry",
+                        false,
+                        &[
+                            runtime::Kind::Integer,
+                            runtime::Kind::Number,
+                            runtime::Kind::Null,
+                        ],
+                    ),
+                ],
+            );
+        let mut first: Option<String> = None;
+        let mut matches = 0usize;
+        let mut found: Option<Self> = None;
+        if fit_0 {
+            match v.decode_ref::<ServerSentEventStreamsBodyItemEvent>() {
+                Ok(x) => {
+                    matches += 1;
+                    found.get_or_insert(Self::Event(x));
+                }
+                Err(e) => {
+                    first.get_or_insert(e.to_string());
+                }
             }
-            "addInt64" => {
-                <ServerSentEventStreamsBodyItemAddInt64 as serde::Deserialize>::deserialize(
-                        d,
-                    )
-                    .map(Self::AddInt64)
-            }
-            "addJSON" => {
-                <ServerSentEventStreamsBodyItemAddJson as serde::Deserialize>::deserialize(
-                        d,
-                    )
-                    .map(Self::AddJson)
-            }
-            _ => Err(serde::de::Error::custom("unknown discriminator")),
         }
-    }
-    fn from_content(v: runtime::Content<'de>) -> Result<Self, serde_json::Error> {
-        let which = match v.tag("event").as_deref() {
-            Some("addString") => 0,
-            Some("addInt64") => 1,
-            Some("addJSON") => 2,
-            _ => 3,
-        };
-        match which {
-            0 => v.decode_into(Self::Event),
-            1 => v.decode_into(Self::AddInt64),
-            2 => v.decode_into(Self::AddJson),
-            _ => Err(serde::de::Error::custom("matches no variant")),
+        if fit_1 {
+            match v.decode_ref::<ServerSentEventStreamsBodyItemVariant1>() {
+                Ok(x) => {
+                    matches += 1;
+                    found.get_or_insert(Self::Variant1(x));
+                }
+                Err(e) => {
+                    first.get_or_insert(e.to_string());
+                }
+            }
         }
+        if fit_2 {
+            match v.decode_ref::<ServerSentEventStreamsBodyItemVariant2>() {
+                Ok(x) => {
+                    matches += 1;
+                    found.get_or_insert(Self::Variant2(x));
+                }
+                Err(e) => {
+                    first.get_or_insert(e.to_string());
+                }
+            }
+        }
+        match (matches, found) {
+            (1, Some(one)) => return Ok(one),
+            (n, Some(_)) => {
+                return Err(
+                    serde::de::Error::custom(
+                        format!("matches {n} of `oneOf`, not exactly one"),
+                    ),
+                );
+            }
+            (_, None) => {}
+        }
+        Err(
+            serde::de::Error::custom(
+                first.unwrap_or_else(|| "matches no variant".to_owned()),
+            ),
+        )
     }
 }
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
@@ -1050,26 +1116,26 @@ pub mod builders {
         {}
     }
     runtime::typestate_builder! {
-        ServerSentEventStreamsBodyItemAddInt64 =>
-        super::ServerSentEventStreamsBodyItemAddInt64; required { data : R0 :
-        types::ServerSentEventStreamsBodyItemAddInt64Data = "data" } optional {
-        event(event) : types::ServerSentEventStreamsBodyItemAddInt64Event = "event" =>
+        ServerSentEventStreamsBodyItemVariant1 =>
+        super::ServerSentEventStreamsBodyItemVariant1; required { data : R0 :
+        types::ServerSentEventStreamsBodyItemVariant1Data = "data" } optional {
+        event(event) : types::ServerSentEventStreamsBodyItemVariant1Event = "event" =>
         some, None, id(id) : String = "id" => some, None, retry(retry) :
-        types::ServerSentEventStreamsBodyItemAddInt64Retry = "retry" => some, None }
+        types::ServerSentEventStreamsBodyItemVariant1Retry = "retry" => some, None }
         fixed {}
     }
     runtime::typestate_builder! {
-        ServerSentEventStreamsBodyItemAddJson =>
-        super::ServerSentEventStreamsBodyItemAddJson; required { data : R0 :
-        types::ServerSentEventStreamsBodyItemAddJsonData = "data" } optional {
-        event(event) : types::ServerSentEventStreamsBodyItemAddJsonEvent = "event" =>
+        ServerSentEventStreamsBodyItemVariant2 =>
+        super::ServerSentEventStreamsBodyItemVariant2; required { data : R0 :
+        types::ServerSentEventStreamsBodyItemVariant2Data = "data" } optional {
+        event(event) : types::ServerSentEventStreamsBodyItemVariant2Event = "event" =>
         some, None, id(id) : String = "id" => some, None, retry(retry) :
-        types::ServerSentEventStreamsBodyItemAddJsonRetry = "retry" => some, None } fixed
-        {}
+        types::ServerSentEventStreamsBodyItemVariant2Retry = "retry" => some, None }
+        fixed {}
     }
     runtime::typestate_builder! {
-        ServerSentEventStreamsBodyItemAddJsonData2Content =>
-        super::ServerSentEventStreamsBodyItemAddJsonData2Content; required { foo : R0 :
+        ServerSentEventStreamsBodyItemVariant2Data2Content =>
+        super::ServerSentEventStreamsBodyItemVariant2Data2Content; required { foo : R0 :
         i64 = "foo" } optional {} fixed {}
     }
     runtime::typestate_builder! {

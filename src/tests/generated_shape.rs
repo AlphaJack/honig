@@ -2293,6 +2293,26 @@ fn shared_impls_are_runtime_macros_and_not_copies() {
     assert!(types.contains("runtime::checked_num_impls!(Count, i64)"), "{types}");
 }
 
+/// An inferred tag is a property that every branch requires: a branch that leaves it out also accepts a value without
+/// it, which no tag picks.
+#[test]
+fn an_inferred_tag_is_a_required_property() {
+    let tagged = |required_kind: bool| {
+        let kind: Vec<&str> = if required_kind { vec!["kind"] } else { vec![] };
+        let b_required: Vec<&str> = kind.iter().copied().chain(["n"]).collect();
+        let pick = json!({"anyOf": [
+            {"type": "object", "required": kind, "properties": {"kind": {"const": "a"}}},
+            {"type": "object", "required": b_required, "properties": {"kind": {"const": "b"}, "n": {"type": "integer"}}}
+        ]});
+        let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Pick": pick}}));
+        let types = common::file(&common::generate("inferred-tag", &doc, &crate::emit::Options::default()), "types.rs")
+            .to_owned();
+        types.contains("runtime::tagged_deserialize!(Pick")
+    };
+    assert!(tagged(true), "a required `kind` tags the union");
+    assert!(!tagged(false), "a `kind` that may be absent does not");
+}
+
 /// A checked type with the base and keywords of an earlier one lets that one check: its `TryFrom` delegates. The impls
 /// of a checked type, a JSON text value and a tagged union come from runtime macros.
 #[test]
