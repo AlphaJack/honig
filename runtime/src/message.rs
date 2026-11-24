@@ -93,8 +93,13 @@ impl<M: Parts> Message for M {
 /// Creates a request from a method, an encoded path and encoded `name=value` query pairs.
 ///
 /// # Errors
-/// The path and query do not make a request target.
+/// The path and query do not make a request target, or the path has a dot segment: a client removes it with the segment
+/// before (RFC 3986 section 5.2.4), so a path value `..` would send the request to another operation.
 pub fn new_request(method: &'static str, path: String, query: Vec<String>) -> Result<Request, ClientError> {
+    const DOTS: [&str; 6] = [".", "..", "%2e", ".%2e", "%2e.", "%2e%2e"];
+    if let Some(dot) = path.split('/').find(|s| DOTS.iter().any(|d| s.eq_ignore_ascii_case(d))) {
+        return Err(ClientError::Encode(format!("request path `{path}` has the dot segment `{dot}`")));
+    }
     let mut path = path;
     for (i, q) in query.into_iter().enumerate() {
         path.push(if i == 0 { '?' } else { '&' });
@@ -247,8 +252,24 @@ pub fn target(base_url: &str, uri: &http::Uri) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{body_response, check_body_media};
+    use super::{body_response, check_body_media, new_request};
     use crate::ClientError;
+
+    #[test]
+    fn a_path_value_that_is_a_dot_segment_sends_nothing() {
+        let send = |id: &str| {
+            let id = crate::params::encode_path("id", id, crate::params::Enc::SIMPLE).unwrap();
+            new_request("GET", ["/users/", &id, "/delete"].concat(), vec![])
+        };
+        for dot in ["..", "."] {
+            assert!(matches!(send(dot), Err(ClientError::Encode(_))), "{dot}");
+        }
+        for fine in ["..a", "a..", "...", "a.b"] {
+            assert_eq!(send(fine).unwrap().uri().path(), format!("/users/{fine}/delete"));
+        }
+        // A value under `allowReserved` arrives encoded.
+        assert!(new_request("GET", "/users/%2E%2e/delete".to_owned(), vec![]).is_err());
+    }
 
     #[test]
     fn a_body_of_an_undeclared_media_type_is_an_error() {
