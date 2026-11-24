@@ -68,29 +68,7 @@ pub fn credentials(request: &impl runtime::Secured) -> Vec<Credential<'_>> {
         })
         .collect()
 }
-/// A scope or role of `pat`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub enum PatScope {
-    IssuesRead,
-    IssuesWrite,
-}
-impl PatScope {
-    #[must_use]
-    pub const fn as_str(self) -> &'static str {
-        match self {
-            Self::IssuesRead => "issues:read",
-            Self::IssuesWrite => "issues:write",
-        }
-    }
-    #[must_use]
-    pub fn from_name(name: &str) -> Option<Self> {
-        match name {
-            "issues:read" => Some(Self::IssuesRead),
-            "issues:write" => Some(Self::IssuesWrite),
-            _ => None,
-        }
-    }
-}
+pub use super::operations::PatScope;
 const fn error_schema(
     _operation: Option<&str>,
     _status: u16,

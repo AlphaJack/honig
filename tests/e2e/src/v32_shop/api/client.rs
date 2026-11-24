@@ -24,7 +24,7 @@ impl<T> Client<T> {
     pub fn authorization_url_o_auth2(
         client_id: &str,
         redirect_uri: &str,
-        scopes: &[&str],
+        scopes: &[ops::OAuth2Scope],
         state: &str,
         pkce: &runtime::Pkce,
     ) -> String {
@@ -32,7 +32,7 @@ impl<T> Client<T> {
             "https://shop.example.com/oauth/authorize",
             client_id,
             redirect_uri,
-            scopes,
+            scopes.iter().copied().map(ops::OAuth2Scope::as_str),
             state,
             pkce,
         )
@@ -41,14 +41,14 @@ impl<T> Client<T> {
     pub fn implicit_url_o_auth2(
         client_id: &str,
         redirect_uri: &str,
-        scopes: &[&str],
+        scopes: &[ops::OAuth2Scope],
         state: &str,
     ) -> String {
         runtime::implicit_url(
             "https://shop.example.com/oauth/authorize",
             client_id,
             redirect_uri,
-            scopes,
+            scopes.iter().copied().map(ops::OAuth2Scope::as_str),
             state,
         )
     }
@@ -107,14 +107,14 @@ impl<T: runtime::Transport> Client<T> {
         mut self,
         client_id: &str,
         client_secret: &str,
-        scopes: &[&str],
+        scopes: &[ops::OAuth2Scope],
     ) -> Result<Self, runtime::ClientError> {
         let token = runtime::client_credentials(
                 &self.transport,
                 "https://shop.example.com/oauth/token",
                 client_id,
                 client_secret,
-                scopes,
+                scopes.iter().copied().map(ops::OAuth2Scope::as_str),
             )
             .await?;
         self.credentials.insert("oAuth2".to_owned(), token.access_token);
@@ -123,13 +123,13 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn device_start_o_auth2(
         &self,
         client_id: &str,
-        scopes: &[&str],
+        scopes: &[ops::OAuth2Scope],
     ) -> Result<runtime::DeviceCode, runtime::ClientError> {
         runtime::device_authorization(
                 &self.transport,
                 "https://shop.example.com/oauth/device",
                 client_id,
-                scopes,
+                scopes.iter().copied().map(ops::OAuth2Scope::as_str),
             )
             .await
     }
@@ -156,7 +156,7 @@ impl<T: runtime::Transport> Client<T> {
         password: &str,
         client_id: &str,
         client_secret: Option<&str>,
-        scopes: &[&str],
+        scopes: &[ops::OAuth2Scope],
     ) -> Result<runtime::Token, runtime::ClientError> {
         let token = runtime::password_grant(
                 &self.transport,
@@ -165,7 +165,7 @@ impl<T: runtime::Transport> Client<T> {
                 password,
                 client_id,
                 client_secret,
-                scopes,
+                scopes.iter().copied().map(ops::OAuth2Scope::as_str),
             )
             .await?;
         self.credentials.insert("oAuth2".to_owned(), token.access_token.clone());

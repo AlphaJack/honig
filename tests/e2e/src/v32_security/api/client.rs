@@ -54,14 +54,14 @@ impl<T: runtime::Transport> Client<T> {
         mut self,
         client_id: &str,
         client_secret: &str,
-        scopes: &[&str],
+        scopes: &[ops::OauthScope],
     ) -> Result<Self, runtime::ClientError> {
         let token = runtime::client_credentials(
                 &self.transport,
                 "https://auth.example.com/token",
                 client_id,
                 client_secret,
-                scopes,
+                scopes.iter().copied().map(ops::OauthScope::as_str),
             )
             .await?;
         self.credentials.insert("oauth".to_owned(), token.access_token);

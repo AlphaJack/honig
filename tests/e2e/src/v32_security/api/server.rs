@@ -177,51 +177,7 @@ pub fn credentials(request: &impl runtime::Secured) -> Vec<Credential<'_>> {
         })
         .collect()
 }
-/// A scope or role of `oauth`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub enum OauthScope {
-    /// Read
-    Read,
-    /// Write
-    Write,
-}
-impl OauthScope {
-    #[must_use]
-    pub const fn as_str(self) -> &'static str {
-        match self {
-            Self::Read => "read",
-            Self::Write => "write",
-        }
-    }
-    #[must_use]
-    pub fn from_name(name: &str) -> Option<Self> {
-        match name {
-            "read" => Some(Self::Read),
-            "write" => Some(Self::Write),
-            _ => None,
-        }
-    }
-}
-/// A scope or role of `oidc`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub enum OidcScope {
-    Profile,
-}
-impl OidcScope {
-    #[must_use]
-    pub const fn as_str(self) -> &'static str {
-        match self {
-            Self::Profile => "profile",
-        }
-    }
-    #[must_use]
-    pub fn from_name(name: &str) -> Option<Self> {
-        match name {
-            "profile" => Some(Self::Profile),
-            _ => None,
-        }
-    }
-}
+pub use super::operations::{OauthScope, OidcScope};
 const fn error_schema(
     _operation: Option<&str>,
     _status: u16,

@@ -40,7 +40,8 @@ pub(crate) fn operations(api: &Api, space: &Space<'_>, opts: &crate::emit::Optio
     let tags = conveniences.then(|| tags_mod(api)).flatten();
     let responses = responses_mod(space, &api.http.operations);
     let security = super::security::Securities::new(api).consts();
-    quote! { #header #security #(#mods)* #responses #tags }
+    let scopes = super::security::scope_enums(api);
+    quote! { #header #security #scopes #(#mods)* #responses #tags }
 }
 
 /// Returns `use super::super::types;` for a module of `operations.rs` that refers to a schema type.
