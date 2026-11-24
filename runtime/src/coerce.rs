@@ -50,7 +50,6 @@ macro_rules! numbers {
         $each!(deserialize_f64, visit_f64, f64, "double", |n: &f64| n.is_finite());
     };
 }
-#[cfg(feature = "xml")]
 pub(crate) use numbers;
 
 /// Returns `text` as a number of `T`. The `OpenAPI` numbers are the numbers of JSON. They follow its grammar (no `+5`,

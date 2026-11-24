@@ -400,12 +400,13 @@ impl Text<'_> {
     }
 }
 
+/// Text parsed as a number of `$ty` in the grammar of JSON, as [`crate::coerce::number`] parses it everywhere.
 macro_rules! text_num {
-    ($method:ident, $visit:ident, $ty:ty) => {
+    ($method:ident, $visit:ident, $ty:ty, $format:literal, $ok:expr) => {
         fn $method<V: Visitor<'de>>(self, v: V) -> Result<V::Value, CoerceError> {
-            match self.0.trim().parse::<$ty>() {
-                Ok(n) => v.$visit(n),
-                Err(_) => Err(CoerceError(format!("`{}` is not a valid {}", self.0, stringify!($ty)))),
+            match crate::coerce::number::<$ty>(&self.0, $ok) {
+                Some(n) => v.$visit(n),
+                None => Err(crate::coerce::not_a_number(&self.0, $format)),
             }
         }
     };
@@ -422,23 +423,10 @@ macro_rules! text_forward {
 impl<'de> Deserializer<'de> for Text<'_> {
     type Error = CoerceError;
 
-    text_num!(deserialize_i8, visit_i8, i8);
-    text_num!(deserialize_i16, visit_i16, i16);
-    text_num!(deserialize_i32, visit_i32, i32);
-    text_num!(deserialize_i64, visit_i64, i64);
-    text_num!(deserialize_u8, visit_u8, u8);
-    text_num!(deserialize_u16, visit_u16, u16);
-    text_num!(deserialize_u32, visit_u32, u32);
-    text_num!(deserialize_u64, visit_u64, u64);
-    text_num!(deserialize_f32, visit_f32, f32);
-    text_num!(deserialize_f64, visit_f64, f64);
+    crate::coerce::numbers!(text_num);
 
     fn deserialize_bool<V: Visitor<'de>>(self, v: V) -> Result<V::Value, CoerceError> {
-        match self.0.trim() {
-            "true" | "1" => v.visit_bool(true),
-            "false" | "0" => v.visit_bool(false),
-            _ => Err(CoerceError(format!("`{}` is not a boolean", self.0))),
-        }
+        crate::coerce::boolean(&self.0).map_or_else(|| Err(crate::coerce::not_a_boolean(&self.0)), |b| v.visit_bool(b))
     }
 
     fn deserialize_option<V: Visitor<'de>>(self, v: V) -> Result<V::Value, CoerceError> {
@@ -535,6 +523,19 @@ mod tests {
 
     /// A `deepObject` name nested past 128 levels is refused before it is decoded: on a 2 MB stack, as a server thread
     /// may have, 8000 levels would overflow it. 128 levels still decode.
+    /// A number in a parameter is a JSON number, as it is in a list or a body.
+    #[test]
+    fn a_scalar_parameter_is_a_json_number() {
+        let text = |t: &'static str| Some(std::borrow::Cow::Borrowed(t));
+        for bad in ["NaN", "inf", "-inf", "infinity", "1e999", "+5", " 5 ", "007"] {
+            assert!(super::from_text::<f64>(text(bad), "/q").is_err(), "{bad} as f64");
+            assert!(super::from_text::<i64>(text(bad), "/q").is_err(), "{bad} as i64");
+        }
+        assert_eq!(super::from_text::<i64>(text("5"), "/q").ok(), Some(5));
+        assert_eq!(super::from_text::<i64>(text("-5"), "/q").ok(), Some(-5));
+        assert_eq!(super::from_text::<f64>(text("5.0e0"), "/q").ok(), Some(5.0));
+    }
+
     #[test]
     fn a_deep_object_nested_too_deep_is_refused() {
         let query = |levels: usize| format!("a{}=1", "[b]".repeat(levels));
