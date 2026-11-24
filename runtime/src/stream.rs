@@ -1078,7 +1078,14 @@ impl<T: DeserializeOwned> Decoder<T> {
             self.scanned = self.pos;
             return self.take_part();
         }
-        let next = find(pending, format!("\r\n{delimiter}").as_bytes())?;
+        // Search the bytes that came since the last miss only, and the end of the ones before that a delimiter may
+        // start in.
+        let needle = format!("\r\n{delimiter}");
+        let from = self.scanned.max(self.pos) - self.pos;
+        let Some(next) = pending.get(from..).and_then(|p| find(p, needle.as_bytes())).map(|at| from + at) else {
+            self.scanned = (self.buf.len() + 1).saturating_sub(needle.len()).max(self.pos);
+            return None;
+        };
         let after = next + 2 + delimiter.len();
         let rest = pending.get(after..)?;
         // The delimiter line must be whole. `--` closes the body. Otherwise a line break opens the next part.
