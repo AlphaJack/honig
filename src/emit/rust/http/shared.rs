@@ -249,7 +249,7 @@ pub(crate) fn collapses(space: &Space<'_>, r: &Resp) -> bool {
     let structured =
         |c: &Content| matches!(c.kind, MediaKind::Json | MediaKind::Xml | MediaKind::Form | MediaKind::Text);
     let first = r.contents.first().map(|c| content_ty(space, c).to_string());
-    is_success(r)
+    r.is_success()
         && r.shared.is_none()
         && r.contents.len() > 1
         && r.contents.iter().all(|c| structured(c) && Some(content_ty(space, c).to_string()) == first)
@@ -341,7 +341,7 @@ pub(crate) fn part_types_init(op: &Operation) -> Option<TokenStream> {
 /// variant name). `Accept` chooses among them.
 pub(crate) fn produces(op: &Operation) -> Vec<(&str, &Name)> {
     let mut out: Vec<(&str, &Name)> = vec![];
-    for c in op.responses.iter().filter(|r| is_success(r)).flat_map(|r| &r.contents) {
+    for c in op.responses.iter().filter(|r| r.is_success()).flat_map(|r| &r.contents) {
         if !out.iter().any(|(m, _)| *m == c.media) {
             out.push((&c.media, &c.variant));
         }
@@ -406,11 +406,6 @@ pub(crate) fn media_init(op: &Operation) -> Option<TokenStream> {
     chooses_media(op).then(|| quote!(media: Media::ALL[0],))
 }
 
-/// Returns a `2XX` response.
-pub(crate) fn is_success(r: &Resp) -> bool {
-    matches!(r.status, Status::Code(c) if runtime::http::StatusCode::from_u16(c).is_ok_and(|s| s.is_success()))
-}
-
 /// Returns `#[deprecated]` on what a deprecated security scheme generates.
 pub(crate) fn deprecated_scheme(deprecated: bool) -> Option<TokenStream> {
     deprecated.then(|| quote!(#[deprecated = "the security scheme is deprecated"]))
@@ -425,4 +420,27 @@ pub(crate) fn some_ref(name: impl quote::ToTokens) -> TokenStream {
 pub(crate) fn listed(names: &[String], op: &Operation) -> bool {
     let name = snake(&op.name);
     names.iter().any(|n| op.operation_id.as_deref() == Some(n.as_str()) || *n == name || snake(&Name::new(n)) == name)
+}
+
+/// The first status code that is a success.
+const SUCCESS_FROM: u16 = 200;
+/// The first status code past the successes.
+const SUCCESS_TO: u16 = 300;
+/// The class of the first error status: `4XX`.
+const ERROR_CLASS: u16 = 4;
+
+impl Resp {
+    /// Is it a success: a code from 200 to 299 or the `2XX` range? `default` is not: it stands for every status not
+    /// listed.
+    pub(crate) fn is_success(&self) -> bool {
+        matches!(self.status, Status::Code(c) if (SUCCESS_FROM..SUCCESS_TO).contains(&c))
+            || self.status == Status::Range(2)
+    }
+
+    /// Is it an error: a code of 400 or more, the `4XX` or `5XX` range, or `default`? `1XX` and `3XX` are neither.
+    pub(crate) fn is_error(&self) -> bool {
+        matches!(self.status, Status::Code(c) if c >= runtime::http::StatusCode::BAD_REQUEST.as_u16())
+            || matches!(self.status, Status::Range(r) if r >= ERROR_CLASS)
+            || self.status == Status::Default
+    }
 }

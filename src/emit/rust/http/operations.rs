@@ -15,7 +15,7 @@ use crate::emit::rust::space::Space;
 use crate::emit::rust::syntax::{doc_opt, ident, json_tokens, lit, mentions, ty};
 use crate::emit::rust::syntax::{pascal_ident, snake_ident};
 use crate::ir::Api;
-use crate::ir::http::{Content, Link, LinkTarget, Location, OpKind, Operation, Param, Resp, Status};
+use crate::ir::http::{Content, Link, LinkTarget, Location, OpKind, Operation, Param, Resp};
 use crate::ir::names::Name;
 use crate::ir::types::{Kind, Ty};
 
@@ -794,16 +794,6 @@ pub(crate) fn response_enum(items: &mut Vec<TokenStream>, space: &Space<'_>, op:
     }
 }
 
-/// Is `r` a success: a `2xx` code or the `2XX` range? `default` is not: it stands for every status not listed.
-fn is_success(r: &Resp) -> bool {
-    matches!(r.status, Status::Code(c) if (SUCCESS_FROM..SUCCESS_TO).contains(&c)) || r.status == Status::Range(2)
-}
-
-/// The first status code that is a success.
-const SUCCESS_FROM: u16 = 200;
-/// The first status code past the successes.
-const SUCCESS_TO: u16 = 300;
-
 /// Returns the pattern that matches the variant of `r` whatever it contains.
 fn any_of(r: &Resp) -> TokenStream {
     let variant = pascal_ident(&r.variant);
@@ -846,7 +836,7 @@ type Numbered<'a> = (usize, &'a Resp);
 /// large.
 fn into_result(space: &Space<'_>, op: &Operation, bx: &Boxing) -> Option<TokenStream> {
     let (successes, failures): (Vec<Numbered<'_>>, Vec<Numbered<'_>>) =
-        op.responses.iter().enumerate().partition(|(_, r)| is_success(r));
+        op.responses.iter().enumerate().partition(|(_, r)| r.is_success());
     let failed = (!failures.is_empty()).then(|| {
         let patterns = either(&failures.iter().map(|(_, r)| any_of(r)).collect::<Vec<_>>());
         quote!(other @ #patterns => Err(Box::new(other)),)

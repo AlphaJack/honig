@@ -16,7 +16,7 @@ use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
 use super::security::Securities;
-use super::shared::{boxing, hook_name, is_path, is_success, op_path, op_static, operation_variant};
+use super::shared::{boxing, hook_name, is_path, op_path, op_static, operation_variant};
 use crate::emit::rust::names::snake;
 use crate::emit::rust::space::Space;
 use crate::emit::rust::syntax::{doc_opt, snake_ident};
@@ -260,7 +260,7 @@ fn serves_ranges(op: &Operation) -> bool {
     });
     let own_range = op.params.iter().any(|p| p.location == Location::Header && p.wire.eq_ignore_ascii_case("range"));
     let binary =
-        op.responses.iter().filter(|r| is_success(r)).flat_map(|r| &r.contents).any(|c| c.kind == MediaKind::Bytes);
+        op.responses.iter().filter(|r| r.is_success()).flat_map(|r| &r.contents).any(|c| c.kind == MediaKind::Bytes);
     op.method == "GET" && binary && !own_206 && !own_range
 }
 

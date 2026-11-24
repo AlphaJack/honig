@@ -392,6 +392,7 @@ fn inherits_encode(resp: &ops::inherits::Response) -> runtime::Response {
 }
 static GET_ITEM_OP: runtime::Op = runtime::Op {
     security: ops::SECURITY_0,
+    produces: &["application/json"],
     ..runtime::Op::new("get_item", "GET", "/items/{id}", "GET /items/{id}", error_schema)
 };
 async fn get_item<A: Api>(
