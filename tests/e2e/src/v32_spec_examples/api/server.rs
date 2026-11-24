@@ -505,6 +505,7 @@ fn parameter_examples_params(
             runtime::decode_header(
                 runtime::joined_header(req.headers(), "X-Token").as_deref(),
                 "/header/X-Token",
+                runtime::Style::Simple,
                 runtime::Shape::Array,
                 false,
             )?,
@@ -749,6 +750,7 @@ fn multipart_form_with_encoding_objects_params(
                     )
                     .as_deref(),
                 "/body/profileImage/X-Rate-Limit-Limit",
+                runtime::Style::Simple,
                 runtime::Shape::Primitive,
                 false,
             )?,

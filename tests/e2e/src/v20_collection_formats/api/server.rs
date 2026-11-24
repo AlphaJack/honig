@@ -21,6 +21,11 @@ pub trait Api: Send + Sync + Sized + 'static {
         params: ops::tag::Params,
         ctx: &Context<'_, ()>,
     ) -> impl Future<Output = ops::tag::Result> + Send;
+    fn rows(
+        &self,
+        params: ops::rows::Params,
+        ctx: &Context<'_, ()>,
+    ) -> impl Future<Output = ops::rows::Result> + Send;
     fn list_keys(
         &self,
         params: ops::list_keys::Params,
@@ -32,6 +37,7 @@ pub enum Operation {
     ListItems,
     Upload,
     Tag,
+    Rows,
     ListKeys,
 }
 impl runtime::Operation for Operation {
@@ -40,6 +46,7 @@ impl runtime::Operation for Operation {
             Self::ListItems => &LIST_ITEMS_OP,
             Self::Upload => &UPLOAD_OP,
             Self::Tag => &TAG_OP,
+            Self::Rows => &ROWS_OP,
             Self::ListKeys => &LIST_KEYS_OP,
         }
     }
@@ -58,10 +65,11 @@ static METHODS: &[&[(&str, Operation)]] = &[
     &[("POST", Operation::Tag)],
     &[("GET", Operation::ListKeys)],
     &[("GET", Operation::ListItems)],
+    &[("GET", Operation::Rows)],
 ];
 static ROUTES: &[runtime::Node] = &[
     runtime::node(
-        &[("keys", 3), ("tags", 2), ("items", 4), ("upload", 1)],
+        &[("keys", 3), ("rows", 6), ("tags", 2), ("items", 4), ("upload", 1)],
         &[],
         runtime::Node::NONE,
         runtime::Node::NONE,
@@ -71,8 +79,18 @@ static ROUTES: &[runtime::Node] = &[
     runtime::node(&[], &[], runtime::Node::NONE, 2),
     runtime::node(&[], &[], 5, runtime::Node::NONE),
     runtime::node(&[], &[], runtime::Node::NONE, 3),
+    runtime::node(&[], &[], 7, runtime::Node::NONE),
+    runtime::node(&[], &[], 8, runtime::Node::NONE),
+    runtime::node(&[], &[], 9, runtime::Node::NONE),
+    runtime::node(&[], &[], runtime::Node::NONE, 4),
 ];
-static PATHS: &[&str] = &["/items/{s1}", "/keys", "/tags", "/upload"];
+static PATHS: &[&str] = &[
+    "/items/{s1}",
+    "/keys",
+    "/rows/{s1}/{s2}/{s3}",
+    "/tags",
+    "/upload",
+];
 pub struct Routes<A>(std::sync::Arc<A>);
 /// The server of this API: `Server::new(your_api)`, or `Server::new(arc)` to keep a handle on it. Add layers,
 /// then `into_axum` or `into_service`.
@@ -165,6 +183,7 @@ async fn dispatch<A: Api>(
         Operation::ListItems => Box::pin(list_items(api, routed, call)).await,
         Operation::Upload => Box::pin(upload(api, routed, call)).await,
         Operation::Tag => Box::pin(tag(api, routed, call)).await,
+        Operation::Rows => Box::pin(rows(api, routed, call)).await,
         Operation::ListKeys => Box::pin(list_keys(api, routed, call)).await,
     }
 }
@@ -272,6 +291,7 @@ fn list_items_params(
             runtime::decode_header(
                 runtime::joined_header(req.headers(), "X-Tags").as_deref(),
                 "/header/X-Tags",
+                runtime::Style::Simple,
                 runtime::Shape::Array,
                 false,
             )?,
@@ -414,6 +434,110 @@ fn tag_params(
 }
 fn tag_encode(resp: &ops::tag::Response) -> runtime::Response {
     let ops::tag::Response::NoContent = resp;
+    runtime::new_response(204)
+}
+static ROWS_OP: runtime::Op = runtime::Op::new(
+    "rows",
+    "GET",
+    "/rows/{ssv}/{pipes}/{tsv}",
+    "GET /rows/{ssv}/{pipes}/{tsv}",
+    error_schema,
+);
+async fn rows<A: Api>(
+    api: &A,
+    routed: runtime::Routed<'_>,
+    call: runtime::Call<
+        '_,
+        Option<runtime::Passed<<Routes<A> as runtime::Operations>::Value>>,
+        Operation,
+    >,
+) -> runtime::Response {
+    let steps = runtime::Steps {
+        api,
+        decode: |i| rows_params(&i),
+        call: |a, p, c| Box::pin(a.rows(p, c)),
+        encode: |r, _| Ok(rows_encode(&r)),
+    };
+    runtime::serve(routed, call.map(|_| ()), &steps).await
+}
+fn rows_params(
+    incoming: &runtime::Incoming<'_>,
+) -> Result<ops::rows::Params, runtime::Reason> {
+    let runtime::Incoming { request: req, caps, .. } = *incoming;
+    Ok(ops::rows::Params {
+        ssv: runtime::from_param(
+            caps
+                .first()
+                .map(|c| runtime::decode_path(
+                    c,
+                    "/path/ssv",
+                    runtime::Style::SpaceDelimited,
+                    runtime::Shape::Array,
+                    false,
+                ))
+                .transpose()?,
+            "/path/ssv",
+        )?,
+        pipes: runtime::from_param(
+            caps
+                .get(1)
+                .map(|c| runtime::decode_path(
+                    c,
+                    "/path/pipes",
+                    runtime::Style::PipeDelimited,
+                    runtime::Shape::Array,
+                    false,
+                ))
+                .transpose()?,
+            "/path/pipes",
+        )?,
+        tsv: runtime::from_param(
+            caps
+                .get(2)
+                .map(|c| runtime::decode_path(
+                    c,
+                    "/path/tsv",
+                    runtime::Style::TabDelimited,
+                    runtime::Shape::Array,
+                    false,
+                ))
+                .transpose()?,
+            "/path/tsv",
+        )?,
+        x_ssv: runtime::from_param(
+            runtime::decode_header(
+                runtime::joined_header(req.headers(), "X-Ssv").as_deref(),
+                "/header/X-Ssv",
+                runtime::Style::SpaceDelimited,
+                runtime::Shape::Array,
+                false,
+            )?,
+            "/header/X-Ssv",
+        )?,
+        x_pipes: runtime::from_param(
+            runtime::decode_header(
+                runtime::joined_header(req.headers(), "X-Pipes").as_deref(),
+                "/header/X-Pipes",
+                runtime::Style::PipeDelimited,
+                runtime::Shape::Array,
+                false,
+            )?,
+            "/header/X-Pipes",
+        )?,
+        x_tsv: runtime::from_param(
+            runtime::decode_header(
+                runtime::joined_header(req.headers(), "X-Tsv").as_deref(),
+                "/header/X-Tsv",
+                runtime::Style::TabDelimited,
+                runtime::Shape::Array,
+                false,
+            )?,
+            "/header/X-Tsv",
+        )?,
+    })
+}
+fn rows_encode(resp: &ops::rows::Response) -> runtime::Response {
+    let ops::rows::Response::NoContent = resp;
     runtime::new_response(204)
 }
 static LIST_KEYS_OP: runtime::Op = runtime::Op {

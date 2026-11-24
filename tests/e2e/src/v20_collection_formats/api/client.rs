@@ -68,7 +68,7 @@ impl<T: runtime::Transport> Client<T> {
         runtime::encode_query(&mut query, "page", &p.page, runtime::Enc::FORM)?;
         let mut req = runtime::new_request("GET", path, query)?;
         runtime::Message::set_header(&mut req, "Accept", "application/json")?;
-        if let Some(h) = runtime::encode_header(&p.x_tags, false)? {
+        if let Some(h) = runtime::encode_header(&p.x_tags, runtime::Enc::SIMPLE)? {
             runtime::Message::set_header(&mut req, "X-Tags", h)?;
         }
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
@@ -158,6 +158,94 @@ impl<T: runtime::Transport> Client<T> {
         let status = head.status.as_u16();
         if status == 204 {
             Ok(ops::tag::Response::NoContent)
+        } else {
+            Err(runtime::ClientError::UnexpectedStatus {
+                status: head.status,
+                body,
+            })
+        }
+    }
+    pub async fn rows(
+        &self,
+        p: impl runtime::IntoArg<'_, ops::rows::Params>,
+    ) -> Result<ops::rows::Response, runtime::ClientError> {
+        let p = runtime::IntoArg::into_arg(p);
+        let mut path = String::from("/rows/");
+        path.push_str(
+            &runtime::encode_path(
+                "ssv",
+                &p.ssv,
+                runtime::Enc {
+                    style: runtime::Style::SpaceDelimited,
+                    explode: false,
+                    allow_reserved: false,
+                },
+            )?,
+        );
+        path.push('/');
+        path.push_str(
+            &runtime::encode_path(
+                "pipes",
+                &p.pipes,
+                runtime::Enc {
+                    style: runtime::Style::PipeDelimited,
+                    explode: false,
+                    allow_reserved: false,
+                },
+            )?,
+        );
+        path.push('/');
+        path.push_str(
+            &runtime::encode_path(
+                "tsv",
+                &p.tsv,
+                runtime::Enc {
+                    style: runtime::Style::TabDelimited,
+                    explode: false,
+                    allow_reserved: false,
+                },
+            )?,
+        );
+        let query = Vec::new();
+        let mut req = runtime::new_request("GET", path, query)?;
+        if let Some(h) = runtime::encode_header(
+            &p.x_ssv,
+            runtime::Enc {
+                style: runtime::Style::SpaceDelimited,
+                explode: false,
+                allow_reserved: false,
+            },
+        )? {
+            runtime::Message::set_header(&mut req, "X-Ssv", h)?;
+        }
+        if let Some(h) = runtime::encode_header(
+            &p.x_pipes,
+            runtime::Enc {
+                style: runtime::Style::PipeDelimited,
+                explode: false,
+                allow_reserved: false,
+            },
+        )? {
+            runtime::Message::set_header(&mut req, "X-Pipes", h)?;
+        }
+        if let Some(h) = runtime::encode_header(
+            &p.x_tsv,
+            runtime::Enc {
+                style: runtime::Style::TabDelimited,
+                explode: false,
+                allow_reserved: false,
+            },
+        )? {
+            runtime::Message::set_header(&mut req, "X-Tsv", h)?;
+        }
+        runtime::apply_auth(&mut req, &self.credentials, &[])?;
+        runtime::propagate_trace(&mut req);
+        let resp = runtime::send(&self.transport, req).await?;
+        let (head, body) = resp.into_parts();
+        let (body, _) = body.into_parts();
+        let status = head.status.as_u16();
+        if status == 204 {
+            Ok(ops::rows::Response::NoContent)
         } else {
             Err(runtime::ClientError::UnexpectedStatus {
                 status: head.status,

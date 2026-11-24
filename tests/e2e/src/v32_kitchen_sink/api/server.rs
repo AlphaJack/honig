@@ -845,7 +845,7 @@ fn put_blob_encode(
     let ops::put_blob::Response::Ok { body, x_size, x_quota } = resp;
     Ok({
         let mut r = runtime::new_response(200);
-        if let Some(h) = runtime::encode_header(&x_size, false)? {
+        if let Some(h) = runtime::encode_header(&x_size, runtime::Enc::SIMPLE)? {
             runtime::Message::set_header(&mut r, "X-Size", h)?;
         }
         if let Some(h) = runtime::encode_json_header(&runtime::to_value(&x_quota)?) {
@@ -986,10 +986,13 @@ fn list_products_encode(
         match resp {
             ops::list_products::Response::Ok { body, x_next, x_total } => {
                 let mut r = runtime::new_response(200);
-                if let Some(h) = runtime::encode_header(&x_next, false)? {
+                if let Some(h) = runtime::encode_header(&x_next, runtime::Enc::SIMPLE)? {
                     runtime::Message::set_header(&mut r, "X-Next", h)?;
                 }
-                if let Some(h) = runtime::encode_header(&x_total, false)? {
+                if let Some(h) = runtime::encode_header(
+                    &x_total,
+                    runtime::Enc::SIMPLE,
+                )? {
                     runtime::Message::set_header(&mut r, "X-Total", h)?;
                 }
                 match body {
@@ -1094,6 +1097,7 @@ fn create_product_params(
                     )
                     .as_deref(),
                 "/body/meta/X-Part",
+                runtime::Style::Simple,
                 runtime::Shape::Primitive,
                 false,
             )?,

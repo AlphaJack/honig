@@ -141,6 +141,46 @@ pub mod tag {
         }
     }
 }
+pub mod rows {
+    use super::super::runtime;
+    pub const METHOD: &str = "GET";
+    pub const PATH: &str = "/rows/{ssv}/{pipes}/{tsv}";
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub struct Params {
+        pub ssv: Vec<String>,
+        pub pipes: Vec<String>,
+        pub tsv: Vec<String>,
+        pub x_ssv: Option<Vec<String>>,
+        pub x_pipes: Option<Vec<String>>,
+        pub x_tsv: Option<Vec<String>>,
+    }
+    pub mod builders {
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required { ssv : R0 : Vec < String > = "ssv", pipes
+            : R1 : Vec < String > = "pipes", tsv : R2 : Vec < String > = "tsv" } optional
+            { x_ssv(x_ssv) : Vec < String > = "X-Ssv" => some, None, x_pipes(x_pipes) :
+            Vec < String > = "X-Pipes" => some, None, x_tsv(x_tsv) : Vec < String > =
+            "X-Tsv" => some, None } fixed {}
+        }
+    }
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub enum Response {
+        /// read
+        NoContent,
+    }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
+    runtime::response_error!(Response { Self::NoContent => "status 204 (NoContent)", });
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
+        pub fn into_result(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
+    }
+}
 pub mod list_keys {
     use super::super::types;
     use super::super::runtime;

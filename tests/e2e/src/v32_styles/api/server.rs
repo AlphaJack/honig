@@ -1644,6 +1644,7 @@ fn header_fa_params(
             runtime::decode_header(
                 runtime::joined_header(req.headers(), "color").as_deref(),
                 "/header/color",
+                runtime::Style::Simple,
                 runtime::Shape::Array,
                 false,
             )?,
@@ -1688,6 +1689,7 @@ fn header_fo_params(
             runtime::decode_header(
                 runtime::joined_header(req.headers(), "color").as_deref(),
                 "/header/color",
+                runtime::Style::Simple,
                 runtime::Shape::Object,
                 false,
             )?,
@@ -1732,6 +1734,7 @@ fn header_ta_params(
             runtime::decode_header(
                 runtime::joined_header(req.headers(), "color").as_deref(),
                 "/header/color",
+                runtime::Style::Simple,
                 runtime::Shape::Array,
                 true,
             )?,
@@ -1776,6 +1779,7 @@ fn header_to_params(
             runtime::decode_header(
                 runtime::joined_header(req.headers(), "color").as_deref(),
                 "/header/color",
+                runtime::Style::Simple,
                 runtime::Shape::Object,
                 true,
             )?,

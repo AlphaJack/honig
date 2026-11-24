@@ -128,6 +128,7 @@ impl<T: runtime::Transport> Client<T> {
                             runtime::decode_header(
                                     runtime::joined_header(&head.headers, "X-Count").as_deref(),
                                     "/header/X-Count",
+                                    runtime::Style::Simple,
                                     runtime::Shape::Primitive,
                                     false,
                                 )
@@ -149,6 +150,7 @@ impl<T: runtime::Transport> Client<T> {
                             runtime::decode_header(
                                     runtime::joined_header(&head.headers, "X-Tags").as_deref(),
                                     "/header/X-Tags",
+                                    runtime::Style::Simple,
                                     runtime::Shape::Object,
                                     true,
                                 )

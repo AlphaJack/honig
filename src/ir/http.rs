@@ -719,10 +719,11 @@ fn params(b: &mut Builder<'_>, site: &Site<'_>, prefix: &Name) -> Vec<Param> {
             _ => prefix.and(&Name::new(&wire)),
         };
         let (ty, content, constraints) = param_value(b, &p, &pptr, &hint);
-        let style = if p.get("x-collection-format").and_then(Value::as_str) == Some("tsv") {
-            Style::TabDelimited
-        } else {
-            style_of(p.get("style").and_then(Value::as_str), location)
+        let style = match p.get("x-collection-format").and_then(Value::as_str) {
+            Some("tsv") => Style::TabDelimited,
+            Some("ssv") => Style::SpaceDelimited,
+            Some("pipes") => Style::PipeDelimited,
+            _ => style_of(p.get("style").and_then(Value::as_str), location),
         };
         let explode = p.get("explode").and_then(Value::as_bool).unwrap_or(matches!(style, Style::Form | Style::Cookie));
         let required = location == Location::Path || json::flag(&p, "required");

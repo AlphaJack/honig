@@ -354,12 +354,14 @@ impl Cx<'_> {
             out.insert("style".into(), json!(style));
             out.insert("explode".into(), json!(explode));
         }
-        // No 3.x style is tab separated. Keep the format as an extension.
-        // The generator decodes it back. Other tools see form and csv.
+        // No 3.x style is tab separated, and 3.x allows the delimited styles in a query only. Keep the format as an
+        // extension: the generator decodes it back. Other tools see the 3.x default of the location.
+        let format = p.get("collectionFormat").and_then(Value::as_str);
+        let query_like = matches!(location, "query" | "formData");
         if p.get("type").and_then(Value::as_str) == Some("array")
-            && p.get("collectionFormat").and_then(Value::as_str) == Some("tsv")
+            && (format == Some("tsv") || (!query_like && matches!(format, Some("ssv" | "pipes"))))
         {
-            out.insert("x-collection-format".into(), json!("tsv"));
+            out.insert("x-collection-format".into(), json!(format));
         }
         out.insert("schema".into(), Self::param_schema(&Value::Object(p.clone())));
         copy_extensions(p, &mut out);
@@ -376,8 +378,8 @@ impl Cx<'_> {
         match format {
             "csv" if query_like => Some(("form", false)),
             "csv" => None, // simple style, explode false: the 3.0 default for path/header
-            "ssv" => Some(("spaceDelimited", false)),
-            "pipes" => Some(("pipeDelimited", false)),
+            "ssv" => query_like.then_some(("spaceDelimited", false)),
+            "pipes" => query_like.then_some(("pipeDelimited", false)),
             "multi" => Some(("form", true)),
             "tsv" => query_like.then_some(("form", false)),
             other => {

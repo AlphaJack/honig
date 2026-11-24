@@ -29,15 +29,17 @@ pub fn encode_path<T: Serialize + ?Sized>(name: &str, v: &T, enc: Enc) -> Result
     })
 }
 
-/// Encodes a header value (style `simple`). `None` for null (absent).
-/// Errors: the value does not serialize.
-pub fn encode_header<T: Serialize + ?Sized>(v: &T, explode: bool) -> Result<Option<String>, ClientError> {
+/// Encodes a header value. `None` for null (absent).
+///
+/// Its style is `simple`, or for an array the delimited style of a Swagger 2.0 `collectionFormat`.
+/// Errors: the value does not serialize, or an item contains the separator.
+pub fn encode_header<T: Serialize + ?Sized>(v: &T, enc: Enc) -> Result<Option<String>, ClientError> {
     match scalar_text(v) {
         Some(s) => Ok(Some(s)),
         None => {
             let value = to_value(v)?;
-            reject_separator(&value, &[','], "header")?;
-            Ok(encode_header_value(&value, explode, &object_order(&value, v)))
+            reject_separator(&value, &[enc.style.header_separator()], "header")?;
+            Ok(encode_header_value(&value, enc, &object_order(&value, v)))
         }
     }
 }
@@ -162,6 +164,10 @@ fn encode_path_value(name: &str, v: &Value, enc: Enc, order: &[String]) -> Strin
             }
         }
         (Style::Label, x) => format!(".{}", e(&scalar(x))),
+        // A Swagger 2.0 `collectionFormat` of a path array: its separator, encoded.
+        (Style::SpaceDelimited | Style::PipeDelimited | Style::TabDelimited, Value::Array(a)) => {
+            a.iter().map(|x| e(&scalar(x))).collect::<Vec<_>>().join(style.delimiter().unwrap_or(","))
+        }
         (Style::Matrix, Value::Array(a)) => {
             if explode {
                 let mut out = String::new();
@@ -216,11 +222,16 @@ fn simple(v: &Value, explode: bool, e: &dyn Fn(&str) -> String, order: &[String]
     }
 }
 
-fn encode_header_value(v: &Value, explode: bool, order: &[String]) -> Option<String> {
-    if v.is_null() {
-        return None;
+fn encode_header_value(v: &Value, enc: Enc, order: &[String]) -> Option<String> {
+    match v {
+        Value::Null => None,
+        Value::Array(a) if enc.style.delimiter().is_some() => {
+            Some(a.iter().map(scalar).collect::<Vec<_>>().join(&enc.style.header_separator().to_string()))
+        }
+        Value::Bool(_) | Value::Number(_) | Value::String(_) | Value::Array(_) | Value::Object(_) => {
+            Some(simple(v, enc.explode, &|s: &str| s.to_owned(), order))
+        }
     }
-    Some(simple(v, explode, &|s: &str| s.to_owned(), order))
 }
 
 pub(crate) fn encode_query_value(out: &mut Vec<String>, name: &str, v: &Value, enc: Enc, order: &[String]) {
@@ -325,14 +336,14 @@ mod tests {
         let mut out = vec![];
         assert!(encode_query(&mut out, "city", &["New York", "Paris"], enc(Style::SpaceDelimited)).is_err());
         assert!(encode_query(&mut out, "city", &["a|b", "c"], enc(Style::PipeDelimited)).is_err());
-        assert!(encode_header(&["a,b", "c"], false).is_err());
+        assert!(encode_header(&["a,b", "c"], Enc::SIMPLE).is_err());
         assert!(encode_cookie(&mut out, "role", "x; admin=true", enc(Style::Cookie)).is_err());
         assert!(encode_cookie(&mut out, "role", &["a b"], enc(Style::Cookie)).is_err());
         assert!(out.is_empty(), "{out:?}");
         encode_query(&mut out, "city", &["Paris", "Rome"], enc(Style::SpaceDelimited)).unwrap();
         encode_cookie(&mut out, "role", "admin", enc(Style::Cookie)).unwrap();
         encode_cookie(&mut out, "name", "a b", enc(Style::Form)).unwrap();
-        assert!(encode_header(&"a,b", false).is_ok(), "a scalar header may hold a comma");
+        assert!(encode_header(&"a,b", Enc::SIMPLE).is_ok(), "a scalar header may hold a comma");
         assert_eq!(out, ["city=Paris%20Rome", "role=admin", "name=a%20b"]);
     }
 

@@ -26,7 +26,7 @@ impl<T: runtime::Transport> Client<T> {
         runtime::encode_query(&mut query, "tag", &p.tag, runtime::Enc::FORM)?;
         let mut req = runtime::new_request("GET", path, query)?;
         runtime::Message::set_header(&mut req, "Accept", "application/json")?;
-        if let Some(h) = runtime::encode_header(&p.x_trace, false)? {
+        if let Some(h) = runtime::encode_header(&p.x_trace, runtime::Enc::SIMPLE)? {
             runtime::Message::set_header(&mut req, "X-Trace", h)?;
         }
         let mut cookies: Vec<String> = Vec::new();

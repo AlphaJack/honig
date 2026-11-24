@@ -207,6 +207,7 @@ fn upload_params(
                     )
                     .as_deref(),
                 "/body/image/X-Checksum",
+                runtime::Style::Simple,
                 runtime::Shape::Primitive,
                 false,
             )?,
@@ -222,6 +223,7 @@ fn upload_params(
                     )
                     .as_deref(),
                 "/body/meta/X-Revision",
+                runtime::Style::Simple,
                 runtime::Shape::Primitive,
                 false,
             )?,

@@ -51,7 +51,7 @@ pub(crate) fn wire_check(
     if p.content.is_some() {
         return None;
     }
-    let (wire, e, explode) = (lit(&p.wire), param_enc(p), p.explode);
+    let (wire, e) = (lit(&p.wire), param_enc(p));
     let encode = match p.location {
         Location::Path => quote!(runtime::encode_path(#wire, &v, #e).unwrap_or_else(|e| panic!("{e}"))),
         Location::Query => quote!({
@@ -61,7 +61,7 @@ pub(crate) fn wire_check(
         }),
         Location::QueryString => return None,
         Location::Header | Location::Part => {
-            quote!(runtime::encode_header(&v, #explode).unwrap_or_else(|e| panic!("{e}")).unwrap_or_default())
+            quote!(runtime::encode_header(&v, #e).unwrap_or_else(|e| panic!("{e}")).unwrap_or_default())
         }
         Location::Cookie => quote!({
             let mut c = Vec::new();

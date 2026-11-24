@@ -29,7 +29,7 @@ impl<T: runtime::Transport> Client<T> {
             "Accept",
             "application/json, application/problem+json",
         )?;
-        if let Some(h) = runtime::encode_header(&p.x_team, false)? {
+        if let Some(h) = runtime::encode_header(&p.x_team, runtime::Enc::SIMPLE)? {
             runtime::Message::set_header(&mut req, "X-Team", h)?;
         }
         runtime::Message::set_body(

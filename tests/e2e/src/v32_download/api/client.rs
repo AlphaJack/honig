@@ -193,6 +193,7 @@ impl<T: runtime::Transport> Client<T> {
                             runtime::decode_header(
                                     runtime::joined_header(&head.headers, "ETag").as_deref(),
                                     "/header/ETag",
+                                    runtime::Style::Simple,
                                     runtime::Shape::Primitive,
                                     false,
                                 )
@@ -215,6 +216,7 @@ impl<T: runtime::Transport> Client<T> {
                                     runtime::joined_header(&head.headers, "Last-Modified")
                                         .as_deref(),
                                     "/header/Last-Modified",
+                                    runtime::Style::Simple,
                                     runtime::Shape::Primitive,
                                     false,
                                 )
@@ -253,7 +255,7 @@ impl<T: runtime::Transport> Client<T> {
         path.push_str("/manifest");
         let query = Vec::new();
         let mut req = runtime::new_request("PUT", path, query)?;
-        if let Some(h) = runtime::encode_header(&p.if_match, false)? {
+        if let Some(h) = runtime::encode_header(&p.if_match, runtime::Enc::SIMPLE)? {
             runtime::Message::set_header(&mut req, "If-Match", h)?;
         }
         runtime::Message::set_body(

@@ -65,7 +65,7 @@ impl<T: runtime::Transport> Client<T> {
             runtime::Enc::FORM,
         )?;
         let mut req = runtime::new_request("GET", path, query)?;
-        if let Some(h) = runtime::encode_header(&p.x_token, false)? {
+        if let Some(h) = runtime::encode_header(&p.x_token, runtime::Enc::SIMPLE)? {
             runtime::Message::set_header(&mut req, "X-Token", h)?;
         }
         let mut cookies: Vec<String> = Vec::new();
@@ -190,7 +190,7 @@ impl<T: runtime::Transport> Client<T> {
         let mut parts: Vec<(&str, &str, String)> = Vec::new();
         if let Some(h) = runtime::encode_header(
             &p.profile_image_x_rate_limit_limit,
-            false,
+            runtime::Enc::SIMPLE,
         )? {
             parts.push(("profileImage", "X-Rate-Limit-Limit", h));
         }
