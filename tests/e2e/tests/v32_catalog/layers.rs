@@ -194,7 +194,10 @@ fn a_guard_checks_a_signature_over_the_body_that_the_operation_then_decodes() {
     assert!(matches!(created, Ok(create_product::Response::Created(_))), "{created:?}");
     let refused = api::block_on(client(|_| "0".to_owned()).create_product(create_product::Params::new(super::lamp())));
     assert!(
-        matches!(refused, Ok(create_product::Response::Default { status: api::http::StatusCode::UNAUTHORIZED, .. })),
+        matches!(
+            refused,
+            Ok(create_product::Response::Default { status: create_product::DefaultStatus::Unauthorized, .. })
+        ),
         "{refused:?}"
     );
 }

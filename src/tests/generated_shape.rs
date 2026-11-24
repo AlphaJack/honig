@@ -215,6 +215,25 @@ fn a_bounded_integer_has_a_const_constructor() {
     assert!(!has("Even"), "{types}");
 }
 
+/// A `default` response carries a status enum of the registered codes that no other response declares: a status that
+/// a client would decode as another variant has no value.
+#[test]
+fn a_default_status_leaves_out_the_declared_codes() {
+    let ok = json!({"description": "ok"});
+    let doc = common::spec(
+        "3.2.0",
+        &json!({"/a": {"get": {"operationId": "a", "responses": {"200": ok, "404": ok, "5XX": ok, "default": ok}}}}),
+        &json!({}),
+    );
+    let files = common::generate("default-status", &doc, &crate::emit::Options::default());
+    let (ops, server) = (common::file(&files, "operations.rs"), common::file(&files, "server.rs"));
+    assert!(!server.contains("| ops::a::Response::Default"), "two status types in one arm: {server}");
+    let (_, statuses) = ops.split_once("DefaultStatus {").expect("the enum");
+    let statuses = statuses.split_once('}').expect("its end").0;
+    assert!(statuses.contains("Conflict = 409") && !statuses.contains("BadGateway"), "{statuses}");
+    assert!(!statuses.contains("Ok =") && !statuses.contains("NotFound ="), "{statuses}");
+}
+
 /// Every `Params` has `new` accepting what is required; `Default` only when that is nothing.
 #[test]
 fn params_always_have_new_and_default_only_without_arguments() {

@@ -259,7 +259,6 @@ fn create_user_encode(
                 )
             }
             ops::create_user::Response::ClientError { status, body } => {
-                runtime::check_status(status.as_u16(), Some(4), &[201], &[4])?;
                 runtime::body_response(
                     status.as_u16(),
                     "application/problem+json",

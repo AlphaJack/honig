@@ -53,9 +53,16 @@ impl<T: runtime::Transport> Client<T> {
                 )
             }
             s if (400..500).contains(&s) => {
+                let Ok(typed) = ops::create_user::ClientErrorStatus::try_from(status)
+                else {
+                    return Err(runtime::ClientError::UnexpectedStatus {
+                        status: head.status,
+                        body,
+                    });
+                };
                 runtime::check_media_of(&head, &body, &["application/problem+json"])?;
                 Ok(ops::create_user::Response::ClientError {
-                    status: head.status,
+                    status: typed,
                     body: runtime::json_decode(Some(status), &body)?,
                 })
             }

@@ -110,6 +110,28 @@ pub(crate) fn status_code(r: &Resp) -> Option<u16> {
     if let Status::Code(c) = r.status { Some(c) } else { None }
 }
 
+/// Returns the name of the status enum of range or `default` response `r`.
+pub(crate) fn status_enum(r: &Resp) -> proc_macro2::Ident {
+    format_ident!("{}Status", crate::emit::rust::names::pascal(&r.variant))
+}
+
+/// Returns the registered codes that range or `default` response `r` stands for: those of its class, or every final
+/// status for `default`, that no other response of `op` declares.
+pub(crate) fn variant_codes(op: &Operation, r: &Resp) -> Vec<u16> {
+    let taken = |c: u16| {
+        op.responses.iter().any(|x| match x.status {
+            Status::Code(d) => d == c,
+            Status::Range(n) => r.status == Status::Default && c / 100 == n,
+            Status::Default => false,
+        })
+    };
+    let codes = match r.status {
+        Status::Range(n) => n * 100..n * 100 + 100,
+        Status::Code(_) | Status::Default => runtime::__private::FINAL,
+    };
+    codes.filter(|c| runtime::__private::reason(*c).is_some() && !taken(*c)).collect()
+}
+
 /// How a response variant carries its data.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) enum VariantShape {

@@ -351,7 +351,6 @@ fn list_orders_encode(
                 r
             }
             ops::list_orders::Response::ClientError { status, body } => {
-                runtime::check_status(status.as_u16(), Some(4), &[200], &[4])?;
                 runtime::body_response(
                     status.as_u16(),
                     "application/problem+json",
@@ -408,7 +407,6 @@ fn create_order_encode(
                 )
             }
             ops::create_order::Response::Default { status, body } => {
-                runtime::check_status(status.as_u16(), None, &[201, 422], &[])?;
                 runtime::body_response(
                     status.as_u16(),
                     "application/problem+json",
@@ -475,7 +473,6 @@ fn get_order_encode(
                 )
             }
             ops::get_order::Response::Default { status, body } => {
-                runtime::check_status(status.as_u16(), None, &[200, 404], &[])?;
                 runtime::body_response(
                     status.as_u16(),
                     "application/problem+json",

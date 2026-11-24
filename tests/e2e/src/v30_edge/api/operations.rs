@@ -52,10 +52,22 @@ pub mod list_orders {
         /// A page of orders.
         Ok { body: types::OrderPage, x_next_cursor: Option<String> },
         /// A problem.
-        ClientError { status: runtime::http::StatusCode, body: types::Problem },
+        ClientError { status: ClientErrorStatus, body: types::Problem },
     }
     /// What the handler of this operation returns: its `Response`, or an error that the server answers.
     pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
+    runtime::status_enum!(
+        #[doc = "The statuses of `ClientError`."] ClientErrorStatus { BadRequest = 400,
+        Unauthorized = 401, PaymentRequired = 402, Forbidden = 403, NotFound = 404,
+        MethodNotAllowed = 405, NotAcceptable = 406, ProxyAuthenticationRequired = 407,
+        RequestTimeout = 408, Conflict = 409, Gone = 410, LengthRequired = 411,
+        PreconditionFailed = 412, PayloadTooLarge = 413, UriTooLong = 414,
+        UnsupportedMediaType = 415, RangeNotSatisfiable = 416, ExpectationFailed = 417,
+        IMATeapot = 418, MisdirectedRequest = 421, UnprocessableEntity = 422, Locked =
+        423, FailedDependency = 424, TooEarly = 425, UpgradeRequired = 426,
+        PreconditionRequired = 428, TooManyRequests = 429, RequestHeaderFieldsTooLarge =
+        431, UnavailableForLegalReasons = 451 }
+    );
     runtime::response_error!(
         Response { Self::Ok { .. } => "status 200 (Ok)", Self::ClientError { status, .. }
         => format_args!("status {} (ClientError)", status.as_u16()), }
@@ -102,10 +114,29 @@ pub mod create_order {
         /// Invalid order.
         UnprocessableEntity(types::Problem),
         /// A problem.
-        Default { status: runtime::http::StatusCode, body: types::Problem },
+        Default { status: DefaultStatus, body: types::Problem },
     }
     /// What the handler of this operation returns: its `Response`, or an error that the server answers.
     pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
+    runtime::status_enum!(
+        #[doc = "The statuses of `Default`."] DefaultStatus { Ok = 200, Accepted = 202,
+        NonAuthoritativeInformation = 203, NoContent = 204, ResetContent = 205,
+        PartialContent = 206, MultiStatus = 207, AlreadyReported = 208, ImUsed = 226,
+        MultipleChoices = 300, MovedPermanently = 301, Found = 302, SeeOther = 303,
+        NotModified = 304, UseProxy = 305, TemporaryRedirect = 307, PermanentRedirect =
+        308, BadRequest = 400, Unauthorized = 401, PaymentRequired = 402, Forbidden =
+        403, NotFound = 404, MethodNotAllowed = 405, NotAcceptable = 406,
+        ProxyAuthenticationRequired = 407, RequestTimeout = 408, Conflict = 409, Gone =
+        410, LengthRequired = 411, PreconditionFailed = 412, PayloadTooLarge = 413,
+        UriTooLong = 414, UnsupportedMediaType = 415, RangeNotSatisfiable = 416,
+        ExpectationFailed = 417, IMATeapot = 418, MisdirectedRequest = 421, Locked = 423,
+        FailedDependency = 424, TooEarly = 425, UpgradeRequired = 426,
+        PreconditionRequired = 428, TooManyRequests = 429, RequestHeaderFieldsTooLarge =
+        431, UnavailableForLegalReasons = 451, InternalServerError = 500, NotImplemented
+        = 501, BadGateway = 502, ServiceUnavailable = 503, GatewayTimeout = 504,
+        HttpVersionNotSupported = 505, VariantAlsoNegotiates = 506, InsufficientStorage =
+        507, LoopDetected = 508, NotExtended = 510, NetworkAuthenticationRequired = 511 }
+    );
     runtime::response_error!(
         Response { Self::Created(..) => "status 201 (Created)",
         Self::UnprocessableEntity(..) => "status 422 (UnprocessableEntity)",
@@ -153,10 +184,29 @@ pub mod get_order {
         /// A problem.
         NotFound(types::Problem),
         /// A problem.
-        Default { status: runtime::http::StatusCode, body: types::Problem },
+        Default { status: DefaultStatus, body: types::Problem },
     }
     /// What the handler of this operation returns: its `Response`, or an error that the server answers.
     pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
+    runtime::status_enum!(
+        #[doc = "The statuses of `Default`."] DefaultStatus { Created = 201, Accepted =
+        202, NonAuthoritativeInformation = 203, NoContent = 204, ResetContent = 205,
+        PartialContent = 206, MultiStatus = 207, AlreadyReported = 208, ImUsed = 226,
+        MultipleChoices = 300, MovedPermanently = 301, Found = 302, SeeOther = 303,
+        NotModified = 304, UseProxy = 305, TemporaryRedirect = 307, PermanentRedirect =
+        308, BadRequest = 400, Unauthorized = 401, PaymentRequired = 402, Forbidden =
+        403, MethodNotAllowed = 405, NotAcceptable = 406, ProxyAuthenticationRequired =
+        407, RequestTimeout = 408, Conflict = 409, Gone = 410, LengthRequired = 411,
+        PreconditionFailed = 412, PayloadTooLarge = 413, UriTooLong = 414,
+        UnsupportedMediaType = 415, RangeNotSatisfiable = 416, ExpectationFailed = 417,
+        IMATeapot = 418, MisdirectedRequest = 421, UnprocessableEntity = 422, Locked =
+        423, FailedDependency = 424, TooEarly = 425, UpgradeRequired = 426,
+        PreconditionRequired = 428, TooManyRequests = 429, RequestHeaderFieldsTooLarge =
+        431, UnavailableForLegalReasons = 451, InternalServerError = 500, NotImplemented
+        = 501, BadGateway = 502, ServiceUnavailable = 503, GatewayTimeout = 504,
+        HttpVersionNotSupported = 505, VariantAlsoNegotiates = 506, InsufficientStorage =
+        507, LoopDetected = 508, NotExtended = 510, NetworkAuthenticationRequired = 511 }
+    );
     runtime::response_error!(
         Response { Self::Ok { .. } => "status 200 (Ok)", Self::NotFound(..) =>
         "status 404 (NotFound)", Self::Default { status, .. } =>

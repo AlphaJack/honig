@@ -729,7 +729,10 @@ pub(crate) fn response_enum(items: &mut Vec<TokenStream>, space: &Space<'_>, op:
                 quote!(#doc #v(#t),)
             }
             VariantShape::Struct => {
-                let status = status_code(r).is_none().then(|| quote!(status: runtime::http::StatusCode,));
+                let status = status_code(r).is_none().then(|| {
+                    let e = crate::emit::rust::http::shared::status_enum(r);
+                    quote!(status: #e,)
+                });
                 let body_field = (!r.contents.is_empty()).then(|| {
                     let t = body();
                     quote!(body: #t,)
@@ -754,6 +757,18 @@ pub(crate) fn response_enum(items: &mut Vec<TokenStream>, space: &Space<'_>, op:
         /// What the handler of this operation returns: its `Response`, or an error that the server answers.
         pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
     });
+    for r in op.responses.iter().filter(|r| status_code(r).is_none()) {
+        let (name, doc) = (
+            crate::emit::rust::http::shared::status_enum(r),
+            lit(&format!("The statuses of `{}`.", pascal(&r.variant))),
+        );
+        let variants = crate::emit::rust::http::shared::variant_codes(op, r).into_iter().map(|c| {
+            let v = format_ident!("{}", pascal(&Name::new(runtime::__private::reason(c).unwrap_or_default())));
+            let c = proc_macro2::Literal::u16_unsuffixed(c);
+            quote!(#v = #c)
+        });
+        items.push(quote!(runtime::status_enum!(#[doc = #doc] #name { #(#variants),* });));
+    }
     items.push(response_error(op));
     items.extend(into_result(space, op, bx));
     for (i, r) in op.responses.iter().enumerate() {

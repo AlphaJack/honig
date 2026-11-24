@@ -25,10 +25,18 @@ impl<T: runtime::Transport> Client<T> {
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
         runtime::propagate_trace(&mut req);
         let resp = runtime::send(&self.transport, req).await?;
-        let (head, _) = resp.into_parts();
+        let (head, body) = resp.into_parts();
+        let (body, _) = body.into_parts();
+        let status = head.status.as_u16();
         {
+            let Ok(typed) = ops::ping::DefaultStatus::try_from(status) else {
+                return Err(runtime::ClientError::UnexpectedStatus {
+                    status: head.status,
+                    body,
+                });
+            };
             Ok(ops::ping::Response::Default {
-                status: head.status,
+                status: typed,
             })
         }
     }

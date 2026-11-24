@@ -510,14 +510,26 @@ impl<T: runtime::Transport> Client<T> {
                 })
             }
             s if (200..300).contains(&s) => {
+                let Ok(typed) = ops::list_products::SuccessStatus::try_from(status) else {
+                    return Err(runtime::ClientError::UnexpectedStatus {
+                        status: head.status,
+                        body,
+                    });
+                };
                 Ok(ops::list_products::Response::Success {
-                    status: head.status,
+                    status: typed,
                 })
             }
             _ => {
+                let Ok(typed) = ops::list_products::DefaultStatus::try_from(status) else {
+                    return Err(runtime::ClientError::UnexpectedStatus {
+                        status: head.status,
+                        body,
+                    });
+                };
                 runtime::check_media_of(&head, &body, &["application/problem+json"])?;
                 Ok(ops::list_products::Response::Default {
-                    status: head.status,
+                    status: typed,
                     body: runtime::json_decode(Some(status), &body)?,
                 })
             }
@@ -633,19 +645,33 @@ impl<T: runtime::Transport> Client<T> {
             let status = head.status.as_u16();
             if (200..300).contains(&status) {
                 {
+                    let Ok(typed) = ops::list_products::SuccessStatus::try_from(status)
+                    else {
+                        return Err(runtime::ClientError::UnexpectedStatus {
+                            status: head.status,
+                            body,
+                        });
+                    };
                     Ok(ops::list_products::Response::Success {
-                        status: head.status,
+                        status: typed,
                     })
                 }
             } else {
                 {
+                    let Ok(typed) = ops::list_products::DefaultStatus::try_from(status)
+                    else {
+                        return Err(runtime::ClientError::UnexpectedStatus {
+                            status: head.status,
+                            body,
+                        });
+                    };
                     runtime::check_media_of(
                         &head,
                         &body,
                         &["application/problem+json"],
                     )?;
                     Ok(ops::list_products::Response::Default {
-                        status: head.status,
+                        status: typed,
                         body: runtime::json_decode(Some(status), &body)?,
                     })
                 }

@@ -839,11 +839,9 @@ fn list_products_encode(
                 r
             }
             ops::list_products::Response::Success { status } => {
-                runtime::check_status(status.as_u16(), Some(2), &[200], &[2])?;
                 runtime::new_response(status.as_u16())
             }
             ops::list_products::Response::Default { status, body } => {
-                runtime::check_status(status.as_u16(), None, &[200], &[2])?;
                 runtime::body_response(
                     status.as_u16(),
                     "application/problem+json",
