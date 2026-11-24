@@ -357,6 +357,24 @@ fn anchors_belong_to_their_resource() {
     assert!(err.iter().any(|d| d.message.contains("`y`")), "{:#?}", err.0);
 }
 
+/// A limit that no generated check would run fails generation: beside `x-rust-type` your type decides the value, and a
+/// `format: byte` field decodes to its bytes, so the length of its text is gone.
+#[test]
+fn a_limit_that_no_check_would_run_fails_generation() {
+    let schema = |s: Value| doc(&json!({}), &json!({"schemas": {"S": s}}));
+    for (d, at) in [
+        (
+            schema(json!({"type": "string", "maxLength": 3, "x-rust-type": "crate::Code"})),
+            "/components/schemas/S/maxLength",
+        ),
+        (schema(json!({"type": "string", "format": "byte", "maxLength": 8})), "/components/schemas/S/maxLength"),
+    ] {
+        let path = common::write("unchecked-limit", &d, &[]);
+        let err = crate::generate::generate(&path, &Options::default()).expect_err(at);
+        assert!(err.iter().any(|d| d.pointer == at), "{at}: {:#?}", err.0);
+    }
+}
+
 /// Media types that give one variant name are numbered in the sorted order of the types: a reorder of `content`
 /// changes no name.
 #[test]
@@ -566,7 +584,7 @@ fn a_limit_on_a_binary_body_is_a_warning_and_on_a_text_body_a_check() {
             "responses": {"204": {"description": "ok"}}}}})
     };
     let text = body("text/plain", json!({"type": "string", "maxLength": 140}));
-    let upload = body("application/octet-stream", json!({"type": "string", "format": "byte", "maxLength": 1000}));
+    let upload = body("application/octet-stream", json!({"type": "string", "format": "binary", "maxLength": 1000}));
     for (name, paths, warns) in [("text", text, false), ("upload", upload, true)] {
         let path = common::write(&format!("unchecked-{name}"), &doc(&paths, &json!({})), &[]);
         let made = crate::generate::generate(&path, &Options::default()).expect("generates");
