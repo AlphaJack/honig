@@ -72,7 +72,7 @@ const FETCH_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(60);
 
 /// Returns [`bundle`] with explicit options.
 pub(crate) fn bundle_with(mut root: Value, base: Base<'_>, diags: &mut Diagnostics) -> Value {
-    crate::schema_ids::rebase(&mut root);
+    crate::schema_ids::rebase(&mut root, diags);
     let mut cache: BTreeMap<PathBuf, Value> = BTreeMap::new();
     security_scheme_uris(&mut root, base, &mut cache, diags);
     let mut names: BTreeMap<String, String> = BTreeMap::new(); // canonical "file#frag" to component name

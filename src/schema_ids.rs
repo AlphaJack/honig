@@ -89,10 +89,13 @@ impl Visit for Collect {
     }
 }
 
-/// Rewrites the schema `$ref`s of `root` that `$id`s give another base. See the module.
-pub(crate) fn rebase(root: &mut Value) {
+/// Rewrites the schema `$ref`s of `root` that `$id`s give another base, and records an error for each anchor that two
+/// schemas of one resource declare. See the module.
+pub(crate) fn rebase(root: &mut Value, diags: &mut crate::diag::Diagnostics) {
     let doc_base = root.get("$self").and_then(Value::as_str).map(String::from);
-    rebase_from(root, doc_base.as_deref());
+    for (ptr, message) in rebase_from(root, doc_base.as_deref()) {
+        diags.error(ptr, message);
+    }
 }
 
 /// Runs [`rebase`] for a document retrieved from `uri` (a fetched or loaded schema file): its root is a resource at
@@ -101,7 +104,42 @@ pub(crate) fn rebase_fetched(root: &mut Value, uri: &str) {
     rebase_from(root, Some(uri));
 }
 
-fn rebase_from(root: &mut Value, retrieved: Option<&str>) {
+/// The pointer of the schema that declares each anchor, by its resource and name.
+type Anchors = BTreeMap<(String, String), String>;
+
+/// Returns each anchor of `found` by its resource and name, with the pointer of its schema, and an error for each
+/// schema that declares a name that another of its resource declares already, unless both declare it as a
+/// `$dynamicAnchor`. `base` is the resource of a schema.
+fn anchors_of(found: &Collect, base: impl Fn(&str) -> String) -> (Anchors, Vec<(String, String)>) {
+    let (mut anchors, mut twice) = (BTreeMap::new(), vec![]);
+    for (ptr, d) in &found.schemas {
+        for a in &d.anchors {
+            match anchors.get(&(base(ptr), a.clone())) {
+                // A dynamic anchor in each of several schemas is a generic bound per site: `$dynamicRef` picks one.
+                Some(first)
+                    if first != ptr
+                        && !(d.dynamic_anchor.as_ref() == Some(a)
+                            && found.schemas[first].dynamic_anchor.as_ref() == Some(a)) =>
+                {
+                    twice.push((
+                        ptr.clone(),
+                        format!(
+                            "anchor `{a}` is declared at `{first}` too, in the same resource: give each its own name"
+                        ),
+                    ));
+                }
+                Some(_) => {}
+                None => {
+                    anchors.insert((base(ptr), a.clone()), ptr.clone());
+                }
+            }
+        }
+    }
+    (anchors, twice)
+}
+
+/// Rewrites as [`rebase`] does and returns an error for each anchor declared twice in one resource.
+fn rebase_from(root: &mut Value, retrieved: Option<&str>) -> Vec<(String, String)> {
     let doc_base = retrieved.unwrap_or(DOCUMENT).to_owned();
     let mut found = Collect::default();
     // A schema file is no OpenAPI document: its root is the schema.
@@ -111,7 +149,7 @@ fn rebase_from(root: &mut Value, retrieved: Option<&str>) {
         walk::schema(root, "", &mut found);
     }
     if retrieved.is_none() && found.schemas.values().all(|d| d.id.is_none()) {
-        return;
+        return anchors_of(&found, |_| doc_base.clone()).1;
     }
     // The base of each schema: its `$id` against the base of the nearest schema above it. Shorter pointers first.
     let mut bases: BTreeMap<&str, String> = BTreeMap::new();
@@ -134,16 +172,10 @@ fn rebase_from(root: &mut Value, retrieved: Option<&str>) {
     if retrieved.is_some() {
         resources.insert(doc_base.clone(), String::new());
     }
-    let mut anchors: BTreeMap<(String, String), String> = BTreeMap::new();
-    for (ptr, d) in &found.schemas {
-        let base = bases[ptr.as_str()].clone();
-        if d.id.is_some() {
-            resources.entry(base.clone()).or_insert_with(|| ptr.clone());
-        }
-        for a in &d.anchors {
-            anchors.entry((base.clone(), a.clone())).or_insert_with(|| ptr.clone());
-        }
+    for ptr in found.schemas.iter().filter(|(_, d)| d.id.is_some()).map(|(p, _)| p) {
+        resources.entry(bases[ptr.as_str()].clone()).or_insert_with(|| ptr.clone());
     }
+    let (anchors, twice) = anchors_of(&found, |ptr| bases[ptr].clone());
     let index = Index { bases: &bases, resources: &resources, anchors: &anchors };
     dynamic_refs(root, &found, &index);
     for (ptr, d) in &found.schemas {
@@ -170,6 +202,7 @@ fn rebase_from(root: &mut Value, retrieved: Option<&str>) {
             o.insert("$ref".to_owned(), Value::String(rewritten));
         }
     }
+    twice
 }
 
 /// Returns the pointer of the schema in `root` (a schema document) that declares `$anchor` (or `$dynamicAnchor`)
@@ -416,7 +449,7 @@ mod tests {
                      "$defs": {"a": {"$anchor": "anchored", "type": "string"}}},
             "Plain": {"$ref": "#/components/schemas/Tree"}
         }}});
-        rebase(&mut doc);
+        rebase(&mut doc, &mut crate::diag::Diagnostics::default());
         let s = &doc["components"]["schemas"];
         assert_eq!(s["Tree"]["$ref"], "#/components/schemas/Tree/$defs/node");
         assert_eq!(s["Tree"]["$defs"]["node"]["properties"]["next"]["$ref"], "#/components/schemas/List");
@@ -434,7 +467,7 @@ mod tests {
             "C": schema("other.json#/x"),
             "B": {},
         }}});
-        rebase(&mut doc);
+        rebase(&mut doc, &mut crate::diag::Diagnostics::default());
         assert_eq!(doc["components"]["schemas"]["A"]["$ref"], "#/components/schemas/B");
         assert_eq!(doc["components"]["schemas"]["C"]["$ref"], "https://x.test/s/other.json#/x");
     }
