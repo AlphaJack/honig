@@ -355,7 +355,7 @@ fn positional_parts(body: &[u8], boundary: &str) -> Result<Vec<Part>, String> {
     let delim = ["--", boundary].concat();
     // A delimiter starts the body or a line (RFC 2046 section 5.1.1).
     let starts: Vec<usize> = memchr::memmem::find_iter(body, delim.as_bytes())
-        .filter(|at| *at == 0 || body.get(at - 2..*at) == Some(b"\r\n"))
+        .filter(|at| *at == 0 || at.checked_sub(2).is_some_and(|start| body.get(start..*at) == Some(b"\r\n")))
         .collect();
     let mut out = vec![];
     for (at, next) in starts.iter().zip(starts.iter().skip(1)) {
