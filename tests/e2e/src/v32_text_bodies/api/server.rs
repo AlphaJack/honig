@@ -173,8 +173,15 @@ fn add_note_params(
 fn add_note_encode(
     resp: ops::add_note::Response,
 ) -> Result<runtime::Response, runtime::ClientError> {
-    let ops::add_note::Response::Ok(body) = resp;
-    Ok(runtime::body_response(200, "text/plain", runtime::text_encode_as(body)?))
+    let ops::add_note::Response::Ok { body, x_count } = resp;
+    Ok({
+        let mut r = runtime::new_response(200);
+        if let Some(h) = runtime::encode_json_header(&runtime::to_value(&x_count)?) {
+            runtime::Message::set_header(&mut r, "X-Count", h)?;
+        }
+        runtime::Message::set_body(&mut r, "text/plain", runtime::text_encode_as(body)?);
+        r
+    })
 }
 static SET_MOOD_OP: runtime::Op = runtime::Op::new(
     "set_mood",

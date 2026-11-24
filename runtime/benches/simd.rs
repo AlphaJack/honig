@@ -64,7 +64,7 @@ fn json_encode(b: Bencher<'_, '_>, size: usize) {
 #[divan::bench(args = SIZES)]
 fn text_decode(b: Bencher<'_, '_>, size: usize) {
     let body = order(size);
-    b.counter(BytesCount::of_slice(&body)).bench(|| runtime::text_decode(divan::black_box(&body)));
+    b.counter(BytesCount::of_slice(&body)).bench(|| runtime::text_decode(None, divan::black_box(&body)));
 }
 
 #[divan::bench(args = SIZES)]

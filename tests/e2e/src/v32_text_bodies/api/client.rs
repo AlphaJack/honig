@@ -38,8 +38,21 @@ impl<T: runtime::Transport> Client<T> {
         if status == 200 {
             {
                 runtime::check_media_of(&head, &body, &["text/plain"])?;
-                runtime::text_decode_as(Some(status), &body)
-                    .map(ops::add_note::Response::Ok)
+                Ok(ops::add_note::Response::Ok {
+                    body: runtime::text_decode_as(Some(status), &body)?,
+                    x_count: runtime::from_json_param(
+                            runtime::first_header(&head.headers, "X-Count")
+                                .as_deref()
+                                .map(runtime::json_header),
+                            "/header/X-Count",
+                        )
+                        .map_err(|e| runtime::ClientError::Decode {
+                            status: Some(status),
+                            message: e.to_string(),
+                            body: body.clone(),
+                            pointer: String::new(),
+                        })?,
+                })
             }
         } else {
             Err(runtime::ClientError::UnexpectedStatus {

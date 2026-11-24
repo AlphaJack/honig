@@ -128,7 +128,7 @@ pub(crate) fn xml_document(root: &str, v: &Value) -> Vec<u8> {
 
 /// Returns the reverse of [`xml_document`]. The children of the root become an object whatever the name of the root is.
 pub(crate) fn xml_document_value(bytes: &[u8]) -> Result<Value, String> {
-    parse(&String::from_utf8_lossy(bytes), Role::Unshaped).map(Xml::into_value)
+    parse(std::str::from_utf8(bytes).map_err(|e| e.to_string())?, Role::Unshaped).map(Xml::into_value)
 }
 
 /// Returns the reverse of [`xml_fields`]. Elements become the properties of an object. Plain text becomes a string.

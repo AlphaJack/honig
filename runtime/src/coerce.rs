@@ -151,9 +151,12 @@ impl<'de> Deserializer<'de> for Coerce {
 
     fn deserialize_string<V: Visitor<'de>>(self, v: V) -> Result<V::Value, CoerceError> {
         match self.0 {
-            // Raw part bytes sent to a text field become their text lossily.
+            // Raw part bytes sent to a text field are its text: bytes that are not UTF-8 are no text.
             Value::String(s) => match raw_part(&s) {
-                Some(raw) => v.visit_string(String::from_utf8_lossy(&raw.bytes).into_owned()),
+                Some(raw) => match String::from_utf8(raw.bytes.to_vec()) {
+                    Ok(text) => v.visit_string(text),
+                    Err(_) => Err(CoerceError("a text field is not UTF-8".to_owned())),
+                },
                 None => v.visit_string(s),
             },
             Value::Number(n) => v.visit_string(n.to_string()),

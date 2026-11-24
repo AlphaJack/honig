@@ -1,6 +1,5 @@
 //! Text bodies and the text and errors that every other body is decoded and encoded with.
 
-use std::borrow::Cow;
 use std::fmt;
 
 use crate::ClientError;
@@ -29,14 +28,20 @@ pub fn text_encode_as<T: serde::Serialize>(value: T) -> Result<Vec<u8>, ClientEr
     Ok(value.as_str().map_or_else(|| value.to_string(), str::to_owned).into_bytes())
 }
 
-/// Decodes a text body. Invalid UTF-8 is replaced.
-pub fn text_decode(body: &[u8]) -> String {
-    lossy(body).into_owned()
+/// Decodes a text body.
+///
+/// # Errors
+/// The body is not UTF-8.
+pub fn text_decode(status: Option<u16>, body: &[u8]) -> Result<String, ClientError> {
+    utf8_text(status, body).map(str::to_owned)
 }
 
-/// Returns `body` as text with invalid UTF-8 replaced.
-pub(crate) fn lossy(body: &[u8]) -> Cow<'_, str> {
-    utf8(body).map_or_else(|| String::from_utf8_lossy(body), Cow::Borrowed)
+/// Returns a body as text.
+///
+/// # Errors
+/// The body is not UTF-8: a server answers 400 and a client reports a body that does not decode.
+pub fn utf8_text(status: Option<u16>, body: &[u8]) -> Result<&str, ClientError> {
+    utf8(body).ok_or_else(|| decode_err(status, body, "the body is not UTF-8"))
 }
 
 /// Returns `bytes` as text when they are UTF-8.
@@ -62,6 +67,6 @@ mod tests {
     fn a_text_body_is_its_utf8_bytes() {
         assert_eq!(text_encode("hé"), "hé".as_bytes());
         assert_eq!(text_encode(""), b"");
-        assert_eq!(text_decode(b"h\xFF"), "h\u{FFFD}");
+        assert!(text_decode(None, b"h\xFF").is_err(), "invalid UTF-8 is refused, not replaced");
     }
 }

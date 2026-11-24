@@ -246,8 +246,8 @@ pub(crate) fn decode_body(space: &Space<'_>, c: &Content, d: &Decode) -> (TokenS
             let checked = validated_map(space, &c.ty);
             (quote!(runtime::json_decode(#status, &#body) #checked), true)
         }
-        MediaKind::Linkset => (quote!(runtime::linkset_decode(#status, &String::from_utf8_lossy(&#body))), true),
-        MediaKind::Text if matches!(c.ty, Ty::String) => (quote!(runtime::text_decode(&#body)), false),
+        MediaKind::Linkset => (quote!(runtime::linkset_decode(#status, runtime::utf8_text(#status, &#body)?)), true),
+        MediaKind::Text if matches!(c.ty, Ty::String) => (quote!(runtime::text_decode(#status, &#body)), true),
         MediaKind::Text => (quote!(runtime::text_decode_as(#status, &#body)), true),
         MediaKind::Xml => (quote!(runtime::xml_decode(#status, &#body)), true),
         MediaKind::Bytes => {

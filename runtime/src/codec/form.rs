@@ -13,7 +13,7 @@ use crate::json::push_multi;
 use crate::media::is_xml_media;
 use crate::params::encode_query_value;
 use crate::scalar::scalar;
-use crate::text::{decode_err, lossy};
+use crate::text::{decode_err, utf8_text};
 use crate::{
     ClientError, coerce::Coerce, params::Enc, params::Shape, params::Style, params::decode_query, params::parse_query,
 };
@@ -149,8 +149,8 @@ fn form_fields(
     styles: &[(&'static str, Style, Shape, bool)],
     types: &[(&str, &str)],
 ) -> Result<Map<String, Value>, ClientError> {
-    let text = lossy(body);
-    let pairs = parse_query(&text);
+    let text = utf8_text(status, body)?;
+    let pairs = parse_query(text);
     let mut o = Map::new();
     for (name, style, shape, explode) in styles {
         if let Some(v) =
@@ -182,10 +182,10 @@ fn field_err(status: Option<u16>, body: &[u8], name: &str, e: &crate::Reason) ->
 
 /// Decodes an `application/x-www-form-urlencoded` body.
 pub fn form_decode<T: DeserializeOwned>(status: Option<u16>, body: &[u8]) -> Result<T, ClientError> {
-    let text = lossy(body);
-    T::deserialize(Form(sorted_pairs(&text))).map_err(|e| {
+    let text = utf8_text(status, body)?;
+    T::deserialize(Form(sorted_pairs(text))).map_err(|e| {
         // Read again with tracking only once it failed, to say where: tracking allocates per key.
-        let pointer = crate::path::deserialize::<_, T>(Form(sorted_pairs(&text)))
+        let pointer = crate::path::deserialize::<_, T>(Form(sorted_pairs(text)))
             .err()
             .map(|(pointer, _)| pointer)
             .unwrap_or_default();
@@ -380,9 +380,9 @@ mod tests {
 
     /// The object of the fields of a form body, decoded by its own path.
     fn through_object<T: DeserializeOwned>(body: &[u8]) -> Result<T, String> {
-        let text = lossy(body);
+        let text = utf8_text(None, body).map_err(|e| e.to_string())?;
         let mut o = Map::new();
-        for (k, v) in parse_query(&text) {
+        for (k, v) in parse_query(text) {
             push_multi(&mut o, k.into_owned(), Value::String(v.into_owned()));
         }
         T::deserialize(Coerce(Value::Object(o))).map_err(|e| e.to_string())
