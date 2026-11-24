@@ -1317,24 +1317,23 @@ fn two_schemes_with_one_rust_name_are_an_error() {
     );
 }
 
-/// The client picks one of several operation servers. Without a distinct name each, it would pick by position, and a
-/// reorder would send requests to another environment: generation fails.
+/// The client picks one of several operation servers by name. One with only a `url` is named after it: a reorder
+/// keeps each name with its server. Two of one name fail generation, since a position would follow the order.
 #[test]
-fn several_operation_servers_need_a_name_each() {
-    let (_, w) = common::build(
-        "operation-servers",
-        &doc(
-            &json!({"/a": {"get": {
-                "operationId": "a",
-                "servers": [{"url": "https://one.example"}, {"url": "https://two.example"}],
-                "responses": {"204": {"description": "ok"}}
-            }}}),
-            &json!({}),
-        ),
-        &[],
-    );
-    assert!(
-        w.iter().any(|m| m.contains("/get/servers:") && m.contains("several servers need a distinct `name`")),
-        "{w:#?}"
-    );
+fn an_operation_server_without_a_name_is_named_by_its_url() {
+    let names = |servers: Value| {
+        let paths = json!({"/a": {"get": {"operationId": "a", "servers": servers,
+            "responses": {"204": {"description": "ok"}}}}});
+        let (api, w) = common::build("operation-servers", &doc(&paths, &json!({})), &[]);
+        let names: Vec<Option<String>> = api.http.operations[0].servers.iter().map(|s| s.name.clone()).collect();
+        (names, w)
+    };
+    let (one, two) = (json!({"url": "https://one.example"}), json!({"url": "https://two.example/v1"}));
+    let (forward, w) = names(json!([one, two]));
+    assert_eq!(forward, [Some("one example".to_owned()), Some("two example v1".to_owned())], "{w:#?}");
+    assert!(w.iter().all(|m| !m.contains("several servers")), "{w:#?}");
+    let (back, _) = names(json!([two, one]));
+    assert_eq!(back, [Some("two example v1".to_owned()), Some("one example".to_owned())]);
+    let (_, w) = names(json!([one, one]));
+    assert!(w.iter().any(|m| m.contains("several servers need a distinct `name`")), "{w:#?}");
 }
