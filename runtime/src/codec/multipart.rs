@@ -195,7 +195,6 @@ fn named_part(
         })
     });
     let data = if base64_part { base64(&data).into_bytes() } else { data };
-    let quote = |s: &str| s.replace('"', "%22");
     let disposition = match file {
         // A file without a name of its own is named after its field.
         PartKind::File(filename) => {
@@ -203,7 +202,36 @@ fn named_part(
         }
         PartKind::Field => format!("name=\"{}\"", quote(name)),
     };
-    Ok((format!("Content-Disposition: form-data; {disposition}\r\nContent-Type: {ct}\r\n{extra}"), data))
+    Ok((
+        format!("Content-Disposition: form-data; {disposition}\r\nContent-Type: {}\r\n{extra}", media_type(&ct)?),
+        data,
+    ))
+}
+
+/// Returns `ct` for the `Content-Type` line of a part. Errors: it has a control character, which would end the line.
+pub(super) fn media_type(ct: &str) -> Result<&str, ClientError> {
+    if ct.chars().any(char::is_control) {
+        return Err(ClientError::Encode(format!(
+            "a part's media type `{}` has a control character",
+            ct.escape_debug()
+        )));
+    }
+    Ok(ct)
+}
+
+/// Returns `name` for a `Content-Disposition` parameter, escaped as an HTML form escapes it: a quote would end the
+/// parameter and a line break would start a header of its own.
+fn quote(name: &str) -> std::borrow::Cow<'_, str> {
+    if name.contains(['"', '\r', '\n']) {
+        name.replace('"', "%22").replace('\r', "%0D").replace('\n', "%0A").into()
+    } else {
+        name.into()
+    }
+}
+
+/// Returns a `name` or `filename` that the encoder escaped as it was given.
+fn unquote(n: &str) -> String {
+    if n.contains('%') { n.replace("%22", "\"").replace("%0D", "\r").replace("%0A", "\n") } else { n.to_owned() }
 }
 
 /// What a part carries. That is the value of a field or a file with its own name if it has one.
@@ -236,7 +264,7 @@ fn part_value(
                 .enumerate()
                 .map(|(i, v)| {
                     let (ct, data, _) = part_value(&format!("{path}/{i}"), v, types, depth + 1)?;
-                    Ok((format!("Content-Type: {ct}\r\n"), data))
+                    Ok((format!("Content-Type: {}\r\n", media_type(&ct)?), data))
                 })
                 .collect::<Result<_, ClientError>>()?,
             Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_) => vec![],
@@ -408,8 +436,7 @@ fn positional_parts(body: &[u8], boundary: &str) -> Result<Vec<Part>, String> {
             .map(|(k, v)| (k.trim().to_ascii_lowercase(), v.trim().to_owned()))
             .collect();
         let disposition = headers.iter().find(|(k, _)| k == "content-disposition").map(|(_, v)| v.as_str());
-        let param =
-            |key: &str| disposition.and_then(|d| parameter(d, key)).map(|n| n.trim_matches('"').replace("%22", "\""));
+        let param = |key: &str| disposition.and_then(|d| parameter(d, key)).map(|n| unquote(n.trim_matches('"')));
         let (name, filename) = (param("name="), param("filename="));
         out.push(Part { headers, name, filename, data: Bytes::copy_from_slice(data) });
     }
@@ -424,8 +451,6 @@ fn form_parts(body: &[u8], boundary: &str) -> Result<Vec<Part>, multer::Error> {
     crate::block_on(async {
         let mut out = vec![];
         while let Some(field) = form.next_field().await? {
-            // The encoder escapes a quote in a name as `%22`.
-            let unquote = |n: &str| n.replace("%22", "\"");
             let name = field.name().map(unquote);
             let filename = field.file_name().map(unquote);
             let headers = field
@@ -502,6 +527,26 @@ mod tests {
     /// does not contain it.
     fn forged(boundary: &str) -> String {
         format!("x\r\n--{boundary}\r\nContent-Disposition: form-data; name=\"admin\"\r\n\r\ntrue")
+    }
+
+    #[test]
+    fn a_line_break_in_a_file_name_or_media_type_adds_no_header() {
+        #[derive(serde::Serialize, serde::Deserialize)]
+        struct Upload {
+            file: crate::Binary,
+        }
+        let name = "a.txt\"\r\nX-Injected: yes";
+        let file = |content_type: Option<&str>| crate::Binary {
+            bytes: b"x".to_vec().into(),
+            filename: Some(name.to_owned()),
+            content_type: content_type.map(str::to_owned),
+        };
+        let (ct, body) = multipart_encode(&Upload { file: file(None) }, &[]).unwrap();
+        assert!(!String::from_utf8_lossy(&body).contains("\nX-Injected"), "{}", String::from_utf8_lossy(&body));
+        let back: Upload = multipart_decode(None, &ct, &body).unwrap();
+        assert_eq!(back.file.filename.as_deref(), Some(name));
+        let refused = multipart_encode(&Upload { file: file(Some("text/plain\r\nX-Injected: yes")) }, &[]);
+        assert!(matches!(refused, Err(ClientError::Encode(_))), "{refused:?}");
     }
 
     #[test]

@@ -4,7 +4,7 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 use serde_json::Value;
 
-use super::multipart::{assemble, boundary_of, parts};
+use super::multipart::{assemble, boundary_of, media_type, parts};
 use crate::binary::{raw_mark, raw_part, raw_parts};
 use crate::json::to_value;
 use crate::media::json_type;
@@ -58,7 +58,7 @@ fn mixed_encode_in<T: Serialize>(v: &T, media: &str, types: &[(&str, &str)]) -> 
                 (declared.filter(|d| json_type(d)).unwrap_or("application/json"), other.to_string().into_bytes())
             }
         };
-        parts.push((format!("Content-Type: {ct}\r\n"), data));
+        parts.push((format!("Content-Type: {}\r\n", media_type(ct)?), data));
     }
     let base = media.split(';').next().unwrap_or(media).trim();
     let base = if base.contains('*') { "multipart/mixed" } else { base };
