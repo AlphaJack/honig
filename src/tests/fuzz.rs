@@ -233,12 +233,45 @@ fn gen_schema(r: &mut Rng<'_>, depth: usize, named: usize, profile: Profile) -> 
     }
 }
 
+/// Gives each object branch of a union a required property of its own: honig refuses object branches that no keyword
+/// tells apart.
+fn apart(branches: Vec<S>) -> Vec<S> {
+    let tag = |i: usize| Prop { name: format!("branch{i}"), s: S::Bool, required: true, nullable: false };
+    let tagged = |i: usize, mut props: Vec<Prop>| {
+        props.push(tag(i));
+        props
+    };
+    branches
+        .into_iter()
+        .enumerate()
+        .map(|(i, b)| match b {
+            S::Obj(props) => S::Obj(tagged(i, props)),
+            S::Ref(n) => S::Extends(n, vec![tag(i)]),
+            S::Extends(n, props) => S::Extends(n, tagged(i, props)),
+            S::Shared(first, second) => S::Shared(first, tagged(i, second)),
+            other @ (S::Str { .. }
+            | S::Int { .. }
+            | S::Num
+            | S::Bool
+            | S::Arr(_)
+            | S::Map(_)
+            | S::OneOf { .. }
+            | S::AnyOf(_)
+            | S::Union(_)
+            | S::Unevaluated(_)
+            | S::Const(_)
+            | S::Bounded { .. }
+            | S::Decimal(_)) => other,
+        })
+        .collect()
+}
+
 fn gen_composition(r: &mut Rng<'_>, depth: usize, named: usize) -> S {
     let profile = Profile::Composition;
     let n = 2 + r.below(2);
     match r.below(8) {
-        0 => S::AnyOf((0..n).map(|_| gen_schema(r, depth + 1, named, profile)).collect()),
-        1 => S::Union((0..n).map(|_| gen_schema(r, depth + 1, named, profile)).collect()),
+        0 => S::AnyOf(apart((0..n).map(|_| gen_schema(r, depth + 1, named, profile)).collect())),
+        1 => S::Union(apart((0..n).map(|_| gen_schema(r, depth + 1, named, profile)).collect())),
         2 => {
             let first = gen_props(r, depth + 1, named, profile);
             let mut second = gen_props(r, depth + 1, named, profile);
@@ -251,7 +284,7 @@ fn gen_composition(r: &mut Rng<'_>, depth: usize, named: usize) -> S {
             second.push(shared);
             S::Shared(first, second)
         }
-        3 => S::Unevaluated(
+        3 => S::Unevaluated(apart(
             (0..n)
                 .map(|_| {
                     if named > 0 && r.chance(50) {
@@ -261,7 +294,7 @@ fn gen_composition(r: &mut Rng<'_>, depth: usize, named: usize) -> S {
                     }
                 })
                 .collect(),
-        ),
+        )),
         4 => S::Const(word(r, 0)),
         5 => {
             let min = r.chance(50).then(|| r.below(3) as u64);

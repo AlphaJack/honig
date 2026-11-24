@@ -973,8 +973,8 @@ fn a_body_of_your_own_type_is_left_to_it() {
 #[test]
 fn a_response_of_a_union_of_unions_is_sized_to_the_bottom() {
     let mut schemas = serde_json::Map::new();
-    schemas.insert("U0".into(), json!({"type": "object", "properties": {"a": {"type": "integer"}}}));
-    schemas.insert("U1".into(), json!({"type": "object", "properties": {"b": {"type": "string"}}}));
+    schemas.insert("U0".into(), json!({"type": "object", "required": ["a"], "properties": {"a": {"type": "integer"}}}));
+    schemas.insert("U1".into(), json!({"type": "object", "required": ["b"], "properties": {"b": {"type": "string"}}}));
     for i in 2..40 {
         let r = |j: usize| json!({"$ref": format!("#/components/schemas/U{j}")});
         schemas.insert(format!("U{i}"), json!({"anyOf": [r(i - 1), r(i - 2)]}));
@@ -2480,8 +2480,8 @@ fn a_reorder_of_any_of_branches_decodes_the_same() {
             "3.1.0",
             &json!({}),
             &json!({"schemas": {
-                "A": {"type": "object", "properties": {"a": {"type": "string"}}},
-                "B": {"type": "object", "properties": {"b": {"type": "string"}}},
+                "A": {"type": "object", "required": ["a"], "properties": {"a": {"type": "string"}}},
+                "B": {"type": "object", "required": ["b"], "properties": {"b": {"type": "string"}}},
                 "Any": {"anyOf": any},
             }}),
         );
@@ -2506,8 +2506,8 @@ fn a_reorder_of_any_of_branches_decodes_the_same() {
 fn a_reorder_of_union_branches_keeps_their_names() {
     let items = |flip: bool| {
         let mut branches = vec![
-            json!({"type": "object", "properties": {"a": {"type": "string"}}}),
-            json!({"type": "object", "properties": {"b": {"type": "string"}}}),
+            json!({"type": "object", "required": ["a"], "properties": {"a": {"type": "string"}}}),
+            json!({"type": "object", "required": ["b"], "properties": {"b": {"type": "string"}}}),
             json!({"type": "string", "pattern": "^x"}),
             json!({"type": "string", "pattern": "^y"}),
         ];
