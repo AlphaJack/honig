@@ -162,9 +162,9 @@ fn repair(s: &mut Obj, ptr: &str, diags: &mut Diagnostics) {
     // `nullable` is OpenAPI 3.0 only. In 3.1 and later it is an unknown keyword: `null` is not allowed. Generators
     // that emit 3.1 keep writing it, so the generated type rejecting `null` comes as a surprise.
     if s.get("nullable") == Some(&Value::Bool(true)) {
-        diags.error(
+        diags.warning(
             join(ptr, "nullable"),
-            "`nullable` is not an OpenAPI 3.1 keyword: to allow null, add \"null\" to `type`",
+            "`nullable` is not an OpenAPI 3.1 keyword and has no effect: to allow null, add \"null\" to `type`",
         );
     }
     // `type: file` is Swagger 2.0 only but leaks into 3.x documents.
