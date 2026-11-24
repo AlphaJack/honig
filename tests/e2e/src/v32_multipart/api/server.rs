@@ -199,9 +199,10 @@ fn upload_params(
                         "X-Checksum",
                     )
                     .as_deref(),
+                "/body/image/X-Checksum",
                 runtime::Shape::Primitive,
                 false,
-            ),
+            )?,
             "/body/image/X-Checksum",
         )?,
         meta_x_revision: runtime::from_param(
@@ -213,9 +214,10 @@ fn upload_params(
                         "X-Revision",
                     )
                     .as_deref(),
+                "/body/meta/X-Revision",
                 runtime::Shape::Primitive,
                 false,
-            ),
+            )?,
             "/body/meta/X-Revision",
         )?,
         body: runtime::multipart_decode(

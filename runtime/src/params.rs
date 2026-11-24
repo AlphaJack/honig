@@ -106,7 +106,7 @@ mod tests {
     #[test]
     fn an_empty_value_is_the_empty_list() {
         assert_eq!(query("c=", Style::Form), Some(serde_json::json!([])));
-        assert_eq!(decode_header(Some(""), Shape::Array, false), Some(serde_json::json!([])));
+        assert_eq!(decode_header(Some(""), "/header/h", Shape::Array, false), Ok(Some(serde_json::json!([]))));
     }
 
     /// `allowReserved` keeps reserved characters in a path value but never `/`, `?` or `#`.

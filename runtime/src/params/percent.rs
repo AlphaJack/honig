@@ -41,7 +41,7 @@ pub(crate) fn pct_path(s: &str, allow_reserved: bool) -> String {
     utf8_percent_encode(s, if allow_reserved { PATH_RESERVED_KEPT } else { COMPONENT }).to_string()
 }
 
-/// Decodes `%XX` escapes. Invalid escapes stay as they are.
-pub fn pct_decode(s: &str) -> String {
-    percent_decode_str(s).decode_utf8_lossy().into_owned()
+/// Decodes `%XX` escapes. Invalid escapes stay as they are. `None` when the decoded bytes are not UTF-8.
+pub fn pct_decode(s: &str) -> Option<String> {
+    percent_decode_str(s).decode_utf8().ok().map(std::borrow::Cow::into_owned)
 }

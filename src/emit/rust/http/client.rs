@@ -692,6 +692,8 @@ fn response_arm(
             });
             let headers = r.headers.iter().map(|h| {
                 let (n, wire, s) = (snake_ident(&h.name), lit(&h.wire), shape(space, &h.ty));
+                let at = lit(&format!("/header/{}", h.wire.replace('~', "~0").replace('/', "~1")));
+                let failed = quote!(|e| runtime::ClientError::Decode { status: Some(status), message: e.to_string(), body: body.clone(), pointer: String::new() });
                 let raw = if h.wire.eq_ignore_ascii_case("set-cookie") {
                     let array = matches!(space.kind_of(h.ty.non_null()), JsonKind::Array);
                     quote!(runtime::header_lines(&head.headers, #wire, #array))
@@ -701,15 +703,14 @@ fn response_arm(
                     quote!(runtime::linkset_header(runtime::joined_header(&head.headers, #wire).as_deref()))
                 } else {
                     let explode = h.explode;
-                    quote!(runtime::decode_header(runtime::joined_header(&head.headers, #wire).as_deref(), #s, #explode))
+                    quote!(runtime::decode_header(runtime::joined_header(&head.headers, #wire).as_deref(), #at, #s, #explode).map_err(#failed)?)
                 };
-                let at = lit(&format!("/header/{}", h.wire.replace('~', "~0").replace('/', "~1")));
                 // A library type has the text of its format checked first, as in a request.
                 let checked = crate::emit::rust::http::codec::validated_map(space, &h.ty);
                 let from = if h.json { quote!(runtime::from_json_param) } else { quote!(runtime::from_param) };
                 quote! {
                     #n: #from(#raw, #at) #checked
-                        .map_err(|e| runtime::ClientError::Decode { status: Some(status), message: e.to_string(), body: body.clone(), pointer: String::new() })?,
+                        .map_err(#failed)?,
                 }
             });
             (pat, quote!({ #typed #check Ok(#op_mod::Response::#variant { #status #body #(#headers)* }) }))
