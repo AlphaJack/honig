@@ -254,11 +254,8 @@ impl<T: runtime::Transport> Client<T> {
         if status == 200 {
             {
                 runtime::check_media_of(&head, &body, &["application/xml"])?;
-                Ok(
-                    ops::elements_with_attributes_and_text::Response::Ok(
-                        runtime::text_decode(&body),
-                    ),
-                )
+                runtime::text_decode(Some(status), &body)
+                    .map(ops::elements_with_attributes_and_text::Response::Ok)
             }
         } else {
             Err(runtime::ClientError::UnexpectedStatus {
@@ -311,7 +308,8 @@ impl<T: runtime::Transport> Client<T> {
         if status == 200 {
             {
                 runtime::check_media_of(&head, &body, &["application/xml"])?;
-                Ok(ops::ordered_elements::Response::Ok(runtime::text_decode(&body)))
+                runtime::text_decode(Some(status), &body)
+                    .map(ops::ordered_elements::Response::Ok)
             }
         } else {
             Err(runtime::ClientError::UnexpectedStatus {
@@ -337,11 +335,8 @@ impl<T: runtime::Transport> Client<T> {
         if status == 200 {
             {
                 runtime::check_media_of(&head, &body, &["application/xml"])?;
-                Ok(
-                    ops::ordered_elements_and_text::Response::Ok(
-                        runtime::text_decode(&body),
-                    ),
-                )
+                runtime::text_decode(Some(status), &body)
+                    .map(ops::ordered_elements_and_text::Response::Ok)
             }
         } else {
             Err(runtime::ClientError::UnexpectedStatus {

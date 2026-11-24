@@ -313,10 +313,10 @@ impl<T: runtime::Transport> Client<T> {
                             body: body.clone(),
                             pointer: String::new(),
                         })?,
-                    x_quota: runtime::from_param(
-                            runtime::json_header(
-                                runtime::first_header(&head.headers, "X-Quota").as_deref(),
-                            ),
+                    x_quota: runtime::from_json_param(
+                            runtime::first_header(&head.headers, "X-Quota")
+                                .as_deref()
+                                .map(runtime::json_header),
                             "/header/X-Quota",
                         )
                         .map_err(|e| runtime::ClientError::Decode {

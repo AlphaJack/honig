@@ -12,6 +12,8 @@ paths:
       responses:
         "200":
           description: The note in capitals.
+          headers:
+            X-Count: {description: Notes so far., content: {application/json: {schema: {type: integer}}}}
           content:
             text/plain: {schema: {type: string, pattern: '^[^a-z]*$'}}
   /moods:

@@ -16,13 +16,13 @@ use crate::xml_tree::{Role, Xml, XmlShape, parse};
 /// Decodes an XML body of a response with this status.
 /// Errors: the body is not well-formed XML or does not match the type.
 pub fn xml_decode<T: DeserializeOwned + XmlShape>(status: Option<u16>, body: &[u8]) -> Result<T, ClientError> {
-    let text = String::from_utf8_lossy(body);
+    let text = crate::text::utf8_text(status, body)?;
     // Most bodies decode straight from the events of the parser. The others go through the converted elements. So do
     // those that do not decode. The converted elements also say what is wrong.
-    if let Some(v) = stream::decode(&text, T::xml()) {
+    if let Some(v) = stream::decode(text, T::xml()) {
         return Ok(v);
     }
-    let value = parse(&text, Role::Shaped(T::xml())).map_err(|e| decode_err(status, body, e))?;
+    let value = parse(text, Role::Shaped(T::xml())).map_err(|e| decode_err(status, body, e))?;
     T::deserialize(XmlDe(value)).map_err(|e| decode_err(status, body, e))
 }
 

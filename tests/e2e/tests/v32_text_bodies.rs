@@ -18,7 +18,7 @@ impl api::Api for Notes {
         _: &api::Context<'_>,
     ) -> impl Future<Output = Result<ops::add_note::Response, api::ApiError>> + Send {
         let loud = types::AddNoteOk::try_from(p.body.to_uppercase().as_str()).map_err(api::ApiError::from);
-        std::future::ready(loud.map(ops::add_note::Response::Ok))
+        std::future::ready(loud.map(|body| ops::add_note::Response::Ok { body, x_count: Some(1) }))
     }
     fn set_mood(
         &self,
@@ -50,7 +50,29 @@ fn the_client_builds_and_decodes_text_bodies_of_their_types() {
     let client = Client::new(support::loopback(|req: api::Request| api::Server::new(Notes).into_service().handle(req)));
     let body = types::AddNoteBody::try_from("hi!").expect("3 characters");
     let note = api::block_on(client.add_note(ops::add_note::Params::new(body))).expect("sent").into_result();
-    assert_eq!(note.expect("200").as_ref(), "HI!");
+    assert_eq!(note.expect("200").0.as_ref(), "HI!");
     let mood = ops::set_mood::Params::new(types::SetMoodBody::Loud);
     api::block_on(client.set_mood(mood)).expect("sent").into_result().expect("204");
+}
+
+/// Text that is not UTF-8 is no text: the server answers 400 instead of replacing the bytes.
+#[test]
+fn a_text_body_that_is_not_utf8_is_refused() {
+    let mut req = api::runtime::new_request("POST", "/notes".to_owned(), vec![]).unwrap();
+    req.headers_mut().insert(honig::http::header::CONTENT_TYPE, honig::http::HeaderValue::from_static("text/plain"));
+    *req.body_mut() = honig::Body::from(b"hi\xFF".to_vec());
+    assert_eq!(api::block_on(api::Server::new(Notes).into_service().handle(req)).status().as_u16(), 400);
+}
+
+/// A header declared as JSON whose text does not parse is a response that does not decode, not an absent header.
+#[test]
+fn a_json_header_that_does_not_parse_is_refused() {
+    let client = Client::new(support::loopback(|_| {
+        let mut r = api::runtime::body_response(200, "text/plain", b"HI".to_vec());
+        r.headers_mut().insert("x-count", honig::http::HeaderValue::from_static("{"));
+        std::future::ready(r)
+    }));
+    let body = types::AddNoteBody::try_from("hi").expect("2 characters");
+    let got = api::block_on(client.add_note(ops::add_note::Params::new(body)));
+    assert!(matches!(got, Err(api::ClientError::Decode { .. })), "{got:?}");
 }

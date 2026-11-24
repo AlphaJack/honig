@@ -621,7 +621,10 @@ impl<T: runtime::Transport> Client<T> {
         if status == 200 {
             {
                 runtime::check_media_of(&head, &body, &["application/linkset"])?;
-                runtime::linkset_decode(Some(status), &String::from_utf8_lossy(&body))
+                runtime::linkset_decode(
+                        Some(status),
+                        runtime::utf8_text(Some(status), &body)?,
+                    )
                     .map(ops::linkset_body::Response::Ok)
             }
         } else {

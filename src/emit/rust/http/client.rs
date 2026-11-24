@@ -696,7 +696,7 @@ fn response_arm(
                     let array = matches!(space.kind_of(h.ty.non_null()), JsonKind::Array);
                     quote!(runtime::header_lines(&head.headers, #wire, #array))
                 } else if h.json {
-                    quote!(runtime::json_header(runtime::first_header(&head.headers, #wire).as_deref()))
+                    quote!(runtime::first_header(&head.headers, #wire).as_deref().map(runtime::json_header))
                 } else if h.linkset {
                     quote!(runtime::linkset_header(runtime::joined_header(&head.headers, #wire).as_deref()))
                 } else {
@@ -706,8 +706,9 @@ fn response_arm(
                 let at = lit(&format!("/header/{}", h.wire.replace('~', "~0").replace('/', "~1")));
                 // A library type has the text of its format checked first, as in a request.
                 let checked = crate::emit::rust::http::codec::validated_map(space, &h.ty);
+                let from = if h.json { quote!(runtime::from_json_param) } else { quote!(runtime::from_param) };
                 quote! {
-                    #n: runtime::from_param(#raw, #at) #checked
+                    #n: #from(#raw, #at) #checked
                         .map_err(|e| runtime::ClientError::Decode { status: Some(status), message: e.to_string(), body: body.clone(), pointer: String::new() })?,
                 }
             });

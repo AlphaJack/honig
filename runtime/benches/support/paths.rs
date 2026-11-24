@@ -382,7 +382,7 @@ pub(crate) const PATHS: &[Path] = &[
         name: "text_decode",
         prepare: |size| {
             let body = mixed(size).into_bytes();
-            (body.len(), on(body, |b| runtime::text_decode(b)))
+            (body.len(), on(body, |b| runtime::text_decode(None, b)))
         },
     },
     Path {
