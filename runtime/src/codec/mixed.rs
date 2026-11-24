@@ -121,6 +121,13 @@ mod tests {
         assert!(decoded.is_err(), "{decoded:?}");
     }
 
+    #[test]
+    fn a_delimiter_one_byte_into_the_body_does_not_start_a_part() {
+        let body = b"X--b\r\ncontent-type: text/plain\r\n\r\na\r\n--b--\r\n";
+        let decoded = super::mixed_decode::<Vec<String>>(Some(200), "multipart/mixed; boundary=b", body, None);
+        assert!(decoded.as_ref().is_ok_and(Vec::is_empty), "{decoded:?}");
+    }
+
     /// A string part declared JSON is a JSON string. Without a declared type it is plain text.
     #[test]
     fn a_string_declared_json_is_quoted() {
