@@ -1341,8 +1341,8 @@ fn an_any_of_with_a_branch_of_any_value_is_typed() {
 /// as: no schema is checked whole.
 #[test]
 fn a_one_of_of_shared_types_counts_its_branches() {
-    let car = json!({"type": "object", "properties": {"kind": {"type": "string"}, "wheels": {"type": "integer"}}});
-    let van = json!({"type": "object", "properties": {"kind": {"type": "string"}, "doors": {"type": "integer"}}});
+    let car = json!({"type": "object", "required": ["wheels"], "properties": {"kind": {"type": "string"}, "wheels": {"type": "integer"}}});
+    let van = json!({"type": "object", "required": ["doors"], "properties": {"kind": {"type": "string"}, "doors": {"type": "integer"}}});
     let vehicle = json!({"oneOf": [{"$ref": "#/components/schemas/Car"}, {"$ref": "#/components/schemas/Van"}],
         "discriminator": {"propertyName": "kind"}});
     let doc = common::spec("3.2.0", &json!({}), &json!({"schemas": {"Car": car, "Van": van, "Vehicle": vehicle}}));
@@ -2303,8 +2303,8 @@ fn twins_delegate_and_shared_impls_are_runtime_macros() {
             "Code": code, "Other": code,
             "Pick": {"oneOf": [{"$ref": "#/components/schemas/A"}, {"$ref": "#/components/schemas/B"}],
                 "discriminator": {"propertyName": "k"}},
-            "A": {"type": "object", "properties": {"k": {"type": "string"}, "a": {"type": "string"}}},
-            "B": {"type": "object", "properties": {"k": {"type": "string"}, "b": {"type": "integer"}}},
+            "A": {"type": "object", "required": ["a"], "properties": {"k": {"type": "string"}, "a": {"type": "string"}}},
+            "B": {"type": "object", "required": ["b"], "properties": {"k": {"type": "string"}, "b": {"type": "integer"}}},
             "Text": {"type": "string", "contentMediaType": "application/json", "contentSchema": {"type": "integer"}}
         }}),
     );

@@ -311,6 +311,31 @@ fn an_anyof_whose_objects_cannot_be_told_apart_fails_generation() {
     }
 }
 
+/// Discriminated branches that only an unpinned tag tells apart both match `{kind: "cat"}`, which `oneOf` then refuses:
+/// `generate` fails. A required property of one keeps them apart, and the unpinned tag stays a warning.
+#[test]
+fn discriminated_branches_that_only_an_unpinned_tag_separates_fail_generation() {
+    let cat = json!({"type": "object", "required": ["kind"], "properties": {"kind": {"type": "string"}}});
+    let dog = |required: Value| {
+        json!({"type": "object", "required": required,
+            "properties": {"kind": {"type": "string"}, "bark": {"type": "boolean"}}})
+    };
+    let pets = json!({"oneOf": [{"$ref": "#/components/schemas/Cat"}, {"$ref": "#/components/schemas/Dog"}],
+        "discriminator": {"propertyName": "kind"}});
+    for (dog, fine) in [(dog(json!(["kind"])), false), (dog(json!(["kind", "bark"])), true)] {
+        let d = doc(&json!({}), &json!({"schemas": {"Pet": pets, "Cat": cat, "Dog": dog}}));
+        let path = common::write("unpinned-tag", &d, &[]);
+        let made = crate::generate::generate(&path, &Options::default());
+        if fine {
+            let made = made.expect("a required bark tells them apart");
+            assert!(made.diagnostics.iter().any(|d| d.pointer == "/components/schemas/Pet/oneOf"), "still a warning");
+        } else {
+            let err = made.expect_err("only the tag");
+            assert!(err.iter().any(|d| d.pointer == "/components/schemas/Pet/oneOf"), "{:#?}", err.0);
+        }
+    }
+}
+
 /// Media types that give one variant name are numbered in the sorted order of the types: a reorder of `content`
 /// changes no name.
 #[test]
