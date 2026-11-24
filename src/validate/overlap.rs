@@ -1,7 +1,12 @@
+//! Union branches that one value can match. An `anyOf`, or a `oneOf` without a discriminator, whose object branches
+//! nothing tells apart decodes such a value as the first and drops what the others carry: that is an error.
+//!
 //! A discriminated `oneOf` whose branches can all match one value. 3.2 says a discriminator "MUST NOT change the
 //! validation outcome": `oneOf` still means exactly one. Branches `Cat` and `Dog` that share every property both match
 //! `{"petType": "cat", "name": "Tom"}`, and the value is invalid. A branch that sets the discriminating property with
 //! `const` (or a one-value `enum`) cannot match another branch's tag. A warning lists the branches that do not.
+
+use std::collections::{BTreeMap, BTreeSet};
 
 use serde_json::Value;
 
@@ -9,21 +14,120 @@ use crate::diag::Diagnostics;
 use crate::json::{Doc, join};
 use crate::walk::{self, Obj, Visit};
 
-/// Warns about each discriminated `oneOf` with a branch that does not pin its tag.
+/// Warns about each discriminated `oneOf` with a branch that does not pin its tag, and refuses each union with two
+/// object branches that nothing tells apart.
 pub(crate) fn check(doc: &Doc, diags: &mut Diagnostics) {
-    let mut found = Found { doc, out: vec![] };
+    let mut found = Found { doc, out: vec![], errors: vec![] };
     walk::walk(&mut doc.root.clone(), &mut found);
     for (ptr, message) in found.out {
         diags.warning(&ptr, message);
+    }
+    for (ptr, message) in found.errors {
+        diags.error(&ptr, message);
     }
 }
 
 struct Found<'a> {
     doc: &'a Doc,
     out: Vec<(String, String)>,
+    errors: Vec<(String, String)>,
+}
+
+/// What tells an object branch apart: its properties, the required ones, the `const` and `type` of each and whether
+/// it is closed.
+#[derive(Default)]
+struct Object {
+    properties: BTreeSet<String>,
+    required: BTreeSet<String>,
+    consts: BTreeMap<String, Value>,
+    types: BTreeMap<String, Value>,
+    closed: bool,
+}
+
+impl Object {
+    /// Can no value match both `self` and `other`? A required property of one that the other does not declare or
+    /// types otherwise, a `const` property with another value, or a closed branch tells them apart.
+    fn apart(&self, other: &Self) -> bool {
+        let missing = |a: &Self, b: &Self| {
+            a.required.iter().any(|r| {
+                !b.properties.contains(r) || a.types.get(r).is_some_and(|t| b.types.get(r).is_some_and(|u| u != t))
+            })
+        };
+        let consts = self.consts.iter().any(|(k, v)| other.consts.get(k).is_some_and(|w| w != v));
+        self.closed || other.closed || missing(self, other) || missing(other, self) || consts
+    }
 }
 
 impl Found<'_> {
+    /// Returns the object that `branch` describes through `$ref`s and `allOf` members, or `None` for a branch that is
+    /// no object or declares no property. `seen` contains the `$ref`s on the way: one met again is a cycle, which adds nothing.
+    fn object(&self, branch: &Value, seen: &mut Vec<String>) -> Option<Object> {
+        if let Some(r) = branch.get("$ref").and_then(Value::as_str) {
+            if seen.iter().any(|s| s == r) {
+                return Some(Object::default());
+            }
+            seen.push(r.to_owned());
+            let found = self.doc.get(r).and_then(|t| self.object(t, seen));
+            seen.pop();
+            return found;
+        }
+        let typed = branch.get("type").and_then(Value::as_str);
+        if typed.is_some_and(|t| t != "object") || (typed.is_none() && branch.get("properties").is_none()) {
+            return None;
+        }
+        let mut o =
+            Object { closed: branch.get("additionalProperties") == Some(&Value::Bool(false)), ..Object::default() };
+        for (name, p) in branch.get("properties").and_then(Value::as_object).into_iter().flatten() {
+            o.properties.insert(name.clone());
+            if let Some(c) = p.get("const") {
+                o.consts.insert(name.clone(), c.clone());
+            }
+            if let Some(t) = p.get("type") {
+                o.types.insert(name.clone(), t.clone());
+            }
+        }
+        o.required.extend(
+            branch
+                .get("required")
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten()
+                .filter_map(Value::as_str)
+                .map(String::from),
+        );
+        for m in branch.get("allOf").and_then(Value::as_array).into_iter().flatten() {
+            let m = self.object(m, seen).unwrap_or_default();
+            o.properties.extend(m.properties);
+            o.required.extend(m.required);
+            o.consts.extend(m.consts);
+            o.types.extend(m.types);
+            o.closed |= m.closed;
+        }
+        (!o.properties.is_empty()).then_some(o)
+    }
+
+    /// Records an error for each two object branches of an `anyOf`, or of a `oneOf` without a discriminator, that no
+    /// keyword tells apart.
+    fn alike(&mut self, s: &Obj, ptr: &str) {
+        for key in ["anyOf", "oneOf"].into_iter().filter(|k| *k == "anyOf" || !s.contains_key("discriminator")) {
+            let branches = s.get(key).and_then(Value::as_array).into_iter().flatten().enumerate();
+            let objects: Vec<(String, Object)> =
+                branches.filter_map(|(i, b)| Some((name(b, i), self.object(b, &mut vec![])?))).collect();
+            for (i, (a, x)) in objects.iter().enumerate() {
+                for (b, _) in objects[i + 1..].iter().filter(|(_, y)| !x.apart(y)) {
+                    self.errors.push((
+                        join(ptr, key),
+                        format!(
+                            "a value can match both {a} and {b}, and it would decode as the first: add a required \
+                             property or a `const` tag that tells them apart, or close one with \
+                             `additionalProperties: false`"
+                        ),
+                    ));
+                }
+            }
+        }
+    }
+
     /// Returns whether the branch through `$ref`s and `allOf` members fixes `prop` to one value. `seen` contains the
     /// `$ref`s on the way: one met again is a cycle, which fixes nothing more.
     fn pins(&self, branch: &Value, prop: &str, seen: &mut Vec<String>) -> bool {
@@ -45,8 +149,14 @@ impl Found<'_> {
     }
 }
 
+/// Returns how a message names branch `i`: its `$ref` or its position.
+fn name(branch: &Value, i: usize) -> String {
+    branch.get("$ref").and_then(Value::as_str).map_or_else(|| format!("#{i}"), String::from)
+}
+
 impl Visit for Found<'_> {
     fn schema(&mut self, s: &mut Obj, ptr: &str) {
+        self.alike(s, ptr);
         let Some(prop) = s.get("discriminator").and_then(|d| d.get("propertyName")).and_then(Value::as_str) else {
             return;
         };
@@ -58,7 +168,7 @@ impl Visit for Found<'_> {
             .iter()
             .enumerate()
             .filter(|(_, b)| !self.pins(b, prop, &mut vec![]))
-            .map(|(i, b)| b.get("$ref").and_then(Value::as_str).map_or_else(|| format!("#{i}"), String::from))
+            .map(|(i, b)| name(b, i))
             .collect();
         if !loose.is_empty() {
             self.out.push((

@@ -291,6 +291,26 @@ fn a_keyword_that_would_lose_its_meaning_fails_generation() {
     }
 }
 
+/// An `anyOf` of two open objects that no keyword tells apart decodes `{amount: 5, last4: "4242"}` as the first and
+/// drops `last4`: `generate` fails at the `anyOf`. A required property of one that the other lacks separates them.
+#[test]
+fn an_anyof_whose_objects_cannot_be_told_apart_fails_generation() {
+    let card = |required: Value| json!({"type": "object", "required": required, "properties": {"amount": {"type": "integer"}, "last4": {"type": "string"}}});
+    let bank = json!({"type": "object", "required": ["amount"], "properties": {"amount": {"type": "integer"}, "iban": {"type": "string"}}});
+    let payment = json!({"anyOf": [{"$ref": "#/components/schemas/Card"}, {"$ref": "#/components/schemas/Bank"}]});
+    for (required, fine) in [(json!(["amount"]), false), (json!(["amount", "last4"]), true)] {
+        let d = doc(&json!({}), &json!({"schemas": {"Payment": payment, "Card": card(required), "Bank": bank}}));
+        let path = common::write("anyof-apart", &d, &[]);
+        let made = crate::generate::generate(&path, &Options::default());
+        if fine {
+            made.expect("a required last4 tells them apart");
+        } else {
+            let err = made.expect_err("alike");
+            assert!(err.iter().any(|d| d.pointer == "/components/schemas/Payment/anyOf"), "{:#?}", err.0);
+        }
+    }
+}
+
 /// Media types that give one variant name are numbered in the sorted order of the types: a reorder of `content`
 /// changes no name.
 #[test]
