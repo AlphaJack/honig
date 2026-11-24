@@ -973,7 +973,10 @@ impl<T: DeserializeOwned> Decoder<T> {
     fn poll_line(&mut self, cx: &mut Context<'_>) -> Poll<Option<Result<T, ClientError>>> {
         loop {
             let rest = self.frame.get(self.at..).unwrap_or_default();
-            if let Some(end) = memchr::memchr(b'\n', rest) {
+            // JSON Lines ends a record at a line break; `json-seq` at the RS that starts the next one (RFC 7464), so a
+            // record may span lines.
+            let separator = if self.framing == Framing::JsonSeq { crate::codec::RECORD_SEPARATOR } else { b'\n' };
+            if let Some(end) = memchr::memchr(separator, rest) {
                 let line = self.at..self.at + end;
                 self.at += end + 1;
                 if !self.buf.is_empty() {
@@ -1137,6 +1140,21 @@ mod tests {
         );
         let Ok(Items::Stream(mut items)) = items else { panic!("a stream") };
         assert!(crate::block_on(items.next()).is_some_and(|i| i.is_err()));
+    }
+
+    /// A `json-seq` record may span lines: streamed in any pieces it decodes as the whole body does.
+    #[test]
+    fn a_streamed_json_seq_record_spans_lines() {
+        let text = "\u{1e}{\n  \"a\": 1\n}\n\u{1e}{\"a\":2}\n";
+        let whole: Vec<serde_json::Value> = crate::codec::json_seq_decode(None, text.as_bytes()).unwrap();
+        for size in [1, 7, 1024] {
+            let pieces: Vec<_> = text.as_bytes().chunks(size).map(|p| Ok(Bytes::copy_from_slice(p))).collect();
+            let body = ByteStream::chunks(futures_util::stream::iter(pieces), None);
+            let items: Vec<_> =
+                crate::block_on(ItemStream::<serde_json::Value>::new(None, body, Framing::JsonSeq).collect());
+            let items: Vec<serde_json::Value> = items.into_iter().map(Result::unwrap).collect();
+            assert_eq!(items, whole, "pieces of {size}");
+        }
     }
 
     #[test]
