@@ -59,10 +59,17 @@ impl<T: runtime::Transport> Client<T> {
                     body: runtime::json_decode(Some(status), &body)?,
                     x_next: runtime::from_param(
                             runtime::decode_header(
-                                runtime::joined_header(&head.headers, "X-Next").as_deref(),
-                                runtime::Shape::Primitive,
-                                false,
-                            ),
+                                    runtime::joined_header(&head.headers, "X-Next").as_deref(),
+                                    "/header/X-Next",
+                                    runtime::Shape::Primitive,
+                                    false,
+                                )
+                                .map_err(|e| runtime::ClientError::Decode {
+                                    status: Some(status),
+                                    message: e.to_string(),
+                                    body: body.clone(),
+                                    pointer: String::new(),
+                                })?,
                             "/header/X-Next",
                         )
                         .map_err(|e| runtime::ClientError::Decode {

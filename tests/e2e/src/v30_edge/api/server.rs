@@ -552,10 +552,11 @@ fn cookie_form_fa_params(
             runtime::decode_cookie(
                 runtime::Message::header(req, "cookie").as_deref(),
                 "color",
+                "/cookie/color",
                 runtime::Style::Form,
                 runtime::Shape::Array,
                 false,
-            ),
+            )?,
             "/cookie/color",
         )?,
     })
@@ -593,10 +594,11 @@ fn cookie_form_fo_params(
             runtime::decode_cookie(
                 runtime::Message::header(req, "cookie").as_deref(),
                 "color",
+                "/cookie/color",
                 runtime::Style::Form,
                 runtime::Shape::Object,
                 false,
-            ),
+            )?,
             "/cookie/color",
         )?,
     })

@@ -493,26 +493,30 @@ fn parameter_examples_params(
         x_token: runtime::from_param(
             runtime::decode_header(
                 runtime::joined_header(req.headers(), "X-Token").as_deref(),
+                "/header/X-Token",
                 runtime::Shape::Array,
                 false,
-            ),
+            )?,
             "/header/X-Token",
         )?,
         cookie: runtime::from_param(
             runtime::decode_cookie(
                 runtime::Message::header(req, "cookie").as_deref(),
                 "cookie",
+                "/cookie/cookie",
                 runtime::Style::Cookie,
                 runtime::Shape::Object,
                 true,
-            ),
+            )?,
             "/cookie/cookie",
         )?,
         greeting: runtime::from_text(
             runtime::cookie_text(
                 runtime::Message::header(req, "cookie").as_deref(),
                 "greeting",
-            ),
+                "/cookie/greeting",
+                runtime::Style::Form,
+            )?,
             "/cookie/greeting",
         )?,
         username: runtime::path_param(
@@ -717,9 +721,10 @@ fn multipart_form_with_encoding_objects_params(
                         "X-Rate-Limit-Limit",
                     )
                     .as_deref(),
+                "/body/profileImage/X-Rate-Limit-Limit",
                 runtime::Shape::Primitive,
                 false,
-            ),
+            )?,
             "/body/profileImage/X-Rate-Limit-Limit",
         )?,
         body: if body.is_empty()

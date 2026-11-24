@@ -148,3 +148,13 @@ row!(header_true_object, header_to, obj(), At::Header, "/header-t-o", "R=100,G=2
 
 row!(cookie_true_array, cookie_ta, arr(), At::Cookie, "/cookie-t-a", "color=blue; color=black; color=brown");
 row!(cookie_true_object, cookie_to, obj(), At::Cookie, "/cookie-t-o", "R=100; G=200; B=150");
+
+/// A value that does not decode in its style is a 400, not a value with a member dropped or bytes replaced.
+#[test]
+fn a_value_that_does_not_decode_in_its_style_is_refused() {
+    for target in ["/form-f-o?color=R,100,G", "/simple-f-o/R,100,G", "/label-t-o/.R=100.G", "/matrix-f-s/;color=%FF"] {
+        let req = api::runtime::new_request("GET", target.to_owned(), vec![]).unwrap();
+        let status = api::block_on(api::Server::new(Server).into_service().handle(req)).status().as_u16();
+        assert_eq!(status, 400, "{target}");
+    }
+}

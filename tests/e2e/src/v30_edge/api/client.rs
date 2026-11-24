@@ -93,11 +93,18 @@ impl<T: runtime::Transport> Client<T> {
                     body: runtime::json_decode(Some(status), &body)?,
                     x_next_cursor: runtime::from_param(
                             runtime::decode_header(
-                                runtime::joined_header(&head.headers, "X-Next-Cursor")
-                                    .as_deref(),
-                                runtime::Shape::Primitive,
-                                false,
-                            ),
+                                    runtime::joined_header(&head.headers, "X-Next-Cursor")
+                                        .as_deref(),
+                                    "/header/X-Next-Cursor",
+                                    runtime::Shape::Primitive,
+                                    false,
+                                )
+                                .map_err(|e| runtime::ClientError::Decode {
+                                    status: Some(status),
+                                    message: e.to_string(),
+                                    body: body.clone(),
+                                    pointer: String::new(),
+                                })?,
                             "/header/X-Next-Cursor",
                         )
                         .map_err(|e| runtime::ClientError::Decode {
@@ -212,11 +219,18 @@ impl<T: runtime::Transport> Client<T> {
                     body: Box::new(runtime::json_decode(Some(status), &body)?),
                     x_request_id: runtime::from_param(
                             runtime::decode_header(
-                                runtime::joined_header(&head.headers, "X-Request-Id")
-                                    .as_deref(),
-                                runtime::Shape::Primitive,
-                                false,
-                            ),
+                                    runtime::joined_header(&head.headers, "X-Request-Id")
+                                        .as_deref(),
+                                    "/header/X-Request-Id",
+                                    runtime::Shape::Primitive,
+                                    false,
+                                )
+                                .map_err(|e| runtime::ClientError::Decode {
+                                    status: Some(status),
+                                    message: e.to_string(),
+                                    body: body.clone(),
+                                    pointer: String::new(),
+                                })?,
                             "/header/X-Request-Id",
                         )
                         .map_err(|e| runtime::ClientError::Decode {

@@ -126,10 +126,17 @@ impl<T: runtime::Transport> Client<T> {
                     body: runtime::json_decode(Some(status), &body)?,
                     x_count: runtime::from_param(
                             runtime::decode_header(
-                                runtime::joined_header(&head.headers, "X-Count").as_deref(),
-                                runtime::Shape::Primitive,
-                                false,
-                            ),
+                                    runtime::joined_header(&head.headers, "X-Count").as_deref(),
+                                    "/header/X-Count",
+                                    runtime::Shape::Primitive,
+                                    false,
+                                )
+                                .map_err(|e| runtime::ClientError::Decode {
+                                    status: Some(status),
+                                    message: e.to_string(),
+                                    body: body.clone(),
+                                    pointer: String::new(),
+                                })?,
                             "/header/X-Count",
                         )
                         .map_err(|e| runtime::ClientError::Decode {
@@ -140,10 +147,17 @@ impl<T: runtime::Transport> Client<T> {
                         })?,
                     x_tags: runtime::from_param(
                             runtime::decode_header(
-                                runtime::joined_header(&head.headers, "X-Tags").as_deref(),
-                                runtime::Shape::Object,
-                                true,
-                            ),
+                                    runtime::joined_header(&head.headers, "X-Tags").as_deref(),
+                                    "/header/X-Tags",
+                                    runtime::Shape::Object,
+                                    true,
+                                )
+                                .map_err(|e| runtime::ClientError::Decode {
+                                    status: Some(status),
+                                    message: e.to_string(),
+                                    body: body.clone(),
+                                    pointer: String::new(),
+                                })?,
                             "/header/X-Tags",
                         )
                         .map_err(|e| runtime::ClientError::Decode {

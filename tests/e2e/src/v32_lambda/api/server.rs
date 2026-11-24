@@ -183,7 +183,9 @@ fn get_item_params(
             runtime::cookie_text(
                 runtime::Message::header(req, "cookie").as_deref(),
                 "session",
-            ),
+                "/cookie/session",
+                runtime::Style::Form,
+            )?,
             "/cookie/session",
         )?,
     })

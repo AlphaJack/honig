@@ -752,7 +752,9 @@ fn list_products_params(
             runtime::cookie_text(
                 runtime::Message::header(req, "cookie").as_deref(),
                 "session",
-            ),
+                "/cookie/session",
+                runtime::Style::Cookie,
+            )?,
             "/cookie/session",
         )?,
         x_rate: runtime::from_text(
@@ -873,9 +875,10 @@ fn create_product_params(
                         "X-Part",
                     )
                     .as_deref(),
+                "/body/meta/X-Part",
                 runtime::Shape::Primitive,
                 false,
-            ),
+            )?,
             "/body/meta/X-Part",
         )?,
         body: if runtime::media_matches(

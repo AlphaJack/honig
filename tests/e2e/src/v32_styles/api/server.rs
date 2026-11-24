@@ -595,13 +595,14 @@ fn matrix_fa_params(
         color: runtime::from_param(
             caps
                 .first()
-                .and_then(|c| runtime::decode_path(
+                .map(|c| runtime::decode_path(
                     c,
-                    "color",
+                    "/path/color",
                     runtime::Style::Matrix,
                     runtime::Shape::Array,
                     false,
-                )),
+                ))
+                .transpose()?,
             "/path/color",
         )?,
     })
@@ -638,13 +639,14 @@ fn matrix_fo_params(
         color: runtime::from_param(
             caps
                 .first()
-                .and_then(|c| runtime::decode_path(
+                .map(|c| runtime::decode_path(
                     c,
-                    "color",
+                    "/path/color",
                     runtime::Style::Matrix,
                     runtime::Shape::Object,
                     false,
-                )),
+                ))
+                .transpose()?,
             "/path/color",
         )?,
     })
@@ -681,13 +683,14 @@ fn matrix_ta_params(
         color: runtime::from_param(
             caps
                 .first()
-                .and_then(|c| runtime::decode_path(
+                .map(|c| runtime::decode_path(
                     c,
-                    "color",
+                    "/path/color",
                     runtime::Style::Matrix,
                     runtime::Shape::Array,
                     true,
-                )),
+                ))
+                .transpose()?,
             "/path/color",
         )?,
     })
@@ -724,13 +727,14 @@ fn matrix_to_params(
         color: runtime::from_param(
             caps
                 .first()
-                .and_then(|c| runtime::decode_path(
+                .map(|c| runtime::decode_path(
                     c,
-                    "color",
+                    "/path/color",
                     runtime::Style::Matrix,
                     runtime::Shape::Object,
                     true,
-                )),
+                ))
+                .transpose()?,
             "/path/color",
         )?,
     })
@@ -799,13 +803,14 @@ fn label_fa_params(
         color: runtime::from_param(
             caps
                 .first()
-                .and_then(|c| runtime::decode_path(
+                .map(|c| runtime::decode_path(
                     c,
-                    "color",
+                    "/path/color",
                     runtime::Style::Label,
                     runtime::Shape::Array,
                     false,
-                )),
+                ))
+                .transpose()?,
             "/path/color",
         )?,
     })
@@ -842,13 +847,14 @@ fn label_fo_params(
         color: runtime::from_param(
             caps
                 .first()
-                .and_then(|c| runtime::decode_path(
+                .map(|c| runtime::decode_path(
                     c,
-                    "color",
+                    "/path/color",
                     runtime::Style::Label,
                     runtime::Shape::Object,
                     false,
-                )),
+                ))
+                .transpose()?,
             "/path/color",
         )?,
     })
@@ -885,13 +891,14 @@ fn label_ta_params(
         color: runtime::from_param(
             caps
                 .first()
-                .and_then(|c| runtime::decode_path(
+                .map(|c| runtime::decode_path(
                     c,
-                    "color",
+                    "/path/color",
                     runtime::Style::Label,
                     runtime::Shape::Array,
                     true,
-                )),
+                ))
+                .transpose()?,
             "/path/color",
         )?,
     })
@@ -928,13 +935,14 @@ fn label_to_params(
         color: runtime::from_param(
             caps
                 .first()
-                .and_then(|c| runtime::decode_path(
+                .map(|c| runtime::decode_path(
                     c,
-                    "color",
+                    "/path/color",
                     runtime::Style::Label,
                     runtime::Shape::Object,
                     true,
-                )),
+                ))
+                .transpose()?,
             "/path/color",
         )?,
     })
@@ -971,13 +979,14 @@ fn simple_fa_params(
         color: runtime::from_param(
             caps
                 .first()
-                .and_then(|c| runtime::decode_path(
+                .map(|c| runtime::decode_path(
                     c,
-                    "color",
+                    "/path/color",
                     runtime::Style::Simple,
                     runtime::Shape::Array,
                     false,
-                )),
+                ))
+                .transpose()?,
             "/path/color",
         )?,
     })
@@ -1014,13 +1023,14 @@ fn simple_fo_params(
         color: runtime::from_param(
             caps
                 .first()
-                .and_then(|c| runtime::decode_path(
+                .map(|c| runtime::decode_path(
                     c,
-                    "color",
+                    "/path/color",
                     runtime::Style::Simple,
                     runtime::Shape::Object,
                     false,
-                )),
+                ))
+                .transpose()?,
             "/path/color",
         )?,
     })
@@ -1057,13 +1067,14 @@ fn simple_ta_params(
         color: runtime::from_param(
             caps
                 .first()
-                .and_then(|c| runtime::decode_path(
+                .map(|c| runtime::decode_path(
                     c,
-                    "color",
+                    "/path/color",
                     runtime::Style::Simple,
                     runtime::Shape::Array,
                     true,
-                )),
+                ))
+                .transpose()?,
             "/path/color",
         )?,
     })
@@ -1100,13 +1111,14 @@ fn simple_to_params(
         color: runtime::from_param(
             caps
                 .first()
-                .and_then(|c| runtime::decode_path(
+                .map(|c| runtime::decode_path(
                     c,
-                    "color",
+                    "/path/color",
                     runtime::Style::Simple,
                     runtime::Shape::Object,
                     true,
-                )),
+                ))
+                .transpose()?,
             "/path/color",
         )?,
     })
@@ -1524,9 +1536,10 @@ fn header_fa_params(
         color: runtime::from_param(
             runtime::decode_header(
                 runtime::joined_header(req.headers(), "color").as_deref(),
+                "/header/color",
                 runtime::Shape::Array,
                 false,
-            ),
+            )?,
             "/header/color",
         )?,
     })
@@ -1563,9 +1576,10 @@ fn header_fo_params(
         color: runtime::from_param(
             runtime::decode_header(
                 runtime::joined_header(req.headers(), "color").as_deref(),
+                "/header/color",
                 runtime::Shape::Object,
                 false,
-            ),
+            )?,
             "/header/color",
         )?,
     })
@@ -1602,9 +1616,10 @@ fn header_ta_params(
         color: runtime::from_param(
             runtime::decode_header(
                 runtime::joined_header(req.headers(), "color").as_deref(),
+                "/header/color",
                 runtime::Shape::Array,
                 true,
-            ),
+            )?,
             "/header/color",
         )?,
     })
@@ -1641,9 +1656,10 @@ fn header_to_params(
         color: runtime::from_param(
             runtime::decode_header(
                 runtime::joined_header(req.headers(), "color").as_deref(),
+                "/header/color",
                 runtime::Shape::Object,
                 true,
-            ),
+            )?,
             "/header/color",
         )?,
     })
@@ -1681,10 +1697,11 @@ fn cookie_ta_params(
             runtime::decode_cookie(
                 runtime::Message::header(req, "cookie").as_deref(),
                 "color",
+                "/cookie/color",
                 runtime::Style::Cookie,
                 runtime::Shape::Array,
                 true,
-            ),
+            )?,
             "/cookie/color",
         )?,
     })
@@ -1722,10 +1739,11 @@ fn cookie_to_params(
             runtime::decode_cookie(
                 runtime::Message::header(req, "cookie").as_deref(),
                 "color",
+                "/cookie/color",
                 runtime::Style::Cookie,
                 runtime::Shape::Object,
                 true,
-            ),
+            )?,
             "/cookie/color",
         )?,
     })

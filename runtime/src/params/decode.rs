@@ -12,45 +12,54 @@ use super::{Query, Shape, Style, parse_query, pct_decode};
 use crate::json::push_multi;
 use crate::{ClientError, Reason, coerce::Coerce, coerce::CoerceError, json::to_value};
 
-fn split_value(raw: &str, shape: Shape, explode: bool, sep: char) -> Value {
-    match shape {
+/// Splits a parameter value in its style. `None` for an object member without `=` or a list of names and values
+/// that ends on a name.
+fn split_value(raw: &str, shape: Shape, explode: bool, sep: char) -> Option<Value> {
+    Some(match shape {
         Shape::Primitive => Value::String(raw.to_owned()),
         // An empty value is the empty (RFC 6570 "undefined") list. Inside a
         // list an empty item is the empty string. `a,,b` has three items.
         Shape::Array if raw.is_empty() => Value::Array(vec![]),
         Shape::Array => Value::Array(raw.split(sep).map(|s| Value::String(s.to_owned())).collect()),
+        Shape::Object if raw.is_empty() => Value::Object(Map::new()),
+        Shape::Object if explode => Value::Object(
+            raw.split(sep)
+                .map(|kv| kv.split_once('=').map(|(k, v)| (k.to_owned(), Value::String(v.to_owned()))))
+                .collect::<Option<_>>()?,
+        ),
         Shape::Object => {
-            let mut o = Map::new();
-            if explode {
-                for kv in raw.split(sep) {
-                    if let Some((k, v)) = kv.split_once('=') {
-                        o.insert(k.to_owned(), Value::String(v.to_owned()));
-                    }
-                }
-            } else {
-                let parts: Vec<&str> = raw.split(sep).collect();
-                for pair in parts.chunks(2) {
-                    if let [k, v] = pair {
-                        o.insert(k.to_string(), Value::String(v.to_string()));
-                    }
-                }
-            }
-            Value::Object(o)
+            let parts: Vec<&str> = raw.split(sep).collect();
+            let pairs = parts.chunks(2).map(|pair| match pair {
+                [k, v] => Some(((*k).to_owned(), Value::String((*v).to_owned()))),
+                _ => None,
+            });
+            Value::Object(pairs.collect::<Option<_>>()?)
         }
-    }
+    })
 }
 
-fn decode_parts(v: Value) -> Value {
-    match v {
-        Value::String(s) => Value::String(pct_decode(&s)),
-        Value::Array(a) => Value::Array(a.into_iter().map(decode_parts).collect()),
-        Value::Object(o) => Value::Object(o.into_iter().map(|(k, v)| (pct_decode(&k), decode_parts(v))).collect()),
+/// Percent-decodes every name and value. `None` when one is not UTF-8.
+fn decode_parts(v: Value) -> Option<Value> {
+    Some(match v {
+        Value::String(s) => Value::String(pct_decode(&s)?),
+        Value::Array(a) => Value::Array(a.into_iter().map(decode_parts).collect::<Option<_>>()?),
+        Value::Object(o) => {
+            Value::Object(o.into_iter().map(|(k, v)| Some((pct_decode(&k)?, decode_parts(v)?))).collect::<Option<_>>()?)
+        }
         other @ (Value::Null | Value::Bool(_) | Value::Number(_)) => other,
-    }
+    })
+}
+
+/// Returns the error of a parameter at `at` whose value does not decode in its style.
+fn malformed(at: &str) -> Reason {
+    Reason::invalid(at, "does not decode in its style: a member without a value, or text that is not UTF-8")
 }
 
 /// Parses a raw (still percent-encoded) path segment.
-pub fn decode_path(raw: &str, name: &str, style: Style, shape: Shape, explode: bool) -> Option<Value> {
+///
+/// # Errors
+/// It does not decode in its style.
+pub fn decode_path(raw: &str, at: &str, style: Style, shape: Shape, explode: bool) -> Result<Value, Reason> {
     let v = match style {
         Style::Label => {
             let body = raw.strip_prefix('.').unwrap_or(raw);
@@ -60,18 +69,13 @@ pub fn decode_path(raw: &str, name: &str, style: Style, shape: Shape, explode: b
         Style::Matrix => {
             let body = raw.strip_prefix(';').unwrap_or(raw);
             match (shape, explode) {
-                (Shape::Array, true) => Value::Array(
-                    body.split(';')
-                        .filter_map(|p| p.split_once('='))
-                        .map(|(_, v)| Value::String(v.to_owned()))
-                        .collect(),
-                ),
+                (Shape::Array, true) => body
+                    .split(';')
+                    .map(|p| p.split_once('=').map(|(_, v)| Value::String(v.to_owned())))
+                    .collect::<Option<_>>()
+                    .map(Value::Array),
                 (Shape::Object, true) => split_value(body, shape, true, ';'),
-                _ => {
-                    let value = body.split_once('=').map(|(_, v)| v).unwrap_or_default();
-                    let _ = name;
-                    split_value(value, shape, false, ',')
-                }
+                _ => body.split_once('=').and_then(|(_, v)| split_value(v, shape, false, ',')),
             }
         }
         Style::Simple
@@ -82,7 +86,7 @@ pub fn decode_path(raw: &str, name: &str, style: Style, shape: Shape, explode: b
         | Style::DeepObject
         | Style::Cookie => split_value(raw, shape, explode, ','),
     };
-    Some(decode_parts(v))
+    v.and_then(decode_parts).ok_or_else(|| malformed(at))
 }
 
 /// Returns the JSON text of a header declared with JSON `content` (`X-Rate: {"limit":10}`) for [`from_json_param`],
@@ -97,9 +101,11 @@ pub fn encode_json_header(v: &Value) -> Option<String> {
 }
 
 /// Parses a header value. `None` when the header is absent.
-pub fn decode_header(raw: Option<&str>, shape: Shape, explode: bool) -> Option<Value> {
-    let r = raw?;
-    Some(split_value(r.trim(), shape, explode, ','))
+///
+/// # Errors
+/// It does not decode in its style.
+pub fn decode_header(raw: Option<&str>, at: &str, shape: Shape, explode: bool) -> Result<Option<Value>, Reason> {
+    raw.map(|r| split_value(r.trim(), shape, explode, ',').ok_or_else(|| malformed(at))).transpose()
 }
 
 /// Returns an exploded form object without the keys of the operation's other query
@@ -149,27 +155,21 @@ pub fn decode_query(
             any.then_some(Value::Object(root))
         }
         (_, Shape::Primitive) => values().next().map(|v| Value::String(v.to_owned())),
-        (Style::SpaceDelimited, Shape::Array | Shape::Object) => {
-            values().next().map(|v| split_value(v, shape, false, ' '))
-        }
-        (Style::PipeDelimited, Shape::Array | Shape::Object) => {
-            values().next().map(|v| split_value(v, shape, false, '|'))
-        }
-        (Style::TabDelimited, Shape::Array | Shape::Object) => {
-            values().next().map(|v| split_value(v, shape, false, '\t'))
-        }
+        (Style::SpaceDelimited, Shape::Array | Shape::Object) => split_one(values().next(), shape, ' ', at)?,
+        (Style::PipeDelimited, Shape::Array | Shape::Object) => split_one(values().next(), shape, '|', at)?,
+        (Style::TabDelimited, Shape::Array | Shape::Object) => split_one(values().next(), shape, '\t', at)?,
         (_, Shape::Array) => {
             let Some(first) = values().next() else { return Ok(None) };
             if explode {
                 Some(Value::Array(values().map(|v| Value::String(v.to_owned())).collect()))
             } else if values().nth(1).is_none() {
-                Some(split_value(first, shape, false, ','))
+                split_one(Some(first), shape, ',', at)?
             } else {
                 // `explode: false` sent exploded anyway (`tags=a&tags=b`) as some
                 // clients do. Accept every value and not only the first.
                 let mut items = vec![];
                 for v in values() {
-                    if let Value::Array(a) = split_value(v, shape, false, ',') {
+                    if let Some(Value::Array(a)) = split_one(Some(v), shape, ',', at)? {
                         items.extend(a);
                     }
                 }
@@ -185,10 +185,15 @@ pub fn decode_query(
                     .collect();
                 (!o.is_empty()).then_some(Value::Object(o))
             } else {
-                values().next().map(|v| split_value(v, shape, false, ','))
+                split_one(values().next(), shape, ',', at)?
             }
         }
     })
+}
+
+/// Splits the one value of a delimited query parameter at `at`, when it is sent.
+fn split_one(v: Option<&str>, shape: Shape, sep: char, at: &str) -> Result<Option<Value>, Reason> {
+    v.map(|v| split_value(v, shape, false, sep).ok_or_else(|| malformed(at))).transpose()
 }
 
 fn insert_deep(root: &mut Map<String, Value>, keys: &[&str], v: &str) {
@@ -236,30 +241,46 @@ pub fn decode_querystring(raw_query: &str, form: bool) -> Option<Value> {
         }
         Some(Value::Object(o))
     } else {
-        serde_json::from_str(&pct_decode(raw_query)).ok()
+        serde_json::from_str(&pct_decode(raw_query)?).ok()
     }
 }
 
 /// Parses a cookie parameter from (name, value) pairs.
 #[cfg(feature = "cookie")]
-pub fn decode_cookie(header: Option<&str>, name: &str, style: Style, shape: Shape, explode: bool) -> Option<Value> {
+///
+/// # Errors
+/// It does not decode in its style.
+pub fn decode_cookie(
+    header: Option<&str>,
+    name: &str,
+    at: &str,
+    style: Style,
+    shape: Shape,
+    explode: bool,
+) -> Result<Option<Value>, Reason> {
     // Borrowed (name, value) pairs. Only the cookie that was asked for is copied.
     let pairs = || cookie_pairs(header.unwrap_or(""));
-    let dec = |s: &str| {
-        if style == Style::Cookie { s.to_owned() } else { pct_decode(s) }
-    };
-    match (shape, explode) {
+    // `style: cookie` sends values as they are (3.2): only `form` percent-encodes them.
+    let dec = |s: &str| if style == Style::Cookie { Some(s.to_owned()) } else { pct_decode(s) };
+    let text = |s: &str| dec(s).map(Value::String).ok_or_else(|| malformed(at));
+    Ok(match (shape, explode) {
         (Shape::Array, true) => {
-            let vs: Vec<Value> = pairs().filter(|(k, _)| *k == name).map(|(_, v)| Value::String(dec(v))).collect();
+            let vs: Vec<Value> = pairs().filter(|(k, _)| *k == name).map(|(_, v)| text(v)).collect::<Result<_, _>>()?;
             (!vs.is_empty()).then_some(Value::Array(vs))
         }
         (Shape::Object, true) => {
-            Some(Value::Object(pairs().map(|(k, v)| (k.to_owned(), Value::String(dec(v)))).collect()))
+            Some(Value::Object(pairs().map(|(k, v)| Ok((k.to_owned(), text(v)?))).collect::<Result<_, Reason>>()?))
         }
         // One string. It is decoded straight into the value and not split first.
-        (Shape::Primitive, _) => pairs().find(|(k, _)| *k == name).map(|(_, v)| Value::String(pct_decode(v))),
-        _ => pairs().find(|(k, _)| *k == name).map(|(_, v)| decode_parts(split_value(v, shape, false, ','))),
-    }
+        (Shape::Primitive, _) => pairs().find(|(k, _)| *k == name).map(|(_, v)| text(v)).transpose()?,
+        _ => pairs()
+            .find(|(k, _)| *k == name)
+            .map(|(_, v)| {
+                let split = split_value(v, shape, false, ',');
+                if style == Style::Cookie { split } else { split.and_then(decode_parts) }.ok_or_else(|| malformed(at))
+            })
+            .transpose()?,
+    })
 }
 
 /// Creates [`from_param`] for a scalar parameter given as its decoded text. `at` is where the parameter is in the
@@ -289,12 +310,12 @@ pub fn text_decode_as<T: DeserializeOwned>(status: Option<u16>, body: &[u8]) -> 
 /// # Errors
 /// The parameter is absent or does not decode as `T`.
 pub fn path_param<T: DeserializeOwned>(caps: &[&str], index: usize, style: Style, at: &str) -> Result<T, Reason> {
-    from_text(caps.get(index).map(|c| path_text(c, style)), at)
+    from_text(caps.get(index).map(|c| path_text(c, style).ok_or_else(|| malformed(at))).transpose()?, at)
 }
 
 /// Returns a scalar path segment's text: `.x` (label) and `;name=x` (matrix) unwrapped,
-/// then percent-decoded (borrowed when there is nothing to decode).
-pub fn path_text(raw: &str, style: Style) -> Cow<'_, str> {
+/// then percent-decoded (borrowed when there is nothing to decode). `None` when it is not UTF-8.
+pub fn path_text(raw: &str, style: Style) -> Option<Cow<'_, str>> {
     let v = match style {
         Style::Label => raw.strip_prefix('.').unwrap_or(raw),
         Style::Matrix => raw.strip_prefix(';').unwrap_or(raw).split_once('=').map(|(_, v)| v).unwrap_or_default(),
@@ -335,15 +356,29 @@ pub fn trimmed_header(raw: Cow<'_, str>) -> Cow<'_, str> {
     }
 }
 
-/// Returns the percent-decoded text of a scalar cookie.
+/// Returns the text of a scalar cookie: percent-decoded unless `style` is `cookie`, which sends it as it is.
+///
+/// # Errors
+/// The decoded text is not UTF-8.
 #[cfg(feature = "cookie")]
-pub fn cookie_text<'h>(header: Option<&'h str>, name: &str) -> Option<Cow<'h, str>> {
-    cookie_pairs(header?).find(|(k, _)| *k == name).map(|(_, v)| pct_decode_cow(v))
+pub fn cookie_text<'h>(
+    header: Option<&'h str>,
+    name: &str,
+    at: &str,
+    style: Style,
+) -> Result<Option<Cow<'h, str>>, Reason> {
+    let Some(v) = header.and_then(|h| cookie_pairs(h).find(|(k, _)| *k == name).map(|(_, v)| v)) else {
+        return Ok(None);
+    };
+    if style == Style::Cookie {
+        return Ok(Some(Cow::Borrowed(v)));
+    }
+    pct_decode_cow(v).map(Some).ok_or_else(|| malformed(at))
 }
 
 /// Returns [`pct_decode`] that borrows when there is no `%`.
-fn pct_decode_cow(s: &str) -> Cow<'_, str> {
-    if s.contains('%') { Cow::Owned(pct_decode(s)) } else { Cow::Borrowed(s) }
+fn pct_decode_cow(s: &str) -> Option<Cow<'_, str>> {
+    if s.contains('%') { pct_decode(s).map(Cow::Owned) } else { Some(Cow::Borrowed(s)) }
 }
 
 /// The deserializer of [`from_text`].
@@ -491,12 +526,21 @@ mod tests {
     #[cfg(feature = "cookie")]
     #[test]
     fn a_cookie_is_found_by_its_name() {
-        assert_eq!(super::decode_cookie(Some("a=1; b=2"), "b", Style::Form, Shape::Primitive, true), Some(json!("2")));
+        assert_eq!(
+            super::decode_cookie(Some("a=1; b=2"), "b", "/cookie/b", Style::Form, Shape::Primitive, true),
+            Ok(Some(json!("2")))
+        );
     }
 
     #[test]
     fn a_label_object_splits_at_its_separator() {
-        assert_eq!(decode_path(".a=1.b=2", "p", Style::Label, Shape::Object, true), Some(json!({"a": "1", "b": "2"})));
-        assert_eq!(decode_path(".a,1,b,2", "p", Style::Label, Shape::Object, false), Some(json!({"a": "1", "b": "2"})));
+        assert_eq!(
+            decode_path(".a=1.b=2", "/path/p", Style::Label, Shape::Object, true),
+            Ok(json!({"a": "1", "b": "2"}))
+        );
+        assert_eq!(
+            decode_path(".a,1,b,2", "/path/p", Style::Label, Shape::Object, false),
+            Ok(json!({"a": "1", "b": "2"}))
+        );
     }
 }

@@ -104,7 +104,7 @@ pub(crate) fn param_source(
                     quote!(caps.get(#i))
                 }
             };
-            quote!(#cap.and_then(|c| runtime::decode_path(c, #wire, #s, #shape, #explode)))
+            quote!(#cap.map(|c| runtime::decode_path(c, #at, #s, #shape, #explode)).transpose()?)
         }
         // `allowEmptyValue`: a bare `?flag` turns a boolean on; other
         // non-string types decode an empty value as absent.
@@ -120,14 +120,14 @@ pub(crate) fn param_source(
             quote!(runtime::decode_querystring(raw_query, #form))
         }
         Location::Header => {
-            quote!(runtime::decode_header(runtime::joined_header(req.headers(), #wire).as_deref(), #shape, #explode))
+            quote!(runtime::decode_header(runtime::joined_header(req.headers(), #wire).as_deref(), #at, #shape, #explode)?)
         }
         Location::Cookie => {
-            quote!(runtime::decode_cookie(runtime::Message::header(req, "cookie").as_deref(), #wire, #s, #shape, #explode))
+            quote!(runtime::decode_cookie(runtime::Message::header(req, "cookie").as_deref(), #wire, #at, #s, #shape, #explode)?)
         }
         Location::Part => {
             let part = lit(p.part.as_deref().unwrap_or_default());
-            quote!(runtime::decode_header(runtime::part_header(runtime::Message::content_type(req), &#body, #part, #wire).as_deref(), #shape, #explode))
+            quote!(runtime::decode_header(runtime::part_header(runtime::Message::content_type(req), &#body, #part, #wire).as_deref(), #at, #shape, #explode)?)
         }
     }
 }
@@ -163,7 +163,9 @@ pub(crate) fn text_decode(
         Location::Query if p.allow_empty => return None,
         Location::Query => quote!(runtime::query_text(query, #wire, #at)?),
         Location::Header => quote!(runtime::joined_header(req.headers(), #wire).map(runtime::trimmed_header)),
-        Location::Cookie => quote!(runtime::cookie_text(runtime::Message::header(req, "cookie").as_deref(), #wire)),
+        Location::Cookie => {
+            quote!(runtime::cookie_text(runtime::Message::header(req, "cookie").as_deref(), #wire, #at, #s)?)
+        }
         Location::QueryString | Location::Part => return None,
     };
     Some(quote!(runtime::from_text(#text, #at)))

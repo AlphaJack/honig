@@ -301,10 +301,17 @@ impl<T: runtime::Transport> Client<T> {
                     body: runtime::Blob::from(body.to_vec()),
                     x_size: runtime::from_param(
                             runtime::decode_header(
-                                runtime::joined_header(&head.headers, "X-Size").as_deref(),
-                                runtime::Shape::Primitive,
-                                false,
-                            ),
+                                    runtime::joined_header(&head.headers, "X-Size").as_deref(),
+                                    "/header/X-Size",
+                                    runtime::Shape::Primitive,
+                                    false,
+                                )
+                                .map_err(|e| runtime::ClientError::Decode {
+                                    status: Some(status),
+                                    message: e.to_string(),
+                                    body: body.clone(),
+                                    pointer: String::new(),
+                                })?,
                             "/header/X-Size",
                         )
                         .map_err(|e| runtime::ClientError::Decode {
@@ -481,10 +488,17 @@ impl<T: runtime::Transport> Client<T> {
                     },
                     x_next: runtime::from_param(
                             runtime::decode_header(
-                                runtime::joined_header(&head.headers, "X-Next").as_deref(),
-                                runtime::Shape::Primitive,
-                                false,
-                            ),
+                                    runtime::joined_header(&head.headers, "X-Next").as_deref(),
+                                    "/header/X-Next",
+                                    runtime::Shape::Primitive,
+                                    false,
+                                )
+                                .map_err(|e| runtime::ClientError::Decode {
+                                    status: Some(status),
+                                    message: e.to_string(),
+                                    body: body.clone(),
+                                    pointer: String::new(),
+                                })?,
                             "/header/X-Next",
                         )
                         .map_err(|e| runtime::ClientError::Decode {
@@ -495,10 +509,17 @@ impl<T: runtime::Transport> Client<T> {
                         })?,
                     x_total: runtime::from_param(
                             runtime::decode_header(
-                                runtime::joined_header(&head.headers, "X-Total").as_deref(),
-                                runtime::Shape::Primitive,
-                                false,
-                            ),
+                                    runtime::joined_header(&head.headers, "X-Total").as_deref(),
+                                    "/header/X-Total",
+                                    runtime::Shape::Primitive,
+                                    false,
+                                )
+                                .map_err(|e| runtime::ClientError::Decode {
+                                    status: Some(status),
+                                    message: e.to_string(),
+                                    body: body.clone(),
+                                    pointer: String::new(),
+                                })?,
                             "/header/X-Total",
                         )
                         .map_err(|e| runtime::ClientError::Decode {

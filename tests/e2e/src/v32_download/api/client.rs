@@ -191,10 +191,17 @@ impl<T: runtime::Transport> Client<T> {
                     body: runtime::json_decode(Some(status), &body)?,
                     e_tag: runtime::from_param(
                             runtime::decode_header(
-                                runtime::joined_header(&head.headers, "ETag").as_deref(),
-                                runtime::Shape::Primitive,
-                                false,
-                            ),
+                                    runtime::joined_header(&head.headers, "ETag").as_deref(),
+                                    "/header/ETag",
+                                    runtime::Shape::Primitive,
+                                    false,
+                                )
+                                .map_err(|e| runtime::ClientError::Decode {
+                                    status: Some(status),
+                                    message: e.to_string(),
+                                    body: body.clone(),
+                                    pointer: String::new(),
+                                })?,
                             "/header/ETag",
                         )
                         .map_err(|e| runtime::ClientError::Decode {
@@ -205,11 +212,18 @@ impl<T: runtime::Transport> Client<T> {
                         })?,
                     last_modified: runtime::from_param(
                             runtime::decode_header(
-                                runtime::joined_header(&head.headers, "Last-Modified")
-                                    .as_deref(),
-                                runtime::Shape::Primitive,
-                                false,
-                            ),
+                                    runtime::joined_header(&head.headers, "Last-Modified")
+                                        .as_deref(),
+                                    "/header/Last-Modified",
+                                    runtime::Shape::Primitive,
+                                    false,
+                                )
+                                .map_err(|e| runtime::ClientError::Decode {
+                                    status: Some(status),
+                                    message: e.to_string(),
+                                    body: body.clone(),
+                                    pointer: String::new(),
+                                })?,
                             "/header/Last-Modified",
                         )
                         .map_err(|e| runtime::ClientError::Decode {

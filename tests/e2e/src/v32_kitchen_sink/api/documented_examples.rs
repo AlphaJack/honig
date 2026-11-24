@@ -25,7 +25,9 @@ fn wire(
     want: &str,
 ) {
     match got {
-        Ok(got) if got == want || runtime::pct_decode(&got) == want => {}
+        Ok(
+            got,
+        ) if got == want || runtime::pct_decode(&got).is_some_and(|g| g == want) => {}
         Ok(got) => bad.push(format!("{at}: sent `{got}`, documented `{want}`")),
         Err(e) => bad.push(format!("{at}: {e}")),
     }

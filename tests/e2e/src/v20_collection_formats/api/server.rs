@@ -186,13 +186,14 @@ fn list_items_params(
         ids: runtime::from_param(
             caps
                 .first()
-                .and_then(|c| runtime::decode_path(
+                .map(|c| runtime::decode_path(
                     c,
-                    "ids",
+                    "/path/ids",
                     runtime::Style::Simple,
                     runtime::Shape::Array,
                     false,
-                )),
+                ))
+                .transpose()?,
             "/path/ids",
         )?,
         csv: runtime::from_param(
@@ -253,9 +254,10 @@ fn list_items_params(
         x_tags: runtime::from_param(
             runtime::decode_header(
                 runtime::joined_header(req.headers(), "X-Tags").as_deref(),
+                "/header/X-Tags",
                 runtime::Shape::Array,
                 false,
-            ),
+            )?,
             "/header/X-Tags",
         )?,
         flag: runtime::from_param(

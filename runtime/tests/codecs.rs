@@ -178,9 +178,9 @@ fn percent_encoding_keeps_unreserved_and_reserved_only_when_asked() {
 
 #[test]
 fn percent_decoding_leaves_invalid_escapes_as_they_are() {
-    assert_eq!(pct_decode("%+1%zz%4"), "%+1%zz%4");
-    assert_eq!(pct_decode("%C3%BC"), "ü");
-    assert_eq!(pct_decode("%FF"), "\u{fffd}", "invalid UTF-8 is replaced");
+    assert_eq!(pct_decode("%+1%zz%4").as_deref(), Some("%+1%zz%4"));
+    assert_eq!(pct_decode("%C3%BC").as_deref(), Some("ü"));
+    assert_eq!(pct_decode("%FF"), None, "invalid UTF-8 is refused, not replaced");
 }
 
 #[test]
@@ -202,7 +202,9 @@ fn form_encoding_writes_space_as_plus() {
 fn cookies_trim_spaces_skip_bare_names_and_percent_decode_by_name() {
     let header = " a = 1 ;bare; b=%20x ";
     assert_eq!(parse_cookies(header), [("a".to_owned(), "1".to_owned()), ("b".to_owned(), "%20x".to_owned())]);
-    assert_eq!(cookie_text(Some(header), "b").as_deref(), Some(" x"));
+    let text = |style| cookie_text(Some(header), "b", "/cookie/b", style).map(|t| t.map(std::borrow::Cow::into_owned));
+    assert_eq!(text(honig::__private::Style::Form), Ok(Some(" x".to_owned())));
+    assert_eq!(text(honig::__private::Style::Cookie), Ok(Some("%20x".to_owned())), "`style: cookie` sends it as it is");
 }
 
 fn unique(items: &[Value]) -> bool {

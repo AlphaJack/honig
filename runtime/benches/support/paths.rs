@@ -287,7 +287,10 @@ pub(crate) const PATHS: &[Path] = &[
             let (header, last) = cookies(size);
             (
                 header.len(),
-                on((header, last), |(h, last)| runtime::cookie_text(Some(h.as_str()), last).map(|c| c.len())),
+                on((header, last), |(h, last)| {
+                    runtime::cookie_text(Some(h.as_str()), last, "/cookie/c", runtime::Style::Form)
+                        .map(|c| c.map(|c| c.len()))
+                }),
             )
         },
     },
