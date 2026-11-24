@@ -1383,3 +1383,17 @@ fn each_diagnostic_points_at_its_keyword() {
     failed.extend((!(w.iter().all(|m| !m.contains("x-honig-not")))).then_some("queued if"));
     assert!(failed.is_empty(), "{failed:?}");
 }
+
+/// A schema under `dependentSchemas`, `unevaluatedProperties`, `unevaluatedItems` or `contentSchema` is validated as
+/// any other: its reference that does not resolve is an error at its pointer.
+#[test]
+fn every_subschema_is_validated() {
+    let nope = json!({"$ref": "#/components/schemas/Nope"});
+    for key in ["dependentSchemas", "unevaluatedProperties", "unevaluatedItems", "contentSchema"] {
+        let sub = if key == "dependentSchemas" { json!({"a": nope}) } else { nope.clone() };
+        let schema = json!({"schemas": {"S": {"type": "object", key: sub}}});
+        let (_, w) = common::build("validated-sub", &doc(&json!({}), &schema), &[]);
+        let at = if key == "dependentSchemas" { format!("/{key}/a/$ref:") } else { format!("/{key}/$ref:") };
+        assert!(w.iter().any(|m| m.starts_with("/components/schemas/S") && m.contains(&at)), "{key}: {w:#?}");
+    }
+}

@@ -29,20 +29,19 @@ struct Found<'a> {
     out: Vec<(String, String)>,
 }
 
-/// What tells an object branch apart: its properties, the required ones, the `const` and `type` of each and whether
-/// it is closed.
+/// What tells an object branch apart: its properties, the required ones and the `const` and `type` of each. Being closed
+/// does not: a closed branch still accepts a value of the properties that both declare.
 #[derive(Default)]
 struct Object {
     properties: BTreeSet<String>,
     required: BTreeSet<String>,
     consts: BTreeMap<String, Value>,
     types: BTreeMap<String, Value>,
-    closed: bool,
 }
 
 impl Object {
     /// Can no value match both `self` and `other`? A required property of one that the other does not declare or
-    /// types otherwise, a `const` property with another value, or a closed branch tells them apart.
+    /// types otherwise, or a `const` property with another value, tells them apart.
     fn apart(&self, other: &Self) -> bool {
         let missing = |a: &Self, b: &Self| {
             a.required.iter().any(|r| {
@@ -50,7 +49,7 @@ impl Object {
             })
         };
         let consts = self.consts.iter().any(|(k, v)| other.consts.get(k).is_some_and(|w| w != v));
-        self.closed || other.closed || missing(self, other) || missing(other, self) || consts
+        missing(self, other) || missing(other, self) || consts
     }
 }
 
@@ -71,8 +70,7 @@ impl Found<'_> {
         if typed.is_some_and(|t| t != "object") || (typed.is_none() && branch.get("properties").is_none()) {
             return None;
         }
-        let mut o =
-            Object { closed: branch.get("additionalProperties") == Some(&Value::Bool(false)), ..Object::default() };
+        let mut o = Object::default();
         for (name, p) in branch.get("properties").and_then(Value::as_object).into_iter().flatten() {
             o.properties.insert(name.clone());
             if let Some(c) = p.get("const") {
@@ -97,7 +95,6 @@ impl Found<'_> {
             o.required.extend(m.required);
             o.consts.extend(m.consts);
             o.types.extend(m.types);
-            o.closed |= m.closed;
         }
         (!o.properties.is_empty()).then_some(o)
     }
@@ -115,8 +112,7 @@ impl Found<'_> {
                         join(ptr, key),
                         format!(
                             "a value can match both {a} and {b}, and it decodes as the first: add a required \
-                             property or a `const` tag that tells them apart, or close one with \
-                             `additionalProperties: false`"
+                             property or a `const` tag that tells them apart"
                         ),
                     ));
                 }
@@ -214,6 +210,20 @@ mod tests {
         let mut d = Diagnostics::default();
         check(&Doc::new(doc), &mut d);
         d.iter().map(|x| x.message.clone()).collect()
+    }
+
+    /// A closed branch still accepts a value of the properties that both declare: it tells two branches apart only
+    /// when the other requires a property that it does not declare.
+    #[test]
+    fn a_closed_branch_still_overlaps_a_wider_one() {
+        let union = |b: Value| {
+            json!({"openapi": "3.2.0", "components": {"schemas": {"U": {"anyOf": [
+                {"type": "object", "additionalProperties": false, "properties": {"a": {"type": "string"}}}, b]}}}})
+        };
+        let wider = json!({"type": "object", "properties": {"a": {"type": "string"}, "b": {"type": "string"}}});
+        assert_eq!(warnings(union(wider)).len(), 1, "`{{\"a\": \"x\"}}` matches both");
+        let needs_b = json!({"type": "object", "required": ["b"], "properties": {"b": {"type": "string"}}});
+        assert_eq!(warnings(union(needs_b)), Vec::<String>::new());
     }
 
     #[test]

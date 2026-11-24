@@ -743,6 +743,9 @@ impl V<'_> {
             ("contains", &o.contains),
             ("additionalProperties", &o.additional_properties),
             ("propertyNames", &o.property_names),
+            ("unevaluatedProperties", &o.unevaluated_properties),
+            ("unevaluatedItems", &o.unevaluated_items),
+            ("contentSchema", &o.content_schema),
         ];
         for (key, sub) in subs {
             if let Some(sub) = sub {
@@ -756,9 +759,12 @@ impl V<'_> {
                 self.schema(sub, &join(&join(ptr, key), &i.to_string()));
             }
         }
-        for (key, map) in
-            [("properties", &o.properties), ("patternProperties", &o.pattern_properties), ("$defs", &o.defs)]
-        {
+        for (key, map) in [
+            ("properties", &o.properties),
+            ("patternProperties", &o.pattern_properties),
+            ("$defs", &o.defs),
+            ("dependentSchemas", &o.dependent_schemas),
+        ] {
             for (k, sub) in map.iter().flatten() {
                 self.schema(sub, &join(&join(ptr, key), k));
             }
