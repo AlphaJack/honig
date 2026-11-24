@@ -67,9 +67,11 @@ pub(crate) fn conditional_union(o: &serde_json::Map<String, Value>) -> Option<Va
     if pairs.is_empty() {
         return None;
     }
-    // With several conditionals an `else` overlaps the other branches: it stays a runtime check.
+    // With several conditionals the `else` of each applies to the values of every other one: they stay runtime
+    // checks.
     let otherwise = match pairs.as_slice() {
         [(_, _, e)] => *e,
+        _ if pairs.iter().any(|(_, _, e)| e.is_some_and(|e| *e != Value::Bool(true))) => return None,
         _ => None,
     };
     let mut prop = None;
@@ -186,6 +188,19 @@ mod tests {
         assert!(union(&schema).is_none(), "a tag that may be absent");
         schema["if"]["required"] = json!(["kind"]);
         assert!(union(&schema).is_some(), "an `if` that requires the tag fails without it: the `else` applies");
+    }
+
+    /// With two conditionals the `else` of each applies to the values of the other: no union drops it.
+    #[test]
+    fn an_else_beside_another_conditional_is_no_union() {
+        let member = |kind: &str, then: &str| json!({"if": {"properties": {"kind": {"const": kind}}}, "then": {"required": [then]}, "else": {"required": ["z"]}});
+        let mut schema = json!({"type": "object", "required": ["kind"], "properties": {"kind": {"type": "string"}},
+            "allOf": [member("a", "x"), member("b", "y")]});
+        assert!(union(&schema).is_none());
+        for m in schema["allOf"].as_array_mut().expect("members") {
+            m.as_object_mut().expect("a member").remove("else");
+        }
+        assert!(union(&schema).is_some(), "without `else` the branches are the union");
     }
 
     /// A keyword of the `then` that a branch cannot hold leaves the conditional as it is: no limit is dropped.
