@@ -336,6 +336,27 @@ fn discriminated_branches_that_only_an_unpinned_tag_separates_fail_generation() 
     }
 }
 
+/// JSON Schema 2020-12 section 8.2.2: an anchor belongs to its schema resource. Two resources may each declare
+/// `$anchor: x`, and `#x` in each finds its own. Two `$anchor: x` in one resource are an error: neither would win.
+#[test]
+fn anchors_belong_to_their_resource() {
+    let resource = |id: &str, t: &str| {
+        json!({"$id": format!("https://example.com/{id}"), "type": "object", "required": ["v"],
+            "properties": {"v": {"$ref": "#x"}}, "$defs": {"X": {"$anchor": "x", "type": t}}})
+    };
+    let d = doc(&json!({}), &json!({"schemas": {"A": resource("a", "string"), "B": resource("b", "integer")}}));
+    let types = common::file(&common::generate("anchors-own", &d, &Options::default()), "types.rs").to_owned();
+    let field = |name: &str| {
+        let (_, rest) = types.split_once(&format!("pub struct {name} {{")).expect(name);
+        rest.split_once('}').expect("its end").0.split_whitespace().collect::<String>()
+    };
+    assert!(field("A").contains("pubv:String") && field("B").contains("pubv:i64"), "{types}");
+    let twice = json!({"$defs": {"P": {"$anchor": "y", "type": "string"}, "Q": {"$anchor": "y", "type": "integer"}}});
+    let path = common::write("anchors-twice", &doc(&json!({}), &json!({"schemas": {"C": twice}})), &[]);
+    let err = crate::generate::generate(&path, &Options::default()).expect_err("two anchors y");
+    assert!(err.iter().any(|d| d.message.contains("`y`")), "{:#?}", err.0);
+}
+
 /// Media types that give one variant name are numbered in the sorted order of the types: a reorder of `content`
 /// changes no name.
 #[test]
