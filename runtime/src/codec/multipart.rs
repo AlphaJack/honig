@@ -1,5 +1,7 @@
 //! `multipart/form-data` bodies and parsing the parts of any `multipart/*` body.
 
+use std::fmt::Write as _;
+
 use bytes::Bytes;
 use serde::Serialize;
 use serde::de::DeserializeOwned;
@@ -15,7 +17,7 @@ use crate::params::{key_order, ordered};
 use crate::text::{decode_err, push_all};
 use crate::{ClientError, base64::unbase64_mime, coerce::Coerce};
 
-pub(super) const BOUNDARY: &str = concat!(env!("CARGO_PKG_NAME"), "-boundary-7MA4YWxkTrZu0gW");
+const BOUNDARY: &str = concat!(env!("CARGO_PKG_NAME"), "-boundary-7MA4YWxkTrZu0gW");
 
 /// Multipart bodies nested deeper than this are kept as one part's bytes.
 const MAX_NESTING: usize = 4;
@@ -97,7 +99,7 @@ fn multipart_encode_in<T: Serialize>(
     headers: &[(&str, &str, String)],
 ) -> Result<(String, Vec<u8>), ClientError> {
     let value = to_value(v)?;
-    let mut body = Vec::new();
+    let mut parts = Vec::new();
     if let Value::Object(o) = &value {
         let order = raw_parts(|| key_order(v));
         for (k, x) in ordered(o, &order) {
@@ -108,18 +110,57 @@ fn multipart_encode_in<T: Serialize>(
             match x {
                 Value::Null => {}
                 Value::Array(a) if !declared(types, k).is_some_and(is_multipart) => {
-                    for e in a {
-                        named_part(&mut body, Nest::TOP, k, k, e, types, &extra);
-                    }
+                    parts.extend(a.iter().map(|e| named_part(0, k, k, e, types, &extra)));
                 }
                 other @ (Value::Bool(_) | Value::Number(_) | Value::String(_) | Value::Array(_) | Value::Object(_)) => {
-                    named_part(&mut body, Nest::TOP, k, k, other, types, &extra);
+                    parts.push(named_part(0, k, k, other, types, &extra));
                 }
             }
         }
     }
-    body.extend_from_slice(format!("--{BOUNDARY}--\r\n").as_bytes());
-    Ok((format!("multipart/form-data; boundary={BOUNDARY}"), body))
+    Ok(assemble("multipart/form-data", &parts))
+}
+
+/// Returns the content type and the body of a `media` multipart body of `parts`, each its header lines and its bytes.
+/// The boundary is [`BOUNDARY`], a dash and a counter that no part contains. Each place where a part contains the
+/// boundary and its dash rules out one counter of the same width, so one of `places + 1` counters is free: one pass.
+pub(super) fn assemble(media: &str, parts: &[(String, Vec<u8>)]) -> (String, Vec<u8>) {
+    let mut boundary = [BOUNDARY, "-"].concat();
+    let finder = memchr::memmem::Finder::new(boundary.as_bytes());
+    let after: Vec<&[u8]> = parts
+        .iter()
+        .flat_map(|(head, data)| [head.as_bytes(), data.as_slice()])
+        .flat_map(|bytes| finder.find_iter(bytes).map(|at| bytes.get(at + finder.needle().len()..).unwrap_or_default()))
+        .collect();
+    let width = after.len().to_string().len();
+    let taken: std::collections::BTreeSet<&[u8]> = after.iter().filter_map(|a| a.get(..width)).collect();
+    let stem = boundary.len();
+    for n in 0..=after.len() {
+        boundary.truncate(stem);
+        write!(boundary, "{n:0width$}").ok();
+        if !boundary.as_bytes().get(stem..).is_some_and(|c| taken.contains(c)) {
+            break;
+        }
+    }
+    let delimiter = |body: &mut Vec<u8>| {
+        body.extend_from_slice(b"--");
+        body.extend_from_slice(boundary.as_bytes());
+    };
+    // `--`, the boundary and three line ends per part, then `--`, the boundary and `--` with a line end.
+    let framing = boundary.len() + "--\r\n\r\n\r\n".len();
+    let size = parts.iter().map(|(head, data)| framing + head.len() + data.len()).sum::<usize>();
+    let mut body = Vec::with_capacity(size + boundary.len() + "----\r\n".len());
+    for (head, data) in parts {
+        delimiter(&mut body);
+        body.extend_from_slice(b"\r\n");
+        body.extend_from_slice(head.as_bytes());
+        body.extend_from_slice(b"\r\n");
+        body.extend_from_slice(data);
+        body.extend_from_slice(b"\r\n");
+    }
+    delimiter(&mut body);
+    body.extend_from_slice(b"--\r\n");
+    (format!("{media}; boundary={boundary}"), body)
 }
 
 /// Returns the content type that `encoding` declares for a part path (`meta`, `meta/inner`
@@ -133,28 +174,17 @@ fn is_multipart(ct: &str) -> bool {
     ct.trim_start().to_ascii_lowercase().starts_with("multipart/")
 }
 
-/// Where a part sits: the boundary of its body and how deeply it nests.
-#[derive(Clone, Copy)]
-struct Nest<'b> {
-    boundary: &'b str,
-    depth: usize,
-}
-
-impl Nest<'_> {
-    const TOP: Nest<'static> = Nest { boundary: BOUNDARY, depth: 0 };
-}
-
-/// Appends one `form-data` part named `name` (encodings at `path`).
+/// Returns the header lines and the bytes of one `form-data` part named `name` (encodings at `path`) `depth` bodies
+/// deep.
 fn named_part(
-    body: &mut Vec<u8>,
-    nest: Nest<'_>,
+    depth: usize,
     path: &str,
     name: &str,
     x: &Value,
     types: &[(&str, &str)],
     extra: &str,
-) {
-    let (ct, data, file) = part_value(path, x, types, nest.depth);
+) -> (String, Vec<u8>) {
+    let (ct, data, file) = part_value(path, x, types, depth);
     // `Content-Transfer-Encoding: base64` among the part's headers (a `contentEncoding: base64` field): the body as
     // base64.
     let base64_part = extra.lines().any(|l| {
@@ -163,7 +193,6 @@ fn named_part(
         })
     });
     let data = if base64_part { base64(&data).into_bytes() } else { data };
-    let boundary = nest.boundary;
     let quote = |s: &str| s.replace('"', "%22");
     let disposition = match file {
         // A file without a name of its own is named after its field.
@@ -172,12 +201,7 @@ fn named_part(
         }
         PartKind::Field => format!("name=\"{}\"", quote(name)),
     };
-    body.extend_from_slice(
-        format!("--{boundary}\r\nContent-Disposition: form-data; {disposition}\r\nContent-Type: {ct}\r\n{extra}\r\n")
-            .as_bytes(),
-    );
-    body.extend_from_slice(&data);
-    body.extend_from_slice(b"\r\n");
+    (format!("Content-Disposition: form-data; {disposition}\r\nContent-Type: {ct}\r\n{extra}"), data)
 }
 
 /// What a part carries. That is the value of a field or a file with its own name if it has one.
@@ -194,30 +218,25 @@ fn part_value(path: &str, x: &Value, types: &[(&str, &str)], depth: usize) -> (S
     if let Some(d) = declared.filter(|d| is_multipart(d) && depth < MAX_NESTING)
         && matches!(x, Value::Object(_) | Value::Array(_))
     {
-        // Never containing an enclosing boundary: splitting the outer body
-        // must not cut at a nested delimiter.
-        let boundary = format!("{}-part{}-Qz3vK9wLmB", env!("CARGO_PKG_NAME"), depth + 1);
-        let mut body = Vec::new();
-        match x {
-            Value::Object(o) => {
-                for (k, v) in o.iter().filter(|(_, v)| !v.is_null()) {
-                    let nest = Nest { boundary: &boundary, depth: depth + 1 };
-                    named_part(&mut body, nest, &format!("{path}/{k}"), k, v, types, "");
-                }
-            }
-            Value::Array(a) => {
-                for (i, v) in a.iter().enumerate() {
+        let parts: Vec<(String, Vec<u8>)> = match x {
+            Value::Object(o) => o
+                .iter()
+                .filter(|(_, v)| !v.is_null())
+                .map(|(k, v)| named_part(depth + 1, &format!("{path}/{k}"), k, v, types, ""))
+                .collect(),
+            Value::Array(a) => a
+                .iter()
+                .enumerate()
+                .map(|(i, v)| {
                     let (ct, data, _) = part_value(&format!("{path}/{i}"), v, types, depth + 1);
-                    body.extend_from_slice(format!("--{boundary}\r\nContent-Type: {ct}\r\n\r\n").as_bytes());
-                    body.extend_from_slice(&data);
-                    body.extend_from_slice(b"\r\n");
-                }
-            }
-            Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_) => {}
-        }
-        body.extend_from_slice(format!("--{boundary}--\r\n").as_bytes());
-        let base = d.split(';').next().unwrap_or(d).trim();
-        return (format!("{base}; boundary={boundary}"), body, PartKind::Field);
+                    (format!("Content-Type: {ct}\r\n"), data)
+                })
+                .collect(),
+            Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_) => vec![],
+        };
+        // The enclosing body picks a boundary that this one does not contain.
+        let (ct, body) = assemble(d.split(';').next().unwrap_or(d).trim(), &parts);
+        return (ct, body, PartKind::Field);
     }
     // An object or a list declared XML is an XML document. Its root has the name of the part.
     #[cfg(feature = "xml")]
@@ -472,19 +491,45 @@ mod tests {
     }
 
     /// A part declared `multipart/*` nests its own parts, up to `MAX_NESTING` levels. A part of another type does not.
+    /// A value that contains a delimiter of the body: the constant, or the constant and the counter of a body that
+    /// does not contain it.
+    fn forged(boundary: &str) -> String {
+        format!("x\r\n--{boundary}\r\nContent-Disposition: form-data; name=\"admin\"\r\n\r\ntrue")
+    }
+
+    #[test]
+    fn a_value_that_contains_a_delimiter_stays_one_part() {
+        #[derive(Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+        struct Form {
+            comment: String,
+            file: crate::Binary,
+        }
+        for b in [BOUNDARY.to_owned(), format!("{BOUNDARY}-0")] {
+            let file = crate::Binary { bytes: forged(&b).into_bytes().into(), filename: None, content_type: None };
+            let form = Form { comment: forged(&b), file };
+            let (ct, body) = multipart_encode(&form, &[]).unwrap();
+            let back: Value = multipart_decode(None, &ct, &body).unwrap();
+            assert_eq!(back.as_object().map(Map::len), Some(2), "{back}");
+            let back: Form = multipart_decode(None, &ct, &body).unwrap();
+            assert_eq!(back.comment, form.comment);
+            assert_eq!(back.file.bytes, form.file.bytes);
+            let items = [forged(&b)];
+            let (ct, body) = crate::codec::mixed_encode(&items, "multipart/mixed", &[]).unwrap();
+            assert_eq!(crate::codec::mixed_decode::<Vec<String>>(None, &ct, &body, None).unwrap(), items);
+        }
+    }
+
     #[test]
     fn parts_nest_only_when_declared_multipart_and_not_too_deep() {
         let text = |value: Value, types: &[(&str, &str)]| {
             String::from_utf8(multipart_encode(&value, types).unwrap().1).unwrap()
         };
         let meta = text(serde_json::json!({"meta": {"a": 1}}), &[("meta", "application/json")]);
-        assert!(meta.contains(r#"{"a":1}"#) && !meta.contains("-part1-"), "{meta}");
+        assert!(meta.contains(r#"{"a":1}"#) && !meta.contains("boundary="), "{meta}");
         let mixed = "multipart/mixed";
         let types = [("f", mixed), ("f/*", mixed), ("f/0/*", mixed), ("f/0/0/*", mixed), ("f/0/0/0/*", mixed)];
         let deep = text(serde_json::json!({"f": [[[[[1]]]]]}), &types);
-        for level in 1..=4 {
-            assert!(deep.contains(&format!("-part{level}-")), "level {level}: {deep}");
-        }
-        assert!(!deep.contains("-part5-"), "{deep}");
+        // Each nested body is a part whose content type gives its boundary.
+        assert_eq!(deep.matches("; boundary=").count(), 4, "{deep}");
     }
 }
