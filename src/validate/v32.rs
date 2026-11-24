@@ -645,8 +645,10 @@ impl V<'_> {
         if m.encoding.is_some() && (m.prefix_encoding.is_some() || m.item_encoding.is_some()) {
             self.diags.error(ptr, "`encoding` cannot be combined with `prefixEncoding` or `itemEncoding`");
         }
-        for key in [&m.schema, &m.item_schema].into_iter().flatten() {
-            self.schema(key, &join(ptr, "schema"));
+        for (key, schema) in [("schema", &m.schema), ("itemSchema", &m.item_schema)] {
+            if let Some(schema) = schema {
+                self.schema(schema, &join(ptr, key));
+            }
         }
         self.examples(m.example.as_ref(), m.examples.as_ref(), ptr);
         for (k, e) in m.encoding.iter().flatten() {
