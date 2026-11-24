@@ -1,5 +1,5 @@
 //! Union branches that one value can match. An `anyOf`, or a `oneOf` without a discriminator, whose object branches
-//! nothing tells apart decodes such a value as the first and drops what the others carry: that is an error.
+//! nothing tells apart decodes such a value as the first and drops what the others carry: a warning says so.
 //!
 //! A discriminated `oneOf` whose branches can all match one value. 3.2 says a discriminator "MUST NOT change the
 //! validation outcome": `oneOf` still means exactly one. Branches `Cat` and `Dog` that share every property both match
@@ -14,23 +14,19 @@ use crate::diag::Diagnostics;
 use crate::json::{Doc, join};
 use crate::walk::{self, Obj, Visit};
 
-/// Warns about each discriminated `oneOf` with a branch that does not pin its tag, and refuses each union with two
+/// Warns about each discriminated `oneOf` with a branch that does not pin its tag, and about each union with two
 /// object branches that nothing tells apart.
 pub(crate) fn check(doc: &Doc, diags: &mut Diagnostics) {
-    let mut found = Found { doc, out: vec![], errors: vec![] };
+    let mut found = Found { doc, out: vec![] };
     walk::walk(&mut doc.root.clone(), &mut found);
     for (ptr, message) in found.out {
         diags.warning(&ptr, message);
-    }
-    for (ptr, message) in found.errors {
-        diags.error(&ptr, message);
     }
 }
 
 struct Found<'a> {
     doc: &'a Doc,
     out: Vec<(String, String)>,
-    errors: Vec<(String, String)>,
 }
 
 /// What tells an object branch apart: its properties, the required ones, the `const` and `type` of each and whether
@@ -115,10 +111,10 @@ impl Found<'_> {
                 branches.filter_map(|(i, b)| Some((name(b, i), self.object(b, &mut vec![])?))).collect();
             for (i, (a, x)) in objects.iter().enumerate() {
                 for (b, _) in objects[i + 1..].iter().filter(|(_, y)| !x.apart(y)) {
-                    self.errors.push((
+                    self.out.push((
                         join(ptr, key),
                         format!(
-                            "a value can match both {a} and {b}, and it would decode as the first: add a required \
+                            "a value can match both {a} and {b}, and it decodes as the first: add a required \
                              property or a `const` tag that tells them apart, or close one with \
                              `additionalProperties: false`"
                         ),
@@ -189,10 +185,10 @@ impl Visit for Found<'_> {
             })
         });
         if let Some((a, b)) = tied {
-            self.errors.push((
+            self.out.push((
                 join(ptr, "oneOf"),
                 format!(
-                    "{a} and {b} differ only by `{prop}`, which is not fixed: pin `{prop}` with `const` in each branch"
+                    "{a} and {b} differ only by `{prop}`, which is not fixed, so a value matches both and `oneOf` refuses it: pin `{prop}` with `const` in each branch"
                 ),
             ));
         } else if !loose.is_empty() {

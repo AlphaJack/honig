@@ -266,13 +266,11 @@ fn every_error_is_reported_in_one_run() {
     assert!(at("/paths/~1a/get/security") && at("/components/schemas/Range"), "{:#?}", err.0);
 }
 
-/// A keyword that generated code would drop fails generation at its pointer: a `$ref` that does not resolve, a 3.1
-/// `nullable`, an unknown `type`, a `pattern` beside a typed `format` and a path parameter missing from its path.
+/// A keyword that generated code would drop fails generation at its pointer: a `$ref` that does not resolve, an
+/// unknown `type`, a `pattern` beside a typed `format` and a path parameter missing from its path.
 #[test]
 fn a_keyword_that_would_lose_its_meaning_fails_generation() {
     let schema = |s: Value| doc(&json!({}), &json!({"schemas": {"S": s}}));
-    let mut nullable = schema(json!({"type": "string", "nullable": true}));
-    nullable["openapi"] = json!("3.1.0");
     let stray = json!({"/a": {"get": {"operationId": "a", "responses": {"204": {"description": "ok"}},
         "parameters": [{"name": "id", "in": "path", "required": true, "schema": {"type": "string"}}]}}});
     for (d, at) in [
@@ -280,7 +278,6 @@ fn a_keyword_that_would_lose_its_meaning_fails_generation() {
             schema(json!({"properties": {"a": {"$ref": "#/components/schemas/Gone"}}})),
             "/components/schemas/S/properties/a",
         ),
-        (nullable, "/components/schemas/S/nullable"),
         (schema(json!({"type": "text"})), "/components/schemas/S/type"),
         (schema(json!({"type": "string", "format": "uuid", "pattern": "^0"})), "/components/schemas/S/pattern"),
         (doc(&stray, &json!({})), "/paths/~1a/get"),
@@ -289,32 +286,34 @@ fn a_keyword_that_would_lose_its_meaning_fails_generation() {
         let err = crate::generate::generate(&path, &Options::default()).expect_err(at);
         assert!(err.iter().any(|d| d.pointer.starts_with(at)), "{at}: {:#?}", err.0);
     }
+    // A 3.1 `nullable` is an unknown keyword, valid and ignored: a warning says that it allows no `null`.
+    let mut nullable = schema(json!({"type": "string", "nullable": true}));
+    nullable["openapi"] = json!("3.1.0");
+    let made = crate::generate::generate(&common::write("nullable-31", &nullable, &[]), &Options::default());
+    let made = made.expect("a valid description generates");
+    assert!(made.diagnostics.iter().any(|d| d.pointer == "/components/schemas/S/nullable"), "{:#?}", made.diagnostics);
 }
 
 /// An `anyOf` of two open objects that no keyword tells apart decodes `{amount: 5, last4: "4242"}` as the first and
-/// drops `last4`: `generate` fails at the `anyOf`. A required property of one that the other lacks separates them.
+/// drops `last4`: a warning at the `anyOf`. A required property of one that the other lacks separates them.
 #[test]
-fn an_anyof_whose_objects_cannot_be_told_apart_fails_generation() {
+fn an_anyof_whose_objects_cannot_be_told_apart_is_a_warning() {
     let card = |required: Value| json!({"type": "object", "required": required, "properties": {"amount": {"type": "integer"}, "last4": {"type": "string"}}});
     let bank = json!({"type": "object", "required": ["amount"], "properties": {"amount": {"type": "integer"}, "iban": {"type": "string"}}});
     let payment = json!({"anyOf": [{"$ref": "#/components/schemas/Card"}, {"$ref": "#/components/schemas/Bank"}]});
     for (required, fine) in [(json!(["amount"]), false), (json!(["amount", "last4"]), true)] {
         let d = doc(&json!({}), &json!({"schemas": {"Payment": payment, "Card": card(required), "Bank": bank}}));
         let path = common::write("anyof-apart", &d, &[]);
-        let made = crate::generate::generate(&path, &Options::default());
-        if fine {
-            made.expect("a required last4 tells them apart");
-        } else {
-            let err = made.expect_err("alike");
-            assert!(err.iter().any(|d| d.pointer == "/components/schemas/Payment/anyOf"), "{:#?}", err.0);
-        }
+        let made = crate::generate::generate(&path, &Options::default()).expect("a valid description generates");
+        let warned = made.diagnostics.iter().any(|d| d.pointer == "/components/schemas/Payment/anyOf");
+        assert_eq!(warned, !fine, "a required last4 tells them apart: {:#?}", made.diagnostics);
     }
 }
 
 /// Discriminated branches that only an unpinned tag tells apart both match `{kind: "cat"}`, which `oneOf` then refuses:
-/// `generate` fails. A required property of one keeps them apart, and the unpinned tag stays a warning.
+/// a warning says so. A required property of one keeps them apart, and the unpinned tag is still a warning.
 #[test]
-fn discriminated_branches_that_only_an_unpinned_tag_separates_fail_generation() {
+fn discriminated_branches_that_only_an_unpinned_tag_separates_are_a_warning() {
     let cat = json!({"type": "object", "required": ["kind"], "properties": {"kind": {"type": "string"}}});
     let dog = |required: Value| {
         json!({"type": "object", "required": required,
@@ -325,14 +324,10 @@ fn discriminated_branches_that_only_an_unpinned_tag_separates_fail_generation() 
     for (dog, fine) in [(dog(json!(["kind"])), false), (dog(json!(["kind", "bark"])), true)] {
         let d = doc(&json!({}), &json!({"schemas": {"Pet": pets, "Cat": cat, "Dog": dog}}));
         let path = common::write("unpinned-tag", &d, &[]);
-        let made = crate::generate::generate(&path, &Options::default());
-        if fine {
-            let made = made.expect("a required bark tells them apart");
-            assert!(made.diagnostics.iter().any(|d| d.pointer == "/components/schemas/Pet/oneOf"), "still a warning");
-        } else {
-            let err = made.expect_err("only the tag");
-            assert!(err.iter().any(|d| d.pointer == "/components/schemas/Pet/oneOf"), "{:#?}", err.0);
-        }
+        let made = crate::generate::generate(&path, &Options::default()).expect("a valid description generates");
+        let only_tag = made.diagnostics.iter().any(|d| d.message.contains("differ only by `kind`"));
+        assert_eq!(only_tag, !fine, "a required bark tells them apart: {:#?}", made.diagnostics);
+        assert!(made.diagnostics.iter().any(|d| d.pointer == "/components/schemas/Pet/oneOf"), "a warning either way");
     }
 }
 
