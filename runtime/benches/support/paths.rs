@@ -338,6 +338,26 @@ pub(crate) const PATHS: &[Path] = &[
         },
     },
     Path {
+        name: "route_mixed",
+        prepare: |size| {
+            // `/{a}-{b}.git` on a segment of dashes: every split of it ends in a dash.
+            static NODES: [runtime::Node; 2] = [
+                runtime::node(
+                    &[],
+                    &[(
+                        &[runtime::Part::Var, runtime::Part::Lit("-"), runtime::Part::Var, runtime::Part::Lit(".git")],
+                        1,
+                    )],
+                    runtime::Node::NONE,
+                    runtime::Node::NONE,
+                ),
+                runtime::node(&[], &[], runtime::Node::NONE, 0),
+            ];
+            let path = ["/", &"-".repeat(size / 16)].concat();
+            (path.len(), on(path, |p| runtime::route(&NODES, p).is_some()))
+        },
+    },
+    Path {
         name: "unique_items",
         prepare: |size| {
             let items: Vec<Value> =

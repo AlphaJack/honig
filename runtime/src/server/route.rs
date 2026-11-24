@@ -134,14 +134,6 @@ impl<'p> Captures<'p> {
         }
     }
 
-    fn pop(&mut self) {
-        if let Some(h) = &mut self.heap {
-            h.pop();
-        } else {
-            self.len = self.len.saturating_sub(1);
-        }
-    }
-
     fn truncate(&mut self, n: usize) {
         if let Some(h) = &mut self.heap {
             h.truncate(n);
@@ -257,26 +249,33 @@ fn walk<'p>(nodes: &[Node], mut i: u32, mut rest: Option<&'p str>, caps: &mut Ca
     }
 }
 
-fn match_from<'p>(parts: &[Part], path: &'p str, caps: &mut Captures<'p>) -> bool {
-    match parts.split_first() {
+/// Matches `seg` against `parts` from the end. Each variable starts after the last place of the literal before it that
+/// leaves the text before a match, so the first variable is the longest. One search per part: linear in `seg`.
+fn match_from<'p>(parts: &[Part], seg: &'p str, caps: &mut Captures<'p>) -> bool {
+    match parts.split_last() {
         // Exact: `/a/` and `/a//` are different paths in a description.
-        None => path.is_empty(),
-        Some((Part::Lit(l), rest)) => path.strip_prefix(l).is_some_and(|p| match_from(rest, p, caps)),
+        None => seg.is_empty(),
+        Some((Part::Lit(l), rest)) => seg.strip_suffix(l).is_some_and(|s| match_from(rest, s, caps)),
         Some((Part::Var, rest)) => {
-            // A variable spans at least one char and never crosses a `/`.
-            let limit = path.find('/').unwrap_or(path.len());
-            for end in (1..=limit).rev() {
-                if !path.is_char_boundary(end) {
-                    continue;
-                }
-                let (head, tail) = path.split_at(end);
-                caps.push(head);
-                if match_from(rest, tail, caps) {
-                    return true;
-                }
-                caps.pop();
+            // A variable spans at least one char.
+            let Some((last, _)) = seg.char_indices().next_back() else { return false };
+            let before = seg.get(..last).unwrap_or_default();
+            let start = match rest {
+                [] => 0,
+                [Part::Lit(l)] if before.starts_with(l) => l.len(),
+                [Part::Lit(_)] => return false,
+                [.., Part::Var] => last,
+                [.., Part::Lit(l)] => match before.rfind(l) {
+                    Some(k) => k + l.len(),
+                    None => return false,
+                },
+            };
+            let (head, var) = seg.split_at(start);
+            if !match_from(rest, head, caps) {
+                return false;
             }
-            false
+            caps.push(var);
+            true
         }
     }
 }
@@ -303,6 +302,31 @@ mod tests {
             assert_eq!(leaf, 0);
             let want: Vec<String> = (0..depth).map(|i| format!("v{i}")).collect();
             assert_eq!(caps.iter().map(|c| (*c).to_owned()).collect::<Vec<_>>(), want, "depth {depth}");
+        }
+    }
+
+    #[test]
+    fn a_mixed_segment_gives_the_first_variable_the_longest_match() {
+        use Part::{Lit, Var};
+        let git: &[Part] = &[Var, Lit("-"), Var, Lit(".git")];
+        // No captures: no match.
+        let cases: &[(&[Part], &str, &[&str])] = &[
+            (git, "x-y-z.git", &["x-y", "z"]),
+            (git, "a--b.git", &["a-", "b"]),
+            (git, "\u{e9}-\u{fc}.git", &["\u{e9}", "\u{fc}"]),
+            (git, "--.git", &[]),
+            (git, "a-b", &[]),
+            (&[Var, Lit("."), Var], "a.b.c", &["a.b", "c"]),
+            (&[Lit("v"), Var, Lit("."), Var], "v1.2.3", &["1.2", "3"]),
+            (&[Var, Lit("-"), Var, Lit("-"), Var], "a-b-c-d", &["a-b", "c", "d"]),
+            (&[Var, Var], "\u{e9}\u{fc}", &["\u{e9}", "\u{fc}"]),
+            (&[Lit("a"), Var, Lit("a")], "aaaa", &["aa"]),
+            (&[Lit("a"), Var, Lit("a")], "aa", &[]),
+        ];
+        for (parts, seg, want) in cases {
+            let mut caps = Captures::default();
+            let got = if match_from(parts, seg, &mut caps) { caps.to_vec() } else { vec![] };
+            assert_eq!(got, *want, "{parts:?} on {seg:?}");
         }
     }
 }
