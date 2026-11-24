@@ -93,6 +93,8 @@ paths:
           description: Created.
 components:
   schemas:
+    # A pattern beside a typed format runs on the text before the format parses it.
+    LegacyId: {type: string, format: uuid, pattern: '^0'}
     # `unevaluatedProperties` beside `anyOf` sees the properties of each branch that matches.
     Tagged:
       type: object

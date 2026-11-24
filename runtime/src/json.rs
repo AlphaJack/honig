@@ -18,6 +18,14 @@ use crate::ClientError;
 
 pub(crate) use imp::{from_slice, to_writer};
 
+/// Returns the text that a value of a format writes: what its length and `pattern` are checked on.
+pub fn format_text<T: Serialize + ?Sized>(v: &T) -> String {
+    match serde_json::to_value(v) {
+        Ok(Value::String(s)) => s,
+        _ => String::new(),
+    }
+}
+
 /// Converts a value to JSON. Failures become [`ClientError::Encode`].
 pub fn to_value<T: Serialize + ?Sized>(v: &T) -> Result<Value, ClientError> {
     serde_json::to_value(crate::finite::Finite(v)).map_err(|e| ClientError::Encode(e.to_string()))

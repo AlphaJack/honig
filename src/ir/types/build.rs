@@ -1046,16 +1046,7 @@ impl<'a> Builder<'a> {
                 Ty::Format(Format::Base64Url)
             }
             Some("string") => match string_format(format) {
-                Some(f) => {
-                    // The format's type decides the value: generated code does not check a `pattern` beside it.
-                    if let Some(p) = o.get("pattern").and_then(Value::as_str) {
-                        self.diags.error(
-                            join(ptr, "pattern"),
-                            format!("honig cannot check pattern `{p}` on the type of `format: {format}`: remove one"),
-                        );
-                    }
-                    Ty::Format(f)
-                }
+                Some(f) => Ty::Format(f),
                 None => Ty::String,
             },
             Some("null") => Ty::Unit,

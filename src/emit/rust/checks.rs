@@ -503,10 +503,13 @@ pub(super) fn checks(
         Ty::Option(x) => option_checks(space, x, c, value, path),
         Ty::Indirect(x) => checks(space, x, c, &quote!((#value).as_ref()), path),
         Ty::String => string_checks(c, value, path),
-        // A format without its library is a `runtime::Formatted` text: decoding checks the format. Its length limits
-        // are checked here. A `pattern` stays unchecked on a format as on the typed one.
-        Ty::Format(f) if super::syntax::untyped(space.libs, *f) => {
-            string_checks(&Constraints { pattern: None, ..c.clone() }, value, path)
+        // A format without its library is a `runtime::Formatted` text: decoding checks the format, and its length and
+        // pattern are checked here.
+        Ty::Format(f) if super::syntax::untyped(space.libs, *f) => string_checks(c, value, path),
+        // A library type keeps no text: its length and pattern run on the text that it writes, its canonical spelling.
+        Ty::Format(_) => {
+            let checks = string_checks(c, &quote!(text.as_str()), path);
+            if checks.is_empty() { checks } else { quote!(let text = runtime::format_text(#value); #checks) }
         }
         Ty::I8 | Ty::I16 | Ty::I32 | Ty::I64 | Ty::U8 | Ty::U16 | Ty::U32 | Ty::U64 => {
             integer_checks(t, c, value, path)
@@ -563,7 +566,7 @@ pub(super) fn checks(
             | Kind::Pending => TokenStream::new(),
         },
         Ty::Any => any_checks(c, value, path, false),
-        Ty::Bool | Ty::Bytes | Ty::Binary | Ty::Format(_) | Ty::Unit | Ty::Tuple(_) => TokenStream::new(),
+        Ty::Bool | Ty::Bytes | Ty::Binary | Ty::Unit | Ty::Tuple(_) => TokenStream::new(),
     }
 }
 

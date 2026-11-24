@@ -267,7 +267,7 @@ fn every_error_is_reported_in_one_run() {
 }
 
 /// A keyword that generated code would drop fails generation at its pointer: a `$ref` that does not resolve, an
-/// unknown `type`, a `pattern` beside a typed `format` and a path parameter missing from its path.
+/// unknown `type` and a path parameter missing from its path.
 #[test]
 fn a_keyword_that_would_lose_its_meaning_fails_generation() {
     let schema = |s: Value| doc(&json!({}), &json!({"schemas": {"S": s}}));
@@ -279,7 +279,6 @@ fn a_keyword_that_would_lose_its_meaning_fails_generation() {
             "/components/schemas/S/properties/a",
         ),
         (schema(json!({"type": "text"})), "/components/schemas/S/type"),
-        (schema(json!({"type": "string", "format": "uuid", "pattern": "^0"})), "/components/schemas/S/pattern"),
         (doc(&stray, &json!({})), "/paths/~1a/get"),
     ] {
         let path = common::write("lost-meaning", &d, &[]);
