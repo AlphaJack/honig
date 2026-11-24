@@ -177,6 +177,11 @@ components:
         - if: {properties: {kind: {const: b}}}
           then: {required: [y]}
           else: {required: [z]}
+    # Branches that pin `kind` without requiring it: `{}` is the first branch, so `kind` tags nothing.
+    LooseKind:
+      anyOf:
+        - {type: object, properties: {kind: {const: a}}}
+        - {type: object, required: [n], properties: {kind: {const: b}, n: {type: integer}}}
     Tree:
       oneOf:
         - type: object

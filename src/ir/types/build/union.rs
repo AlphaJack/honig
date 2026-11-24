@@ -750,6 +750,14 @@ pub(crate) fn inferred_tag(
             .map(|(i, r)| if Some(i) == fallback { Some(vec![]) } else { r.as_ref().and_then(|m| consts_of(m, &prop)) })
             .collect();
         let Some(tags) = tags else { continue };
+        // A branch that does not require the property also accepts a value without it: no tag then picks it.
+        let required = resolved
+            .iter()
+            .enumerate()
+            .all(|(i, r)| Some(i) == fallback || r.as_ref().is_some_and(|m| requires(m, &prop)));
+        if !required {
+            continue;
+        }
         let all: Vec<&String> = tags.iter().flatten().collect();
         let set: BTreeSet<&String> = all.iter().copied().collect();
         if set.len() == all.len() && !all.is_empty() {
@@ -760,6 +768,15 @@ pub(crate) fn inferred_tag(
         }
     }
     None
+}
+
+/// Does a branch require `prop`, in its own `required` or in that of one of its `allOf` members?
+fn requires(m: &serde_json::Map<String, Value>, prop: &str) -> bool {
+    let own = |m: &serde_json::Map<String, Value>| {
+        m.get("required").and_then(Value::as_array).is_some_and(|r| r.iter().any(|x| x == prop))
+    };
+    own(m)
+        || m.get("allOf").and_then(Value::as_array).is_some_and(|all| all.iter().filter_map(Value::as_object).any(own))
 }
 
 /// Returns the string values that a branch pins `prop` to. That is its `const` or every value of its `enum`.

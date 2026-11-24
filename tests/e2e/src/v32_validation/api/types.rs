@@ -576,6 +576,52 @@ impl TwoElses {
 runtime::checked_json!(TwoElses, TwoElsesFields);
 runtime::checked_impls!(TwoElses, TwoElsesFields);
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub enum LooseKind {
+    Kind(LooseKindKind),
+    Variant2(LooseKindVariant2),
+}
+runtime::union_serialize!(LooseKind { Kind, Variant2 });
+impl<'de> serde::Deserialize<'de> for LooseKind {
+    fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+        let v = <runtime::Content<'de> as serde::Deserialize>::deserialize(d)?;
+        let fit_0 = v.kind() == runtime::Kind::Object
+            && runtime::fits(
+                &v,
+                &[("kind", false, &[runtime::Kind::String, runtime::Kind::Null])],
+            );
+        let fit_1 = v.kind() == runtime::Kind::Object
+            && runtime::fits(
+                &v,
+                &[
+                    ("kind", false, &[runtime::Kind::String, runtime::Kind::Null]),
+                    ("n", true, &[runtime::Kind::Integer, runtime::Kind::Number]),
+                ],
+            );
+        let mut first: Option<String> = None;
+        if fit_0 {
+            match v.decode_ref::<LooseKindKind>() {
+                Ok(x) => return Ok(Self::Kind(x)),
+                Err(e) => {
+                    first.get_or_insert(e.to_string());
+                }
+            }
+        }
+        if fit_1 {
+            match v.decode_ref::<LooseKindVariant2>() {
+                Ok(x) => return Ok(Self::Variant2(x)),
+                Err(e) => {
+                    first.get_or_insert(e.to_string());
+                }
+            }
+        }
+        Err(
+            serde::de::Error::custom(
+                first.unwrap_or_else(|| "matches no variant".to_owned()),
+            ),
+        )
+    }
+}
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Tree {
     Variant2(TreeVariant2),
     Variant1(TreeVariant1),
@@ -1867,6 +1913,73 @@ impl TryFrom<i64> for DegenerateHalf {
 }
 runtime::checked_num_impls!(DegenerateHalf, i64);
 runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct LooseKindKind {
+        #[optional]
+        pub kind: ObjectKind,
+    }
+}
+impl LooseKindKind {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self { kind: None }
+    }
+}
+impl runtime::XmlShape for LooseKindKind {
+    fn xml() -> &'static runtime::XmlNode {
+        static NODE: runtime::XmlNode = runtime::XmlNode {
+            name: "LooseKindKind",
+            namespace: "",
+            prefix: "",
+            fields: &[runtime::XmlField::new("kind")],
+        };
+        &NODE
+    }
+}
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
+pub struct ObjectKind;
+impl ObjectKind {
+    pub const VALUE: &'static str = "a";
+}
+runtime::const_impls!(ObjectKind, VALUE);
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+    pub struct LooseKindVariant2 {
+        #[optional]
+        pub kind: LooseKindVariant2Kind,
+        pub n: i64,
+    }
+}
+impl LooseKindVariant2 {
+    #[must_use]
+    pub const fn new(n: i64) -> Self {
+        Self { kind: None, n }
+    }
+}
+impl runtime::XmlShape for LooseKindVariant2 {
+    fn xml() -> &'static runtime::XmlNode {
+        static NODE: runtime::XmlNode = runtime::XmlNode {
+            name: "LooseKindVariant2",
+            namespace: "",
+            prefix: "",
+            fields: &[
+                runtime::XmlField::new("kind"),
+                runtime::XmlField {
+                    required: true,
+                    ..runtime::XmlField::new("n")
+                },
+            ],
+        };
+        &NODE
+    }
+}
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
+pub struct LooseKindVariant2Kind;
+impl LooseKindVariant2Kind {
+    pub const VALUE: &'static str = "b";
+}
+runtime::const_impls!(LooseKindVariant2Kind, VALUE);
+runtime::object! {
     #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct TreeVariant2 {
         pub items: Vec<Tree>,
@@ -2827,7 +2940,7 @@ runtime::object! {
     #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
     pub struct Not5Object {
         #[optional]
-        pub kind: ObjectKind,
+        pub kind: Not5ObjectKind,
         #[serde(flatten)]
         pub additional_properties: std::collections::BTreeMap<String, serde_json::Value>,
     }
@@ -2852,12 +2965,7 @@ impl runtime::XmlShape for Not5Object {
         &NODE
     }
 }
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
-pub struct ObjectKind;
-impl ObjectKind {
-    pub const VALUE: &'static str = "a";
-}
-runtime::const_impls!(ObjectKind, VALUE);
+pub use ObjectKind as Not5ObjectKind;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Not6 {
     Object(Not6Object),
@@ -2908,12 +3016,7 @@ impl runtime::XmlShape for Not7Object {
         &NODE
     }
 }
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
-pub struct Not7ObjectKind;
-impl Not7ObjectKind {
-    pub const VALUE: &'static str = "b";
-}
-runtime::const_impls!(Not7ObjectKind, VALUE);
+pub use LooseKindVariant2Kind as Not7ObjectKind;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Default)]
 pub struct Not8;
 impl Not8 {
@@ -4504,6 +4607,15 @@ pub mod builders {
         optional { email(email) : String = "email" => some, None } fixed {}
     }
     runtime::typestate_builder! {
+        LooseKindKind => super::LooseKindKind; required {} optional { kind(kind) :
+        types::ObjectKind = "kind" => some, None } fixed {}
+    }
+    runtime::typestate_builder! {
+        LooseKindVariant2 => super::LooseKindVariant2; required { n : R0 : i64 = "n" }
+        optional { kind(kind) : types::LooseKindVariant2Kind = "kind" => some, None }
+        fixed {}
+    }
+    runtime::typestate_builder! {
         TreeVariant2 => super::TreeVariant2; required { items : R0 : Vec < types::Tree >
         = "items", x : R1 : String = "x" } optional {} fixed {}
     }
@@ -4586,7 +4698,7 @@ pub mod builders {
     }
     runtime::typestate_builder! {
         Not5Object => super::Not5Object; required {} optional { kind(kind) :
-        types::ObjectKind = "kind" => some, None } fixed { additional_properties :
+        types::Not5ObjectKind = "kind" => some, None } fixed { additional_properties :
         std::collections::BTreeMap::new(), }
     }
     runtime::typestate_builder! {

@@ -864,3 +864,11 @@ fn an_else_applies_beside_another_conditional() {
     assert!(!decodes(json!({"kind": "c"})));
     assert!(decodes(json!({"kind": "a", "x": "1", "z": "1"})));
 }
+
+/// A property that the branches pin but do not require tags nothing: `{}` and `{"n": 1}` match the first branch.
+#[test]
+fn a_value_without_an_unrequired_tag_decodes() {
+    for v in [json!({}), json!({"n": 1}), json!({"kind": "b", "n": 1})] {
+        assert!(serde_json::from_value::<types::LooseKind>(v.clone()).is_ok(), "{v}");
+    }
+}
