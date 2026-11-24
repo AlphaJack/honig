@@ -639,6 +639,23 @@ fn a_limit_on_a_binary_body_is_a_warning_and_on_a_text_body_a_check() {
     }
 }
 
+/// A `text/plain` body with a string `format` takes the type that checks it. A schema of another type is not checked
+/// against the text: a warning says so.
+#[test]
+fn a_text_body_is_checked_or_warned_about() {
+    let body = |schema: Value| {
+        json!({"/a": {"post": {"operationId": "a", "requestBody": {"content": {"text/plain": {"schema": schema}}},
+            "responses": {"204": {"description": "ok"}}}}})
+    };
+    let uuid = doc(&body(json!({"type": "string", "format": "uuid"})), &json!({}));
+    let files = common::generate("text-uuid", &uuid, &Options::default());
+    assert!(common::file(&files, "operations.rs").contains("UuidStr"), "the body is a checked uuid");
+    let path = common::write("text-integer", &doc(&body(json!({"type": "integer", "minimum": 5})), &json!({})), &[]);
+    let made = crate::generate::generate(&path, &Options::default()).expect("generates");
+    let warned = made.diagnostics.iter().filter(|d| d.pointer.ends_with("/schema/type")).count();
+    assert_eq!(warned, 1, "{:#?}", made.diagnostics);
+}
+
 /// A scheme that refers to a schema, to itself or to nothing defines no check: a server would skip it.
 #[test]
 fn a_scheme_reference_to_no_scheme_fails_generation() {

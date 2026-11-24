@@ -25,10 +25,10 @@ use keywords::{
     ANNOTATIONS, Evaluation, MAX_ALIAS_HOPS, MAX_SCHEMA_DEPTH, MAX_TUPLE, MAX_TYPE_DEPTH, UNTYPED_KEYWORDS,
     asserts_nothing, beside_union, checked_items, checked_scalar, count_of, fixed_len, inferred_kind, int_enum,
     int_enum_values, int_format, json_string_schema, kind_scoped, may_be, mixed, references, required_only,
-    scoped_keywords, string_format, struct_patterns, type_set, typed_conditional, typed_const, typed_dependent_schemas,
+    scoped_keywords, struct_patterns, type_set, typed_conditional, typed_const, typed_dependent_schemas,
     typed_object_keywords, typed_patterns, typeless_assertions, untyped, untyped_value_checks, values_union,
 };
-pub(crate) use keywords::{binary_media, literal_default};
+pub(crate) use keywords::{binary_media, literal_default, string_format};
 pub(crate) use union::{Kinds, doc_of, is_annotation_only, kind_in, text_of, with_external_docs};
 use union::{
     by_kind_when_known, const_ty, has_ref_only, named_by_description, only_empty, only_non_null_branch, str_enum,
