@@ -16,6 +16,11 @@ pub trait Api: Send + Sync + Sized + 'static {
         params: ops::upload::Params,
         ctx: &Context<'_, ()>,
     ) -> impl Future<Output = ops::upload::Result> + Send;
+    fn tag(
+        &self,
+        params: ops::tag::Params,
+        ctx: &Context<'_, ()>,
+    ) -> impl Future<Output = ops::tag::Result> + Send;
     fn list_keys(
         &self,
         params: ops::list_keys::Params,
@@ -26,6 +31,7 @@ pub trait Api: Send + Sync + Sized + 'static {
 pub enum Operation {
     ListItems,
     Upload,
+    Tag,
     ListKeys,
 }
 impl runtime::Operation for Operation {
@@ -33,6 +39,7 @@ impl runtime::Operation for Operation {
         match self {
             Self::ListItems => &LIST_ITEMS_OP,
             Self::Upload => &UPLOAD_OP,
+            Self::Tag => &TAG_OP,
             Self::ListKeys => &LIST_KEYS_OP,
         }
     }
@@ -48,22 +55,24 @@ const fn error_schema(
 }
 static METHODS: &[&[(&str, Operation)]] = &[
     &[("POST", Operation::Upload)],
+    &[("POST", Operation::Tag)],
     &[("GET", Operation::ListKeys)],
     &[("GET", Operation::ListItems)],
 ];
 static ROUTES: &[runtime::Node] = &[
     runtime::node(
-        &[("keys", 2), ("items", 3), ("upload", 1)],
+        &[("keys", 3), ("tags", 2), ("items", 4), ("upload", 1)],
         &[],
         runtime::Node::NONE,
         runtime::Node::NONE,
     ),
     runtime::node(&[], &[], runtime::Node::NONE, 0),
     runtime::node(&[], &[], runtime::Node::NONE, 1),
-    runtime::node(&[], &[], 4, runtime::Node::NONE),
     runtime::node(&[], &[], runtime::Node::NONE, 2),
+    runtime::node(&[], &[], 5, runtime::Node::NONE),
+    runtime::node(&[], &[], runtime::Node::NONE, 3),
 ];
-static PATHS: &[&str] = &["/items/{s1}", "/keys", "/upload"];
+static PATHS: &[&str] = &["/items/{s1}", "/keys", "/tags", "/upload"];
 pub struct Routes<A>(std::sync::Arc<A>);
 /// The server of this API: `Server::new(your_api)`, or `Server::new(arc)` to keep a handle on it. Add layers,
 /// then `into_axum` or `into_service`.
@@ -155,6 +164,7 @@ async fn dispatch<A: Api>(
     match op {
         Operation::ListItems => Box::pin(list_items(api, routed, call)).await,
         Operation::Upload => Box::pin(upload(api, routed, call)).await,
+        Operation::Tag => Box::pin(tag(api, routed, call)).await,
         Operation::ListKeys => Box::pin(list_keys(api, routed, call)).await,
     }
 }
@@ -344,6 +354,66 @@ fn upload_params(
 }
 fn upload_encode(resp: &ops::upload::Response) -> runtime::Response {
     let ops::upload::Response::NoContent = resp;
+    runtime::new_response(204)
+}
+static TAG_OP: runtime::Op = runtime::Op::new(
+    "tag",
+    "POST",
+    "/tags",
+    "POST /tags",
+    error_schema,
+);
+async fn tag<A: Api>(
+    api: &A,
+    routed: runtime::Routed<'_>,
+    call: runtime::Call<
+        '_,
+        Option<runtime::Passed<<Routes<A> as runtime::Operations>::Value>>,
+        Operation,
+    >,
+) -> runtime::Response {
+    let steps = runtime::Steps {
+        api,
+        decode: tag_params,
+        call: |a, p, c| Box::pin(a.tag(p, c)),
+        encode: |r, _| Ok(tag_encode(&r)),
+    };
+    runtime::serve(routed, call.map(|_| ()), &steps).await
+}
+fn tag_params(
+    incoming: runtime::Incoming<'_>,
+) -> Result<ops::tag::Params, runtime::Reason> {
+    let runtime::Incoming { request: req, body, .. } = incoming;
+    runtime::check_media(
+        runtime::Message::content_type(req),
+        &["application/x-www-form-urlencoded"],
+    )?;
+    Ok(ops::tag::Params {
+        body: if body.is_empty()
+            && runtime::Message::header(req, "content-type").is_none()
+        {
+            None
+        } else {
+            Some(
+                runtime::form_decode_styled(
+                    None,
+                    &body,
+                    &[
+                        ("ids", runtime::Style::Form, runtime::Shape::Array, false),
+                        (
+                            "pipes",
+                            runtime::Style::PipeDelimited,
+                            runtime::Shape::Array,
+                            false,
+                        ),
+                    ],
+                )?,
+            )
+        },
+    })
+}
+fn tag_encode(resp: &ops::tag::Response) -> runtime::Response {
+    let ops::tag::Response::NoContent = resp;
     runtime::new_response(204)
 }
 static LIST_KEYS_OP: runtime::Op = runtime::Op {

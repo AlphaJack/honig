@@ -897,7 +897,11 @@ fn form_styles(
         .flatten()
         .filter(|(_, e)| e.get("style").is_some() || e.get("explode").is_some() || e.get("allowReserved").is_some())
         .map(|(prop, e)| {
-            let style = style_of(e.get("style").and_then(Value::as_str), Location::Query);
+            let style = if e.get("x-collection-format").and_then(Value::as_str) == Some("tsv") {
+                Style::TabDelimited
+            } else {
+                style_of(e.get("style").and_then(Value::as_str), Location::Query)
+            };
             let explode = e.get("explode").and_then(Value::as_bool).unwrap_or(style == Style::Form);
             let ps = schema
                 .and_then(|sc| resolve_value(b, sc, mptr))

@@ -28,6 +28,15 @@ paths:
         - {name: note, in: formData, type: string}
       responses:
         "204": {description: stored}
+  /tags:
+    post:
+      operationId: tag
+      consumes: [application/x-www-form-urlencoded]
+      parameters:
+        - {name: ids, in: formData, type: array, items: {type: integer}}
+        - {name: pipes, in: formData, type: array, collectionFormat: pipes, items: {type: string}}
+      responses:
+        "204": {description: tagged}
   /keys:
     get:
       operationId: listKeys

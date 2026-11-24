@@ -10,6 +10,7 @@ use e2e::v20_collection_formats::api::{self, operations as ops};
 struct Seen {
     items: Mutex<Option<ops::list_items::Params>>,
     upload: Mutex<Option<ops::upload::Params>>,
+    tag: Mutex<Option<ops::tag::Params>>,
 }
 
 impl api::Api for Seen {
@@ -32,6 +33,17 @@ impl api::Api for Seen {
             *seen = Some(p);
         }
         std::future::ready(Ok(ops::upload::Response::NoContent))
+    }
+
+    fn tag(
+        &self,
+        p: ops::tag::Params,
+        _: &api::Context<'_>,
+    ) -> impl Future<Output = Result<ops::tag::Response, api::ApiError>> + Send {
+        if let Ok(mut seen) = self.tag.lock() {
+            *seen = Some(p);
+        }
+        std::future::ready(Ok(ops::tag::Response::NoContent))
     }
 
     fn list_keys(
@@ -116,4 +128,25 @@ fn allow_empty_value_reads_a_bare_flag() {
     assert_eq!(r.status().as_u16(), 200, "{}", String::from_utf8_lossy(r.body().bytes()));
     let p = seen.items.lock().ok().and_then(|mut s| s.take()).expect("the handler ran");
     assert_eq!((p.flag, p.page), (Some(true), None));
+}
+
+/// A form array is on the wire as its `collectionFormat` says, `csv` when it has none, and the server splits it back.
+#[test]
+fn a_form_array_keeps_its_collection_format() {
+    let body = api::types::TagBody { ids: Some(vec![1, 2]), pipes: Some(vec!["a".to_owned(), "b".to_owned()]) };
+    let sent = ops::tag::Params { body: Some(body) };
+    let seen = std::sync::Arc::new(Seen::default());
+    let got = api::block_on(served(&seen).tag(sent.clone()));
+    assert_eq!(got.ok(), Some(ops::tag::Response::NoContent));
+    assert_eq!(seen.tag.lock().ok().and_then(|mut s| s.take()), Some(sent.clone()));
+    let wire = std::sync::Arc::new(Mutex::new(String::new()));
+    let kept = std::sync::Arc::clone(&wire);
+    let capture = tower::service_fn(move |req: api::Request| {
+        if let Ok(mut w) = kept.lock() {
+            *w = String::from_utf8_lossy(req.body().bytes()).into_owned();
+        }
+        std::future::ready(Ok::<_, api::ApiError>(api::runtime::new_response(204)))
+    });
+    api::block_on(api::Client::new(capture).tag(sent)).ok();
+    assert_eq!(*wire.lock().unwrap(), "ids=1,2&pipes=a%7Cb");
 }
