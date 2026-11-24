@@ -621,6 +621,94 @@ impl<'de> serde::Deserialize<'de> for LooseKind {
         )
     }
 }
+#[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
+#[serde(transparent)]
+pub struct WideMax(pub(super) i32);
+impl TryFrom<i32> for WideMax {
+    type Error = runtime::BuildError;
+    fn try_from(value: i32) -> Result<Self, runtime::BuildError> {
+        Ok(Self(value))
+    }
+}
+impl WideMax {
+    /// Returns the value, or `None` when it breaks a limit. In a constant, `.expect(..)` on it makes a
+    /// literal outside the limits a build error.
+    #[must_use]
+    pub const fn new(value: i32) -> Option<Self> {
+        Some(Self(value))
+    }
+}
+runtime::checked_num_impls!(WideMax, i32);
+#[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
+#[serde(transparent)]
+pub struct WideMin(pub(super) i8);
+impl TryFrom<i8> for WideMin {
+    type Error = runtime::BuildError;
+    fn try_from(value: i8) -> Result<Self, runtime::BuildError> {
+        Ok(Self(value))
+    }
+}
+impl WideMin {
+    /// Returns the value, or `None` when it breaks a limit. In a constant, `.expect(..)` on it makes a
+    /// literal outside the limits a build error.
+    #[must_use]
+    pub const fn new(value: i8) -> Option<Self> {
+        Some(Self(value))
+    }
+}
+runtime::checked_num_impls!(WideMin, i8);
+#[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
+#[serde(transparent)]
+pub struct WideByte(pub(super) u8);
+impl TryFrom<u8> for WideByte {
+    type Error = runtime::BuildError;
+    fn try_from(value: u8) -> Result<Self, runtime::BuildError> {
+        Ok(Self(value))
+    }
+}
+impl WideByte {
+    /// Returns the value, or `None` when it breaks a limit. In a constant, `.expect(..)` on it makes a
+    /// literal outside the limits a build error.
+    #[must_use]
+    pub const fn new(value: u8) -> Option<Self> {
+        Some(Self(value))
+    }
+}
+runtime::checked_num_impls!(WideByte, u8);
+#[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
+#[serde(transparent)]
+pub struct NoByte(pub(super) i8);
+impl TryFrom<i8> for NoByte {
+    type Error = runtime::BuildError;
+    fn try_from(value: i8) -> Result<Self, runtime::BuildError> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            {
+                let got = value;
+                runtime::violation(
+                    out,
+                    &runtime::InstanceLocation::Root,
+                    format!(
+                        "`minimum: 1000` leaves no value of this integer type, not even {got}"
+                    ),
+                );
+            }
+        }
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
+    }
+}
+impl NoByte {
+    /// Returns the value, or `None` when it breaks a limit. In a constant, `.expect(..)` on it makes a
+    /// literal outside the limits a build error.
+    #[must_use]
+    pub const fn new(_: i8) -> Option<Self> {
+        None
+    }
+}
+runtime::checked_num_impls!(NoByte, i8);
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Tree {
     Variant2(TreeVariant2),
@@ -1815,6 +1903,14 @@ impl TryFrom<u8> for DegenerateNever {
             .map_err(runtime::BuildError::value)
     }
 }
+impl DegenerateNever {
+    /// Returns the value, or `None` when it breaks a limit. In a constant, `.expect(..)` on it makes a
+    /// literal outside the limits a build error.
+    #[must_use]
+    pub const fn new(_: u8) -> Option<Self> {
+        None
+    }
+}
 runtime::checked_num_impls!(DegenerateNever, u8);
 #[derive(Debug, Clone, PartialEq, Copy, Eq, Hash, PartialOrd, Ord, serde::Serialize)]
 #[serde(transparent)]
@@ -1839,6 +1935,14 @@ impl TryFrom<i64> for DegenerateHuge {
         runtime::first(violations)
             .map(|()| Self(value))
             .map_err(runtime::BuildError::value)
+    }
+}
+impl DegenerateHuge {
+    /// Returns the value, or `None` when it breaks a limit. In a constant, `.expect(..)` on it makes a
+    /// literal outside the limits a build error.
+    #[must_use]
+    pub const fn new(_: i64) -> Option<Self> {
+        None
     }
 }
 runtime::checked_num_impls!(DegenerateHuge, i64);
@@ -1909,6 +2013,14 @@ impl TryFrom<i64> for DegenerateHalf {
         runtime::first(violations)
             .map(|()| Self(value))
             .map_err(runtime::BuildError::value)
+    }
+}
+impl DegenerateHalf {
+    /// Returns the value, or `None` when it breaks a limit. In a constant, `.expect(..)` on it makes a
+    /// literal outside the limits a build error.
+    #[must_use]
+    pub const fn new(value: i64) -> Option<Self> {
+        if value >= 1 && value < 4 { Some(Self(value)) } else { None }
     }
 }
 runtime::checked_num_impls!(DegenerateHalf, i64);

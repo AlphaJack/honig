@@ -182,6 +182,11 @@ components:
       anyOf:
         - {type: object, properties: {kind: {const: a}}}
         - {type: object, required: [n], properties: {kind: {const: b}, n: {type: integer}}}
+    # Bounds past the range of the integer type: every value meets the first three, none meets the last.
+    WideMax: {type: integer, format: int32, maximum: 5000000000}
+    WideMin: {type: integer, format: int8, minimum: -1000}
+    WideByte: {type: integer, format: uint8, maximum: 300}
+    NoByte: {type: integer, format: int8, minimum: 1000}
     Tree:
       oneOf:
         - type: object

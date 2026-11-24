@@ -1000,35 +1000,46 @@ fn newtype(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, def: &Ty
 fn literal_constructor(
     n: &proc_macro2::Ident,
     base: &TokenStream,
+    ty: &Ty,
     c: &crate::ir::types::Constraints,
 ) -> Option<TokenStream> {
+    use super::checks::{Bound, Within, integer_bound};
     let mut rest = c.clone();
     let bounds = [
-        (rest.minimum.take(), quote!(>=)),
-        (rest.exclusive_minimum.take(), quote!(>)),
-        (rest.maximum.take(), quote!(<=)),
-        (rest.exclusive_maximum.take(), quote!(<)),
+        (rest.minimum.take(), Bound::AtLeast, quote!(>=)),
+        (rest.exclusive_minimum.take(), Bound::Above, quote!(>)),
+        (rest.maximum.take(), Bound::AtMost, quote!(<=)),
+        (rest.exclusive_maximum.take(), Bound::Below, quote!(<)),
     ];
     if rest != crate::ir::types::Constraints::default() {
         return None;
     }
-    let unsigned = base.to_string().starts_with('u');
-    let mut tests = vec![];
-    for (bound, op) in bounds {
-        let Some(bound) = bound else { continue };
-        let value = bound.as_i64().filter(|v| !unsigned || *v >= 0)?;
-        let value = proc_macro2::Literal::i64_unsuffixed(value);
-        tests.push(quote!(value #op #value));
+    let (mut tests, mut none, mut given_any) = (vec![], false, false);
+    for (given, bound, op) in bounds {
+        let Some(given) = given else { continue };
+        given_any = true;
+        // A bound past the range of the type is a literal that does not compile: it is met by every value or by none.
+        match integer_bound(&given, bound, ty) {
+            Within::Every => {}
+            Within::No => none = true,
+            Within::Some(b) => {
+                let b = proc_macro2::Literal::i128_unsuffixed(b);
+                tests.push(quote!(value #op #b));
+            }
+        }
     }
-    (!tests.is_empty()).then(|| {
+    let (arg, body) = match (none, tests.is_empty()) {
+        (true, _) => (quote!(_), quote!({ None })),
+        (false, true) => (quote!(value), quote!({ Some(Self(value)) })),
+        (false, false) => (quote!(value), quote!({ if #(#tests)&&* { Some(Self(value)) } else { None } })),
+    };
+    given_any.then(|| {
         quote! {
             impl #n {
                 /// Returns the value, or `None` when it breaks a limit. In a constant, `.expect(..)` on it makes a
                 /// literal outside the limits a build error.
                 #[must_use]
-                pub const fn new(value: #base) -> Option<Self> {
-                    if #(#tests)&&* { Some(Self(value)) } else { None }
-                }
+                pub const fn new(#arg: #base) -> Option<Self> #body
             }
         }
     })
@@ -1092,7 +1103,8 @@ fn checked_type(items: &mut Vec<TokenStream>, space: &Space<'_>, id: TypeId, def
         Base::Str => quote!(runtime::checked_str_impls!(#n);),
         Base::Decimal => quote!(runtime::checked_decimal_impls!(#n);),
         Base::Int | Base::Float => {
-            let literal = (kind == Base::Int).then(|| literal_constructor(&n, &base, &c.constraints)).flatten();
+            let literal =
+                (kind == Base::Int).then(|| literal_constructor(&n, &base, &c.base, &c.constraints)).flatten();
             quote!(#literal runtime::checked_num_impls!(#n, #base);)
         }
         Base::Other => quote!(runtime::checked_impls!(#n, #base);),
@@ -1129,14 +1141,19 @@ fn checked_try_from(
     subschemas: Option<&TokenStream>,
     checks: &TokenStream,
 ) -> TokenStream {
-    let body = quote! {
-        let mut violations: Vec<runtime::Violation> = Vec::new();
-        {
-            let out = &mut violations;
-            #subschemas
-            #checks
+    // A bound that every value of the type meets leaves no check.
+    let body = if quote!(#subschemas #checks).is_empty() {
+        quote!(Ok(Self(value)))
+    } else {
+        quote! {
+            let mut violations: Vec<runtime::Violation> = Vec::new();
+            {
+                let out = &mut violations;
+                #subschemas
+                #checks
+            }
+            runtime::first(violations).map(|()| Self(value)).map_err(runtime::BuildError::value)
         }
-        runtime::first(violations).map(|()| Self(value)).map_err(runtime::BuildError::value)
     };
     if !reads_json(subschemas, checks) {
         return quote! {
