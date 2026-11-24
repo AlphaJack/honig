@@ -399,6 +399,25 @@ fn a_length_on_base64_bytes_is_checked() {
     assert!(types.contains("runtime::check_len("), "{types}");
 }
 
+/// A valid schema whose keywords no generated check enforces still generates: a warning names what goes unchecked. A
+/// keyword of another kind than the `type` passes every value and needs no check at all.
+#[test]
+fn a_schema_that_no_check_enforces_is_a_warning() {
+    let generated = |s: Value| {
+        let d = doc(&json!({}), &json!({"schemas": {"S": s}}));
+        let made = crate::generate::generate(&common::write("unchecked-schema", &d, &[]), &Options::default());
+        made.expect("a valid description generates").diagnostics
+    };
+    let vacuous = generated(json!({"type": "string", "patternProperties": {"^a": {}}}));
+    assert!(vacuous.is_empty(), "{vacuous:#?}");
+    let dynamic = generated(json!({"$dynamicAnchor": "m", "type": "object", "allOf": [{"$dynamicRef": "#m"}],
+        "properties": {"x": {}}, "unevaluatedProperties": false}));
+    assert!(
+        dynamic.iter().any(|d| d.message.contains("does not check this schema: unevaluatedProperties")),
+        "{dynamic:#?}"
+    );
+}
+
 /// Media types that give one variant name are numbered in the sorted order of the types: a reorder of `content`
 /// changes no name.
 #[test]

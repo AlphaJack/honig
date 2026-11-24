@@ -556,7 +556,7 @@ impl<'a> Builder<'a> {
                 c.dependent_schemas.push((name.clone(), self.queue_subschema(sub, at)));
             }
         } else {
-            // No generated check enforces them: generation stops with the keywords that it cannot check.
+            // No generated check enforces them: a warning names the keywords that it does not check.
             self.unchecked.borrow_mut().entry(at.unwrap_or_default().to_owned()).or_insert_with(|| untyped.join(", "));
         }
         for m in s.get("allOf").and_then(Value::as_array).into_iter().flatten().filter(|m| !conditional_member(m)) {
@@ -1148,7 +1148,7 @@ impl<'a> Builder<'a> {
         self.fill_deferred();
         let subschemas = self.build_subschemas();
         for (at, why) in std::mem::take(self.unchecked.get_mut()) {
-            self.diags.error(at, format!("generated code cannot check this schema: {why}"));
+            self.diags.warning(at, format!("generated code does not check this schema: {why}"));
         }
         for d in &mut self.defs {
             if matches!(d.kind, Kind::Pending) {
@@ -1244,11 +1244,11 @@ mod tests {
         let mut b = Builder::new(&doc, &mut d, Reserved::default());
         b.components();
         b.finish();
-        d.iter().filter_map(|x| x.message.strip_prefix("generated code cannot check this schema: ")).collect()
+        d.iter().filter_map(|x| x.message.strip_prefix("generated code does not check this schema: ")).collect()
     }
 
-    /// A keyword that a type or a generated check enforces is checked; beside it, one that none enforces still stops
-    /// generation. The same keyword where nothing enforces it stops it too.
+    /// A keyword that a type or a generated check enforces is checked; beside it, one that none enforces is still
+    /// reported. The same keyword where nothing enforces it is reported too.
     #[test]
     fn a_held_keyword_hides_no_other() {
         let held = [
@@ -1262,14 +1262,19 @@ mod tests {
             json!({"type": "array", "prefixItems": [{}], "unevaluatedItems": false}),
         ];
         for mut s in held {
-            s["dependencies"] = json!({"a": ["b"]});
-            assert_eq!(unchecked(&s), "dependencies", "{s}");
+            // A keyword of objects passes every array: the array keeps nothing unchecked.
+            let extra = if s["type"] == "array" { "" } else { "dependencies" };
+            if !extra.is_empty() {
+                s[extra] = json!({"a": ["b"]});
+            }
+            assert_eq!(unchecked(&s), extra, "{s}");
         }
         let dynamic = json!([{"$dynamicRef": "#m"}]);
         let unheld = [
-            (json!({"type": "string", "dependentRequired": {"a": ["b"]}}), "dependentRequired"),
-            (json!({"type": "string", "propertyNames": {"maxLength": 3}}), "propertyNames"),
-            (json!({"type": "string", "patternProperties": {"^a": {}}}), "patternProperties"),
+            // A keyword of objects beside `type: string` passes every value: nothing to check.
+            (json!({"type": "string", "dependentRequired": {"a": ["b"]}}), ""),
+            (json!({"type": "string", "propertyNames": {"maxLength": 3}}), ""),
+            (json!({"type": "string", "patternProperties": {"^a": {}}}), ""),
             (json!({"type": "object", "allOf": dynamic, "unevaluatedProperties": false}), "unevaluatedProperties"),
             (json!({"type": "array", "allOf": dynamic, "unevaluatedItems": false}), "unevaluatedItems"),
         ];
