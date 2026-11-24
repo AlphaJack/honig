@@ -832,3 +832,11 @@ fn a_pattern_beside_a_format_is_checked() {
     assert!(id("01234567-89ab-cdef-0123-456789abcdef").is_ok());
     assert!(id("11234567-89ab-cdef-0123-456789abcdef").is_err());
 }
+
+/// A `maxLength` on base64 bytes is checked on their text before it decodes.
+#[test]
+fn a_length_on_base64_bytes_is_checked_on_their_text() {
+    let token = |text: &str| serde_json::from_value::<types::Token>(serde_json::json!(text));
+    assert!(token("QUJDRA==").is_ok(), "8 characters");
+    assert!(token("QUJDREVGR0g=").is_err(), "12 characters");
+}

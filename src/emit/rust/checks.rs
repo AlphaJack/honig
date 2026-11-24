@@ -566,8 +566,21 @@ pub(super) fn checks(
             | Kind::Pending => TokenStream::new(),
         },
         Ty::Any => any_checks(c, value, path, false),
-        Ty::Bool | Ty::Bytes | Ty::Binary | Ty::Unit | Ty::Tuple(_) => TokenStream::new(),
+        Ty::Binary => binary_checks(c, path),
+        Ty::Bool | Ty::Bytes | Ty::Unit | Ty::Tuple(_) => TokenStream::new(),
     }
+}
+
+/// Returns the checks of base64 bytes: they keep no text, so their length and pattern run on the JSON string that they
+/// decode from.
+fn binary_checks(c: &Constraints, path: &TokenStream) -> TokenStream {
+    let text = Constraints {
+        min_length: c.min_length,
+        max_length: c.max_length,
+        pattern: c.pattern.clone(),
+        ..Constraints::default()
+    };
+    if text == Constraints::default() { TokenStream::new() } else { any_checks(&text, &quote!(json), path, true) }
 }
 
 /// Returns `propertyNames` on the name in `name`, at the path of that name.
