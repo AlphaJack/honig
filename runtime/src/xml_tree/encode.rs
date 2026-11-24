@@ -13,6 +13,7 @@ use serde::Serialize;
 use serde::ser::{self, Impossible, SerializeMap, SerializeSeq, SerializeStruct};
 use serde_json::{Map, Value};
 
+use super::name::is_name;
 use super::write::{self, Tag};
 use super::{XmlField, XmlNode};
 use crate::ClientError;
@@ -69,27 +70,32 @@ pub(super) fn body<T: Serialize + ?Sized>(v: &T, node: &'static XmlNode) -> std:
 
 /// Returns a `Value` as an XML document whose root is `root`.
 #[cfg(feature = "multipart")]
-pub(super) fn document(root: &str, v: &Value) -> String {
+pub(super) fn document(root: &str, v: &Value) -> std::result::Result<String, ClientError> {
     let mut out = String::from(write::DECLARATION);
-    value_element(&mut out, v, Tag::plain(root));
-    out
+    value_element(&mut out, v, data_tag(root)?)?;
+    Ok(out)
 }
 
 /// Returns a form field sent as `application/xml`: each property of an object as an element, any other value as its
 /// text.
-pub(super) fn fields(v: &Value) -> String {
+pub(super) fn fields(v: &Value) -> std::result::Result<String, ClientError> {
     let mut out = String::new();
     match v {
         Value::Object(o) => {
             for (k, x) in o {
-                value_element(&mut out, x, Tag::plain(k));
+                value_element(&mut out, x, data_tag(k)?)?;
             }
         }
         other @ (Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_) | Value::Array(_)) => {
             out.push_str(&write::escape(&crate::scalar::scalar(other)));
         }
     }
-    out
+    Ok(out)
+}
+
+/// Returns the tag of a name that comes from data: a map key or a part name. Errors: it is no XML name.
+fn data_tag(name: &str) -> std::result::Result<Tag<'_>, ClientError> {
+    if is_name(name) { Ok(Tag::plain(name)) } else { Err(ClientError::Encode(format!("`{name}` is no XML name"))) }
 }
 
 /// Returns `v` as the element `tag`: streamed, else ordered, else from its `Value`.
@@ -112,11 +118,16 @@ fn element<T: Serialize + ?Sized>(
     value.serialize(Element { out, tag, node, extra, mode: Mode::Ordered }).map_err(written)
 }
 
-/// Writes a `Value` as the element `tag` without a shape. Every `Value` writes.
-fn value_element(out: &mut String, v: &Value, tag: Tag<'_>) {
+/// Writes a `Value` as the element `tag` without a shape. Errors: a key is no XML name.
+fn value_element(out: &mut String, v: &Value, tag: Tag<'_>) -> std::result::Result<(), ClientError> {
     let mark = out.len();
-    if v.serialize(Element { out, tag, node: None, extra: "", mode: Mode::Ordered }).is_err() {
-        out.truncate(mark);
+    match v.serialize(Element { out, tag, node: None, extra: "", mode: Mode::Ordered }) {
+        Err(Stop(Some(e))) => Err(e),
+        Err(Stop(None)) => {
+            out.truncate(mark);
+            Ok(())
+        }
+        Ok(()) => Ok(()),
     }
 }
 
@@ -388,7 +399,8 @@ impl<'o, 'n> Fields<'o, 'n> {
                 None if self.inline => Ok(()),
                 None => {
                     let mut s = String::new();
-                    or_value(&mut s, v, |out, v| v.write(element_in(out, Tag::plain(key), None).into()))?;
+                    let tag = data_tag(key).map_err(|e| Stop(Some(e)))?;
+                    or_value(&mut s, v, |out, v| v.write(element_in(out, tag, None).into()))?;
                     self.unlisted.insert(key.to_owned(), Value::String(s));
                     Ok(())
                 }
@@ -982,6 +994,29 @@ mod tests {
         String::from_utf8(bytes).unwrap()
     }
 
+    /// Properties that the shape does not list, from a map: the keys are data.
+    #[derive(Serialize)]
+    struct Bag {
+        #[serde(flatten)]
+        more: std::collections::BTreeMap<String, String>,
+    }
+
+    impl XmlShape for Bag {
+        fn xml() -> &'static XmlNode {
+            &SHELF
+        }
+    }
+
+    #[test]
+    fn a_key_that_is_no_xml_name_is_an_error() {
+        let bag = |key: &str| Bag { more: [(key.to_owned(), "x".to_owned())].into() };
+        for bad in ["a><admin>true</admin><b", "a b", "1a", "a:b", ""] {
+            assert!(matches!(xml_encode(&bag(bad)), Err(crate::ClientError::Encode(_))), "{bad:?}");
+            assert!(xml_fields(&json!({bad: "x"})).is_err(), "{bad:?}");
+        }
+        assert!(text(xml_encode(&bag("a-b_1.\u{e9}")).unwrap()).contains("<a-b_1.\u{e9}>x</a-b_1.\u{e9}>"));
+    }
+
     #[test]
     fn a_shaped_body_writes_attributes_then_text_then_elements() {
         let books =
@@ -1039,11 +1074,11 @@ mod tests {
         );
         #[cfg(feature = "multipart")]
         assert_eq!(
-            text(xml_document("root", &v)),
+            text(xml_document("root", &v).unwrap()),
             format!(r#"<?xml version="1.0" encoding="UTF-8"?><root>{fields}</root>"#)
         );
-        assert_eq!(xml_fields(&v), fields);
-        assert_eq!(xml_fields(&json!("plain <text>")), "plain &lt;text&gt;");
+        assert_eq!(xml_fields(&v).unwrap(), fields);
+        assert_eq!(xml_fields(&json!("plain <text>")).unwrap(), "plain &lt;text&gt;");
     }
 
     struct Bytes;

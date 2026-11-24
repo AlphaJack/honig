@@ -20,12 +20,13 @@ use crate::{
 
 /// Returns the text of a form field in its `encoding.contentType`. That is XML elements or JSON or else
 /// [`form_scalar`].
-fn form_field_text(v: &Value, media: Option<&str>) -> String {
+#[cfg_attr(not(feature = "xml"), expect(clippy::unnecessary_wraps, reason = "only an XML field can fail"))]
+fn form_field_text(v: &Value, media: Option<&str>) -> Result<String, ClientError> {
     match media.map(|m| m.split(';').next().unwrap_or(m).trim().to_ascii_lowercase()) {
         #[cfg(feature = "xml")]
         Some(m) if is_xml_media(&m) => crate::xml_tree::xml_fields(v),
-        Some(m) if m.ends_with("/json") || m.ends_with("+json") => v.to_string(),
-        _ => form_scalar(v),
+        Some(m) if m.ends_with("/json") || m.ends_with("+json") => Ok(v.to_string()),
+        _ => Ok(form_scalar(v)),
     }
 }
 
@@ -95,14 +96,18 @@ pub fn form_encode_with<T: Serialize>(
             let media = types.iter().find(|(n, _)| n == k).map(|(_, m)| *m);
             let pair = |v: &Value| {
                 let mut s = form_urlencoded::Serializer::new(String::new());
-                s.append_pair(k, &form_field_text(v, media));
-                s.finish()
+                s.append_pair(k, &form_field_text(v, media)?);
+                Ok::<_, ClientError>(s.finish())
             };
             match x {
                 Value::Null => {}
-                Value::Array(a) => parts.extend(a.iter().map(pair)),
+                Value::Array(a) => {
+                    for v in a {
+                        parts.push(pair(v)?);
+                    }
+                }
                 other @ (Value::Bool(_) | Value::Number(_) | Value::String(_) | Value::Object(_)) => {
-                    parts.push(pair(other));
+                    parts.push(pair(other)?);
                 }
             }
         }

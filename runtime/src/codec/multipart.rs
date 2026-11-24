@@ -110,10 +110,12 @@ fn multipart_encode_in<T: Serialize>(
             match x {
                 Value::Null => {}
                 Value::Array(a) if !declared(types, k).is_some_and(is_multipart) => {
-                    parts.extend(a.iter().map(|e| named_part(0, k, k, e, types, &extra)));
+                    for e in a {
+                        parts.push(named_part(0, k, k, e, types, &extra)?);
+                    }
                 }
                 other @ (Value::Bool(_) | Value::Number(_) | Value::String(_) | Value::Array(_) | Value::Object(_)) => {
-                    parts.push(named_part(0, k, k, other, types, &extra));
+                    parts.push(named_part(0, k, k, other, types, &extra)?);
                 }
             }
         }
@@ -183,8 +185,8 @@ fn named_part(
     x: &Value,
     types: &[(&str, &str)],
     extra: &str,
-) -> (String, Vec<u8>) {
-    let (ct, data, file) = part_value(path, x, types, depth);
+) -> Result<(String, Vec<u8>), ClientError> {
+    let (ct, data, file) = part_value(path, x, types, depth)?;
     // `Content-Transfer-Encoding: base64` among the part's headers (a `contentEncoding: base64` field): the body as
     // base64.
     let base64_part = extra.lines().any(|l| {
@@ -201,7 +203,7 @@ fn named_part(
         }
         PartKind::Field => format!("name=\"{}\"", quote(name)),
     };
-    (format!("Content-Disposition: form-data; {disposition}\r\nContent-Type: {ct}\r\n{extra}"), data)
+    Ok((format!("Content-Disposition: form-data; {disposition}\r\nContent-Type: {ct}\r\n{extra}"), data))
 }
 
 /// What a part carries. That is the value of a field or a file with its own name if it has one.
@@ -213,7 +215,12 @@ enum PartKind {
 /// Returns the content type, bytes and [`PartKind`] of a part. A part declared
 /// `multipart/*` that contains an object or a list nests its own parts. They are
 /// named (`encoding`) or positional (`prefixEncoding` and `itemEncoding`).
-fn part_value(path: &str, x: &Value, types: &[(&str, &str)], depth: usize) -> (String, Vec<u8>, PartKind) {
+fn part_value(
+    path: &str,
+    x: &Value,
+    types: &[(&str, &str)],
+    depth: usize,
+) -> Result<(String, Vec<u8>, PartKind), ClientError> {
     let declared = declared(types, path);
     if let Some(d) = declared.filter(|d| is_multipart(d) && depth < MAX_NESTING)
         && matches!(x, Value::Object(_) | Value::Array(_))
@@ -223,20 +230,20 @@ fn part_value(path: &str, x: &Value, types: &[(&str, &str)], depth: usize) -> (S
                 .iter()
                 .filter(|(_, v)| !v.is_null())
                 .map(|(k, v)| named_part(depth + 1, &format!("{path}/{k}"), k, v, types, ""))
-                .collect(),
+                .collect::<Result<_, _>>()?,
             Value::Array(a) => a
                 .iter()
                 .enumerate()
                 .map(|(i, v)| {
-                    let (ct, data, _) = part_value(&format!("{path}/{i}"), v, types, depth + 1);
-                    (format!("Content-Type: {ct}\r\n"), data)
+                    let (ct, data, _) = part_value(&format!("{path}/{i}"), v, types, depth + 1)?;
+                    Ok((format!("Content-Type: {ct}\r\n"), data))
                 })
-                .collect(),
+                .collect::<Result<_, ClientError>>()?,
             Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_) => vec![],
         };
         // The enclosing body picks a boundary that this one does not contain.
         let (ct, body) = assemble(d.split(';').next().unwrap_or(d).trim(), &parts);
-        return (ct, body, PartKind::Field);
+        return Ok((ct, body, PartKind::Field));
     }
     // An object or a list declared XML is an XML document. Its root has the name of the part.
     #[cfg(feature = "xml")]
@@ -244,7 +251,7 @@ fn part_value(path: &str, x: &Value, types: &[(&str, &str)], depth: usize) -> (S
         && matches!(x, Value::Object(_) | Value::Array(_))
     {
         let root = path.rsplit('/').find(|s| !s.is_empty() && !s.bytes().all(|b| b.is_ascii_digit())).unwrap_or("item");
-        return (d.to_owned(), crate::xml_tree::xml_document(root, x), PartKind::Field);
+        return Ok((d.to_owned(), crate::xml_tree::xml_document(root, x)?, PartKind::Field));
     }
     let (ct, data, file) = match x {
         Value::String(s) => match raw_part(s) {
@@ -264,7 +271,7 @@ fn part_value(path: &str, x: &Value, types: &[(&str, &str)], depth: usize) -> (S
         }
     };
     // `encoding.<property>.contentType` wins over the default of the value's kind.
-    (declared.map_or(ct, str::to_owned), data, file)
+    Ok((declared.map_or(ct, str::to_owned), data, file))
 }
 
 /// Decodes a `multipart/form-data` body; file parts reach [`Binary`](crate::Binary) fields unchanged.
