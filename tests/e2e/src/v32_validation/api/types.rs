@@ -29,6 +29,38 @@ impl TryFrom<runtime::UuidStr> for LegacyId {
 runtime::checked_impls!(LegacyId, runtime::UuidStr);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
+pub struct Token(pub(super) runtime::Binary);
+runtime::checked_deserialize!(Token, runtime::Binary, once);
+impl Token {
+    fn checked(
+        value: runtime::Binary,
+        json: &runtime::Content<'_>,
+    ) -> Result<Self, runtime::BuildError> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            if let runtime::Content::Str(text) = json {
+                let text: &str = text;
+                let n = text.chars().count();
+                runtime::check_len(
+                    out,
+                    &runtime::InstanceLocation::Root,
+                    n,
+                    None,
+                    Some(8),
+                    "characters",
+                );
+            }
+        }
+        runtime::first(violations)
+            .map(|()| Self(value))
+            .map_err(runtime::BuildError::value)
+    }
+}
+runtime::checked_json!(Token, runtime::Binary);
+runtime::checked_impls!(Token, runtime::Binary);
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+#[serde(transparent)]
 pub struct Tagged(pub(super) TaggedVariants);
 runtime::checked_deserialize!(Tagged, TaggedVariants, once);
 impl Tagged {

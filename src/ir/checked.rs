@@ -333,7 +333,7 @@ pub(crate) fn needs_checks(types: &TypeSpace, t: &Ty, c: &Constraints, hops: usi
     let length = c.min_length.is_some() || c.max_length.is_some();
     match t {
         Ty::Option(x) | Ty::Indirect(x) => needs_checks(types, x, c, hops),
-        Ty::String | Ty::Format(_) => length || c.pattern.is_some(),
+        Ty::String | Ty::Format(_) | Ty::Binary => length || c.pattern.is_some(),
         Ty::I8 | Ty::I16 | Ty::I32 | Ty::I64 | Ty::U8 | Ty::U16 | Ty::U32 | Ty::U64 | Ty::F32 | Ty::F64 => range,
         Ty::Decimal => range || c.decimal128,
         Ty::Vec(x) => {
@@ -373,6 +373,6 @@ pub(crate) fn needs_checks(types: &TypeSpace, t: &Ty, c: &Constraints, hops: usi
             | Kind::Pending => false,
         },
         Ty::Any => checked_by_kind(c),
-        Ty::Bool | Ty::Bytes | Ty::Binary | Ty::Unit | Ty::Tuple(_) => false,
+        Ty::Bool | Ty::Bytes | Ty::Unit | Ty::Tuple(_) => false,
     }
 }

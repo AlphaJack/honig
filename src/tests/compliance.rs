@@ -351,22 +351,14 @@ fn anchors_belong_to_their_resource() {
     assert!(err.iter().any(|d| d.message.contains("`y`")), "{:#?}", err.0);
 }
 
-/// A limit that no generated check would run fails generation: beside `x-rust-type` your type decides the value, and a
-/// `format: byte` field decodes to its bytes, so the length of its text is gone.
+/// A limit that no generated check would run fails generation: beside `x-rust-type` your type decides the value.
 #[test]
 fn a_limit_that_no_check_would_run_fails_generation() {
-    let schema = |s: Value| doc(&json!({}), &json!({"schemas": {"S": s}}));
-    for (d, at) in [
-        (
-            schema(json!({"type": "string", "maxLength": 3, "x-rust-type": "crate::Code"})),
-            "/components/schemas/S/maxLength",
-        ),
-        (schema(json!({"type": "string", "format": "byte", "maxLength": 8})), "/components/schemas/S/maxLength"),
-    ] {
-        let path = common::write("unchecked-limit", &d, &[]);
-        let err = crate::generate::generate(&path, &Options::default()).expect_err(at);
-        assert!(err.iter().any(|d| d.pointer == at), "{at}: {:#?}", err.0);
-    }
+    let d =
+        doc(&json!({}), &json!({"schemas": {"S": {"type": "string", "maxLength": 3, "x-rust-type": "crate::Code"}}}));
+    let path = common::write("unchecked-limit", &d, &[]);
+    let err = crate::generate::generate(&path, &Options::default()).expect_err("a limit beside x-rust-type");
+    assert!(err.iter().any(|d| d.pointer == "/components/schemas/S/maxLength"), "{:#?}", err.0);
 }
 
 /// A link expression `$response.body#/idd` that reaches no property of the response body is always absent: a warning
@@ -391,6 +383,15 @@ fn a_link_pointer_that_reaches_nothing_is_a_warning() {
     };
     assert!(!warned("/id"), "a declared property");
     assert!(warned("/idd"), "no property idd");
+}
+
+/// A length on a `format: byte` field generates a check of its base64 text.
+#[test]
+fn a_length_on_base64_bytes_is_checked() {
+    let d = doc(&json!({}), &json!({"schemas": {"Token": {"type": "string", "format": "byte", "maxLength": 8}}}));
+    let made = crate::generate::generate(&common::write("byte-length", &d, &[]), &Options::default());
+    let types = common::file(&made.expect("a valid description generates").files, "types.rs").to_owned();
+    assert!(types.contains("runtime::check_len("), "{types}");
 }
 
 /// Media types that give one variant name are numbered in the sorted order of the types: a reorder of `content`
