@@ -1,7 +1,7 @@
 //! XML shaped by the `xml` objects of the schemas: the shapes, the encoder and the parser into elements.
 
 use std::borrow::Cow;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use quick_xml::XmlVersion;
 use quick_xml::escape::resolve_predefined_entity;
@@ -155,6 +155,8 @@ struct Open {
     attrs: Vec<(String, String)>,
     /// Its children. Each one is already converted.
     children: Vec<(String, Xml)>,
+    /// The names of its children: whether a field already has its element, without a scan of them.
+    held: BTreeSet<String>,
     text: String,
     /// The CDATA sections alone for a `nodeType: cdata` field. The text around them is not kept. That text is the
     /// formatting whitespace of a pretty-printed document.
@@ -165,9 +167,9 @@ struct Open {
 /// Returns the role of a child named `name`. It comes from the shape of its parent and the children that it already
 /// contains. A field gets the first element of its name because fields go in document order. A second one is an element
 /// that no schema describes.
-fn role_in(node: &'static XmlNode, name: &str, held: &[(String, Xml)]) -> Role {
+fn role_in(node: &'static XmlNode, name: &str, held: &BTreeSet<String>) -> Role {
     let shaped = |f: &XmlField<XmlNode>| f.child.map_or(Role::Unshaped, |c| Role::Shaped(c()));
-    let taken = || held.iter().any(|(n, _)| n == name);
+    let taken = || held.contains(name);
     for f in node.fields {
         if f.attribute || f.text {
             continue;
@@ -198,7 +200,7 @@ fn role_in(node: &'static XmlNode, name: &str, held: &[(String, Xml)]) -> Role {
 /// Returns the role of a child named `name` of an open element.
 fn child_role(parent: &Open, name: &str) -> Role {
     match parent.role {
-        Role::Shaped(node) => role_in(node, name, &parent.children),
+        Role::Shaped(node) => role_in(node, name, &parent.held),
         Role::Unshaped => Role::Unshaped,
         Role::Wrapper(f) => f.child.map_or(Role::Unshaped, |c| Role::Shaped(c())),
     }
@@ -315,7 +317,16 @@ pub(crate) const MAX_DEPTH: usize = 256;
 /// `xsi:nil="true"` marks the element nil.
 fn open(start: &BytesStart<'_>, role: Role) -> Result<Open, String> {
     let name = local(start.name());
-    let mut e = Open { name, role, attrs: vec![], children: vec![], text: String::new(), cdata: None, nil: false };
+    let mut e = Open {
+        name,
+        role,
+        attrs: vec![],
+        children: vec![],
+        held: BTreeSet::new(),
+        text: String::new(),
+        cdata: None,
+        nil: false,
+    };
     for a in start.attributes() {
         let a = a.map_err(|err| err.to_string())?;
         let key = a.key.as_ref();
@@ -343,6 +354,9 @@ pub(crate) fn parse(text: &str, root: Role) -> Result<Xml, String> {
         let v = close(e);
         match stack.last_mut() {
             Some(parent) => {
+                if !parent.held.contains(&name) {
+                    parent.held.insert(name.clone());
+                }
                 parent.children.push((name, v));
                 None
             }

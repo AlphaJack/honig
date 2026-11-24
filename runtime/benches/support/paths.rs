@@ -220,6 +220,16 @@ pub(crate) const PATHS: &[Path] = &[
         },
     },
     Path {
+        name: "xml_decode_repeated",
+        prepare: |size| {
+            // Unknown elements, then the field `id` again and again: a decoder that looks for an earlier `id` among
+            // the children so far is quadratic.
+            let half = size / UNKNOWN_BYTES / 2;
+            let body = ["<order>", &"<u/>".repeat(half), &"<id>1</id>".repeat(half), "</order>"].concat().into_bytes();
+            (body.len(), on(body, |b| runtime::xml_decode::<Order>(None, b)))
+        },
+    },
+    Path {
         name: "xml_decode_unknown",
         prepare: |size| {
             // Elements that the shape does not list, each of its own name: a decoder that compares each with the
