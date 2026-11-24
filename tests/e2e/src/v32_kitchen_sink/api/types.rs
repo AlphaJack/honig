@@ -69,11 +69,11 @@ runtime::checked_json!(Book, BookFields);
 runtime::checked_impls!(Book, BookFields);
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
 #[serde(transparent)]
-pub struct Gadget(pub(super) Gadget2);
-runtime::checked_deserialize!(Gadget, Gadget2, once);
+pub struct Gadget(pub(super) Product);
+runtime::checked_deserialize!(Gadget, Product, once);
 impl Gadget {
     fn checked(
-        value: Gadget2,
+        value: Product,
         json: &runtime::Content<'_>,
     ) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
@@ -111,8 +111,8 @@ impl Gadget {
             .map_err(runtime::BuildError::value)
     }
 }
-runtime::checked_json!(Gadget, Gadget2);
-runtime::checked_impls!(Gadget, Gadget2);
+runtime::checked_json!(Gadget, Product);
+runtime::checked_impls!(Gadget, Product);
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct Owner(pub(super) OwnerFields);
@@ -496,125 +496,6 @@ impl BookAttrs {
 runtime::checked_json!(BookAttrs, BookAttrsFields);
 runtime::checked_impls!(BookAttrs, BookAttrsFields);
 pub type BookWeight = ProductWeight;
-#[derive(Debug, Clone, PartialEq, serde::Serialize)]
-#[serde(transparent)]
-pub struct Gadget2(pub(super) Gadget2Fields);
-runtime::checked_deserialize!(Gadget2, Gadget2Fields, once);
-impl Gadget2 {
-    fn checked(
-        value: Gadget2Fields,
-        json: &runtime::Content<'_>,
-    ) -> Result<Self, runtime::BuildError> {
-        let mut violations: Vec<runtime::Violation> = Vec::new();
-        {
-            let out = &mut violations;
-            {
-                if json.get("secret").is_some()
-                    && let Err(e) = json.decode_ref::<NotChecked2>()
-                {
-                    runtime::violation(
-                        out,
-                        &runtime::InstanceLocation::Root,
-                        format!("{}{e}", "`secret` is present: "),
-                    );
-                }
-            }
-        }
-        runtime::first(violations)
-            .map(|()| Self(value))
-            .map_err(runtime::BuildError::value)
-    }
-}
-runtime::checked_json!(Gadget2, Gadget2Fields);
-runtime::checked_impls!(Gadget2, Gadget2Fields);
-pub type Gadget2Id = ProductId;
-pub type Gadget2Name = ProductName;
-pub type Gadget2Kind = Gadget2Kind2;
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
-pub enum Gadget2Kind2 {
-    Book,
-    Gadget,
-}
-runtime::str_enum_impls!(Gadget2Kind2 { Book => "book", Gadget => "gadget" });
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
-#[serde(transparent)]
-pub struct Gadget2Attrs(pub(super) Gadget2AttrsFields);
-runtime::checked_deserialize!(Gadget2Attrs, Gadget2AttrsFields, once);
-impl Gadget2Attrs {
-    fn checked(
-        value: Gadget2AttrsFields,
-        json: &runtime::Content<'_>,
-    ) -> Result<Self, runtime::BuildError> {
-        let mut violations: Vec<runtime::Violation> = Vec::new();
-        {
-            let out = &mut violations;
-            {
-                if let Some(object) = json.as_object() {
-                    for name in object.map(|(name, _)| name) {
-                        if !(runtime::pattern_matches(
-                            {
-                                static RE: runtime::Pattern = runtime::Pattern::new("^x_");
-                                &RE
-                            },
-                            name,
-                        )) {
-                            runtime::violation(
-                                out,
-                                &runtime::InstanceLocation::Key(
-                                    &runtime::InstanceLocation::Root,
-                                    name,
-                                ),
-                                "is not allowed (unevaluatedProperties)",
-                            );
-                        }
-                    }
-                }
-            }
-            for name in value.additional_properties.keys() {
-                runtime::check_pattern(
-                    out,
-                    &runtime::InstanceLocation::Key(
-                        &runtime::InstanceLocation::Root,
-                        name,
-                    ),
-                    {
-                        static RE: runtime::Pattern = runtime::Pattern::new("^[a-z_]+$");
-                        &RE
-                    },
-                    name,
-                );
-            }
-            for name in value.pattern_1.keys() {
-                runtime::check_pattern(
-                    out,
-                    &runtime::InstanceLocation::Key(
-                        &runtime::InstanceLocation::Root,
-                        name,
-                    ),
-                    {
-                        static RE: runtime::Pattern = runtime::Pattern::new("^[a-z_]+$");
-                        &RE
-                    },
-                    name,
-                );
-            }
-            runtime::check_len(
-                out,
-                &runtime::InstanceLocation::Root,
-                value.additional_properties.len() + value.pattern_1.len(),
-                Some(0),
-                Some(20),
-                "properties",
-            );
-        }
-        runtime::first(violations)
-            .map(|()| Self(value))
-            .map_err(runtime::BuildError::value)
-    }
-}
-runtime::checked_json!(Gadget2Attrs, Gadget2AttrsFields);
-runtime::checked_impls!(Gadget2Attrs, Gadget2AttrsFields);
-pub type Gadget2Weight = ProductWeight;
 runtime::object! {
     #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct SubmitFormBody {
@@ -908,11 +789,11 @@ runtime::checked_json!(BookRequest, BookRequestFields);
 runtime::checked_impls!(BookRequest, BookRequestFields);
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
 #[serde(transparent)]
-pub struct GadgetRequest(pub(super) Gadget2Request);
-runtime::checked_deserialize!(GadgetRequest, Gadget2Request, once);
+pub struct GadgetRequest(pub(super) ProductRequest);
+runtime::checked_deserialize!(GadgetRequest, ProductRequest, once);
 impl GadgetRequest {
     fn checked(
-        value: Gadget2Request,
+        value: ProductRequest,
         json: &runtime::Content<'_>,
     ) -> Result<Self, runtime::BuildError> {
         let mut violations: Vec<runtime::Violation> = Vec::new();
@@ -950,8 +831,8 @@ impl GadgetRequest {
             .map_err(runtime::BuildError::value)
     }
 }
-runtime::checked_json!(GadgetRequest, Gadget2Request);
-runtime::checked_impls!(GadgetRequest, Gadget2Request);
+runtime::checked_json!(GadgetRequest, ProductRequest);
+runtime::checked_impls!(GadgetRequest, ProductRequest);
 #[derive(Debug, Clone, PartialEq, serde::Serialize)]
 #[serde(transparent)]
 pub struct ShapeRequest(pub(super) ShapeRequestVariants);
@@ -992,37 +873,6 @@ impl ShapeRequest {
 }
 runtime::checked_json!(ShapeRequest, ShapeRequestVariants);
 runtime::checked_impls!(ShapeRequest, ShapeRequestVariants);
-#[derive(Debug, Clone, PartialEq, serde::Serialize)]
-#[serde(transparent)]
-pub struct Gadget2Request(pub(super) Gadget2RequestFields);
-runtime::checked_deserialize!(Gadget2Request, Gadget2RequestFields, once);
-impl Gadget2Request {
-    fn checked(
-        value: Gadget2RequestFields,
-        json: &runtime::Content<'_>,
-    ) -> Result<Self, runtime::BuildError> {
-        let mut violations: Vec<runtime::Violation> = Vec::new();
-        {
-            let out = &mut violations;
-            {
-                if json.get("secret").is_some()
-                    && let Err(e) = json.decode_ref::<NotChecked2>()
-                {
-                    runtime::violation(
-                        out,
-                        &runtime::InstanceLocation::Root,
-                        format!("{}{e}", "`secret` is present: "),
-                    );
-                }
-            }
-        }
-        runtime::first(violations)
-            .map(|()| Self(value))
-            .map_err(runtime::BuildError::value)
-    }
-}
-runtime::checked_json!(Gadget2Request, Gadget2RequestFields);
-runtime::checked_impls!(Gadget2Request, Gadget2RequestFields);
 runtime::object! {
     #[derive(Debug, Clone, PartialEq, Default, serde::Serialize, serde::Deserialize)]
     pub struct CreateProductBodyRequest {
@@ -1217,28 +1067,6 @@ impl AttrsFields {
 }
 pub type BookAttrsFields = AttrsFields;
 runtime::object! {
-    #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
-    pub struct Gadget2Fields {
-        pub id: Gadget2Id,
-        pub name: Gadget2Name,
-        pub kind: Gadget2Kind,
-        #[nullable]
-        pub nickname: String,
-        #[optional]
-        pub tags: Gadget2Tags,
-        #[optional]
-        pub point: Gadget2Point,
-        #[optional]
-        pub attrs: Gadget2Attrs,
-        #[optional]
-        pub weight: Gadget2Weight,
-        #[optional]
-        /// Overrides description
-        pub owner: Owner,
-    }
-}
-pub type Gadget2AttrsFields = AttrsFields;
-runtime::object! {
     /// Product
     ///
     /// A product
@@ -1345,29 +1173,6 @@ impl<'de> serde::Deserialize<'de> for ShapeRequestVariants {
         )
     }
 }
-runtime::object! {
-    #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
-    pub struct Gadget2RequestFields {
-        pub name: Gadget2Name,
-        pub kind: Gadget2Kind,
-        #[nullable]
-        pub nickname: String,
-        #[optional]
-        #[deprecated]
-        pub secret: String,
-        #[optional]
-        pub tags: Gadget2RequestTags,
-        #[optional]
-        pub point: Gadget2RequestPoint,
-        #[optional]
-        pub attrs: Gadget2Attrs,
-        #[optional]
-        pub weight: Gadget2Weight,
-        #[optional]
-        /// Overrides description
-        pub owner: Owner,
-    }
-}
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct ProductTags(pub(super) Vec<String>);
@@ -1469,14 +1274,10 @@ runtime::checked_json!(ProductPoint, Vec < serde_json::Value >);
 runtime::checked_impls!(ProductPoint, Vec < serde_json::Value >);
 pub type BookTags = ProductTags;
 pub type BookPoint = ProductPoint;
-pub type Gadget2Tags = ProductTags;
-pub type Gadget2Point = ProductPoint;
 pub type ProductRequestTags = ProductTags;
 pub type ProductRequestPoint = ProductPoint;
 pub type BookRequestTags = ProductTags;
 pub type BookRequestPoint = ProductPoint;
-pub type Gadget2RequestTags = ProductTags;
-pub type Gadget2RequestPoint = ProductPoint;
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct NotChecked(pub(super) serde_json::Value);
@@ -1602,21 +1403,6 @@ pub mod builders {
         additional_properties : std::collections::BTreeMap::new(), }
     }
     runtime::typestate_builder! {
-        Gadget2 => super::Gadget2Fields, try_from super::Gadget2; required { id : R0 :
-        types::Gadget2Id = "id", name : R1 : types::Gadget2Name = "name", kind : R2 :
-        types::Gadget2Kind = "kind" } optional { nickname(nickname) : String = "nickname"
-        => nullable, runtime::Nullable::Absent, tags(tags) : types::Gadget2Tags = "tags"
-        => some, None, point(point) : types::Gadget2Point = "point" => some, None,
-        attrs(attrs) : types::Gadget2Attrs = "attrs" => some, None, weight(weight) :
-        types::Gadget2Weight = "weight" => some, None, owner(owner) : types::Owner =
-        "owner" => some, None } fixed {}
-    }
-    runtime::typestate_builder! {
-        Gadget2Attrs => super::Gadget2AttrsFields, try_from super::Gadget2Attrs; required
-        {} optional {} fixed { pattern_1 : std::collections::BTreeMap::new(),
-        additional_properties : std::collections::BTreeMap::new(), }
-    }
-    runtime::typestate_builder! {
         SubmitFormBody => super::SubmitFormBody; required { tags : R0 : Vec < String > =
         "tags", priority : R1 : types::SubmitFormBodyPriority = "priority" } optional {
         filter(filter) : types::SubmitFormBodyFilter = "filter" => some, None, note(note)
@@ -1676,17 +1462,6 @@ pub mod builders {
         bool = "hardcover" => some, None } fixed {}
     }
     runtime::typestate_builder! {
-        Gadget2Request => super::Gadget2RequestFields, try_from super::Gadget2Request;
-        required { name : R0 : types::Gadget2Name = "name", kind : R1 :
-        types::Gadget2Kind = "kind" } optional { nickname(nickname) : String = "nickname"
-        => nullable, runtime::Nullable::Absent, secret(secret) : String = "secret" =>
-        some, None, tags(tags) : types::Gadget2RequestTags = "tags" => some, None,
-        point(point) : types::Gadget2RequestPoint = "point" => some, None, attrs(attrs) :
-        types::Gadget2Attrs = "attrs" => some, None, weight(weight) :
-        types::Gadget2Weight = "weight" => some, None, owner(owner) : types::Owner =
-        "owner" => some, None } fixed {}
-    }
-    runtime::typestate_builder! {
         CreateProductBodyRequest => super::CreateProductBodyRequest; required {} optional
         { meta(meta) : types::ProductRequest = "meta" => some, None, photo(photo) :
         runtime::Binary = "photo" => some, None } fixed {}
@@ -1727,16 +1502,6 @@ pub mod builders {
         std::collections::BTreeMap::new(), }
     }
     runtime::typestate_builder! {
-        Gadget2Fields => super::Gadget2Fields; required { id : R0 : types::Gadget2Id =
-        "id", name : R1 : types::Gadget2Name = "name", kind : R2 : types::Gadget2Kind =
-        "kind" } optional { nickname(nickname) : String = "nickname" => nullable,
-        runtime::Nullable::Absent, tags(tags) : types::Gadget2Tags = "tags" => some,
-        None, point(point) : types::Gadget2Point = "point" => some, None, attrs(attrs) :
-        types::Gadget2Attrs = "attrs" => some, None, weight(weight) :
-        types::Gadget2Weight = "weight" => some, None, owner(owner) : types::Owner =
-        "owner" => some, None } fixed {}
-    }
-    runtime::typestate_builder! {
         ProductRequestFields => super::ProductRequestFields; required { name : R0 :
         types::ProductName = "name", kind : R1 : types::ProductKind = "kind" } optional {
         nickname(nickname) : String = "nickname" => nullable, runtime::Nullable::Absent,
@@ -1757,16 +1522,5 @@ pub mod builders {
         = "attrs" => some, None, weight(weight) : types::BookWeight = "weight" => some,
         None, owner(owner) : types::Owner = "owner" => some, None, hardcover(hardcover) :
         bool = "hardcover" => some, None } fixed {}
-    }
-    runtime::typestate_builder! {
-        Gadget2RequestFields => super::Gadget2RequestFields; required { name : R0 :
-        types::Gadget2Name = "name", kind : R1 : types::Gadget2Kind = "kind" } optional {
-        nickname(nickname) : String = "nickname" => nullable, runtime::Nullable::Absent,
-        secret(secret) : String = "secret" => some, None, tags(tags) :
-        types::Gadget2RequestTags = "tags" => some, None, point(point) :
-        types::Gadget2RequestPoint = "point" => some, None, attrs(attrs) :
-        types::Gadget2Attrs = "attrs" => some, None, weight(weight) :
-        types::Gadget2Weight = "weight" => some, None, owner(owner) : types::Owner =
-        "owner" => some, None } fixed {}
     }
 }

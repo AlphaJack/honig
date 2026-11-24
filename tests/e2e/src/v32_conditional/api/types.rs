@@ -370,17 +370,16 @@ impl IfThenSms {
 }
 pub use SmsType as IfThenSmsType;
 runtime::object! {
-    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct IfThenOtherwise {
-        #[optional]
         #[serde(rename = "type")]
         pub type_: String,
     }
 }
 impl IfThenOtherwise {
     #[must_use]
-    pub const fn new() -> Self {
-        Self { type_: None }
+    pub const fn new(type_: String) -> Self {
+        Self { type_ }
     }
 }
 runtime::object! {
@@ -467,21 +466,10 @@ runtime::const_impls!(ShippingUsCountry, VALUE);
 runtime::object! {
     #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct ShippingOtherwise {
-        #[optional]
         pub country: String,
         #[optional]
         pub zip: String,
         pub postcode: String,
-    }
-}
-impl ShippingOtherwise {
-    #[must_use]
-    pub const fn new(postcode: String) -> Self {
-        Self {
-            country: None,
-            zip: None,
-            postcode,
-        }
     }
 }
 runtime::object! {
@@ -526,16 +514,15 @@ impl ContactSmsVia {
 }
 runtime::const_impls!(ContactSmsVia, VALUE);
 runtime::object! {
-    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
     pub struct ContactOtherwise {
-        #[optional]
         pub via: String,
     }
 }
 impl ContactOtherwise {
     #[must_use]
-    pub const fn new() -> Self {
-        Self { via: None }
+    pub const fn new(via: String) -> Self {
+        Self { via }
     }
 }
 /// One builder per struct, started by its `builder`. Each setter accepts anything that converts to the type
@@ -564,8 +551,8 @@ pub mod builders {
         optional {} fixed { type_ : types::IfThenSmsType {}, }
     }
     runtime::typestate_builder! {
-        IfThenOtherwise => super::IfThenOtherwise; required {} optional { type_(type_) :
-        String = "type" => some, None } fixed {}
+        IfThenOtherwise => super::IfThenOtherwise; required { type_ : R0 : String =
+        "type" } optional {} fixed {}
     }
     runtime::typestate_builder! {
         ConstOneOfEmail => super::ConstOneOfEmail; required { email : R0 : String =
@@ -589,9 +576,9 @@ pub mod builders {
         types::ShippingUsCountry {}, }
     }
     runtime::typestate_builder! {
-        ShippingOtherwise => super::ShippingOtherwise; required { postcode : R0 : String
-        = "postcode" } optional { country(country) : String = "country" => some, None,
-        zip(zip) : String = "zip" => some, None } fixed {}
+        ShippingOtherwise => super::ShippingOtherwise; required { country : R0 : String =
+        "country", postcode : R1 : String = "postcode" } optional { zip(zip) : String =
+        "zip" => some, None } fixed {}
     }
     runtime::typestate_builder! {
         ContactEmailOrMail => super::ContactEmailOrMail; required { via : R0 :
@@ -603,7 +590,7 @@ pub mod builders {
         optional {} fixed { via : types::ContactSmsVia {}, }
     }
     runtime::typestate_builder! {
-        ContactOtherwise => super::ContactOtherwise; required {} optional { via(via) :
-        String = "via" => some, None } fixed {}
+        ContactOtherwise => super::ContactOtherwise; required { via : R0 : String = "via"
+        } optional {} fixed {}
     }
 }

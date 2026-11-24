@@ -14,7 +14,7 @@ fn if_then_decodes_into_variants() {
     assert_matches!(sms, types::IfThen::Sms(_));
     // Values that no `if` tests fall back to a typed `Otherwise` and not an untyped `Other`.
     let fax: types::IfThen = serde_json::from_value(json!({"type":"fax"})).unwrap();
-    assert_matches!(&fax, types::IfThen::Otherwise(o) if o.type_.as_deref() == Some("fax"));
+    assert_matches!(&fax, types::IfThen::Otherwise(o) if o.type_ == "fax");
     assert_eq!(serde_json::to_value(&email).unwrap(), serde_json::json!({"type": "email", "email": "a@example.com"}));
 }
 

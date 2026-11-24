@@ -846,3 +846,12 @@ fn a_limit_beside_a_type_of_yours_is_checked() {
     assert!(wallet(100).is_ok());
     assert!(wallet(101).is_err(), "maximum 100");
 }
+
+/// An `if` passes when the property that it tests is absent, so its `then` applies: `{}` lacks `x`.
+#[test]
+fn an_if_on_an_absent_property_applies_its_then() {
+    assert!(serde_json::from_value::<types::Kinded>(json!({})).is_err());
+    assert!(serde_json::from_value::<types::Kinded>(json!({"kind": "a"})).is_err());
+    assert!(serde_json::from_value::<types::Kinded>(json!({"kind": "a", "x": "1"})).is_ok());
+    assert!(serde_json::from_value::<types::Kinded>(json!({"kind": "b"})).is_ok());
+}
