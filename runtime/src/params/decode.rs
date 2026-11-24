@@ -150,6 +150,9 @@ pub fn decode_query(
                 let Some(rest) = k.strip_prefix(name).filter(|r| r.starts_with('[')) else { continue };
                 any = true;
                 let keys: Vec<&str> = rest.split(['[', ']']).filter(|s| !s.is_empty()).collect();
+                if keys.len() > MAX_DEPTH {
+                    return Err(Reason::invalid(at, format!("is nested deeper than {MAX_DEPTH} levels")));
+                }
                 insert_deep(&mut root, &keys, v);
             }
             any.then_some(Value::Object(root))
@@ -196,26 +199,29 @@ fn split_one(v: Option<&str>, shape: Shape, sep: char, at: &str) -> Result<Optio
     v.map(|v| split_value(v, shape, false, sep).ok_or_else(|| malformed(at))).transpose()
 }
 
+/// How deep a `deepObject` name may nest: as deep as a JSON body (`serde_json`'s limit), so no query decodes into a
+/// value that the JSON decoder would refuse.
+const MAX_DEPTH: usize = 128;
+
+/// Sets `v` at the path `keys` of `root`. A loop: no input sets the depth of the stack.
 fn insert_deep(root: &mut Map<String, Value>, keys: &[&str], v: &str) {
-    let Some((first, rest)) = keys.split_first() else {
-        return;
-    };
-    if rest.is_empty() {
-        match root.get_mut(*first) {
-            Some(Value::Array(a)) => a.push(Value::String(v.to_owned())),
-            Some(existing) => {
-                let prev = existing.take();
-                *existing = Value::Array(vec![prev, Value::String(v.to_owned())]);
-            }
-            None => {
-                root.insert(first.to_string(), Value::String(v.to_owned()));
-            }
-        }
-        return;
+    let Some((last, path)) = keys.split_last() else { return };
+    let mut node = root;
+    for k in path {
+        node = match node.entry((*k).to_owned()).or_insert_with(|| Value::Object(Map::new())) {
+            Value::Object(m) => m,
+            Value::Null | Value::Bool(_) | Value::Number(_) | Value::String(_) | Value::Array(_) => return,
+        };
     }
-    let child = root.entry(first.to_string()).or_insert_with(|| Value::Object(Map::new()));
-    if let Value::Object(m) = child {
-        insert_deep(m, rest, v);
+    match node.get_mut(*last) {
+        Some(Value::Array(a)) => a.push(Value::String(v.to_owned())),
+        Some(existing) => {
+            let prev = existing.take();
+            *existing = Value::Array(vec![prev, Value::String(v.to_owned())]);
+        }
+        None => {
+            node.insert((*last).to_owned(), Value::String(v.to_owned()));
+        }
     }
 }
 
@@ -526,6 +532,28 @@ pub fn from_json_param<T: DeserializeOwned>(v: Option<Value>, at: &str) -> Resul
 mod tests {
     use super::{Shape, Style, decode_path};
     use serde_json::json;
+
+    /// A `deepObject` name nested past 128 levels is refused before it is decoded: on a 2 MB stack, as a server thread
+    /// may have, 8000 levels would overflow it. 128 levels still decode.
+    #[test]
+    fn a_deep_object_nested_too_deep_is_refused() {
+        let query = |levels: usize| format!("a{}=1", "[b]".repeat(levels));
+        let decode = |levels: usize| {
+            std::thread::Builder::new()
+                .stack_size(2 << 20)
+                .spawn(move || {
+                    let q = query(levels);
+                    let pairs = super::parse_query(&q);
+                    super::decode_query(&pairs, "a", "/query/a", Style::DeepObject, Shape::Object, true)
+                        .map(|v| v.is_some())
+                })
+                .expect("a thread")
+                .join()
+                .expect("no overflow")
+        };
+        assert!(decode(8000).is_err());
+        assert_eq!(decode(128), Ok(true));
+    }
 
     /// A JSON query string that does not parse is an error at its pointer, not an absent parameter.
     #[test]
