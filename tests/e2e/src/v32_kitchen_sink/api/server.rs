@@ -1313,7 +1313,10 @@ fn search_params(
 ) -> Result<ops::search::Params, runtime::Reason> {
     let runtime::Incoming { raw_query, .. } = *incoming;
     Ok(ops::search::Params {
-        q: runtime::from_param(runtime::decode_querystring(raw_query, true), "/query/q")?,
+        q: runtime::from_param(
+            runtime::decode_querystring(raw_query, "/query/q", true)?,
+            "/query/q",
+        )?,
     })
 }
 fn search_encode(

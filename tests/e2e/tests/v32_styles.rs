@@ -158,3 +158,13 @@ fn a_value_that_does_not_decode_in_its_style_is_refused() {
         assert_eq!(status, 400, "{target}");
     }
 }
+
+/// A query string whose name or value is not UTF-8 once decoded is a 400, not a value with the bytes replaced.
+#[test]
+fn a_query_that_is_not_utf8_is_refused() {
+    for target in ["/form-t-a?color=%FF", "/simple-f-a/blue?x=%C3"] {
+        let req = api::runtime::new_request("GET", target.to_owned(), vec![]).unwrap();
+        let status = api::block_on(api::Server::new(Server).into_service().handle(req)).status().as_u16();
+        assert_eq!(status, 400, "{target}");
+    }
+}

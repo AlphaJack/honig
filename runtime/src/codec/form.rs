@@ -455,8 +455,10 @@ mod tests {
         encode_querystring(&mut out, &v, true);
         let raw = out.join("&");
         assert_eq!(raw, "filters=%7B%22k%22%3A%22v%22%7D&sorting=a&sorting=b");
-        let back: Advanced =
-            serde::Deserialize::deserialize(Coerce(crate::params::decode_querystring(&raw, true).unwrap())).unwrap();
+        let back: Advanced = serde::Deserialize::deserialize(Coerce(
+            crate::params::decode_querystring(&raw, "/querystring/q", true).unwrap().unwrap(),
+        ))
+        .unwrap();
         assert_eq!(
             back,
             Advanced { filters: v["filters"].as_object().cloned(), sorting: Some(vec!["a".into(), "b".into()]) }
