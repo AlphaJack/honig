@@ -27,6 +27,56 @@ impl TryFrom<runtime::UuidStr> for LegacyId {
     }
 }
 runtime::checked_impls!(LegacyId, runtime::UuidStr);
+pub type Cents = i64;
+///The limits of `Cents` in the description, checked before a value converts to it.
+#[derive(Debug, Clone, Copy)]
+pub struct CentsLimits;
+impl runtime::formats::Check for CentsLimits {
+    fn check(json: &serde_json::Value) -> Result<(), runtime::BuildError> {
+        let mut violations: Vec<runtime::Violation> = Vec::new();
+        {
+            let out = &mut violations;
+            if let serde_json::Value::Number(n) = json {
+                let text = n.to_string();
+                runtime::check_decimal_range(
+                    out,
+                    &runtime::InstanceLocation::Root,
+                    text.as_str(),
+                    runtime::Bounds {
+                        max: Some("100"),
+                        ..runtime::Bounds::NONE
+                    },
+                );
+            }
+        }
+        runtime::first(violations).map_err(runtime::BuildError::value)
+    }
+}
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+    pub struct Wallet {
+        #[serde(
+            deserialize_with = "runtime::formats::read::<_, _, runtime::formats::Json<super::types::CentsLimits>>"
+        )]
+        pub cents: Cents,
+    }
+}
+impl runtime::XmlShape for Wallet {
+    fn xml() -> &'static runtime::XmlNode {
+        static NODE: runtime::XmlNode = runtime::XmlNode {
+            name: "Wallet",
+            namespace: "",
+            prefix: "",
+            fields: &[
+                runtime::XmlField {
+                    required: true,
+                    ..runtime::XmlField::new("cents")
+                },
+            ],
+        };
+        &NODE
+    }
+}
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 #[serde(transparent)]
 pub struct Token(pub(super) runtime::Binary);
@@ -3967,6 +4017,10 @@ runtime::checked_impls!(
 pub mod builders {
     use super as types;
     use super::runtime;
+    runtime::typestate_builder! {
+        Wallet => super::Wallet; required { cents : R0 : types::Cents = "cents" }
+        optional {} fixed {}
+    }
     runtime::typestate_builder! {
         Stamp => super::Stamp; required {} optional { at(at) : String = "at" => nullable,
         runtime::Nullable::Absent } fixed {}

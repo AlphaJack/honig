@@ -95,6 +95,9 @@ components:
   schemas:
     # A pattern beside a typed format runs on the text before the format parses it.
     LegacyId: {type: string, format: uuid, pattern: '^0'}
+    # A limit beside a type of yours runs on the JSON value before it converts.
+    Cents: {type: integer, maximum: 100, x-rust-type: i64}
+    Wallet: {type: object, required: [cents], properties: {cents: {$ref: '#/components/schemas/Cents'}}}
     # A length on base64 bytes runs on their text.
     Token: {type: string, format: byte, maxLength: 8}
     # `unevaluatedProperties` beside `anyOf` sees the properties of each branch that matches.

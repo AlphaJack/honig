@@ -840,3 +840,11 @@ fn a_length_on_base64_bytes_is_checked_on_their_text() {
     assert!(token("QUJDRA==").is_ok(), "8 characters");
     assert!(token("QUJDREVGR0g=").is_err(), "12 characters");
 }
+
+/// A limit beside a type of yours (`x-rust-type: i64`) is checked on the JSON value before it converts.
+#[test]
+fn a_limit_beside_a_type_of_yours_is_checked() {
+    let wallet = |cents: i64| serde_json::from_value::<types::Wallet>(serde_json::json!({"cents": cents}));
+    assert!(wallet(100).is_ok());
+    assert!(wallet(101).is_err(), "maximum 100");
+}

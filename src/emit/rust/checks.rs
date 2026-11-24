@@ -583,6 +583,11 @@ fn binary_checks(c: &Constraints, path: &TokenStream) -> TokenStream {
     if text == Constraints::default() { TokenStream::new() } else { any_checks(&text, &quote!(json), path, true) }
 }
 
+/// Returns the checks of `c` on `json`, a `&serde_json::Value`, at the root.
+pub(super) fn json_checks(c: &Constraints, json: &TokenStream) -> TokenStream {
+    any_checks(c, json, &quote!(&runtime::InstanceLocation::Root), false)
+}
+
 /// Returns `propertyNames` on the name in `name`, at the path of that name.
 fn name_check(names: &Constraints, path: &TokenStream) -> TokenStream {
     string_checks(names, &quote!(name), &quote!(&runtime::InstanceLocation::Key(#path, name)))

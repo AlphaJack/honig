@@ -1,7 +1,7 @@
 //! Rust syntax helpers shared by the emitters.
 
 use proc_macro2::{Ident, Literal, Span, TokenStream};
-use quote::{ToTokens, quote};
+use quote::{ToTokens, format_ident, quote};
 
 use crate::emit::rust::names::{pascal, snake};
 use crate::emit::rust::space::{Space, WORD};
@@ -299,8 +299,15 @@ pub(crate) fn holds(space: &Space<'_>, t: &Ty) -> Option<TokenStream> {
         | Ty::Bytes
         | Ty::Binary
         | Ty::Any
-        | Ty::Unit
-        | Ty::Named(_) => None,
+        | Ty::Unit => None,
+        // A type of yours with limits decodes from JSON that they check first.
+        Ty::Named(id) => {
+            let def = space.types.get(*id);
+            (def.rust_type.is_some() && def.own.limits() != crate::ir::types::Constraints::default()).then(|| {
+                let check = format_ident!("{}Limits", pascal(&def.name));
+                quote!(#c::Json<super::types::#check>)
+            })
+        }
     }
 }
 
@@ -337,7 +344,7 @@ pub(crate) fn unparse(mut file: syn::File) -> String {
     for item in &mut file.items {
         let syn::Item::Macro(m) = item else { continue };
         let Some(text) = items_macro_text(m) else { continue };
-        let marker = quote::format_ident!("__HONIG_MACRO_{}", bodies.len());
+        let marker = format_ident!("__HONIG_MACRO_{}", bodies.len());
         let attrs = &m.attrs;
         let Ok(placeholder) = syn::parse2::<syn::Item>(quote!(#(#attrs)* const #marker: () = ();)) else { continue };
         *item = placeholder;
