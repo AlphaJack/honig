@@ -49,6 +49,21 @@ impl UploadBody {
         Self { file, note: None }
     }
 }
+runtime::object! {
+    #[derive(Debug, Clone, PartialEq, Eq, Default, serde::Serialize, serde::Deserialize)]
+    pub struct TagBody {
+        #[maybe]
+        pub ids: Vec<i64>,
+        #[maybe]
+        pub pipes: Vec<String>,
+    }
+}
+impl TagBody {
+    #[must_use]
+    pub const fn new() -> Self {
+        Self { ids: None, pipes: None }
+    }
+}
 /// One builder per struct, started by its `builder`. Each setter accepts anything that converts to the type
 /// of its field. `build` returns the first field that did not convert.
 pub mod builders {
@@ -66,5 +81,9 @@ pub mod builders {
     runtime::typestate_builder! {
         UploadBody => super::UploadBody; required { file : R0 : runtime::Binary = "file"
         } optional { note(note) : String = "note" => some, None } fixed {}
+    }
+    runtime::typestate_builder! {
+        TagBody => super::TagBody; required {} optional { ids(ids) : Vec < i64 > = "ids"
+        => some, None, pipes(pipes) : Vec < String > = "pipes" => some, None } fixed {}
     }
 }

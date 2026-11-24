@@ -115,6 +115,56 @@ impl<T: runtime::Transport> Client<T> {
             })
         }
     }
+    pub async fn tag(
+        &self,
+        p: impl runtime::IntoArg<'_, ops::tag::Params>,
+    ) -> Result<ops::tag::Response, runtime::ClientError> {
+        let p = runtime::IntoArg::into_arg(p);
+        let path = String::from("/tags");
+        let query = Vec::new();
+        let mut req = runtime::new_request("POST", path, query)?;
+        if let Some(body) = &p.body {
+            runtime::Message::set_body(
+                &mut req,
+                "application/x-www-form-urlencoded",
+                runtime::form_encode_styled(
+                    body,
+                    &[
+                        (
+                            "ids",
+                            runtime::Enc {
+                                style: runtime::Style::Form,
+                                explode: false,
+                                allow_reserved: false,
+                            },
+                        ),
+                        (
+                            "pipes",
+                            runtime::Enc {
+                                style: runtime::Style::PipeDelimited,
+                                explode: false,
+                                allow_reserved: false,
+                            },
+                        ),
+                    ],
+                )?,
+            );
+        }
+        runtime::apply_auth(&mut req, &self.credentials, &[])?;
+        runtime::propagate_trace(&mut req);
+        let resp = runtime::send(&self.transport, req).await?;
+        let (head, body) = resp.into_parts();
+        let (body, _) = body.into_parts();
+        let status = head.status.as_u16();
+        if status == 204 {
+            Ok(ops::tag::Response::NoContent)
+        } else {
+            Err(runtime::ClientError::UnexpectedStatus {
+                status: head.status,
+                body,
+            })
+        }
+    }
     pub async fn list_keys(
         &self,
         _p: impl runtime::IntoArg<'_, ops::list_keys::Params>,

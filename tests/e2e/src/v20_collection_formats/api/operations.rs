@@ -100,6 +100,47 @@ pub mod upload {
         }
     }
 }
+pub mod tag {
+    use super::super::types;
+    use super::super::runtime;
+    pub const METHOD: &str = "POST";
+    pub const PATH: &str = "/tags";
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub struct Params {
+        pub body: Option<types::TagBody>,
+    }
+    impl Params {
+        #[must_use]
+        pub const fn new() -> Self {
+            Self { body: None }
+        }
+    }
+    runtime::default_from_new!(Params);
+    pub mod builders {
+        use super::types;
+        use super::runtime;
+        runtime::typestate_builder! {
+            Params => super::Params; required {} optional { body(body) : types::TagBody =
+            "body" => some, None } fixed {}
+        }
+    }
+    #[derive(Debug, Clone, PartialEq, Eq)]
+    pub enum Response {
+        /// tagged
+        NoContent,
+    }
+    /// What the handler of this operation returns: its `Response`, or an error that the server answers.
+    pub type Result<T = Response, E = runtime::ApiError> = std::result::Result<T, E>;
+    runtime::response_error!(Response { Self::NoContent => "status 204 (NoContent)", });
+    impl Response {
+        /// Returns the success as `Ok` and any other response as `Err`. `?` converts the `Err` into any error type.
+        pub fn into_result(self) -> Result<(), Box<Self>> {
+            match self {
+                Self::NoContent => Ok(()),
+            }
+        }
+    }
+}
 pub mod list_keys {
     use super::super::types;
     use super::super::runtime;

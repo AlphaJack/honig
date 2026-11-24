@@ -312,7 +312,19 @@ impl Cx<'_> {
         if types.is_empty() || (has_file && !types.contains(&"multipart/form-data")) {
             types = vec![if has_file { "multipart/form-data" } else { "application/x-www-form-urlencoded" }];
         }
-        let content: Obj = types.iter().map(|t| (t.to_string(), json!({"schema": schema.clone()}))).collect();
+        // An array field keeps its `collectionFormat` in a urlencoded body. A multipart part has none.
+        let encoding: Obj =
+            form.iter().filter_map(|p| Some((p.get("name")?.as_str()?.to_owned(), Self::form_encoding(p)?))).collect();
+        let content: Obj = types
+            .iter()
+            .map(|t| {
+                let mut media = json!({"schema": schema.clone()});
+                if *t == "application/x-www-form-urlencoded" && !encoding.is_empty() {
+                    media["encoding"] = Value::Object(encoding.clone());
+                }
+                (t.to_string(), media)
+            })
+            .collect();
         let required_body = form.iter().any(|p| p.get("required") == Some(&Value::Bool(true)));
         let mut rb = json!({"content": content});
         if required_body {
@@ -376,6 +388,21 @@ impl Cx<'_> {
                 query_like.then_some(("form", false))
             }
         }
+    }
+
+    /// Returns the `encoding` of a 2.0 form field of type array: its `collectionFormat` as a style, `csv` when it has
+    /// none. `None` for a field of another type.
+    fn form_encoding(p: &Value) -> Option<Value> {
+        if p.get("type").and_then(Value::as_str) != Some("array") {
+            return None;
+        }
+        Some(match p.get("collectionFormat").and_then(Value::as_str).unwrap_or("csv") {
+            "multi" => json!({"style": "form", "explode": true}),
+            "ssv" => json!({"style": "spaceDelimited", "explode": false}),
+            "pipes" => json!({"style": "pipeDelimited", "explode": false}),
+            "tsv" => json!({"style": "form", "explode": false, "x-collection-format": "tsv"}),
+            _ => json!({"style": "form", "explode": false}),
+        })
     }
 
     /// Builds a schema from a 2.0 parameter / header / items object.
@@ -692,6 +719,34 @@ mod tests {
             }));
             let content = out["paths"]["/a"]["post"]["requestBody"]["content"].as_object().unwrap();
             assert_eq!(content.keys().collect::<Vec<_>>(), want, "{consumes:?}");
+        }
+    }
+
+    /// A form array keeps its `collectionFormat` on the wire: `csv` is `ids=1,2`, not `ids=1&ids=2`.
+    #[test]
+    fn a_form_array_keeps_its_collection_format() {
+        let cases = [
+            (None, json!({"style": "form", "explode": false})),
+            (Some("csv"), json!({"style": "form", "explode": false})),
+            (Some("multi"), json!({"style": "form", "explode": true})),
+            (Some("ssv"), json!({"style": "spaceDelimited", "explode": false})),
+            (Some("pipes"), json!({"style": "pipeDelimited", "explode": false})),
+            (Some("tsv"), json!({"style": "form", "explode": false, "x-collection-format": "tsv"})),
+        ];
+        for (format, want) in cases {
+            let mut ids = json!({"name": "ids", "in": "formData", "type": "array", "items": {"type": "integer"}});
+            if let Some(f) = format {
+                ids["collectionFormat"] = json!(f);
+            }
+            let out = up(json!({
+                "swagger": "2.0", "info": {"title": "t", "version": "1"},
+                "paths": {"/a": {"post": {"consumes": ["application/x-www-form-urlencoded"],
+                    "parameters": [ids, {"name": "n", "in": "formData", "type": "string"}],
+                    "responses": {"200": {"description": "ok"}}}}}
+            }));
+            let encoding =
+                &out["paths"]["/a"]["post"]["requestBody"]["content"]["application/x-www-form-urlencoded"]["encoding"];
+            assert_eq!(encoding, &json!({"ids": want}), "{format:?}");
         }
     }
 
