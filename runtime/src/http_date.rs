@@ -83,7 +83,7 @@ fn two_digits<const N: usize>(pieces: [&str; N]) -> Option<[i64; N]> {
 }
 
 /// Returns `text` as a number when it is `len` ASCII digits.
-fn digits(text: &str, len: usize) -> Option<i64> {
+pub(crate) fn digits(text: &str, len: usize) -> Option<i64> {
     (text.len() == len && text.bytes().all(|b| b.is_ascii_digit())).then(|| text.parse().ok()).flatten()
 }
 
