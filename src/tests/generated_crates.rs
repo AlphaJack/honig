@@ -51,7 +51,7 @@ gloo-net = { version = "0.6", default-features = false, features = ["http"] }
     // `deny(warnings)`: a stray `+ Send` that refines the trait shows up as a lint.
     std::fs::write(
         out.join("src").join("lib.rs"),
-        "#![deny(warnings)]\npub mod api;\n#[cfg(target_arch = \"wasm32\")]\npub fn client() -> api::Client<api::runtime::GlooTransport> {\n    api::Client::new(api::runtime::GlooTransport::new(\"/api\"))\n}\n",
+        "#![deny(warnings)]\npub mod api;\n#[cfg(target_arch = \"wasm32\")]\npub fn client() -> api::Client<api::runtime::GlooTransport> {\n    api::Client::new(api::runtime::GlooTransport::new(\"/api\").expect(\"a base path\"))\n}\n",
     )
     .unwrap();
     for target in [Some("wasm32-unknown-unknown"), None] {

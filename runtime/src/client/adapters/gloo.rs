@@ -17,9 +17,7 @@ type Prepare = Rc<dyn Fn(gloo_net::http::RequestBuilder) -> gloo_net::http::Requ
 /// first because `fetch` accepts no streamed one.
 #[derive(Clone)]
 pub struct GlooTransport {
-    /// Base URL without a trailing slash. A path such as `/api` resolves
-    /// against the page's origin.
-    pub base_url: String,
+    base_url: String,
     prepare: Option<Prepare>,
 }
 
@@ -30,9 +28,18 @@ impl std::fmt::Debug for GlooTransport {
 }
 
 impl GlooTransport {
-    /// Creates a transport for this base URL.
-    pub fn new(base_url: impl Into<String>) -> Self {
-        Self { base_url: crate::message::base_url(base_url), prepare: None }
+    /// Creates a transport for this base URL. A path such as `/api` resolves against the origin of the page.
+    ///
+    /// # Errors
+    /// The base URL is neither a URL with a scheme and a host nor a path, or it has a query or a fragment.
+    pub fn new(base_url: impl Into<String>) -> Result<Self, ClientError> {
+        Ok(Self { base_url: crate::message::base_url(base_url, true)?, prepare: None })
+    }
+
+    /// Returns the base URL without a trailing slash.
+    #[must_use]
+    pub fn base_url(&self) -> &str {
+        &self.base_url
     }
 
     /// Changes every request before it is sent, such as credentials, mode, cache or an

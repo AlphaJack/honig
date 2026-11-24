@@ -120,6 +120,6 @@ The client compiles for `wasm32-unknown-unknown` and sends through the browser's
 
 1. Depend on `gloo-net` with its `http` feature under `[target.'cfg(target_arch = "wasm32")'.dependencies]`. Native builds then skip it, as the adapter compiles on wasm32 only.
 2. Turn on the `gloo-net` feature of `honig` and set `server = false`.
-3. Build the client on `api::GlooTransport::new("/api")`.
+3. Build the client on `api::GlooTransport::new("/api")?`.
 
 Futures on wasm32 are not `Send`. A transport service of your own writes `+ api::MaybeSend` instead of `+ Send` on its futures, so it compiles for both targets.

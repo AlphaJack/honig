@@ -209,22 +209,31 @@ fn run<F: Future>(fut: F) -> F::Output {
 #[cfg(feature = "reqwest")]
 #[test]
 fn reqwest_sends_and_reads_back_every_body() {
-    let transport = honig::ReqwestTransport::new(echo_server());
+    let transport = honig::ReqwestTransport::new(echo_server()).expect("a base URL");
     run(roundtrips(&transport));
+}
+
+/// A base URL without a scheme would only fail when the first request goes out: the transport refuses it when built.
+#[cfg(feature = "reqwest")]
+#[test]
+fn a_base_url_without_a_scheme_is_refused_when_the_transport_is_built() {
+    assert!(honig::ReqwestTransport::new("localhost:3000").is_err());
+    let transport = honig::ReqwestTransport::new("https://api.example.com/v1/").expect("a base URL");
+    assert_eq!(transport.base_url(), "https://api.example.com/v1");
 }
 
 #[cfg(feature = "reqwest-middleware")]
 #[test]
 fn reqwest_middleware_sends_and_reads_back_every_body() {
     let stack = reqwest_middleware::ClientBuilder::new(reqwest::Client::new()).build();
-    let transport = honig::ReqwestMiddlewareTransport::with_client(stack, echo_server());
+    let transport = honig::ReqwestMiddlewareTransport::with_client(stack, echo_server()).expect("a base URL");
     run(roundtrips(&transport));
 }
 
 #[cfg(feature = "ureq")]
 #[test]
 fn ureq_sends_and_reads_back_every_body() {
-    let transport = honig::UreqTransport::new(echo_server());
+    let transport = honig::UreqTransport::new(echo_server()).expect("a base URL");
     run(roundtrips(&transport));
 }
 
@@ -232,7 +241,7 @@ fn ureq_sends_and_reads_back_every_body() {
 #[test]
 fn reqwest_streams_a_response_as_it_arrives() {
     let (read, held) = std::sync::mpsc::channel();
-    let transport = honig::ReqwestTransport::new(held_server(held));
+    let transport = honig::ReqwestTransport::new(held_server(held)).expect("a base URL");
     run(streams_as_it_arrives(&transport, read));
 }
 
@@ -240,6 +249,6 @@ fn reqwest_streams_a_response_as_it_arrives() {
 #[test]
 fn ureq_streams_a_response_as_it_arrives() {
     let (read, held) = std::sync::mpsc::channel();
-    let transport = honig::UreqTransport::new(held_server(held));
+    let transport = honig::UreqTransport::new(held_server(held)).expect("a base URL");
     run(streams_as_it_arrives(&transport, read));
 }
