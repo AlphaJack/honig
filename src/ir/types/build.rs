@@ -802,14 +802,17 @@ impl<'a> Builder<'a> {
         }
         // `properties` or `items` without `type`: they apply to objects or arrays only, and any other value is valid
         // too (2020-12 section 7.6.1). One variant stores the shape, `Other` the rest.
+        // A queued subschema (`not`, `if`, a branch) only answers whether a value matches: its type stays unseen.
         if let Some(kind) = inferred_kind(o) {
-            self.diags.warning(
+            if !ptr.starts_with("#/x-honig-not/") {
+                self.diags.warning(
                 ptr,
                 format!(
                     "no `type`: the `{kind}` keywords here apply to {kind}s only and any other value is valid too, so \
                      the type has an `Other` variant. Add `type: {kind}` for a plain {kind}"
                 ),
             );
+            }
             let mut union = self.multi_type(o, &[kind], ptr, name);
             if let Kind::Union(u) = &mut union {
                 u.rest = true;
@@ -1101,7 +1104,11 @@ impl<'a> Builder<'a> {
             return ty.clone();
         }
         if !self.in_progress.insert(target.clone()) {
-            return Ty::Any; // cycle through a non-component pointer
+            self.diags.warning(
+                at,
+                format!("`{r}` refers back to itself outside `components/schemas`: its value is not checked"),
+            );
+            return Ty::Any;
         }
         let schema = pointer(&self.doc.root, &target).cloned().unwrap_or(Value::Bool(true));
         let hint = target.rsplit('/').next().map(json::unescape_token).unwrap_or_default();

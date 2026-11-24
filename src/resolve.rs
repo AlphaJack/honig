@@ -497,14 +497,16 @@ impl Visit for Bundler<'_> {
         let keyword = if s.get("$ref").is_some() { "$ref" } else { "$dynamicRef" };
         let Some(r) = s.get(keyword).and_then(Value::as_str).map(String::from) else { return };
         if r.contains("://") && !self.base.is_external(&r) {
-            self.diags.error(
-                ptr,
+            let message = if is_http(&r) {
                 format!(
                     "remote reference `{r}` needs honig built with its default `remote-refs` feature \
                      (cargo install {})",
                     env!("CARGO_PKG_NAME")
-                ),
-            );
+                )
+            } else {
+                format!("the scheme of `{r}` is not supported: a remote reference is fetched over http or https")
+            };
+            self.diags.error(ptr, message);
             s.remove(keyword);
             self.changed = true;
             return;
@@ -748,7 +750,10 @@ mod tests {
         let root = json!({"openapi": "3.2.0", "components": {"schemas": {"A": {"$ref": "ftp://example.com/a.json"}}}});
         let mut d = Diagnostics::default();
         let out = bundle(root, None, &mut d);
-        assert!(d.iter().any(|x| x.message.contains("remote reference `ftp://example.com/a.json`")), "{d:?}");
+        assert!(
+            d.iter().any(|x| x.message.contains("the scheme of `ftp://example.com/a.json` is not supported")),
+            "{d:?}"
+        );
         assert!(out["components"]["schemas"]["A"].get("$ref").is_none());
     }
 

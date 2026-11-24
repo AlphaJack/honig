@@ -225,6 +225,14 @@ fn repair(s: &mut Obj, ptr: &str, diags: &mut Diagnostics) {
     }
     // Draft-04 boolean `exclusiveMinimum` / `exclusiveMaximum` mean nothing in
     // 2020-12 but still show up in 3.1 and 3.2 documents.
+    for (key, bound) in [("exclusiveMinimum", "minimum"), ("exclusiveMaximum", "maximum")] {
+        if s.get(key).is_some_and(Value::is_boolean) {
+            diags.warning(
+                join(ptr, key),
+                format!("a boolean `{key}` is OpenAPI 3.0: it is read as the number of `{bound}` that it qualifies"),
+            );
+        }
+    }
     super::v30_to_v31::exclusive(s, "exclusiveMinimum", "minimum");
     super::v30_to_v31::exclusive(s, "exclusiveMaximum", "maximum");
     // Keywords that must be arrays but are written as maps: use the values.

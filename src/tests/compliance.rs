@@ -1337,3 +1337,49 @@ fn an_operation_server_without_a_name_is_named_by_its_url() {
     let (_, w) = names(json!([one, one]));
     assert!(w.iter().any(|m| m.contains("several servers need a distinct `name`")), "{w:#?}");
 }
+
+/// Each diagnostic points at the keyword that causes it, and says what is wrong.
+#[test]
+fn each_diagnostic_points_at_its_keyword() {
+    let mut failed: Vec<&str> = vec![];
+    let body = |media: Value| {
+        json!({"/a": {"post": {"operationId": "a", "requestBody": {"content": {"application/jsonl": media}},
+            "responses": {"204": {"description": "ok"}}}}})
+    };
+    // A problem of `itemSchema` is at `itemSchema`.
+    let (_, w) = common::build(
+        "item-schema",
+        &doc(&body(json!({"itemSchema": {"$ref": "#/components/schemas/Nope"}})), &json!({})),
+        &[],
+    );
+    failed.extend(
+        (!(w.iter().any(|m| m.contains("/itemSchema/$ref:")) && w.iter().all(|m| !m.contains("/schema/$ref:"))))
+            .then_some("itemSchema"),
+    );
+    // A boolean `exclusiveMinimum` in 3.1 is converted with a word.
+    let exclusive = json!({"schemas": {"N": {"type": "integer", "minimum": 1, "exclusiveMinimum": true}}});
+    let (_, w) = common::build("exclusive-bool", &common::spec("3.1.0", &json!({}), &exclusive), &[]);
+    failed.extend(
+        (!(w.iter().any(|m| m.starts_with("/components/schemas/N/exclusiveMinimum:")))).then_some("exclusiveMinimum"),
+    );
+    // A reference of a scheme that no build fetches says so, not that a feature is missing.
+    let ftp = json!({"schemas": {"F": {"$ref": "ftp://example.com/f.yaml"}}});
+    let (_, w) = common::build("ftp-ref", &doc(&json!({}), &ftp), &[]);
+    failed.extend(
+        (!(w.iter().any(|m| m.contains("is not supported")) && w.iter().all(|m| !m.contains("remote-refs"))))
+            .then_some("scheme"),
+    );
+    // A schema that refers back to itself outside `components/schemas` is unchecked, with a word.
+    let x = "#/components/schemas/A/properties/x";
+    let looped =
+        json!({"schemas": {"A": {"type": "object", "properties": {"x": {"type": "array", "items": {"$ref": x}}}}}});
+    let (_, w) = common::build("pointer-cycle", &doc(&json!({}), &looped), &[]);
+    failed.extend((!(w.iter().any(|m| m.contains("refers back to itself")))).then_some("cycle"));
+    // An `if` without `type` only answers whether a value matches: no warning, and none at a pointer outside the
+    // description.
+    let cond = json!({"schemas": {"C": {"oneOf": [{"type": "object"}, {"type": "string"}],
+        "if": {"properties": {"a": {"const": 1}}, "minProperties": 0}, "then": {"required": ["b"]}}}});
+    let (_, w) = common::build("if-no-type", &doc(&json!({}), &cond), &[]);
+    failed.extend((!(w.iter().all(|m| !m.contains("x-honig-not")))).then_some("queued if"));
+    assert!(failed.is_empty(), "{failed:?}");
+}
