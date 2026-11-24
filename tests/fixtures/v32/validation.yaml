@@ -157,6 +157,14 @@ components:
         half: {type: integer, minimum: 0.5, exclusiveMaximum: 3.5}
     # Branches told apart only by the type of a field after a recursive one. Each branch that cannot fit is skipped
     # before its nested trees are decoded. The check of `oneOf` follows the recursion through `$defs`.
+    # An `if` on a property that may be absent: without `kind` the `if` passes and its `then` asks for `x`.
+    Kinded:
+      type: object
+      properties:
+        kind: {type: string}
+        x: {type: string}
+      if: {properties: {kind: {const: a}}}
+      then: {required: [x]}
     Tree:
       oneOf:
         - type: object

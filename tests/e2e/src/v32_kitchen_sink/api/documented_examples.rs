@@ -42,25 +42,11 @@ fn documented_examples_decode() {
         types::BookName,
     >(&mut bad, "/components/schemas/Book/properties/name/examples/0", "\"Lamp\"");
     value::<
-        types::Gadget2Name,
-    >(
-        &mut bad,
-        "/components/schemas/Gadget/oneOf/0/properties/name/examples/0",
-        "\"Lamp\"",
-    );
-    value::<
         types::ProductName,
     >(&mut bad, "/components/schemas/Product/properties/name/examples/0", "\"Lamp\"");
     value::<
         types::BookName,
     >(&mut bad, "/components/schemas/Book/properties/name/examples/0", "\"Lamp\"");
-    value::<
-        types::Gadget2Name,
-    >(
-        &mut bad,
-        "/components/schemas/Gadget/oneOf/0/properties/name/examples/0",
-        "\"Lamp\"",
-    );
     param::<
         types::ListProductsLimit,
     >(&mut bad, "/paths/~1products/get/parameters/0/example", "10");

@@ -13,6 +13,7 @@ components:
       discriminator: {propertyName: type, mapping: {email: '#/components/schemas/EmailRequest', sms: '#/components/schemas/SmsRequest'}}
     IfThen:
       type: object
+      required: [type]
       properties: {type: {type: string}}
       allOf:
         - if: {properties: {type: {const: email}}}
@@ -35,12 +36,14 @@ components:
     Address: {type: object, required: [street], properties: {street: {type: string}}}
     Shipping:
       type: object
+      required: [country]
       properties: {country: {type: string}, zip: {type: string}, postcode: {type: string}}
       if: {properties: {country: {const: US}}}
       then: {required: [zip]}
       else: {required: [postcode]}
     Contact:
       type: object
+      required: [via]
       properties: {via: {type: string}}
       allOf:
         - if: {properties: {via: {enum: [email, mail]}}}

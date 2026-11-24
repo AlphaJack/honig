@@ -84,6 +84,14 @@ pub(crate) fn conditional_union(o: &serde_json::Map<String, Value>) -> Option<Va
         branches.push((values, *then));
     }
     let prop = prop?;
+    // An `if` passes when the property it tests is absent, and its `then` applies. A union would take the fallback
+    // branch instead: so only a property that is always there is a tag.
+    let requires = |v: Option<&Value>| {
+        v.and_then(Value::as_array).is_some_and(|r| r.iter().any(|x| x.as_str() == Some(prop.as_str())))
+    };
+    if !requires(o.get("required")) && !pairs.iter().all(|(cond, ..)| requires(cond.get("required"))) {
+        return None;
+    }
     if !pairs
         .iter()
         .all(|(_, then, otherwise)| plain(*then) && (plain(*otherwise) || *otherwise == Some(&Value::Bool(false))))
@@ -157,7 +165,7 @@ mod tests {
 
     fn person(then: &Value) -> Value {
         json!({"type": "object", "properties": {"kind": {"type": "string"}, "name": {"type": "string", "maxLength": 5}},
-            "if": {"properties": {"kind": {"const": "person"}}}, "then": then})
+            "required": ["kind"], "if": {"properties": {"kind": {"const": "person"}}}, "then": then})
     }
 
     /// A property that the base and the `then` both describe keeps both of its schemas.
@@ -167,6 +175,17 @@ mod tests {
         let one_of = union(&schema).expect("a union");
         let name = &one_of["oneOf"][0]["properties"]["name"];
         assert_eq!(name, &json!({"allOf": [{"type": "string", "maxLength": 5}, {"minLength": 1}]}));
+    }
+
+    /// An `if` passes when the property it tests is absent: its `then` applies, and no branch of a union says so.
+    #[test]
+    fn a_tag_that_may_be_absent_is_no_union() {
+        let mut schema = person(&json!({"required": ["name"]}));
+        assert!(union(&schema).is_some(), "a required tag");
+        schema.as_object_mut().expect("an object").remove("required");
+        assert!(union(&schema).is_none(), "a tag that may be absent");
+        schema["if"]["required"] = json!(["kind"]);
+        assert!(union(&schema).is_some(), "an `if` that requires the tag fails without it: the `else` applies");
     }
 
     /// A keyword of the `then` that a branch cannot hold leaves the conditional as it is: no limit is dropped.
