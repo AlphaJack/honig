@@ -9,26 +9,37 @@ use crate::{Body, ByteStream, ClientError, Request, Response, source::BodySource
 /// The most bytes that one pull of a streamed response returns. A pull returns what has arrived up to this.
 const CHUNK: usize = 16 << 10;
 
-/// Blocking `ureq` transport: `Client::new(api::UreqTransport::new("https://api.example.com"))`,
+/// Blocking `ureq` transport: `Client::new(api::UreqTransport::new("https://api.example.com")?)`,
 /// then `api::block_on(client.some_operation(params))`. Each call blocks its thread.
 #[derive(Debug, Clone)]
 pub struct UreqTransport {
     /// The underlying agent. Configure timeouts, proxies, TLS and middleware on it. Error statuses come back as
     /// responses whatever it says about them.
     pub agent: ureq::Agent,
-    /// Base URL without a trailing slash.
-    pub base_url: String,
+    base_url: String,
 }
 
 impl UreqTransport {
     /// Creates a transport with a default agent for this base URL.
-    pub fn new(base_url: impl Into<String>) -> Self {
+    ///
+    /// # Errors
+    /// The base URL has no scheme or no host, or it has a query or a fragment.
+    pub fn new(base_url: impl Into<String>) -> Result<Self, ClientError> {
         Self::with_agent(ureq::Agent::new_with_defaults(), base_url)
     }
 
     /// Creates a transport with your own agent for this base URL.
-    pub fn with_agent(agent: ureq::Agent, base_url: impl Into<String>) -> Self {
-        Self { agent, base_url: crate::message::base_url(base_url) }
+    ///
+    /// # Errors
+    /// As [`UreqTransport::new`].
+    pub fn with_agent(agent: ureq::Agent, base_url: impl Into<String>) -> Result<Self, ClientError> {
+        Ok(Self { agent, base_url: crate::message::base_url(base_url, false)? })
+    }
+
+    /// Returns the base URL without a trailing slash.
+    #[must_use]
+    pub fn base_url(&self) -> &str {
+        &self.base_url
     }
 
     /// Runs `req` on the agent. Error statuses come back as responses. So documented error bodies decode.

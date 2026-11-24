@@ -112,7 +112,7 @@ fn authors(size: usize) -> impl Iterator<Item = (String, i64)> {
 /// Both clients with [`cost::SIZE`] set to `size`.
 pub fn at(size: usize) -> (Head, Base) {
     let (generated, baseline) = cost::at(size);
-    let over = |prefix: &str| honig::TowerTransport::new(generated.clone(), prefix);
+    let over = |prefix: &str| honig::TowerTransport::new(generated.clone(), prefix).expect("a base URL");
     let raw = cost::upload_body(size);
     let book = xml::api::types::Book::new(
         1,

@@ -22,14 +22,23 @@ use crate::client::transport::failed;
 pub struct TowerTransport<S> {
     /// The service that sends each request. It is cloned for each one.
     pub service: S,
-    /// Base URL without a trailing slash.
-    pub base_url: String,
+    base_url: String,
 }
 
 impl<S> TowerTransport<S> {
-    /// Creates a transport over `service` for this base URL.
-    pub fn new(service: S, base_url: impl Into<String>) -> Self {
-        Self { service, base_url: crate::message::base_url(base_url) }
+    /// Creates a transport over `service` for this base URL. A path such as `/api` is one too: a service in the same
+    /// process needs no host.
+    ///
+    /// # Errors
+    /// The base URL is neither a URL with a scheme and a host nor a path, or it has a query or a fragment.
+    pub fn new(service: S, base_url: impl Into<String>) -> Result<Self, ClientError> {
+        Ok(Self { service, base_url: crate::message::base_url(base_url, true)? })
+    }
+
+    /// Returns the base URL without a trailing slash.
+    #[must_use]
+    pub fn base_url(&self) -> &str {
+        &self.base_url
     }
 }
 

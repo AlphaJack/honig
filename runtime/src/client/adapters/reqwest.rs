@@ -25,26 +25,37 @@ impl Execute for reqwest::Client {
     }
 }
 
-/// `reqwest` transport: `Client::new(api::ReqwestTransport::new("https://api.example.com"))`.
+/// `reqwest` transport: `Client::new(api::ReqwestTransport::new("https://api.example.com")?)`.
 #[derive(Debug, Clone)]
 pub struct ReqwestTransport<C = reqwest::Client> {
     /// The underlying client. Configure timeouts, proxies, TLS or the middleware stack on it.
     pub client: C,
-    /// Base URL without a trailing slash.
-    pub base_url: String,
+    base_url: String,
 }
 
 impl ReqwestTransport {
     /// Creates a transport with a default client for this base URL.
-    pub fn new(base_url: impl Into<String>) -> Self {
+    ///
+    /// # Errors
+    /// The base URL has no scheme or no host, or it has a query or a fragment.
+    pub fn new(base_url: impl Into<String>) -> Result<Self, ClientError> {
         Self::with_client(reqwest::Client::new(), base_url)
     }
 }
 
 impl<C> ReqwestTransport<C> {
     /// Creates a transport over `client` for this base URL.
-    pub fn with_client(client: C, base_url: impl Into<String>) -> Self {
-        Self { client, base_url: crate::message::base_url(base_url) }
+    ///
+    /// # Errors
+    /// As [`ReqwestTransport::new`].
+    pub fn with_client(client: C, base_url: impl Into<String>) -> Result<Self, ClientError> {
+        Ok(Self { client, base_url: crate::message::base_url(base_url, false)? })
+    }
+
+    /// Returns the base URL without a trailing slash.
+    #[must_use]
+    pub fn base_url(&self) -> &str {
+        &self.base_url
     }
 }
 

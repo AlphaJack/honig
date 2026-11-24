@@ -212,24 +212,28 @@ pub fn encode_header_lines<T: Serialize + ?Sized>(v: &T) -> Result<Vec<String>, 
     })
 }
 
-/// Returns a base URL without its trailing slashes. A transport puts it before the path of each request.
-pub fn base_url(url: impl Into<String>) -> String {
-    url.into().trim_end_matches('/').to_owned()
+/// Returns a base URL without its trailing slashes.
+///
+/// A transport puts it before the path of each request. `relative`: a path such as `/api` is one too: a browser
+/// resolves it against the origin of the page, and a service in the same process needs no host.
+///
+/// # Errors
+/// It has no scheme or no host and is no path that `relative` allows, or it has a query or a fragment.
+pub fn base_url(url: impl Into<String>, relative: bool) -> Result<String, ClientError> {
+    let url = url.into();
+    let uri = http::Uri::try_from(url.as_str()).map_err(ClientError::transport)?;
+    let absolute = uri.scheme().is_some() && uri.authority().is_some();
+    if !(absolute || relative && url.starts_with('/')) || uri.query().is_some() || url.contains('#') {
+        return Err(ClientError::Transport(format!(
+            "`{url}` is no base URL: write a scheme and a host, such as `https://api.example.com/v1`, and no query"
+        )));
+    }
+    Ok(url.trim_end_matches('/').to_owned())
 }
 
 /// Returns the path and query of `uri`: what the router matches.
 pub fn path_and_query(uri: &http::Uri) -> &str {
     uri.path_and_query().map_or("/", http::uri::PathAndQuery::as_str)
-}
-
-/// Returns where a request goes. That is its path after `base_url`. A path that is already absolute stays as it is. The
-/// path of a webhook or of a token endpoint is absolute.
-pub fn target_url(base_url: &str, path: &str) -> String {
-    if path.starts_with("https://") || path.starts_with("http://") {
-        path.to_owned()
-    } else {
-        format!("{base_url}{path}")
-    }
 }
 
 /// Returns where a request goes. A target that is a whole URL stays as it is. Any other goes after `base_url`.
@@ -259,11 +263,13 @@ mod tests {
     }
 
     #[test]
-    fn a_path_goes_after_the_base_url_unless_it_is_a_url() {
-        assert_eq!(super::target_url("https://api.example.com/v1", "/pets"), "https://api.example.com/v1/pets");
-        assert_eq!(
-            super::target_url("https://api.example.com", "http://hooks.example.com/a"),
-            "http://hooks.example.com/a"
-        );
+    fn a_base_url_needs_a_scheme_and_a_host() {
+        assert!(super::base_url("localhost:3000", false).is_err());
+        assert!(super::base_url("/v1", false).is_err());
+        assert_eq!(super::base_url("/v1/", true).ok().as_deref(), Some("/v1"), "a browser resolves a path");
+        assert!(super::base_url("https://api.example.com/v1?a=1", true).is_err());
+        assert!(super::base_url("https://api.example.com/v1#a", true).is_err());
+        let base = super::base_url("https://api.example.com/v1/", false);
+        assert_eq!(base.ok().as_deref(), Some("https://api.example.com/v1"));
     }
 }
