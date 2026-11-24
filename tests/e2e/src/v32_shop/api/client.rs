@@ -289,6 +289,7 @@ impl<T: runtime::Transport> Client<T> {
                                     runtime::joined_header(&head.headers, "X-Request-ID")
                                         .as_deref(),
                                     "/header/X-Request-ID",
+                                    runtime::Style::Simple,
                                     runtime::Shape::Primitive,
                                     false,
                                 )
@@ -311,6 +312,7 @@ impl<T: runtime::Transport> Client<T> {
                                     runtime::joined_header(&head.headers, "X-Pagination-Total")
                                         .as_deref(),
                                     "/header/X-Pagination-Total",
+                                    runtime::Style::Simple,
                                     runtime::Shape::Primitive,
                                     false,
                                 )
@@ -333,6 +335,7 @@ impl<T: runtime::Transport> Client<T> {
                                     runtime::joined_header(&head.headers, "X-Pagination-Page")
                                         .as_deref(),
                                     "/header/X-Pagination-Page",
+                                    runtime::Style::Simple,
                                     runtime::Shape::Primitive,
                                     false,
                                 )
@@ -358,6 +361,7 @@ impl<T: runtime::Transport> Client<T> {
                                         )
                                         .as_deref(),
                                     "/header/X-Pagination-Per-Page",
+                                    runtime::Style::Simple,
                                     runtime::Shape::Primitive,
                                     false,
                                 )
@@ -380,6 +384,7 @@ impl<T: runtime::Transport> Client<T> {
                                     runtime::joined_header(&head.headers, "X-Cache-Control")
                                         .as_deref(),
                                     "/header/X-Cache-Control",
+                                    runtime::Style::Simple,
                                     runtime::Shape::Primitive,
                                     false,
                                 )
@@ -474,6 +479,7 @@ impl<T: runtime::Transport> Client<T> {
                                     runtime::joined_header(&head.headers, "X-Request-ID")
                                         .as_deref(),
                                     "/header/X-Request-ID",
+                                    runtime::Style::Simple,
                                     runtime::Shape::Primitive,
                                     false,
                                 )
@@ -496,6 +502,7 @@ impl<T: runtime::Transport> Client<T> {
                                     runtime::joined_header(&head.headers, "Location")
                                         .as_deref(),
                                     "/header/Location",
+                                    runtime::Style::Simple,
                                     runtime::Shape::Primitive,
                                     false,
                                 )
@@ -526,6 +533,7 @@ impl<T: runtime::Transport> Client<T> {
                                     runtime::joined_header(&head.headers, "X-Processing-Time")
                                         .as_deref(),
                                     "/header/X-Processing-Time",
+                                    runtime::Style::Simple,
                                     runtime::Shape::Primitive,
                                     false,
                                 )
@@ -570,6 +578,7 @@ impl<T: runtime::Transport> Client<T> {
                                     runtime::joined_header(&head.headers, "X-Request-ID")
                                         .as_deref(),
                                     "/header/X-Request-ID",
+                                    runtime::Style::Simple,
                                     runtime::Shape::Primitive,
                                     false,
                                 )
@@ -657,6 +666,7 @@ impl<T: runtime::Transport> Client<T> {
                                     runtime::joined_header(&head.headers, "X-Request-ID")
                                         .as_deref(),
                                     "/header/X-Request-ID",
+                                    runtime::Style::Simple,
                                     runtime::Shape::Primitive,
                                     false,
                                 )
@@ -701,6 +711,7 @@ impl<T: runtime::Transport> Client<T> {
                                     runtime::joined_header(&head.headers, "X-Request-ID")
                                         .as_deref(),
                                     "/header/X-Request-ID",
+                                    runtime::Style::Simple,
                                     runtime::Shape::Primitive,
                                     false,
                                 )
@@ -755,6 +766,7 @@ impl<T: runtime::Transport> Client<T> {
                                     runtime::joined_header(&head.headers, "X-Request-ID")
                                         .as_deref(),
                                     "/header/X-Request-ID",
+                                    runtime::Style::Simple,
                                     runtime::Shape::Primitive,
                                     false,
                                 )
@@ -803,7 +815,10 @@ impl<T: runtime::Transport> Client<T> {
                 ops::get_product::Media::Xml => "application/xml, application/json;q=0.9",
             },
         )?;
-        if let Some(h) = runtime::encode_header(&p.if_none_match, false)? {
+        if let Some(h) = runtime::encode_header(
+            &p.if_none_match,
+            runtime::Enc::SIMPLE,
+        )? {
             runtime::Message::set_header(&mut req, "If-None-Match", h)?;
         }
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
@@ -840,6 +855,7 @@ impl<T: runtime::Transport> Client<T> {
                                     runtime::joined_header(&head.headers, "X-Request-ID")
                                         .as_deref(),
                                     "/header/X-Request-ID",
+                                    runtime::Style::Simple,
                                     runtime::Shape::Primitive,
                                     false,
                                 )
@@ -861,6 +877,7 @@ impl<T: runtime::Transport> Client<T> {
                             runtime::decode_header(
                                     runtime::joined_header(&head.headers, "ETag").as_deref(),
                                     "/header/ETag",
+                                    runtime::Style::Simple,
                                     runtime::Shape::Primitive,
                                     false,
                                 )
@@ -883,6 +900,7 @@ impl<T: runtime::Transport> Client<T> {
                                     runtime::joined_header(&head.headers, "Last-Modified")
                                         .as_deref(),
                                     "/header/Last-Modified",
+                                    runtime::Style::Simple,
                                     runtime::Shape::Primitive,
                                     false,
                                 )
@@ -905,6 +923,7 @@ impl<T: runtime::Transport> Client<T> {
                                     runtime::joined_header(&head.headers, "X-Cache-Control")
                                         .as_deref(),
                                     "/header/X-Cache-Control",
+                                    runtime::Style::Simple,
                                     runtime::Shape::Primitive,
                                     false,
                                 )
@@ -980,7 +999,7 @@ impl<T: runtime::Transport> Client<T> {
                 }
             },
         )?;
-        if let Some(h) = runtime::encode_header(&p.if_match, false)? {
+        if let Some(h) = runtime::encode_header(&p.if_match, runtime::Enc::SIMPLE)? {
             runtime::Message::set_header(&mut req, "If-Match", h)?;
         }
         if let Some(body) = &p.body {
@@ -1054,6 +1073,7 @@ impl<T: runtime::Transport> Client<T> {
                                     runtime::joined_header(&head.headers, "X-Request-ID")
                                         .as_deref(),
                                     "/header/X-Request-ID",
+                                    runtime::Style::Simple,
                                     runtime::Shape::Primitive,
                                     false,
                                 )
@@ -1205,7 +1225,7 @@ impl<T: runtime::Transport> Client<T> {
             "Accept",
             "application/json, application/xml",
         )?;
-        if let Some(h) = runtime::encode_header(&p.destination, false)? {
+        if let Some(h) = runtime::encode_header(&p.destination, runtime::Enc::SIMPLE)? {
             runtime::Message::set_header(&mut req, "Destination", h)?;
         }
         runtime::apply_auth(&mut req, &self.credentials, ops::SECURITY_0)?;
@@ -1225,6 +1245,7 @@ impl<T: runtime::Transport> Client<T> {
                                     runtime::joined_header(&head.headers, "Location")
                                         .as_deref(),
                                     "/header/Location",
+                                    runtime::Style::Simple,
                                     runtime::Shape::Primitive,
                                     false,
                                 )
@@ -1346,6 +1367,7 @@ impl<T: runtime::Transport> Client<T> {
                                     runtime::joined_header(&head.headers, "X-Request-ID")
                                         .as_deref(),
                                     "/header/X-Request-ID",
+                                    runtime::Style::Simple,
                                     runtime::Shape::Primitive,
                                     false,
                                 )
@@ -1368,6 +1390,7 @@ impl<T: runtime::Transport> Client<T> {
                                     runtime::joined_header(&head.headers, "X-Cache-Control")
                                         .as_deref(),
                                     "/header/X-Cache-Control",
+                                    runtime::Style::Simple,
                                     runtime::Shape::Primitive,
                                     false,
                                 )
@@ -1412,6 +1435,7 @@ impl<T: runtime::Transport> Client<T> {
                                     runtime::joined_header(&head.headers, "X-Request-ID")
                                         .as_deref(),
                                     "/header/X-Request-ID",
+                                    runtime::Style::Simple,
                                     runtime::Shape::Primitive,
                                     false,
                                 )
@@ -1511,7 +1535,10 @@ impl<T: runtime::Transport> Client<T> {
                 }
             },
         )?;
-        if let Some(h) = runtime::encode_header(&p.last_event_id, false)? {
+        if let Some(h) = runtime::encode_header(
+            &p.last_event_id,
+            runtime::Enc::SIMPLE,
+        )? {
             runtime::Message::set_header(&mut req, "Last-Event-ID", h)?;
         }
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
@@ -1555,6 +1582,7 @@ impl<T: runtime::Transport> Client<T> {
                                     runtime::joined_header(&head.headers, "X-Request-ID")
                                         .as_deref(),
                                     "/header/X-Request-ID",
+                                    runtime::Style::Simple,
                                     runtime::Shape::Primitive,
                                     false,
                                 )
@@ -1614,7 +1642,10 @@ impl<T: runtime::Transport> Client<T> {
                 }
             },
         )?;
-        if let Some(h) = runtime::encode_header(&p.last_event_id, false)? {
+        if let Some(h) = runtime::encode_header(
+            &p.last_event_id,
+            runtime::Enc::SIMPLE,
+        )? {
             runtime::Message::set_header(&mut req, "Last-Event-ID", h)?;
         }
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
@@ -1720,6 +1751,7 @@ impl<T: runtime::Transport> Client<T> {
                                     runtime::joined_header(&head.headers, "X-Request-ID")
                                         .as_deref(),
                                     "/header/X-Request-ID",
+                                    runtime::Style::Simple,
                                     runtime::Shape::Primitive,
                                     false,
                                 )
@@ -1764,6 +1796,7 @@ impl<T: runtime::Transport> Client<T> {
                                     runtime::joined_header(&head.headers, "X-Request-ID")
                                         .as_deref(),
                                     "/header/X-Request-ID",
+                                    runtime::Style::Simple,
                                     runtime::Shape::Primitive,
                                     false,
                                 )
@@ -1913,6 +1946,7 @@ impl<T: runtime::Transport> Client<T> {
                                     runtime::joined_header(&head.headers, "X-Request-ID")
                                         .as_deref(),
                                     "/header/X-Request-ID",
+                                    runtime::Style::Simple,
                                     runtime::Shape::Primitive,
                                     false,
                                 )
@@ -1935,6 +1969,7 @@ impl<T: runtime::Transport> Client<T> {
                                     runtime::joined_header(&head.headers, "Location")
                                         .as_deref(),
                                     "/header/Location",
+                                    runtime::Style::Simple,
                                     runtime::Shape::Primitive,
                                     false,
                                 )
@@ -1965,6 +2000,7 @@ impl<T: runtime::Transport> Client<T> {
                                     runtime::joined_header(&head.headers, "X-Processing-Time")
                                         .as_deref(),
                                     "/header/X-Processing-Time",
+                                    runtime::Style::Simple,
                                     runtime::Shape::Primitive,
                                     false,
                                 )
@@ -2009,6 +2045,7 @@ impl<T: runtime::Transport> Client<T> {
                                     runtime::joined_header(&head.headers, "X-Request-ID")
                                         .as_deref(),
                                     "/header/X-Request-ID",
+                                    runtime::Style::Simple,
                                     runtime::Shape::Primitive,
                                     false,
                                 )
@@ -2194,6 +2231,7 @@ impl<T: runtime::Transport> Client<T> {
                                     runtime::joined_header(&head.headers, "X-Request-ID")
                                         .as_deref(),
                                     "/header/X-Request-ID",
+                                    runtime::Style::Simple,
                                     runtime::Shape::Primitive,
                                     false,
                                 )
@@ -2216,6 +2254,7 @@ impl<T: runtime::Transport> Client<T> {
                                     runtime::joined_header(&head.headers, "X-RateLimit-Limit")
                                         .as_deref(),
                                     "/header/X-RateLimit-Limit",
+                                    runtime::Style::Simple,
                                     runtime::Shape::Primitive,
                                     false,
                                 )
@@ -2241,6 +2280,7 @@ impl<T: runtime::Transport> Client<T> {
                                         )
                                         .as_deref(),
                                     "/header/X-RateLimit-Remaining",
+                                    runtime::Style::Simple,
                                     runtime::Shape::Primitive,
                                     false,
                                 )
@@ -2263,6 +2303,7 @@ impl<T: runtime::Transport> Client<T> {
                                     runtime::joined_header(&head.headers, "X-RateLimit-Reset")
                                         .as_deref(),
                                     "/header/X-RateLimit-Reset",
+                                    runtime::Style::Simple,
                                     runtime::Shape::Primitive,
                                     false,
                                 )
@@ -2307,6 +2348,7 @@ impl<T: runtime::Transport> Client<T> {
                                     runtime::joined_header(&head.headers, "X-Request-ID")
                                         .as_deref(),
                                     "/header/X-Request-ID",
+                                    runtime::Style::Simple,
                                     runtime::Shape::Primitive,
                                     false,
                                 )
@@ -2399,6 +2441,7 @@ impl<T: runtime::Transport> Client<T> {
                                     runtime::joined_header(&head.headers, "X-Request-ID")
                                         .as_deref(),
                                     "/header/X-Request-ID",
+                                    runtime::Style::Simple,
                                     runtime::Shape::Primitive,
                                     false,
                                 )
@@ -2421,6 +2464,7 @@ impl<T: runtime::Transport> Client<T> {
                                     runtime::joined_header(&head.headers, "X-RateLimit-Limit")
                                         .as_deref(),
                                     "/header/X-RateLimit-Limit",
+                                    runtime::Style::Simple,
                                     runtime::Shape::Primitive,
                                     false,
                                 )
@@ -2446,6 +2490,7 @@ impl<T: runtime::Transport> Client<T> {
                                         )
                                         .as_deref(),
                                     "/header/X-RateLimit-Remaining",
+                                    runtime::Style::Simple,
                                     runtime::Shape::Primitive,
                                     false,
                                 )
@@ -2468,6 +2513,7 @@ impl<T: runtime::Transport> Client<T> {
                                     runtime::joined_header(&head.headers, "X-RateLimit-Reset")
                                         .as_deref(),
                                     "/header/X-RateLimit-Reset",
+                                    runtime::Style::Simple,
                                     runtime::Shape::Primitive,
                                     false,
                                 )
@@ -2490,6 +2536,7 @@ impl<T: runtime::Transport> Client<T> {
                                     runtime::joined_header(&head.headers, "Retry-After")
                                         .as_deref(),
                                     "/header/Retry-After",
+                                    runtime::Style::Simple,
                                     runtime::Shape::Primitive,
                                     false,
                                 )
@@ -2561,6 +2608,7 @@ impl<T: runtime::Transport> Client<T> {
                                     runtime::joined_header(&head.headers, "X-Request-ID")
                                         .as_deref(),
                                     "/header/X-Request-ID",
+                                    runtime::Style::Simple,
                                     runtime::Shape::Primitive,
                                     false,
                                 )
@@ -2582,6 +2630,7 @@ impl<T: runtime::Transport> Client<T> {
                             runtime::decode_header(
                                     runtime::joined_header(&head.headers, "ETag").as_deref(),
                                     "/header/ETag",
+                                    runtime::Style::Simple,
                                     runtime::Shape::Primitive,
                                     false,
                                 )
@@ -2604,6 +2653,7 @@ impl<T: runtime::Transport> Client<T> {
                                     runtime::joined_header(&head.headers, "Last-Modified")
                                         .as_deref(),
                                     "/header/Last-Modified",
+                                    runtime::Style::Simple,
                                     runtime::Shape::Primitive,
                                     false,
                                 )
@@ -2626,6 +2676,7 @@ impl<T: runtime::Transport> Client<T> {
                                     runtime::joined_header(&head.headers, "X-Cache-Control")
                                         .as_deref(),
                                     "/header/X-Cache-Control",
+                                    runtime::Style::Simple,
                                     runtime::Shape::Primitive,
                                     false,
                                 )

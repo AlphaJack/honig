@@ -11,6 +11,7 @@ struct Seen {
     items: Mutex<Option<ops::list_items::Params>>,
     upload: Mutex<Option<ops::upload::Params>>,
     tag: Mutex<Option<ops::tag::Params>>,
+    rows: Mutex<Option<ops::rows::Params>>,
 }
 
 impl api::Api for Seen {
@@ -44,6 +45,17 @@ impl api::Api for Seen {
             *seen = Some(p);
         }
         std::future::ready(Ok(ops::tag::Response::NoContent))
+    }
+
+    fn rows(
+        &self,
+        p: ops::rows::Params,
+        _: &api::Context<'_>,
+    ) -> impl Future<Output = Result<ops::rows::Response, api::ApiError>> + Send {
+        if let Ok(mut seen) = self.rows.lock() {
+            *seen = Some(p);
+        }
+        std::future::ready(Ok(ops::rows::Response::NoContent))
     }
 
     fn list_keys(
@@ -149,4 +161,33 @@ fn a_form_array_keeps_its_collection_format() {
     });
     api::block_on(api::Client::new(capture).tag(sent)).ok();
     assert_eq!(*wire.lock().unwrap(), "ids=1,2&pipes=a%7Cb");
+}
+
+/// A header or path array in `ssv`, `pipes` and `tsv` goes out with its separator and the server splits it back.
+#[test]
+fn a_header_or_path_array_keeps_its_collection_format() {
+    let two = || vec!["a".to_owned(), "b".to_owned()];
+    let sent = ops::rows::Params {
+        ssv: two(),
+        pipes: two(),
+        tsv: two(),
+        x_ssv: Some(two()),
+        x_pipes: Some(two()),
+        x_tsv: Some(two()),
+    };
+    let seen = std::sync::Arc::new(Seen::default());
+    let got = api::block_on(served(&seen).rows(sent.clone()));
+    assert_eq!(got.ok(), Some(ops::rows::Response::NoContent));
+    assert_eq!(seen.rows.lock().ok().and_then(|mut s| s.take()), Some(sent.clone()));
+    let wire = std::sync::Arc::new(Mutex::new(String::new()));
+    let kept = std::sync::Arc::clone(&wire);
+    let capture = tower::service_fn(move |req: api::Request| {
+        let header = |name: &str| req.headers().get(name).and_then(|v| v.to_str().ok()).unwrap_or_default().to_owned();
+        if let Ok(mut w) = kept.lock() {
+            *w = format!("{} {:?} {:?} {:?}", req.uri().path(), header("x-ssv"), header("x-pipes"), header("x-tsv"));
+        }
+        std::future::ready(Ok::<_, api::ApiError>(api::runtime::new_response(204)))
+    });
+    api::block_on(api::Client::new(capture).rows(sent)).ok();
+    assert_eq!(*wire.lock().unwrap(), r#"/rows/a%20b/a%7Cb/a%09b "a b" "a|b" "a\tb""#);
 }

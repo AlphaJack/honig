@@ -758,7 +758,7 @@ impl<T: runtime::Transport> Client<T> {
         let path = String::from("/header-f-a");
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
-        if let Some(h) = runtime::encode_header(&p.color, false)? {
+        if let Some(h) = runtime::encode_header(&p.color, runtime::Enc::SIMPLE)? {
             runtime::Message::set_header(&mut req, "color", h)?;
         }
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
@@ -784,7 +784,7 @@ impl<T: runtime::Transport> Client<T> {
         let path = String::from("/header-f-o");
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
-        if let Some(h) = runtime::encode_header(&p.color, false)? {
+        if let Some(h) = runtime::encode_header(&p.color, runtime::Enc::SIMPLE)? {
             runtime::Message::set_header(&mut req, "color", h)?;
         }
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
@@ -810,7 +810,14 @@ impl<T: runtime::Transport> Client<T> {
         let path = String::from("/header-t-a");
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
-        if let Some(h) = runtime::encode_header(&p.color, true)? {
+        if let Some(h) = runtime::encode_header(
+            &p.color,
+            runtime::Enc {
+                style: runtime::Style::Simple,
+                explode: true,
+                allow_reserved: false,
+            },
+        )? {
             runtime::Message::set_header(&mut req, "color", h)?;
         }
         runtime::apply_auth(&mut req, &self.credentials, &[])?;
@@ -836,7 +843,14 @@ impl<T: runtime::Transport> Client<T> {
         let path = String::from("/header-t-o");
         let query = Vec::new();
         let mut req = runtime::new_request("GET", path, query)?;
-        if let Some(h) = runtime::encode_header(&p.color, true)? {
+        if let Some(h) = runtime::encode_header(
+            &p.color,
+            runtime::Enc {
+                style: runtime::Style::Simple,
+                explode: true,
+                allow_reserved: false,
+            },
+        )? {
             runtime::Message::set_header(&mut req, "color", h)?;
         }
         runtime::apply_auth(&mut req, &self.credentials, &[])?;

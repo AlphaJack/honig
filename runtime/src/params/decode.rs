@@ -78,6 +78,12 @@ pub fn decode_path(raw: &str, at: &str, style: Style, shape: Shape, explode: boo
                 _ => body.split_once('=').and_then(|(_, v)| split_value(v, shape, false, ',')),
             }
         }
+        // A Swagger 2.0 `collectionFormat` of a path array: split at its encoded separator, in either case of hex.
+        Style::SpaceDelimited | Style::TabDelimited | Style::PipeDelimited if shape == Shape::Array => {
+            let sep = style.delimiter().unwrap_or(",");
+            let raw = raw.replace(&sep.to_ascii_lowercase(), sep);
+            Some(Value::Array(raw.split(sep).map(|p| Value::String(p.to_owned())).collect()))
+        }
         Style::Simple
         | Style::Form
         | Style::SpaceDelimited
@@ -104,8 +110,15 @@ pub fn encode_json_header(v: &Value) -> Option<String> {
 ///
 /// # Errors
 /// It does not decode in its style.
-pub fn decode_header(raw: Option<&str>, at: &str, shape: Shape, explode: bool) -> Result<Option<Value>, Reason> {
-    raw.map(|r| split_value(r.trim(), shape, explode, ',').ok_or_else(|| malformed(at))).transpose()
+pub fn decode_header(
+    raw: Option<&str>,
+    at: &str,
+    style: Style,
+    shape: Shape,
+    explode: bool,
+) -> Result<Option<Value>, Reason> {
+    raw.map(|r| split_value(r.trim(), shape, explode, style.header_separator()).ok_or_else(|| malformed(at)))
+        .transpose()
 }
 
 /// Returns an exploded form object without the keys of the operation's other query

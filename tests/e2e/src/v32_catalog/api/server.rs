@@ -295,7 +295,7 @@ fn list_products_encode(
         match resp {
             ops::list_products::Response::Ok { body, x_next } => {
                 let mut r = runtime::new_response(200);
-                if let Some(h) = runtime::encode_header(&x_next, false)? {
+                if let Some(h) = runtime::encode_header(&x_next, runtime::Enc::SIMPLE)? {
                     runtime::Message::set_header(&mut r, "X-Next", h)?;
                 }
                 runtime::Message::set_body(

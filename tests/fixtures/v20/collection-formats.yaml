@@ -37,6 +37,18 @@ paths:
         - {name: pipes, in: formData, type: array, collectionFormat: pipes, items: {type: string}}
       responses:
         "204": {description: tagged}
+  /rows/{ssv}/{pipes}/{tsv}:
+    get:
+      operationId: rows
+      parameters:
+        - {name: ssv, in: path, required: true, type: array, collectionFormat: ssv, items: {type: string}}
+        - {name: pipes, in: path, required: true, type: array, collectionFormat: pipes, items: {type: string}}
+        - {name: tsv, in: path, required: true, type: array, collectionFormat: tsv, items: {type: string}}
+        - {name: X-Ssv, in: header, type: array, collectionFormat: ssv, items: {type: string}}
+        - {name: X-Pipes, in: header, type: array, collectionFormat: pipes, items: {type: string}}
+        - {name: X-Tsv, in: header, type: array, collectionFormat: tsv, items: {type: string}}
+      responses:
+        "204": {description: read}
   /keys:
     get:
       operationId: listKeys

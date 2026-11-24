@@ -136,7 +136,7 @@ fn documented_examples_decode() {
     let got = serde_json::from_str::<Vec<i64>>("[12345678,90099]")
         .map_err(|e| runtime::ClientError::Encode(e.to_string()))
         .map(|v| {
-            runtime::encode_header(&v, false)
+            runtime::encode_header(&v, runtime::Enc::SIMPLE)
                 .unwrap_or_else(|e| panic!("{e}"))
                 .unwrap_or_default()
         });

@@ -24,10 +24,16 @@ impl<T: runtime::Transport> Client<T> {
         let query = Vec::new();
         let mut req = runtime::new_request("POST", path, query)?;
         let mut parts: Vec<(&str, &str, String)> = Vec::new();
-        if let Some(h) = runtime::encode_header(&p.image_x_checksum, false)? {
+        if let Some(h) = runtime::encode_header(
+            &p.image_x_checksum,
+            runtime::Enc::SIMPLE,
+        )? {
             parts.push(("image", "X-Checksum", h));
         }
-        if let Some(h) = runtime::encode_header(&p.meta_x_revision, false)? {
+        if let Some(h) = runtime::encode_header(
+            &p.meta_x_revision,
+            runtime::Enc::SIMPLE,
+        )? {
             parts.push(("meta", "X-Revision", h));
         }
         let (ct, bytes) = runtime::multipart_encode_with(

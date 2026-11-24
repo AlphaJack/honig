@@ -482,7 +482,7 @@ pub(crate) const PATHS: &[Path] = &[
         name: "header_encode",
         prepare: |size| {
             let values = vec![MIXED.to_owned(); size.div_ceil(MIXED.len())];
-            (size, on(values, |v| runtime::encode_header(v, false)))
+            (size, on(values, |v| runtime::encode_header(v, runtime::Enc::SIMPLE)))
         },
     },
     Path {

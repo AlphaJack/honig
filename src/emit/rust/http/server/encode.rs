@@ -71,8 +71,8 @@ pub(crate) fn server_encode(space: &Space<'_>, op: &Operation, op_mod: &TokenStr
             } else if h.linkset {
                 quote!(runtime::encode_linkset_header(&runtime::to_value(&#n)?))
             } else {
-                let explode = h.explode;
-                quote!(runtime::encode_header(&#n, #explode)?)
+                let e = crate::emit::rust::http::shared::enc(crate::ir::http::Style::Simple, h.explode, false);
+                quote!(runtime::encode_header(&#n, #e)?)
             };
             quote!(if let Some(h) = #value { runtime::Message::set_header(&mut r, #wire, h)?; })
         });

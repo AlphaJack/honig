@@ -297,10 +297,13 @@ fn get_manifest_encode(
         match resp {
             ops::get_manifest::Response::Ok { body, e_tag, last_modified } => {
                 let mut r = runtime::new_response(200);
-                if let Some(h) = runtime::encode_header(&e_tag, false)? {
+                if let Some(h) = runtime::encode_header(&e_tag, runtime::Enc::SIMPLE)? {
                     runtime::Message::set_header(&mut r, "ETag", h)?;
                 }
-                if let Some(h) = runtime::encode_header(&last_modified, false)? {
+                if let Some(h) = runtime::encode_header(
+                    &last_modified,
+                    runtime::Enc::SIMPLE,
+                )? {
                     runtime::Message::set_header(&mut r, "Last-Modified", h)?;
                 }
                 runtime::Message::set_body(

@@ -317,10 +317,17 @@ fn add_note_encode(
     let ops::add_note::Response::Created { body, x_count, x_tags } = resp;
     Ok({
         let mut r = runtime::new_response(201);
-        if let Some(h) = runtime::encode_header(&x_count, false)? {
+        if let Some(h) = runtime::encode_header(&x_count, runtime::Enc::SIMPLE)? {
             runtime::Message::set_header(&mut r, "X-Count", h)?;
         }
-        if let Some(h) = runtime::encode_header(&x_tags, true)? {
+        if let Some(h) = runtime::encode_header(
+            &x_tags,
+            runtime::Enc {
+                style: runtime::Style::Simple,
+                explode: true,
+                allow_reserved: false,
+            },
+        )? {
             runtime::Message::set_header(&mut r, "X-Tags", h)?;
         }
         runtime::Message::set_body(

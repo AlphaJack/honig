@@ -48,6 +48,16 @@ impl Style {
 
     /// Returns the percent-encoded delimiter of `spaceDelimited`, `pipeDelimited` and `tsv` values. `|` is
     /// percent-encoded like the space (RFC 3986).
+    /// Returns what separates the items of an array in a header: a comma, or the character of a delimited style.
+    const fn header_separator(self) -> char {
+        match self {
+            Self::SpaceDelimited => ' ',
+            Self::PipeDelimited => '|',
+            Self::TabDelimited => '\t',
+            Self::Simple | Self::Label | Self::Matrix | Self::Form | Self::DeepObject | Self::Cookie => ',',
+        }
+    }
+
     const fn delimiter(self) -> Option<&'static str> {
         match self {
             Self::SpaceDelimited => Some("%20"),
@@ -106,7 +116,10 @@ mod tests {
     #[test]
     fn an_empty_value_is_the_empty_list() {
         assert_eq!(query("c=", Style::Form), Some(serde_json::json!([])));
-        assert_eq!(decode_header(Some(""), "/header/h", Shape::Array, false), Ok(Some(serde_json::json!([]))));
+        assert_eq!(
+            decode_header(Some(""), "/header/h", Style::Simple, Shape::Array, false),
+            Ok(Some(serde_json::json!([])))
+        );
     }
 
     /// `allowReserved` keeps reserved characters in a path value but never `/`, `?` or `#`.

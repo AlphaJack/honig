@@ -303,6 +303,7 @@ impl<T: runtime::Transport> Client<T> {
                             runtime::decode_header(
                                     runtime::joined_header(&head.headers, "X-Size").as_deref(),
                                     "/header/X-Size",
+                                    runtime::Style::Simple,
                                     runtime::Shape::Primitive,
                                     false,
                                 )
@@ -439,10 +440,10 @@ impl<T: runtime::Transport> Client<T> {
                 }
             },
         )?;
-        if let Some(h) = runtime::encode_header(&p.x_rate, false)? {
+        if let Some(h) = runtime::encode_header(&p.x_rate, runtime::Enc::SIMPLE)? {
             runtime::Message::set_header(&mut req, "X-Rate", h)?;
         }
-        if let Some(h) = runtime::encode_header(&p.x_trace, false)? {
+        if let Some(h) = runtime::encode_header(&p.x_trace, runtime::Enc::SIMPLE)? {
             runtime::Message::set_header(&mut req, "X-Trace", h)?;
         }
         let mut cookies: Vec<String> = Vec::new();
@@ -490,6 +491,7 @@ impl<T: runtime::Transport> Client<T> {
                             runtime::decode_header(
                                     runtime::joined_header(&head.headers, "X-Next").as_deref(),
                                     "/header/X-Next",
+                                    runtime::Style::Simple,
                                     runtime::Shape::Primitive,
                                     false,
                                 )
@@ -511,6 +513,7 @@ impl<T: runtime::Transport> Client<T> {
                             runtime::decode_header(
                                     runtime::joined_header(&head.headers, "X-Total").as_deref(),
                                     "/header/X-Total",
+                                    runtime::Style::Simple,
                                     runtime::Shape::Primitive,
                                     false,
                                 )
@@ -615,10 +618,10 @@ impl<T: runtime::Transport> Client<T> {
                 }
             },
         )?;
-        if let Some(h) = runtime::encode_header(&p.x_rate, false)? {
+        if let Some(h) = runtime::encode_header(&p.x_rate, runtime::Enc::SIMPLE)? {
             runtime::Message::set_header(&mut req, "X-Rate", h)?;
         }
-        if let Some(h) = runtime::encode_header(&p.x_trace, false)? {
+        if let Some(h) = runtime::encode_header(&p.x_trace, runtime::Enc::SIMPLE)? {
             runtime::Message::set_header(&mut req, "X-Trace", h)?;
         }
         let mut cookies: Vec<String> = Vec::new();
@@ -715,11 +718,11 @@ impl<T: runtime::Transport> Client<T> {
         let path = runtime::operation_path(ops::create_product::SERVERS, path);
         let query = Vec::new();
         let mut req = runtime::new_request("POST", path, query)?;
-        if let Some(h) = runtime::encode_header(&p.x_trace, false)? {
+        if let Some(h) = runtime::encode_header(&p.x_trace, runtime::Enc::SIMPLE)? {
             runtime::Message::set_header(&mut req, "X-Trace", h)?;
         }
         let mut parts: Vec<(&str, &str, String)> = Vec::new();
-        if let Some(h) = runtime::encode_header(&p.meta_x_part, false)? {
+        if let Some(h) = runtime::encode_header(&p.meta_x_part, runtime::Enc::SIMPLE)? {
             parts.push(("meta", "X-Part", h));
         }
         match &p.body {
@@ -785,7 +788,7 @@ impl<T: runtime::Transport> Client<T> {
         let query = Vec::new();
         let mut req = runtime::new_request("QUERY", path, query)?;
         runtime::Message::set_header(&mut req, "Accept", "application/json")?;
-        if let Some(h) = runtime::encode_header(&p.x_trace, false)? {
+        if let Some(h) = runtime::encode_header(&p.x_trace, runtime::Enc::SIMPLE)? {
             runtime::Message::set_header(&mut req, "X-Trace", h)?;
         }
         if let Some(body) = &p.body {
@@ -826,7 +829,7 @@ impl<T: runtime::Transport> Client<T> {
         let path = runtime::operation_path(ops::copy_products::SERVERS, path);
         let query = Vec::new();
         let mut req = runtime::new_request("COPY", path, query)?;
-        if let Some(h) = runtime::encode_header(&p.x_trace, false)? {
+        if let Some(h) = runtime::encode_header(&p.x_trace, runtime::Enc::SIMPLE)? {
             runtime::Message::set_header(&mut req, "X-Trace", h)?;
         }
         runtime::apply_auth(&mut req, &self.credentials, ops::SECURITY_0)?;

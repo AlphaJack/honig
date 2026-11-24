@@ -842,19 +842,31 @@ fn get_all_data_encode(
     } = resp;
     Ok({
         let mut r = runtime::new_response(200);
-        if let Some(h) = runtime::encode_header(&x_request_id, false)? {
+        if let Some(h) = runtime::encode_header(&x_request_id, runtime::Enc::SIMPLE)? {
             runtime::Message::set_header(&mut r, "X-Request-ID", h)?;
         }
-        if let Some(h) = runtime::encode_header(&x_pagination_total, false)? {
+        if let Some(h) = runtime::encode_header(
+            &x_pagination_total,
+            runtime::Enc::SIMPLE,
+        )? {
             runtime::Message::set_header(&mut r, "X-Pagination-Total", h)?;
         }
-        if let Some(h) = runtime::encode_header(&x_pagination_page, false)? {
+        if let Some(h) = runtime::encode_header(
+            &x_pagination_page,
+            runtime::Enc::SIMPLE,
+        )? {
             runtime::Message::set_header(&mut r, "X-Pagination-Page", h)?;
         }
-        if let Some(h) = runtime::encode_header(&x_pagination_per_page, false)? {
+        if let Some(h) = runtime::encode_header(
+            &x_pagination_per_page,
+            runtime::Enc::SIMPLE,
+        )? {
             runtime::Message::set_header(&mut r, "X-Pagination-Per-Page", h)?;
         }
-        if let Some(h) = runtime::encode_header(&x_cache_control, false)? {
+        if let Some(h) = runtime::encode_header(
+            &x_cache_control,
+            runtime::Enc::SIMPLE,
+        )? {
             runtime::Message::set_header(&mut r, "X-Cache-Control", h)?;
         }
         match body {
@@ -1019,13 +1031,22 @@ fn create_product_encode(
                 x_processing_time,
             } => {
                 let mut r = runtime::new_response(201);
-                if let Some(h) = runtime::encode_header(&x_request_id, false)? {
+                if let Some(h) = runtime::encode_header(
+                    &x_request_id,
+                    runtime::Enc::SIMPLE,
+                )? {
                     runtime::Message::set_header(&mut r, "X-Request-ID", h)?;
                 }
-                if let Some(h) = runtime::encode_header(&location, false)? {
+                if let Some(h) = runtime::encode_header(
+                    &location,
+                    runtime::Enc::SIMPLE,
+                )? {
                     runtime::Message::set_header(&mut r, "Location", h)?;
                 }
-                if let Some(h) = runtime::encode_header(&x_processing_time, false)? {
+                if let Some(h) = runtime::encode_header(
+                    &x_processing_time,
+                    runtime::Enc::SIMPLE,
+                )? {
                     runtime::Message::set_header(&mut r, "X-Processing-Time", h)?;
                 }
                 match media {
@@ -1048,7 +1069,10 @@ fn create_product_encode(
             }
             ops::create_product::Response::BadRequest { body, x_request_id } => {
                 let mut r = runtime::new_response(400);
-                if let Some(h) = runtime::encode_header(&x_request_id, false)? {
+                if let Some(h) = runtime::encode_header(
+                    &x_request_id,
+                    runtime::Enc::SIMPLE,
+                )? {
                     runtime::Message::set_header(&mut r, "X-Request-ID", h)?;
                 }
                 match body {
@@ -1135,7 +1159,10 @@ fn query_products_encode(
         match resp {
             ops::query_products::Response::Ok { body, x_request_id } => {
                 let mut r = runtime::new_response(200);
-                if let Some(h) = runtime::encode_header(&x_request_id, false)? {
+                if let Some(h) = runtime::encode_header(
+                    &x_request_id,
+                    runtime::Enc::SIMPLE,
+                )? {
                     runtime::Message::set_header(&mut r, "X-Request-ID", h)?;
                 }
                 runtime::Message::set_body(
@@ -1147,7 +1174,10 @@ fn query_products_encode(
             }
             ops::query_products::Response::BadRequest { body, x_request_id } => {
                 let mut r = runtime::new_response(400);
-                if let Some(h) = runtime::encode_header(&x_request_id, false)? {
+                if let Some(h) = runtime::encode_header(
+                    &x_request_id,
+                    runtime::Enc::SIMPLE,
+                )? {
                     runtime::Message::set_header(&mut r, "X-Request-ID", h)?;
                 }
                 match body {
@@ -1215,7 +1245,7 @@ fn search_products_encode(
     let ops::search_products::Response::Ok { body, x_request_id } = resp;
     Ok({
         let mut r = runtime::new_response(200);
-        if let Some(h) = runtime::encode_header(&x_request_id, false)? {
+        if let Some(h) = runtime::encode_header(&x_request_id, runtime::Enc::SIMPLE)? {
             runtime::Message::set_header(&mut r, "X-Request-ID", h)?;
         }
         runtime::Message::set_body(
@@ -1286,16 +1316,25 @@ fn get_product_encode(
                 x_cache_control,
             } => {
                 let mut r = runtime::new_response(200);
-                if let Some(h) = runtime::encode_header(&x_request_id, false)? {
+                if let Some(h) = runtime::encode_header(
+                    &x_request_id,
+                    runtime::Enc::SIMPLE,
+                )? {
                     runtime::Message::set_header(&mut r, "X-Request-ID", h)?;
                 }
-                if let Some(h) = runtime::encode_header(&e_tag, false)? {
+                if let Some(h) = runtime::encode_header(&e_tag, runtime::Enc::SIMPLE)? {
                     runtime::Message::set_header(&mut r, "ETag", h)?;
                 }
-                if let Some(h) = runtime::encode_header(&last_modified, false)? {
+                if let Some(h) = runtime::encode_header(
+                    &last_modified,
+                    runtime::Enc::SIMPLE,
+                )? {
                     runtime::Message::set_header(&mut r, "Last-Modified", h)?;
                 }
-                if let Some(h) = runtime::encode_header(&x_cache_control, false)? {
+                if let Some(h) = runtime::encode_header(
+                    &x_cache_control,
+                    runtime::Enc::SIMPLE,
+                )? {
                     runtime::Message::set_header(&mut r, "X-Cache-Control", h)?;
                 }
                 match media {
@@ -1508,7 +1547,10 @@ fn update_product_encode(
             }
             ops::update_product::Response::BadRequest { body, x_request_id } => {
                 let mut r = runtime::new_response(400);
-                if let Some(h) = runtime::encode_header(&x_request_id, false)? {
+                if let Some(h) = runtime::encode_header(
+                    &x_request_id,
+                    runtime::Enc::SIMPLE,
+                )? {
                     runtime::Message::set_header(&mut r, "X-Request-ID", h)?;
                 }
                 match body {
@@ -1835,7 +1877,10 @@ fn copy_product_encode(
         match resp {
             ops::copy_product::Response::Created { body, location } => {
                 let mut r = runtime::new_response(201);
-                if let Some(h) = runtime::encode_header(&location, false)? {
+                if let Some(h) = runtime::encode_header(
+                    &location,
+                    runtime::Enc::SIMPLE,
+                )? {
                     runtime::Message::set_header(&mut r, "Location", h)?;
                 }
                 runtime::Message::set_body(
@@ -2000,10 +2045,16 @@ fn upload_image_encode(
         match resp {
             ops::upload_image::Response::Ok { body, x_request_id, x_cache_control } => {
                 let mut r = runtime::new_response(200);
-                if let Some(h) = runtime::encode_header(&x_request_id, false)? {
+                if let Some(h) = runtime::encode_header(
+                    &x_request_id,
+                    runtime::Enc::SIMPLE,
+                )? {
                     runtime::Message::set_header(&mut r, "X-Request-ID", h)?;
                 }
-                if let Some(h) = runtime::encode_header(&x_cache_control, false)? {
+                if let Some(h) = runtime::encode_header(
+                    &x_cache_control,
+                    runtime::Enc::SIMPLE,
+                )? {
                     runtime::Message::set_header(&mut r, "X-Cache-Control", h)?;
                 }
                 match body {
@@ -2026,7 +2077,10 @@ fn upload_image_encode(
             }
             ops::upload_image::Response::BadRequest { body, x_request_id } => {
                 let mut r = runtime::new_response(400);
-                if let Some(h) = runtime::encode_header(&x_request_id, false)? {
+                if let Some(h) = runtime::encode_header(
+                    &x_request_id,
+                    runtime::Enc::SIMPLE,
+                )? {
                     runtime::Message::set_header(&mut r, "X-Request-ID", h)?;
                 }
                 match body {
@@ -2136,7 +2190,7 @@ fn stream_product_events_encode(
     let ops::stream_product_events::Response::Ok { body, x_request_id } = resp;
     Ok({
         let mut r = runtime::new_response(200);
-        if let Some(h) = runtime::encode_header(&x_request_id, false)? {
+        if let Some(h) = runtime::encode_header(&x_request_id, runtime::Enc::SIMPLE)? {
             runtime::Message::set_header(&mut r, "X-Request-ID", h)?;
         }
         match body {
@@ -2292,7 +2346,10 @@ fn upload_photos_encode(
         match resp {
             ops::upload_photos::Response::Accepted { body, x_request_id } => {
                 let mut r = runtime::new_response(202);
-                if let Some(h) = runtime::encode_header(&x_request_id, false)? {
+                if let Some(h) = runtime::encode_header(
+                    &x_request_id,
+                    runtime::Enc::SIMPLE,
+                )? {
                     runtime::Message::set_header(&mut r, "X-Request-ID", h)?;
                 }
                 runtime::Message::set_body(
@@ -2304,7 +2361,10 @@ fn upload_photos_encode(
             }
             ops::upload_photos::Response::BadRequest { body, x_request_id } => {
                 let mut r = runtime::new_response(400);
-                if let Some(h) = runtime::encode_header(&x_request_id, false)? {
+                if let Some(h) = runtime::encode_header(
+                    &x_request_id,
+                    runtime::Enc::SIMPLE,
+                )? {
                     runtime::Message::set_header(&mut r, "X-Request-ID", h)?;
                 }
                 match body {
@@ -2527,13 +2587,22 @@ fn create_user_encode(
                 x_processing_time,
             } => {
                 let mut r = runtime::new_response(201);
-                if let Some(h) = runtime::encode_header(&x_request_id, false)? {
+                if let Some(h) = runtime::encode_header(
+                    &x_request_id,
+                    runtime::Enc::SIMPLE,
+                )? {
                     runtime::Message::set_header(&mut r, "X-Request-ID", h)?;
                 }
-                if let Some(h) = runtime::encode_header(&location, false)? {
+                if let Some(h) = runtime::encode_header(
+                    &location,
+                    runtime::Enc::SIMPLE,
+                )? {
                     runtime::Message::set_header(&mut r, "Location", h)?;
                 }
-                if let Some(h) = runtime::encode_header(&x_processing_time, false)? {
+                if let Some(h) = runtime::encode_header(
+                    &x_processing_time,
+                    runtime::Enc::SIMPLE,
+                )? {
                     runtime::Message::set_header(&mut r, "X-Processing-Time", h)?;
                 }
                 match media {
@@ -2556,7 +2625,10 @@ fn create_user_encode(
             }
             ops::create_user::Response::BadRequest { body, x_request_id } => {
                 let mut r = runtime::new_response(400);
-                if let Some(h) = runtime::encode_header(&x_request_id, false)? {
+                if let Some(h) = runtime::encode_header(
+                    &x_request_id,
+                    runtime::Enc::SIMPLE,
+                )? {
                     runtime::Message::set_header(&mut r, "X-Request-ID", h)?;
                 }
                 match body {
@@ -2734,19 +2806,28 @@ fn get_token_encode(
                 x_rate_limit_reset,
             } => {
                 let mut r = runtime::new_response(201);
-                if let Some(h) = runtime::encode_header(&x_request_id, false)? {
+                if let Some(h) = runtime::encode_header(
+                    &x_request_id,
+                    runtime::Enc::SIMPLE,
+                )? {
                     runtime::Message::set_header(&mut r, "X-Request-ID", h)?;
                 }
-                if let Some(h) = runtime::encode_header(&x_rate_limit_limit, false)? {
+                if let Some(h) = runtime::encode_header(
+                    &x_rate_limit_limit,
+                    runtime::Enc::SIMPLE,
+                )? {
                     runtime::Message::set_header(&mut r, "X-RateLimit-Limit", h)?;
                 }
                 if let Some(h) = runtime::encode_header(
                     &x_rate_limit_remaining,
-                    false,
+                    runtime::Enc::SIMPLE,
                 )? {
                     runtime::Message::set_header(&mut r, "X-RateLimit-Remaining", h)?;
                 }
-                if let Some(h) = runtime::encode_header(&x_rate_limit_reset, false)? {
+                if let Some(h) = runtime::encode_header(
+                    &x_rate_limit_reset,
+                    runtime::Enc::SIMPLE,
+                )? {
                     runtime::Message::set_header(&mut r, "X-RateLimit-Reset", h)?;
                 }
                 match media {
@@ -2769,7 +2850,10 @@ fn get_token_encode(
             }
             ops::get_token::Response::BadRequest { body, x_request_id } => {
                 let mut r = runtime::new_response(400);
-                if let Some(h) = runtime::encode_header(&x_request_id, false)? {
+                if let Some(h) = runtime::encode_header(
+                    &x_request_id,
+                    runtime::Enc::SIMPLE,
+                )? {
                     runtime::Message::set_header(&mut r, "X-Request-ID", h)?;
                 }
                 match body {
@@ -2839,22 +2923,34 @@ fn get_token_encode(
                 retry_after,
             } => {
                 let mut r = runtime::new_response(429);
-                if let Some(h) = runtime::encode_header(&x_request_id, false)? {
+                if let Some(h) = runtime::encode_header(
+                    &x_request_id,
+                    runtime::Enc::SIMPLE,
+                )? {
                     runtime::Message::set_header(&mut r, "X-Request-ID", h)?;
                 }
-                if let Some(h) = runtime::encode_header(&x_rate_limit_limit, false)? {
+                if let Some(h) = runtime::encode_header(
+                    &x_rate_limit_limit,
+                    runtime::Enc::SIMPLE,
+                )? {
                     runtime::Message::set_header(&mut r, "X-RateLimit-Limit", h)?;
                 }
                 if let Some(h) = runtime::encode_header(
                     &x_rate_limit_remaining,
-                    false,
+                    runtime::Enc::SIMPLE,
                 )? {
                     runtime::Message::set_header(&mut r, "X-RateLimit-Remaining", h)?;
                 }
-                if let Some(h) = runtime::encode_header(&x_rate_limit_reset, false)? {
+                if let Some(h) = runtime::encode_header(
+                    &x_rate_limit_reset,
+                    runtime::Enc::SIMPLE,
+                )? {
                     runtime::Message::set_header(&mut r, "X-RateLimit-Reset", h)?;
                 }
-                if let Some(h) = runtime::encode_header(&retry_after, false)? {
+                if let Some(h) = runtime::encode_header(
+                    &retry_after,
+                    runtime::Enc::SIMPLE,
+                )? {
                     runtime::Message::set_header(&mut r, "Retry-After", h)?;
                 }
                 match body {
@@ -2973,16 +3069,25 @@ fn get_me_encode(
                 x_cache_control,
             } => {
                 let mut r = runtime::new_response(200);
-                if let Some(h) = runtime::encode_header(&x_request_id, false)? {
+                if let Some(h) = runtime::encode_header(
+                    &x_request_id,
+                    runtime::Enc::SIMPLE,
+                )? {
                     runtime::Message::set_header(&mut r, "X-Request-ID", h)?;
                 }
-                if let Some(h) = runtime::encode_header(&e_tag, false)? {
+                if let Some(h) = runtime::encode_header(&e_tag, runtime::Enc::SIMPLE)? {
                     runtime::Message::set_header(&mut r, "ETag", h)?;
                 }
-                if let Some(h) = runtime::encode_header(&last_modified, false)? {
+                if let Some(h) = runtime::encode_header(
+                    &last_modified,
+                    runtime::Enc::SIMPLE,
+                )? {
                     runtime::Message::set_header(&mut r, "Last-Modified", h)?;
                 }
-                if let Some(h) = runtime::encode_header(&x_cache_control, false)? {
+                if let Some(h) = runtime::encode_header(
+                    &x_cache_control,
+                    runtime::Enc::SIMPLE,
+                )? {
                     runtime::Message::set_header(&mut r, "X-Cache-Control", h)?;
                 }
                 match media {

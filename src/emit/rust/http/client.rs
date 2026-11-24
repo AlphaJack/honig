@@ -526,8 +526,8 @@ fn take_params(op: &Operation, p: &proc_macro2::Ident) -> Option<TokenStream> {
 /// Returns headers, cookies and the request body.
 pub(crate) fn client_headers_and_body(op: &Operation, m: &TokenStream, bx: &Boxing) -> TokenStream {
     let headers = op.params.iter().filter(|p| p.location == Location::Header).map(|p| {
-        let (v, explode, wire) = (value_expr(p), p.explode, lit(&p.wire));
-        quote!(if let Some(h) = runtime::encode_header(&#v, #explode)? { runtime::Message::set_header(&mut req, #wire, h)?; })
+        let (v, e, wire) = (value_expr(p), param_enc(p), lit(&p.wire));
+        quote!(if let Some(h) = runtime::encode_header(&#v, #e)? { runtime::Message::set_header(&mut req, #wire, h)?; })
     });
     let cookie_params: Vec<&Param> = op.params.iter().filter(|p| p.location == Location::Cookie).collect();
     let cookies = (!cookie_params.is_empty()).then(|| {
@@ -546,9 +546,9 @@ pub(crate) fn client_headers_and_body(op: &Operation, m: &TokenStream, bx: &Boxi
     // Part headers are encoded before the body moves out of `p`.
     let parts = has_parts.then(|| {
         let each = part_params.iter().map(|p| {
-            let (v, explode, wire) = (value_expr(p), p.explode, lit(&p.wire));
+            let (v, e, wire) = (value_expr(p), param_enc(p), lit(&p.wire));
             let part = lit(p.part.as_deref().unwrap_or_default());
-            quote!(if let Some(h) = runtime::encode_header(&#v, #explode)? { parts.push((#part, #wire, h)); })
+            quote!(if let Some(h) = runtime::encode_header(&#v, #e)? { parts.push((#part, #wire, h)); })
         });
         quote! {
             let mut parts: Vec<(&str, &str, String)> = Vec::new();
@@ -703,7 +703,7 @@ fn response_arm(
                     quote!(runtime::linkset_header(runtime::joined_header(&head.headers, #wire).as_deref()))
                 } else {
                     let explode = h.explode;
-                    quote!(runtime::decode_header(runtime::joined_header(&head.headers, #wire).as_deref(), #at, #s, #explode).map_err(#failed)?)
+                    quote!(runtime::decode_header(runtime::joined_header(&head.headers, #wire).as_deref(), #at, runtime::Style::Simple, #s, #explode).map_err(#failed)?)
                 };
                 // A library type has the text of its format checked first, as in a request.
                 let checked = crate::emit::rust::http::codec::validated_map(space, &h.ty);

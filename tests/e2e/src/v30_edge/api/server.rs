@@ -417,7 +417,10 @@ fn list_orders_encode(
         match resp {
             ops::list_orders::Response::Ok { body, x_next_cursor } => {
                 let mut r = runtime::new_response(200);
-                if let Some(h) = runtime::encode_header(&x_next_cursor, false)? {
+                if let Some(h) = runtime::encode_header(
+                    &x_next_cursor,
+                    runtime::Enc::SIMPLE,
+                )? {
                     runtime::Message::set_header(&mut r, "X-Next-Cursor", h)?;
                 }
                 runtime::Message::set_body(
@@ -592,7 +595,10 @@ fn get_order_encode(
         match resp {
             ops::get_order::Response::Ok { body, x_request_id } => {
                 let mut r = runtime::new_response(200);
-                if let Some(h) = runtime::encode_header(&x_request_id, false)? {
+                if let Some(h) = runtime::encode_header(
+                    &x_request_id,
+                    runtime::Enc::SIMPLE,
+                )? {
                     runtime::Message::set_header(&mut r, "X-Request-Id", h)?;
                 }
                 runtime::Message::set_body(
