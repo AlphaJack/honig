@@ -206,6 +206,19 @@ pub(crate) const PATHS: &[Path] = &[
         },
     },
     Path {
+        name: "json_encode_extra",
+        prepare: |size| {
+            // The extra map of a generated struct: each key is checked against the keys written before it.
+            let extra: BTreeMap<String, u32> = (0..size / UNKNOWN_BYTES).map(|i| (format!("k{i:08}"), 1)).collect();
+            let encode = |m: &BTreeMap<String, u32>| {
+                let mut out = Vec::new();
+                m.serialize(runtime::UniqueKeys(&mut serde_json::Serializer::new(&mut out))).ok();
+                out
+            };
+            (size, on(extra, encode))
+        },
+    },
+    Path {
         name: "json_encode",
         prepare: |size| {
             let order = order(size);

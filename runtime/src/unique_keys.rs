@@ -14,7 +14,7 @@ pub struct UniqueKeys<S>(pub S);
 #[derive(Debug)]
 pub struct Keys<M> {
     map: M,
-    seen: Vec<String>,
+    seen: std::collections::BTreeSet<String>,
     /// The value of the last key is skipped: the key came before.
     skip: bool,
 }
@@ -25,11 +25,10 @@ impl<M: SerializeMap> SerializeMap for Keys<M> {
 
     fn serialize_key<T: Serialize + ?Sized>(&mut self, key: &T) -> Result<(), Self::Error> {
         let name = key.serialize(KeyText).map_err(M::Error::custom)?;
-        self.skip = self.seen.contains(&name);
+        self.skip = !self.seen.insert(name);
         if self.skip {
             return Ok(());
         }
-        self.seen.push(name);
         self.map.serialize_key(key)
     }
 
@@ -176,7 +175,7 @@ impl<S: Serializer> Serializer for UniqueKeys<S> {
     /// A struct with a flattened map encodes as a map.
     fn serialize_map(self, len: Option<usize>) -> Result<Self::SerializeMap, S::Error> {
         let Self(inner) = self;
-        Ok(Keys { map: inner.serialize_map(len)?, seen: Vec::new(), skip: false })
+        Ok(Keys { map: inner.serialize_map(len)?, seen: std::collections::BTreeSet::new(), skip: false })
     }
 
     forward!(
