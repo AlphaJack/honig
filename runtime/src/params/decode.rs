@@ -230,18 +230,22 @@ pub fn empty_value(v: Option<Value>, flag: bool, text: bool) -> Option<Value> {
 }
 
 /// Parses the whole query string (3.2 `in: querystring`).
-pub fn decode_querystring(raw_query: &str, form: bool) -> Option<Value> {
+///
+/// # Errors
+/// A JSON query string does not parse.
+pub fn decode_querystring(raw_query: &str, at: &str, form: bool) -> Result<Option<Value>, Reason> {
     if raw_query.is_empty() {
-        return None;
+        return Ok(None);
     }
     if form {
         let mut o = Map::new();
         for (k, v) in parse_query(raw_query) {
             push_multi(&mut o, k.into_owned(), Value::String(v.into_owned()));
         }
-        Some(Value::Object(o))
+        Ok(Some(Value::Object(o)))
     } else {
-        serde_json::from_str(&pct_decode(raw_query)?).ok()
+        let text = pct_decode(raw_query).ok_or_else(|| malformed(at))?;
+        serde_json::from_str(&text).map(Some).map_err(|e| Reason::invalid(at, e.to_string()))
     }
 }
 
@@ -522,6 +526,13 @@ pub fn from_json_param<T: DeserializeOwned>(v: Option<Value>, at: &str) -> Resul
 mod tests {
     use super::{Shape, Style, decode_path};
     use serde_json::json;
+
+    /// A JSON query string that does not parse is an error at its pointer, not an absent parameter.
+    #[test]
+    fn a_json_query_string_that_does_not_parse_is_refused() {
+        assert!(super::decode_querystring("%7B", "/querystring/q", false).is_err());
+        assert_eq!(super::decode_querystring("%7B%7D", "/querystring/q", false), Ok(Some(json!({}))));
+    }
 
     #[cfg(feature = "cookie")]
     #[test]

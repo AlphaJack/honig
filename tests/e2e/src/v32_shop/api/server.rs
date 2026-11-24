@@ -977,7 +977,7 @@ fn search_products_params(
     let runtime::Incoming { raw_query, .. } = *incoming;
     Ok(ops::search_products::Params {
         filter: runtime::from_param(
-            runtime::decode_querystring(raw_query, false),
+            runtime::decode_querystring(raw_query, "/query/filter", false)?,
             "/query/filter",
         )?,
     })

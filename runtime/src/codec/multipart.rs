@@ -302,7 +302,7 @@ impl Part {
 /// parse the body of such a part as its headers. Errors: the body is not `form-data` with this boundary.
 pub(super) fn parts(body: &[u8], boundary: &str, form: bool) -> Result<Vec<Part>, String> {
     let mut parts =
-        if form { form_parts(body, boundary).map_err(|e| e.to_string())? } else { positional_parts(body, boundary) };
+        if form { form_parts(body, boundary).map_err(|e| e.to_string())? } else { positional_parts(body, boundary)? };
     for part in &mut parts {
         transfer_decode(part)?;
     }
@@ -351,7 +351,7 @@ fn quoted_printable(data: &[u8]) -> Vec<u8> {
 }
 
 /// Returns the parts between each `--boundary` line and the next up to the closing `--boundary--`.
-fn positional_parts(body: &[u8], boundary: &str) -> Vec<Part> {
+fn positional_parts(body: &[u8], boundary: &str) -> Result<Vec<Part>, String> {
     let delim = ["--", boundary].concat();
     // A delimiter starts the body or a line (RFC 2046 section 5.1.1).
     let starts: Vec<usize> = memchr::memmem::find_iter(body, delim.as_bytes())
@@ -375,7 +375,8 @@ fn positional_parts(body: &[u8], boundary: &str) -> Vec<Part> {
                 None => (chunk, &b""[..]),
             },
         };
-        let headers: Vec<(String, String)> = String::from_utf8_lossy(head)
+        let headers: Vec<(String, String)> = std::str::from_utf8(head)
+            .map_err(|e| format!("the headers of a part are not UTF-8: {e}"))?
             .lines()
             .filter_map(|l| l.split_once(':'))
             .map(|(k, v)| (k.trim().to_ascii_lowercase(), v.trim().to_owned()))
@@ -386,7 +387,7 @@ fn positional_parts(body: &[u8], boundary: &str) -> Vec<Part> {
         let (name, filename) = (param("name="), param("filename="));
         out.push(Part { headers, name, filename, data: Bytes::copy_from_slice(data) });
     }
-    out
+    Ok(out)
 }
 
 /// Returns the parts of a `multipart/form-data` body. `multer` parses them from a body already in memory.

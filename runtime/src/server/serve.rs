@@ -274,6 +274,9 @@ pub async fn serve<C, Id: Operation>(
         event.fail(&reason);
         config.reject(op.errors, Some(operation), reason, headers)
     };
+    if let Err(reason) = crate::params::check_query(raw_query) {
+        return fail(request.headers().clone(), reason);
+    }
     // 406 before the body is consumed: no answer the client accepts is worth receiving it for.
     let media = if op.produces.is_empty() {
         0

@@ -18,6 +18,19 @@ pub fn parse_query(q: &str) -> Vec<(Cow<'_, str>, Cow<'_, str>)> {
     form_urlencoded::parse(q.as_bytes()).collect()
 }
 
+/// Fails when a name or value of the query string `q` does not decode to UTF-8: [`parse_query`] would replace it.
+///
+/// # Errors
+/// A name or value is not UTF-8 once percent-decoded.
+pub fn check_query(q: &str) -> Result<(), crate::Reason> {
+    let text = |s: &str| percent_encoding::percent_decode_str(s).decode_utf8().is_ok();
+    if q.split(['&', '=']).all(text) {
+        Ok(())
+    } else {
+        Err(crate::Reason::invalid("/query", "is not UTF-8 once decoded"))
+    }
+}
+
 /// Decoded query pairs. They are borrowed from the target unless decoding changed them.
 pub type Query<'a> = [(Cow<'a, str>, Cow<'a, str>)];
 

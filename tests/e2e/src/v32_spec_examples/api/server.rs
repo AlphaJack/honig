@@ -595,7 +595,7 @@ fn querystring_form_params(
     let runtime::Incoming { raw_query, .. } = *incoming;
     Ok(ops::querystring_form::Params {
         metadata: runtime::from_param(
-            runtime::decode_querystring(raw_query, true),
+            runtime::decode_querystring(raw_query, "/query/metadata", true)?,
             "/query/metadata",
         )?,
     })
@@ -630,7 +630,7 @@ fn querystring_json_params(
     let runtime::Incoming { raw_query, .. } = *incoming;
     Ok(ops::querystring_json::Params {
         json: runtime::from_param(
-            runtime::decode_querystring(raw_query, false),
+            runtime::decode_querystring(raw_query, "/query/json", false)?,
             "/query/json",
         )?,
     })
@@ -1048,7 +1048,7 @@ fn querystring_jsonpath_params(
     let runtime::Incoming { raw_query, .. } = *incoming;
     Ok(ops::querystring_jsonpath::Params {
         selector: runtime::from_param(
-            runtime::decode_querystring(raw_query, false),
+            runtime::decode_querystring(raw_query, "/query/selector", false)?,
             "/query/selector",
         )?,
     })

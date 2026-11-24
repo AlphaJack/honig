@@ -117,7 +117,7 @@ pub(crate) fn param_source(
         Location::Query => quote!(runtime::decode_query(query, #wire, #at, #s, #shape, #explode)?),
         Location::QueryString => {
             let form = p.content == Some(MediaKind::Form);
-            quote!(runtime::decode_querystring(raw_query, #form))
+            quote!(runtime::decode_querystring(raw_query, #at, #form)?)
         }
         Location::Header => {
             quote!(runtime::decode_header(runtime::joined_header(req.headers(), #wire).as_deref(), #at, #shape, #explode)?)
