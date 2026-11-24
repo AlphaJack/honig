@@ -23,6 +23,12 @@ CARGO_BUILD_WARNINGS=deny cargo hack clippy -p honig --each-feature --all-target
 cargo hack nextest run -p honig --each-feature
 ```
 
+## Hostile input
+
+A path of [paths.rs](runtime/benches/support/paths.rs) gets the worst input that its grammar allows, not a typical body: a repeat, no match, the separator in every place, the deepest nesting. The scaling bench then fails it when its cost grows faster than its input. A `perf` or `fix` of a slow path adds the path that fails on `main` before the change.
+
+A decoder that recurses as its input nests joins [depth.rs](runtime/tests/depth.rs): an input nested past any limit must return on a small stack.
+
 ## Pull requests
 
 The title is a conventional commit such as `feat(generator): add typed links`. Its subject starts with an imperative verb. [pr-title.yml](.github/workflows/pr-title.yml) checks it.
