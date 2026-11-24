@@ -449,6 +449,23 @@ fn links_name_parameters(b: &mut Builder<'_>, ops: &[Operation]) {
                     LinkTarget::Id(id) => t.operation_id.as_deref() == Some(id.as_str()),
                     LinkTarget::Pointer(ptr) => t.pointer == *ptr,
                 });
+                let at = join(&join(&join(&join(&op.pointer, "responses"), &code), "links"), &link.name);
+                // A `$response.body#/...` that reaches no property of the body would always be absent.
+                let body = resp.contents.iter().find(|c| c.kind == MediaKind::Json).map(|c| &c.ty);
+                let exprs = link.params.iter().map(|(k, v)| (join(&join(&at, "parameters"), k), v));
+                for (ptr, v) in exprs.chain(link.request_body.iter().map(|v| (join(&at, "requestBody"), v))) {
+                    let text = v.as_str().unwrap_or_default();
+                    for (_, rest) in text.match_indices("$response.body#").map(|(i, _)| text.split_at(i)) {
+                        let pointer = rest.trim_start_matches("$response.body#").split('}').next().unwrap_or_default();
+                        let tokens: Vec<String> = pointer.split('/').skip(1).map(json::unescape_token).collect();
+                        if body.is_some_and(|t| !b.pointer_reaches(t, &tokens)) {
+                            b.diags.warning(
+                                &ptr,
+                                format!("`$response.body#{pointer}` reaches no property of the response body: the value is always absent"),
+                            );
+                        }
+                    }
+                }
                 let Some(target) = target else { continue };
                 for (key, _) in &link.params {
                     let has = target
@@ -456,7 +473,6 @@ fn links_name_parameters(b: &mut Builder<'_>, ops: &[Operation]) {
                         .iter()
                         .any(|p| p.wire == *key || format!("{}.{}", place(&p.location), p.wire) == *key);
                     if !has {
-                        let at = join(&join(&join(&join(&op.pointer, "responses"), &code), "links"), &link.name);
                         b.diags.error(
                             join(&join(&at, "parameters"), key),
                             format!(

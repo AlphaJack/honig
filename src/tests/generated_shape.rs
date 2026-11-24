@@ -2041,25 +2041,27 @@ fn binary_data_turns_on_base64() {
     }
 }
 
-/// Two unwrapped XML lists whose items share an element name cannot be told apart: each is wrapped. One alone is not.
+/// Two unwrapped XML lists whose items share an element name write their items side by side, and neither reads back
+/// its own: a warning at the second. One alone, or one wrapped, needs none.
 #[test]
-fn xml_lists_of_one_item_name_are_wrapped() {
-    let list = json!({"type": "array", "items": {"type": "string", "xml": {"name": "item"}}});
-    let fields = |props: serde_json::Value| {
+fn xml_lists_of_one_item_name_are_a_warning() {
+    let list = |wrapped: bool| json!({"type": "array", "xml": {"wrapped": wrapped}, "items": {"type": "string", "xml": {"name": "item"}}});
+    let made = |props: serde_json::Value| {
         let doc = common::spec(
             "3.1.0",
             &json!({"/b": {"get": {"operationId": "b", "responses": {"200": {"description": "ok",
                 "content": {"application/xml": {"schema": {"$ref": "#/components/schemas/Bag"}}}}}}}}),
             &json!({"schemas": {"Bag": {"type": "object", "properties": props}}}),
         );
-        let types =
-            common::file(&common::generate("shape-xml-wrap", &doc, &crate::emit::Options::default()), "types.rs")
-                .split_whitespace()
-                .collect::<String>();
-        types.matches("wrapped:true").count()
+        crate::generate::generate(&common::write("shape-xml-wrap", &doc, &[]), &crate::emit::Options::default())
     };
-    assert_eq!(fields(json!({"a": list, "b": list})), 2);
-    assert_eq!(fields(json!({"a": list})), 0);
+    let warned = |props: serde_json::Value| {
+        let made = made(props).expect("a valid description generates");
+        made.diagnostics.iter().any(|d| d.pointer == "/components/schemas/Bag/properties/b")
+    };
+    assert!(warned(json!({"a": list(false), "b": list(false)})), "one item name");
+    assert!(!warned(json!({"a": list(false)})), "one list");
+    assert!(!warned(json!({"a": list(false), "b": list(true)})), "one wrapped");
 }
 
 /// `Content-Type`, `Accept` and `Authorization` headers belong to the runtime: such a header parameter is left out. A

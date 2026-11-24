@@ -355,17 +355,11 @@ fn xml_shape(space: &Space<'_>, def: &TypeDef, s: &Struct) -> TokenStream {
     let name = lit(def.xml.name.as_deref().unwrap_or(&pascal(&def.name)));
     let namespace = lit(def.xml.namespace.as_deref().unwrap_or(""));
     let prefix = lit(def.xml.prefix.as_deref().unwrap_or(""));
-    // Unwrapped arrays whose items share an element name cannot be told
-    // apart on the wire: those are wrapped in their property element.
-    let item_of = |f: &Field| f.xml.item.clone().or_else(|| f.xml.name.clone()).unwrap_or_else(|| f.wire.clone());
-    let unwrapped: Vec<String> =
-        s.fields.iter().filter(|f| xml_inner(space, &f.ty).1 && !f.xml.wrapped).map(item_of).collect();
-    let ambiguous = |f: &Field| unwrapped.iter().filter(|n| **n == item_of(f)).count() > 1;
     let fields = s.fields.iter().map(|f| {
         let (inner, list) = xml_inner(space, &f.ty);
         let elem = f.xml.name.as_deref().unwrap_or(&f.wire);
         let item = f.xml.item.as_deref().unwrap_or(elem);
-        let wrapped = list && (f.xml.wrapped || ambiguous(f));
+        let wrapped = list && f.xml.wrapped;
         let (attribute, text, required) = (f.xml.attribute, f.xml.text, f.required);
         // `nodeType: none` on an array means no wrapper (an unwrapped list):
         // only an object's fields sit inline in the parent.

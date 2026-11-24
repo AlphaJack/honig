@@ -73,13 +73,11 @@ impl Builder<'_> {
                 });
             }
         }
-        let names = unique_sorted(
-            fields.iter().map(|f| (f.name.clone(), (f.wire.len(), f.wire.clone()))).collect(),
-            &mut taken,
-        );
-        for (f, n) in fields.iter_mut().zip(names) {
+        let wires = fields.iter().map(|f| (f.name.clone(), (f.wire.len(), f.wire.clone()))).collect();
+        for (f, n) in fields.iter_mut().zip(unique_sorted(wires, &mut taken)) {
             f.name = n;
         }
+        self.warn_xml_item_collisions(&fields, ptr);
         // Unknown keys of an open object land in `extra`. So a proxy or a
         // load-modify-store cycle keeps them.
         let additional = match o.get("additionalProperties") {
@@ -1011,6 +1009,72 @@ impl Builder<'_> {
                 join(ptr, "default"),
                 format!("the default `{d}` is no string, number or boolean: the field has none"),
             );
+        }
+    }
+}
+
+impl Builder<'_> {
+    /// Does the JSON pointer `tokens` (unescaped) reach a value of `ty`? A property must be declared, an index must be
+    /// one of an array. A map, an untyped value, a union or a type still being built may hold anything.
+    pub(crate) fn pointer_reaches(&self, ty: &Ty, tokens: &[String]) -> bool {
+        let Some((first, rest)) = tokens.split_first() else { return true };
+        match self.unaliased(ty) {
+            Ty::Named(id) => match &self.defs[id.0].kind {
+                Kind::Struct(s) => s.fields.iter().find(|f| f.wire == *first).map_or_else(
+                    || s.additional.is_some() || !s.patterns.is_empty(),
+                    |f| self.pointer_reaches(&f.ty, rest),
+                ),
+                Kind::Alias(t) => self.pointer_reaches(t, tokens),
+                Kind::Union(_) | Kind::Pending | Kind::Newtype(_) => true,
+                Kind::StrEnum(_) | Kind::IntEnum(_) | Kind::Const(_) | Kind::Checked(_) => false,
+            },
+            Ty::Vec(t) | Ty::Array(t, _) => first.parse::<usize>().is_ok() && self.pointer_reaches(t, rest),
+            Ty::Option(t) | Ty::Indirect(t) => self.pointer_reaches(t, tokens),
+            Ty::Map(_) | Ty::Any => true,
+            Ty::Tuple(items) => {
+                first.parse::<usize>().ok().and_then(|i| items.get(i)).is_some_and(|t| self.pointer_reaches(t, rest))
+            }
+            Ty::Bool
+            | Ty::I8
+            | Ty::I16
+            | Ty::I32
+            | Ty::I64
+            | Ty::U8
+            | Ty::U16
+            | Ty::U32
+            | Ty::U64
+            | Ty::F32
+            | Ty::F64
+            | Ty::Decimal
+            | Ty::String
+            | Ty::Bytes
+            | Ty::Binary
+            | Ty::Format(_)
+            | Ty::Unit => false,
+        }
+    }
+
+    /// Warns about two unwrapped XML arrays of `fields` with one item name: their items are written side by side, and
+    /// neither reads back its own.
+    fn warn_xml_item_collisions(&mut self, fields: &[Field], ptr: &str) {
+        let mut items: BTreeMap<String, &str> = BTreeMap::new();
+        let lists: Vec<&Field> =
+            fields.iter().filter(|f| matches!(self.unaliased(f.ty.non_null()), Ty::Vec(_))).collect();
+        for f in lists {
+            if f.xml.wrapped || f.xml.attribute {
+                continue;
+            }
+            let item = f.xml.item.clone().or_else(|| f.xml.name.clone()).unwrap_or_else(|| f.wire.clone());
+            if let Some(first) = items.insert(item.clone(), &f.wire) {
+                self.diags.warning(
+                    join(&join(ptr, "properties"), &f.wire),
+                    format!(
+                        "`{first}` and `{}` are unwrapped XML arrays whose items are both `<{item}>`, and neither \
+                         reads back its own: set `xml.wrapped` on one or rename its items",
+                        f.wire
+                    ),
+                );
+            }
         }
     }
 }
