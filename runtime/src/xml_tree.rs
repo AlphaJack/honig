@@ -114,7 +114,7 @@ pub fn xml_encode<T: Serialize + XmlShape>(v: &T) -> Result<Vec<u8>, ClientError
 /// Returns a form field sent as `application/xml`. In 3.2 "Parsing and Serializing" `extra: {info: abc}` becomes
 /// `extra=<info>abc</info>`. The properties of an object are elements. The field itself gets no element. Its name is
 /// the form key. Any other value is its escaped text.
-pub(crate) fn xml_fields(v: &Value) -> String {
+pub(crate) fn xml_fields(v: &Value) -> Result<String, ClientError> {
     encode::fields(v)
 }
 
@@ -122,8 +122,8 @@ pub(crate) fn xml_fields(v: &Value) -> String {
 /// `application/xml; charset=utf-8` in 3.2 "Multipart Form with Encoding Objects". It is one document. Its root has
 /// the name of the part.
 #[cfg(feature = "multipart")]
-pub(crate) fn xml_document(root: &str, v: &Value) -> Vec<u8> {
-    encode::document(root, v).into_bytes()
+pub(crate) fn xml_document(root: &str, v: &Value) -> Result<Vec<u8>, ClientError> {
+    encode::document(root, v).map(String::into_bytes)
 }
 
 /// Returns the reverse of [`xml_document`]. The children of the root become an object whatever the name of the root is.
