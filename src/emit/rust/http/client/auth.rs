@@ -10,7 +10,7 @@ use crate::emit::rust::names::snake;
 use crate::emit::rust::syntax::{doc_opt, lit};
 use crate::ir::Api;
 use crate::ir::names::Name;
-use crate::ir::security::SchemeKind;
+use crate::ir::security::{SchemeKind, SecurityScheme};
 
 /// Returns the setter of the credential of a scheme. It is `with_<scheme>` and unique among the methods of the client.
 pub(crate) fn setter_name(api: &Api, scheme: &str) -> proc_macro2::Ident {
@@ -62,6 +62,15 @@ pub(crate) fn credential_setters(api: &Api) -> Vec<TokenStream> {
         .collect()
 }
 
+/// Returns the `scopes` parameter of an `OAuth` helper of `s` and what it passes on: a slice of the scope enum of the
+/// scheme, or no parameter for a scheme without scopes.
+fn scopes(api: &Api, s: &SecurityScheme) -> (Option<TokenStream>, TokenStream) {
+    match crate::emit::rust::http::security::scope_enum(api, s) {
+        Some(e) => (Some(quote!(scopes: &[ops::#e],)), quote!(scopes.iter().copied().map(ops::#e::as_str))),
+        None => (None, quote!([])),
+    }
+}
+
 /// Returns `device_start_<scheme>` / `device_poll_<scheme>` for `OAuth2` device flows.
 pub(crate) fn device_methods(api: &Api) -> Vec<TokenStream> {
     api.schemes.iter().filter_map(|s| {
@@ -70,10 +79,11 @@ pub(crate) fn device_methods(api: &Api) -> Vec<TokenStream> {
         let (start, poll) = (format_ident!("device_start_{snake}"), format_ident!("device_poll_{snake}"));
         let (durl, turl, name) = (lit(device_url), lit(token_url), lit(&s.name));
         let dep = deprecated_scheme(s.deprecated);
+        let (sp, sa) = scopes(api, s);
         Some(quote! {
             #dep
-            pub async fn #start(&self, client_id: &str, scopes: &[&str]) -> Result<runtime::DeviceCode, runtime::ClientError> {
-                runtime::device_authorization(&self.transport, #durl, client_id, scopes).await
+            pub async fn #start(&self, client_id: &str, #sp) -> Result<runtime::DeviceCode, runtime::ClientError> {
+                runtime::device_authorization(&self.transport, #durl, client_id, #sa).await
             }
 
             #dep
@@ -100,12 +110,13 @@ pub(crate) fn oauth_methods(api: &Api) -> (Vec<TokenStream>, Vec<TokenStream>) {
         let name = lit(&s.name);
         let dep = deprecated_scheme(s.deprecated);
         let store = quote!(self.credentials.insert(#name.to_owned(), token.access_token.clone()););
+        let (sp, sa) = scopes(api, s);
         if let Some(url) = &s.password_url {
             let (f, url) = (format_ident!("authorize_password_{snake}"), lit(url));
             out.push(quote! {
                 #dep
-                pub async fn #f(&mut self, username: &str, password: &str, client_id: &str, client_secret: Option<&str>, scopes: &[&str]) -> Result<runtime::Token, runtime::ClientError> {
-                    let token = runtime::password_grant(&self.transport, #url, username, password, client_id, client_secret, scopes).await?;
+                pub async fn #f(&mut self, username: &str, password: &str, client_id: &str, client_secret: Option<&str>, #sp) -> Result<runtime::Token, runtime::ClientError> {
+                    let token = runtime::password_grant(&self.transport, #url, username, password, client_id, client_secret, #sa).await?;
                     #store
                     Ok(token)
                 }
@@ -117,8 +128,8 @@ pub(crate) fn oauth_methods(api: &Api) -> (Vec<TokenStream>, Vec<TokenStream>) {
             urls.push(quote! {
                 #dep
                 #[must_use]
-                pub fn #u(client_id: &str, redirect_uri: &str, scopes: &[&str], state: &str, pkce: &runtime::Pkce) -> String {
-                    runtime::authorization_url(#auth, client_id, redirect_uri, scopes, state, pkce)
+                pub fn #u(client_id: &str, redirect_uri: &str, #sp state: &str, pkce: &runtime::Pkce) -> String {
+                    runtime::authorization_url(#auth, client_id, redirect_uri, #sa, state, pkce)
                 }
             });
             out.push(quote! {
@@ -135,8 +146,8 @@ pub(crate) fn oauth_methods(api: &Api) -> (Vec<TokenStream>, Vec<TokenStream>) {
             urls.push(quote! {
                 #dep
                 #[must_use]
-                pub fn #f(client_id: &str, redirect_uri: &str, scopes: &[&str], state: &str) -> String {
-                    runtime::implicit_url(#auth, client_id, redirect_uri, scopes, state)
+                pub fn #f(client_id: &str, redirect_uri: &str, #sp state: &str) -> String {
+                    runtime::implicit_url(#auth, client_id, redirect_uri, #sa, state)
                 }
             });
         }
@@ -176,10 +187,11 @@ pub(crate) fn token_methods(api: &Api) -> Vec<TokenStream> {
         let name = lit(&s.name);
         let f = format_ident!("authorize_{}", snake(&Name::new(&s.name)));
         let dep = deprecated_scheme(s.deprecated);
+        let (sp, sa) = scopes(api, s);
         Some(quote! {
             #dep
-            pub async fn #f(mut self, client_id: &str, client_secret: &str, scopes: &[&str]) -> Result<Self, runtime::ClientError> {
-                let token = runtime::client_credentials(&self.transport, #url, client_id, client_secret, scopes).await?;
+            pub async fn #f(mut self, client_id: &str, client_secret: &str, #sp) -> Result<Self, runtime::ClientError> {
+                let token = runtime::client_credentials(&self.transport, #url, client_id, client_secret, #sa).await?;
                 self.credentials.insert(#name.to_owned(), token.access_token);
                 Ok(self)
             }

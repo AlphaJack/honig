@@ -9,6 +9,29 @@ pub const SECURITY_0: &[&[runtime::Requirement]] = &[
 pub const SECURITY_1: &[&[runtime::Requirement]] = &[
     &[(runtime::Scheme::Bearer("pat"), &["issues:write"])],
 ];
+/// A scope or role of `pat`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum PatScope {
+    IssuesRead,
+    IssuesWrite,
+}
+impl PatScope {
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::IssuesRead => "issues:read",
+            Self::IssuesWrite => "issues:write",
+        }
+    }
+    #[must_use]
+    pub fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "issues:read" => Some(Self::IssuesRead),
+            "issues:write" => Some(Self::IssuesWrite),
+            _ => None,
+        }
+    }
+}
 pub mod list_issues {
     use super::super::runtime;
     pub const METHOD: &str = "GET";

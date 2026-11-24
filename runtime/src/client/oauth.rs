@@ -50,7 +50,8 @@ async fn token_call<T: Transport>(
     answer(resp)
 }
 
-fn scope_field(scopes: &[&str]) -> Option<String> {
+fn scope_field(scopes: impl IntoIterator<Item = &'static str>) -> Option<String> {
+    let scopes: Vec<&str> = scopes.into_iter().collect();
     (!scopes.is_empty()).then(|| format!("scope={}", pct(&scopes.join(" "), false)))
 }
 
@@ -63,7 +64,7 @@ pub async fn password_grant<T: Transport>(
     password: &str,
     client_id: &str,
     client_secret: Option<&str>,
-    scopes: &[&str],
+    scopes: impl IntoIterator<Item = &'static str>,
 ) -> Result<Token, ClientError> {
     let mut fields = vec![
         "grant_type=password".to_owned(),
@@ -132,7 +133,7 @@ pub fn authorization_url(
     base: &str,
     client_id: &str,
     redirect_uri: &str,
-    scopes: &[&str],
+    scopes: impl IntoIterator<Item = &'static str>,
     state: &str,
     pkce: &Pkce,
 ) -> String {
@@ -150,7 +151,13 @@ pub fn authorization_url(
 
 /// Returns the URL of the implicit grant (RFC 6749 section 4.2): the token comes back in the fragment of the redirect.
 /// OAuth 2.1 deprecates it: prefer the code flow.
-pub fn implicit_url(base: &str, client_id: &str, redirect_uri: &str, scopes: &[&str], state: &str) -> String {
+pub fn implicit_url(
+    base: &str,
+    client_id: &str,
+    redirect_uri: &str,
+    scopes: impl IntoIterator<Item = &'static str>,
+    state: &str,
+) -> String {
     let mut q = vec![
         "response_type=token".to_owned(),
         format!("client_id={}", pct(client_id, false)),
@@ -228,12 +235,10 @@ pub async fn client_credentials<T: Transport>(
     token_url: &str,
     client_id: &str,
     client_secret: &str,
-    scopes: &[&str],
+    scopes: impl IntoIterator<Item = &'static str>,
 ) -> Result<Token, ClientError> {
     let mut form = vec!["grant_type=client_credentials".to_owned()];
-    if !scopes.is_empty() {
-        form.push(format!("scope={}", pct(&scopes.join(" "), false)));
-    }
+    form.extend(scope_field(scopes));
     let mut req = token_request(token_url, &form)?;
     req.set_header(
         "Authorization",
@@ -287,12 +292,10 @@ pub async fn device_authorization<T: Transport>(
     transport: &T,
     device_url: &str,
     client_id: &str,
-    scopes: &[&str],
+    scopes: impl IntoIterator<Item = &'static str>,
 ) -> Result<DeviceCode, ClientError> {
     let mut form = vec![format!("client_id={}", pct(client_id, false))];
-    if !scopes.is_empty() {
-        form.push(format!("scope={}", pct(&scopes.join(" "), false)));
-    }
+    form.extend(scope_field(scopes));
     let resp = crate::send(transport, token_request(device_url, &form)?).await?;
     answer(resp)
 }
@@ -371,7 +374,7 @@ mod tests {
                 "https://id.example/auth",
                 "app 1",
                 "https://app.example/cb",
-                &["read", "write"],
+                ["read", "write"],
                 "s/1",
                 &pkce
             ),
@@ -380,7 +383,7 @@ mod tests {
              &scope=read%20write"
         );
         assert_eq!(
-            authorization_url("https://id.example/auth?tenant=t", "a", "r", &[], "s", &pkce),
+            authorization_url("https://id.example/auth?tenant=t", "a", "r", [], "s", &pkce),
             "https://id.example/auth?tenant=t&response_type=code&client_id=a&redirect_uri=r&state=s\
              &code_challenge=E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM&code_challenge_method=S256",
             "a base with a query gets `&`, and no scopes means no `scope`"
@@ -425,12 +428,12 @@ mod tests {
     #[test]
     fn the_implicit_url_asks_for_a_token() {
         assert_eq!(
-            implicit_url("https://id.example/auth", "a", "https://app.example/cb", &["read"], "s"),
+            implicit_url("https://id.example/auth", "a", "https://app.example/cb", ["read"], "s"),
             "https://id.example/auth?response_type=token&client_id=a&redirect_uri=https%3A%2F%2Fapp.example%2Fcb&state=s\
              &scope=read"
         );
         assert_eq!(
-            implicit_url("https://id.example/auth?x=1", "a", "r", &[], "s"),
+            implicit_url("https://id.example/auth?x=1", "a", "r", [], "s"),
             "https://id.example/auth?x=1&response_type=token&client_id=a&redirect_uri=r&state=s"
         );
     }

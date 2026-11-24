@@ -982,18 +982,19 @@ fn variants_of<'a>(server: &'a str, name: &str) -> Vec<&'a str> {
 #[test]
 fn every_scope_and_role_is_a_variant_of_its_schemes_enum() {
     let server = squash(&server_of("scope-enum", &fine_grained()));
-    let pat = variants_of(&server, "PatScope");
-    let oauth = variants_of(&server, "OauthScope");
+    let ops = squash(&operations_of("scope-enum", &fine_grained()));
+    let pat = variants_of(&ops, "PatScope");
+    let oauth = variants_of(&ops, "OauthScope");
     assert!(pat.iter().any(|v| v.ends_with("IssuesRead")) && pat.iter().any(|v| v.ends_with("IssuesWrite")), "{pat:?}");
     assert!(!pat.iter().any(|v| v.ends_with("Repo")), "no scope of `oauth` in `PatScope`: {pat:?}");
     assert!(oauth.iter().any(|v| v.ends_with("Repo")) && oauth.iter().any(|v| v.ends_with("ReadOrg")), "{oauth:?}");
     assert!(!oauth.iter().any(|v| v.ends_with("IssuesRead")), "{oauth:?}");
-    assert!(server.contains("///Fullcontrolofrepositories"), "OAuth2 descriptions become docs");
+    assert!(ops.contains("///Fullcontrolofrepositories"), "OAuth2 descriptions become docs");
     for (name, v) in [("issues:read", "IssuesRead"), ("issues:write", "IssuesWrite"), ("read:org", "ReadOrg")] {
-        assert!(server.contains(&format!("Self::{v}=>\"{name}\"")), "{v} as_str");
-        assert!(server.contains(&format!("\"{name}\"=>Some(Self::{v})")), "{v} from_name");
+        assert!(ops.contains(&format!("Self::{v}=>\"{name}\"")), "{v} as_str");
+        assert!(ops.contains(&format!("\"{name}\"=>Some(Self::{v})")), "{v} from_name");
     }
-    assert!(!server.contains("pubenumScope{"), "no enum that merges the schemes");
+    assert!(!ops.contains("pubenumScope{"), "no enum that merges the schemes");
     assert!(server.contains("Option<runtime::Granted<Self::Principal,PatScope>>"), "verify_pat grants `PatScope`");
     assert!(
         server.contains("Option<runtime::Granted<Self::Principal,OauthScope>>"),

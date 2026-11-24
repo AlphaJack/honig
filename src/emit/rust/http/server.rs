@@ -144,7 +144,8 @@ pub(crate) fn server(api: &Api, space: &Space<'_>, allow_unimplemented: bool) ->
     let filled = all_filled(api, space);
     let router = router(api);
     let credential = credential_enum(api);
-    let scope = scope_enums(api);
+    let scope = api.schemes.iter().filter_map(|s| super::security::scope_enum(api, s)).collect::<Vec<_>>();
+    let scope = (!scope.is_empty()).then(|| quote!(pub use super::operations::{#(#scope),*};));
     let error_schemas = error_schema_fn(api, space);
     let sec = Securities::new(api);
     let ops = api.http.operations.iter().map(|op| server_op(space, api, &sec, op));

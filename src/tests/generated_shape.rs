@@ -234,6 +234,23 @@ fn a_default_status_leaves_out_the_declared_codes() {
     assert!(!statuses.contains("Ok =") && !statuses.contains("NotFound ="), "{statuses}");
 }
 
+/// An `OAuth` helper of the client takes the scope enum of its scheme: a scope that the description does not list does
+/// not compile.
+#[test]
+fn an_oauth_helper_takes_the_scopes_of_its_scheme() {
+    let flows = json!({"clientCredentials": {"tokenUrl": "https://id.example/token", "scopes": {"read": "r"}}});
+    let doc = common::spec(
+        "3.2.0",
+        &json!({"/a": {"get": {"operationId": "a", "security": [{"app": ["read"]}],
+            "responses": {"204": {"description": "ok"}}}}}),
+        &json!({"securitySchemes": {"app": {"type": "oauth2", "flows": flows}}}),
+    );
+    let client = common::file(&common::generate("oauth-scopes", &doc, &crate::emit::Options::default()), "client.rs")
+        .split_whitespace()
+        .collect::<String>();
+    assert!(client.contains("client_secret:&str,scopes:&[ops::AppScope],"), "{client}");
+}
+
 /// Every `Params` has `new` accepting what is required; `Default` only when that is nothing.
 #[test]
 fn params_always_have_new_and_default_only_without_arguments() {

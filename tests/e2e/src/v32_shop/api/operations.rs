@@ -42,6 +42,35 @@ pub const SECURITY_1: &[&[runtime::Requirement]] = &[
         (runtime::Scheme::ApiKey("apiKeyQuery", runtime::KeyIn::Query, "api_key"), &[]),
     ],
 ];
+/// A scope or role of `oAuth2`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum OAuth2Scope {
+    /// read your account information
+    ReadAccount,
+    /// read your products
+    ReadProducts,
+    /// modify products in your account
+    WriteProducts,
+}
+impl OAuth2Scope {
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::ReadAccount => "read:account",
+            Self::ReadProducts => "read:products",
+            Self::WriteProducts => "write:products",
+        }
+    }
+    #[must_use]
+    pub fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "read:account" => Some(Self::ReadAccount),
+            "read:products" => Some(Self::ReadProducts),
+            "write:products" => Some(Self::WriteProducts),
+            _ => None,
+        }
+    }
+}
 /// Retrieve every product in the catalog, a page at a time.
 pub mod get_all_data {
     use super::super::types;

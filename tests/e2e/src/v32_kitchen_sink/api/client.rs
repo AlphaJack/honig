@@ -22,7 +22,7 @@ impl<T> Client<T> {
     pub fn authorization_url_oauth(
         client_id: &str,
         redirect_uri: &str,
-        scopes: &[&str],
+        scopes: &[ops::OauthScope],
         state: &str,
         pkce: &runtime::Pkce,
     ) -> String {
@@ -30,7 +30,7 @@ impl<T> Client<T> {
             "https://example.com/auth",
             client_id,
             redirect_uri,
-            scopes,
+            scopes.iter().copied().map(ops::OauthScope::as_str),
             state,
             pkce,
         )
@@ -40,14 +40,14 @@ impl<T> Client<T> {
     pub fn implicit_url_oauth(
         client_id: &str,
         redirect_uri: &str,
-        scopes: &[&str],
+        scopes: &[ops::OauthScope],
         state: &str,
     ) -> String {
         runtime::implicit_url(
             "https://example.com/auth",
             client_id,
             redirect_uri,
-            scopes,
+            scopes.iter().copied().map(ops::OauthScope::as_str),
             state,
         )
     }
@@ -91,14 +91,14 @@ impl<T: runtime::Transport> Client<T> {
         mut self,
         client_id: &str,
         client_secret: &str,
-        scopes: &[&str],
+        scopes: &[ops::OauthScope],
     ) -> Result<Self, runtime::ClientError> {
         let token = runtime::client_credentials(
                 &self.transport,
                 "https://example.com/token",
                 client_id,
                 client_secret,
-                scopes,
+                scopes.iter().copied().map(ops::OauthScope::as_str),
             )
             .await?;
         self.credentials.insert("oauth".to_owned(), token.access_token);
@@ -108,13 +108,13 @@ impl<T: runtime::Transport> Client<T> {
     pub async fn device_start_oauth(
         &self,
         client_id: &str,
-        scopes: &[&str],
+        scopes: &[ops::OauthScope],
     ) -> Result<runtime::DeviceCode, runtime::ClientError> {
         runtime::device_authorization(
                 &self.transport,
                 "https://example.com/device",
                 client_id,
-                scopes,
+                scopes.iter().copied().map(ops::OauthScope::as_str),
             )
             .await
     }
@@ -152,7 +152,7 @@ impl<T: runtime::Transport> Client<T> {
         password: &str,
         client_id: &str,
         client_secret: Option<&str>,
-        scopes: &[&str],
+        scopes: &[ops::OauthScope],
     ) -> Result<runtime::Token, runtime::ClientError> {
         let token = runtime::password_grant(
                 &self.transport,
@@ -161,7 +161,7 @@ impl<T: runtime::Transport> Client<T> {
                 password,
                 client_id,
                 client_secret,
-                scopes,
+                scopes.iter().copied().map(ops::OauthScope::as_str),
             )
             .await?;
         self.credentials.insert("oauth".to_owned(), token.access_token.clone());

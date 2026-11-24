@@ -52,6 +52,8 @@ Other flows get helpers by what the scheme declares:
 | Refresh | `refresh_<s>(refresh_token, client_id, secret)` |
 | OpenID Connect and RFC 8414 | `discover_<s>()` returns the token, authorization and device endpoints |
 
+A helper of a scheme with scopes takes them as its scope enum, such as `&[api::operations::PatScope::Read]`: a scope that the description does not list does not compile.
+
 ## Streams
 
 A response declared as a sequence also gets `<op>_stream`. The sequence is JSON Lines or JSON text sequences or server-sent events. `<op>_stream` gives a `Stream` that yields each item as it arrives. Consume it with `futures_util::StreamExt::next`. A binary response gets the `Response` with its body still to come: `resp.into_body().into_stream()` yields its raw chunks. An item that does not decode is an `Err`. The items after it can still arrive. The `minItems`, `maxItems` and `uniqueItems` of the sequence apply as it arrives: the item past `maxItems` and an item met before are an `Err`, and so is an end short of `minItems`:

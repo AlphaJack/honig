@@ -38,6 +38,51 @@ pub const SECURITY_6: &[&[runtime::Requirement]] = &[
 pub const SECURITY_7: &[&[runtime::Requirement]] = &[
     &[(runtime::Scheme::Bearer("oidc"), &["profile"])],
 ];
+/// A scope or role of `oauth`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum OauthScope {
+    /// Read
+    Read,
+    /// Write
+    Write,
+}
+impl OauthScope {
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Read => "read",
+            Self::Write => "write",
+        }
+    }
+    #[must_use]
+    pub fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "read" => Some(Self::Read),
+            "write" => Some(Self::Write),
+            _ => None,
+        }
+    }
+}
+/// A scope or role of `oidc`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum OidcScope {
+    Profile,
+}
+impl OidcScope {
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Profile => "profile",
+        }
+    }
+    #[must_use]
+    pub fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "profile" => Some(Self::Profile),
+            _ => None,
+        }
+    }
+}
 pub mod public {
     use super::super::runtime;
     pub const METHOD: &str = "GET";

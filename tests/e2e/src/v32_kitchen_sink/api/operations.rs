@@ -13,6 +13,31 @@ pub const SECURITY_0: &[&[runtime::Requirement]] = &[
 pub const SECURITY_1: &[&[runtime::Requirement]] = &[
     &[(runtime::Scheme::Bearer("oauth"), &["write"])],
 ];
+/// A scope or role of `oauth`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub enum OauthScope {
+    /// Read
+    Read,
+    /// Write
+    Write,
+}
+impl OauthScope {
+    #[must_use]
+    pub const fn as_str(self) -> &'static str {
+        match self {
+            Self::Read => "read",
+            Self::Write => "write",
+        }
+    }
+    #[must_use]
+    pub fn from_name(name: &str) -> Option<Self> {
+        match name {
+            "read" => Some(Self::Read),
+            "write" => Some(Self::Write),
+            _ => None,
+        }
+    }
+}
 pub mod submit_form {
     use super::super::types;
     use super::super::runtime;

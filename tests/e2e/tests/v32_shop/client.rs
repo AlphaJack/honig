@@ -69,7 +69,7 @@ async fn a_304_says_the_held_copy_is_current() {
 // ANCHOR: device-flow
 /// Signs in on another device. The user opens a page and types the code. Meanwhile this polls until they did.
 async fn sign_in(client: &mut api::Client<impl api::Transport>) -> Result<(), api::ClientError> {
-    let code = client.device_start_o_auth2("shop-cli", &["read:products"]).await?;
+    let code = client.device_start_o_auth2("shop-cli", &[ops::OAuth2Scope::ReadProducts]).await?;
     println!("Open {} and enter {}", code.verification_uri, code.user_code);
     loop {
         match client.device_poll_o_auth2("shop-cli", &code).await? {
