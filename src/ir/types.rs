@@ -888,6 +888,27 @@ fn leftover_schema<E>(leftover: Option<&(E, Leftover)>) -> Option<usize> {
 }
 
 impl Constraints {
+    /// Returns the limits of `self`: the bounds, lengths, `pattern`, item and property counts that a type of yours
+    /// (`x-rust-type`) is checked on as JSON before it converts.
+    pub(crate) fn limits(&self) -> Self {
+        Self {
+            min_length: self.min_length,
+            max_length: self.max_length,
+            pattern: self.pattern.clone(),
+            minimum: self.minimum.clone(),
+            maximum: self.maximum.clone(),
+            exclusive_minimum: self.exclusive_minimum.clone(),
+            exclusive_maximum: self.exclusive_maximum.clone(),
+            multiple_of: self.multiple_of.clone(),
+            min_items: self.min_items,
+            max_items: self.max_items,
+            unique_items: self.unique_items,
+            min_properties: self.min_properties,
+            max_properties: self.max_properties,
+            ..Self::default()
+        }
+    }
+
     /// Returns the indices into [`TypeSpace::subschemas`] that these checks decode a value as, also those of `items`
     /// and `propertyNames`.
     pub(crate) fn subschemas(&self) -> Vec<usize> {

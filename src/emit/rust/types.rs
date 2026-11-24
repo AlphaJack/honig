@@ -304,6 +304,31 @@ fn external(items: &mut Vec<TokenStream>, def: &TypeDef, path: &str) {
         #doc
         pub type #name = #ty;
     });
+    // The limits of the schema run on the JSON value before it converts to your type.
+    let limits = def.own.limits();
+    if limits != crate::ir::types::Constraints::default() {
+        let check = format_ident!("{}Limits", pascal(&def.name));
+        let checks = super::checks::json_checks(&limits, &quote!(json));
+        let doc = lit(&format!(
+            "The limits of `{}` in the description, checked before a value converts to it.",
+            pascal(&def.name)
+        ));
+        items.push(quote! {
+            #[doc = #doc]
+            #[derive(Debug, Clone, Copy)]
+            pub struct #check;
+            impl runtime::formats::Check for #check {
+                fn check(json: &serde_json::Value) -> Result<(), runtime::BuildError> {
+                    let mut violations: Vec<runtime::Violation> = Vec::new();
+                    {
+                        let out = &mut violations;
+                        #checks
+                    }
+                    runtime::first(violations).map_err(runtime::BuildError::value)
+                }
+            }
+        });
+    }
 }
 
 /// Returns `#[derive(...)]` for the extra derives in the settings of `def` (`*` and its

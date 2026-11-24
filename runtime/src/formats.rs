@@ -229,6 +229,28 @@ impl<'de, T, H: Holds<'de, T>> Deserialize<'de> for Validated<T, H> {
     }
 }
 
+/// The keywords of a schema that is a type of yours (`x-rust-type`), checked on its JSON value before the value
+/// converts to your type.
+pub trait Check {
+    /// Checks `json`.
+    ///
+    /// # Errors
+    /// A keyword of the schema refuses the value.
+    fn check(json: &serde_json::Value) -> Result<(), crate::BuildError>;
+}
+
+/// A type of yours decoded from a JSON value that `C` checks first.
+#[derive(Debug, Clone, Copy)]
+pub struct Json<C>(PhantomData<C>);
+
+impl<'de, T: de::DeserializeOwned, C: Check> Holds<'de, T> for Json<C> {
+    fn read<D: Deserializer<'de>>(d: D) -> Result<T, D::Error> {
+        let json = serde_json::Value::deserialize(d)?;
+        C::check(&json).map_err(de::Error::custom)?;
+        T::deserialize(json).map_err(de::Error::custom)
+    }
+}
+
 /// A value decoded as it is: a position of a tuple without a checked format.
 #[derive(Debug, Clone, Copy)]
 pub struct Plain;

@@ -351,14 +351,19 @@ fn anchors_belong_to_their_resource() {
     assert!(err.iter().any(|d| d.message.contains("`y`")), "{:#?}", err.0);
 }
 
-/// A limit that no generated check would run fails generation: beside `x-rust-type` your type decides the value.
+/// A limit beside `x-rust-type` runs on the JSON value before it converts to your type: a field of that type decodes
+/// through the generated check.
 #[test]
-fn a_limit_that_no_check_would_run_fails_generation() {
-    let d =
-        doc(&json!({}), &json!({"schemas": {"S": {"type": "string", "maxLength": 3, "x-rust-type": "crate::Code"}}}));
-    let path = common::write("unchecked-limit", &d, &[]);
-    let err = crate::generate::generate(&path, &Options::default()).expect_err("a limit beside x-rust-type");
-    assert!(err.iter().any(|d| d.pointer == "/components/schemas/S/maxLength"), "{:#?}", err.0);
+fn a_limit_beside_a_type_of_yours_is_checked() {
+    let schemas = json!({"schemas": {"Cents": {"type": "integer", "maximum": 100, "x-rust-type": "i64"},
+        "Wallet": {"type": "object", "properties": {"cents": {"$ref": "#/components/schemas/Cents"}}}}});
+    let made =
+        crate::generate::generate(&common::write("yours-limit", &doc(&json!({}), &schemas), &[]), &Options::default());
+    let types = common::file(&made.expect("a valid description generates").files, "types.rs")
+        .split_whitespace()
+        .collect::<String>();
+    assert!(types.contains("implruntime::formats::CheckforCentsLimits"), "{types}");
+    assert!(types.contains("runtime::formats::Json<super::types::CentsLimits>"), "{types}");
 }
 
 /// A link expression `$response.body#/idd` that reaches no property of the response body is always absent: a warning
