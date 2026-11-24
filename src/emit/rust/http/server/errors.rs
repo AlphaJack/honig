@@ -62,7 +62,7 @@ pub(crate) fn all_filled(api: &Api, space: &Space<'_>) -> bool {
 pub(crate) fn unset_error_headers(api: &Api) -> Vec<crate::diag::Diagnostic> {
     let mut out = vec![];
     for op in &api.http.operations {
-        for r in op.responses.iter().filter(|r| is_error(r)) {
+        for r in op.responses.iter().filter(|r| r.is_error()) {
             for h in r.headers.iter().filter(|h| !h.ty.is_option()) {
                 out.push(crate::diag::Diagnostic::warning(
                     format!(
@@ -95,7 +95,7 @@ type Declared = Vec<(Status, Option<proc_macro2::Ident>)>;
 
 /// Returns an error response that declares a body.
 fn has_error_body(r: &crate::ir::http::Resp) -> bool {
-    is_error(r) && !r.contents.is_empty()
+    r.is_error() && !r.contents.is_empty()
 }
 
 /// Returns the `runtime::ProblemSchema` of the body of a response if the generator can fill it: a JSON body by its
@@ -110,11 +110,6 @@ fn declared_error_schema(space: &Space<'_>, r: &crate::ir::http::Resp) -> Option
             quote!(runtime::ProblemSchema { media: #media, fields: &[], open: false })
         })
     })
-}
-
-/// Returns an error response: 4XX, 5XX or `default`.
-fn is_error(r: &crate::ir::http::Resp) -> bool {
-    !matches!(r.status, Status::Code(c) if c < runtime::http::StatusCode::BAD_REQUEST.as_u16())
 }
 
 /// Returns the value of `ty` when it is a `const` through aliases.

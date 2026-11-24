@@ -656,6 +656,29 @@ fn a_text_body_is_checked_or_warned_about() {
     assert_eq!(warned, 1, "{:#?}", made.diagnostics);
 }
 
+/// A `2XX` response is a success as `200` is: its required header draws no warning of an error response, and the
+/// server keeps the default `error_response`.
+#[test]
+fn a_2xx_response_is_a_success() {
+    for status in ["200", "2XX"] {
+        let paths = json!({"/a": {"get": {"operationId": "a", "responses": {status: {"description": "ok",
+            "headers": {"X-Id": {"required": true, "schema": {"type": "string"}}}}}}}});
+        let path = common::write(&format!("success-{status}"), &doc(&paths, &json!({})), &[]);
+        let made = crate::generate::generate(&path, &Options::default()).expect("generates");
+        assert!(
+            made.diagnostics.iter().all(|d| !d.message.contains("error response")),
+            "{status}: {:#?}",
+            made.diagnostics
+        );
+        let server = common::file(
+            &common::generate(&format!("success-server-{status}"), &doc(&paths, &json!({})), &Options::default()),
+            "server.rs",
+        )
+        .to_owned();
+        assert!(server.contains("rejection.response()"), "{status}: the default `error_response`");
+    }
+}
+
 /// A scheme that refers to a schema, to itself or to nothing defines no check: a server would skip it.
 #[test]
 fn a_scheme_reference_to_no_scheme_fails_generation() {

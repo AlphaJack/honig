@@ -13,7 +13,7 @@ use super::paths::{path_param, template, value_expr};
 use super::security::Securities;
 use super::shared::{Boxing, VariantShape};
 use super::shared::{
-    blob, boxing, code, is_path, is_success, op_path, param_enc, server_url, shape, status_code, variant_shape, wrap,
+    blob, boxing, code, is_path, op_path, param_enc, server_url, shape, status_code, variant_shape, wrap,
 };
 use crate::emit::rust::names::{pascal, snake};
 use crate::emit::rust::space::Space;
@@ -305,7 +305,7 @@ pub(crate) type StreamTarget<'a> = (usize, &'a Ty, Vec<(usize, &'a str, TokenStr
 /// type and per sequential media type (content index, media, framing).
 /// Every sequential media type must carry the same item type.
 pub(crate) fn stream_target(op: &Operation) -> Option<StreamTarget<'_>> {
-    let (ri, r) = op.responses.iter().enumerate().find(|(_, r)| is_success(r))?;
+    let (ri, r) = op.responses.iter().enumerate().find(|(_, r)| r.is_success())?;
     let mut item: Option<&Ty> = None;
     let mut seq = vec![];
     for (ci, c) in r.contents.iter().enumerate() {
@@ -454,7 +454,7 @@ pub(crate) fn blob_stream_method(
     let streamed: Vec<(u16, &Resp)> = op
         .responses
         .iter()
-        .filter(|r| is_success(r) && !r.contents.is_empty() && r.contents.iter().all(blob))
+        .filter(|r| r.is_success() && !r.contents.is_empty() && r.contents.iter().all(blob))
         .filter_map(|r| match r.status {
             Status::Code(c) => Some((c, r)),
             Status::Range(_) | Status::Default => None,
@@ -462,7 +462,7 @@ pub(crate) fn blob_stream_method(
         .collect();
     let server = server_arg(op, &op_path(op));
     // The first success response decides as before. A JSON `200` next to a binary `206` has no stream method.
-    let first = op.responses.iter().find(|r| is_success(r))?;
+    let first = op.responses.iter().find(|r| r.is_success())?;
     if !streamed.iter().any(|(_, r)| std::ptr::eq(*r, first)) {
         return None;
     }
