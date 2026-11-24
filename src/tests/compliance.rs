@@ -375,6 +375,30 @@ fn a_limit_that_no_check_would_run_fails_generation() {
     }
 }
 
+/// A link expression `$response.body#/idd` that reaches no property of the response body is always absent: a warning
+/// at the link. A pointer to a declared property needs none.
+#[test]
+fn a_link_pointer_that_reaches_nothing_is_a_warning() {
+    let param = json!({"in": "path", "name": "id", "required": true, "schema": {"type": "string"}});
+    let paths = |pointer: &str| {
+        json!({"/start": {"get": {"operationId": "start", "responses": {"200": {"description": "ok",
+            "content": {"application/json": {"schema": {"type": "object", "properties": {"id": {"type": "string"}}}}},
+            "links": {"next": {"operationId": "get_item", "parameters": {"id": format!("$response.body#{pointer}")}}}}}}},
+            "/items/{id}": {"get": {"operationId": "get_item", "parameters": [param],
+            "responses": {"204": {"description": "ok"}}}}})
+    };
+    let made = |pointer: &str| {
+        let path = common::write("link-pointer", &doc(&paths(pointer), &json!({})), &[]);
+        crate::generate::generate(&path, &Options::default())
+    };
+    let warned = |pointer: &str| {
+        let made = made(pointer).expect("a valid description generates");
+        made.diagnostics.iter().any(|d| d.pointer.ends_with("/links/next/parameters/id"))
+    };
+    assert!(!warned("/id"), "a declared property");
+    assert!(warned("/idd"), "no property idd");
+}
+
 /// Media types that give one variant name are numbered in the sorted order of the types: a reorder of `content`
 /// changes no name.
 #[test]

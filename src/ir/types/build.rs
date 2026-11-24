@@ -754,6 +754,11 @@ impl<'a> Builder<'a> {
     }
 
     /// Is `ty` (through aliases) a struct?
+    /// Returns `ty` past its aliases.
+    pub(crate) fn unaliased<'t>(&'t self, ty: &'t Ty) -> &'t Ty {
+        unalias(&self.defs, ty)
+    }
+
     pub(crate) fn is_struct(&self, ty: &Ty) -> bool {
         matches!(unalias(&self.defs, ty), Ty::Named(id) if matches!(self.defs[id.0].kind, Kind::Struct(_)))
     }
