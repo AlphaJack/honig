@@ -4,7 +4,7 @@ use serde::Serialize;
 use serde::de::DeserializeOwned;
 use serde_json::Value;
 
-use super::multipart::{BOUNDARY, boundary_of, parts};
+use super::multipart::{assemble, boundary_of, parts};
 use crate::binary::{raw_mark, raw_part, raw_parts};
 use crate::json::to_value;
 use crate::media::json_type;
@@ -37,7 +37,7 @@ fn mixed_encode_in<T: Serialize>(v: &T, media: &str, types: &[(&str, &str)]) -> 
     {
         items.extend(rest);
     }
-    let mut body = Vec::new();
+    let mut parts = Vec::new();
     for (i, x) in items.iter().enumerate() {
         let mut index = itoa::Buffer::new();
         let index = index.format(i);
@@ -58,14 +58,11 @@ fn mixed_encode_in<T: Serialize>(v: &T, media: &str, types: &[(&str, &str)]) -> 
                 (declared.filter(|d| json_type(d)).unwrap_or("application/json"), other.to_string().into_bytes())
             }
         };
-        body.extend_from_slice(format!("--{BOUNDARY}\r\nContent-Type: {ct}\r\n\r\n").as_bytes());
-        body.extend_from_slice(&data);
-        body.extend_from_slice(b"\r\n");
+        parts.push((format!("Content-Type: {ct}\r\n"), data));
     }
-    body.extend_from_slice(format!("--{BOUNDARY}--\r\n").as_bytes());
     let base = media.split(';').next().unwrap_or(media).trim();
     let base = if base.contains('*') { "multipart/mixed" } else { base };
-    Ok((format!("{base}; boundary={BOUNDARY}"), body))
+    Ok(assemble(base, &parts))
 }
 
 /// Decodes a positional multipart body (see [`mixed_encode`]). `prefix` groups the rest into a list.
