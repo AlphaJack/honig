@@ -106,12 +106,14 @@ jobs:
         env:
           RUSTDOCFLAGS: -D warnings
         run: cargo doc --workspace --no-deps --all-features --document-private-items --locked
-      # What docs.rs builds: public items only, so a link to a private item fails here and not above.
-      - name: Rustdoc as docs.rs builds it
+      # What docs.rs builds: public items only, so a link to a private item fails here and not above. Then what the
+      # `cargo doc` of a crate that uses honig builds: its default features, so a link to an item of a feature fails.
+      - name: Rustdoc as docs.rs and a user build it
         env:
           RUSTDOCFLAGS: -D warnings
         run: |
           cargo doc -p honig --no-deps --all-features --locked
+          cargo doc -p honig --no-deps --locked
           cargo doc -p cargo-honig --no-deps --locked
       - name: Install mdbook
         uses: taiki-e/install-action@fe3acb53a98b62c772db35de75ce0e4595e7ca8c # v2.90.8
