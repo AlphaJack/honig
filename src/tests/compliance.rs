@@ -373,6 +373,39 @@ fn a_limit_beside_a_type_of_yours_is_checked() {
     assert!(types.contains("::honig::__private::formats::Json<super::types::CentsLimits>"), "{types}");
 }
 
+/// Each limit beside `x-rust-type` is checked, not only `maximum`: lengths, `pattern`, every bound, `multipleOf`, item
+/// and property counts and `uniqueItems`. A limit left out would let a value of yours through unchecked.
+#[test]
+fn every_limit_beside_a_type_of_yours_is_checked() {
+    let cases = [
+        (json!({"type": "string", "minLength": 2}), "check_len(", "Some(2),None,\"characters\""),
+        (json!({"type": "string", "maxLength": 9}), "check_len(", "None,Some(9),\"characters\""),
+        (json!({"type": "string", "pattern": "^a"}), "check_pattern(", "Pattern::new(\"^a\",)"),
+        (json!({"type": "integer", "minimum": 1}), "check_decimal_range(", "min:Some(\"1\")"),
+        (json!({"type": "integer", "exclusiveMinimum": 1}), "check_decimal_range(", "exclusive_min:Some(\"1\")"),
+        (json!({"type": "integer", "exclusiveMaximum": 9}), "check_decimal_range(", "exclusive_max:Some(\"9\")"),
+        (json!({"type": "integer", "multipleOf": 5}), "check_multiple_text(", "\"5\""),
+        (json!({"type": "array", "items": {"type": "string"}, "minItems": 1}), "check_len(", "Some(1),None,\"items\""),
+        (json!({"type": "array", "items": {"type": "string"}, "maxItems": 3}), "check_len(", "None,Some(3),\"items\""),
+        (json!({"type": "array", "items": {"type": "string"}, "uniqueItems": true}), "check_unique(", "check_unique("),
+        (json!({"type": "object", "minProperties": 1}), "check_len(", "Some(1),None,\"properties\""),
+        (json!({"type": "object", "maxProperties": 3}), "check_len(", "None,Some(3),\"properties\""),
+    ];
+    for (mut schema, check, argument) in cases {
+        schema["x-rust-type"] = json!("crate::Mine");
+        let holder = json!({"type": "object", "properties": {"m": {"$ref": "#/components/schemas/Mine"}}});
+        let schemas = json!({"schemas": {"Mine": schema.clone(), "Holder": holder}});
+        let made = crate::generate::generate(
+            &common::write("yours-limits", &doc(&json!({}), &schemas), &[]),
+            &Options::default(),
+        );
+        let types = common::file(&made.expect("a valid description generates").files, "types.rs").to_owned();
+        let limits = types.split_once("for MineLimits").map(|(_, rest)| rest).unwrap_or_default();
+        let limits: String = limits.split_once("\n}\n").map_or(limits, |(body, _)| body).split_whitespace().collect();
+        assert!(limits.contains(check) && limits.contains(argument), "{schema}: {types}");
+    }
+}
+
 /// A link expression `$response.body#/idd` that reaches no property of the response body is always absent: a warning
 /// at the link. A pointer to a declared property needs none.
 #[test]
